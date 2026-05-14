@@ -68,7 +68,11 @@ function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useIsAuthenticated();
   const authLoading = useAuthLoading();
 
-  if (authLoading) return <>{children}</>;
+  if (authLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   if (isAuthenticated && user && !user.isEmailVerified) {
     const allowedPaths = [

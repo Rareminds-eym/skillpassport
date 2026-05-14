@@ -28,8 +28,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { downloadReceipt, generateReceiptBase64 } from '@/features/subscription/lib';
-import { getPaymentReceiptUrl, uploadPaymentReceipt } from '@/shared/api';
+import { downloadReceipt } from '@/features/subscription/lib';
+import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 
 import { useSubscription, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useUserRole } from '@/shared/model/authStore';
@@ -95,8 +95,6 @@ const DASHBOARD_ROUTES = {
   recruiter: '/recruitment/overview',
   // Learner roles
   learner: '/learner/dashboard',
-  'school-learner': '/learner/dashboard',
-  'college-learner': '/learner/dashboard',
 };
 
 /** Subscription manage routes by role */
@@ -112,8 +110,6 @@ const MANAGE_ROUTES = {
   college_educator: '/educator/subscription/manage',
   recruiter: '/recruitment/subscription/manage',
   learner: '/learner/subscription/manage',
-  'school-learner': '/learner/subscription/manage',
-  'college-learner': '/learner/subscription/manage',
 };
 
 // ============================================================================
@@ -458,7 +454,7 @@ function PaymentSuccess() {
   const [emailStatus, setEmailStatus] = useState(EMAIL_STATES.PENDING);
   const [showConfetti, setShowConfetti] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState(null);
-  const [receiptUploading, setReceiptUploading] = useState(false);
+  const [receiptKey, setReceiptKey] = useState(null); // R2 key — preferred over URL for downloads
   const verificationError = null;
 
   // Refs for cleanup
@@ -517,32 +513,6 @@ function PaymentSuccess() {
     };
   }, []);
 
-  // Upload receipt to R2
-  const uploadReceiptToR2 = useCallback(async (receiptData, paymentId, userId) => {
-    if (!mountedRef.current) return;
-
-    try {
-      setReceiptUploading(true);
-      const pdfBase64 = await generateReceiptBase64(receiptData);
-      const filename = `Receipt-${paymentId?.slice(-8) || 'payment'}-${new Date().toISOString().split('T')[0]}.pdf`;
-
-      const result = await uploadPaymentReceipt(pdfBase64, paymentId, userId, filename);
-
-      if (result.success && result.fileKey && mountedRef.current) {
-        const downloadUrl = getPaymentReceiptUrl(result.fileKey, 'download');
-        setReceiptUrl(downloadUrl);
-        localStorage.setItem(`receipt_url_${paymentId}`, downloadUrl);
-        log.info('Receipt uploaded to R2:', downloadUrl);
-      }
-    } catch (error) {
-      log.error('Failed to upload receipt to R2:', error);
-    } finally {
-      if (mountedRef.current) {
-        setReceiptUploading(false);
-      }
-    }
-  }, []);
-
   // Handle subscription activation from worker response
   useEffect(() => {
     if (verificationStatus !== 'success' || !transactionDetails || activationStatus !== ACTIVATION_STATES.PENDING) {
@@ -551,7 +521,6 @@ function PaymentSuccess() {
 
     setActivationStatus(ACTIVATION_STATES.ACTIVATING);
     log.info('Transaction details received:', {
-      payment_id: transactionDetails.payment_id,
       receipt_url: transactionDetails.receipt_url,
       email_sent: transactionDetails.email_sent,
     });
@@ -628,37 +597,18 @@ function PaymentSuccess() {
           }, CONFIG.EMAIL_STATUS_DELAY_MS);
         }
 
-        // Handle receipt
+        // Handle receipt — server generates it; just store the URL and key
+        if (transactionDetails.receipt_key) {
+          setReceiptKey(transactionDetails.receipt_key);
+          log.info('Receipt key from server:', transactionDetails.receipt_key);
+        }
         if (transactionDetails.receipt_url) {
           setReceiptUrl(transactionDetails.receipt_url);
-          localStorage.setItem(`receipt_url_${transactionDetails.payment_id}`, transactionDetails.receipt_url);
-        } else {
-          // Upload from frontend as fallback
-          const receiptData = {
-            transaction: {
-              payment_id: transactionDetails.payment_id || 'N/A',
-              order_id: transactionDetails.order_id || 'N/A',
-              amount: transactionDetails.amount ? transactionDetails.amount / 100 : subscription.plan_amount || 0,
-              currency: 'INR',
-              payment_method: transactionDetails.payment_method || 'Card',
-              payment_timestamp: formatDate(new Date()),
-              status: 'Success',
-            },
-            subscription: {
-              plan_type: subscription.plan_type,
-              billing_cycle: subscription.billing_cycle,
-              subscription_start_date: formatDate(subscription.subscription_start_date),
-              subscription_end_date: formatDate(subscription.subscription_end_date),
-            },
-            user: {
-              name: transactionDetails.user_name || user?.user_metadata?.full_name || 'User',
-              email: transactionDetails.user_email || user?.email || '',
-              phone: user?.user_metadata?.phone || null,
-            },
-            company: { name: 'RareMinds', address: 'Your Company Address', taxId: 'TAX123456789' },
-            generatedAt: new Date().toLocaleString(),
-          };
-          uploadReceiptToR2(receiptData, transactionDetails.payment_id, subscription.user_id);
+          localStorage.setItem(
+            `receipt_url_${transactionDetails.razorpay_payment_id || paymentParams.razorpay_payment_id}`,
+            transactionDetails.receipt_url
+          );
+          log.info('Receipt URL from server:', transactionDetails.receipt_url);
         }
       } else {
         // Existing subscription
@@ -715,7 +665,7 @@ function PaymentSuccess() {
       }
       setEmailStatus(EMAIL_STATES.SENT);
     }
-  }, [verificationStatus, transactionDetails, activationStatus, user, cacheRefresh, uploadReceiptToR2]);
+  }, [verificationStatus, transactionDetails, activationStatus, user]);
 
   // Redirect if no payment params — but check location.state first since
   // PaymentCompletion passes data via React Router state, not URL params
@@ -744,53 +694,22 @@ function PaymentSuccess() {
   // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
-      if (receiptUrl) {
-        // Use presigned URL for download (no auth required)
-        const presignedUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
+      // Prefer the R2 key directly — avoids URL parsing ambiguity in the backend.
+      // Fall back to the public URL if the key wasn't returned by the server.
+      const fileIdentifier = receiptKey || receiptUrl;
+      if (fileIdentifier) {
+        const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
         window.open(presignedUrl, '_blank');
         toast.success('Receipt downloading!');
         return;
       }
-
-      const receiptData = {
-        transaction: {
-          payment_id: paymentParams.razorpay_payment_id || 'N/A',
-          order_id: paymentParams.razorpay_order_id || 'N/A',
-          amount: displayAmount,
-          currency: 'INR',
-          payment_method: transactionDetails?.payment_method || 'Card',
-          payment_timestamp: formatDate(new Date()),
-          status: 'Success',
-        },
-        subscription: subscriptionData ? {
-          plan_type: subscriptionData.plan_type,
-          billing_cycle: subscriptionData.billing_cycle,
-          subscription_start_date: formatDate(subscriptionData.subscription_start_date),
-          subscription_end_date: formatDate(subscriptionData.subscription_end_date),
-        } : null,
-        user: {
-          name: transactionDetails?.user_name || user?.user_metadata?.full_name || 'User',
-          email: transactionDetails?.user_email || user?.email || '',
-          phone: user?.user_metadata?.phone || null,
-        },
-        company: {
-          name: 'RareMinds',
-          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
-          taxId: 'GSTIN: 29ABCDE1234F1Z5',
-          phone: '+91 9902326951',
-          email: 'marketing@rareminds.in'
-        },
-        generatedAt: new Date().toLocaleString(),
-      };
-
-      const filename = `Receipt-${paymentParams.razorpay_payment_id?.slice(-8) || 'payment'}-${new Date().toISOString().split('T')[0]}.pdf`;
-      await downloadReceipt(receiptData, filename);
-      toast.success('Receipt downloaded!');
+      // Receipt not yet available (server may still be processing)
+      toast('Receipt is being prepared. Please try again in a moment.', { icon: '⏳', duration: 4000 });
     } catch (error) {
       log.error('Receipt download failed:', error);
-      toast.error('Failed to download receipt');
+      toast.error('Failed to download receipt. Please try again.');
     }
-  }, [receiptUrl, paymentParams, displayAmount, transactionDetails, subscriptionData, user]);
+  }, [receiptKey, receiptUrl]);
 
   // ============================================================================
   // RENDER
@@ -834,11 +753,11 @@ function PaymentSuccess() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Reference</span>
-              <span className="font-mono font-medium text-gray-900">{paymentParams.razorpay_payment_id?.slice(-10) || 'N/A'}</span>
+              <span className="font-mono font-medium text-gray-900">{String(paymentParams.razorpay_payment_id?.slice(-10) || 'N/A')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Method</span>
-              <span className="font-medium text-gray-900">{transactionDetails?.payment_method || 'Card'}</span>
+              <span className="font-medium text-gray-900">{String(transactionDetails?.payment_method || 'Card')}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Date</span>
@@ -857,15 +776,15 @@ function PaymentSuccess() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Plan</span>
-                  <span className="font-semibold text-[#2663EB]">{subscriptionData.plan_type || planDetails?.name || 'Premium'}</span>
+                  <span className="font-semibold text-[#2663EB]">{String(subscriptionData.plan_type || subscriptionData.plan_name || planDetails?.name || 'Premium')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Cycle</span>
-                  <span className="font-medium text-gray-900">{subscriptionData.billing_cycle || planDetails?.duration || 'Monthly'}</span>
+                  <span className="font-medium text-gray-900">{String(subscriptionData.billing_cycle || planDetails?.duration || 'Monthly')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Valid Until</span>
-                  <span className="font-medium text-gray-900">{formatDate(subscriptionData.subscription_end_date)}</span>
+                  <span className="font-medium text-gray-900">{formatDate(subscriptionData.subscription_end_date || subscriptionData.end_date)}</span>
                 </div>
               </div>
             </>
@@ -904,14 +823,10 @@ function PaymentSuccess() {
             </button>
             <button
               onClick={handleDownloadReceipt}
-              disabled={receiptUploading || navigation.isNavigating}
+              disabled={navigation.isNavigating}
               className="py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
-              {receiptUploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
+              <Download className="w-4 h-4" />
               Receipt
             </button>
           </div>

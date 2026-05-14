@@ -44,7 +44,7 @@ const VerifyEmail = () => {
   const handleResend = async () => {
     setResending(true);
     try {
-      await ssoClient.requestVerification();
+      await ssoClient.requestVerification({ redirect_url: window.location.origin });
       setResent(true);
     } catch (err) {
       if (err instanceof AuthFetchError && err.status === 429) {
@@ -72,10 +72,10 @@ const VerifyEmail = () => {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">✅ Email Verified!</h2>
             <p className="text-gray-600 mb-6">Your email has been successfully verified. You can now access all features.</p>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/subscription/plans')}
               className="w-full py-3 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
             >
-              Continue to Dashboard
+              Continue
             </button>
           </div>
         )}

@@ -61,7 +61,7 @@ export function useConversationLearners(
   // Extract and transform learners from conversations
   const learners = useMemo(() => {
     const allConversations = [...activeConversations, ...archivedConversations];
-    return extractlearnersFromConversations(allConversations);
+    return extractLearnersFromConversations(allConversations);
   }, [activeConversations, archivedConversations]);
 
   // Calculate stats

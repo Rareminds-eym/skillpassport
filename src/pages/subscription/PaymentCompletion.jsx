@@ -41,8 +41,6 @@ function getManagePath(userRole) {
     college_educator: '/educator/subscription/manage',
     recruiter: '/recruitment/subscription/manage',
     learner: '/learner/subscription/manage',
-    'school-learner': '/learner/subscription/manage',
-    'college-learner': '/learner/subscription/manage',
   };
   return manageRoutes[userRole] || null; // Return null for unknown roles
 }

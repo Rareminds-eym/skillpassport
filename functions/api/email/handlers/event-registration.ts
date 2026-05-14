@@ -9,6 +9,7 @@ import type { Env } from '../../../../src/functions-lib/types';
 import type { EventConfirmationRequest, EventOTPRequest } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { apiLogger } from '../../../lib/logger';
+import { sendEmail } from '../../../lib/email-service';
 import {
   generateUserConfirmationHtml,
   generateAdminNotificationHtml,
@@ -38,22 +39,10 @@ export async function handleEventConfirmation(
   }
 
   // Validate required env vars first (fail-fast)
-  if (!env.INTERNAL_API_KEY) {
-    return jsonResponse({
-      success: false,
-      error: 'INTERNAL_API_KEY environment variable is not configured'
-    }, 500);
-  }
   if (!env.ADMIN_EMAIL) {
     return jsonResponse({
       success: false,
       error: 'ADMIN_EMAIL environment variable is not configured'
-    }, 500);
-  }
-  if (!env.EMAIL_WORKER_URL) {
-    return jsonResponse({
-      success: false,
-      error: 'EMAIL_WORKER_URL environment variable is not configured'
     }, 500);
   }
   if (!env.APP_URL) {
@@ -91,60 +80,39 @@ export async function handleEventConfirmation(
     const userSubject = getUserConfirmationSubject(name);
     const adminSubject = getAdminNotificationSubject(name, amount);
 
-    // Send both emails in parallel
-    const emailWorkerUrl = `${env.EMAIL_WORKER_URL}/send`;
-
+    // Send both emails in parallel using centralized service
     const results = await Promise.all([
       // User confirmation email
-      fetch(emailWorkerUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Internal-Api-Key': env.INTERNAL_API_KEY,
-        },
-        body: JSON.stringify({ to: email, subject: userSubject, html: userHtml }),
-      })
-        .then(async (res) => {
-          const status = res.status;
-          if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`User email failed with status ${status}: ${errorText}`);
-          }
-          return { status, success: true };
-        })
-        .catch((error) => {
-          apiLogger.error('User confirmation email error', error);
-          throw error;
-        }),
+      sendEmail(env, {
+        to: email,
+        subject: userSubject,
+        html: userHtml,
+      }).catch((error) => {
+        apiLogger.error('User confirmation email error', error);
+        throw error;
+      }),
       // Admin notification email
-      fetch(emailWorkerUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Internal-Api-Key': env.INTERNAL_API_KEY,
-        },
-        body: JSON.stringify({ to: env.ADMIN_EMAIL, subject: adminSubject, html: adminHtml }),
-      })
-        .then(async (res) => {
-          const status = res.status;
-          if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`Admin email failed with status ${status}: ${errorText}`);
-          }
-          return { status, success: true };
-        })
-        .catch((error) => {
-          apiLogger.error('Admin notification email error', error);
-          throw error;
-        }),
+      sendEmail(env, {
+        to: env.ADMIN_EMAIL,
+        subject: adminSubject,
+        html: adminHtml,
+      }).catch((error) => {
+        apiLogger.error('Admin notification email error', error);
+        throw error;
+      }),
     ]);
+
+    // Check if both emails succeeded
+    if (!results[0].success || !results[1].success) {
+      throw new Error('One or more emails failed to send');
+    }
 
     // Log successful email sends
     apiLogger.info('Both confirmation emails sent successfully', {
       userEmail: email,
       adminEmail: env.ADMIN_EMAIL,
-      userStatus: results[0].status,
-      adminStatus: results[1].status
+      userMessageId: results[0].messageId,
+      adminMessageId: results[1].messageId,
     });
 
     return jsonResponse({
@@ -185,35 +153,23 @@ export async function handleEventOTP(
   }
 
   try {
-    if (!env.INTERNAL_API_KEY) {
-      throw new Error('INTERNAL_API_KEY environment variable is not configured');
-    }
-    if (!env.EMAIL_WORKER_URL) {
-      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
-    }
-
     const html = generateOTPEmailHtml({ otp, name });
     const subject = getOTPSubject(otp);
 
-    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
-      },
-      body: JSON.stringify({ to: email, subject, html }),
+    const result = await sendEmail(env, {
+      to: email,
+      subject,
+      html,
     });
 
-    if (!response.ok) {
-      throw new Error(`Email worker failed with status ${response.status}`);
+    if (!result.success) {
+      throw new Error(result.error || 'Email sending failed');
     }
-
-    const result = await response.json();
 
     return jsonResponse({
       success: true,
       message: 'OTP email sent successfully',
-      data: { email, result }
+      data: { email, messageId: result.messageId }
     });
 
   } catch (error) {

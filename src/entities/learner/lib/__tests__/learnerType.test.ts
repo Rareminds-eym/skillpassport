@@ -9,43 +9,49 @@ import {
 
 describe('learnerType utilities', () => {
     describe('determinelearnerType', () => {
-        // Priority 1: Role-based detection
-        describe('role-based detection (highest priority)', () => {
-            it('identifies college learner by role', () => {
-                const result = determinelearnerType({ role: 'learner' });
+        // Priority 1: Role + institution ID detection
+        // All learners now have the canonical 'learner' role.
+        // Entity type (school vs college) is determined by institution IDs.
+        describe('unified learner role with institution IDs', () => {
+            it('identifies college learner by role + college_id', () => {
+                const result = determinelearnerType({ role: 'learner', university_college_id: 'college-uuid' });
                 expect(result.isCollegeLearner).toBe(true);
                 expect(result.isSchoolLearner).toBe(false);
+                expect(result.isLearner).toBe(false);
                 expect(result.educationLevel).toBe(EducationLevel.COLLEGE);
+                expect(result.institutionId).toBe('college-uuid');
             });
 
-            it('identifies school learner by role', () => {
-                const result = determinelearnerType({ role: 'learner', grade: '10' });
+            it('identifies school learner by role + school_id', () => {
+                const result = determinelearnerType({ role: 'learner', school_id: 'school-uuid', grade: '10' });
                 expect(result.isCollegeLearner).toBe(false);
                 expect(result.isSchoolLearner).toBe(true);
+                expect(result.isLearner).toBe(false);
                 expect(result.educationLevel).toBe('highschool');
+                expect(result.institutionId).toBe('school-uuid');
             });
 
-            it('role takes precedence over institution IDs', () => {
+            it('identifies independent learner when no institution IDs', () => {
+                const result = determinelearnerType({ role: 'learner' });
+                expect(result.isCollegeLearner).toBe(false);
+                expect(result.isSchoolLearner).toBe(false);
+                expect(result.isLearner).toBe(true);
+                expect(result.educationLevel).toBeNull();
+                expect(result.institutionId).toBeNull();
+            });
+
+            it('college_id takes precedence over school_id when role is learner', () => {
                 const result = determinelearnerType({
                     role: 'learner',
-                    school_id: 'school-uuid-123'
+                    university_college_id: 'college-uuid',
+                    school_id: 'school-uuid'
                 });
                 expect(result.isCollegeLearner).toBe(true);
                 expect(result.isSchoolLearner).toBe(false);
-            });
-
-            it('learner role takes precedence over college IDs', () => {
-                const result = determinelearnerType({
-                    role: 'learner',
-                    university_college_id: 'college-uuid-123',
-                    grade: '10'
-                });
-                expect(result.isCollegeLearner).toBe(false);
-                expect(result.isSchoolLearner).toBe(true);
             });
         });
 
-        // Priority 2: Institution ID-based detection
+        // Priority 2: Institution ID-based detection (no role provided)
         describe('institution ID-based detection', () => {
             it('identifies college learner by university_college_id', () => {
                 const result = determinelearnerType({ university_college_id: 'uuid-123' });
@@ -100,10 +106,11 @@ describe('learnerType utilities', () => {
                 expect(result.educationLevel).toBe('middle');
             });
 
-            it('returns unknown for no data', () => {
+            it('returns independent learner for no data', () => {
                 const result = determinelearnerType({});
                 expect(result.isCollegeLearner).toBe(false);
                 expect(result.isSchoolLearner).toBe(false);
+                expect(result.isLearner).toBe(true);
                 expect(result.educationLevel).toBeNull();
             });
         });
@@ -142,6 +149,7 @@ describe('learnerType utilities', () => {
             const expected = {
                 isCollegeLearner: false,
                 isSchoolLearner: false,
+                isLearner: false,
                 educationLevel: null,
                 institutionId: null
             };
@@ -154,32 +162,34 @@ describe('learnerType utilities', () => {
     // Convenience helper tests
     describe('isCollegeLearner helper', () => {
         it('returns true for college learners', () => {
-            expect(isCollegeLearner({ role: 'learner' })).toBe(true);
+            expect(isCollegeLearner({ role: 'learner', university_college_id: 'uuid' })).toBe(true);
             expect(isCollegeLearner({ university_college_id: 'uuid' })).toBe(true);
             expect(isCollegeLearner({ college_id: 'uuid' })).toBe(true);
         });
 
-        it('returns false for school learners', () => {
+        it('returns false for school learners and independent learners', () => {
             expect(isCollegeLearner({ role: 'learner' })).toBe(false);
+            expect(isCollegeLearner({ role: 'learner', school_id: 'uuid' })).toBe(false);
             expect(isCollegeLearner({ school_id: 'uuid' })).toBe(false);
         });
     });
 
     describe('isSchoolLearner helper', () => {
         it('returns true for school learners', () => {
-            expect(isSchoolLearner({ role: 'learner' })).toBe(true);
+            expect(isSchoolLearner({ role: 'learner', school_id: 'uuid' })).toBe(true);
             expect(isSchoolLearner({ school_id: 'uuid' })).toBe(true);
         });
 
-        it('returns false for college learners', () => {
+        it('returns false for college learners and independent learners', () => {
             expect(isSchoolLearner({ role: 'learner' })).toBe(false);
+            expect(isSchoolLearner({ role: 'learner', university_college_id: 'uuid' })).toBe(false);
             expect(isSchoolLearner({ university_college_id: 'uuid' })).toBe(false);
         });
     });
 
     describe('getlearnerEducationLevel helper', () => {
         it('returns correct education levels', () => {
-            expect(getlearnerEducationLevel({ role: 'learner' })).toBe(EducationLevel.COLLEGE);
+            expect(getlearnerEducationLevel({ role: 'learner', university_college_id: 'uuid' })).toBe(EducationLevel.COLLEGE);
             expect(getlearnerEducationLevel({ grade: '10' })).toBe('highschool');
             expect(getlearnerEducationLevel({ grade: '6' })).toBe('middle');
             expect(getlearnerEducationLevel({ grade: '11' })).toBe('higher_secondary');

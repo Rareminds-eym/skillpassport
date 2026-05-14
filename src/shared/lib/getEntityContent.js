@@ -9,7 +9,7 @@
 /**
  * Parse a learner/entity type string into { entity, role }.
  *
- * @param {string} learnerType - e.g. "college-learner", "admin", "university-educator"
+ * @param {string} learnerType - e.g. "learner", "admin", "university-educator"
  * @returns {{ entity: string, role: string }}
  */
 export function parselearnerType(learnerType) {
@@ -28,12 +28,11 @@ export function parselearnerType(learnerType) {
     if (learnerType === 'college_admin') return { entity: 'college', role: 'admin' };
     if (learnerType === 'university_admin') return { entity: 'university', role: 'admin' };
     if (learnerType === 'learner') return { entity: 'school', role: 'learner' };
-    if (learnerType === 'learner') return { entity: 'college', role: 'learner' };
     if (learnerType === 'school_educator') return { entity: 'school', role: 'educator' };
     if (learnerType === 'college_educator') return { entity: 'college', role: 'educator' };
     if (learnerType === 'university_educator') return { entity: 'university', role: 'educator' };
 
-    // Hyphen-separated types (e.g. school-admin, college-learner)
+    // Hyphen-separated types (e.g. school-admin)
     if (learnerType.includes('-')) {
         const parts = learnerType.split('-');
         if (parts.length === 2) {

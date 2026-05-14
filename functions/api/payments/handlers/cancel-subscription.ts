@@ -33,6 +33,23 @@ export async function handleCancelSubscription(context: AuthenticatedContext, su
   const user = context.data.user;
 
   try {
+    // Verify ownership: subscription must belong to the authenticated user
+    const { getServiceClient } = await import('../../../lib/supabase');
+    const supabase = getServiceClient(env as any);
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('id', subscriptionId)
+      .eq('user_id', user.sub)
+      .maybeSingle();
+
+    if (!sub) {
+      return new Response(
+        JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Subscription not found or access denied' } }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Call payment-worker via RPC — worker validates ID format and calls Razorpay
     const worker = getPaymentWorker(env);
     const subscription = await worker.cancelSubscription(subscriptionId);

@@ -177,7 +177,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
     if (isCollegeContext) {
       // University/College template
-      filename = 'university_learner_import_template.csv'
+      filename = 'college_learner_import_template.csv'
       sampleData = [
         ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'category', 'quota', 'academicYear', 'bloodGroup', 'district', 'university', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
         ['Priya Sharma', 'priya.sharma@university.edu', '919876501234', '919876543299', '2002-04-15', 'Female', 'UNI2024101', 'REG2024101', 'CS2024001', 'ADM2024101', 'General', 'Merit', '2024-25', 'O+', 'Mumbai', 'Mumbai University', 'https://i.pravatar.cc/150?img=25', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053'],

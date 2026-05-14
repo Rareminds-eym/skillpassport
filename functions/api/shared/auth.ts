@@ -2,12 +2,16 @@
 // Shared across all APIs
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { verifyJWT } from '@rareminds-eym/auth-core';
-import { initAuthFromEnv } from '../../lib/auth';
+import { initAuth, verifyJWT } from '@rareminds-eym/auth-core';
+import type { AuthUser as SSOAuthUser } from '@rareminds-eym/auth-core';
 
-export interface AuthUser {
+/**
+ * Full SSO user with an `id` alias for `sub` so callers can use either.
+ * Extends auth-core's AuthUser — do not redefine locally.
+ */
+export interface AuthUser extends SSOAuthUser {
+  /** Alias for `sub` — the user's UUID from the SSO JWT. */
   id: string;
-  email?: string;
 }
 
 export interface AuthResult {
@@ -16,9 +20,31 @@ export interface AuthResult {
   supabaseAdmin: SupabaseClient;
 }
 
+// ---------------------------------------------------------------------------
+// Module-level lazy singleton for auth-core initialization.
+//
+// initAuth() resets the JWKS cache via _onReset callbacks. Calling it on
+// every request creates a race condition in concurrent Cloudflare Worker
+// isolates: Request A clears JWKS → Request B clears JWKS → Request A
+// verifies against a null cache. Since ssoDomain is static config it must
+// only be initialized once per isolate lifetime.
+// ---------------------------------------------------------------------------
+let _authInitialized = false;
+
+function ensureAuthInitialized(env: Record<string, string>): void {
+  if (_authInitialized) return;
+  const ssoDomain = env.SSO_DOMAIN || env.VITE_SSO_URL;
+  if (!ssoDomain) throw new Error('Missing SSO_DOMAIN / VITE_SSO_URL configuration');
+  initAuth({ ssoDomain });
+  _authInitialized = true;
+}
+
 /**
- * Authenticate user from Authorization header
- * SECURITY: Uses Supabase's built-in JWT verification for production-grade security
+ * Authenticate user from Authorization header.
+ *
+ * Uses auth-core's SSO JWT verification (RS256 via JWKS from SSO worker)
+ * instead of Supabase's getUser() — because tokens are issued by the SSO
+ * worker, not Supabase Auth.
  */
 export async function authenticateUser(
   request: Request,
@@ -27,43 +53,61 @@ export async function authenticateUser(
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) return null;
 
-  const token = authHeader.replace('Bearer ', '');
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  if (!token) return null;
 
-  // Get Supabase URL with fallback
+  // Resolve Supabase config
   const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
-  
+  const supabaseServiceKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error('❌ Missing Supabase configuration');
-    return null;
+    throw new Error('Server Configuration Error: Missing Supabase URL or Anon Key');
+  }
+
+  if (!supabaseServiceKey) {
+    console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY configuration');
+    throw new Error('Server Configuration Error: Missing SUPABASE_SERVICE_ROLE_KEY');
   }
 
   // SECURITY: Use auth-core's verifyJWT to validate the custom SSO token
   // This prevents token forgery attacks and supports the new microservice architecture
   try {
-    // Initialize auth-core first so it knows the SSO domain to fetch JWKS from
-    initAuthFromEnv(env as any);
+    // Initialize auth-core once per isolate — calling initAuth on every request
+    // resets the JWKS cache and creates a race condition under concurrent load.
+    ensureAuthInitialized(env);
 
-    const authUser = await verifyJWT(token);
-    
-    const userId = authUser.sub;
-    const userEmail = authUser.email;
-    
-    console.log(`✓ Auth: User authenticated - ${userId}`);
+    // Verify the SSO JWT via JWKS — same as withAuth in functions/lib/auth.ts
+    const ssoUser = await verifyJWT(token);
 
-    // Create Supabase clients
-    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
+    console.log(`✓ Auth: User authenticated via SSO JWT - ${ssoUser.sub}`);
+
+    // Build Supabase clients for downstream handlers that need DB access
+    // NOTE: SSO JWTs are NOT valid for Supabase PostgREST — user-scoped
+    // clients would silently return empty results because the token signature
+    // does not match Supabase's native secret.
+    // Use service_role + explicit WHERE user_id = ? filters instead.
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    return {
-      user: { id: userId, email: userEmail },
-      supabase,
-      supabaseAdmin,
-    };
+    // Expose the full SSO AuthUser so callers have access to roles, products,
+    // membership_status, etc. `id` is an alias for `sub` for backwards
+    // compatibility with existing callers that use auth.user.id.
+    const user: AuthUser = { ...ssoUser, id: ssoUser.sub };
+
+    return { user, supabase: supabaseAdmin, supabaseAdmin };
   } catch (error) {
-    console.error('Authentication error:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    
+    // If the error is a configuration error from ensureAuthInitialized, escalate it to a 500
+    if (message.includes('configuration') || message.includes('Missing')) {
+      console.error('CRITICAL: Authentication configuration error:', message);
+      throw error;
+    }
+    
+    console.warn('Authentication failed:', message);
     return null;
   }
 }

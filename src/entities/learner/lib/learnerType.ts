@@ -61,7 +61,7 @@ export interface LearnerTypeInfo {
  * @example
  * // By role
  * determinelearnerType({ role: 'learner' })
- * // => { isCollegeLearner: true, isSchoolLearner: false, ... }
+ * // => { isCollegeLearner: false, isSchoolLearner: false, isLearner: true, ... }
  * 
  * @example
  * // By institution ID
@@ -112,33 +112,34 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
     const normalizedRole = userRole?.toLowerCase().replace(/[_\s-]/g, '');
     
     if (normalizedRole === 'learner') {
+        // All learner subtypes now use the canonical 'learner' role.
+        // Entity-type detection (school vs college) is determined by institution IDs below.
+        // If no institution ID is present, this is an independent learner.
+        if (hasCollegeId) {
+            return {
+                isCollegeLearner: true,
+                isSchoolLearner: false,
+                isLearner: false,
+                educationLevel: EducationLevel.COLLEGE,
+                institutionId: collegeId || null
+            };
+        }
+        if (hasSchoolId) {
+            const level = getGradeLevelFromGrade(learner.grade) as EducationLevel | null;
+            return {
+                isCollegeLearner: false,
+                isSchoolLearner: true,
+                isLearner: false,
+                educationLevel: level,
+                institutionId: learner.school_id || null
+            };
+        }
         return {
             isCollegeLearner: false,
             isSchoolLearner: false,
             isLearner: true,
             educationLevel: null,
             institutionId: null
-        };
-    }
-
-    if (normalizedRole === 'collegelearner') {
-        return {
-            isCollegeLearner: true,
-            isSchoolLearner: false,
-            isLearner: false,
-            educationLevel: EducationLevel.COLLEGE,
-            institutionId: collegeId || null
-        };
-    }
-
-    if (normalizedRole === 'schoollearner') {
-        const level = getGradeLevelFromGrade(learner.grade) as EducationLevel | null;
-        return {
-            isCollegeLearner: false,
-            isSchoolLearner: true,
-            isLearner: false,
-            educationLevel: level,
-            institutionId: learner.school_id || null
         };
     }
 

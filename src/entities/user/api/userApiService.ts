@@ -34,7 +34,7 @@ export async function unifiedSignup(data: UnifiedSignupData): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok || !result.success) {
     throw new Error(result.error || 'Failed to create account');
   }
@@ -50,7 +50,7 @@ export async function signupSchoolAdmin(data: any): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create school account');
   }
@@ -66,7 +66,7 @@ export async function signupEducator(data: any): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create educator account');
   }
@@ -82,7 +82,7 @@ export async function signupLearner(data: any): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create learner account');
   }
@@ -97,7 +97,7 @@ export async function getSchools(): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to fetch schools');
   }
@@ -113,7 +113,7 @@ export async function checkSchoolCode(code: string): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check school code');
   }
@@ -129,7 +129,7 @@ export async function checkEmail(email: string): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check email');
   }
@@ -147,7 +147,7 @@ export async function signupCollegeAdmin(data: any): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create college account');
   }
@@ -163,7 +163,7 @@ export async function signupCollegeEducator(data: any): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create college educator account');
   }
@@ -171,21 +171,6 @@ export async function signupCollegeEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupCollegeLearner(data: any): Promise<any> {
-  const response = await fetch(`${API_URL}/signup/college-learner`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-
-  const result = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(result.error || 'Failed to create college learner account');
-  }
-
-  return result;
-}
 
 export async function getColleges(): Promise<any> {
   const response = await fetch(`${API_URL}/colleges`, {
@@ -194,7 +179,7 @@ export async function getColleges(): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to fetch colleges');
   }
@@ -210,7 +195,7 @@ export async function checkCollegeCode(code: string): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check college code');
   }
@@ -228,7 +213,7 @@ export async function signupUniversityAdmin(data: any): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create university account');
   }
@@ -244,7 +229,7 @@ export async function signupUniversityEducator(data: any): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create university educator account');
   }
@@ -252,21 +237,6 @@ export async function signupUniversityEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupUniversityLearner(data: any): Promise<any> {
-  const response = await fetch(`${API_URL}/signup/university-learner`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-
-  const result = await response.json();
-  
-  if (!response.ok) {
-    throw new Error(result.error || 'Failed to create university learner account');
-  }
-
-  return result;
-}
 
 export async function getUniversities(): Promise<any> {
   const response = await fetch(`${API_URL}/universities`, {
@@ -275,7 +245,7 @@ export async function getUniversities(): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to fetch universities');
   }
@@ -291,7 +261,7 @@ export async function checkUniversityCode(code: string): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check university code');
   }
@@ -309,7 +279,7 @@ export async function signupRecruiterAdmin(data: any): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create recruiter admin account');
   }
@@ -325,7 +295,7 @@ export async function signupRecruiter(data: any): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to create recruiter account');
   }
@@ -340,7 +310,7 @@ export async function getCompanies(): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to fetch companies');
   }
@@ -356,7 +326,7 @@ export async function checkCompanyCode(code: string): Promise<any> {
   });
 
   const result = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(result.error || 'Failed to check company code');
   }
@@ -380,13 +350,13 @@ export async function createLearner(learnerData: any, token?: string): Promise<a
     } catch (e) {
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    
+
     logger.error('API error creating learner', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status });
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
-    
+
     throw new Error(errorDetails.error || `Failed to create learner (${response.status})`);
   }
 
@@ -497,13 +467,13 @@ export async function updatelearnerDocuments(
     } catch (e) {
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    
+
     logger.error('API error updating learner documents', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status, learnerId });
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
-    
+
     throw new Error(errorDetails.error || `Failed to update learner documents (${response.status})`);
   }
 
@@ -529,13 +499,13 @@ export async function updateTeacherDocuments(
     } catch (e) {
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    
+
     logger.error('API error updating teacher documents', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status, teacherId });
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
-    
+
     throw new Error(errorDetails.error || `Failed to update teacher documents (${response.status})`);
   }
 
@@ -549,7 +519,7 @@ export async function createCollegeStaff(staffData: any, token?: string): Promis
     headers: getAuthHeaders(token),
     body: JSON.stringify(staffData),
   });
-  
+
   if (!response.ok) {
     let errorDetails;
     try {
@@ -557,13 +527,13 @@ export async function createCollegeStaff(staffData: any, token?: string): Promis
     } catch (e) {
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
-    
+
     logger.error('API error creating college staff', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status });
-    
+
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
-    
+
     throw new Error(errorDetails.error || `Failed to create staff member (${response.status})`);
   }
 
@@ -581,12 +551,10 @@ export default {
   checkEmail,
   signupCollegeAdmin,
   signupCollegeEducator,
-  signupCollegeLearner,
   getColleges,
   checkCollegeCode,
   signupUniversityAdmin,
   signupUniversityEducator,
-  signupUniversityLearner,
   getUniversities,
   checkUniversityCode,
   signupRecruiterAdmin,

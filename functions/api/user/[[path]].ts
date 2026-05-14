@@ -9,10 +9,8 @@
  * - POST /signup/learner - Learner signup
  * - POST /signup/college-admin - College admin signup
  * - POST /signup/college-educator - College educator signup
- * - POST /signup/college-learner - College learner signup
  * - POST /signup/university-admin - University admin signup
  * - POST /signup/university-educator - University educator signup
- * - POST /signup/university-learner - University learner signup
  * - POST /signup/recruiter-admin - Recruiter admin signup
  * - POST /signup/recruiter - Recruiter signup
  * - GET /schools - Get schools list
@@ -54,12 +52,10 @@ import {
 import {
   handleCollegeAdminSignup,
   handleCollegeEducatorSignup,
-  handleCollegeLearnerSignup,
 } from './handlers/college';
 import {
   handleUniversityAdminSignup,
   handleUniversityEducatorSignup,
-  handleUniversityLearnerSignup,
 } from './handlers/university';
 import {
   handleRecruiterAdminSignup,
@@ -103,8 +99,8 @@ export const onRequest: PagesFunction = async (context) => {
           signup: {
             unified: ['/signup'],
             school: ['/signup/school-admin', '/signup/educator', '/signup/learner'],
-            college: ['/signup/college-admin', '/signup/college-educator', '/signup/college-learner'],
-            university: ['/signup/university-admin', '/signup/university-educator', '/signup/university-learner'],
+            college: ['/signup/college-admin', '/signup/college-educator'],
+            university: ['/signup/university-admin', '/signup/university-educator'],
             recruiter: ['/signup/recruiter-admin', '/signup/recruiter'],
           },
           utility: [
@@ -127,7 +123,7 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/signup' && request.method === 'POST') {
       return await handleUnifiedSignup(request, env);
     }
-    
+
     // School signup endpoints
     if (path === '/signup/school-admin' && request.method === 'POST') {
       return await handleSchoolAdminSignup(request, env);
@@ -138,7 +134,7 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/signup/learner' && request.method === 'POST') {
       return await handleLearnerSignup(request, env);
     }
-    
+
     // College signup endpoints
     if (path === '/signup/college-admin' && request.method === 'POST') {
       return await handleCollegeAdminSignup(request, env);
@@ -146,9 +142,7 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/signup/college-educator' && request.method === 'POST') {
       return await handleCollegeEducatorSignup(request, env);
     }
-    if (path === '/signup/college-learner' && request.method === 'POST') {
-      return await handleCollegeLearnerSignup(request, env);
-    }
+
 
     // University signup endpoints
     if (path === '/signup/university-admin' && request.method === 'POST') {
@@ -157,9 +151,7 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/signup/university-educator' && request.method === 'POST') {
       return await handleUniversityEducatorSignup(request, env);
     }
-    if (path === '/signup/university-learner' && request.method === 'POST') {
-      return await handleUniversityLearnerSignup(request, env);
-    }
+
 
     // Recruiter signup endpoints
     if (path === '/signup/recruiter-admin' && request.method === 'POST') {
@@ -223,15 +215,15 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleResetPassword(request, env);
     }
 
-    return jsonResponse({ 
+    return jsonResponse({
       error: 'Not found',
       path,
       availableEndpoints: 'See /health for full endpoint list'
     }, 404);
   } catch (error) {
     console.error('User API Error:', error);
-    return jsonResponse({ 
-      error: (error as Error).message || 'Internal server error' 
+    return jsonResponse({
+      error: (error as Error).message || 'Internal server error'
     }, 500);
   }
 };
