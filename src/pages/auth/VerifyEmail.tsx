@@ -44,7 +44,7 @@ const VerifyEmail = () => {
   const handleResend = async () => {
     setResending(true);
     try {
-      await ssoClient.requestVerification();
+      await ssoClient.requestVerification({ redirect_url: window.location.origin });
       setResent(true);
     } catch (err) {
       if (err instanceof AuthFetchError && err.status === 429) {

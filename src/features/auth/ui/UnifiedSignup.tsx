@@ -509,6 +509,7 @@ const UnifiedSignup = () => {
           email: state.email,
           password: state.password,
           org_name: orgName,
+          redirect_url: window.location.origin,
         });
         ssoUserId = ssoResult.user.id;
       } else {
@@ -517,6 +518,7 @@ const UnifiedSignup = () => {
           email: state.email,
           password: state.password,
           role: state.selectedRole!,
+          redirect_url: window.location.origin,
         });
         ssoUserId = ssoResult.user.id;
       }
