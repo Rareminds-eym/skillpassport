@@ -84,13 +84,11 @@ export async function authenticateUser(
     console.log(`✓ Auth: User authenticated via SSO JWT - ${ssoUser.sub}`);
 
     // Build Supabase clients for downstream handlers that need DB access
-    // NOTE: SSO JWTs are generally NOT valid for Supabase PostgREST unless setup specially.
+    // NOTE: SSO JWTs are NOT valid for Supabase PostgREST — user-scoped
+    // clients would silently return empty results because the token signature
+    // does not match Supabase's native secret.
+    // Use service_role + explicit WHERE user_id = ? filters instead.
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
@@ -99,7 +97,7 @@ export async function authenticateUser(
     // compatibility with existing callers that use auth.user.id.
     const user: AuthUser = { ...ssoUser, id: ssoUser.sub };
 
-    return { user, supabase, supabaseAdmin };
+    return { user, supabase: supabaseAdmin, supabaseAdmin };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     
