@@ -22,6 +22,8 @@ import {
   Search,
   Sparkles,
   Target,
+  ThumbsUp,
+  ThumbsDown,
   TrendingUp,
   Users,
   Video,
@@ -38,6 +40,7 @@ import { useLearnerProfile } from '@/features/learner-profile';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { useProfileCompletion } from '@/features/learner-profile';
 import { AppliedJobsService, SavedJobsService } from '@/features/opportunities';
+import offerManagementService from '@/features/opportunities/api/offerManagementService';
 import { factoryVisitsService } from '@/features/college-admin';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { getLogger } from '@/shared/config/logging';
@@ -515,6 +518,7 @@ const Opportunities = () => {
 
   // Client-side filter for skills (JSONB array filtering not supported well in Supabase)
   const filteredOpportunities = React.useMemo(() => {
+    // Skills filter is applied client-side since server-side JSONB filtering is limited
     if (advancedFilters.skills.length === 0) {
       return opportunities;
     }
@@ -1213,6 +1217,7 @@ const Opportunities = () => {
                 setActiveTab={setActiveTab}
                 opportunities={opportunities}
                 setSelectedOpportunity={setSelectedOpportunity}
+                onApplicationsUpdate={fetchApplicationsData}
               />
             )}
 
@@ -1970,8 +1975,61 @@ const MyApplicationsContent = ({
   queryClient,
   setActiveTab,
   opportunities,
-  setSelectedOpportunity
+  setSelectedOpportunity,
+  onApplicationsUpdate
 }) => {
+  const [respondingToOffer, setRespondingToOffer] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  // Handle accept offer
+  const handleAcceptOffer = async (applicationId) => {
+    try {
+      setRespondingToOffer(applicationId);
+      const result = await offerManagementService.acceptOffer(applicationId);
+
+      if (result.success) {
+        toast.success('Offer accepted! Congratulations! 🎉');
+        // Refresh applications list
+        if (onApplicationsUpdate) {
+          onApplicationsUpdate();
+        }
+      } else {
+        toast.error(`Failed to accept offer: ${result.error}`);
+      }
+    } catch (error) {
+      logger.error('Error accepting offer:', error);
+      toast.error('Error accepting offer. Please try again.');
+    } finally {
+      setRespondingToOffer(null);
+    }
+  };
+
+  // Handle reject offer
+  const handleRejectOffer = async (applicationId) => {
+    try {
+      setRespondingToOffer(applicationId);
+      const result = await offerManagementService.rejectOffer(applicationId, rejectReason || null);
+
+      if (result.success) {
+        toast.success('Offer declined.');
+        setShowRejectModal(null);
+        setRejectReason('');
+        // Refresh applications list
+        if (onApplicationsUpdate) {
+          onApplicationsUpdate();
+        }
+      } else {
+        toast.error(`Failed to reject offer: ${result.error}`);
+      }
+    } catch (error) {
+      logger.error('Error rejecting offer:', error);
+      toast.error('Error rejecting offer. Please try again.');
+    } finally {
+      setRespondingToOffer(null);
+    }
+  };
+
   // Helper function to get stage order
   const getStageOrder = (stage) => {
     const stageOrder = {
@@ -2188,6 +2246,47 @@ const MyApplicationsContent = ({
 
   return (
     <>
+      {/* Reject Offer Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg shadow-lg max-w-md w-full p-6"
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Decline Offer</h3>
+            <p className="text-gray-600 mb-4">Would you like to provide a reason for declining this offer? (Optional)</p>
+
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g., Found another opportunity, Salary expectation not met, etc."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent mb-4 resize-none"
+              rows="4"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowRejectModal(null);
+                  setRejectReason('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleRejectOffer(showRejectModal)}
+                disabled={respondingToOffer === showRejectModal}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {respondingToOffer === showRejectModal ? 'Declining...' : 'Decline Offer'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
@@ -2478,6 +2577,29 @@ const MyApplicationsContent = ({
 
                     {/* Action Buttons */}
                     <div className="flex lg:flex-col gap-2">
+                      {/* Offer Response Buttons - Show only when status is offer_received */}
+                      {app.status === 'offer_received' && (
+                        <>
+                          <button
+                            onClick={() => handleAcceptOffer(app.id)}
+                            disabled={respondingToOffer === app.id}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ThumbsUp className="w-4 h-4" />
+                            {respondingToOffer === app.id ? 'Accepting...' : 'Accept'}
+                          </button>
+
+                          <button
+                            onClick={() => setShowRejectModal(app.id)}
+                            disabled={respondingToOffer === app.id}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ThumbsDown className="w-4 h-4" />
+                            {respondingToOffer === app.id ? 'Declining...' : 'Decline'}
+                          </button>
+                        </>
+                      )}
+
                       <button
                         onClick={() => {
                           // Toggle pipeline status visibility

@@ -310,7 +310,7 @@ setTotalCount(count || 0);
       description: requisitionData.description,
       requirements: requisitionData.requirements,
       responsibilities: requisitionData.responsibilities,
-      applications_count: 0,
+      applications_count: requisitionData.applications_count || 0,
       messages_count: 0,
       views_count: 0,
       created_by: user?.id,
@@ -1136,7 +1136,8 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
     requirements: '',
     responsibilities: '',
     status: 'draft',
-    recruiter_id: currentRecruiterId || ''
+    recruiter_id: currentRecruiterId || '',
+    applications_count: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1146,6 +1147,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
         ...formData,
         salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
         salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
+        applications_count: formData.applications_count ? parseInt(formData.applications_count) : 0,
         requirements: formData.requirements.split('\n').filter(r => r.trim()),
         responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
       });
@@ -1375,6 +1377,20 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                   placeholder="e.g., 2500000"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Applications Count
+                </label>
+                <input
+                  type="number"
+                  value={formData.applications_count}
+                  onChange={(e) => setFormData({...formData, applications_count: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., 0"
+                  min="0"
+                />
+              </div>
             </div>
 
             <div className="col-span-2">
@@ -1476,17 +1492,18 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
     mode: requisition.mode || 'on-site',  // ADD THIS with default
     employment_type: requisition.employment_type,
     experience_level: requisition.experience_level,
-    experience_required: requisition.experience_required || '',  
-    skills_required: requisition.skills_required?.join(', ') || '',  
-    deadline: requisition.deadline || '',  
-    benefits: requisition.benefits?.join('\n') || '',  
+    experience_required: requisition.experience_required || '',
+    skills_required: Array.isArray(requisition.skills_required) ? requisition.skills_required.join(', ') : (typeof requisition.skills_required === 'string' ? requisition.skills_required : ''),
+    deadline: requisition.deadline || '',
+    benefits: Array.isArray(requisition.benefits) ? requisition.benefits.join('\n') : (typeof requisition.benefits === 'string' ? requisition.benefits : ''),
     salary_range_min: requisition.salary_range_min?.toString() || '',
     salary_range_max: requisition.salary_range_max?.toString() || '',
     description: requisition.description,
-    requirements: requisition.requirements?.join('\n') || '',
-    responsibilities: requisition.responsibilities?.join('\n') || '',
+    requirements: Array.isArray(requisition.requirements) ? requisition.requirements.join('\n') : (typeof requisition.requirements === 'string' ? requisition.requirements : ''),
+    responsibilities: Array.isArray(requisition.responsibilities) ? requisition.responsibilities.join('\n') : (typeof requisition.responsibilities === 'string' ? requisition.responsibilities : ''),
     status: requisition.status,
-    recruiter_id: requisition.recruiter_id || ''
+    recruiter_id: requisition.recruiter_id || '',
+    applications_count: requisition.applications_count?.toString() || '0'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1505,6 +1522,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
         benefits: formData.benefits.split('\n').filter(b => b.trim()),  
         salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
         salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
+        applications_count: formData.applications_count ? parseInt(formData.applications_count) : 0,
         requirements: formData.requirements.split('\n').filter(r => r.trim()),
         responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
       });
@@ -1664,6 +1682,20 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                   onChange={(e) => setFormData({...formData, salary_range_max: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., 2500000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Applications Count
+                </label>
+                <input
+                  type="number"
+                  value={formData.applications_count}
+                  onChange={(e) => setFormData({...formData, applications_count: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g., 0"
+                  min="0"
                 />
               </div>
             </div>

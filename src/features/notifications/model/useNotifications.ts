@@ -61,31 +61,32 @@ async function resolveUserId(identifier: string): Promise<string | null> {
   if (!identifier) return null;
   if (isUUID(identifier)) return identifier;
 
-  // Try educators first
-  const { data: educatorData } = await supabase
-    .from("school_educators")
-    .select("id")
-    .ilike("email", identifier)
-    .maybeSingle();
-
-  if (educatorData?.id) return educatorData.id;
-
-  // Try learners
+  // Try learners first - need to get user_id (which references users table)
   const { data: learnerData } = await supabase
     .from("learners")
-    .select("id")
+    .select("user_id")
     .ilike("email", identifier)
     .maybeSingle();
 
-  if (learnerData?.id) return learnerData.id;
+  if (learnerData?.user_id) return learnerData.user_id;
+
+  // Try educators
+  const { data: educatorData } = await supabase
+    .from("school_educators")
+    .select("user_id")
+    .ilike("email", identifier)
+    .maybeSingle();
+
+  if (educatorData?.user_id) return educatorData.user_id;
 
   // Try recruiters
-  const { data: recruiter } = await supabase
+  const { data: recruiterData } = await supabase
     .from("recruiters")
-    .select("id")
+    .select("user_id")
     .eq("email", identifier)
     .maybeSingle();
-  if (recruiter?.id) return recruiter.id;
+
+  if (recruiterData?.user_id) return recruiterData.user_id;
 
   // Try users (admins)
   const { data: userData } = await supabase
