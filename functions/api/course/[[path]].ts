@@ -8,18 +8,21 @@
  * - AI tutor progress tracking
  * - AI video summarizer
  * 
+ * All endpoints require authentication via withAuth middleware.
+ * 
  * Endpoints:
- * - GET /health - Health check
- * - POST /ai-tutor-suggestions - Generate suggested questions for a lesson
- * - POST /ai-tutor-chat - AI tutor chat with streaming responses
- * - POST /ai-tutor-feedback - Submit feedback on AI responses
- * - GET /ai-tutor-progress - Get learner progress
- * - POST /ai-tutor-progress - Update lesson progress
- * - POST /ai-video-summarizer - Transcribe and summarize videos
+ * - GET /health - Health check (public)
+ * - POST /ai-tutor-suggestions - Generate suggested questions (authenticated)
+ * - POST /ai-tutor-chat - AI tutor chat with streaming responses (authenticated)
+ * - POST /ai-tutor-feedback - Submit feedback on AI responses (authenticated)
+ * - GET /ai-tutor-progress - Get learner progress (authenticated)
+ * - POST /ai-tutor-progress - Update lesson progress (authenticated)
+ * - POST /ai-video-summarizer - Transcribe and summarize videos (authenticated)
  */
 
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { withAuth } from '../../lib/auth';
 import { handleAiTutorSuggestions } from './handlers/ai-tutor-suggestions';
 import { handleAiTutorChat } from './handlers/ai-tutor-chat';
 import { onRequestPost as handleAiTutorFeedback } from './handlers/ai-tutor-feedback';
@@ -63,33 +66,33 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       });
     }
 
-    // AI Tutor Suggestions
+    // AI Tutor Suggestions (authenticated)
     if (path === '/ai-tutor-suggestions' && request.method === 'POST') {
-      return handleAiTutorSuggestions(context);
+      return withAuth(handleAiTutorSuggestions)(context);
     }
 
-    // AI Tutor Chat
+    // AI Tutor Chat (authenticated)
     if (path === '/ai-tutor-chat' && request.method === 'POST') {
-      return handleAiTutorChat(context);
+      return withAuth(handleAiTutorChat)(context);
     }
 
-    // AI Tutor Feedback
+    // AI Tutor Feedback (authenticated)
     if (path === '/ai-tutor-feedback' && request.method === 'POST') {
-      return handleAiTutorFeedback(context);
+      return withAuth(handleAiTutorFeedback)(context);
     }
 
-    // AI Tutor Progress
+    // AI Tutor Progress (authenticated)
     if (path === '/ai-tutor-progress' && request.method === 'GET') {
-      return handleAiTutorProgressGet(context);
+      return withAuth(handleAiTutorProgressGet)(context);
     }
 
     if (path === '/ai-tutor-progress' && request.method === 'POST') {
-      return handleAiTutorProgressPost(context);
+      return withAuth(handleAiTutorProgressPost)(context);
     }
 
-    // AI Video Summarizer
+    // AI Video Summarizer (authenticated)
     if (path === '/ai-video-summarizer' && request.method === 'POST') {
-      return handleAiVideoSummarizer(context);
+      return withAuth(handleAiVideoSummarizer)(context);
     }
 
     // 404 for unknown routes
