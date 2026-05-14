@@ -15,13 +15,13 @@ import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
 import { getServiceClient } from '../../lib/auth';
 import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
-import { 
-  buildCourseContext, 
-  buildSystemPrompt 
+import {
+  buildCourseContext,
+  buildSystemPrompt
 } from '../utils/course-context';
-import { 
-  getConversationPhase, 
-  getPhaseParameters 
+import {
+  getConversationPhase,
+  getPhaseParameters
 } from '../utils/conversation-phases';
 
 // ==================== TYPES ====================
@@ -48,7 +48,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
 
   const learnerId = user.sub;
   const supabase = getServiceClient(env as any);
-  
+
   // Use admin client for database writes
   const supabaseAdmin = createSupabaseAdminClient(env as any);
 
@@ -177,7 +177,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
               if (line.startsWith('data: ')) {
                 const data = line.slice(6);
                 if (data === '[DONE]') continue;
-                
+
                 try {
                   const parsed = JSON.parse(data);
                   const content = parsed.choices?.[0]?.delta?.content;
@@ -211,10 +211,10 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
               .select('messages')
               .eq('id', currentConversationId)
               .maybeSingle();
-            
+
             const latestMessages: StoredMessage[] = latestConv?.messages || existingMessages;
             const finalMessages = [...latestMessages, userMessage, assistantMessage];
-            
+
             await supabaseAdmin
               .from('tutor_conversations')
               .update({
@@ -223,32 +223,32 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
               })
               .eq('id', currentConversationId)
               .eq('learner_id', learnerId);
-            
+
             console.log(`✅ Updated conversation: ${currentConversationId}`);
           } else {
             // Create new conversation with generated title
             let title = message.slice(0, 50);
-            
+
             try {
               const titleResponse = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 
-                  'Authorization': `Bearer ${openRouterKey}`, 
+                headers: {
+                  'Authorization': `Bearer ${openRouterKey}`,
                   'Content-Type': 'application/json',
                   'HTTP-Referer': env.SUPABASE_URL || env.VITE_SUPABASE_URL || '',
                   'X-Title': 'AI Course Tutor - Title Generation'
                 },
                 body: JSON.stringify({
                   model: chatModel,
-                  messages: [{ 
-                    role: 'user', 
-                    content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"` 
+                  messages: [{
+                    role: 'user',
+                    content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"`
                   }],
                   max_tokens: 60,
                   temperature: 0.5
                 })
               });
-              
+
               if (titleResponse.ok) {
                 const titleData = await titleResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
                 const generatedTitle = titleData.choices?.[0]?.message?.content?.trim();
@@ -283,14 +283,14 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
             conversationId: currentConversationId,
             messageId: assistantMessage.id
           })}\n\n`));
-          
+
           console.log(`✅ Streaming complete: ${fullResponse.length} chars`);
           controller.close();
 
         } catch (error: any) {
           console.error('❌ Streaming error:', error);
-          controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ 
-            error: error.message || 'Stream processing error' 
+          controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({
+            error: error.message || 'Stream processing error'
           })}\n\n`));
           controller.close();
         }
