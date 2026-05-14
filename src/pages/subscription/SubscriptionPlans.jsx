@@ -30,8 +30,6 @@ function getManagePath(userRole) {
     college_educator: '/educator/subscription/manage',
     recruiter: '/recruitment/subscription/manage',
     learner: '/learner/subscription/manage',
-    'school-learner': '/learner/subscription/manage',
-    'college-learner': '/learner/subscription/manage',
   };
   return manageRoutes[userRole] || null; // Return null instead of default to prevent wrong redirects
 }
@@ -45,8 +43,6 @@ function getManagePathFromType(type) {
   const typeToPath = {
     // Learner types
     'learner': '/learner/subscription/manage',
-    'school-learner': '/learner/subscription/manage',
-    'college-learner': '/learner/subscription/manage',
     // Educator types
     'educator': '/educator/subscription/manage',
     'school_educator': '/educator/subscription/manage',

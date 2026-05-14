@@ -3,9 +3,7 @@
  */
 
 export const roleMapping: Record<string, string> = {
-  'school-learner': 'learner',
-  'college-learner': 'learner',
-  'university-learner': 'learner',
+  'learner': 'learner',
   'educator': 'college_educator',
   'school-admin': 'school_admin',
   'college-admin': 'college_admin',
@@ -22,7 +20,6 @@ export const roleDisplayNames: Record<string, string> = {
   'learner': 'Learner',
   'university_admin': 'University Administrator',
   'university_educator': 'University Educator',
-  'university_learner': 'University Learner',
   'recruiter_admin': 'Recruiter Administrator',
   'recruiter': 'Recruiter',
 };

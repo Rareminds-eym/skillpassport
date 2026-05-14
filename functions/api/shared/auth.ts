@@ -51,15 +51,15 @@ export async function authenticateUser(
     
     console.log(`✓ Auth: User authenticated - ${userId}`);
 
-    // Create Supabase clients
+    // Create Supabase admin client (service_role bypasses RLS)
+    // NOTE: SSO JWTs are NOT valid for Supabase PostgREST — user-scoped
+    // clients would silently return empty results. Use service_role + explicit
+    // WHERE user_id = ? filters instead.
     const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
 
     return {
       user: { id: userId, email: userEmail },
-      supabase,
+      supabase: supabaseAdmin,  // Same as admin — no RLS-based client with SSO
       supabaseAdmin,
     };
   } catch (error) {

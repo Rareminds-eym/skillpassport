@@ -103,27 +103,6 @@ export interface CollegeEducatorSignupRequest {
   dateOfJoining?: string;
 }
 
-export interface CollegelearnerSignupRequest {
-  email: string;
-  password: string;
-  name: string;
-  firstName?: string;
-  lastName?: string;
-  collegeId: string;
-  phone?: string;
-  dateOfBirth?: string;
-  gender?: string;
-  course?: string;
-  branch?: string;
-  semester?: string;
-  enrollmentNumber?: string;
-  guardianName?: string;
-  guardianPhone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  pincode?: string;
-}
 
 // ==================== UNIVERSITY SIGNUP ====================
 
@@ -163,28 +142,6 @@ export interface UniversityEducatorSignupRequest {
   specialization?: string;
 }
 
-export interface UniversitylearnerSignupRequest {
-  email: string;
-  password: string;
-  name: string;
-  firstName?: string;
-  lastName?: string;
-  universityId: string;
-  phone?: string;
-  dateOfBirth?: string;
-  gender?: string;
-  course?: string;
-  branch?: string;
-  semester?: string;
-  rollNumber?: string;
-  registrationNumber?: string;
-  guardianName?: string;
-  guardianPhone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  pincode?: string;
-}
 
 // ==================== RECRUITER SIGNUP ====================
 
@@ -229,9 +186,9 @@ export interface UnifiedSignupRequest {
   firstName: string;
   lastName: string;
   role: 'school_admin' | 'school_educator' | 'learner' | 
-        'college_admin' | 'college_educator' | 'learner' |
-        'university_admin' | 'university_educator' | 'university_learner' |
-        'recruiter_admin' | 'recruiter' | 'learner';
+        'college_admin' | 'college_educator' |
+        'university_admin' | 'university_educator' |
+        'recruiter_admin' | 'recruiter';
   phone?: string;
   dateOfBirth?: string;
   country?: string;

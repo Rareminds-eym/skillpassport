@@ -83,8 +83,6 @@ function AddOns() {
   const getAddOnRole = useCallback(() => {
     const roleMapping = {
       'learner': 'learner',
-      'school-learner': 'learner',
-      'college-learner': 'learner',
       'educator': 'educator',
       'school_educator': 'educator',
       'college_educator': 'educator',

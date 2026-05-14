@@ -95,8 +95,6 @@ const DASHBOARD_ROUTES = {
   recruiter: '/recruitment/overview',
   // Learner roles
   learner: '/learner/dashboard',
-  'school-learner': '/learner/dashboard',
-  'college-learner': '/learner/dashboard',
 };
 
 /** Subscription manage routes by role */
@@ -112,8 +110,6 @@ const MANAGE_ROUTES = {
   college_educator: '/educator/subscription/manage',
   recruiter: '/recruitment/subscription/manage',
   learner: '/learner/subscription/manage',
-  'school-learner': '/learner/subscription/manage',
-  'college-learner': '/learner/subscription/manage',
 };
 
 // ============================================================================

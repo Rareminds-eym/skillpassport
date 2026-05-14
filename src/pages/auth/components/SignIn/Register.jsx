@@ -103,15 +103,13 @@ export default function UnifiedSignup() {
 
   // Helper function to map learner type to entity-specific type
   const getEntitySpecificType = (type, tab) => {
-    // For admin, learner, and educator, map to entity-specific types
+    // For admin and educator, map to entity-specific types
     if (type === "admin") {
       if (tab === "college") return "college-admin";
       if (tab === "university") return "university-admin";
       return "admin"; // school
     } else if (type === "learner") {
-      if (tab === "college") return "college-learner";
-      if (tab === "university") return "university-learner";
-      return "school-learner"; // school
+      return "learner"; // All learner subtypes are just 'learner'
     } else if (type === "educator") {
       if (tab === "college") return "college-educator";
       if (tab === "university") return "university-educator";

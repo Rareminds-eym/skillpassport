@@ -1,8 +1,8 @@
 /**
  * College signup handlers for User API
  * - College Admin signup
- * - College Educator signup  
- * - College Learner signup
+ * - College Educator signup
+ *
  * 
  * Uses unified 'organizations' table with organization_type='college'
  */
@@ -10,10 +10,9 @@
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
-import type { CollegeAdminSignupRequest, CollegeEducatorSignupRequest, CollegelearnerSignupRequest } from '../types';
+import type { CollegeAdminSignupRequest, CollegeEducatorSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
 import {
-  calculateAge,
   capitalizeFirstLetter,
   splitName,
   validateEmail,
@@ -350,169 +349,9 @@ export async function handleCollegeEducatorSignup(request: Request, env: PagesEn
   }
 }
 
-/**
- * Handle college learner signup
- * Verifies college exists in organizations table
- */
-export async function handleCollegeLearnerSignup(request: Request, env: PagesEnv): Promise<Response> {
-  const supabaseAdmin = createSupabaseAdminClient(env);
 
-  try {
-    const body = (await request.json()) as CollegelearnerSignupRequest;
 
-    if (!body.email || !body.password || !body.name || !body.collegeId) {
-      return jsonResponse({ error: 'Missing required fields: email, password, name, collegeId' }, 400);
-    }
 
-    if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
-    }
 
-    if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
-    }
 
-    if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
-    }
 
-    // Verify college exists in organizations table
-    const { data: college, error: collegeError } = await supabaseAdmin
-      .from('organizations')
-      .select('id, name')
-      .eq('id', body.collegeId)
-      .eq('organization_type', 'college')
-      .single();
-
-    if (collegeError || !college) {
-      return jsonResponse({ error: 'Invalid college selected' }, 400);
-    }
-
-    const { data: existingLearner } = await supabaseAdmin
-      .from('learners')
-      .select('id')
-      .eq('email', body.email.toLowerCase())
-      .maybeSingle();
-
-    if (existingLearner) {
-      return jsonResponse({ error: 'A learner with this email already exists' }, 400);
-    }
-
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: body.email.toLowerCase(),
-      password: body.password,
-      email_confirm: true,
-      user_metadata: {
-        name: body.name,
-        role: 'learner',
-        phone: body.phone,
-        college_id: body.collegeId,
-      },
-    });
-
-    if (authError || !authUser.user) {
-      console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
-    }
-
-    const userId = authUser.user.id;
-
-    try {
-      const { firstName, lastName } = body.firstName && body.lastName 
-        ? { firstName: capitalizeFirstLetter(body.firstName), lastName: capitalizeFirstLetter(body.lastName) }
-        : splitName(body.name);
-
-      const { error: userError } = await supabaseAdmin.from('users').insert({
-        id: userId,
-        email: body.email.toLowerCase(),
-        firstName,
-        lastName,
-        role: 'learner',
-        organizationId: body.collegeId,
-        isActive: true,
-        phone: body.phone,
-        metadata: {
-          source: 'learner_signup',
-          collegeId: body.collegeId,
-          dateOfBirth: body.dateOfBirth,
-        },
-      });
-
-      if (userError) {
-        throw new Error(`Failed to create user record: ${userError.message}`);
-      }
-
-      const age = calculateAge(body.dateOfBirth || '');
-      const fullName = `${firstName} ${lastName}`.trim();
-
-      // Create learners record (first_name/last_name stored in users table only)
-      const { data: learner, error: learnerError } = await supabaseAdmin
-        .from('learners')
-        .insert({
-          id: userId,
-          user_id: userId,
-          email: body.email.toLowerCase(),
-          name: fullName,
-          contactNumber: body.phone,
-          contact_number: body.phone,
-          dateOfBirth: body.dateOfBirth,
-          date_of_birth: body.dateOfBirth,
-          age,
-          gender: body.gender,
-          course: body.course,
-          branch: body.branch,
-          semester: body.semester,
-          enrollmentNumber: body.enrollmentNumber,
-          guardianName: body.guardianName,
-          guardianPhone: body.guardianPhone,
-          address: body.address,
-          city: body.city,
-          state: body.state,
-          pincode: body.pincode,
-          college_id: body.collegeId,
-          learner_type: 'learner',
-          approval_status: 'approved',
-          metadata: { source: 'self_signup' },
-        })
-        .select()
-        .single();
-
-      if (learnerError || !learner) {
-        throw new Error(`Failed to create learner profile: ${learnerError?.message}`);
-      }
-
-      await sendWelcomeEmail(
-        env,
-        body.email,
-        body.name,
-        body.password,
-        'learner',
-        `<strong>College:</strong> ${college.name}${body.course ? `<br><strong>Course:</strong> ${body.course}` : ''}`
-      );
-
-      return jsonResponse({
-        success: true,
-        message: 'College learner account created successfully!',
-        data: {
-          userId,
-          learnerId: learner.id,
-          email: body.email,
-          name: body.name,
-          collegeId: body.collegeId,
-          collegeName: college.name,
-          role: 'learner',
-        },
-      });
-    } catch (error) {
-      console.error('Rollback: deleting auth user due to error:', error);
-      await deleteAuthUser(supabaseAdmin, userId);
-      throw error;
-    }
-  } catch (error) {
-    console.error('College learner signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create college learner account' },
-      500
-    );
-  }
-}

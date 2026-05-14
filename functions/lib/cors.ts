@@ -13,9 +13,10 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173', // Vite dev server
   'http://localhost:3000', // Alternative dev port
   'http://localhost:8788', // Pages dev server
-  // Add production domains:
-  // 'https://yourdomain.com',
-  // 'https://app.yourdomain.com',
+  'https://sso-auth.skillpassport.pages.dev',
+  'https://skillpassport.pages.dev',
+  'https://skillpassport.rareminds.in',
+  'https://app.skillpassport.rareminds.in',
 ];
 
 /**
@@ -37,8 +38,8 @@ export function getCorsHeaders(origin: string | null): Record<string, string> {
 }
 
 /**
- * Legacy CORS headers for backward compatibility
- * @deprecated Use getCorsHeaders() instead for better security
+ * @deprecated Use getCorsHeaders(origin) instead. This wildcard export is kept
+ * only for backward compatibility during migration.
  */
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
