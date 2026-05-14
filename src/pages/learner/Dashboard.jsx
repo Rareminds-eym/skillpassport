@@ -86,6 +86,8 @@ import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearne
 import { supabase } from '@/shared/api/supabaseClient';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { useUserRole } from '@/shared/model/authStore';
+import { useSubscriptionQuery } from '@/features/subscription/model';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
@@ -639,6 +641,12 @@ const LearnerDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { role: userRole } = useUserRole();
+
+  // Query user subscription data
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
+
+  // Check if user is on Freemium plan
+  const isFreemium = subscriptionData?.plan === PLAN_IDS.PAY_AS_YOU_GO;
 
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {
@@ -3045,6 +3053,40 @@ const LearnerDashboard = () => {
                 })()}!
               </motion.h1>
             </LampContainer>
+
+            {/* Freemium Banner - Show only for Freemium users */}
+            {isFreemium && !isViewingOthersProfile && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="-mt-48 mb-8 relative z-50 max-w-4xl mx-auto"
+              >
+                <div className="bg-gradient-to-r from-amber-50 to-amber-100 border-2 border-amber-200 rounded-2xl p-6 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900">
+                          You're on Freemium
+                        </h3>
+                        <p className="text-sm text-slate-600">
+                          Upgrade to unlock all features
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate('/subscription/plans/learner/purchase')}
+                      className="px-6 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-xl font-semibold hover:from-slate-900 hover:to-black transition-all shadow-lg hover:shadow-xl"
+                    >
+                      View Plans
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {/* Institution Card - Show organization info if learner belongs to one */}
             {/* {institutionInfo && (

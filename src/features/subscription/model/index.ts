@@ -7,6 +7,7 @@ export { default as useSubscriptionPlansData } from './useSubscriptionPlansData'
 export { useSubscriptionQuery, prefetchSubscriptionData, useSubscriptionCache } from './useSubscriptionQuery';
 export { useFeatureGate, clearFeatureAccessCache } from './useFeatureGate';
 export { useAddOnCatalog } from './useAddOnCatalog';
+export { useOptimisticSubscription } from './useOptimisticSubscription';
 
 // Zustand store hooks (from subscriptionStore.ts)
 export {

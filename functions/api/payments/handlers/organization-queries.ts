@@ -19,7 +19,7 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
     if (action === 'getOrganizationSubscription' && orgId) {
       const { data, error } = await supabase
         .from('organization_subscriptions')
-        .select(`*, subscription_plans (id, name, plan_code, features)`)
+        .select(`*, subscription_plans (id, name, plan_code, base_features)`)
         .eq('organization_id', orgId)
         .eq('status', 'active')
         .maybeSingle();

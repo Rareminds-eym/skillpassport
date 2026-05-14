@@ -221,7 +221,7 @@ function PaymentCompletion() {
   const { role } = useUserRole();
   const managePath = useMemo(() => getManagePath(role), [role]);
 
-  const { plan, learnerType, isUpgrade, isRenewal } = useMemo(() => location.state || {}, [location.state]);
+  const { plan, learnerType, isUpgrade, isRenewal, isFreemium } = useMemo(() => location.state || {}, [location.state]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -411,6 +411,53 @@ function PaymentCompletion() {
       setFieldErrors({});
 
       try {
+        // Check if this is a freemium plan
+        const isFreemiumPlan = isFreemium || plan?.plan_code === 'pay_as_you_go' || plan?.price === 0;
+
+        if (isFreemiumPlan) {
+          // Handle freemium subscription creation (no payment required)
+          console.log('✅ Creating freemium subscription');
+
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+
+          if (!token) {
+            throw new Error('Not authenticated');
+          }
+
+          const response = await fetch('/api/payments/create-freemium-subscription', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              email: userDetails.email
+            })
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            throw new Error(result.error?.message || 'Failed to create freemium subscription');
+          }
+
+          setLoading(false);
+
+          // Navigate to success page
+          navigate('/subscription/payment/success', {
+            state: {
+              plan: result.data,
+              learnerType,
+              isFreemium: true
+            },
+            replace: true,
+          });
+          return;
+        }
+
+        // Regular paid plan - use Razorpay
         await initiateRazorpayPayment({
           plan,
           userDetails: { ...userDetails, learnerType },
@@ -467,12 +514,12 @@ function PaymentCompletion() {
             setLoading(false);
           },
         });
-      } catch {
-        setError('Failed to initiate payment. Please try again.');
+      } catch (err) {
+        setError(err.message || 'Failed to initiate payment. Please try again.');
         setLoading(false);
       }
     },
-    [loading, userDetails, plan, learnerType, navigate, validateField, isUpgrade]
+    [loading, userDetails, plan, learnerType, navigate, validateField, isUpgrade, isFreemium, user, managePath]
   );
 
   const handleBack = useCallback(() => navigate(plansUrl), [navigate, plansUrl]);
@@ -598,6 +645,11 @@ function PaymentCompletion() {
                         <>
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           Processing...
+                        </>
+                      ) : (isFreemium || plan?.plan_code === 'pay_as_you_go' || plan?.price === 0) ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Start Free
                         </>
                       ) : (
                         <>

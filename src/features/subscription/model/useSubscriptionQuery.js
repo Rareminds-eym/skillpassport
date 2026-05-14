@@ -86,8 +86,9 @@ export const useSubscriptionQuery = () => {
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME, // Changed from cacheTime (deprecated in v5)
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Changed from 'always' - only fetch if stale
-    retry: 1,
+    refetchOnMount: 'always', // Always fetch on mount to ensure fresh data
+    retry: 3, // Retry up to 3 times on failure
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff: 1s, 2s, 4s
   });
 
   // Log when data changes (replaces onSuccess) - dev only

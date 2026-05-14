@@ -10,6 +10,7 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { invalidateUserSubscriptionCache } from '../../../shared/lib/cache';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const url = new URL(context.request.url);
@@ -29,11 +30,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
 export async function handleCancelSubscription(context: AuthenticatedContext, subscriptionId: string): Promise<Response> {
   const env = context.env as unknown as PaymentWorkerEnv;
+  const user = context.data.user;
 
   try {
     // Call payment-worker via RPC — worker validates ID format and calls Razorpay
     const worker = getPaymentWorker(env);
     const subscription = await worker.cancelSubscription(subscriptionId);
+
+    // Invalidate subscription cache for this user
+    const cacheKV = (env as any).CACHE_KV as KVNamespace | undefined;
+    await invalidateUserSubscriptionCache(cacheKV, user.sub);
 
     return new Response(JSON.stringify({ success: true, subscription }), {
       status: 200,

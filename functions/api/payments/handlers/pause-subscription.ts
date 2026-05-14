@@ -12,6 +12,7 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { invalidateUserSubscriptionCache } from '../../../shared/lib/cache';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handlePauseSubscription(context);
@@ -113,6 +114,10 @@ export async function handlePauseSubscription(context: AuthenticatedContext): Pr
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    // Invalidate subscription cache for this user
+    const cacheKV = (env as any).CACHE_KV as KVNamespace | undefined;
+    await invalidateUserSubscriptionCache(cacheKV, user.sub);
 
     return new Response(
       JSON.stringify({ success: true, subscription: updated }),

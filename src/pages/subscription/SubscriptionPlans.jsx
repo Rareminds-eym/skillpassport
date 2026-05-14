@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
+import { getCurrentSession } from '@/shared/api/authUtils';
 
 
 
@@ -216,12 +217,12 @@ const FeatureComparisonTable = memo(({ plans }) => {
     if (value === '~') return (
       <span className="text-amber-500 font-bold text-lg">~</span>
     );
-    
+
     // Safety check for objects to prevent React error #31
-    const safeValue = typeof value === 'object' && value !== null 
+    const safeValue = typeof value === 'object' && value !== null
       ? (value.name || value.feature_key || String(value))
       : value;
-      
+
     return <span className="text-sm text-slate-900 font-semibold">{safeValue}</span>;
   }, []);
 
@@ -391,7 +392,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   const renderFeature = (feature, idx) => {
     const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
     let featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
-    
+
     // Safety check for objects to prevent React error #31
     if (typeof featureValue === 'object' && featureValue !== null) {
       featureValue = featureValue.name || featureValue.feature_key || String(featureValue);
@@ -809,7 +810,7 @@ function SubscriptionPlans() {
     }
   }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
 
-  const handlePlanSelection = useCallback((plan) => {
+  const handlePlanSelection = useCallback(async (plan) => {
     // If user is currently on their ACTIVE plan (not cancelled), go to manage page
     // Cancelled subscriptions should allow re-purchase of the same plan
     if (subscriptionData && subscriptionData.plan === plan.id && subscriptionData.status !== 'cancelled') {
@@ -843,6 +844,67 @@ function SubscriptionPlans() {
       return;
     }
 
+    // Check if this is a freemium plan (₹0 or plan_code = 'pay_as_you_go')
+    const isFreemiumPlan = plan.plan_code === 'pay_as_you_go' || plan.price === 0;
+
+    if (isFreemiumPlan) {
+      console.log('✅ Freemium plan selected, creating subscription directly');
+
+      // Show loading toast
+      const loadingToast = toast.loading('Creating your free account...');
+
+      try {
+        // Get auth token
+        const { data: { session } } = await getCurrentSession();
+        const token = session?.access_token;
+
+        if (!token) {
+          toast.error('Authentication required', { id: loadingToast });
+          return;
+        }
+
+        // Create freemium subscription directly
+        const response = await fetch('/api/payments/create-freemium-subscription', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            email: user.email
+          })
+        });
+
+        const result = await response.json();
+
+        console.log('[Freemium] API Response:', { status: response.status, result });
+
+        if (!response.ok || !result.success) {
+          const errorMessage = result.error?.message || result.message || 'Failed to create subscription';
+          console.error('[Freemium] Error details:', result);
+          toast.error(errorMessage, { id: loadingToast });
+          return;
+        }
+
+        // Success! Refresh subscription data and navigate to dashboard
+        toast.success('Welcome! Your free account is ready', { id: loadingToast });
+
+        // Refresh subscription access
+        await refreshAccess();
+
+        // Navigate to appropriate dashboard based on user type
+        const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/learner/dashboard`;
+        navigate(targetPath);
+
+      } catch (error) {
+        console.error('Error creating freemium subscription:', error);
+        toast.error('Something went wrong. Please try again.', { id: loadingToast });
+      }
+
+      return;
+    }
+
     // CRITICAL: Navigate to payment page SYNCHRONOUSLY
     // The old async DB validation was causing a race condition with auth state changes.
     // PaymentCompletion.jsx already validates the user in the database, so this is not needed here.
@@ -855,7 +917,7 @@ function SubscriptionPlans() {
       }
     });
 
-  }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole]);
+  }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole, refreshAccess]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });

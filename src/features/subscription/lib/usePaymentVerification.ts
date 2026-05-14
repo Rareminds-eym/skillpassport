@@ -4,11 +4,14 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   verifyPaymentSignature,
   validatePaymentParams,
   extractPaymentParams
 } from '@/features/subscription/api';
+import { queryKeys } from '@/shared/lib/queryKeys';
+import { useUser } from '@/shared/model/authStore';
 
 /**
  * Custom hook for payment verification
@@ -25,6 +28,8 @@ export const usePaymentVerification = ({
   signature,
   autoVerify = true
 }) => {
+  const queryClient = useQueryClient();
+  const user = useUser();
   const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'failure' | 'error'
   const [transactionDetails, setTransactionDetails] = useState(null);
   const [error, setError] = useState(null);
@@ -110,6 +115,13 @@ export const usePaymentVerification = ({
         setStatus('success');
         setTransactionDetails(result);
         hasVerified.current = true;
+        
+        // Invalidate subscription cache after successful payment verification
+        if (user?.id) {
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.subscription.data.byOrganization(user.id)
+          });
+        }
       } else {
         setStatus('failure');
         setError({
@@ -142,7 +154,7 @@ export const usePaymentVerification = ({
         });
       }
     }
-  }, [paymentId, orderId, signature, status]);
+  }, [paymentId, orderId, signature, status, queryClient, user]);
 
   /**
    * Retry verification

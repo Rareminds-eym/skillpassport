@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addOnCatalogService } from '@/features/subscription';
 import { entitlementService } from '@/features/subscription';
+import { createFeatureAccessErrorLog, logError } from '@/shared/lib/errorLogging';
 
 import { useUserEntitlements } from '@/features/subscription/model/subscriptionStore';
 import { useUser } from '@/shared/model/authStore';
@@ -125,6 +126,17 @@ export function useFeatureGate(featureKey) {
           setHasAccess(false);
           setAccessSource(null);
           setRequiredAddOn(fetchedAddOn);
+          
+          // Log feature access error
+          if (userId) {
+            const errorLog = createFeatureAccessErrorLog(
+              userId,
+              featureKey,
+              'unknown', // planCode not available in this context
+              result.error || 'Feature access check failed'
+            );
+            logError(errorLog);
+          }
         }
       } else {
         setHasAccess(false);
@@ -141,6 +153,21 @@ export function useFeatureGate(featureKey) {
     } catch (err) {
       setError(err.message);
       setHasAccess(false);
+      
+      // Log feature access error
+      if (userId) {
+        const errorLog = createFeatureAccessErrorLog(
+          userId,
+          featureKey,
+          'unknown', // planCode not available in this context
+          err.message || 'Unexpected error during feature access check',
+          err instanceof Error ? err : undefined
+        );
+        logError(errorLog);
+      }
+      
+      // Default to denying access on error
+      console.error('[FeatureGate] Error checking feature access:', err);
     } finally {
       setIsLoading(false);
       checkInProgress.current = false;

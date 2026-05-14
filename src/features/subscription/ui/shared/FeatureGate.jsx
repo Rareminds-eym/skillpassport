@@ -2,7 +2,7 @@
  * FeatureGate Component - Premium locked feature UI
  */
 
-import { ArrowLeft, ArrowRight, Check, Lock, Shield, Sparkles, X, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Lock, Shield, Sparkles, X, Zap, AlertCircle } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,7 +20,7 @@ export function FeatureGate({
   className = '',
   onUpgradeClick
 }) {
-  const { hasAccess, isLoading, requiredAddOn, upgradePrice } = useFeatureGate(featureKey);
+  const { hasAccess, isLoading, requiredAddOn, upgradePrice, error } = useFeatureGate(featureKey);
   const { purchaseAddOn, isPurchasing } = useSubscriptionContext();
   const [showModal, setShowModal] = useState(false);
 
@@ -36,6 +36,20 @@ export function FeatureGate({
     return (
       <div className={`flex items-center justify-center min-h-[300px] ${className}`}>
         <div className="w-8 h-8 border-2 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // Handle errors - default to denying access with error message
+  if (error) {
+    return (
+      <div className={`flex flex-col h-full min-h-[calc(100vh-200px)] p-8 ${className}`}>
+        <div className="mb-4">
+          <BackButton />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <ErrorCard message="Unable to verify access. Please refresh the page." />
+        </div>
       </div>
     );
   }
@@ -92,6 +106,51 @@ function BackButton() {
 }
 
 /**
+ * Error card for feature access errors
+ */
+function ErrorCard({ message }) {
+  const navigate = useNavigate();
+  
+  return (
+    <div className="w-full max-w-md">
+      <div className="bg-white rounded-3xl shadow-2xl border-2 border-red-200 overflow-hidden">
+        {/* Header */}
+        <div className="relative px-8 pt-8 pb-6">
+          {/* Error icon */}
+          <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mb-5">
+            <AlertCircle className="w-7 h-7 text-red-600" />
+          </div>
+
+          {/* Title & description */}
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            Access Verification Failed
+          </h3>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            {message}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="px-8 py-6 bg-gray-50 border-t border-gray-100">
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors mb-3"
+          >
+            Refresh Page
+          </button>
+          <button
+            onClick={() => navigate(-1)}
+            className="w-full py-3.5 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl transition-colors border-2 border-gray-200"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Static placeholder for locked content - prevents actual feature from rendering/executing
  */
 function LockedContentPlaceholder() {
@@ -127,11 +186,11 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
   const benefits = {
     career_ai: ['AI-powered career guidance', 'Personalized recommendations', 'Industry insights'],
     video_portfolio: ['Professional video showcase', 'Easy hosting & sharing', 'Portfolio builder'],
-    educator_ai: ['AI teaching assistant', 'Content generation', 'Learner insights'],
+    educator_ai: ['AI teaching assistant', 'Content generation', 'Student insights'],
     recruiter_ai: ['AI candidate matching', 'Smart screening', 'Talent insights'],
     kpi_dashboard: ['Real-time metrics', 'Custom reports', 'Performance tracking'],
     curriculum_builder: ['Drag & drop builder', 'Template library', 'Standards alignment'],
-    mentor_notes: ['Private learner notes', 'Progress tracking', 'Intervention alerts'],
+    mentor_notes: ['Private student notes', 'Progress tracking', 'Intervention alerts'],
     ai_job_matching: ['Smart job matching', 'Skill-based recommendations', 'Application tracking'],
     talent_pool_access: ['Verified candidates', 'Advanced filters', 'Direct messaging'],
     pipeline_management: ['Visual pipelines', 'Stage tracking', 'Team collaboration'],
@@ -186,7 +245,7 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
             <div className="flex items-center justify-between mb-5">
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-gray-900">₹{monthlyPrice}</span>
+                  <span className="text-3xl font-bold text-gray-900">Γé╣{monthlyPrice}</span>
                   <span className="text-gray-400 text-sm">/month</span>
                 </div>
                 {savings > 0 && (
@@ -424,12 +483,12 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
               <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-3xl p-5 mb-5 border-2 border-slate-200">
                 <div className="flex items-baseline justify-between mb-1">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900">₹{price}</span>
+                    <span className="text-4xl font-bold text-gray-900">Γé╣{price}</span>
                     <span className="text-gray-400 text-sm">/{billing === 'monthly' ? 'mo' : 'yr'}</span>
                   </div>
                   {billing === 'annual' && (
                     <div className="text-right">
-                      <p className="text-xs text-gray-400">₹{monthlyEquivalent}/mo</p>
+                      <p className="text-xs text-gray-400">Γé╣{monthlyEquivalent}/mo</p>
                     </div>
                   )}
                 </div>
@@ -439,7 +498,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                     <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
                       <Check className="w-2.5 h-2.5 text-emerald-600" strokeWidth={3} />
                     </div>
-                    <span className="text-emerald-600 text-sm font-medium">Save ₹{savings} per year</span>
+                    <span className="text-emerald-600 text-sm font-medium">Save Γé╣{savings} per year</span>
                   </div>
                 )}
               </div>
@@ -493,7 +552,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                   <Shield className="w-3.5 h-3.5" />
                   Secure checkout
                 </span>
-                <span>•</span>
+                <span>ΓÇó</span>
                 <span>Powered by Razorpay</span>
               </div>
             </>
