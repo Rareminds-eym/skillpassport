@@ -63,12 +63,12 @@ export async function authenticateUser(
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error('❌ Missing Supabase configuration');
-    return null;
+    throw new Error('Server Configuration Error: Missing Supabase URL or Anon Key');
   }
 
   if (!supabaseServiceKey) {
     console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY configuration');
-    return null;
+    throw new Error('Server Configuration Error: Missing SUPABASE_SERVICE_ROLE_KEY');
   }
 
   // SECURITY: Use auth-core's verifyJWT to validate the custom SSO token
@@ -101,7 +101,15 @@ export async function authenticateUser(
 
     return { user, supabase, supabaseAdmin };
   } catch (error) {
-    console.warn('Authentication failed:', error instanceof Error ? error.message : error);
+    const message = error instanceof Error ? error.message : String(error);
+    
+    // If the error is a configuration error from ensureAuthInitialized, escalate it to a 500
+    if (message.includes('configuration') || message.includes('Missing')) {
+      console.error('CRITICAL: Authentication configuration error:', message);
+      throw error;
+    }
+    
+    console.warn('Authentication failed:', message);
     return null;
   }
 }
