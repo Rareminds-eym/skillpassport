@@ -10,6 +10,7 @@ import { jsonResponse } from '../../../../src/functions-lib';
 import { authenticateUser } from '../../shared/auth';
 import { generateInvitationEmailHtml, getInvitationSubject } from '../services/templates';
 import { apiLogger } from '../../../lib/logger';
+import { sendEmail } from '../../../lib/email-service';
 
 export async function handleInvitationEmail(
   request: Request,
@@ -32,14 +33,6 @@ export async function handleInvitationEmail(
   }
 
   try {
-    // Validate required env vars
-    if (!env.INTERNAL_API_KEY) {
-      throw new Error('INTERNAL_API_KEY environment variable is not configured');
-    }
-    if (!env.EMAIL_WORKER_URL) {
-      throw new Error('EMAIL_WORKER_URL environment variable is not configured');
-    }
-
     const html = generateInvitationEmailHtml({
       organizationName,
       memberType,
@@ -50,31 +43,22 @@ export async function handleInvitationEmail(
 
     const subject = getInvitationSubject(organizationName);
 
-    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
-      },
-      body: JSON.stringify({
-        to,
-        subject,
-        html,
-        from: 'noreply@rareminds.in',
-        fromName: 'Skill Passport',
-      }),
+    const result = await sendEmail(env, {
+      to,
+      subject,
+      html,
+      from: env.FROM_EMAIL || 'noreply@rareminds.in',
+      fromName: env.FROM_NAME || 'Skill Passport',
     });
 
-    if (!response.ok) {
-      throw new Error(`Email worker failed with status ${response.status}`);
+    if (!result.success) {
+      throw new Error(result.error || 'Email sending failed');
     }
-
-    const result = await response.json();
 
     return jsonResponse({
       success: true,
       message: 'Invitation email sent successfully',
-      data: result
+      data: { messageId: result.messageId }
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to send invitation email';

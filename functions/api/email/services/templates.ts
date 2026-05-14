@@ -200,7 +200,7 @@ export function getCountdownSubject(countdownDay: number): string {
 // ==================== EVENT REGISTRATION TEMPLATES ====================
 
 export function generateUserConfirmationHtml(data: EventConfirmationTemplateData): string {
-  const { name, email, phone, amount, orderId, campaign, baseUrl = 'https://skillpassport.rareminds.in' } = data;
+  const { name, email, phone, amount, orderId, campaign, baseUrl = 'https://skillpassport.rareminds.in', receiptUrl } = data;
 
   return `
 <!DOCTYPE html>
@@ -223,13 +223,7 @@ export function generateUserConfirmationHtml(data: EventConfirmationTemplateData
           <tr>
             <td style="padding:40px;">
               <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hi ${name},</p>
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Your payment has been received successfully. You're now registered!</p>
-              
-              <div style="margin-bottom:24px;padding:20px;background:#f0fdf4;border-radius:12px;border:2px solid #22c55e;">
-                <p style="margin:0 0 16px;color:#15803d;font-size:15px;font-weight:600;">Next Step: Create Your Account</p>
-                <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">To access your Skill Passport dashboard and start your journey, please create your account using the signup page.</p>
-                <a href="https://skillpassport.rareminds.in/signup" style="display:inline-block;background:#22c55e;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">Create Account Now</a>
-              </div>
+              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Subscription successful! Thank you for your payment. Your subscription is successfully activated.</p>
               
               <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:12px;overflow:hidden;">
                 <tr>
@@ -242,11 +236,12 @@ export function generateUserConfirmationHtml(data: EventConfirmationTemplateData
                 </tr>
               </table>
               
+              ${receiptUrl ? `
               <div style="margin-top:24px;padding:20px;background:#eff6ff;border-radius:12px;text-align:center;border:2px solid #3b82f6;">
-                <p style="margin:0 0 16px;color:#1e40af;font-size:15px;font-weight:600;">📄 Download Your Receipt</p>
-                <a href="${baseUrl}/api/email/download-receipt/${orderId}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;margin-bottom:8px;">Download PDF Receipt</a>
+                <a href="${receiptUrl}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;margin-bottom:8px;">Download PDF Receipt</a>
                 <p style="margin:8px 0 0;color:#6b7280;font-size:12px;">Click the button above to download your payment receipt</p>
               </div>
+              ` : ''}
               
               <div style="margin-top:32px;padding:28px;background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-radius:12px;text-align:center;border:1px solid #e2e8f0;">
                 <p style="margin:0 0 20px;color:#334155;font-size:15px;font-weight:600;">Need assistance? We're here to help!</p>
@@ -393,4 +388,212 @@ export function getAdminNotificationSubject(name: string, amount: number): strin
 
 export function getOTPSubject(otp: string): string {
   return `Your Verification Code: ${otp}`;
+}
+
+// ==================== WELCOME EMAIL TEMPLATE ====================
+
+export interface WelcomeEmailData {
+  name: string;
+  email: string;
+  role: string;
+  baseUrl: string;
+  additionalInfo?: string;
+}
+
+export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
+  const { name, email, role, baseUrl, additionalInfo } = data;
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Welcome to SkillPassport</title></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
+  <table style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td align="center" style="padding:48px 24px;">
+        <table style="width:100%;max-width:480px;background:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden;">
+          <tr>
+            <td style="padding:48px 40px;text-align:center;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);">
+              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Welcome to SkillPassport!</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px;">
+              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hello ${name},</p>
+              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Your account has been created successfully and is ready to use!</p>
+              
+              <div style="background:#f9fafb;border-radius:12px;padding:20px;margin:24px 0;border-left:4px solid #1e40af;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <tr>
+                    <td style="padding:8px 0;color:#6b7280;font-size:14px;">Email</td>
+                    <td style="padding:8px 0;color:#111827;font-size:14px;text-align:right;font-weight:500;">${email}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:8px 0;color:#6b7280;font-size:14px;">Role</td>
+                    <td style="padding:8px 0;color:#1e40af;font-size:14px;text-align:right;font-weight:600;">${role}</td>
+                  </tr>
+                  ${additionalInfo ? `<tr><td colspan="2" style="padding:12px 0;color:#6b7280;font-size:13px;border-top:1px solid #e5e7eb;margin-top:8px;">${additionalInfo}</td></tr>` : ''}
+                </table>
+              </div>
+              
+              <div style="text-align:center;margin:32px 0;">
+                <a href="${baseUrl}/login" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:600;">Login Now →</a>
+              </div>
+              
+              <p style="color:#6b7280;font-size:14px;margin-top:32px;text-align:center;">If you have any questions, please don't hesitate to contact our support team.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} SkillPassport. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function getWelcomeSubject(): string {
+  return 'Welcome to SkillPassport!';
+}
+
+// ==================== PASSWORD RESET TEMPLATE ====================
+
+export interface PasswordResetData {
+  otp: string;
+}
+
+export function generatePasswordResetEmailHtml(data: PasswordResetData): string {
+  const { otp } = data;
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Password Reset</title></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
+  <table style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td align="center" style="padding:48px 24px;">
+        <table style="width:100%;max-width:480px;background:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden;">
+          <tr>
+            <td style="padding:48px 40px;text-align:center;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);">
+              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Password Reset Request</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px;">
+              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hello,</p>
+              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">We received a request to reset your password. Use the OTP code below to complete the process:</p>
+              
+              <div style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border-radius:12px;padding:24px;text-align:center;border:2px dashed #3b82f6;margin:24px 0;">
+                <p style="margin:0 0 8px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Your OTP Code</p>
+                <div style="font-size:36px;font-weight:700;color:#1e40af;letter-spacing:8px;font-family:monospace;margin:8px 0;">${otp}</div>
+                <p style="margin:8px 0 0;color:#6b7280;font-size:13px;">Valid for 10 minutes</p>
+              </div>
+              
+              <div style="background:#FEF3C7;border-left:4px solid #F59E0B;padding:16px;margin:24px 0;border-radius:4px;">
+                <p style="margin:0;color:#92400E;font-size:14px;"><strong>⚠️ Security Notice:</strong></p>
+                <p style="margin:8px 0 0;color:#92400E;font-size:14px;">If you didn't request this password reset, please ignore this email. Your password will remain unchanged.</p>
+              </div>
+              
+              <p style="color:#6b7280;font-size:14px;margin-top:24px;text-align:center;">For security reasons, this OTP will expire in 10 minutes.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} SkillPassport. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function getPasswordResetSubject(): string {
+  return 'Password Reset - SkillPassport';
+}
+
+// ==================== INTERVIEW REMINDER TEMPLATE ====================
+
+export interface InterviewReminderData {
+  recipientName: string;
+  interviewDetails: {
+    date?: string;
+    time?: string;
+    location?: string;
+    interviewer?: string;
+    position?: string;
+    company?: string;
+  };
+}
+
+export function generateInterviewReminderHtml(data: InterviewReminderData): string {
+  const { recipientName, interviewDetails } = data;
+  const { date, time, location, interviewer, position, company } = interviewDetails;
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Interview Reminder</title></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
+  <table style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td align="center" style="padding:48px 24px;">
+        <table style="width:100%;max-width:480px;background:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden;">
+          <tr>
+            <td style="padding:48px 40px;text-align:center;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);">
+              <div style="font-size:48px;margin-bottom:16px;">📅</div>
+              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Interview Reminder</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px;">
+              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hello ${recipientName},</p>
+              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">This is a reminder about your upcoming interview:</p>
+              
+              <div style="background:#f9fafb;border-radius:12px;padding:24px;margin:24px 0;border-left:4px solid #1e40af;">
+                <table style="width:100%;border-collapse:collapse;">
+                  ${position ? `<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;">Position</td><td style="padding:8px 0;color:#111827;font-size:14px;text-align:right;font-weight:500;">${position}</td></tr>` : ''}
+                  ${company ? `<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;">Company</td><td style="padding:8px 0;color:#111827;font-size:14px;text-align:right;font-weight:500;">${company}</td></tr>` : ''}
+                  ${date ? `<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;">Date</td><td style="padding:8px 0;color:#111827;font-size:14px;text-align:right;font-weight:500;">${date}</td></tr>` : ''}
+                  ${time ? `<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;">Time</td><td style="padding:8px 0;color:#1e40af;font-size:14px;text-align:right;font-weight:600;">${time}</td></tr>` : ''}
+                  ${location ? `<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;">Location</td><td style="padding:8px 0;color:#111827;font-size:14px;text-align:right;font-weight:500;">${location}</td></tr>` : ''}
+                  ${interviewer ? `<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;">Interviewer</td><td style="padding:8px 0;color:#111827;font-size:14px;text-align:right;font-weight:500;">${interviewer}</td></tr>` : ''}
+                </table>
+              </div>
+              
+              <div style="background:#eff6ff;border-radius:8px;padding:20px;margin:24px 0;">
+                <p style="margin:0 0 12px;color:#1f2937;font-size:15px;font-weight:600;">💡 Tips for your interview:</p>
+                <ul style="margin:0;padding-left:20px;color:#4b5563;font-size:14px;line-height:1.8;">
+                  <li>Join 5-10 minutes early</li>
+                  <li>Test your internet connection and audio/video</li>
+                  <li>Have your resume and relevant documents ready</li>
+                  <li>Prepare questions to ask the interviewer</li>
+                </ul>
+              </div>
+              
+              <p style="color:#374151;font-size:15px;margin:24px 0 0;text-align:center;font-weight:600;">Good luck with your interview! 🎯</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} SkillPassport. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function getInterviewReminderSubject(): string {
+  return 'Interview Reminder - SkillPassport';
 }
