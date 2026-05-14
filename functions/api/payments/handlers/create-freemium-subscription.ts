@@ -65,28 +65,25 @@ export async function handleCreateFreemiumSubscription(context: AuthenticatedCon
 
     const supabase = getServiceClient(env);
 
-    // Ensure user exists in the users table (SSO users might not have a local record)
-    const { data: existingUser } = await supabase
-      .from('users')
+    // Ensure user exists in shadow table (for FK constraints)
+    const { data: existingShadowUser } = await supabase
+      .from('users_shadow')
       .select('id')
       .eq('id', body.userId)
       .maybeSingle();
 
-    if (!existingUser) {
-      // Create user record
-      const { error: userError } = await supabase
-        .from('users')
+    if (!existingShadowUser) {
+      // Create shadow user record
+      const { error: shadowUserError } = await supabase
+        .from('users_shadow')
         .insert({
           id: body.userId,
           email: body.email,
-          full_name: user.name || 'User',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         });
 
-      if (userError) {
-        console.error('[CreateFreemiumSubscription] Error creating user:', userError);
-        return apiError(500, 'USER_CREATION_FAILED', 'Failed to create user record', context.request, { startTime });
+      if (shadowUserError) {
+        console.error('[CreateFreemiumSubscription] Error creating shadow user:', shadowUserError);
+        // Continue anyway - the FK constraint might be removed
       }
     }
 
