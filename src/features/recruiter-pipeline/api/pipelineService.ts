@@ -674,12 +674,12 @@ export const moveCandidateToStage = async (
     if (currentData.opportunity_id) {
       const { data: opportunityData, error: oppError } = await supabase
         .from('opportunities')
-        .select('openings_count, status, job_title, company_name')
+        .select('applications_count, status, job_title, company_name')
         .eq('id', currentData.opportunity_id)
         .single();
 
       if (!oppError && opportunityData) {
-        if (opportunityData.openings_count === 0 || opportunityData.status === 'filled') {
+        if (opportunityData.applications_count === 0 || opportunityData.status === 'filled') {
           return {
             error: `Cannot move candidate: All openings for ${opportunityData.job_title} at ${opportunityData.company_name} have been filled.`,
             data: null
@@ -924,10 +924,11 @@ export const removeCandidateFromPipeline = async (candidateId: string | number) 
 // ==================== PIPELINE ACTIVITY OPERATIONS ====================
 
 /**
- * Log pipeline activity
+ * Log pipeline activity - Creates notification directly for learner
+ * Maps learner_id to user_id since notifications table requires user_id (foreign key to users.id)
  */
 export const logPipelineActivity = async (activityData: {
-  pipeline_candidate_id: string;
+  pipeline_candidate_id: string | number;
   activity_type: string;
   from_stage?: string | null;
   to_stage?: string;
@@ -936,19 +937,144 @@ export const logPipelineActivity = async (activityData: {
   learner_id?: string;
 }) => {
   try {
-    const { data, error } = await supabase
-      .from('pipeline_activities')
-      .insert([activityData])
-      .select()
-      .single();
+    // If learner_id is provided, create notification directly
+    if (activityData.learner_id) {
+      // Fetch learner's user_id (notifications.recipient_id requires user_id, not learner_id)
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('user_id')
+        .eq('id', activityData.learner_id)
+        .single();
 
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    // Error silently handled
+      if (learnerError || !learnerData?.user_id) {
+        logger.warn('Learner not found or has no user_id', {
+          learnerId: activityData.learner_id,
+          error: learnerError?.message
+        });
+        return { data: null, error: null };
+      }
+
+      const notificationTitle = getNotificationTitle(activityData.activity_type, activityData.to_stage);
+      const notificationMessage = getNotificationMessage(activityData.activity_type, activityData.to_stage);
+      const notificationType = getNotificationType(activityData.activity_type, activityData.to_stage);
+
+      const { data: notificationData, error: notificationError } = await supabase
+        .from('notifications')
+        .insert([{
+          recipient_id: learnerData.user_id,
+          type: notificationType,
+          title: notificationTitle,
+          message: notificationMessage,
+          read: false,
+          created_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (notificationError) {
+        logger.error('Failed to create notification', {
+          error: notificationError.message,
+          learnerId: activityData.learner_id,
+          userId: learnerData.user_id
+        });
+        throw notificationError;
+      }
+
+      logger.info('Pipeline activity notification created successfully', {
+        activityType: activityData.activity_type,
+        learnerId: activityData.learner_id,
+        userId: learnerData.user_id,
+        toStage: activityData.to_stage
+      });
+
+      return { data: notificationData, error: null };
+    }
+
+    logger.warn('No learner_id provided for pipeline activity notification', activityData);
+    return { data: null, error: null };
+  } catch (error: unknown) {
+    logger.error('Exception in logPipelineActivity', error as Error);
     return { data: null, error };
   }
 };
+
+/**
+ * Get notification type based on activity
+ */
+function getNotificationType(activityType: string, toStage?: string): string {
+  if (activityType === 'stage_change') {
+    if (toStage === 'rejected') {
+      return 'candidate_rejected';
+    }
+    return 'pipeline_stage_changed';
+  }
+  if (activityType === 'next_action_set') {
+    return 'interview_reminder';
+  }
+  return 'pipeline_stage_changed';
+}
+
+/**
+ * Get notification title based on activity and stage
+ */
+function getNotificationTitle(activityType: string, toStage?: string): string {
+  if (activityType === 'stage_change') {
+    switch (toStage) {
+      case 'hired':
+        return 'Congratulations! You\'ve been hired!';
+      case 'offer':
+        return 'Offer Extended!';
+      case 'interview_2':
+        return 'Advanced to Final Interview';
+      case 'interview_1':
+        return 'Interview Scheduled';
+      case 'screened':
+        return 'Application Screened';
+      case 'rejected':
+        return 'Application Status Update';
+      default:
+        return 'Application Update';
+    }
+  }
+  if (activityType === 'note_added') {
+    return 'Update on your application';
+  }
+  if (activityType === 'next_action_set') {
+    return 'Action Required';
+  }
+  return 'Application Update';
+}
+
+/**
+ * Get notification message based on activity and stage
+ */
+function getNotificationMessage(activityType: string, toStage?: string): string {
+  if (activityType === 'stage_change') {
+    switch (toStage) {
+      case 'hired':
+        return 'Great news! You have been selected for the position.';
+      case 'offer':
+        return 'You have received an offer. Review the details in your dashboard.';
+      case 'interview_2':
+        return 'Congratulations! You have been selected for the final interview round.';
+      case 'interview_1':
+        return 'You have been selected for an interview.';
+      case 'screened':
+        return 'Your application is under review.';
+      case 'rejected':
+        return 'Thank you for your interest. We have decided to move forward with other candidates.';
+      default:
+        return 'Your application has been updated.';
+    }
+  }
+  if (activityType === 'note_added') {
+    return 'Your application has been updated with new information.';
+  }
+  if (activityType === 'next_action_set') {
+    return 'Next steps for your application have been set.';
+  }
+  return 'Your application has been updated.';
+}
 
 /**
  * Get activity history for a candidate

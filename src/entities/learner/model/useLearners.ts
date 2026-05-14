@@ -202,7 +202,6 @@ interface LearnerRow {
   guardianRelation?: string
   enrollmentDate?: string
   expectedGraduationDate?: string
-  learner_type?: string
   hobbies?: string[]
   languages?: string[]
   interests?: string[]
@@ -380,7 +379,6 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
     currentCgpa: row.currentCgpa,
     enrollmentDate: row.enrollmentDate,
     expectedGraduationDate: row.expectedGraduationDate,
-    learner_type: row.learner_type,
     // Guardian details
     guardianName: row.guardianName,
     guardianPhone: row.guardianPhone,
@@ -527,7 +525,6 @@ export function useLearners(options?: UseLearnersOptions) {
           guardianRelation,
           enrollmentDate,
           expectedGraduationDate,
-          learner_type,
           hobbies,
           languages,
           interests,

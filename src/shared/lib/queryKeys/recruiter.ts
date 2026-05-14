@@ -21,4 +21,7 @@ export const recruiterKeys = {
                 ? ['recruiter', 'conversations', recruiterId, status] as const
                 : ['recruiter', 'conversations', recruiterId] as const,
     },
+
+    // Applicants
+    applicants: (): QueryKey => ['recruiter', 'applicants'] as const,
 } as const;

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { AppliedJobsService } from '@/features/opportunities';
 import { getAllPipelineCandidatesByStage, moveCandidateToStage } from '@/features/opportunities';
 import { supabase } from '@/shared/api/supabaseClient';
 import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, ArrowDownTrayIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { MessageModal } from '@/features/messaging';
 import { useMessageNotifications } from '@/features/messaging';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { recruiterInsights } from '@/features/recruiter-copilot';
 import { getLogger } from '@/shared/config/logging';
@@ -118,6 +119,12 @@ const ApplicantsList: React.FC = () => {
 
   // Get recruiter ID from auth context
   const recruiterId = user?.id;
+  const queryClient = useQueryClient();
+
+  // Function to refresh applicants list
+  const fetchApplicants = async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.recruiter.applicants() });
+  };
 
   // Enable real-time message notifications
   useMessageNotifications({
@@ -324,7 +331,7 @@ const ApplicantsList: React.FC = () => {
           .single();
 
         if (!learner) {
-          alert('Learner information not found');
+          toast.error('Learner information not found');
           return;
         }
 
@@ -345,8 +352,8 @@ const ApplicantsList: React.FC = () => {
         if (result.error) {
           const errorCode = (result.error as any).code;
           if (errorCode === 'DUPLICATE_CANDIDATE' || errorCode === '23505') {
-            alert('This candidate is already in the pipeline. Refreshing...');
-            fetchApplicants(); // Refresh to show current state
+            toast.info('This candidate is already in the pipeline. Refreshing...');
+            await fetchApplicants(); // Refresh to show current state
             return;
           }
           throw result.error;
@@ -358,12 +365,12 @@ const ApplicantsList: React.FC = () => {
       } catch (error) {
         logger.error('Error adding candidate to pipeline', error);
         const errorMsg = (error as any)?.message || 'Failed to add candidate to pipeline';
-        alert(errorMsg);
+        toast.error(errorMsg);
         return;
       }
     } else if (!applicant.pipeline_candidate_id) {
       logger.info('[ApplicantsList] Candidate not in pipeline and not in applied/viewed status');
-      alert('This applicant is not in the pipeline system yet');
+      toast.info('This applicant is not in the pipeline system yet');
       return;
     } else {
       // Use existing pipeline movement function
@@ -392,15 +399,16 @@ const ApplicantsList: React.FC = () => {
         logger.info('[ApplicantsList] Refreshing applicants list...');
         fetchApplicants();
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Failed to move candidate. Please try again.';
         logger.error('[ApplicantsList] Error moving candidate', error);
-        alert('Failed to move candidate. Please try again.');
+        toast.error(errorMsg);
         return;
       }
     }
 
     // Refresh the applicants list to show updated stages
     await fetchApplicants();
-    alert(`Successfully moved ${applicant.learner.name} to ${newStage} stage`);
+    toast.success(`Successfully moved ${applicant.learner.name} to ${newStage} stage`);
   };
 
   const getNextStageOptions = (applicant: Applicant) => {
@@ -1095,7 +1103,7 @@ const ApplicantsList: React.FC = () => {
                             <button
                               onClick={() => {
                                 if (!recruiterId) {
-                                  alert('Please wait, loading user data...');
+                                  toast.loading('Loading user data...');
                                   return;
                                 }
                                 setSelectedApplicant(applicant);
