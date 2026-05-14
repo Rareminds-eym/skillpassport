@@ -10,7 +10,7 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
-import { getServiceClient } from '../../lib/auth';
+import { getServiceClient } from '../../../lib/auth';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 
 interface UpdateProgressRequestBody {
