@@ -1224,6 +1224,7 @@ const Opportunities = () => {
                 learnerData={learnerData}
                 showUpgradePrompt={showUpgradePrompt}
                 setShowUpgradePrompt={setShowUpgradePrompt}
+                canAccessOpportunities={canAccessOpportunities}
               />
             )}
 
@@ -1698,7 +1699,8 @@ const MyJobsContent = ({
   needsProfileCompletion,
   navigate,
   showUpgradePrompt,
-  setShowUpgradePrompt
+  setShowUpgradePrompt,
+  canAccessOpportunities
 }) => {
   // Use server-side pagination values when available
   const totalPages = isServerPaginated ? serverTotalPages : Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
