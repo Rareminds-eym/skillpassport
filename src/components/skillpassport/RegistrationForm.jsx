@@ -18,13 +18,15 @@ import {
   X
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import OTPInput from '../OTPInput';
 import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../ui/shiny-button';
 import { sendPhoneOTP, validatePhoneOTP } from '../../services/otpService';
 
-const REGISTRATION_FEE = 499;
+const REGISTRATION_FEE_STUDENT = 499;
+const REGISTRATION_FEE_CORPORATE = 7500;
 const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
@@ -245,6 +247,9 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
 };
 
 export default function RegistrationForm({ campaign = 'skill-passport' }) {
+  const location = useLocation();
+  const isCorporate = location.pathname.includes('/register/corporate');
+  const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_STUDENT;
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -384,7 +389,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'Skill Passport',
+        name: isCorporate ? 'Skill Ecosystem' : 'Skill Passport',
         description: 'Registration Fee',
         order_id: orderData.id,
         prefill: {
@@ -484,7 +489,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   <Check className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-emerald-600" strokeWidth={3} />
                 </motion.div>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 sm:mb-3">Payment Successful!</h2>
-                <p className="text-emerald-100 text-base sm:text-lg">Welcome to Skill Passport</p>
+                <p className="text-emerald-100 text-base sm:text-lg">Welcome to {isCorporate ? 'Skill Ecosystem' : 'Skill Passport'}</p>
               </div>
             </div>
 
@@ -549,14 +554,14 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                 />
               </div>
             </div>
-            <span className="text-gray-900 text-sm sm:text-base font-bold">For Students Only</span>
+            <span className="text-gray-900 text-sm sm:text-base font-bold">{isCorporate ? 'For Corporates' : 'For Students Only'}</span>
           </motion.div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
             Registration
           </h2>
           <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
-            Secure your access to Skill Passport today
+            Secure your access to {isCorporate ? 'Skill Ecosystem' : 'Skill Passport'} today
           </p>
         </motion.div>
 
