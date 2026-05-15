@@ -4,7 +4,7 @@
  */
 
 import { PLAN_IDS, PAY_AS_YOU_GO_FEATURES } from '@/shared/config/subscriptionPlans';
-import { createFeatureAccessErrorLog, logError } from '@/shared/lib/errorLogging';
+import { createFeatureAccessErrorLog, logError } from '@/shared/lib/error-logging';
 
 /**
  * Feature access result interface
@@ -21,14 +21,18 @@ export interface FeatureAccessResult {
  * Check if user has access to a specific feature
  * Main entry point for feature access control
  * 
- * @throws Never throws - returns denial on any error
+ * Implements graceful degradation with retry logic for transient errors
+ * 
+ * @param retryCount Internal parameter for retry logic (default: 0)
+ * @throws Never throws - returns denial on any error after retries
  */
 export function checkFeatureAccess(
   userPlan: string,
   feature: string,
   userPurchases: any[] = [],
   currentUsage?: Record<string, number>,
-  userId?: string
+  userId?: string,
+  retryCount: number = 0
 ): FeatureAccessResult {
   try {
     // Handle Freemium tier
@@ -41,6 +45,16 @@ export function checkFeatureAccess(
     // This can be extended with plan-specific feature checks
     return { hasAccess: true };
   } catch (error) {
+    // Retry once on transient errors
+    if (retryCount === 0 && isTransientError(error)) {
+      console.warn('[FeatureGating] Transient error detected, retrying...', {
+        feature,
+        userPlan,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return checkFeatureAccess(userPlan, feature, userPurchases, currentUsage, userId, 1);
+    }
+
     // Log error with full context
     if (userId) {
       const errorLog = createFeatureAccessErrorLog(
@@ -60,14 +74,46 @@ export function checkFeatureAccess(
         error: error instanceof Error ? error.message : String(error),
       });
     }
-    
-    // Default to denying access on any error
+
+    // Graceful degradation: fail open for paid plans, fail closed for freemium
+    const shouldFailOpen = userPlan !== PLAN_IDS.PAY_AS_YOU_GO;
+
     return {
-      hasAccess: false,
-      reason: 'Unable to verify access. Please refresh the page.',
+      hasAccess: shouldFailOpen,
+      reason: shouldFailOpen
+        ? 'Temporary verification issue - access granted'
+        : 'Unable to verify access. Please refresh the page.',
       upgradeRequired: false,
     };
   }
+}
+
+/**
+ * Check if error is transient and should be retried
+ */
+function isTransientError(error: any): boolean {
+  if (!error) return false;
+
+  const errorMessage = error.message || String(error);
+  const errorCode = error.code;
+
+  // Network errors
+  if (errorCode === 'ETIMEDOUT' || errorCode === 'ECONNRESET' || errorCode === 'ENOTFOUND') {
+    return true;
+  }
+
+  // Timeout errors
+  if (errorMessage.toLowerCase().includes('timeout')) {
+    return true;
+  }
+
+  // Connection errors
+  if (errorMessage.toLowerCase().includes('connection') ||
+    errorMessage.toLowerCase().includes('network')) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -113,11 +159,11 @@ export const hasFeatureAccess = (
 
   // Check if subscription is active or in grace period
   const isActive = ['active', 'paused', 'grace_period'].includes(subscription.status);
-  
+
   // Check if subscription hasn't expired
   const now = new Date();
-  const endDate = subscription.subscription_end_date 
-    ? new Date(subscription.subscription_end_date) 
+  const endDate = subscription.subscription_end_date
+    ? new Date(subscription.subscription_end_date)
     : null;
   const notExpired = !endDate || endDate >= now;
 

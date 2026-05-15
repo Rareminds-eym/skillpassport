@@ -64,8 +64,7 @@ export interface PagesEnv {
   CLOUDFLARE_R2_BUCKET_NAME?: string;
   CLOUDFLARE_R2_PUBLIC_URL?: string;
 
-  // KV Cache namespace
-  CACHE_KV?: KVNamespace;
+  // KV Cache namespace removed - dependency eliminated
 }
 
 /**

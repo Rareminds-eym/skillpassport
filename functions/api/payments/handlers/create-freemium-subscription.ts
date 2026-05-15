@@ -13,36 +13,23 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError, apiDbError, apiValidationError } from '../../../lib/response';
-import { invalidateUserSubscriptionCache } from '../../../shared/lib/cache';
+// Cache invalidation removed - KV dependency eliminated
 import { validateCreateFreemiumRequest } from '../../../shared/lib/validation';
-import { verifyPlanExists } from '../../../shared/lib/serverFeatureGating';
-import { withRateLimit, RATE_LIMITS } from '../../../shared/lib/rateLimiting';
-import { logSubscriptionCreation, logPaymentBypass } from '../../../shared/lib/auditLogging';
+import { verifyPlanExists } from '../../../shared/lib/server-feature-gating';
+// Rate limiting removed - KV dependency eliminated
 
 interface CreateFreemiumRequest {
   userId: string;
   email: string;
 }
 
-/**
- * Validate request body (DEPRECATED - use validateCreateFreemiumRequest from validation.ts)
- */
-function validateRequest(body: unknown): { valid: boolean; issues?: Array<{ path: string; message: string }> } {
-  // This function is kept for backward compatibility but delegates to the new validation utility
-  return validateCreateFreemiumRequest(body);
-}
-
 export async function handleCreateFreemiumSubscription(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
   const user = context.data.user;
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; CACHE_KV?: KVNamespace };
+  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
-    // Check rate limit (5 requests per minute per user)
-    const rateLimitCheck = await withRateLimit(env.CACHE_KV, user.sub, RATE_LIMITS.FREEMIUM_CREATION);
-    if (!rateLimitCheck.allowed) {
-      return rateLimitCheck.response!;
-    }
+    // Rate limiting removed - rely on database-level constraints and unique indexes for protection
 
     // Parse request body
     let body: CreateFreemiumRequest;
@@ -53,7 +40,7 @@ export async function handleCreateFreemiumSubscription(context: AuthenticatedCon
     }
 
     // Validate request
-    const validation = validateRequest(body);
+    const validation = validateCreateFreemiumRequest(body);
     if (!validation.valid) {
       return apiValidationError(validation.issues!, context.request);
     }
@@ -83,7 +70,7 @@ export async function handleCreateFreemiumSubscription(context: AuthenticatedCon
 
       if (shadowUserError) {
         console.error('[CreateFreemiumSubscription] Error creating shadow user:', shadowUserError);
-        // Continue anyway - the FK constraint might be removed
+        return apiDbError(shadowUserError, context.request, { startTime });
       }
     }
 
@@ -104,54 +91,11 @@ export async function handleCreateFreemiumSubscription(context: AuthenticatedCon
         },
       }));
 
-      // Log failed subscription creation
-      await logSubscriptionCreation(supabase, body.userId, 'pay_as_you_go', 'failure', {
-        reason: 'Plan not found or inactive',
-      }, context.request);
-
       return apiError(404, 'PLAN_NOT_FOUND', 'Freemium plan not found or inactive', context.request, { startTime });
     }
 
-    // Log payment bypass decision
-    await logPaymentBypass(supabase, body.userId, 'pay_as_you_go', 'Freemium tier - no payment required', context.request);
-
-    // Check if user already has an active subscription
-    const { data: existingSub, error: existingError } = await supabase
-      .from('subscriptions')
-      .select('id, status, plan_id')
-      .eq('user_id', body.userId)
-      .eq('status', 'active')
-      .maybeSingle();
-
-    if (existingError) {
-      console.error('[CreateFreemiumSubscription] Error checking existing subscription:', existingError);
-      // Log error with context
-      console.error(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        userId: body.userId,
-        errorType: 'FREEMIUM_CREATION_ERROR',
-        errorMessage: 'Failed to check existing subscription',
-        context: {
-          planCode: 'pay_as_you_go',
-          endpoint: '/api/payments/create-freemium-subscription',
-          statusCode: 500,
-          dbError: existingError.message,
-        },
-      }));
-      return apiDbError(existingError, context.request, { startTime });
-    }
-
-    if (existingSub) {
-      return apiError(
-        409,
-        'SUBSCRIPTION_EXISTS',
-        'User already has an active subscription',
-        context.request,
-        { startTime }
-      );
-    }
-
-    // Create subscription record
+    // Create subscription record - rely on database unique constraint to prevent duplicates
+    // This eliminates TOCTOU race condition by using database-level atomicity
     const now = new Date().toISOString();
     const { data: subscription, error: subError } = await supabase
       .from('subscriptions')
@@ -183,6 +127,12 @@ export async function handleCreateFreemiumSubscription(context: AuthenticatedCon
       `)
       .single();
 
+    // Handle unique constraint violation (23505 = duplicate key)
+    if (subError?.code === '23505') {
+      console.log('[CreateFreemiumSubscription] User already has active subscription (race condition caught)');
+      return apiError(409, 'SUBSCRIPTION_EXISTS', 'User already has an active subscription', context.request, { startTime });
+    }
+
     if (subError) {
       console.error('[CreateFreemiumSubscription] Error creating subscription:', subError);
       // Log error with context
@@ -199,24 +149,11 @@ export async function handleCreateFreemiumSubscription(context: AuthenticatedCon
         },
       }));
 
-      // Log failed subscription creation
-      await logSubscriptionCreation(supabase, body.userId, 'pay_as_you_go', 'failure', {
-        reason: 'Database error',
-        error: subError.message,
-      }, context.request);
-
       return apiDbError(subError, context.request, { startTime });
     }
 
-    // Log successful subscription creation
-    await logSubscriptionCreation(supabase, body.userId, 'pay_as_you_go', 'success', {
-      subscriptionId: subscription.id,
-      planId: plan.id,
-    }, context.request);
-
-    // Invalidate subscription cache for this user
-    const cacheKV = (env as any).CACHE_KV as KVNamespace | undefined;
-    await invalidateUserSubscriptionCache(cacheKV, body.userId);
+    // Cache invalidation removed - KV dependency eliminated
+    // Client-side queries will refetch data as needed
 
     // Return subscription details
     return apiSuccess(

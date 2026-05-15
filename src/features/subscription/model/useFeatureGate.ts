@@ -8,9 +8,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { addOnCatalogService } from '@/features/subscription';
 import { entitlementService } from '@/features/subscription';
-import { createFeatureAccessErrorLog, logError } from '@/shared/lib/errorLogging';
+import { createFeatureAccessErrorLog, logError } from '@/shared/lib/error-logging';
 
-import { useUserEntitlements } from '@/features/subscription/model/subscriptionStore';
+import { useUserEntitlements, useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
 import { useUser } from '@/shared/model/authStore';
 // Cache for feature access checks
 const accessCache = new Map();
@@ -30,6 +30,7 @@ accessCache.clear();
 export function useFeatureGate(featureKey) {
   const user = useUser();
   const { activeEntitlements, hasAddOnAccessSync } = useUserEntitlements();
+  const { subscription } = useSubscriptionAccess();
 
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
@@ -39,6 +40,9 @@ export function useFeatureGate(featureKey) {
 
   const checkInProgress = useRef(false);
   const userId = user?.id;
+
+  // Get actual plan code from subscription
+  const planCode = subscription?.plan || subscription?.plan_type || 'unknown';
 
   const checkAccess = useCallback(async () => {
     if (!featureKey) {
@@ -126,13 +130,13 @@ export function useFeatureGate(featureKey) {
           setHasAccess(false);
           setAccessSource(null);
           setRequiredAddOn(fetchedAddOn);
-          
+
           // Log feature access error
           if (userId) {
             const errorLog = createFeatureAccessErrorLog(
               userId,
               featureKey,
-              'unknown', // planCode not available in this context
+              planCode,
               result.error || 'Feature access check failed'
             );
             logError(errorLog);
@@ -153,26 +157,26 @@ export function useFeatureGate(featureKey) {
     } catch (err) {
       setError(err.message);
       setHasAccess(false);
-      
+
       // Log feature access error
       if (userId) {
         const errorLog = createFeatureAccessErrorLog(
           userId,
           featureKey,
-          'unknown', // planCode not available in this context
+          planCode,
           err.message || 'Unexpected error during feature access check',
           err instanceof Error ? err : undefined
         );
         logError(errorLog);
       }
-      
+
       // Default to denying access on error
       console.error('[FeatureGate] Error checking feature access:', err);
     } finally {
       setIsLoading(false);
       checkInProgress.current = false;
     }
-  }, [featureKey, userId, hasAddOnAccessSync, activeEntitlements]);
+  }, [featureKey, userId, hasAddOnAccessSync, activeEntitlements, planCode]);
 
   useEffect(() => {
     checkInProgress.current = false;

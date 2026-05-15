@@ -28,17 +28,19 @@ export function useOptimisticSubscription({
   const [isCreating, setIsCreating] = useState(false);
   const [optimisticSub, setOptimisticSub] = useState<OptimisticSubscription | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isCreatingRef = useRef(false);
 
   /**
    * Create a freemium subscription with optimistic updates
    */
   const createFreemiumSubscription = useCallback(
     async (planCode: string = PLAN_IDS.PAY_AS_YOU_GO) => {
-      // Prevent duplicate requests
-      if (isCreating) {
+      // Atomic check to prevent duplicate requests
+      if (isCreatingRef.current) {
         console.warn('[useOptimisticSubscription] Already creating subscription');
         return;
       }
+      isCreatingRef.current = true;
 
       // Cancel any pending request
       if (abortControllerRef.current) {
@@ -118,6 +120,7 @@ export function useOptimisticSubscription({
         throw error;
       } finally {
         setIsCreating(false);
+        isCreatingRef.current = false;
         abortControllerRef.current = null;
       }
     },
@@ -133,6 +136,7 @@ export function useOptimisticSubscription({
       abortControllerRef.current = null;
     }
     setIsCreating(false);
+    isCreatingRef.current = false;
     setOptimisticSub(null);
   }, []);
 

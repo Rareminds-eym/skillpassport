@@ -6,13 +6,10 @@ compatibility_date = "2025-05-09"
 compatibility_flags = ["nodejs_compat"]
 
 # ============================================================================
-# KV NAMESPACES
+# KV NAMESPACES - REMOVED
 # ============================================================================
-# Cache KV namespace for subscription and feature access caching
-[[kv_namespaces]]
-binding = "CACHE_KV"
-id = "YOUR_KV_NAMESPACE_ID"  # Replace with actual KV namespace ID from Cloudflare dashboard
-preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID"  # Replace with preview KV namespace ID
+# KV namespaces removed to eliminate external dependencies
+# Rate limiting and caching now rely on database-level constraints
 
 # ============================================================================
 # SERVICE BINDINGS
