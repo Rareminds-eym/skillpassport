@@ -644,6 +644,9 @@ const LearnerDashboard = () => {
   const navigate = useNavigate();
   const { role: userRole } = useUserRole();
 
+  // Check if viewing someone else's profile (from QR scan) - MUST be declared early
+  const isViewingOthersProfile = location.pathname.includes("/learner/profile/");
+
   // Query user subscription data
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
 
@@ -656,6 +659,7 @@ const LearnerDashboard = () => {
 
   // State for Freemium Modal visibility based on scroll
   const [showFreemiumModal, setShowFreemiumModal] = useState(false);
+  const [hasPassedWelcomeSection, setHasPassedWelcomeSection] = useState(false);
   const welcomeSectionRef = React.useRef(null);
 
   // Intersection observer for welcome section to show Freemium Modal
@@ -665,8 +669,25 @@ const LearnerDashboard = () => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          // Show modal when welcome section is in view
-          setShowFreemiumModal(entry.isIntersecting);
+          if (entry.isIntersecting) {
+            // Welcome section is visible - show modal and mark as passed
+            setShowFreemiumModal(true);
+            setHasPassedWelcomeSection(true);
+          } else {
+            // Welcome section is not visible
+            // Check if we're above or below the welcome section
+            const rect = entry.boundingClientRect;
+            const isAboveWelcomeSection = rect.top > 0;
+
+            if (isAboveWelcomeSection && hasPassedWelcomeSection) {
+              // Scrolled back up above welcome section - hide modal
+              setShowFreemiumModal(false);
+              setHasPassedWelcomeSection(false);
+            } else if (!isAboveWelcomeSection && hasPassedWelcomeSection) {
+              // Scrolled below welcome section - keep modal visible
+              setShowFreemiumModal(true);
+            }
+          }
         });
       },
       {
@@ -682,7 +703,7 @@ const LearnerDashboard = () => {
         observer.unobserve(welcomeSectionRef.current);
       }
     };
-  }, [isFreemium, isViewingOthersProfile]);
+  }, [isFreemium, isViewingOthersProfile, hasPassedWelcomeSection]);
 
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {
@@ -706,10 +727,6 @@ const LearnerDashboard = () => {
 
   // State for view toggle (dashboard or analytics)
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'analytics'
-
-  // Check if viewing someone else's profile (from QR scan)
-  const isViewingOthersProfile =
-    location.pathname.includes("/learner/profile/");
 
   // For sticky Recent Updates: show only one when Suggested Next Steps touches it
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
