@@ -1,7 +1,7 @@
 # For detailed configuration reference documentation, visit:
 # https://supabase.com/docs/guides/local-development/cli/config
 
-project_id = "sp-4"
+project_id = "skillpassport"
 
 [api]
 enabled = true
