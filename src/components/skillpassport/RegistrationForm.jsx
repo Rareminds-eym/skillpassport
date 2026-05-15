@@ -151,7 +151,7 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
   </motion.div>
 );
 
-const TermsModal = ({ isOpen, onClose, onAccept }) => {
+const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const scrollContainerRef = useRef(null);
 
@@ -201,7 +201,7 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
               <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Registration Terms</h4>
               <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">By signing up, you agree to the following:</p>
               <ul className="text-gray-600 text-sm sm:text-base space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                <li>The registration fee is ₹{REGISTRATION_FEE} and cannot be refunded once paid.</li>
+                <li>The registration fee is ₹{registrationFee} and cannot be refunded once paid.</li>
                 <li>Your personal details will be used only for registration and official communication.</li>
                 <li>You will receive emails about your registration status and upcoming updates/events.</li>
                 <li>Access to the platform will be provided after successful verification.</li>
@@ -209,7 +209,7 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
               </ul>
               <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Payment Information</h4>
               <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6">
-                Payments are processed securely through Razorpay. Your payment details are encrypted and never stored on our servers. By making the payment, you approve the ₹{REGISTRATION_FEE} charge.
+                Payments are processed securely through Razorpay. Your payment details are encrypted and never stored on our servers. By making the payment, you approve the ₹{registrationFee} charge.
               </p>
               <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Privacy</h4>
               <p className="text-gray-600 text-sm sm:text-base">
@@ -977,6 +977,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
           setConsentGiven(true);
           if (errors.consent) setErrors(prev => ({ ...prev, consent: null }));
         }}
+        registrationFee={REGISTRATION_FEE}
       />
     </section>
   );
