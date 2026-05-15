@@ -148,8 +148,8 @@ function checkFreemiumAccess(feature: string): FeatureAccessResult {
 }
 
 /**
- * Legacy function - Check if user has access to a specific feature
- * @deprecated Use checkFeatureAccess instead
+ * Check if user has access to a specific feature based on subscription status
+ * Used for basic subscription validation
  */
 export const hasFeatureAccess = (
   subscription: any,

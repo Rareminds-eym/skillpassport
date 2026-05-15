@@ -137,21 +137,22 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       // Validate upgrade direction - fetch current plan details
       const { data: currentPlan, error: currentPlanError } = await supabase
         .from('subscription_plans')
-        .select('plan_code, pricing_matrix')
+        .select('plan_code, pricing_matrix, plan_amount')
         .eq('id', existingSubscription.plan_id)
         .single();
 
       if (!currentPlanError && currentPlan) {
-        // Get pricing from pricing_matrix or use plan_amount
-        const currentPrice = currentPlan.pricing_matrix?.annual || 0;
+        // Get pricing from pricing_matrix or fallback to plan_amount
+        const currentPrice = currentPlan.pricing_matrix?.annual || currentPlan.plan_amount || 0;
         const newPrice = parseFloat(String(plan.price));
 
-        // Prevent downgrades or lateral moves
-        if (newPrice <= currentPrice && currentPrice > 0) {
-          console.warn('[VerifyPayment] Invalid upgrade attempt:', {
+        // Prevent downgrades or lateral moves (must be a genuine upgrade)
+        if (newPrice <= currentPrice) {
+          console.warn('[VerifyPayment] Invalid upgrade attempt - downgrade or lateral move blocked:', {
             currentPlan: currentPlan.plan_code,
             currentPrice,
             newPrice,
+            userId: user.sub,
           });
           return new Response(JSON.stringify({
             error: {

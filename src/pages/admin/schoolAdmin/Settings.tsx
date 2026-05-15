@@ -2,27 +2,27 @@
 import { supabase } from "@/shared/api";
 import toast from 'react-hot-toast';
 import {
-    AcademicCapIcon,
-    ArrowDownTrayIcon,
-    ArrowPathIcon,
-    BellIcon,
-    BuildingOfficeIcon,
-    CalendarDaysIcon,
-    CheckIcon,
-    ClockIcon,
-    Cog6ToothIcon,
-    CreditCardIcon,
-    DocumentTextIcon,
-    ExclamationTriangleIcon,
-    EyeIcon,
-    EyeSlashIcon,
-    LockClosedIcon,
-    PencilSquareIcon,
-    PlusCircleIcon,
-    ShieldCheckIcon,
-    TrashIcon,
-    UserGroupIcon,
-    XMarkIcon
+  AcademicCapIcon,
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  BellIcon,
+  BuildingOfficeIcon,
+  CalendarDaysIcon,
+  CheckIcon,
+  ClockIcon,
+  Cog6ToothIcon,
+  CreditCardIcon,
+  DocumentTextIcon,
+  ExclamationTriangleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  LockClosedIcon,
+  PencilSquareIcon,
+  PlusCircleIcon,
+  ShieldCheckIcon,
+  TrashIcon,
+  UserGroupIcon,
+  XMarkIcon
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { SearchBar } from '@/shared/ui';
@@ -88,16 +88,6 @@ interface NotificationSetting {
   enabled: boolean;
 }
 
-interface AuditLog {
-  id: string;
-  timestamp: string;
-  user: string;
-  action: string;
-  module: string;
-  ip: string;
-  status: "success" | "failed";
-}
-
 interface ClassConfig {
   id: string;
   name: string;
@@ -141,9 +131,8 @@ const ModalWrapper = ({
           onClick={onClose}
         />
         <div
-          className={`relative w-full ${
-            size === "large" ? "max-w-4xl" : "max-w-2xl"
-          } transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all`}
+          className={`relative w-full ${size === "large" ? "max-w-4xl" : "max-w-2xl"
+            } transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all`}
         >
           <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
             <div className="flex-1">
@@ -196,9 +185,8 @@ const StatsCard = ({
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all ${
-        onClick ? "cursor-pointer" : ""
-      }`}
+      className={`bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-all ${onClick ? "cursor-pointer" : ""
+        }`}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">
@@ -392,9 +380,8 @@ const UserManagementModal = ({
           <input
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className={`w-full rounded-lg border ${
-              errors.name ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+            className={`w-full rounded-lg border ${errors.name ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="John Doe"
           />
         </div>
@@ -407,9 +394,8 @@ const UserManagementModal = ({
             type="email"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className={`w-full rounded-lg border ${
-              errors.email ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+            className={`w-full rounded-lg border ${errors.email ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="john@school.com"
           />
         </div>
@@ -463,9 +449,8 @@ const UserManagementModal = ({
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={`w-full rounded-lg border ${
-                  errors.password ? "border-red-300" : "border-gray-300"
-                } px-4 py-2.5 pr-10 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+                className={`w-full rounded-lg border ${errors.password ? "border-red-300" : "border-gray-300"
+                  } px-4 py-2.5 pr-10 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
                 placeholder="Min 8 characters"
               />
               <button
@@ -964,9 +949,8 @@ const AcademicYearModal = ({
           <input
             value={formData.year}
             onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-            className={`w-full rounded-lg border ${
-              errors.year ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+            className={`w-full rounded-lg border ${errors.year ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="e.g., 2025-2026"
           />
         </div>
@@ -979,9 +963,8 @@ const AcademicYearModal = ({
             type="date"
             value={formData.startDate}
             onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-            className={`w-full rounded-lg border ${
-              errors.startDate ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+            className={`w-full rounded-lg border ${errors.startDate ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
           />
         </div>
 
@@ -993,9 +976,8 @@ const AcademicYearModal = ({
             type="date"
             value={formData.endDate}
             onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-            className={`w-full rounded-lg border ${
-              errors.endDate ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+            className={`w-full rounded-lg border ${errors.endDate ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
           />
         </div>
       </div>
@@ -1312,9 +1294,8 @@ const ClassConfigModal = ({
           <input
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className={`w-full rounded-lg border ${
-              errors.name ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+            className={`w-full rounded-lg border ${errors.name ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="e.g., Class 10, Grade 9"
           />
         </div>
@@ -1376,9 +1357,8 @@ const ClassConfigModal = ({
             }
             min="1"
             max="100"
-            className={`w-full rounded-lg border ${
-              errors.capacity ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+            className={`w-full rounded-lg border ${errors.capacity ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
           />
         </div>
       </div>
@@ -1531,9 +1511,8 @@ const SubjectConfigModal = ({
           <input
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className={`w-full rounded-lg border ${
-              errors.name ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+            className={`w-full rounded-lg border ${errors.name ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="e.g., Mathematics, Physics"
           />
         </div>
@@ -1545,9 +1524,8 @@ const SubjectConfigModal = ({
           <input
             value={formData.code}
             onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-            className={`w-full rounded-lg border ${
-              errors.code ? "border-red-300" : "border-gray-300"
-            } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
+            className={`w-full rounded-lg border ${errors.code ? "border-red-300" : "border-gray-300"
+              } px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20`}
             placeholder="e.g., MATH101, PHY201"
             maxLength={10}
           />
@@ -1655,34 +1633,6 @@ const Settings = () => {
   const [editClass, setEditClass] = useState<ClassConfig | null>(null);
   const [editSubject, setEditSubject] = useState<SubjectConfig | null>(null);
   const [selectedRole, setSelectedRole] = useState<{ name: string; permissions: string[] } | null>(null);
-  const [auditTimeFilter, setAuditTimeFilter] = useState("24h");
-
-  // Filter audit logs based on time filter
-  const getFilteredAuditLogs = () => {
-    if (!auditTimeFilter || auditTimeFilter === "all") return auditLogs;
-
-    const now = new Date();
-    let cutoffDate = new Date();
-
-    switch (auditTimeFilter) {
-      case "24h":
-        cutoffDate.setHours(now.getHours() - 24);
-        break;
-      case "7d":
-        cutoffDate.setDate(now.getDate() - 7);
-        break;
-      case "30d":
-        cutoffDate.setDate(now.getDate() - 30);
-        break;
-      default:
-        return auditLogs;
-    }
-
-    return auditLogs.filter((log) => {
-      const logDate = new Date(log.timestamp);
-      return logDate >= cutoffDate;
-    });
-  };
 
   // Users State
   const [users, setUsers] = useState<User[]>([]);
@@ -1729,9 +1679,6 @@ const Settings = () => {
     "Career Counselor": [],
   });
 
-  // Audit Logs State
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-
   // Fetch current school ID and data
   useEffect(() => {
     fetchCurrentSchool();
@@ -1743,7 +1690,6 @@ const Settings = () => {
       fetchSchoolClasses();
       fetchAcademicYears();
       fetchSubjects();
-      fetchAuditLogs();
       fetchRolePermissions();
       fetchNotificationSettings();
     }
@@ -1753,7 +1699,7 @@ const Settings = () => {
     try {
       setLoading(true);
       const { data: { user } } = await authSessionService.getUser();
-      
+
       if (!user) {
         logger.error('No authenticated user');
         return;
@@ -1973,102 +1919,6 @@ const Settings = () => {
       setSubjects(subjectsWithClasses);
     } catch (error) {
       logger.error('Error in fetchSubjects', error);
-    }
-  };
-
-  const fetchAuditLogs = async () => {
-    if (!currentSchoolId) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("audit_logs")
-        .select(`
-          id,
-          action,
-          target,
-          payload,
-          ip,
-          createdAt,
-          actorId,
-          users!audit_logs_actorid_fkey (
-            firstName,
-            lastName,
-            email,
-            role
-          )
-        `)
-        .order("createdAt", { ascending: false })
-        .limit(50);
-
-      if (error) {
-        logger.error('Error fetching audit logs', error);
-        return;
-      }
-
-      // Filter logs to only include school_admin and school_educator roles
-      const filteredData = (data || []).filter((log: any) => {
-        if (!log.users || !log.users.role) return false;
-        return log.users.role === "school_admin" || log.users.role === "school_educator";
-      });
-
-      const mappedLogs: AuditLog[] = filteredData.map((log: any) => {
-        // Format user name
-        let userName = "System";
-        if (log.users) {
-          const fullName = `${log.users.firstName || ""} ${log.users.lastName || ""}`.trim();
-          userName = fullName || log.users.email || "Unknown User";
-        }
-
-        // Format action - convert snake_case to Title Case
-        const formattedAction = log.action
-          ? log.action
-              .split("_")
-              .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-              .join(" ")
-          : "Unknown Action";
-
-        // Format module/target - convert to readable format
-        let module = "System";
-        if (log.target) {
-          // If target is a UUID, try to get more info from payload
-          if (log.target.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-            // Check payload for more context
-            if (log.payload && typeof log.payload === "object") {
-              if (log.payload.table) {
-                module = formatTableName(log.payload.table);
-              } else if (log.payload.type) {
-                module = formatTableName(log.payload.type);
-              } else {
-                module = "Record Management";
-              }
-            } else {
-              module = "Record Management";
-            }
-          } else {
-            module = formatTableName(log.target);
-          }
-        }
-
-        // Determine status from action or payload
-        let status: "success" | "failed" = "success";
-        if (log.action?.includes("fail") || log.action?.includes("error")) {
-          status = "failed";
-        }
-
-        return {
-          id: log.id,
-          timestamp: new Date(log.createdAt).toLocaleString(),
-          user: userName,
-          action: formattedAction,
-          module: module,
-          ip: log.ip || "N/A",
-          status: status,
-        };
-      });
-
-      setAuditLogs(mappedLogs);
-    } catch (error) {
-      logger.error('Error in fetchAuditLogs', error);
     }
   };
 
@@ -2298,7 +2148,7 @@ const Settings = () => {
   // Helper function to format table names
   const formatTableName = (name: string): string => {
     if (!name) return "System";
-    
+
     // Common table name mappings
     const tableNameMap: Record<string, string> = {
       courses: "Course Management",
@@ -2364,7 +2214,7 @@ const Settings = () => {
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.role.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || user.status === statusFilter;
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
 
@@ -2588,7 +2438,7 @@ const Settings = () => {
       }
       return n;
     });
-    
+
     setNotificationSettings(updatedSettings);
     setNotificationSettingsChanged(true);
   };
@@ -2620,7 +2470,7 @@ const Settings = () => {
         [selectedRole.name]: permissions,
       };
       setRolePermissions(updatedPermissions);
-      
+
       // Save to database
       await saveRolePermissionsToDb(updatedPermissions);
     }
@@ -2834,29 +2684,6 @@ const Settings = () => {
     a.click();
   };
 
-  const handleExportAuditLogs = () => {
-    const csv = [
-      ["Timestamp", "User", "Action", "Module", "IP Address", "Status"],
-      ...auditLogs.map((log) => [
-        log.timestamp,
-        log.user,
-        log.action,
-        log.module,
-        log.ip,
-        log.status,
-      ]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `audit-logs-${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-  };
-
   // Helper Functions
   const getRoleBadgeColor = (role: UserRole) => {
     const colors: Record<UserRole, string> = {
@@ -2903,7 +2730,6 @@ const Settings = () => {
     { id: "classes" as const, label: "Classes & Subjects", icon: AcademicCapIcon },
     { id: "academic" as const, label: "Academic Year", icon: CalendarDaysIcon },
     { id: "system" as const, label: "System Config", icon: Cog6ToothIcon },
-    { id: "audit" as const, label: "Audit Logs", icon: DocumentTextIcon },
     { id: "subscription" as const, label: "Subscription", icon: CreditCardIcon },
   ];
 
@@ -2982,11 +2808,10 @@ const Settings = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
-              }`}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+                }`}
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
@@ -3370,13 +3195,12 @@ const Settings = () => {
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                              subject.type === "core"
-                                ? "bg-blue-100 text-blue-700 border-blue-300"
-                                : subject.type === "elective"
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${subject.type === "core"
+                              ? "bg-blue-100 text-blue-700 border-blue-300"
+                              : subject.type === "elective"
                                 ? "bg-purple-100 text-purple-700 border-purple-300"
                                 : "bg-green-100 text-green-700 border-green-300"
-                            }`}
+                              }`}
                           >
                             {subject.type.toUpperCase()}
                           </span>
@@ -3435,18 +3259,16 @@ const Settings = () => {
               {academicYears.map((year) => (
                 <div
                   key={year.id}
-                  className={`p-4 border rounded-lg ${
-                    year.isActive
-                      ? "bg-green-50 border-green-200"
-                      : "bg-white border-gray-200"
-                  }`}
+                  className={`p-4 border rounded-lg ${year.isActive
+                    ? "bg-green-50 border-green-200"
+                    : "bg-white border-gray-200"
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                          year.isActive ? "bg-green-100" : "bg-gray-100"
-                        }`}
+                        className={`h-10 w-10 rounded-lg flex items-center justify-center ${year.isActive ? "bg-green-100" : "bg-gray-100"
+                          }`}
                       >
                         {year.isActive ? (
                           <CheckIcon className="h-5 w-5 text-green-600" />
@@ -3502,8 +3324,8 @@ const Settings = () => {
                       <div className="p-3 bg-white rounded-lg border border-green-200">
                         <p className="text-xs text-gray-600 mb-1">Days Remaining</p>
                         <p className="text-lg font-bold text-gray-900">
-                          {year.totalDays - year.daysElapsed <= 0 
-                            ? "Completed" 
+                          {year.totalDays - year.daysElapsed <= 0
+                            ? "Completed"
                             : year.totalDays - year.daysElapsed}
                         </p>
                       </div>
@@ -3598,9 +3420,8 @@ const Settings = () => {
                       <div className="flex justify-between py-2 border-b border-gray-100">
                         <span className="text-sm text-gray-600">Multi-Factor Auth</span>
                         <span
-                          className={`text-sm font-medium ${
-                            systemConfig.enableMFA ? "text-green-600" : "text-gray-400"
-                          }`}
+                          className={`text-sm font-medium ${systemConfig.enableMFA ? "text-green-600" : "text-gray-400"
+                            }`}
                         >
                           {systemConfig.enableMFA ? "Enabled" : "Disabled"}
                         </span>
@@ -3608,11 +3429,10 @@ const Settings = () => {
                       <div className="flex justify-between py-2 border-b border-gray-100">
                         <span className="text-sm text-gray-600">Biometric Attendance</span>
                         <span
-                          className={`text-sm font-medium ${
-                            systemConfig.enableBiometric
-                              ? "text-green-600"
-                              : "text-gray-400"
-                          }`}
+                          className={`text-sm font-medium ${systemConfig.enableBiometric
+                            ? "text-green-600"
+                            : "text-gray-400"
+                            }`}
                         >
                           {systemConfig.enableBiometric ? "Enabled" : "Disabled"}
                         </span>
@@ -3669,133 +3489,6 @@ const Settings = () => {
                     />
                   </label>
                 ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "audit" && (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                    Audit Logs
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    Track all system activities and user actions
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={auditTimeFilter}
-                    onChange={(e) => setAuditTimeFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
-                  >
-                    <option value="24h">Last 24 hours</option>
-                    <option value="7d">Last 7 days</option>
-                    <option value="30d">Last 30 days</option>
-                    <option value="all">All time</option>
-                  </select>
-                  <button
-                    onClick={handleExportAuditLogs}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium inline-flex items-center gap-2"
-                  >
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                    Export
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Timestamp
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Action
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Module
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      IP Address
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {getFilteredAuditLogs().length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center justify-center">
-                          <DocumentTextIcon className="h-12 w-12 text-gray-300 mb-3" />
-                          <p className="text-sm font-medium text-gray-900 mb-1">
-                            No audit logs found
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {auditTimeFilter === "all" 
-                              ? "There are no activity logs to display yet."
-                              : "No activity logs found for the selected time period."}
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    getFilteredAuditLogs().map((log) => (
-                      <tr key={log.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">
-                          {log.timestamp}
-                        </td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {log.user}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{log.action}</td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-300">
-                            {log.module}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-xs text-gray-600 font-mono">
-                          {log.ip}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                              log.status === "success"
-                                ? "bg-green-100 text-green-700 border-green-300"
-                                : "bg-red-100 text-red-700 border-red-300"
-                            }`}
-                          >
-                            {log.status.toUpperCase()}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="p-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>Showing {getFilteredAuditLogs().length} {getFilteredAuditLogs().length === 1 ? 'entry' : 'entries'}</span>
-                <div className="flex items-center gap-2">
-                  <button className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    Previous
-                  </button>
-                  <button className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-white transition-colors">
-                    Next
-                  </button>
-                </div>
               </div>
             </div>
           </div>

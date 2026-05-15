@@ -6,7 +6,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabaseClient';
-import { validateFileSize } from './utils/fileValidation';
+import { validateFileSize } from './utils/file-validation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 
 // Storage API worker URL
@@ -31,7 +31,7 @@ export async function uploadToCloudflareR2(
   try {
     // Get authentication token
     const { data: { session }, error: sessionError } = await getCurrentSession();
-    
+
     if (sessionError || !session) {
       return {
         success: false,
@@ -51,7 +51,7 @@ export async function uploadToCloudflareR2(
     // Determine context based on folder
     const context = folder === 'courses' ? 'course_resource' : 'profile_photo';
     const sizeValidation = validateFileSize(file, { context });
-    
+
     if (!sizeValidation.valid) {
       const config = getFileSizeLimit(context);
       return {
@@ -103,7 +103,7 @@ export async function uploadToCloudflareR2(
     }
 
     const data = await response.json();
-    
+
     return {
       success: true,
       url: data.url
@@ -126,7 +126,7 @@ export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
   try {
     // Get authentication token
     const { data: { session }, error: sessionError } = await getCurrentSession();
-    
+
     if (sessionError || !session) {
       return false;
     }

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getCurrentUser } from '@/shared/api/authUtils';
-import { downloadCertificate, getCertificateProxyUrl } from '@/shared/lib/utils/certificateUtils';
+import { downloadCertificate, getCertificateProxyUrl } from '@/shared/lib/utils/certificate-utils';
 import '@/shared/lib/suppressRechartsWarnings'; // Auto-suppress Recharts warnings
 
 // Compact tooltip for chart
@@ -362,8 +362,8 @@ const AchievementBadge = ({ achievement, isUnlocked }) => {
   return (
     <div
       className={`relative flex items-center gap-2 px-3 py-2 rounded-xl border transition-all flex-shrink-0 ${isUnlocked
-          ? `${achievement.bgColor} ${achievement.borderColor}`
-          : 'bg-gray-50 border-gray-200'
+        ? `${achievement.bgColor} ${achievement.borderColor}`
+        : 'bg-gray-50 border-gray-200'
         }`}
     >
       {/* Icon with integrated progress ring */}
@@ -636,8 +636,8 @@ const CompactCourseCard = ({ course, onClick }) => {
     <div
       onClick={handleClick}
       className={`flex items-center gap-4 p-3 rounded-xl border border-gray-100 transition-all group ${isCompleted
-          ? 'cursor-default'
-          : 'hover:border-gray-200 hover:bg-gray-50 cursor-pointer'
+        ? 'cursor-default'
+        : 'hover:border-gray-200 hover:bg-gray-50 cursor-pointer'
         }`}
     >
       {/* Progress Circle */}
@@ -682,8 +682,8 @@ const CompactCourseCard = ({ course, onClick }) => {
             onClick={handleViewCertificate}
             disabled={!certificateUrl}
             className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${certificateUrl
-                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              ? 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
             title={certificateUrl ? 'View Certificate' : 'Certificate not available'}
           >
@@ -693,8 +693,8 @@ const CompactCourseCard = ({ course, onClick }) => {
             onClick={handleDownloadCertificate}
             disabled={!certificateUrl || isDownloading}
             className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${certificateUrl && !isDownloading
-                ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
               }`}
             title={certificateUrl ? 'Download Certificate' : 'Certificate not available'}
           >
@@ -703,8 +703,8 @@ const CompactCourseCard = ({ course, onClick }) => {
         </div>
       ) : (
         <button className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isNotStarted
-            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+          ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
           }`}>
           {isNotStarted ? 'Start' : 'Continue'}
         </button>

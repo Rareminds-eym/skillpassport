@@ -12,7 +12,7 @@ import { uploadInstructionFile, deleteInstructionFile } from '@/features/educato
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { supabase } from '@/shared/api/supabase';
 import { ConfirmationModal, NotificationModal } from '@/shared/ui';
-import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/fileValidation';
+import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 
 import { useUser } from '@/shared/model/authStore';

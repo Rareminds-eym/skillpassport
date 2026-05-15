@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { 
-  DocumentArrowUpIcon, 
-  XMarkIcon, 
-  PaperClipIcon 
+import {
+  DocumentArrowUpIcon,
+  XMarkIcon,
+  PaperClipIcon
 } from '@heroicons/react/24/outline';
 import NotificationModal from '@/shared/ui/NotificationModal';
-import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/fileValidation';
+import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 
 interface LearnerFileUploadProps {
@@ -31,7 +31,7 @@ const LearnerAssignmentFileUpload = React.forwardRef<
 }, ref) => {
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
-  
+
   // Notification modal state
   const [showNotification, setShowNotification] = useState(false);
   const [notification, setNotification] = useState({ type: 'info' as const, title: '', message: '' });
@@ -55,7 +55,7 @@ const LearnerAssignmentFileUpload = React.forwardRef<
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFiles(Array.from(e.dataTransfer.files));
     }
@@ -131,11 +131,10 @@ const LearnerAssignmentFileUpload = React.forwardRef<
     <div className={className}>
       {/* Upload Zone */}
       <div
-        className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${
-          dragActive 
-            ? 'border-blue-500 bg-blue-50' 
+        className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${dragActive
+            ? 'border-blue-500 bg-blue-50'
             : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
-        }`}
+          }`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
@@ -152,7 +151,7 @@ const LearnerAssignmentFileUpload = React.forwardRef<
         <p className="text-xs text-gray-400">
           {acceptedTypes.join(', ')} • Max {maxFiles} files • {getFileSizeLimit('assignment').displaySize} each
         </p>
-        
+
         <input
           id="learner-file-upload-input"
           type="file"
@@ -169,14 +168,14 @@ const LearnerAssignmentFileUpload = React.forwardRef<
           <h4 className="text-sm font-medium text-gray-900">
             Files Ready to Submit ({stagedFiles.length}/{maxFiles})
           </h4>
-          
+
           {stagedFiles.map((stagedFile) => (
-            <div 
-              key={stagedFile.id} 
+            <div
+              key={stagedFile.id}
               className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200"
             >
               <PaperClipIcon className="h-5 w-5 text-blue-600" />
-              
+
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {stagedFile.file.name}
@@ -200,13 +199,13 @@ const LearnerAssignmentFileUpload = React.forwardRef<
               </button>
             </div>
           ))}
-          
+
           <div className="text-xs text-blue-700 bg-blue-50 p-2 rounded border border-blue-200">
             <strong>Note:</strong> These files will be uploaded when you submit the assignment.
           </div>
         </div>
       )}
-      
+
       {/* Notification Modal */}
       <NotificationModal
         isOpen={showNotification}

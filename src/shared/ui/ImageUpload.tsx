@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { PhotoIcon, XMarkIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
-import { uploadToCloudflareR2 } from '../lib/cloudflareR2Upload';
+import { uploadToCloudflareR2 } from '../lib/cloudflare-r2-upload';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('image-upload');
@@ -47,13 +47,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       if (result.success && result.url) {
         onImageChange(result.url);
         setPreview(result.url);
-        
+
         // Show which storage was used
-        const storageName = result.storage === 'cloudflare-r2' 
-          ? '☁️ Cloudflare R2' 
+        const storageName = result.storage === 'cloudflare-r2'
+          ? '☁️ Cloudflare R2'
           : '📦 Supabase Storage';
         setStorageInfo(`Uploaded to ${storageName}`);
-        
+
         // Clear storage info after 3 seconds
         setTimeout(() => setStorageInfo(null), 3000);
       } else {
@@ -91,11 +91,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         {/* Preview or Upload Button */}
         <div
           onClick={!uploading ? handleClick : undefined}
-          className={`relative w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden ${
-            uploading
+          className={`relative w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden ${uploading
               ? 'border-gray-300 bg-gray-50 cursor-wait'
               : 'border-gray-300 hover:border-indigo-500 bg-gray-50 hover:bg-indigo-50 cursor-pointer transition-colors'
-          }`}
+            }`}
         >
           {preview ? (
             <>

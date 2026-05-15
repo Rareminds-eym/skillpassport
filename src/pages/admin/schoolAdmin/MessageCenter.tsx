@@ -12,7 +12,7 @@ import {
   VideoCameraIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCheck, Send } from "lucide-react";
-import { validateFileSize } from "@/shared/lib/fileValidation";
+import { validateFileSize } from "@/shared/lib/file-validation";
 import { getFileSizeLimit } from "@/shared/config/fileSizeLimits";
 
 /* ==============================
@@ -62,11 +62,10 @@ const ConversationItem = ({
   return (
     <div
       onClick={onClick}
-      className={`p-4 border-b border-gray-100 cursor-pointer transition-all ${
-        isActive 
-          ? "bg-indigo-50 border-l-4 border-l-indigo-600" 
+      className={`p-4 border-b border-gray-100 cursor-pointer transition-all ${isActive
+          ? "bg-indigo-50 border-l-4 border-l-indigo-600"
           : "hover:bg-gray-50"
-      }`}
+        }`}
     >
       <div className="flex items-start gap-3">
         <div className="relative flex-shrink-0">
@@ -88,9 +87,8 @@ const ConversationItem = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between mb-1">
             <h3
-              className={`text-sm font-semibold truncate ${
-                conversation.unreadCount > 0 ? "text-gray-900" : "text-gray-700"
-              }`}
+              className={`text-sm font-semibold truncate ${conversation.unreadCount > 0 ? "text-gray-900" : "text-gray-700"
+                }`}
             >
               {conversation.parentName}
             </h3>
@@ -104,11 +102,10 @@ const ConversationItem = ({
           </p>
 
           <p
-            className={`text-xs truncate ${
-              conversation.unreadCount > 0
+            className={`text-xs truncate ${conversation.unreadCount > 0
                 ? "text-gray-900 font-medium"
                 : "text-gray-600"
-            }`}
+              }`}
           >
             {conversation.lastMessage}
           </p>
@@ -131,11 +128,10 @@ const MessageBubble = ({
   return (
     <div className={`flex ${isSent ? "justify-end" : "justify-start"} mb-3`}>
       <div
-        className={`max-w-[75%] ${
-          isSent
+        className={`max-w-[75%] ${isSent
             ? "bg-indigo-600 text-white rounded-2xl rounded-br-md"
             : "bg-white text-gray-900 rounded-2xl rounded-bl-md border border-gray-200"
-        } px-4 py-2.5 shadow-sm`}
+          } px-4 py-2.5 shadow-sm`}
       >
         <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
           {message.text}
@@ -146,9 +142,8 @@ const MessageBubble = ({
             {message.attachments.map((attachment) => (
               <div
                 key={attachment.id}
-                className={`flex items-center gap-2 p-2 rounded-lg ${
-                  isSent ? "bg-indigo-700/50" : "bg-gray-50"
-                }`}
+                className={`flex items-center gap-2 p-2 rounded-lg ${isSent ? "bg-indigo-700/50" : "bg-gray-50"
+                  }`}
               >
                 <PaperClipIcon className="h-3.5 w-3.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">

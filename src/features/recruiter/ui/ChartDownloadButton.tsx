@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowDownTrayIcon, PhotoIcon, DocumentTextIcon, ClipboardIcon } from '@heroicons/react/24/outline';
-import { downloadChartAsPNG, downloadChartDataAsCSV, copyChartToClipboard } from '@/shared/lib/utils/chartDownload';
+import { downloadChartAsPNG, downloadChartDataAsCSV, copyChartToClipboard } from '@/shared/lib/utils/chart-download';
 
 interface ChartDownloadButtonProps {
   chartId: string;
@@ -9,11 +9,11 @@ interface ChartDownloadButtonProps {
   compact?: boolean;
 }
 
-const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({ 
-  chartId, 
-  chartName, 
+const ChartDownloadButton: React.FC<ChartDownloadButtonProps> = ({
+  chartId,
+  chartName,
   data,
-  compact = false 
+  compact = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

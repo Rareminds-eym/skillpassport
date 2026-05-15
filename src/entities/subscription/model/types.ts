@@ -9,7 +9,7 @@
 
 export type SubscriptionStatus = 'active' | 'paused' | 'cancelled' | 'expired' | 'grace_period';
 
-export type BillingCycle = 'monthly' | 'annual';
+export type BillingCycle = 'monthly' | 'annual' | 'lifetime';
 
 export type OrganizationType = 'school' | 'college' | 'university' | 'company';
 

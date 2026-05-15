@@ -7,7 +7,7 @@
  * @module utils/learnerType
  */
 
-import { getGradeLevelFromGrade } from '@/shared/lib/utils/gradeUtils';
+import { getGradeLevelFromGrade } from '@/shared/lib/utils/grade-utils';
 
 /**
  * Education levels in the system
@@ -94,7 +94,7 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
     // 2. users.role (from joined users table)
     // 3. role (fallback direct property)
     let userRole: string | null = null;
-    
+
     if (learner.userRole) {
         userRole = learner.userRole;
     } else if (learner.users) {
@@ -110,7 +110,7 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
     // Priority 1: Explicit role from users table
     // Normalize role to handle both 'learner' and potential variations
     const normalizedRole = userRole?.toLowerCase().replace(/[_\s-]/g, '');
-    
+
     if (normalizedRole === 'learner') {
         // All learner subtypes now use the canonical 'learner' role.
         // Entity-type detection (school vs college) is determined by institution IDs below.

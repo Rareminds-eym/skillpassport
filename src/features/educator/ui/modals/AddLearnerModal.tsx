@@ -6,7 +6,7 @@ import { supabase } from '@/shared/api/supabaseClient'
 import storageService from '@/shared/api/storageService'
 import userApiService from '@/entities/user/api/userApiService'
 import { usePermission } from '@/entities/user/model/usePermissions'
-import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/fileValidation'
+import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation'
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
 import { getLogger } from '@/shared/config/logging'
 
@@ -71,7 +71,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
   // Permission check - allow school_admin and college_admin by default
   const { allowed: canAddlearners, reason: addReason, loading: permissionLoading } = usePermission('Learners', 'create');
-  
+
   // Check if user is an admin (school_admin or college_admin should always be allowed)
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
@@ -240,7 +240,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setError('Invalid contact number format')
       return false
     }
-    
+
     // Enrollment Information - Required fields
     if (!formData.enrollmentNumber.trim()) {
       setError('Enrollment Number is required')
@@ -254,7 +254,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setError('Roll number must be 3-20 characters long and contain only letters, numbers, and hyphens')
       return false
     }
-    
+
     // Category & Quota Information - Required fields
     if (!formData.category.trim()) {
       setError('Category is required')
@@ -264,7 +264,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setError('Quota is required')
       return false
     }
-    
+
     // Personal Information - Required fields
     if (!formData.dateOfBirth.trim()) {
       setError('Date of Birth is required')
@@ -278,7 +278,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setError('Blood Group is required')
       return false
     }
-    
+
     // Guardian Information - Required fields
     if (!formData.guardianName.trim()) {
       setError('Guardian Name is required')
@@ -304,7 +304,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setError('Guardian Relation is required')
       return false
     }
-    
+
     // Address Information - Required fields
     if (!formData.address.trim()) {
       setError('Address is required')
@@ -330,13 +330,13 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setError('District is required')
       return false
     }
-    
+
     // Document Upload - Required (at least one document)
     if (formData.documents.length === 0) {
       setError('At least one document is required')
       return false
     }
-    
+
     return true
   }
 
@@ -391,7 +391,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             .select('school_id')
             .eq('user_id', authUser.id)
             .maybeSingle()
-          
+
           if (educator?.school_id) {
             schoolId = educator.school_id
           }
@@ -400,7 +400,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       // If collegeId not in localStorage but user is college_admin, fetch from organizations table
       if (!collegeId && userRole === 'college_admin' && authUser?.id) {
-        
+
         const { data: org } = await supabase
           .from('organizations')
           .select('id')
@@ -416,22 +416,22 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       // Refresh session to ensure we have a valid token
       const { data: refreshData, error: refreshError } = Promise.resolve({ data: null, error: null })
-      
+
       if (refreshError) {
         logger.error('Session refresh failed', refreshError as Error)
         // Try to get existing session
         const { data: { session }, error: sessionError } = await getCurrentSession()
-        
+
         if (sessionError || !session) {
-        logger.error('No valid session available', new Error('Session unavailable'))
+          logger.error('No valid session available', new Error('Session unavailable'))
           throw new Error('Authentication expired. Please login again.')
         }
-        
+
       } else {
       }
 
       const finalSession = refreshData?.session || (await getCurrentSession()).data.session
-      
+
       if (!finalSession) {
         throw new Error('No active session. Please login again.')
       }
@@ -488,9 +488,9 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
 
       // Step 2: Upload documents if any exist
-      let uploadedDocuments: Array<{name: string, url: string, size: number, type: string}> = []
+      let uploadedDocuments: Array<{ name: string, url: string, size: number, type: string }> = []
       if (formData.documents.length > 0) {
-        
+
         try {
           uploadedDocuments = await uploadDocumentsAfterlearnerCreation(formData.documents, learnerId)
         } catch (uploadError) {
@@ -511,7 +511,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       // Show success message
-      const successMsg = uploadedDocuments.length > 0 
+      const successMsg = uploadedDocuments.length > 0
         ? `✅ Learner "${formData.name}" created successfully with ${uploadedDocuments.length} document${uploadedDocuments.length > 1 ? 's' : ''}!`
         : `✅ Learner "${formData.name}" created successfully!`
 
@@ -557,34 +557,34 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   // Convert date from DD-MM-YYYY or DD/MM/YYYY to YYYY-MM-DD format
   const convertDateFormat = (dateStr: string): string | null => {
     if (!dateStr || dateStr.trim() === '') return null
-    
+
     const trimmed = dateStr.trim()
-    
+
     // If already in YYYY-MM-DD format, return as-is
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
       return trimmed
     }
-    
+
     // Handle DD-MM-YYYY or DD/MM/YYYY format
     const ddmmyyyyRegex = /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/
     const match = trimmed.match(ddmmyyyyRegex)
-    
+
     if (match) {
       const [, day, month, year] = match
       // Pad day and month with leading zeros if needed
       const paddedDay = day.padStart(2, '0')
       const paddedMonth = month.padStart(2, '0')
       const convertedDate = `${year}-${paddedMonth}-${paddedDay}`
-      
+
       // Validate the converted date
       const dateObj = new Date(convertedDate)
-      if (dateObj.getFullYear() == parseInt(year) && 
-          dateObj.getMonth() == parseInt(month) - 1 && 
-          dateObj.getDate() == parseInt(day)) {
+      if (dateObj.getFullYear() == parseInt(year) &&
+        dateObj.getMonth() == parseInt(month) - 1 &&
+        dateObj.getDate() == parseInt(day)) {
         return convertedDate
       }
     }
-    
+
     // If no pattern matches, try to parse as-is and convert
     try {
       const dateObj = new Date(trimmed)
@@ -594,7 +594,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     } catch (e) {
       logger.error('Failed to parse date format', new Error(trimmed))
     }
-    
+
     return null
   }
 
@@ -632,12 +632,12 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   }
 
   // Upload documents after learner creation
-  const uploadDocumentsAfterlearnerCreation = async (files: File[], learnerId: string): Promise<Array<{name: string, url: string, size: number, type: string}>> => {
+  const uploadDocumentsAfterlearnerCreation = async (files: File[], learnerId: string): Promise<Array<{ name: string, url: string, size: number, type: string }>> => {
     if (files.length === 0) return []
 
     setIsUploadingDocuments(true)
-    const uploadedDocs: Array<{name: string, url: string, size: number, type: string}> = []
-    
+    const uploadedDocs: Array<{ name: string, url: string, size: number, type: string }> = []
+
     // Initialize progress tracking
     const progressTracking: DocumentUploadProgress[] = files.map(file => ({
       file: file.name,
@@ -649,10 +649,10 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
-        
+
         // Update progress
-        setDocumentUploadProgress(prev => 
-          prev.map((item, idx) => 
+        setDocumentUploadProgress(prev =>
+          prev.map((item, idx) =>
             idx === i ? { ...item, progress: 10, status: 'uploading' } : item
           )
         )
@@ -660,7 +660,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         try {
           // Upload to storage service with real learner ID
           const result = await storageService.uploadlearnerDocument(file, learnerId, 'general')
-          
+
           if (result.success && result.url) {
             uploadedDocs.push({
               name: file.name,
@@ -670,33 +670,33 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             })
 
             // Update progress to completed
-            setDocumentUploadProgress(prev => 
-              prev.map((item, idx) => 
+            setDocumentUploadProgress(prev =>
+              prev.map((item, idx) =>
                 idx === i ? { ...item, progress: 100, status: 'completed' } : item
               )
             )
           } else {
             // Update progress to error
-            setDocumentUploadProgress(prev => 
-              prev.map((item, idx) => 
-                idx === i ? { 
-                  ...item, 
-                  progress: 0, 
-                  status: 'error', 
-                  error: result.error || 'Upload failed' 
+            setDocumentUploadProgress(prev =>
+              prev.map((item, idx) =>
+                idx === i ? {
+                  ...item,
+                  progress: 0,
+                  status: 'error',
+                  error: result.error || 'Upload failed'
                 } : item
               )
             )
           }
         } catch (error) {
           logger.error(`Failed to upload file: ${file.name}`, error as Error)
-          setDocumentUploadProgress(prev => 
-            prev.map((item, idx) => 
-              idx === i ? { 
-                ...item, 
-                progress: 0, 
-                status: 'error', 
-                error: error instanceof Error ? error.message : 'Upload failed' 
+          setDocumentUploadProgress(prev =>
+            prev.map((item, idx) =>
+              idx === i ? {
+                ...item,
+                progress: 0,
+                status: 'error',
+                error: error instanceof Error ? error.message : 'Upload failed'
               } : item
             )
           )
@@ -710,7 +710,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   }
 
   // Update learner record with document URLs
-  const updatelearnerDocuments = async (learnerId: string, documents: Array<{name: string, url: string, size: number, type: string}>) => {
+  const updatelearnerDocuments = async (learnerId: string, documents: Array<{ name: string, url: string, size: number, type: string }>) => {
     try {
       // Get fresh token
       const { data: { session } } = await getCurrentSession()
@@ -799,7 +799,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             if (org?.id) {
               collegeId = org.id
-                }
+            }
           }
 
           // If schoolId not in localStorage but user is school_admin, fetch from organizations table
@@ -813,7 +813,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             if (org?.id) {
               schoolId = org.id
-                }
+            }
           }
 
           // If schoolId not in localStorage, fetch from database (for educators)
@@ -1697,18 +1697,17 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-xs text-gray-700 truncate max-w-xs">{progress.file}</span>
                                 <span className="text-xs text-gray-500">
-                                  {progress.status === 'completed' ? '✓' : 
-                                   progress.status === 'error' ? '✗' : 
-                                   `${progress.progress}%`}
+                                  {progress.status === 'completed' ? '✓' :
+                                    progress.status === 'error' ? '✗' :
+                                      `${progress.progress}%`}
                                 </span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-1.5">
                                 <div
-                                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                                    progress.status === 'completed' ? 'bg-green-500' :
-                                    progress.status === 'error' ? 'bg-red-500' :
-                                    'bg-blue-500'
-                                  }`}
+                                  className={`h-1.5 rounded-full transition-all duration-300 ${progress.status === 'completed' ? 'bg-green-500' :
+                                      progress.status === 'error' ? 'bg-red-500' :
+                                        'bg-blue-500'
+                                    }`}
                                   style={{ width: `${progress.progress}%` }}
                                 ></div>
                               </div>

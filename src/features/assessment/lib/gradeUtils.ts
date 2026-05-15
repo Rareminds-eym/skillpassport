@@ -15,4 +15,4 @@ export {
   estimateGradeStartFromAcademicYear,
   getGradeLevelLabel,
   getAssessmentDuration,
-} from '@/shared/lib/utils/gradeUtils';
+} from '@/shared/lib/utils/grade-utils';

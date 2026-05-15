@@ -24,8 +24,8 @@ import {
   SectionHeaderWithActions
 } from '@/features/recruiter';
 import { TrendLineChart, AreaChart, ColumnChart, BarChart, ProgressRing, Sparkline } from '@/features/recruiter';
-import { exportSectionToCSV, exportComprehensiveAnalytics } from '@/shared/lib/exportUtils';
-import { getDataForPeriod, getPeriodDisplayName } from '@/shared/lib/mockDataGenerator';
+import { exportSectionToCSV, exportComprehensiveAnalytics } from '@/shared/lib/export-utils';
+import { getDataForPeriod, getPeriodDisplayName } from '@/shared/lib/mock-data-generator';
 
 // Phase 1: Import new components
 import { AdvancedFilters } from '@/features/recruiter';
