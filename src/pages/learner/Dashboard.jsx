@@ -657,54 +657,6 @@ const LearnerDashboard = () => {
   // State for upgrade prompt
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
 
-  // State for Freemium Modal visibility based on scroll
-  const [showFreemiumModal, setShowFreemiumModal] = useState(false);
-  const [hasPassedWelcomeSection, setHasPassedWelcomeSection] = useState(false);
-  const welcomeSectionRef = React.useRef(null);
-
-  // Intersection observer for welcome section to show Freemium Modal
-  useEffect(() => {
-    if (!isFreemium || isViewingOthersProfile || !welcomeSectionRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            // Welcome section is visible - show modal and mark as passed
-            setShowFreemiumModal(true);
-            setHasPassedWelcomeSection(true);
-          } else {
-            // Welcome section is not visible
-            // Check if we're above or below the welcome section
-            const rect = entry.boundingClientRect;
-            const isAboveWelcomeSection = rect.top > 0;
-
-            if (isAboveWelcomeSection && hasPassedWelcomeSection) {
-              // Scrolled back up above welcome section - hide modal
-              setShowFreemiumModal(false);
-              setHasPassedWelcomeSection(false);
-            } else if (!isAboveWelcomeSection && hasPassedWelcomeSection) {
-              // Scrolled below welcome section - keep modal visible
-              setShowFreemiumModal(true);
-            }
-          }
-        });
-      },
-      {
-        threshold: 0.3, // Trigger when 30% of the section is visible
-        rootMargin: '-80px 0px 0px 0px' // Offset for header
-      }
-    );
-
-    observer.observe(welcomeSectionRef.current);
-
-    return () => {
-      if (welcomeSectionRef.current) {
-        observer.unobserve(welcomeSectionRef.current);
-      }
-    };
-  }, [isFreemium, isViewingOthersProfile, hasPassedWelcomeSection]);
-
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {
     if (!startDate) return "";
@@ -2998,7 +2950,11 @@ const LearnerDashboard = () => {
           if (!card) return null;
 
           return (
-            <div key={cardName} className="h-full">
+            <div key={cardName} className="h-full relative">
+              {/* Disabled overlay for freemium users - just blur, no text */}
+              {isFreemium && !isViewingOthersProfile && (
+                <div className="absolute inset-0 rounded-xl z-10 cursor-not-allowed" />
+              )}
               {card}
             </div>
           );
@@ -3105,7 +3061,7 @@ const LearnerDashboard = () => {
           )
         ) : (
           <>
-            <LampContainer ref={welcomeSectionRef}>
+            <LampContainer>
               <motion.h1
                 initial={{ opacity: 0.5, y: 100 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -3127,36 +3083,6 @@ const LearnerDashboard = () => {
                 })()}!
               </motion.h1>
             </LampContainer>
-
-            {/* Freemium Modal - Show only for Freemium users as a blocking overlay when welcome section is in view */}
-            {isFreemium && !isViewingOthersProfile && showFreemiumModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 flex items-center justify-center mb-6">
-                      <Sparkles className="h-8 w-8 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-slate-900 mb-3">
-                      You're on Freemium
-                    </h3>
-                    <p className="text-slate-600 mb-8">
-                      Upgrade to unlock all features including assessments, course enrollment, portfolio, career AI, and more.
-                    </p>
-                    <button
-                      onClick={() => navigate('/subscription/plans?type=learner')}
-                      className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl"
-                    >
-                      View Plans & Upgrade
-                    </button>
-                  </div>
-                </motion.div>
-              </div>
-            )}
 
             {/* Institution Card - Show organization info if learner belongs to one */}
             {/* {institutionInfo && (
