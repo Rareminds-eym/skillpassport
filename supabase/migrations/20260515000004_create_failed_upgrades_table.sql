@@ -1,7 +1,7 @@
 -- Migration: Create Failed Upgrades Table
 -- Description: Tracks failed subscription upgrades for manual intervention
 -- Date: 2026-05-15
--- Fixes Issue #33: No Rollback Strategy for Failed Upgrades
+-- Fixes Issue #28: No Rollback Strategy for Failed Upgrades
 
 -- Create table to log failed upgrade attempts
 CREATE TABLE IF NOT EXISTS failed_upgrades (

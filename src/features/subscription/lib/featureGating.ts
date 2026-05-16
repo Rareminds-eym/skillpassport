@@ -76,6 +76,7 @@ export function checkFeatureAccess(
     }
 
     // Graceful degradation: fail open for paid plans, fail closed for freemium
+    // This prevents legitimate users from being locked out due to transient errors
     const shouldFailOpen = userPlan !== PLAN_IDS.PAY_AS_YOU_GO;
 
     return {
