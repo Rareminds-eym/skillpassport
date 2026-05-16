@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
-import { isJwtExpiryError } from '@/shared/lib/utils/authUtils';
+import { isJwtExpiryError } from '@/shared/lib/utils/auth-utils';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**

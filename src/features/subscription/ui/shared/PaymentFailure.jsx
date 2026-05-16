@@ -79,10 +79,12 @@ function PaymentFailure() {
   const getUserFriendlyMessage = (code) => {
     const messages = {
       'BAD_REQUEST_ERROR': 'There was an issue with the payment request. Please try again.',
-      'GATEWAY_ERROR': 'Payment gateway is temporarily unavailable. Please try again later.',
+      'GATEWAY_ERROR': 'Payment system unavailable. Please try again later.',
       'SERVER_ERROR': 'Our servers encountered an error. Please try again.',
       'PAYMENT_CANCELLED': 'You cancelled the payment.',
       'PAYMENT_FAILED': 'Payment could not be processed.',
+      'PAYMENT_VERIFICATION_FAILED': 'Payment verification failed. Contact support if amount was deducted.',
+      'UPGRADE_FAILED': 'Upgrade failed. Your current plan remains active.',
       'INSUFFICIENT_FUNDS': 'Insufficient funds in your account.',
       'CARD_DECLINED': 'Your card was declined. Please try a different payment method.',
       'INVALID_CARD': 'Invalid card details. Please check and try again.',

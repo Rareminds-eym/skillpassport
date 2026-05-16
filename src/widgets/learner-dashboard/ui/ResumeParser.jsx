@@ -8,7 +8,7 @@ import { saveResumeToTables } from '@/features/digital-portfolio';
 import { supabase } from '@/shared/api/supabaseClient';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/fileValidation';
+import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 
 // Configure PDF.js worker - using local worker file from node_modules
@@ -35,7 +35,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
   const handleArrayItemEdit = (arrayName, index, field, value) => {
     setExtractedData(prev => ({
       ...prev,
-      [arrayName]: prev[arrayName].map((item, i) => 
+      [arrayName]: prev[arrayName].map((item, i) =>
         i === index ? { ...item, [field]: value } : item
       )
     }));
@@ -81,17 +81,17 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
   const extractTextFromFile = async (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
+
       reader.onload = async (e) => {
         try {
           const content = e.target.result;
-          
+
           // For text files, directly use the content
           if (file.type === 'text/plain') {
             resolve(content);
             return;
           }
-          
+
           // For PDF files, use a simple text extraction
           if (file.type === 'application/pdf') {
             // Simple PDF text extraction (basic approach)
@@ -100,7 +100,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
             resolve(text);
             return;
           }
-          
+
           // For DOC/DOCX, we'll need to send to backend or use a library
           // For now, we'll use a simple approach
           resolve(content);
@@ -108,9 +108,9 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
           reject(err);
         }
       };
-      
+
       reader.onerror = () => reject(new Error('Failed to read file'));
-      
+
       if (file.type === 'text/plain') {
         reader.readAsText(file);
       } else {
@@ -121,10 +121,10 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
 
   const extractTextFromPDF = async (arrayBuffer) => {
     try {
-      
+
       // Create a Uint8Array from the ArrayBuffer
       const uint8Array = new Uint8Array(arrayBuffer);
-      
+
       // Load the PDF document with better error handling
       const loadingTask = pdfjsLib.getDocument({
         data: uint8Array,
@@ -132,41 +132,41 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
         cMapUrl: 'https://unpkg.com/pdfjs-dist@' + pdfjsLib.version + '/cmaps/',
         cMapPacked: true,
       });
-      
+
       const pdf = await loadingTask.promise;
-      
-      
+
+
       let fullText = '';
-      
+
       // Extract text from each page
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
         try {
           const page = await pdf.getPage(pageNum);
           const textContent = await page.getTextContent();
-          
+
           // Combine all text items with proper spacing
           const pageText = textContent.items
             .map(item => item.str)
             .filter(str => str.trim().length > 0) // Remove empty strings
             .join(' ');
-          
+
           fullText += pageText + '\n\n';
         } catch (pageError) {
           // Continue with other pages
         }
       }
-      
+
       const cleanedText = fullText.trim();
-      
+
       if (cleanedText.length === 0) {
         throw new Error('No text could be extracted from the PDF. The PDF might be image-based or encrypted.');
       }
-      
+
       return cleanedText;
     } catch (error) {
       console.error('❌ PDF extraction error:', error);
       console.error('❌ Error details:', error.message);
-      
+
       // Provide more specific error messages
       if (error.message?.includes('Invalid PDF')) {
         throw new Error('Invalid PDF file. Please ensure the file is a valid PDF document.');
@@ -194,21 +194,21 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
     try {
       // Extract text from file
       const resumeText = await extractTextFromFile(file);
-      
+
       if (!resumeText || resumeText.trim().length === 0) {
         throw new Error('Could not extract text from file');
       }
 
       // Parse resume using AI
       const parsedData = await parseResumeWithAI(resumeText);
-      
+
       if (!parsedData) {
         throw new Error('Failed to parse resume data');
       }
 
       setExtractedData(parsedData);
       setSuccess(true);
-      
+
     } catch (err) {
       console.error('Resume parsing error:', err);
       setError(err.message || 'Failed to parse resume. Please try again.');
@@ -226,7 +226,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
 
     // Use email from extracted data if userEmail is not available
     const emailToUse = userEmail || extractedData.email;
-    
+
     if (!emailToUse) {
       setError('No email available for saving');
       return;
@@ -243,7 +243,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
 
       // Try to get learner ID from passed learnerData first
       let learnerId = learnerData?.id;
-      
+
       // If not available, fetch from database
       if (!learnerId) {
         const { data: currentLearner, error: fetchError } = await supabase
@@ -257,7 +257,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
         }
 
         learnerId = currentLearner?.id;
-        
+
         // If still not found, try by email as fallback
         if (!learnerId && emailToUse) {
           const { data: learnerByEmail, error: emailError } = await supabase
@@ -265,7 +265,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
             .select('id, email, name')
             .eq('email', emailToUse)
             .single();
-          
+
           if (!emailError && learnerByEmail) {
             learnerId = learnerByEmail.id;
           }
@@ -276,11 +276,11 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
       if (learnerId) {
         // Use the new service to save data to separate tables
         const result = await saveResumeToTables(extractedData, learnerId, emailToUse);
-        
+
         if (result.success) {
           const totalSaved = Object.values(result.saved).reduce((sum, count) => sum + count, 0);
-          setSaveResult({ 
-            success: true, 
+          setSaveResult({
+            success: true,
             message: `Successfully saved ${totalSaved} records to database!`,
             details: result.saved
           });
@@ -290,7 +290,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
       } else {
         throw new Error('Learner record not found. Please ensure your profile is set up correctly.');
       }
-      
+
       // Call parent callback with extracted data
       if (onDataExtracted) {
         onDataExtracted(extractedData);
@@ -475,7 +475,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                     )}
                   </div>
                 </div>
-                
+
                 {/* Education */}
                 {extractedData.education && extractedData.education.length > 0 && (
                   <div className="bg-white p-3 rounded border">
@@ -532,7 +532,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                     ))}
                   </div>
                 )}
-                
+
                 {/* Experience */}
                 {extractedData.experience && extractedData.experience.length > 0 && (
                   <div className="bg-white p-3 rounded border">
@@ -589,7 +589,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                             <p className="text-gray-600">{exp.organization || '(no organization)'}</p>
                             <p className="text-gray-500">
                               {exp.startDate || exp.endDate ? (
-                                `${exp.startDate ? new Date(exp.startDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : '?'} - ${exp.endDate ? new Date(exp.endDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : 'Present'}`
+                                `${exp.startDate ? new Date(exp.startDate + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '?'} - ${exp.endDate ? new Date(exp.endDate + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Present'}`
                               ) : (
                                 exp.duration || '(no duration)'
                               )}
@@ -600,7 +600,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                     ))}
                   </div>
                 )}
-                
+
                 {/* Projects */}
                 {extractedData.projects && extractedData.projects.length > 0 && (
                   <div className="bg-white p-3 rounded border">
@@ -678,7 +678,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                             {proj.organization && <p className="text-gray-600">{proj.organization}</p>}
                             <p className="text-gray-600">
                               {proj.startDate || proj.endDate ? (
-                                `${proj.startDate ? new Date(proj.startDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : '?'} - ${proj.endDate ? new Date(proj.endDate + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : 'Present'}`
+                                `${proj.startDate ? new Date(proj.startDate + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '?'} - ${proj.endDate ? new Date(proj.endDate + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Present'}`
                               ) : (
                                 proj.duration || '(no duration)'
                               )}
@@ -696,7 +696,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                     ))}
                   </div>
                 )}
-                
+
                 {/* Technical Skills */}
                 {extractedData.technicalSkills && extractedData.technicalSkills.length > 0 && (
                   <div className="bg-white p-3 rounded border">
@@ -750,7 +750,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                     )}
                   </div>
                 )}
-                
+
                 {/* Soft Skills */}
                 {extractedData.softSkills && extractedData.softSkills.length > 0 && (
                   <div className="bg-white p-3 rounded border">
@@ -804,7 +804,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                     )}
                   </div>
                 )}
-                
+
                 {/* Certificates */}
                 {extractedData.certificates && extractedData.certificates.length > 0 && (
                   <div className="bg-white p-3 rounded border">
@@ -862,8 +862,8 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                             <p className="font-medium">{cert.title || '(no title)'}</p>
                             <p className="text-gray-600">
                               {cert.issuer || '(no issuer)'} | {
-                                cert.issuedOn ? 
-                                  new Date(cert.issuedOn + '-01').toLocaleDateString('en-US', {month: 'short', year: 'numeric'}) : 
+                                cert.issuedOn ?
+                                  new Date(cert.issuedOn + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) :
                                   '(no date)'
                               }
                             </p>
@@ -898,7 +898,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                 </>
               )}
             </Button>
-            
+
             {extractedData && (
               <Button
                 onClick={handleSaveToDatabase}
@@ -918,7 +918,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                 )}
               </Button>
             )}
-            
+
             {onClose && (
               <Button
                 onClick={onClose}

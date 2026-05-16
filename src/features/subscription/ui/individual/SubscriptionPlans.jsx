@@ -7,6 +7,7 @@ import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subsc
 
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from '@/shared/lib/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription/lib';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 /**
@@ -343,6 +344,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isContactSales = plan.contactSales;
+  
+  // Check if user is on Freemium plan
+  const isFreemiumUser = subscriptionData && subscriptionData.planCode === PLAN_IDS.PAY_AS_YOU_GO;
 
   // Group features by category for better display
   const featuresByCategory = useMemo(() => {
@@ -415,7 +419,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
       {isCurrentPlan && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
           <span className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-xl">
-            <Shield className="h-4 w-4" /> Active Plan
+            <Shield className="h-4 w-4" /> Current Plan
           </span>
         </div>
       )}
@@ -578,9 +582,11 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
               onClick={handleClick}
               className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${isOrganizationMode
                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
-                : isUpgrade || plan.recommended
-                  ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
-                  : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
+                : (plan.plan_code === 'pay_as_you_go' || plan.isFree)
+                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
+                  : isUpgrade || plan.recommended
+                    ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
+                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
             >
               {isOrganizationMode ? (
@@ -588,11 +594,23 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                   <Building2 className="h-5 w-5" />
                   Buy for Organization
                 </>
-              ) : (
+              ) : (plan.plan_code === 'pay_as_you_go' || plan.isFree) ? (
+                <>
+                  <Sparkles className="h-5 w-5" />
+                  Start Free
+                </>
+              ) : isFreemiumUser && !isCurrentPlan ? (
+                <>
+                  <TrendingUp className="h-5 w-5" />
+                  Upgrade
+                </>
+              ) : subscriptionData && !isCurrentPlan ? (
                 <>
                   {isUpgrade && <TrendingUp className="h-5 w-5" />}
-                  {subscriptionData ? (isUpgrade ? 'Upgrade' : isDowngrade ? 'Switch Plan' : 'Select') : 'Get Started'}
+                  {isUpgrade ? 'Upgrade' : isDowngrade ? 'Switch Plan' : 'Select Plan'}
                 </>
+              ) : (
+                'Select Plan'
               )}
             </button>
           )}
@@ -697,7 +715,43 @@ function SubscriptionPlans() {
   });
 
   // Plans exclusively from DB — zero hardcoded fallback
-  const plans = dbPlans ?? [];
+  // Add Freemium plan to plans array (fetch from DB or add fallback)
+  const plans = useMemo(() => {
+    if (!dbPlans || dbPlans.length === 0) return [];
+    
+    // Check if Freemium plan exists in DB
+    const hasFreemium = dbPlans.some(p => p.plan_code === PLAN_IDS.PAY_AS_YOU_GO);
+    
+    if (hasFreemium) {
+      // Freemium exists in DB, ensure it's first
+      const freemiumPlan = dbPlans.find(p => p.plan_code === PLAN_IDS.PAY_AS_YOU_GO);
+      const otherPlans = dbPlans.filter(p => p.plan_code !== PLAN_IDS.PAY_AS_YOU_GO);
+      return [freemiumPlan, ...otherPlans];
+    }
+    
+    // Fallback: Add Freemium plan manually if not in DB
+    const freemiumPlan = {
+      id: 'freemium-temp',
+      plan_code: PLAN_IDS.PAY_AS_YOU_GO,
+      name: 'Freemium',
+      price: 0,
+      duration: 'lifetime',
+      tagline: 'Start free, upgrade anytime',
+      positioning: 'Perfect for exploring the platform',
+      features: [
+        'Dashboard access',
+        'Profile creation',
+        'Browse opportunities/jobs',
+        'Browse courses (view only)',
+        'View pricing'
+      ],
+      recommended: false,
+      contactSales: false,
+      isFree: true
+    };
+    
+    return [freemiumPlan, ...dbPlans];
+  }, [dbPlans]);
 
   // UI-only content (titles, subtitles, CTA text). No pricing here.
   const { title, subtitle, heroMessage, ctaText } = useMemo(
@@ -833,6 +887,13 @@ function SubscriptionPlans() {
       return;
     }
 
+    // Bypass Razorpay for Freemium tier
+    if (plan.plan_code === PLAN_IDS.PAY_AS_YOU_GO || plan.isFree) {
+      console.log('✅ Freemium plan selected, creating subscription without payment');
+      handleFreemiumSubscription(plan);
+      return;
+    }
+
     // CRITICAL: Navigate to payment page SYNCHRONOUSLY
     // The old async DB validation was causing a race condition with auth state changes.
     // PaymentCompletion.jsx already validates the user in the database, so this is not needed here.
@@ -846,6 +907,49 @@ function SubscriptionPlans() {
     });
 
   }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole]);
+
+  // Handler for Freemium subscription creation
+  const handleFreemiumSubscription = useCallback(async (plan) => {
+    try {
+      const response = await fetch('/api/payments/create-freemium-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: user.id, 
+          email: user.email 
+        })
+      });
+
+      if (response.ok) {
+        // Invalidate and refresh subscription data
+        await refreshSubscription();
+        
+        // Redirect to dashboard
+        const dashboardPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || '/learner/dashboard';
+        navigate(dashboardPath, {
+          state: { 
+            message: 'Welcome! Upgrade anytime to unlock all features.' 
+          }
+        });
+        toast.success('Welcome to SkillPassport! Upgrade anytime to unlock all features.');
+      } else {
+        const errorData = await response.json();
+        console.error('Freemium subscription creation failed:', errorData);
+        
+        // Display user-friendly error message based on error type
+        if (response.status === 404) {
+          toast.error('Freemium plan is currently unavailable. Please try again later.');
+        } else if (response.status === 409) {
+          toast.error('You already have an active subscription.');
+        } else {
+          toast.error('Failed to create subscription. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Error creating Freemium subscription:', error);
+      toast.error('Failed to create subscription. Please try again.');
+    }
+  }, [user, navigate, managePath, type, userRole, refreshSubscription]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });

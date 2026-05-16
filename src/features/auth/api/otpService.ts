@@ -13,7 +13,7 @@
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { createTimeoutSignal } from '@/shared/lib/createTimeoutSignal';
+import { createTimeoutSignal } from '@/shared/lib/create-timeout-signal';
 
 const API_URL = getApiUrl('otp');
 const OTP_DIGIT_LENGTH = 4; // MessageCentral provider sends 4-digit OTPs
@@ -97,7 +97,7 @@ async function makeOtpRequest(
   const requestId = typeof crypto?.randomUUID === 'function'
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2);
-  
+
   try {
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
@@ -196,9 +196,9 @@ export async function sendOtp(phone: string, countryCode = '+91'): Promise<OtpRe
       return { success: false, error: validation };
     }
 
-    const result = await makeOtpRequest('/send', { 
-      phone: cleanPhone, 
-      countryCode 
+    const result = await makeOtpRequest('/send', {
+      phone: cleanPhone,
+      countryCode
     });
 
     return result;
@@ -241,12 +241,12 @@ export async function verifyOtp({
     // Validate inputs
     const cleanPhone = sanitisePhone(phone);
     const cleanOtp = otp.replace(/\D/g, '');
-    
+
     const validation = validatePhone(cleanPhone);
     if (validation !== true) {
       return { success: false, error: validation };
     }
-    
+
     if (cleanOtp.length !== OTP_DIGIT_LENGTH) {
       return { success: false, error: `Please enter a valid ${OTP_DIGIT_LENGTH} digit OTP code` };
     }

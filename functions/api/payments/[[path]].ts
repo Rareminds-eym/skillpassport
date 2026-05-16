@@ -26,6 +26,7 @@
  * - POST /api/payments/create-org-order
  * - POST /api/payments/verify-org-payment
  * - POST /api/payments/org-subscriptions/purchase
+ * - POST /api/payments/create-freemium-subscription
  * - GET  /api/payments/health
  */
 
@@ -71,6 +72,7 @@ import { handleCreateEventOrder } from './handlers/create-event-order';
 import { handleCreateOrgOrder } from './handlers/create-org-order';
 import { handleVerifyOrgPayment } from './handlers/verify-org-payment';
 import { handleOrgSubscriptionsPurchase } from './handlers/org-subscriptions-purchase';
+import { handleCreateFreemiumSubscription } from './handlers/create-freemium-subscription';
 
 function methodNotAllowed(): Response {
   return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -213,6 +215,11 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
   if (path === '/org-subscriptions/purchase') {
     if (method !== 'POST') return methodNotAllowed();
     return handleOrgSubscriptionsPurchase(context);
+  }
+
+  if (path === '/create-freemium-subscription') {
+    if (method !== 'POST') return methodNotAllowed();
+    return handleCreateFreemiumSubscription(context);
   }
 
   // --- GET routes ---

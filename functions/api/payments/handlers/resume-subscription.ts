@@ -11,6 +11,7 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+// Cache invalidation removed - KV dependency eliminated
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handleResumeSubscription(context);
@@ -104,6 +105,9 @@ export async function handleResumeSubscription(context: AuthenticatedContext): P
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    // Cache invalidation removed - KV dependency eliminated
+    // Client-side queries will refetch data as needed
 
     return new Response(
       JSON.stringify({ success: true, subscription: updated }),

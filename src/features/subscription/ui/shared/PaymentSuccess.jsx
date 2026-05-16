@@ -441,6 +441,7 @@ function PaymentSuccess() {
   const stateData = location.state || {};
   const verificationStatus = stateData.verificationResult ? 'success' : 'error';
   const transactionDetails = stateData.verificationResult || null;
+  const isUpgrade = transactionDetails?.is_upgrade || stateData.isUpgrade || false;
   const paymentParams = {
     razorpay_payment_id: stateData.razorpay_payment_id || '',
     razorpay_order_id: stateData.razorpay_order_id || '',
@@ -579,7 +580,12 @@ function PaymentSuccess() {
           if (mountedRef.current) setShowConfetti(false);
         }, CONFIG.CONFETTI_DURATION_MS);
 
-        
+        // Show success toast with appropriate message
+        if (isUpgrade) {
+          toast.success('Plan upgraded successfully! All features unlocked.', { duration: 4000, icon: '🎉' });
+        } else {
+          toast.success('Welcome to SkillPassport! Your subscription is now active.', { duration: 4000, icon: '🎉' });
+        }
 
         // Handle email status
         if (transactionDetails.email_sent === false) {
@@ -729,8 +735,13 @@ function PaymentSuccess() {
         <ReceiptCard
           header={
             <>
-              <h1 className="text-xl font-medium text-gray-900 mb-3">Payment Success!</h1>
+              <h1 className="text-xl font-medium text-gray-900 mb-3">
+                {isUpgrade ? 'Upgrade Successful!' : 'Payment Success!'}
+              </h1>
               <p className="text-3xl font-bold text-gray-900">{formatAmount(displayAmount)}</p>
+              {isUpgrade && (
+                <p className="text-sm text-gray-600 mt-2">Your plan has been upgraded successfully</p>
+              )}
             </>
           }
         >

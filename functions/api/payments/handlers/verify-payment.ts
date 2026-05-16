@@ -25,6 +25,7 @@ import type { PagesEnv } from '../../../../src/functions-lib/types';
 import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
 import type { EventConfirmationTemplateData } from '../../email/types';
 import { sendEmailSafe } from '../../../lib/email-service';
+// Cache invalidation removed - KV dependency eliminated
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handleVerifyPayment(context);
@@ -67,7 +68,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       body.razorpay_signature as string
     );
 
-    // Step 2: Signature is valid — create subscription in Supabase
+    // Step 2: Signature is valid — create or update subscription in Supabase
     // The worker only verifies the signature; it has no database access.
     const plan = body.plan as Record<string, unknown> | undefined;
     if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
@@ -81,46 +82,217 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
 
+    // Step 2.5: Validate plan exists and is active (server-side validation)
+    const { data: validPlan, error: planError } = await supabase
+      .from('subscription_plans')
+      .select('id, plan_code, name, is_active')
+      .eq('id', plan.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (planError || !validPlan) {
+      console.error('[VerifyPayment] Invalid or inactive plan:', plan.id, planError);
+      return new Response(JSON.stringify({
+        error: {
+          code: 'INVALID_PLAN',
+          message: 'Selected plan is not valid or inactive',
+        },
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // Calculate subscription dates
     const now = new Date();
     const endDate = new Date(now);
     const durationMonths = parseDurationMonths(plan.duration as string);
     endDate.setMonth(endDate.getMonth() + durationMonths);
 
-    // Create subscription record
-    const { data: subscription, error: subError } = await supabase
+    // Check if user has an existing active subscription (including Freemium)
+    const { data: existingSubscription, error: existingError } = await supabase
       .from('subscriptions')
-      .insert({
-        user_id: user.sub,
-        full_name: (user as unknown as Record<string, unknown>).name as string || user.email || '',
-        email: user.email || '',
-        phone: (user as unknown as Record<string, unknown>).phone as string || null,
-        plan_type: plan.name,
-        plan_amount: parseFloat(String(plan.price)),
-        billing_cycle: plan.duration,
-        razorpay_order_id: body.razorpay_order_id,
-        razorpay_payment_id: body.razorpay_payment_id,
-        status: 'active',
-        auto_renew: true,
-        subscription_start_date: now.toISOString(),
-        subscription_end_date: endDate.toISOString(),
-        plan_id: plan.id,
-        is_organization_subscription: false,
-        seat_count: 1,
-      })
-      .select()
-      .single();
+      .select('id, status, plan_id, subscription_plans(plan_code)')
+      .eq('user_id', user.sub)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (existingError) {
+      console.error('[VerifyPayment] Error checking existing subscription:', existingError);
+    }
+
+    let subscription;
+    let subError;
+    let isUpgrade = false;
+    let originalSubscriptionState: any = null;
+
+    // If user has an existing subscription, update it (upgrade flow)
+    if (existingSubscription) {
+      isUpgrade = true;
+      console.log('[VerifyPayment] Upgrading existing subscription:', existingSubscription.id);
+
+      // Store original subscription state for rollback
+      originalSubscriptionState = { ...existingSubscription };
+
+      // Validate upgrade direction - fetch current plan details
+      const { data: currentPlan, error: currentPlanError } = await supabase
+        .from('subscription_plans')
+        .select('plan_code, pricing_matrix, plan_amount')
+        .eq('id', existingSubscription.plan_id)
+        .single();
+
+      if (!currentPlanError && currentPlan) {
+        // Get pricing from pricing_matrix or fallback to plan_amount
+        const currentPrice = currentPlan.pricing_matrix?.annual || currentPlan.plan_amount || 0;
+        const newPrice = parseFloat(String(plan.price));
+
+        // Prevent downgrades or lateral moves (must be a genuine upgrade)
+        if (newPrice <= currentPrice) {
+          console.warn('[VerifyPayment] Invalid upgrade attempt - downgrade or lateral move blocked:', {
+            currentPlan: currentPlan.plan_code,
+            currentPrice,
+            newPrice,
+            userId: user.sub,
+          });
+          return new Response(JSON.stringify({
+            error: {
+              code: 'INVALID_UPGRADE',
+              message: 'Cannot downgrade or lateral move. Please contact support for plan changes.',
+            },
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      try {
+        const { data: updatedSub, error: updateError } = await supabase
+          .from('subscriptions')
+          .update({
+            plan_type: plan.name,
+            plan_amount: parseFloat(String(plan.price)),
+            billing_cycle: plan.duration,
+            razorpay_order_id: body.razorpay_order_id,
+            razorpay_payment_id: body.razorpay_payment_id,
+            subscription_start_date: now.toISOString(),
+            subscription_end_date: endDate.toISOString(),
+            plan_id: plan.id,
+            auto_renew: true,
+            updated_at: now.toISOString(),
+          })
+          .eq('id', existingSubscription.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+
+        subscription = updatedSub;
+        subError = null;
+      } catch (error) {
+        // Upgrade failed - log for manual intervention
+        subError = error;
+
+        // Log failed upgrade to database
+        const { data: failedUpgradeLog } = await supabase
+          .from('failed_upgrades')
+          .insert({
+            user_id: user.sub,
+            subscription_id: existingSubscription.id,
+            razorpay_order_id: body.razorpay_order_id as string,
+            razorpay_payment_id: body.razorpay_payment_id as string,
+            original_plan_id: existingSubscription.plan_id,
+            target_plan_id: plan.id as string,
+            amount_paid: parseFloat(String(plan.price)),
+            error_message: error instanceof Error ? error.message : String(error),
+            error_details: {
+              timestamp: new Date().toISOString(),
+              endpoint: '/api/payments/verify-payment',
+              originalState: originalSubscriptionState,
+              targetPlan: plan,
+            },
+            resolution_status: 'pending',
+          })
+          .select('id')
+          .single();
+
+        const supportTicketId = failedUpgradeLog?.id || 'MANUAL_REVIEW_REQUIRED';
+
+        console.error('[VerifyPayment] Upgrade failed - logged for manual intervention:', {
+          userId: user.sub,
+          subscriptionId: existingSubscription.id,
+          supportTicketId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    } else {
+      // No existing subscription, create new one
+      console.log('[VerifyPayment] Creating new subscription for user:', user.sub);
+
+      const { data: newSub, error: insertError } = await supabase
+        .from('subscriptions')
+        .insert({
+          user_id: user.sub,
+          full_name: (user as unknown as Record<string, unknown>).name as string || user.email || '',
+          email: user.email || '',
+          phone: (user as unknown as Record<string, unknown>).phone as string || null,
+          plan_type: plan.name,
+          plan_amount: parseFloat(String(plan.price)),
+          billing_cycle: plan.duration,
+          razorpay_order_id: body.razorpay_order_id,
+          razorpay_payment_id: body.razorpay_payment_id,
+          status: 'active',
+          auto_renew: true,
+          subscription_start_date: now.toISOString(),
+          subscription_end_date: endDate.toISOString(),
+          plan_id: plan.id,
+          is_organization_subscription: false,
+          seat_count: 1,
+        })
+        .select()
+        .single();
+
+      subscription = newSub;
+      subError = insertError;
+    }
 
     if (subError) {
-      console.error('[VerifyPayment] Failed to create subscription:', subError);
-      // Signature is verified but subscription creation failed — return partial success (207)
+      console.error('[VerifyPayment] Failed to create/update subscription:', subError);
+
+      // For upgrades, we've already logged to failed_upgrades table
+      // For new subscriptions, log error with context
+      if (!isUpgrade) {
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          userId: user.sub,
+          errorType: 'SUBSCRIPTION_CREATION_FAILED',
+          errorMessage: 'Payment verified but subscription creation failed',
+          context: {
+            planCode: plan.plan_code || plan.name,
+            endpoint: '/api/payments/verify-payment',
+            statusCode: 207,
+            razorpay_order_id: body.razorpay_order_id,
+            razorpay_payment_id: body.razorpay_payment_id,
+            dbError: subError.message,
+          },
+        }));
+      }
+
+      // Signature is verified but subscription operation failed — return partial success (207)
       return new Response(JSON.stringify({
         success: true,
-        ...verifyResult,
+        payment_verified: true,
         subscription_created: false,
+        subscription_upgraded: isUpgrade ? false : undefined,
+        ...verifyResult,
         error: {
-          code: 'SUBSCRIPTION_CREATE_FAILED',
-          message: 'Payment verified but subscription creation failed. Please contact support.',
+          code: isUpgrade ? 'UPGRADE_FAILED' : 'SUBSCRIPTION_CREATE_FAILED',
+          message: isUpgrade
+            ? 'Payment verified but upgrade failed. Support will contact you within 24 hours.'
+            : 'Payment verified but subscription creation failed. Please contact support.',
+          support_ticket_id: isUpgrade && originalSubscriptionState
+            ? 'Check failed_upgrades table'
+            : undefined,
           details: subError.message,
         },
       }), {
@@ -140,7 +312,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         amount: parseFloat(String(plan.price)),
         currency: 'INR',
         status: 'completed',
-        transaction_type: 'subscription',
+        transaction_type: isUpgrade ? 'upgrade' : 'subscription',
         is_bulk_purchase: false,
         seat_count: 1,
       });
@@ -177,32 +349,32 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
       const receiptData: ReceiptData = {
         transaction: {
-          payment_id:        body.razorpay_payment_id as string,
-          order_id:          body.razorpay_order_id as string,
-          amount:            parseFloat(String(plan.price)),
-          currency:          'INR',
-          payment_method:    'Card',
+          payment_id: body.razorpay_payment_id as string,
+          order_id: body.razorpay_order_id as string,
+          amount: parseFloat(String(plan.price)),
+          currency: 'INR',
+          payment_method: 'Card',
           payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-          status:            'Success',
+          status: 'Success',
         },
         subscription: {
-          plan_name:                  subscription.plan_type,
-          plan_type:                  subscription.plan_type,
-          billing_cycle:              subscription.billing_cycle,
-          subscription_start_date:    subscription.subscription_start_date,
-          subscription_end_date:      subscription.subscription_end_date,
+          plan_name: subscription.plan_type,
+          plan_type: subscription.plan_type,
+          billing_cycle: subscription.billing_cycle,
+          subscription_start_date: subscription.subscription_start_date,
+          subscription_end_date: subscription.subscription_end_date,
         },
         user: {
-          name:  learner?.name || subscription.full_name || '',
+          name: learner?.name || subscription.full_name || '',
           email: subscription.email || user.email || '',
           phone: subscription.phone || undefined,
         },
         company: {
-          name:    'Rareminds',
+          name: 'Rareminds',
           address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
-          phone:   '+91 9902326951',
-          email:   'marketing@rareminds.in',
-          taxId:   'GSTIN: 29ABCDE1234F1Z5',
+          phone: '+91 9902326951',
+          email: 'marketing@rareminds.in',
+          taxId: 'GSTIN: 29ABCDE1234F1Z5',
         },
         generatedAt: new Date().toLocaleString('en-IN'),
         logoBytes,
@@ -212,9 +384,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       const pdfBytes = await generateReceiptPDF(receiptData);
 
       // Build R2 key: payment_pdf/user_{userId8}/{paymentId}_{timestamp}.pdf
-      const shortUserId   = user.sub.substring(0, 8);
+      const shortUserId = user.sub.substring(0, 8);
       const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
-      const timestamp     = Date.now();
+      const timestamp = Date.now();
       receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
       const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
 
@@ -250,19 +422,23 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       console.error('[VerifyPayment] Failed to send payment confirmation email (non-critical):', emailErr);
     }
 
+    // Cache invalidation removed - KV dependency eliminated
+    // Client-side queries will refetch data as needed
+
     // Return combined result
     return new Response(JSON.stringify({
       success: true,
       ...verifyResult,
       subscription_created: true,
-      receipt_url:  receiptUrl,
-      receipt_key:  receiptKey,
+      receipt_url: receiptUrl,
+      receipt_key: receiptKey,
+      is_upgrade: isUpgrade,
       subscription: {
-        id:         subscription.id,
-        status:     subscription.status,
-        plan_name:  subscription.plan_type,
+        id: subscription.id,
+        status: subscription.status,
+        plan_name: subscription.plan_type,
         start_date: subscription.subscription_start_date,
-        end_date:   subscription.subscription_end_date,
+        end_date: subscription.subscription_end_date,
       },
     }), {
       status: 200,

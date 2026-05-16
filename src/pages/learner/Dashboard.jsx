@@ -1,5 +1,6 @@
 import {
   ChartBarIcon,
+  LockClosedIcon,
   RectangleStackIcon,
 } from "@heroicons/react/24/outline";
 import {
@@ -71,21 +72,24 @@ import {
   trainingData,
 } from "@/shared/lib/test/mockData";
 import { useOpportunities } from '@/features/opportunities';
-import { 
-  useLearnerProfile, 
-  useLearnerPortfolio, 
-  useLearnerActivity, 
-  useLearnerMessages, 
+import {
+  useLearnerProfile,
+  useLearnerPortfolio,
+  useLearnerActivity,
+  useLearnerMessages,
   useLearnerDashboard,
   useLearnerAssessment,
   useLearnerAIRecommendations
 } from "@/features/learner-profile";
-import { useLearnerMessageNotifications, useLearnerUnreadCount,useLearnerDataByEmail } from '@/entities/learner';
+import { useLearnerMessageNotifications, useLearnerUnreadCount, useLearnerDataByEmail } from '@/entities/learner';
 import { useLearnerAchievements } from '@/entities/learner';
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
 import { supabase } from '@/shared/api/supabaseClient';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { useUserRole } from '@/shared/model/authStore';
+import { useSubscriptionQuery } from '@/features/subscription/model';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
@@ -236,10 +240,10 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
               </Badge>
             )}
             <Badge className={`text-xs ${isFactoryVisit
-                ? '!bg-blue-100 !text-blue-600'
-                : isInternship
-                  ? '!bg-green-100 !text-green-600'
-                  : '!bg-purple-100 !text-purple-600'
+              ? '!bg-blue-100 !text-blue-600'
+              : isInternship
+                ? '!bg-green-100 !text-green-600'
+                : '!bg-purple-100 !text-purple-600'
               }`}>
               {isFactoryVisit ? 'Visit' : isInternship ? 'Internship' : 'Job'}
             </Badge>
@@ -295,7 +299,7 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
     const matchScore = selectedOpportunity.matchScore;
 
     return createPortal(
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-200">
+      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-200 backdrop-blur-sm">
         <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 px-6 py-5">
@@ -320,10 +324,10 @@ const OpportunitiesCardContent = ({ opportunities, learnerData, navigate, matche
                     </Badge>
                   )}
                   <Badge className={`text-xs ${isFactoryVisit
-                      ? '!bg-blue-100 !text-blue-600'
-                      : isInternship
-                        ? '!bg-green-100 !text-green-600'
-                        : '!bg-purple-100 !text-purple-600'
+                    ? '!bg-blue-100 !text-blue-600'
+                    : isInternship
+                      ? '!bg-green-100 !text-green-600'
+                      : '!bg-purple-100 !text-purple-600'
                     }`}>
                     {isFactoryVisit ? 'Industrial Visit' : isInternship ? 'Internship' : 'Full-Time Job'}
                   </Badge>
@@ -640,6 +644,19 @@ const LearnerDashboard = () => {
   const navigate = useNavigate();
   const { role: userRole } = useUserRole();
 
+  // Check if viewing someone else's profile (from QR scan) - MUST be declared early
+  const isViewingOthersProfile = location.pathname.includes("/learner/profile/");
+
+  // Query user subscription data
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
+
+  // Check if user is on Freemium plan
+  const isFreemium = subscriptionData?.plan === PLAN_IDS.PAY_AS_YOU_GO;
+  const userPlan = subscriptionData?.plan || PLAN_IDS.PAY_AS_YOU_GO;
+
+  // State for upgrade prompt
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {
     if (!startDate) return "";
@@ -662,10 +679,6 @@ const LearnerDashboard = () => {
 
   // State for view toggle (dashboard or analytics)
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'analytics'
-
-  // Check if viewing someone else's profile (from QR scan)
-  const isViewingOthersProfile =
-    location.pathname.includes("/learner/profile/");
 
   // For sticky Recent Updates: show only one when Suggested Next Steps touches it
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
@@ -756,7 +769,7 @@ const LearnerDashboard = () => {
   // Get update functions from useLearnerDataByEmail hook (for all sections)
   // Only call the hook if we have a userEmail
   const learnerDataByEmailHook = useLearnerDataByEmail(userEmail);
-  
+
   const {
     updateProfile: updateProfileFromHook,
     updateEducation: updateEducationFromHook,
@@ -770,48 +783,48 @@ const LearnerDashboard = () => {
   } = learnerDataByEmailHook || {};
 
   // Use real update functions from useLearnerDataByEmail hook with fallbacks
-  const updateProfile = updateProfileFromHook || (async () => { 
-   
+  const updateProfile = updateProfileFromHook || (async () => {
+
     toast.error('Unable to save: User email not available');
     return { success: false, error: 'User email not available' };
   });
-  const updateEducation = updateEducationFromHook || (async () => { 
-   
+  const updateEducation = updateEducationFromHook || (async () => {
+
     toast.error('Unable to save: User email not available');
     return { success: false, error: 'User email not available' };
   });
-  const updateTraining = updateTrainingFromHook || (async () => { 
-   
+  const updateTraining = updateTrainingFromHook || (async () => {
+
     toast.error('Unable to save: User email not available');
     return { success: false, error: 'User email not available' };
   });
-  const updateExperience = updateExperienceFromHook || (async () => { 
-   
+  const updateExperience = updateExperienceFromHook || (async () => {
+
     toast.error('Unable to save: User email not available');
     return { success: false, error: 'User email not available' };
   });
-  const updateSkills = updateSkillsFromHook || (async () => { 
-    
+  const updateSkills = updateSkillsFromHook || (async () => {
+
     toast.error('Unable to save: User email not available');
     return { success: false, error: 'User email not available' };
   });
-  const updateTechnicalSkills = updateTechnicalSkillsFromHook || (async () => { 
-    
+  const updateTechnicalSkills = updateTechnicalSkillsFromHook || (async () => {
+
     toast.error('Unable to save: User email not available');
     return { success: false, error: 'User email not available' };
   });
-  const updateSoftSkills = updateSoftSkillsFromHook || (async () => { 
-   
+  const updateSoftSkills = updateSoftSkillsFromHook || (async () => {
+
     toast.error('Unable to save: User email not available');
     return { success: false, error: 'User email not available' };
   });
-  const updateProjects = updateProjectsFromHook || (async () => { 
-    
+  const updateProjects = updateProjectsFromHook || (async () => {
+
     toast.error('Unable to save: User email not available');
     return { success: false, error: 'User email not available' };
   });
-  const updateCertificates = updateCertificatesFromHook || (async () => { 
-    
+  const updateCertificates = updateCertificatesFromHook || (async () => {
+
     toast.error('Unable to save: User email not available');
     return { success: false, error: 'User email not available' };
   });
@@ -860,13 +873,20 @@ const LearnerDashboard = () => {
     loading: aiLoading,
     cached: aiCached,
     fallback: aiFallback,
-  } = useLearnerAIRecommendations({ 
+  } = useLearnerAIRecommendations({
     enabled: !isViewingOthersProfile,
-    autoFetch: true 
+    autoFetch: true
   });
 
   // Check if user is a learner
   const isLearnerUser = isLearner(learnerData);
+
+  // Check feature access for analytics (placed here after all data is loaded)
+  const canAccessAnalytics = useMemo(() => {
+    if (!userPlan) return false;
+    const analyticsAccessResult = checkFeatureAccess(userPlan, 'analytics', [], {}, userEmail);
+    return analyticsAccessResult.hasAccess;
+  }, [userPlan, userEmail]);
 
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -960,7 +980,7 @@ const LearnerDashboard = () => {
       .map((education) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
         if (education.has_pending_edit && education.verified_data) {
-          
+
           return {
             ...education,
             // Use verified_data for display (old approved version)
@@ -1112,7 +1132,7 @@ const LearnerDashboard = () => {
       .map((exp) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
         if (exp.has_pending_edit && exp.verified_data) {
-         
+
 
           return {
             ...exp,
@@ -1328,7 +1348,7 @@ const LearnerDashboard = () => {
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
-       
+
       } catch (err) {
         // Handle error silently
       }
@@ -1379,29 +1399,29 @@ const LearnerDashboard = () => {
   }, [learnerData, tableTraining, tableCertificates, tableProjects, tableExperience]);
 
   // Dedicated save handlers for each card type (matching Settings pattern)
-  
+
   // Projects save handler
   const handleProjectsSave = async (projectsList) => {
     try {
       const result = await updateProjects(projectsList);
-      
+
       if (!result) {
         throw new Error('No response from update function');
       }
-      
+
       if (result.success) {
         // Refresh projects from table
         if (refreshProjects) {
           await refreshProjects();
         }
-        
+
         toast.success("Projects updated successfully");
         return { success: true };
       } else {
         throw new Error(result.error || 'Failed to update projects');
       }
     } catch (error) {
-    
+
       toast.error(error.message || "Failed to save projects");
       return { success: false, error: error.message };
     }
@@ -1411,24 +1431,24 @@ const LearnerDashboard = () => {
   const handleCertificatesSave = async (certificatesList) => {
     try {
       const result = await updateCertificates(certificatesList);
-      
+
       if (!result) {
         throw new Error('No response from update function');
       }
-      
+
       if (result.success) {
         // Refresh certificates from table
         if (refreshCertificates) {
           await refreshCertificates();
         }
-        
+
         toast.success("Certificates updated successfully");
         return { success: true };
       } else {
         throw new Error(result.error || 'Failed to update certificates');
       }
     } catch (error) {
-    
+
       toast.error(error.message || "Failed to save certificates");
       return { success: false, error: error.message };
     }
@@ -1438,24 +1458,24 @@ const LearnerDashboard = () => {
   const handleEducationSave = async (educationList) => {
     try {
       const result = await updateEducation(educationList);
-      
+
       if (!result) {
         throw new Error('No response from update function');
       }
-      
+
       if (result.success) {
         // Refresh education from table
         if (refreshEducation) {
           await refreshEducation();
         }
-        
+
         toast.success("Education updated successfully");
         return { success: true };
       } else {
         throw new Error(result.error || 'Failed to update education');
       }
     } catch (error) {
-      
+
       toast.error(error.message || "Failed to save education");
       return { success: false, error: error.message };
     }
@@ -1465,24 +1485,24 @@ const LearnerDashboard = () => {
   const handleTrainingSave = async (trainingList) => {
     try {
       const result = await updateTraining(trainingList);
-      
+
       if (!result) {
         throw new Error('No response from update function');
       }
-      
+
       if (result.success) {
         // Refresh training from table
         if (refreshTraining) {
           await refreshTraining();
         }
-        
+
         toast.success("Training updated successfully");
         return { success: true };
       } else {
         throw new Error(result.error || 'Failed to update training');
       }
     } catch (error) {
-    
+
       toast.error(error.message || "Failed to save training");
       return { success: false, error: error.message };
     }
@@ -1492,24 +1512,24 @@ const LearnerDashboard = () => {
   const handleExperienceSave = async (experienceList) => {
     try {
       const result = await updateExperience(experienceList);
-      
+
       if (!result) {
         throw new Error('No response from update function');
       }
-      
+
       if (result.success) {
         // Refresh experience from table
         if (refreshExperience) {
           await refreshExperience();
         }
-        
+
         toast.success("Experience updated successfully");
         return { success: true };
       } else {
         throw new Error(result.error || 'Failed to update experience');
       }
     } catch (error) {
-   
+
       toast.error(error.message || "Failed to save experience");
       return { success: false, error: error.message };
     }
@@ -1523,26 +1543,26 @@ const LearnerDashboard = () => {
         ...skill,
         type: "technical"
       }));
-      
+
       const result = await updateSkills(skillsWithType);
-      
+
       if (!result) {
         throw new Error('No response from update function');
       }
-      
+
       if (result.success) {
         // Refresh technical skills from table
         if (refreshTechnicalSkills) {
           await refreshTechnicalSkills();
         }
-        
+
         toast.success("Technical skills updated successfully");
         return { success: true };
       } else {
         throw new Error(result.error || 'Failed to update technical skills');
       }
     } catch (error) {
-    
+
       toast.error(error.message || "Failed to save technical skills");
       return { success: false, error: error.message };
     }
@@ -1552,24 +1572,24 @@ const LearnerDashboard = () => {
   const handleSoftSkillsSave = async (skillsList) => {
     try {
       const result = await updateSoftSkills(skillsList);
-      
+
       if (!result) {
         throw new Error('No response from update function');
       }
-      
+
       if (result.success) {
         // Refresh soft skills from table
         if (refreshSoftSkills) {
           await refreshSoftSkills();
         }
-        
+
         toast.success("Soft skills updated successfully");
         return { success: true };
       } else {
         throw new Error(result.error || 'Failed to update soft skills');
       }
     } catch (error) {
-     
+
       toast.error(error.message || "Failed to save soft skills");
       return { success: false, error: error.message };
     }
@@ -1577,7 +1597,7 @@ const LearnerDashboard = () => {
 
   // Technical Skills toggle enabled handler
   const handleToggleTechnicalSkillEnabled = async (skillId) => {
- 
+
     const skill = tableTechnicalSkills.find(s => s.id === skillId);
 
     if (!skill) {
@@ -2903,7 +2923,7 @@ const LearnerDashboard = () => {
       "technicalSkills",
       "softSkills"
     ];
-    
+
     return cards;
   }, [learnerData]);
 
@@ -2925,12 +2945,16 @@ const LearnerDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
         {threeByThreeCards.map((cardName, index) => {
           const cardKey = cardNameMapping[cardName];
-          
+
           const card = allCards[cardKey];
           if (!card) return null;
 
           return (
-            <div key={cardName} className="h-full">
+            <div key={cardName} className="h-full relative">
+              {/* Disabled overlay for freemium users - just blur, no text */}
+              {isFreemium && !isViewingOthersProfile && (
+                <div className="absolute inset-0 rounded-xl z-10 cursor-not-allowed" />
+              )}
               {card}
             </div>
           );
@@ -2981,10 +3005,19 @@ const LearnerDashboard = () => {
                 {/* Analytics Tab */}
                 <button
                   data-tour="analytics-tab"
-                  onClick={() => setActiveView('analytics')}
-                  className={`relative text-left p-3 sm:p-4 rounded-lg transition-all ${activeView === 'analytics'
-                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
-                    : 'bg-white hover:bg-gray-50'
+                  onClick={() => {
+                    if (!canAccessAnalytics) {
+                      setShowUpgradePrompt(true);
+                    } else {
+                      setActiveView('analytics');
+                    }
+                  }}
+                  disabled={!canAccessAnalytics}
+                  className={`relative text-left p-3 sm:p-4 rounded-lg transition-all ${!canAccessAnalytics
+                    ? 'bg-gray-50 opacity-60 cursor-not-allowed'
+                    : activeView === 'analytics'
+                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
+                      : 'bg-white hover:bg-gray-50'
                     }`}
                 >
                   <div className="flex items-start gap-2 sm:gap-3">
@@ -2994,10 +3027,15 @@ const LearnerDashboard = () => {
                         }`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h1 className={`font-bold text-base sm:text-lg ${activeView === 'analytics' ? 'text-blue-600' : 'text-gray-900'
-                        }`}>
-                        Analytics
-                      </h1>
+                      <div className="flex items-center gap-2">
+                        <h1 className={`font-bold text-base sm:text-lg ${activeView === 'analytics' ? 'text-blue-600' : 'text-gray-900'
+                          }`}>
+                          Analytics
+                        </h1>
+                        {!canAccessAnalytics && (
+                          <LockClosedIcon className="w-4 h-4 text-gray-400" />
+                        )}
+                      </div>
                       <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
                         Track your learning progress and performance insights
                       </p>
@@ -3369,6 +3407,42 @@ const LearnerDashboard = () => {
           data={Array.isArray(tableCertificates) && tableCertificates.length > 0 ? tableCertificates : userData.certificates}
           onSave={handleCertificatesSave}
         />
+      )}
+
+      {/* Upgrade Prompt Modal for Analytics */}
+      {showUpgradePrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[9999] backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+          >
+            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
+              <LockClosedIcon className="w-6 h-6 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-center mb-2">Upgrade Required</h3>
+            <p className="text-gray-600 text-center mb-6">
+              Analytics is not available on the Freemium plan. Upgrade to a paid plan to track your learning progress and performance insights.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUpgradePrompt(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowUpgradePrompt(false);
+                  navigate('/subscription/plans?type=learner');
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                View Plans
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

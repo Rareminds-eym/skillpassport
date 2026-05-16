@@ -82,6 +82,8 @@ legacy-peer-deps=true
 @rareminds-eym:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${NPM_TOKEN}
 ```
+Windows(powershell): $env:NPM_TOKEN="key"
+Linux: export NPM_TOKEN=<github installation key>
 
 **Note**: You need to export the `NPM_TOKEN` environment variable in your shell using a GitHub Personal Access Token (PAT) that has `read:packages` permissions before running `npm install`.
 

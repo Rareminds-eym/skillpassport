@@ -6,6 +6,12 @@ compatibility_date = "2025-05-09"
 compatibility_flags = ["nodejs_compat"]
 
 # ============================================================================
+# KV NAMESPACES - REMOVED
+# ============================================================================
+# KV namespaces removed to eliminate external dependencies
+# Rate limiting and caching now rely on database-level constraints
+
+# ============================================================================
 # SERVICE BINDINGS
 # ============================================================================
 # Payment worker — called via RPC (WorkerEntrypoint), zero-latency, no JWT needed.

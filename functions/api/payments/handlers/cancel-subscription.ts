@@ -10,6 +10,7 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+// Cache invalidation removed - KV dependency eliminated
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const url = new URL(context.request.url);
@@ -52,6 +53,9 @@ export async function handleCancelSubscription(context: AuthenticatedContext, su
     // Call payment-worker via RPC — worker validates ID format and calls Razorpay
     const worker = getPaymentWorker(env);
     const subscription = await worker.cancelSubscription(subscriptionId);
+
+    // Cache invalidation removed - KV dependency eliminated
+    // Client-side queries will refetch data as needed
 
     return new Response(JSON.stringify({ success: true, subscription }), {
       status: 200,

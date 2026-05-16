@@ -6,34 +6,34 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Re-export from utils directory
-export { 
-  copyChartToClipboard, 
-  downloadChartAsPNG, 
-  downloadChartDataAsCSV 
-} from './utils/chartDownload';
+export {
+  copyChartToClipboard,
+  downloadChartAsPNG,
+  downloadChartDataAsCSV
+} from './utils/chart-download';
 
-export { 
-  getValidationErrorMessage, 
-  validateFileSize, 
-  validateMultipleFiles 
-} from './utils/fileValidation';
+export {
+  getValidationErrorMessage,
+  validateFileSize,
+  validateMultipleFiles
+} from './utils/file-validation';
 
-export type { 
-  FileValidationOptions, 
-  FileValidationResult 
-} from './utils/fileValidation';
+export type {
+  FileValidationOptions,
+  FileValidationResult
+} from './utils/file-validation';
 
-export { 
-  getBrowserFingerprint, 
-  getDeviceContext 
+export {
+  getBrowserFingerprint,
+  getDeviceContext
 } from './utils/fingerprint';
 
 export { formatStreamId } from './utils/formatters';
 
-export { 
-  convertISBN10to13, 
-  formatISBN, 
-  validateISBN 
-} from './utils/isbnValidator';
+export {
+  convertISBN10to13,
+  formatISBN,
+  validateISBN
+} from './utils/isbn-validator';
 
-export { waitForElement } from './utils/domHelpers';
+export { waitForElement } from './utils/dom-helpers';

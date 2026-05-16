@@ -128,7 +128,7 @@
 //             <p className="text-indigo-100 text-sm font-medium mb-2">
 //               {opportunity.company_name}
 //             </p>
-            
+
 //             {/* Quick Meta */}
 //             <div className="flex items-center gap-3 text-xs text-indigo-200">
 //               <div className="flex items-center gap-1">
@@ -186,7 +186,7 @@
 
 //       {/* Scrollable Content */}
 //       <div className="flex-1 overflow-y-auto p-6 space-y-5 max-h-[calc(100vh-350px)]">
-        
+
 //         {/* About the Role */}
 //         {opportunity.description && (
 //           <div>
@@ -215,7 +215,7 @@
 //                 </div>
 //               </div>
 //             )}
-            
+
 //             {/* Deadline - Right */}
 //             {opportunity.deadline && (
 //               <div className="flex items-center gap-2.5">
@@ -245,7 +245,7 @@
 //               Required Skills
 //               <span className="text-xs font-normal text-gray-500">({skills.length})</span>
 //             </h2>
-            
+
 //             <div className="flex flex-wrap gap-2">
 //               {(showAllSkills ? skills : skills.slice(0, 8)).map((skill, idx) => (
 //                 <span 
@@ -256,7 +256,7 @@
 //                 </span>
 //               ))}
 //             </div>
-            
+
 //             {skills.length > 8 && (
 //               <button 
 //                 onClick={() => setShowAllSkills(!showAllSkills)}
@@ -396,7 +396,7 @@
 //             {!isApplied && !isApplying && (
 //               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 group-hover:translate-x-full transition-all duration-500 -translate-x-full"></div>
 //             )}
-            
+
 //             <span className="relative z-10 flex items-center justify-center gap-2">
 //               {isApplied ? (
 //                 <>
@@ -445,7 +445,7 @@
 //             </button>
 //           )}
 //         </div>
-        
+
 //         {/* Additional Info */}
 //         <p className="text-xs text-gray-500 text-center mt-3">
 //           {isApplied ? 'Track your application in the Applications tab' : 'One-click application with your saved profile'}
@@ -466,15 +466,15 @@ import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
 
 // Application Confirmation Modal Component
-const ApplicationConfirmationModal = ({ 
-  opportunity, 
-  isOpen, 
-  onClose, 
-  onConfirm, 
-  isApplying 
+const ApplicationConfirmationModal = ({
+  opportunity,
+  isOpen,
+  onClose,
+  onConfirm,
+  isApplying
 }) => {
   const [applicationStatus, setApplicationStatus] = React.useState('confirm'); // 'confirm', 'applying', 'success'
-  
+
   // Reset status when modal opens/closes
   React.useEffect(() => {
     if (isOpen) {
@@ -506,11 +506,11 @@ const ApplicationConfirmationModal = ({
   };
 
   return ReactDOM.createPortal(
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100000]"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto"
         onClick={(e) => e.stopPropagation()}
       >
@@ -522,11 +522,11 @@ const ApplicationConfirmationModal = ({
           >
             <X className="w-4 h-4" />
           </button>
-          
+
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-white shadow-lg flex items-center justify-center overflow-hidden">
             {opportunity.company_logo ? (
-              <img 
-                src={opportunity.company_logo} 
+              <img
+                src={opportunity.company_logo}
                 alt={getDisplayName()}
                 className="w-full h-full object-cover"
               />
@@ -536,7 +536,7 @@ const ApplicationConfirmationModal = ({
               </span>
             )}
           </div>
-          
+
           <h2 className="text-xl font-bold text-white mb-2">Confirm Application</h2>
         </div>
 
@@ -577,7 +577,7 @@ const ApplicationConfirmationModal = ({
               <div>
                 <h5 className="font-semibold text-gray-900 mb-1">Ready to Apply</h5>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Your application will be submitted using your saved profile information. 
+                  Your application will be submitted using your saved profile information.
                   Make sure your profile is up to date for the best results.
                 </p>
               </div>
@@ -594,7 +594,7 @@ const ApplicationConfirmationModal = ({
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-1">External Application</h4>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    This will also open an external application page. We'll save your application 
+                    This will also open an external application page. We'll save your application
                     to your profile for tracking.
                   </p>
                 </div>
@@ -621,13 +621,12 @@ const ApplicationConfirmationModal = ({
                 }, 2000);
               }}
               disabled={isApplying || applicationStatus === 'applying' || applicationStatus === 'success'}
-              className={`flex-1 px-4 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
-                applicationStatus === 'success'
-                  ? 'bg-green-600 text-white cursor-default'
-                  : applicationStatus === 'applying'
+              className={`flex-1 px-4 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${applicationStatus === 'success'
+                ? 'bg-green-600 text-white cursor-default'
+                : applicationStatus === 'applying'
                   ? 'bg-gray-400 text-white cursor-wait'
                   : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg'
-              }`}
+                }`}
             >
               {applicationStatus === 'success' ? (
                 <>
@@ -650,7 +649,7 @@ const ApplicationConfirmationModal = ({
 
           {/* Footer Note */}
           <p className="text-xs text-gray-500 text-center mt-4">
-            {applicationStatus === 'success' 
+            {applicationStatus === 'success'
               ? '✅ Application submitted successfully! Check Applications tab to track progress.'
               : '💡 You can track your application status in the Applications tab'
             }
@@ -662,12 +661,12 @@ const ApplicationConfirmationModal = ({
   );
 };
 
-const OpportunityPreview = ({ 
-  opportunity, 
-  onClose, 
-  onApply, 
+const OpportunityPreview = ({
+  opportunity,
+  onClose,
+  onApply,
   onToggleSave,
-  isApplied = false, 
+  isApplied = false,
   isSaved = false,
   isApplying = false,
   canApplyToJobs = true,
@@ -675,7 +674,9 @@ const OpportunityPreview = ({
   missingFields = [],
   completionPercentage = 0,
   navigate,
-  learnerData
+  learnerData,
+  canAccessOpportunities = true,
+  onShowUpgradePrompt
 }) => {
   // State for expanding sections
   const [showAllRequirements, setShowAllRequirements] = React.useState(false);
@@ -763,11 +764,11 @@ const OpportunityPreview = ({
     : opportunity.description;
 
   // Determine if this is a learning internship (has extra fields)
-  const isLearningInternship = opportunity.employment_type === 'Internship' && 
+  const isLearningInternship = opportunity.employment_type === 'Internship' &&
     (opportunity.what_youll_learn || opportunity.sector || opportunity.exposure_type);
 
   // Determine if this is a regular job/internship
-  const isRegularOpportunity = opportunity.employment_type === 'FullTime' || 
+  const isRegularOpportunity = opportunity.employment_type === 'FullTime' ||
     (opportunity.employment_type === 'Internship' && !isLearningInternship);
 
   return (
@@ -795,8 +796,8 @@ const OpportunityPreview = ({
           {/* Logo */}
           <div className="w-16 h-16 rounded-2xl bg-white shadow-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
             {opportunity.company_logo ? (
-              <img 
-                src={opportunity.company_logo} 
+              <img
+                src={opportunity.company_logo}
                 alt={getDisplayName()}
                 className="w-full h-full object-cover"
               />
@@ -817,7 +818,7 @@ const OpportunityPreview = ({
                 {opportunity.company_name}
               </p>
             )}
-            
+
             {/* Quick Meta */}
             <div className="flex items-center gap-3 text-xs text-blue-200">
               <div className="flex items-center gap-1">
@@ -833,17 +834,15 @@ const OpportunityPreview = ({
 
           {/* Save Button - Hidden on mobile when close button is present, shown on desktop */}
           {onToggleSave && (
-            <button 
+            <button
               onClick={() => onToggleSave(opportunity)}
-              className={`w-9 h-9 rounded-full bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center hover:bg-opacity-30 transition-all flex-shrink-0 ${
-                onClose ? 'hidden lg:flex' : 'flex'
-              }`}
+              className={`w-9 h-9 rounded-full bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center hover:bg-opacity-30 transition-all flex-shrink-0 ${onClose ? 'hidden lg:flex' : 'flex'
+                }`}
               title={isSaved ? 'Unsave job' : 'Save job'}
             >
               <Bookmark
-                className={`w-4 h-4 transition-all ${
-                  isSaved ? 'fill-white text-white' : 'text-white'
-                }`}
+                className={`w-4 h-4 transition-all ${isSaved ? 'fill-white text-white' : 'text-white'
+                  }`}
               />
             </button>
           )}
@@ -875,7 +874,7 @@ const OpportunityPreview = ({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-6 space-y-5 max-h-[calc(100vh-350px)]">
-        
+
         {/* About the Role - Always show for all types */}
         {opportunity.description && (
           <div>
@@ -921,7 +920,7 @@ const OpportunityPreview = ({
                 </div>
               </div>
             )}
-            
+
             {opportunity.exposure_type && (
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
@@ -960,7 +959,17 @@ const OpportunityPreview = ({
         {(isLearningInternship || isRegularOpportunity || skills.length > 0 || requirements.length > 0 || responsibilities.length > 0 || benefits.length > 0) && (
           <div className="flex justify-center">
             <button
-              onClick={() => setShowDetailsModal(true)}
+              onClick={() => {
+                // Check feature access before showing details modal
+                if (!canAccessOpportunities) {
+                  console.log('[Feature Gating] Blocking job details view - Freemium user');
+                  if (onShowUpgradePrompt) {
+                    onShowUpgradePrompt();
+                  }
+                  return;
+                }
+                setShowDetailsModal(true);
+              }}
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 group"
             >
               View More Details
@@ -985,13 +994,13 @@ const OpportunityPreview = ({
 
       {/* Details Modal - Rendered via Portal */}
       {showDetailsModal && ReactDOM.createPortal(
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto" 
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 overflow-y-auto"
           style={{ zIndex: 99999, paddingTop: '2rem', paddingBottom: '2rem' }}
           onClick={() => setShowDetailsModal(false)}
         >
-          <div 
-            className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-3xl w-full my-auto flex flex-col" 
+          <div
+            className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-3xl w-full my-auto flex flex-col"
             style={{ maxHeight: 'calc(100vh - 4rem)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1009,27 +1018,27 @@ const OpportunityPreview = ({
               </button>
             </div> */}
             <div className="bg-blue-600 p-4 sm:p-6 flex items-center justify-between flex-shrink-0 sticky top-0 z-10">
-  <div className="flex-1 min-w-0 pr-4">
-    <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Complete Details</h2>
-    <h1 className="text-xl font-bold text-white line-clamp-2 leading-tight">
-      {opportunity.job_title || opportunity.title}
-    </h1>
-  </div>
-  <button
-    onClick={() => setShowDetailsModal(false)}
-    className="w-9 h-9 rounded-full bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-opacity-30 transition-all flex-shrink-0"
-  >
-    <X className="w-5 h-5" />
-  </button>
-</div>
+              <div className="flex-1 min-w-0 pr-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Complete Details</h2>
+                <h1 className="text-xl font-bold text-white line-clamp-2 leading-tight">
+                  {opportunity.job_title || opportunity.title}
+                </h1>
+              </div>
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="w-9 h-9 rounded-full bg-white bg-opacity-20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-opacity-30 transition-all flex-shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             {/* Modal Content - Dynamic Layout */}
             <div className="p-4 sm:p-6 overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 10rem)' }}>
               {(() => {
                 // Determine which fields exist for left column
-                const hasLeftColumn = opportunity.sector || opportunity.exposure_type || 
+                const hasLeftColumn = opportunity.sector || opportunity.exposure_type ||
                   (opportunity.duration_weeks || opportunity.duration_days || opportunity.total_hours) ||
-                  opportunity.what_youll_do || 
+                  opportunity.what_youll_do ||
                   (opportunity.final_artifact_type || opportunity.final_artifact_description) ||
                   opportunity.mentor_bio ||
                   (opportunity.cost_inr !== null && opportunity.cost_inr !== undefined) || opportunity.cost_note;
@@ -1039,313 +1048,313 @@ const OpportunityPreview = ({
                   skills.length > 0 || requirements.length > 0 || responsibilities.length > 0 || benefits.length > 0;
 
                 // Use single column if only one side has data, otherwise use two columns
-                const gridClass = (hasLeftColumn && hasRightColumn) 
-                  ? "grid grid-cols-1 lg:grid-cols-2 gap-5" 
+                const gridClass = (hasLeftColumn && hasRightColumn)
+                  ? "grid grid-cols-1 lg:grid-cols-2 gap-5"
                   : "max-w-3xl mx-auto space-y-5";
 
                 return (
                   <div className={gridClass}>
-                    
+
                     {/* LEFT COLUMN - Only render if has content */}
                     {hasLeftColumn && (
                       <div className="space-y-5">
-                  
-                  {/* Sector & Exposure Type */}
-                  {(opportunity.sector || opportunity.exposure_type) && (
-                    <div className="space-y-3">
-                      {opportunity.sector && (
-                        <div className="flex items-center gap-2.5">
-                          {/* <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
+
+                        {/* Sector & Exposure Type */}
+                        {(opportunity.sector || opportunity.exposure_type) && (
+                          <div className="space-y-3">
+                            {opportunity.sector && (
+                              <div className="flex items-center gap-2.5">
+                                {/* <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
                             <Briefcase className="w-4 h-4 text-white" />
                           </div> */}
-                          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <Briefcase className="w-4 h-4 text-white" />
-                        </div>
-                          <div>
-                            <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">Sector</p>
-                            <p className="text-xs text-gray-600 mb-1">{opportunity.sector}</p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {opportunity.exposure_type && (
-                        <div className="flex items-center gap-2.5">
-                          {/* <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
+                                <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                  <Briefcase className="w-4 h-4 text-white" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">Sector</p>
+                                  <p className="text-xs text-gray-600 mb-1">{opportunity.sector}</p>
+                                </div>
+                              </div>
+                            )}
+
+                            {opportunity.exposure_type && (
+                              <div className="flex items-center gap-2.5">
+                                {/* <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-md">
                             <TrendingUp className="w-4 h-4 text-white" />
                           </div> */}
-                          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <TrendingUp className="w-4 h-4 text-white" />
-                        </div>
+                                <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                  <TrendingUp className="w-4 h-4 text-white" />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">Exposure</p>
+                                  <p className="text-xs text-gray-600 mb-1">{opportunity.exposure_type}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Duration & Schedule */}
+                        {(opportunity.duration_weeks || opportunity.duration_days || opportunity.total_hours) && (
                           <div>
-                            <p className="text-xs font-bold text-gray-900 uppercase tracking-wide">Exposure</p>
-                            <p className="text-xs text-gray-600 mb-1">{opportunity.exposure_type}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Duration & Schedule */}
-                  {(opportunity.duration_weeks || opportunity.duration_days || opportunity.total_hours) && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <Clock className="w-4 h-4 text-white" />
-                        </div>
-                        Duration & Schedule
-                      </h3>
-                      <div className="grid grid-cols-3 gap-2">
-                        {opportunity.duration_weeks && (
-                          <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-100">
-                            <p className="text-xs text-gray-600 mb-1">Duration</p>
-                            <p className="text-sm font-bold text-gray-900">{opportunity.duration_weeks} weeks</p>
-                          </div>
-                        )}
-                        {opportunity.duration_days && (
-                          <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-100">
-                            <p className="text-xs text-gray-600 mb-1">Days</p>
-                            <p className="text-sm font-bold text-gray-900">{opportunity.duration_days} days</p>
-                          </div>
-                        )}
-                        {opportunity.total_hours && (
-                          <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-100">
-                            <p className="text-xs text-gray-600 mb-1">Total Hours</p>
-                            <p className="text-sm font-bold text-gray-900">{opportunity.total_hours} hours</p>
-                          </div>
-                        )}
-                      </div>
-                      {opportunity.schedule_note && (
-                        <p className="text-sm text-gray-600 mt-2 italic">📅 {opportunity.schedule_note}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* What You'll Do */}
-                  {opportunity.what_youll_do && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <Users className="w-4 h-4 text-white" />
-                        </div>
-                        What You'll Do
-                      </h3>
-                      <ul className="space-y-2">
-                        {opportunity.what_youll_do.split(/[;,]/).filter(item => item.trim()).map((item, idx) => (
-                          <li key={idx} className="flex items-start gap-2.5 text-sm text-gray-600">
-                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <Clock className="w-4 h-4 text-white" />
+                              </div>
+                              Duration & Schedule
+                            </h3>
+                            <div className="grid grid-cols-3 gap-2">
+                              {opportunity.duration_weeks && (
+                                <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-100">
+                                  <p className="text-xs text-gray-600 mb-1">Duration</p>
+                                  <p className="text-sm font-bold text-gray-900">{opportunity.duration_weeks} weeks</p>
+                                </div>
+                              )}
+                              {opportunity.duration_days && (
+                                <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-100">
+                                  <p className="text-xs text-gray-600 mb-1">Days</p>
+                                  <p className="text-sm font-bold text-gray-900">{opportunity.duration_days} days</p>
+                                </div>
+                              )}
+                              {opportunity.total_hours && (
+                                <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-100">
+                                  <p className="text-xs text-gray-600 mb-1">Total Hours</p>
+                                  <p className="text-sm font-bold text-gray-900">{opportunity.total_hours} hours</p>
+                                </div>
+                              )}
                             </div>
-                            <span className="flex-1 leading-relaxed">{item.trim()}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                            {opportunity.schedule_note && (
+                              <p className="text-sm text-gray-600 mt-2 italic">📅 {opportunity.schedule_note}</p>
+                            )}
+                          </div>
+                        )}
 
-                  {/* Final Artifact */}
-                  {(opportunity.final_artifact_type || opportunity.final_artifact_description) && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <Award className="w-4 h-4 text-white" />
-                        </div>
-                        Final Deliverable
-                      </h3>
-                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                        {opportunity.final_artifact_type && (
-                          <p className="text-sm font-bold text-gray-900 mb-1">
-                            {opportunity.final_artifact_type}
-                          </p>
+                        {/* What You'll Do */}
+                        {opportunity.what_youll_do && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <Users className="w-4 h-4 text-white" />
+                              </div>
+                              What You'll Do
+                            </h3>
+                            <ul className="space-y-2">
+                              {opportunity.what_youll_do.split(/[;,]/).filter(item => item.trim()).map((item, idx) => (
+                                <li key={idx} className="flex items-start gap-2.5 text-sm text-gray-600">
+                                  <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                                  </div>
+                                  <span className="flex-1 leading-relaxed">{item.trim()}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
-                        {opportunity.final_artifact_description && (
-                          <p className="text-sm text-gray-600">
-                            {opportunity.final_artifact_description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Mentor Information */}
-                  {opportunity.mentor_bio && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <Users className="w-4 h-4 text-white" />
-                        </div>
-                        Your Mentor
-                      </h3>
-                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {opportunity.mentor_bio}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                        {/* Final Artifact */}
+                        {(opportunity.final_artifact_type || opportunity.final_artifact_description) && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <Award className="w-4 h-4 text-white" />
+                              </div>
+                              Final Deliverable
+                            </h3>
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                              {opportunity.final_artifact_type && (
+                                <p className="text-sm font-bold text-gray-900 mb-1">
+                                  {opportunity.final_artifact_type}
+                                </p>
+                              )}
+                              {opportunity.final_artifact_description && (
+                                <p className="text-sm text-gray-600">
+                                  {opportunity.final_artifact_description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
-                  {/* Cost Information */}
-                  {(opportunity.cost_inr !== null && opportunity.cost_inr !== undefined) || opportunity.cost_note && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-green-600 flex items-center justify-center">
-                          <Star className="w-4 h-4 text-white" fill="currentColor" />
-                        </div>
-                        Program Cost
-                      </h3>
-                      <div className="p-3 bg-green-50 rounded-lg border border-green-100">
-                        {opportunity.cost_inr !== null && opportunity.cost_inr !== undefined && (
-                          <p className="text-lg font-bold text-gray-900 mb-1">
-                            {opportunity.cost_inr === 0 ? '🎉 Free' : `₹${opportunity.cost_inr.toLocaleString()}`}
-                          </p>
+                        {/* Mentor Information */}
+                        {opportunity.mentor_bio && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <Users className="w-4 h-4 text-white" />
+                              </div>
+                              Your Mentor
+                            </h3>
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                {opportunity.mentor_bio}
+                              </p>
+                            </div>
+                          </div>
                         )}
-                        {opportunity.cost_note && (
-                          <p className="text-sm text-gray-600">
-                            {opportunity.cost_note}
-                          </p>
+
+                        {/* Cost Information */}
+                        {(opportunity.cost_inr !== null && opportunity.cost_inr !== undefined) || opportunity.cost_note && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-green-600 flex items-center justify-center">
+                                <Star className="w-4 h-4 text-white" fill="currentColor" />
+                              </div>
+                              Program Cost
+                            </h3>
+                            <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                              {opportunity.cost_inr !== null && opportunity.cost_inr !== undefined && (
+                                <p className="text-lg font-bold text-gray-900 mb-1">
+                                  {opportunity.cost_inr === 0 ? '🎉 Free' : `₹${opportunity.cost_inr.toLocaleString()}`}
+                                </p>
+                              )}
+                              {opportunity.cost_note && (
+                                <p className="text-sm text-gray-600">
+                                  {opportunity.cost_note}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         )}
-                      </div>
-                    </div>
-                  )}
-                  
+
                       </div>
                     )}
-                    
+
                     {/* RIGHT COLUMN - Only render if has content */}
                     {hasRightColumn && (
                       <div className="space-y-5">
 
-                  {/* Prerequisites */}
-                  {opportunity.prerequiste && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <CheckCircle2 className="w-4 h-4 text-white" />
-                        </div>
-                        Prerequisites
-                      </h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {opportunity.prerequiste}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Safety & Parent Role */}
-                  {(opportunity.safety_note || opportunity.parent_role) && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <Star className="w-4 h-4 text-white" fill="currentColor" />
-                        </div>
-                        Important Information
-                      </h3>
-                      <div className="space-y-2">
-                        {opportunity.safety_note && (
-                          <div className="p-3 bg-blue-50 rounded-lg border border-yellow-100">
-                            <p className="text-xs font-semibold text-gray-800 mb-1">Safety Note</p>
-                            <p className="text-sm text-gray-700">{opportunity.safety_note}</p>
+                        {/* Prerequisites */}
+                        {opportunity.prerequiste && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4 text-white" />
+                              </div>
+                              Prerequisites
+                            </h3>
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                              {opportunity.prerequiste}
+                            </p>
                           </div>
                         )}
-                        {opportunity.parent_role && (
-                          <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                            <p className="text-xs font-semibold text-gray-800 mb-1">Parent/Guardian Role</p>
-                            <p className="text-sm text-gray-700">{opportunity.parent_role}</p>
+
+                        {/* Safety & Parent Role */}
+                        {(opportunity.safety_note || opportunity.parent_role) && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <Star className="w-4 h-4 text-white" fill="currentColor" />
+                              </div>
+                              Important Information
+                            </h3>
+                            <div className="space-y-2">
+                              {opportunity.safety_note && (
+                                <div className="p-3 bg-blue-50 rounded-lg border border-yellow-100">
+                                  <p className="text-xs font-semibold text-gray-800 mb-1">Safety Note</p>
+                                  <p className="text-sm text-gray-700">{opportunity.safety_note}</p>
+                                </div>
+                              )}
+                              {opportunity.parent_role && (
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                  <p className="text-xs font-semibold text-gray-800 mb-1">Parent/Guardian Role</p>
+                                  <p className="text-sm text-gray-700">{opportunity.parent_role}</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Skills Required */}
-                  {skills.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <Star className="w-4 h-4 text-white" fill="currentColor" />
-                        </div>
-                        Required Skills
-                        <span className="text-xs font-normal text-gray-500">({skills.length})</span>
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {skills.map((skill, idx) => (
-                          <span 
-                            key={idx}
-                            className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Requirements */}
-                  {requirements.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <CheckCircle2 className="w-4 h-4 text-white" />
-                        </div>
-                        Requirements
-                      </h3>
-                      <ul className="space-y-2">
-                        {requirements.map((req, idx) => (
-                          <li key={idx} className="flex items-start gap-2.5 text-sm text-gray-600">
-                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                        {/* Skills Required */}
+                        {skills.length > 0 && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <Star className="w-4 h-4 text-white" fill="currentColor" />
+                              </div>
+                              Required Skills
+                              <span className="text-xs font-normal text-gray-500">({skills.length})</span>
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                              {skills.map((skill, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
                             </div>
-                            <span className="flex-1 leading-relaxed">{req}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Responsibilities */}
-                  {responsibilities.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                          <TrendingUp className="w-4 h-4 text-white" />
-                        </div>
-                        Key Responsibilities
-                      </h3>
-                      <ul className="space-y-2">
-                        {responsibilities.map((resp, idx) => (
-                          <li key={idx} className="flex items-start gap-2.5 text-sm text-gray-600">
-                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <TrendingUp className="w-3 h-3 text-blue-600" />
-                            </div>
-                            <span className="flex-1 leading-relaxed">{resp}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Benefits */}
-                  {benefits.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-green-600 flex items-center justify-center">
-                          <Star className="w-4 h-4 text-white" fill="currentColor" />
-                        </div>
-                        Benefits & Perks
-                        <span className="text-xs font-normal text-gray-500">({benefits.length})</span>
-                      </h3>
-                      <div className="grid grid-cols-1 gap-2">
-                        {benefits.map((benefit, idx) => (
-                          <div key={idx} className="flex items-start gap-2.5 p-2.5 bg-green-50 rounded-lg border border-green-100">
-                            <Star className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" />
-                            <span className="text-sm text-gray-700 font-medium">{benefit}</span>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
+                        )}
+
+                        {/* Requirements */}
+                        {requirements.length > 0 && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4 text-white" />
+                              </div>
+                              Requirements
+                            </h3>
+                            <ul className="space-y-2">
+                              {requirements.map((req, idx) => (
+                                <li key={idx} className="flex items-start gap-2.5 text-sm text-gray-600">
+                                  <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                                  </div>
+                                  <span className="flex-1 leading-relaxed">{req}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Responsibilities */}
+                        {responsibilities.length > 0 && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                                <TrendingUp className="w-4 h-4 text-white" />
+                              </div>
+                              Key Responsibilities
+                            </h3>
+                            <ul className="space-y-2">
+                              {responsibilities.map((resp, idx) => (
+                                <li key={idx} className="flex items-start gap-2.5 text-sm text-gray-600">
+                                  <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <TrendingUp className="w-3 h-3 text-blue-600" />
+                                  </div>
+                                  <span className="flex-1 leading-relaxed">{resp}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Benefits */}
+                        {benefits.length > 0 && (
+                          <div>
+                            <h3 className="text-sm font-bold text-gray-900 mb-2.5 flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-green-600 flex items-center justify-center">
+                                <Star className="w-4 h-4 text-white" fill="currentColor" />
+                              </div>
+                              Benefits & Perks
+                              <span className="text-xs font-normal text-gray-500">({benefits.length})</span>
+                            </h3>
+                            <div className="grid grid-cols-1 gap-2">
+                              {benefits.map((benefit, idx) => (
+                                <div key={idx} className="flex items-start gap-2.5 p-2.5 bg-green-50 rounded-lg border border-green-100">
+                                  <Star className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" />
+                                  <span className="text-sm text-gray-700 font-medium">{benefit}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                       </div>
                     )}
-                    
+
                     {/* Deadline - Full Width at Bottom */}
                     {(opportunity.deadline || opportunity.closing_date) && (
                       <div className={(hasLeftColumn && hasRightColumn) ? "col-span-1 lg:col-span-2" : ""}>
@@ -1356,8 +1365,8 @@ const OpportunityPreview = ({
                           <div>
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Application Deadline</p>
                             <p className="text-sm font-bold text-gray-900">
-                              {new Date(opportunity.deadline || opportunity.closing_date).toLocaleDateString('en-US', { 
-                                month: 'long', 
+                              {new Date(opportunity.deadline || opportunity.closing_date).toLocaleDateString('en-US', {
+                                month: 'long',
                                 day: 'numeric',
                                 year: 'numeric'
                               })}
@@ -1366,7 +1375,7 @@ const OpportunityPreview = ({
                         </div>
                       </div>
                     )}
-                    
+
                   </div>
                 );
               })()}
@@ -1376,10 +1385,17 @@ const OpportunityPreview = ({
             <div className="p-4 sm:p-6 bg-gradient-to-t from-gray-50 to-white border-t border-gray-200 flex-shrink-0">
               <div className="flex gap-3">
                 {/* Primary Apply Button */}
-                <button 
+                <button
                   onClick={() => {
                     if (hasCurrentBacklogs && !isApplied) {
                       // Don't allow application if learner has current backlogs
+                      return;
+                    } else if (!canApplyToJobs && !isApplied) {
+                      // Show upgrade prompt for freemium users BEFORE application modal
+                      setShowDetailsModal(false);
+                      if (onShowUpgradePrompt) {
+                        onShowUpgradePrompt();
+                      }
                       return;
                     } else if (needsProfileCompletion && !isApplied) {
                       // Close details modal first, then show profile completion modal
@@ -1392,23 +1408,22 @@ const OpportunityPreview = ({
                     }
                   }}
                   disabled={isApplied || isApplying || hasCurrentBacklogs}
-                  className={`flex-1 relative overflow-hidden font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-md group ${
-                    isApplied
-                      ? 'bg-green-600 text-white cursor-not-allowed'
-                      : isApplying
+                  className={`flex-1 relative overflow-hidden font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-md group ${isApplied
+                    ? 'bg-green-600 text-white cursor-not-allowed'
+                    : isApplying
                       ? 'bg-gray-400 text-white cursor-wait'
                       : hasCurrentBacklogs
-                      ? 'bg-red-600 text-white cursor-not-allowed'
-                      : needsProfileCompletion
-                      ? 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-xl active:scale-[0.98]'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl active:scale-[0.98]'
-                  }`}
+                        ? 'bg-red-600 text-white cursor-not-allowed'
+                        : needsProfileCompletion
+                          ? 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-xl active:scale-[0.98]'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl active:scale-[0.98]'
+                    }`}
                 >
                   {/* Shine Effect */}
                   {!isApplied && !isApplying && !hasCurrentBacklogs && (
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 group-hover:translate-x-full transition-all duration-500 -translate-x-full"></div>
                   )}
-                  
+
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     {isApplied ? (
                       <>
@@ -1452,29 +1467,28 @@ const OpportunityPreview = ({
 
                 {/* Save Button */}
                 {onToggleSave && (
-                  <button 
+                  <button
                     onClick={() => onToggleSave(opportunity)}
                     className="w-12 h-12 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 rounded-xl transition-all flex items-center justify-center group"
                     title={isSaved ? 'Unsave job' : 'Save job'}
                   >
                     <Bookmark
-                      className={`w-5 h-5 transition-all ${
-                        isSaved ? 'fill-red-500 text-red-500' : 'text-gray-600 group-hover:text-red-500'
-                      }`}
+                      className={`w-5 h-5 transition-all ${isSaved ? 'fill-red-500 text-red-500' : 'text-gray-600 group-hover:text-red-500'
+                        }`}
                     />
                   </button>
                 )}
               </div>
-              
+
               {/* Additional Info */}
               <p className="text-xs text-gray-500 text-center mt-3">
-                {isApplied 
-                  ? '✓ Track your application in the Applications tab' 
+                {isApplied
+                  ? '✓ Track your application in the Applications tab'
                   : hasCurrentBacklogs
-                  ? '❌ Clear your current backlogs to become eligible for job applications'
-                  : needsProfileCompletion 
-                  ? '⚠️ Complete your profile to apply for jobs' 
-                  : '💡 One-click application with your saved profile'}
+                    ? '❌ Clear your current backlogs to become eligible for job applications'
+                    : needsProfileCompletion
+                      ? '⚠️ Complete your profile to apply for jobs'
+                      : '💡 One-click application with your saved profile'}
               </p>
             </div>
           </div>
@@ -1506,18 +1520,18 @@ const OpportunityPreview = ({
             >
               <X className="w-5 h-5" />
             </button>
-            
+
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-amber-600" />
             </div>
-            
+
             <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
               Complete Your Profile
             </h3>
             <p className="text-gray-600 text-center mb-4">
               Your profile is {completionPercentage || 0}% complete
             </p>
-            
+
             <div className="bg-amber-50 rounded-lg p-4 mb-6">
               <p className="text-sm font-semibold text-gray-800 mb-2">Missing Fields:</p>
               <ul className="text-sm text-gray-700 space-y-1">
@@ -1536,11 +1550,11 @@ const OpportunityPreview = ({
                 )}
               </ul>
             </div>
-            
+
             <p className="text-sm text-gray-600 text-center mb-6">
               Please complete your profile to apply for jobs
             </p>
-            
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowProfileCompletionModal(false)}

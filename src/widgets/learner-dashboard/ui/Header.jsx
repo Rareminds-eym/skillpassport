@@ -10,7 +10,9 @@ import {
   Cog6ToothIcon,
   EnvelopeIcon,
   HomeIcon,
+  LockClosedIcon,
   RocketLaunchIcon,
+  SparklesIcon,
   UserCircleIcon,
   XMarkIcon
 } from "@heroicons/react/24/outline";
@@ -26,6 +28,9 @@ import NavButton from "./NavButton";
 import { PROFILE_MENU_ITEMS } from "../config/profileMenuItems";
 
 import { useUser, useAuthActions } from '@/shared/model/authStore';
+import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 const ICON_MAP = {
   BookmarkIcon,
   Cog6ToothIcon,
@@ -36,6 +41,8 @@ const Header = ({ activeTab, setActiveTab }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showFreemiumBanner, setShowFreemiumBanner] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
   const user = useUser();
@@ -53,15 +60,46 @@ const Header = ({ activeTab, setActiveTab }) => {
   const { learnerData, loading: learnerDataLoading } = useLearnerDataByEmail(userEmail);
   const isPartOfSchoolOrCollege = !learnerDataLoading && (learnerData?.school_id || learnerData?.university_college_id) && !isLearner(learnerData);
 
-  const navigationItems = useMemo(() => [
-    { id: "training", label: "My Learning", icon: AcademicCapIcon, path: "/learner/my-learning" },
-    { id: "courses", label: "Courses", icon: BookOpenIcon, path: "/learner/courses" },
-    { id: "digital-portfolio", label: "Digital Portfolio", icon: BriefcaseIcon, path: "/learner/digital-portfolio" },
-    { id: "opportunities", label: "Opportunities", icon: RocketLaunchIcon, path: "/learner/opportunities" },
-    { id: "career-ai", label: "Career AI", icon: null, path: "/learner/career-ai" },
-    ...(isPartOfSchoolOrCollege ? [{ id: "assignments", label: "My Class", icon: ClipboardDocumentListIcon, path: "/learner/my-class" }] : []),
-    { id: "messages", label: "Messages", icon: EnvelopeIcon, path: "/learner/messages" },
-  ], [isPartOfSchoolOrCollege]);
+  // Get subscription data for feature gating
+  const subscriptionContext = useSubscriptionContext();
+  const subscription = subscriptionContext?.subscription;
+  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
+  const isFreemium = userPlan === PLAN_IDS.PAY_AS_YOU_GO;
+
+  // Map navigation items to feature keys
+  const featureKeyMap = {
+    "training": "course_enrollment",
+    "courses": "courses_listing_access",
+    "digital-portfolio": "portfolio",
+    "opportunities": "opportunities_listing_access",
+    "career-ai": "career_paths",
+    "assignments": "assessments",
+    "messages": "priority_support",
+  };
+
+  // Check feature access for each navigation item
+  const navigationItems = useMemo(() => {
+    const items = [
+      { id: "training", label: "My Learning", icon: AcademicCapIcon, path: "/learner/my-learning", featureKey: "course_enrollment" },
+      { id: "courses", label: "Courses", icon: BookOpenIcon, path: "/learner/courses", featureKey: "courses_listing_access" },
+      { id: "digital-portfolio", label: "Digital Portfolio", icon: BriefcaseIcon, path: "/learner/digital-portfolio", featureKey: "portfolio" },
+      { id: "opportunities", label: "Opportunities", icon: RocketLaunchIcon, path: "/learner/opportunities", featureKey: "opportunities_listing_access" },
+      { id: "career-ai", label: "Career AI", icon: null, path: "/learner/career-ai", featureKey: "career_paths" },
+      ...(isPartOfSchoolOrCollege ? [{ id: "assignments", label: "My Class", icon: ClipboardDocumentListIcon, path: "/learner/my-class", featureKey: "assessments" }] : []),
+      { id: "messages", label: "Messages", icon: EnvelopeIcon, path: "/learner/messages", featureKey: "priority_support" },
+    ];
+
+    // Add access check to each item
+    return items.map(item => {
+      const accessResult = checkFeatureAccess(userPlan, item.featureKey, [], {}, user?.id);
+      return {
+        ...item,
+        hasAccess: accessResult.hasAccess,
+        locked: !accessResult.hasAccess,
+        upgradeRequired: accessResult.upgradeRequired,
+      };
+    });
+  }, [isPartOfSchoolOrCollege, userPlan, user?.id]);
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target) &&
@@ -84,6 +122,13 @@ const Header = ({ activeTab, setActiveTab }) => {
   const toggleProfile = useCallback(() => setActiveModal(prev => prev === 'profile' ? null : 'profile'), []);
 
   const handleNavigation = useCallback((item) => {
+    // Check if feature is locked
+    if (item.locked) {
+      // Show upgrade prompt instead of navigating
+      setShowUpgradePrompt(true);
+      return;
+    }
+
     setActiveTab(item.id);
     navigate(item.path);
     setMobileMenuOpen(false);
@@ -111,209 +156,234 @@ const Header = ({ activeTab, setActiveTab }) => {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-      <div className="w-full">
-        <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 lg:px-8">
-
-          {/* Left: Logo */}
-          <div className="flex items-center flex-shrink-0">
-            <img
-              src="/RareMinds.webp"
-              alt="RareMinds Logo"
-              className="h-7 sm:h-8 md:h-9 lg:h-10 w-auto object-contain"
-            />
-          </div>
-
-          {/* Center: Navigation - Desktop Only (1024px+) */}
-          <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
-            <NavButton
-              onClick={handleDashboard}
-              isActive={activeTab === "dashboard"}
-              icon={HomeIcon}
-              label="Dashboard"
-            />
-            <NavButton
-              onClick={() => handleNavigation({ id: "training", path: "/learner/my-learning" })}
-              isActive={activeTab === "training"}
-              icon={AcademicCapIcon}
-              label="My Learning"
-              dataTour="my-learning-nav"
-            />
-            <NavButton
-              onClick={() => handleNavigation({ id: "courses", path: "/learner/courses" })}
-              isActive={activeTab === "courses"}
-              icon={BookOpenIcon}
-              label="Courses"
-              dataTour="courses-nav"
-            />
-            <NavButton
-              onClick={() => handleNavigation({ id: "digital-portfolio", path: "/learner/digital-portfolio" })}
-              isActive={activeTab === "digital-portfolio" || isDigitalPortfolioRoute}
-              icon={BriefcaseIcon}
-              label="Digital Portfolio"
-              dataTour="digital-portfolio-nav"
-            />
-            <NavButton
-              onClick={() => handleNavigation({ id: "opportunities", path: "/learner/opportunities" })}
-              isActive={activeTab === "opportunities"}
-              icon={RocketLaunchIcon}
-              label="Opportunities"
-              dataTour="opportunities-nav"
-            />
-            <NavButton
-              onClick={() => handleNavigation({ id: "career-ai", path: "/learner/career-ai" })}
-              isActive={activeTab === "career-ai"}
-              label="Career AI"
-              dataTour="career-ai-nav"
-            />
-            {isPartOfSchoolOrCollege && (
-              <NavButton
-                onClick={() => handleNavigation({ id: "assignments", path: "/learner/my-class" })}
-                isActive={activeTab === "assignments"}
-                icon={ClipboardDocumentListIcon}
-                label="My Class"
-              />
-            )}
-            <NavButton
-              onClick={() => handleNavigation({ id: "messages", path: "/learner/messages" })}
-              isActive={activeTab === "messages"}
-              icon={EnvelopeIcon}
-              label="Messages"
-            />
-          </nav>
-
-          {/* Right: Actions */}
-          <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
-            {/* Notifications */}
-            <div className="relative" ref={notificationRef}>
-              <button
-                onClick={toggleNotifications}
-                className="relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
-              >
-                <BellIcon className="w-5 h-5 md:w-6 md:h-6" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] md:min-w-[20px] md:h-[20px] bg-red-500 text-white text-xs font-semibold rounded-full px-1">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {activeModal === 'notifications' && (
-                <div className="absolute right-0 mt-2 z-50">
-                  <NotificationPanel
-                    isOpen={true}
-                    onClose={closeAllModals}
-                    learnerEmail={userEmail}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Profile Dropdown */}
-            <div className="relative" ref={profileRef}>
-              <button
-                onClick={toggleProfile}
-                className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
-              >
-                <UserCircleIcon className="w-5 h-5 md:w-6 md:h-6" />
-              </button>
-
-              {activeModal === 'profile' && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-xl rounded-lg z-50">
-                  <div className="py-1">
-                    {PROFILE_MENU_ITEMS.map((item) => {
-                      const Icon = ICON_MAP[item.iconName];
-                      return (
-                        <div key={item.id}>
-                          {item.isDivider && <div className="border-t border-gray-200 my-1" />}
-                          <button
-                            onClick={() => {
-                              if (item.id === 'logout') {
-                                handleLogout();
-                              } else {
-                                setActiveTab(item.id);
-                                navigate(item.path);
-                                setActiveModal(null);
-                              }
-                            }}
-                            className={`w-full flex items-center px-4 py-2 text-sm ${item.className} text-left`}
-                          >
-                            <Icon className="w-4 h-4 mr-2" />
-                            {item.label}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Mobile Menu Button */}
+    <>
+      {/* Thin Freemium Banner - Above navbar */}
+      {isFreemium && showFreemiumBanner && (
+        <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 text-white py-2 px-4 text-center text-sm font-medium sticky top-0 z-[60]">
+          <div className="flex items-center justify-center gap-2 relative">
+            <SparklesIcon className="w-4 h-4" />
+            <span>You're on Freemium Plan.</span>
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
+              onClick={() => navigate('/subscription/plans?type=learner')}
+              className="ml-2 px-3 py-0.5 bg-white text-blue-600 rounded-full text-xs font-semibold hover:bg-blue-50 transition-colors"
             >
-              {mobileMenuOpen ? (
-                <XMarkIcon className="w-5 h-5 md:w-6 md:h-6" />
-              ) : (
-                <Bars3Icon className="w-5 h-5 md:w-6 md:h-6" />
-              )}
+              Upgrade Now
+            </button>
+            {/* Close button */}
+            <button
+              onClick={() => setShowFreemiumBanner(false)}
+              className="absolute right-2 p-1 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Close banner"
+            >
+              <XMarkIcon className="w-4 h-4" />
             </button>
           </div>
         </div>
+      )}
 
-        {/* Mobile Menu - Show on tablet and mobile */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-200">
-            <div className="px-3 sm:px-4 py-3 sm:py-4 space-y-1 sm:space-y-2">
+      <header className={`bg-white border-b border-gray-200 shadow-sm sticky z-50 ${isFreemium && showFreemiumBanner ? 'top-[40px]' : 'top-0'}`}>
+        <div className="w-full">
+          <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 lg:px-8">
 
-              {/* Dashboard - Mobile */}
-              <button
+            {/* Left: Logo */}
+            <div className="flex items-center flex-shrink-0">
+              <img
+                src="/RareMinds.webp"
+                alt="RareMinds Logo"
+                className="h-7 sm:h-8 md:h-9 lg:h-10 w-auto object-contain"
+              />
+            </div>
+
+            {/* Center: Navigation - Desktop Only (1024px+) */}
+            <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
+              <NavButton
                 onClick={handleDashboard}
-                className={`w-full flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-md text-sm sm:text-base font-medium transition-colors ${activeTab === "dashboard"
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
+                isActive={activeTab === "dashboard"}
+                icon={HomeIcon}
+                label="Dashboard"
+              />
+              {navigationItems.map((item) => (
+                <NavButton
+                  key={item.id}
+                  onClick={() => handleNavigation(item)}
+                  isActive={activeTab === item.id || (item.id === "digital-portfolio" && isDigitalPortfolioRoute)}
+                  icon={item.icon}
+                  label={item.label}
+                  locked={item.locked}
+                  dataTour={`${item.id}-nav`}
+                />
+              ))}
+            </nav>
+
+            {/* Right: Actions */}
+            <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
+              {/* Notifications */}
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={toggleNotifications}
+                  className="relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
+                >
+                  <BellIcon className="w-5 h-5 md:w-6 md:h-6" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] md:min-w-[20px] md:h-[20px] bg-red-500 text-white text-xs font-semibold rounded-full px-1">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {activeModal === 'notifications' && (
+                  <div className="absolute right-0 mt-2 z-50">
+                    <NotificationPanel
+                      isOpen={true}
+                      onClose={closeAllModals}
+                      learnerEmail={userEmail}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Profile Dropdown */}
+              <div className="relative" ref={profileRef}>
+                <button
+                  onClick={toggleProfile}
+                  className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
+                >
+                  <UserCircleIcon className="w-5 h-5 md:w-6 md:h-6" />
+                </button>
+
+                {activeModal === 'profile' && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-xl rounded-lg z-50">
+                    <div className="py-1">
+                      {PROFILE_MENU_ITEMS.map((item) => {
+                        const Icon = ICON_MAP[item.iconName];
+                        return (
+                          <div key={item.id}>
+                            {item.isDivider && <div className="border-t border-gray-200 my-1" />}
+                            <button
+                              onClick={() => {
+                                if (item.id === 'logout') {
+                                  handleLogout();
+                                } else {
+                                  setActiveTab(item.id);
+                                  navigate(item.path);
+                                  setActiveModal(null);
+                                }
+                              }}
+                              className={`w-full flex items-center px-4 py-2 text-sm ${item.className} text-left`}
+                            >
+                              <Icon className="w-4 h-4 mr-2" />
+                              {item.label}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
               >
-                <HomeIcon className="h-4 sm:h-5 w-4 sm:w-5 mr-3" />
-                Dashboard
+                {mobileMenuOpen ? (
+                  <XMarkIcon className="w-5 h-5 md:w-6 md:h-6" />
+                ) : (
+                  <Bars3Icon className="w-5 h-5 md:w-6 md:h-6" />
+                )}
               </button>
+            </div>
+          </div>
 
-              {/* All Navigation Items - Mobile */}
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id ||
-                  (item.id === "digital-portfolio" && isDigitalPortfolioRoute);
+          {/* Mobile Menu - Show on tablet and mobile */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden border-t border-gray-200">
+              <div className="px-3 sm:px-4 py-3 sm:py-4 space-y-1 sm:space-y-2">
 
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavigation(item)}
-                    className={`w-full flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-md text-sm sm:text-base font-medium transition-colors ${isActive
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      }`}
-                  >
-                    {Icon ? <Icon className="h-4 sm:h-5 w-4 sm:w-5 mr-3" /> : <div className="w-4 sm:w-5 h-4 sm:h-5 mr-3" />}
-                    {item.label}
-                  </button>
-                );
-              })}
+                {/* Dashboard - Mobile */}
+                <button
+                  onClick={handleDashboard}
+                  className={`w-full flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-md text-sm sm:text-base font-medium transition-colors ${activeTab === "dashboard"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                >
+                  <HomeIcon className="h-4 sm:h-5 w-4 sm:w-5 mr-3" />
+                  Dashboard
+                </button>
+
+                {/* All Navigation Items - Mobile */}
+                {navigationItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id ||
+                    (item.id === "digital-portfolio" && isDigitalPortfolioRoute);
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavigation(item)}
+                      disabled={item.locked}
+                      className={`w-full flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-md text-sm sm:text-base font-medium transition-colors ${item.locked
+                        ? "text-gray-400 cursor-not-allowed opacity-60"
+                        : isActive
+                          ? "bg-blue-50 text-blue-700"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        }`}
+                    >
+                      {Icon ? <Icon className="h-4 sm:h-5 w-4 sm:w-5 mr-3" /> : <div className="w-4 sm:w-5 h-4 sm:h-5 mr-3" />}
+                      <span className="flex-1 text-left">{item.label}</span>
+                      {item.locked && <LockClosedIcon className="h-4 sm:h-5 w-4 sm:w-5" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Digital Portfolio Side Drawer */}
+        {isPortfolioPage && (
+          <DigitalPortfolioSideDrawer
+            isOpen={sideDrawerOpen}
+            onClose={() => setSideDrawerOpen(false)}
+            onOpen={() => setSideDrawerOpen(true)}
+          />
+        )}
+
+        {/* Upgrade Prompt Modal */}
+        {showUpgradePrompt && (
+          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 backdrop-blur-md">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
+                <LockClosedIcon className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-center mb-2">Upgrade Required</h3>
+              <p className="text-gray-600 text-center mb-6">
+                This feature is not available on the Freemium plan. Upgrade to a paid plan to unlock all features.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpgradePrompt(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUpgradePrompt(false);
+                    navigate('/subscription/plans?type=learner');
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  View Plans
+                </button>
+              </div>
             </div>
           </div>
         )}
-      </div>
-
-      {/* Digital Portfolio Side Drawer */}
-      {isPortfolioPage && (
-        <DigitalPortfolioSideDrawer
-          isOpen={sideDrawerOpen}
-          onClose={() => setSideDrawerOpen(false)}
-          onOpen={() => setSideDrawerOpen(true)}
-        />
-      )}
-    </header>
+      </header>
+    </>
   );
 };
 

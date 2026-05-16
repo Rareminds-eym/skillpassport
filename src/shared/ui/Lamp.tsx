@@ -3,15 +3,16 @@ import React from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/shared/lib/utils";
 
-export const LampContainer = ({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => {
+export const LampContainer = React.forwardRef<
+  HTMLDivElement,
+  {
+    children: React.ReactNode;
+    className?: string;
+  }
+>(({ children, className }, ref) => {
   return (
     <div
+      ref={ref}
       className={cn(
         "relative flex h-96 flex-col items-center justify-center overflow-hidden bg-white w-full rounded-md z-0",
         className
@@ -80,4 +81,6 @@ export const LampContainer = ({
       </div>
     </div>
   );
-};
+});
+
+LampContainer.displayName = "LampContainer";

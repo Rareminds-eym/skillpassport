@@ -54,13 +54,6 @@ export function parselearnerType(learnerType) {
 export function getEntityContent(learnerType) {
     const { entity, role } = parselearnerType(learnerType);
 
-    const entityNames = {
-        school: 'School',
-        college: 'College',
-        university: 'University',
-        recruitment: 'Recruitment',
-    };
-
     const roleNames = {
         learner: 'Learner',
         educator: 'Educator',
@@ -68,14 +61,13 @@ export function getEntityContent(learnerType) {
         recruiter: 'Recruiter',
     };
 
-    const entityName = entityNames[entity] || 'School';
     const roleName = roleNames[role] || 'Learner';
 
     let title;
     if (entity === 'recruitment') {
-        title = role === 'admin' ? 'Recruitment Admin Subscription Plans' : 'Recruiter Subscription Plans';
+        title = role === 'admin' ? 'Admin Subscription Plans' : 'Recruiter Subscription Plans';
     } else {
-        title = `${entityName} ${roleName} Subscription Plans`;
+        title = `${roleName} Subscription Plans`;
     }
 
     let subtitle;
@@ -93,9 +85,9 @@ export function getEntityContent(learnerType) {
         subtitle = 'Access skill assessments, build your portfolio, and connect with top recruiters through your university';
     } else {
         const subtitles = {
-            learner: `Unlock your potential with skill assessments and career opportunities tailored for ${entityName.toLowerCase()} learners`,
-            educator: `Empower your learners with powerful teaching tools and analytics designed for ${entityName.toLowerCase()} educators`,
-            admin: `Manage your institution effectively with comprehensive tools built for ${entityName.toLowerCase()} administrators`,
+            learner: `Unlock your potential with skill assessments and career opportunities`,
+            educator: `Empower your learners with powerful teaching tools and analytics`,
+            admin: `Manage your institution effectively with comprehensive tools`,
         };
         subtitle = subtitles[role] || 'Select the plan that best suits your needs';
     }

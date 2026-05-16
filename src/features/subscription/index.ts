@@ -58,6 +58,14 @@ export {
   SubscriptionSettingsSection
 } from './ui/shared';
 
+// Lazy-loaded components for better performance
+export { LazyFeatureLockOverlay } from './ui/shared/LazyFeatureLockOverlay';
+export { LazyUpgradePrompt } from './ui/shared/LazyUpgradePrompt';
+
+// Direct exports for when lazy loading is not needed
+export { FeatureLockOverlay } from './ui/shared/FeatureLockOverlay';
+export { UpgradePrompt as UpgradePromptDirect } from './ui/shared/UpgradePrompt';
+
 // DatePicker (default export)
 export { default as DatePicker } from './ui/shared/DatePicker';
 
@@ -87,8 +95,18 @@ export {
   useSubscriptionPlansData,
   useSubscriptionQuery,
   useFeatureGate,
-  clearFeatureAccessCache
+  clearFeatureAccessCache,
+  useOptimisticSubscription
 } from './model';
+
+// Optimistic Updates Utilities
+export {
+  createOptimisticSubscription,
+  mergeSubscriptionData,
+  isOptimisticSubscription,
+  createOptimisticSubscriptionHandler,
+  debounce
+} from './lib/optimisticUpdates';
 
 // API Services
 export {
