@@ -1,5 +1,4 @@
-/**
- * 
+﻿/**
  * RegistrationForm - Embedded form component for Skill Passport
  * Extracted from SimpleEventRegistration - contains only the form logic
  */
@@ -21,7 +20,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import toast from 'react-hot-toast';
 import OTPInput from '../OTPInput';
 import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../ui/shiny-button';
@@ -29,7 +27,7 @@ import { sendPhoneOTP, validatePhoneOTP } from '../../services/otpService';
 
 const REGISTRATION_FEE_STUDENT = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
-const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL;
+const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -54,10 +52,9 @@ const validateForm = (form, emailVerified, phoneVerified, consentGiven) => {
   if (!form.email?.trim() || !emailRegex.test(form.email)) {
     errors.email = 'Please enter a valid email address';
   }
-  // Email verification disabled
-  // if (!emailVerified) {
-  //   errors.email = 'Please verify your email address';
-  // }
+  if (!emailVerified) {
+    errors.email = 'Please verify your email address';
+  }
   if (!form.phone?.trim() || !phoneRegex.test(form.phone.replace(/\D/g, ''))) {
     errors.phone = 'Please enter a valid 10-digit phone number';
   }
@@ -70,6 +67,7 @@ const validateForm = (form, emailVerified, phoneVerified, consentGiven) => {
 
   return errors;
 };
+
 const sendOTPEmail = async (email, otp, name) => {
   const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
     method: 'POST',
@@ -79,30 +77,6 @@ const sendOTPEmail = async (email, otp, name) => {
 
   if (!response.ok) throw new Error('Failed to send verification email');
   return true;
-};
-
-const triggerZohoFlow = async (details) => {
-  try {
-    await fetch('/api/zoho-simple/trigger', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: details.name,
-        email: details.email,
-        lastName: details.lastName || 'Unknown',
-        mobile: details.phone,
-        company: details.company || '',
-        amount: details.amount,
-        product: details.product || 'skill-passport',
-        purchaseId: details.orderId,
-        type: details.type || 'registration',
-        status: details.status || 'completed',
-        whatsappOptIn: details.whatsappOptIn === true,
-      }),
-    });
-  } catch (err) {
-    console.error('Zoho trigger error:', err);
-  }
 };
 
 const sendConfirmationEmail = async (details) => {
@@ -123,17 +97,16 @@ const sendConfirmationEmail = async (details) => {
   }
 };
 
-const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement, required = true, ...props }) => (
+const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement, ...props }) => (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.3 }}
-    className="w-full overflow-hidden"
   >
-    <label className="block text-sm sm:text-base font-semibold text-gray-800 mb-2 break-words">
-      {label} {required && <span className="text-blue-600">*</span>}
+    <label className="block text-sm sm:text-base font-semibold text-gray-800 mb-2">
+      {label} <span className="text-blue-600">*</span>
     </label>
-    <div className="relative w-full">
+    <div className="relative">
       {Icon && (
         <div className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 ${verified ? 'text-emerald-600' : 'text-gray-400'} transition-colors`}>
           <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -143,14 +116,14 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
         {...props}
         disabled={disabled}
         className={`
-          w-full h-11 sm:h-12 md:h-14 bg-white border-2 rounded-xl outline-none focus:outline-none transition-all duration-200
+          w-full h-11 sm:h-12 md:h-14 bg-white border-2 rounded-xl outline-none transition-all duration-200
           ${Icon ? 'pl-10 sm:pl-11 md:pl-12' : 'pl-3 sm:pl-4'} ${rightElement ? 'pr-24 sm:pr-32' : 'pr-3 sm:pr-4'}
           ${disabled ? 'bg-gray-50 cursor-not-allowed text-gray-500' : ''}
           ${verified
             ? 'border-emerald-400 bg-emerald-50/30 shadow-sm shadow-emerald-100'
             : error
-              ? 'border-red-400 focus:border-red-500 shadow-sm shadow-red-100'
-              : 'border-gray-200 hover:border-gray-300 focus:border-blue-500 shadow-sm hover:shadow-md focus:shadow-lg'
+              ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-50 shadow-sm shadow-red-100'
+              : 'border-gray-200 hover:border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 shadow-sm hover:shadow-md'
           }
           text-gray-900 placeholder:text-gray-400 text-sm sm:text-base
         `}
@@ -177,136 +150,6 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
     )}
   </motion.div>
 );
-const UpsellModal = ({ isOpen, onClose, onConfirm, currentUpsell, onToggleUpsell, baseFee, comboFee }) => {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] sm:max-h-[85vh] overflow-hidden"
-          >
-            <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
-              <h3 className="text-lg sm:text-xl font-bold text-white">Complete Your Registration</h3>
-              <button onClick={onClose} className="text-white/80 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center">
-                <X className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-            </div>
-            
-            <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-200px)] sm:max-h-[calc(85vh-200px)]">
-              {/* Upsell Option */}
-              <div
-                onClick={onToggleUpsell}
-                className={`border-2 cursor-pointer transition-all duration-200 p-4 rounded-xl mb-4 ${
-                  currentUpsell ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
-              >
-                <div className="flex gap-3 items-start mb-3">
-                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
-                    currentUpsell ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'
-                  }`}>
-                    {currentUpsell && (
-                      <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-                        <path d="M2.5 6l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-xs text-orange-500 font-bold uppercase tracking-wide mb-1">
-                      ⬇ Add This to Make It Work Better
-                    </div>
-                    <div className="text-sm sm:text-base font-bold text-gray-900">
-                      Yes, I want to track my progress with SkillPassport
-                    </div>
-                    <div className="flex gap-2 items-center mt-2">
-                      <span className="text-sm text-gray-400 line-through">₹4,999</span>
-                      <span className="text-xl sm:text-2xl font-bold text-blue-600">₹{comboFee}</span>
-                      <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
-                        90% OFF
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t border-gray-200 pt-3 mt-3">
-                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                    What You Get with SkillPassport
-                  </p>
-                  {[
-                    "400+ courses across in-demand skills",
-                    "Structured path + portfolio so you always have proof of work",
-                    "Exclusive job and internship opportunities based on your actual skills and progress"
-                  ].map((item, i) => (
-                    <div key={i} className="flex gap-2 mb-2 items-start">
-                      <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                        <Check className="w-2.5 h-2.5 text-green-600" strokeWidth={3} />
-                      </div>
-                      <span className="text-xs sm:text-sm font-medium text-gray-800 leading-relaxed">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Base Option */}
-              <div
-                onClick={() => onToggleUpsell()}
-                className={`border-2 cursor-pointer transition-all duration-200 p-4 rounded-xl ${
-                  !currentUpsell ? 'border-gray-400 bg-gray-50' : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
-              >
-                <div className="flex gap-3 items-start">
-                  <div className={`w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all duration-200 ${
-                    !currentUpsell ? 'bg-gray-600 border-gray-600' : 'bg-white border-gray-300'
-                  }`}>
-                    {!currentUpsell && (
-                      <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-                        <path d="M2.5 6l2.5 2.5 4.5-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm sm:text-base font-bold text-gray-900 mb-1">
-                      No thanks, just the 1-Day Job-Ready System
-                    </div>
-                    <div className="text-xl sm:text-2xl font-bold text-gray-600">₹{baseFee}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Total */}
-              <div className="mt-4 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-700">Total Amount</span>
-                  <span className="text-2xl sm:text-3xl font-bold text-blue-600">
-                    ₹{currentUpsell ? comboFee : baseFee}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 sm:p-6 bg-gray-50 border-t border-gray-100">
-              <button
-                onClick={onConfirm}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 sm:py-4 rounded-xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-              >
-                <Lock className="w-4 h-4" />
-                Proceed to Payment
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
 
 const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
@@ -358,11 +201,7 @@ const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
               <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Registration Terms</h4>
               <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">By signing up, you agree to the following:</p>
               <ul className="text-gray-600 text-sm sm:text-base space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                <li>
-                  {registrationFee < 499
-                    ? `The registration fee is ₹${registrationFee}. This is refundable within 7 days if you find it not useful.`
-                    : `The registration fee is ₹${registrationFee} and cannot be refunded once paid.`}
-                </li>
+                <li>The registration fee is ₹{registrationFee} and cannot be refunded once paid.</li>
                 <li>Your personal details will be used only for registration and official communication.</li>
                 <li>You will receive emails about your registration status and upcoming updates/events.</li>
                 <li>Access to the platform will be provided after successful verification.</li>
@@ -406,48 +245,11 @@ const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
     </AnimatePresence>
   );
 };
-const MobileRefundBadge = () => {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <div className="mt-4">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        onClick={() => setExpanded(v => !v)}
-        className="bg-white rounded-lg p-2 border border-emerald-200 shadow-sm cursor-pointer select-none"
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-emerald-100 rounded flex items-center justify-center flex-shrink-0">
-            <Shield className="w-3 h-3 text-emerald-600" />
-          </div>
-          <h4 className="text-xs font-bold text-gray-900 flex-1">7-Day Refund Guarantee</h4>
-          <ChevronRight className={`w-3 h-3 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
-        </div>
-        <AnimatePresence>
-          {expanded && (
-            <motion.p
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="text-xs text-gray-600 leading-tight mt-1.5 pl-7 overflow-hidden"
-            >
-              If you don't find it useful, get your money back. No questions asked.
-            </motion.p>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    </div>
-  );
-};
 
 export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const location = useLocation();
   const isCorporate = location.pathname.includes('/register/corporate');
-  const BASE_FEE_STUDENT = 99;
-  const COMBO_FEE_STUDENT = 499; // Guide + SkillPassport combo
-  const REGISTRATION_FEE_CORPORATE = 7500;
-  
+  const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_STUDENT;
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -464,7 +266,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const [verifyingOTP, setVerifyingOTP] = useState(false);
   const [otpError, setOtpError] = useState('');
 
-  // Phone OTP states
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [phoneOtpValue, setPhoneOtpValue] = useState('');
   const [phoneVerificationId, setPhoneVerificationId] = useState('');
@@ -477,26 +278,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const [consentGiven, setConsentGiven] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [hasReadTerms, setHasReadTerms] = useState(false);
-  const [upsell, setUpsell] = useState(true);
-  const [whatsappOptIn, setWhatsappOptIn] = useState(true);
-  const [showUpsellModal, setShowUpsellModal] = useState(false);
-  const [tempUpsell, setTempUpsell] = useState(true);
-
-  // Calculate registration fee based on type and upsell
-  const REGISTRATION_FEE = isCorporate 
-    ? REGISTRATION_FEE_CORPORATE 
-    : upsell ? COMBO_FEE_STUDENT : BASE_FEE_STUDENT;
-
-  // Add global style to prevent horizontal overflow
-  useEffect(() => {
-    document.body.style.overflowX = 'hidden';
-    // Force scrollbar to always show to prevent layout shift
-    document.documentElement.style.overflowY = 'scroll';
-    return () => {
-      document.body.style.overflowX = '';
-      document.documentElement.style.overflowY = '';
-    };
-  }, []);
 
   useEffect(() => {
     loadRazorpay()
@@ -522,7 +303,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       setOtpValue('');
       setOtpError('');
     }
-
     if (field === 'phone') {
       setPhoneVerified(false);
       setPhoneOtpSent(false);
@@ -532,40 +312,21 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       setPhoneOtpTimeout(60);
     }
   }, [errors]);
-  // Email verification disabled
-  // const handleSendOTP = async () => {
-  //   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  //   if (!form.email?.trim() || !emailRegex.test(form.email)) {
-  //     setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
-  //     return;
-  //   }
 
-  //   setSendingOTP(true);
-  //   setOtpError('');
+  const handleSendOTP = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!form.email?.trim() || !emailRegex.test(form.email)) {
+      setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+      return;
+    }
 
-  //   try {
-  //     const otp = generateOTP();
-  //     setGeneratedOTP(otp);
-  //     await sendOTPEmail(form.email.trim(), otp, form.name.trim());
-  //     setOtpSent(true);
-  //   } catch (error) {
-  //     setOtpError('Failed to send verification code. Please try again.');
-  //   } finally {
-  //     setSendingOTP(false);
-  //   }
-  // };
-
-  // Post-payment email verification
-  const handleSendPostPaymentOTP = async () => {
-    if (!orderDetails?.email) return;
-    
     setSendingOTP(true);
     setOtpError('');
 
     try {
       const otp = generateOTP();
       setGeneratedOTP(otp);
-      await sendOTPEmail(orderDetails.email, otp, orderDetails.name);
+      await sendOTPEmail(form.email.trim(), otp, form.name.trim());
       setOtpSent(true);
     } catch (error) {
       setOtpError('Failed to send verification code. Please try again.');
@@ -574,33 +335,19 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
     }
   };
 
-  const handleVerifyPostPaymentOTP = (code) => {
-    if (code === generatedOTP) {
-      setEmailVerified(true);
-      setOtpSent(false);
-      setOtpError('');
-    } else {
-      setOtpError('Invalid verification code. Please try again.');
-    }
-  };
-
   const handleSendPhoneOTP = async () => {
     const phoneRegex = /^\d{10}$/;
     const cleanPhone = form.phone.replace(/\D/g, '');
-    
     if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
       setErrors(prev => ({ ...prev, phone: 'Please enter a valid 10-digit phone number' }));
       return;
     }
-
     setSendingPhoneOTP(true);
     setPhoneOtpError('');
-
     try {
       const result = await sendPhoneOTP(cleanPhone);
       setPhoneVerificationId(result.verificationId);
-      const timeoutSeconds = parseInt(result.timeout) || 60;
-      setPhoneOtpTimeout(timeoutSeconds);
+      setPhoneOtpTimeout(parseInt(result.timeout) || 60);
       setPhoneOtpSent(true);
     } catch (error) {
       setPhoneOtpError(error.message || 'Failed to send OTP. Please try again.');
@@ -608,6 +355,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       setSendingPhoneOTP(false);
     }
   };
+
   const handlePayment = async () => {
     const validationErrors = validateForm(form, emailVerified, phoneVerified, consentGiven);
     if (Object.keys(validationErrors).length > 0) {
@@ -615,18 +363,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       return;
     }
 
-    // Show upsell modal for student registration only
-    if (!isCorporate) {
-      setTempUpsell(upsell);
-      setShowUpsellModal(true);
-      return;
-    }
-
-    // For corporate, proceed directly
-    processPayment();
-  };
-
-  const processPayment = async (selectedUpsell = null) => {
     if (!razorpayReady || !window.Razorpay) {
       setPaymentError('Payment gateway is loading. Please wait.');
       return;
@@ -635,15 +371,9 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
     setLoading(true);
     setPaymentError(null);
 
-    // Use the passed parameter if available, otherwise use current state
-    const finalUpsell = selectedUpsell !== null ? selectedUpsell : upsell;
-    const paymentAmount = isCorporate 
-      ? REGISTRATION_FEE_CORPORATE 
-      : finalUpsell ? COMBO_FEE_STUDENT : BASE_FEE_STUDENT;
-
     try {
       const orderData = await paymentsApiService.createEventOrder({
-        amount: paymentAmount * 100,
+        amount: REGISTRATION_FEE * 100,
         currency: 'INR',
         planName: `Pre-Registration - ${campaign}`,
         userEmail: form.email.trim(),
@@ -678,25 +408,11 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               planName: `Pre-Registration - ${campaign}`
             });
 
-            if (!isCorporate) {
-              await triggerZohoFlow({
-                name: form.name.trim(),
-                email: form.email.trim(),
-                phone: form.phone.replace(/\D/g, ''),
-                amount: paymentAmount,
-                orderId: response.razorpay_order_id,
-                product: finalUpsell ? 'guide-skillpassport-combo' : 'skillpassport-basic',
-                type: 'registration',
-                status: 'completed',
-                whatsappOptIn,
-              });
-            }
-
             await sendConfirmationEmail({
               name: form.name.trim(),
               email: form.email.trim(),
               phone: form.phone.replace(/\D/g, ''),
-              amount: paymentAmount,
+              amount: REGISTRATION_FEE,
               orderId: response.razorpay_order_id,
               campaign,
             });
@@ -704,7 +420,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             setOrderDetails({
               orderId: response.razorpay_order_id,
               paymentId: response.razorpay_payment_id,
-              amount: paymentAmount,
+              amount: REGISTRATION_FEE,
               email: form.email.trim(),
               name: form.name.trim(),
             });
@@ -713,7 +429,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             console.error('Update error:', err);
             setOrderDetails({
               orderId: response.razorpay_order_id,
-              amount: paymentAmount,
+              amount: REGISTRATION_FEE,
               email: form.email.trim(),
               name: form.name.trim(),
             });
@@ -740,43 +456,16 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         }
 
         setPaymentError(response.error?.description || 'Payment failed. Please try again.');
-        toast.error(response.error?.description || 'Payment failed. Please try again.', {
-          duration: 4000,
-          position: 'top-center',
-        });
         setLoading(false);
       });
       razorpay.open();
     } catch (error) {
       console.error('Payment error:', error);
-      const errorMessage = error.message || 'Something went wrong. Please try again.';
-      
-      // Show toast notification for specific errors
-      if (errorMessage.toLowerCase().includes('already registered')) {
-        toast.error('You have already registered with this email. Please check your inbox for confirmation.', {
-          duration: 5000,
-          position: 'top-center',
-          style: {
-            background: '#FEE2E2',
-            color: '#991B1B',
-            fontWeight: '600',
-            padding: '16px',
-            borderRadius: '12px',
-            border: '2px solid #FCA5A5',
-          }
-    
-        });
-      } else {
-        toast.error(errorMessage, {
-          duration: 4000,
-          position: 'top-center',
-        });
-      }
-      
-      setPaymentError(errorMessage);
+      setPaymentError(error.message || 'Something went wrong. Please try again.');
       setLoading(false);
     }
   };
+
   // Success View
   if (success && orderDetails) {
     return (
@@ -832,982 +521,461 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   </p>
                 </div>
               </div>
-
-              {/* Post-payment Email Verification */}
-              {!emailVerified && (
-                <div className="mt-6 sm:mt-8">
-                  <div className="p-4 sm:p-5 bg-orange-50 rounded-xl sm:rounded-2xl border-2 border-orange-200">
-                    <div className="flex items-start gap-3 mb-4">
-                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <ShieldCheck className="w-5 h-5 text-orange-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1">Verify Your Email</h3>
-                        <p className="text-xs sm:text-sm text-gray-600">
-                          Please verify your email to complete your registration and access your account.
-                        </p>
-                      </div>
-                    </div>
-
-                    {!otpSent ? (
-                      <button
-                        onClick={handleSendPostPaymentOTP}
-                        disabled={sendingOTP}
-                        className="w-full py-3 sm:py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                      >
-                        {sendingOTP ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Sending...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="w-4 h-4" />
-                            <span>Send Verification Code</span>
-                          </>
-                        )}
-                      </button>
-                    ) : (
-                      <div className="space-y-3">
-                        <p className="text-sm text-gray-700 font-medium">
-                          Enter the 6-digit code sent to <span className="font-bold">{orderDetails.email}</span>
-                        </p>
-                        <OTPInput
-                          length={6}
-                          email={orderDetails.email}
-                          expirySeconds={600}
-                          onComplete={(code) => {
-                            setOtpValue(code);
-                            setTimeout(() => {
-                              handleVerifyPostPaymentOTP(code);
-                            }, 500);
-                          }}
-                          onResend={handleSendPostPaymentOTP}
-                          error={otpError}
-                          isVerifying={verifyingOTP}
-                          isSuccess={emailVerified}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {emailVerified && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-6 sm:mt-8 p-4 sm:p-5 bg-emerald-50 rounded-xl sm:rounded-2xl border-2 border-emerald-200"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-emerald-900">Email Verified!</h3>
-                      <p className="text-sm text-emerald-700">Your account is now fully activated.</p>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
             </div>
           </motion.div>
         </div>
       </section>
     );
   }
+
   // Registration Form
   return (
-    <section id="registration-form" className="pt-0 pb-8 sm:py-12 md:py-16 lg:py-20 bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 overflow-x-hidden">
-      {!isCorporate ? (
-        // Student Registration - Two Column Layout
-        <div className="w-full max-w-6xl mx-auto px-0 sm:px-4 md:px-6">
+    <section id="registration-form" className="py-8 sm:py-12 md:py-16 lg:py-20 bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-6 sm:mb-8"
+        >
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center mb-0 sm:mb-8"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="hidden sm:inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
-            >
-              <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
-                <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
-                  <DotLottieReact
-                    src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
-                    loop
-                    autoplay
-                    style={{ width: '32px', height: '32px' }}
-                  />
-                </div>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
+              <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
+                <DotLottieReact
+                  src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
+                  loop
+                  autoplay
+                  style={{ width: '32px', height: '32px' }}
+                />
               </div>
-              <span className="text-gray-900 text-sm sm:text-base font-bold">For Students Only</span>
-            </motion.div>
-
-            <h2 className="hidden sm:block text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
-              Registration
-            </h2>
-            <p className="hidden sm:block text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
-              Secure your access to the Job-Ready AI System today
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
-            {/* Left Column - Promotional Content - Hidden on mobile */}
-            <div className="hidden lg:block lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5rem)]">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="space-y-8 sm:space-y-6"
-              >
-                {/* Main Offer Card */}
-                <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-xl border border-gray-100">
-                  <div className="inline-block bg-blue-50 text-blue-600 text-xs font-semibold uppercase tracking-wider rounded-full px-3 py-1 mb-4 border border-blue-200">
-                    AI-Powered Career System
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 leading-tight">
-                    Build Your Entire Job Application System in{' '}
-                    <span className="text-blue-600">1 Day</span> Using AI
-                  </h3>
-                  <p className="text-gray-600 text-sm sm:text-base mb-6 leading-relaxed">
-                    Stop applying randomly. Set up a system that gets you interviews.
-                  </p>
-                  
-                  <div className="border-t border-gray-100 pt-5 mb-5">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                      What You'll Get
-                    </p>
-                    <div className="space-y-3">
-                      {[
-                        "1-day strategy",
-                        "Resume + AI setup", 
-                        "Outreach + interview flow"
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-start gap-3">
-                          <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                            <Check className="w-2.5 h-2.5 text-blue-600" strokeWidth={3} />
-                          </div>
-                          <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Pricing Section */}
-                  <div className="border-t border-gray-100 pt-5">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-600">1-Day Job-Ready System</span>
-                      <span className="text-sm font-semibold text-gray-900">Starting from ₹{BASE_FEE_STUDENT}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 px-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <span className="text-sm font-semibold text-gray-700">Choose your plan in next step</span>
-                      <span className="text-lg font-bold text-blue-600">→</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stats Card */}
-                <div className="bg-white rounded-xl p-5 sm:p-6 shadow-lg border border-gray-100">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    {[
-                      ["2,400+", "Students"],
-                      ["4.9★", "Rating"], 
-                      ["1 Day", "System"]
-                    ].map(([value, label]) => (
-                      <div key={label}>
-                        <div className="text-lg sm:text-xl font-bold text-blue-600">{value}</div>
-                        <div className="text-xs text-gray-500 mt-1">{label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
             </div>
-            {/* Right Column - Registration Form */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="w-full overflow-hidden"
-            >
-              <div className="bg-white rounded-none sm:rounded-2xl md:rounded-3xl shadow-xl border-0 sm:border border-gray-100 p-4 sm:p-6 md:p-8 lg:p-10 overflow-hidden">
-                
-                {/* Fee summary - Mobile only (shows job system info) */}
-                <div className="lg:hidden border border-gray-200 rounded-none sm:rounded-xl overflow-hidden mb-4 sm:mb-6 w-full">
-                  <div className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50 w-full">
-                    <h3 className="text-base font-bold text-gray-900 mb-2 leading-tight">
-                      Build Your Entire Job Application System in{' '}
-                      <span className="text-blue-600">1 Day</span> Using AI
-                    </h3>
-                    <p className="text-gray-600 text-xs mb-3 leading-relaxed break-words">
-                      Stop applying randomly. Set up a system that gets you interviews.
-                    </p>
-                    <div className="border-t border-gray-200 pt-3 space-y-2">
-                      {[
-                        "1-day strategy",
-                        "Resume + AI setup",
-                        "Outreach + interview flow"
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-start gap-2">
-                          <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center mt-0.5 flex-shrink-0">
-                            <Check className="w-2.5 h-2.5 text-blue-600" strokeWidth={3} />
-                          </div>
-                          <span className="text-xs text-gray-700 leading-relaxed break-words">{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="p-3 sm:p-4 w-full">
-                    <div className="flex justify-between items-center gap-2 flex-wrap">
-                      <span className="text-xs sm:text-sm text-gray-600 break-words">1-Day Job-Ready System</span>
-                      <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">Starting from ₹{BASE_FEE_STUDENT}</span>
-                    </div>
-                  </div>
-                  <div className="p-2 sm:p-3 flex justify-between items-center border-t-2 border-blue-600 bg-blue-50 gap-2 w-full">
-                    <span className="text-xs sm:text-sm font-semibold text-gray-700 break-words flex-1">Choose your plan in next step</span>
-                    <span className="text-base sm:text-lg font-bold text-blue-600 flex-shrink-0">→</span>
-                  </div>
-                </div>
-
-
-
-                <div className="space-y-4 sm:space-y-5 w-full overflow-hidden">
-                  <InputField
-                    label="Full Name"
-                    icon={User}
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => updateField('name', e.target.value)}
-                    placeholder="Enter your full name"
-                    error={errors.name}
-                  />
-
-                  <div>
-                    <InputField
-                      label="Email Address"
-                      icon={Mail}
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => updateField('email', e.target.value)}
-                      placeholder="you@example.com"
-                      error={errors.email}
-                      // Email verification disabled
-                      // verified={emailVerified}
-                      // disabled={emailVerified}
-                      // rightElement={
-                      //   !emailVerified && (
-                      //     <button
-                      //       type="button"
-                      //       onClick={handleSendOTP}
-                      //       disabled={sendingOTP || !form.email}
-                      //       className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                      //     >
-                      //       {sendingOTP ? (
-                      //         <>
-                      //           <Loader2 className="w-3 h-3 animate-spin" />
-                      //           <span className="hidden sm:inline">Sending...</span>
-                      //           <span className="sm:hidden">...</span>
-                      //         </>
-                      //       ) : otpSent ? (
-                      //         'Resend'
-                      //       ) : (
-                      //         'Verify'
-                      //       )}
-                      //     </button>
-                      //   )
-                      // }
-                    />
-
-                    {/* Email OTP verification UI - disabled */}
-                    {/* <AnimatePresence>
-                      {otpSent && !emailVerified && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="mt-2 sm:mt-3 overflow-hidden w-full"
-                        >
-                          <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg w-full overflow-hidden">
-                            <OTPInput
-                              length={6}
-                              email={form.email}
-                              expirySeconds={600}
-                              onComplete={(code) => {
-                                setOtpValue(code);
-                                setTimeout(() => {
-                                  if (code === generatedOTP) {
-                                    setEmailVerified(true);
-                                    setOtpSent(false);
-                                    setOtpError('');
-                                    // Clear email error when verified
-                                    setErrors(prev => ({ ...prev, email: null }));
-                                  } else {
-                                    setOtpError('Invalid verification code. Please try again.');
-                                  }
-                                }, 500);
-                              }}
-                              onResend={handleSendOTP}
-                              error={otpError}
-                              isVerifying={verifyingOTP}
-                              isSuccess={emailVerified}
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence> */}
-
-                    {/* Email verified badge - disabled */}
-                    {/* <AnimatePresence>
-                      {emailVerified && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span className="text-xs sm:text-sm font-semibold">Email verified successfully</span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence> */}
-                  </div>
-                  <div>
-                    <InputField
-                      label="Phone Number"
-                      icon={Phone}
-                      type="tel"
-                      required={true}
-                      value={form.phone}
-                      onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      placeholder="10-digit mobile number"
-                      error={errors.phone}
-                      verified={phoneVerified}
-                      disabled={phoneVerified}
-                      rightElement={
-                        !phoneVerified && (
-                          <button
-                            type="button"
-                            onClick={handleSendPhoneOTP}
-                            disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
-                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                          >
-                            {sendingPhoneOTP ? (
-                              <>
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                                <span className="hidden sm:inline">Sending...</span>
-                                <span className="sm:hidden">...</span>
-                              </>
-                            ) : phoneOtpSent ? (
-                              'Resend'
-                            ) : (
-                              'Verify'
-                            )}
-                          </button>
-                        )
-                      }
-                    />
-
-                    <AnimatePresence>
-                      {phoneOtpSent && !phoneVerified && (
-                        <motion.div
-                          key={phoneVerificationId}
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="mt-2 sm:mt-3 overflow-hidden"
-                        >
-                          <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
-                            <OTPInput
-                              length={4}
-                              email={form.phone}
-                              expirySeconds={phoneOtpTimeout}
-                              onComplete={async (code) => {
-                                setPhoneOtpValue(code);
-                                setVerifyingPhoneOTP(true);
-                                setPhoneOtpError('');
-                                try {
-                                  const result = await validatePhoneOTP(
-                                    form.phone.replace(/\D/g, ''),
-                                    phoneVerificationId,
-                                    code
-                                  );
-                                  if (result.verified) {
-                                    setPhoneVerified(true);
-                                    setPhoneOtpSent(false);
-                                    setPhoneOtpError('');
-                                    // Clear phone error when verified
-                                    setErrors(prev => ({ ...prev, phone: null }));
-                                  } else {
-                                    setPhoneOtpError('Invalid OTP. Please try again.');
-                                  }
-                                } catch (error) {
-                                  setPhoneOtpError(error.message || 'Invalid OTP. Please try again.');
-                                } finally {
-                                  setVerifyingPhoneOTP(false);
-                                }
-                              }}
-                              onResend={handleSendPhoneOTP}
-                              error={phoneOtpError}
-                              isVerifying={verifyingPhoneOTP}
-                              isSuccess={phoneVerified}
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <AnimatePresence>
-                      {phoneVerified && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  {/* WhatsApp Opt-in - Moved here */}
-                  <div className="mb-0">
-                    <label className="flex gap-2 sm:gap-3 items-start cursor-pointer" onClick={() => setWhatsappOptIn(v => !v)}>
-                      <div className={`w-5 h-5 sm:w-4 sm:h-4 min-w-[20px] sm:min-w-[16px] rounded border-2 flex items-center justify-center flex-shrink-0 mt-[1px] transition-all duration-200 ${
-                        whatsappOptIn ? 'bg-green-500 border-green-500' : 'border-gray-300'
-                      }`}>
-                        {whatsappOptIn && (
-                          <svg width="12" height="12" viewBox="0 0 10 10" fill="none" className="sm:w-[10px] sm:h-[10px]">
-                            <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-sm text-gray-600 leading-[1.4] flex-1 pt-[1px]">
-                        I'd like to receive updates & reminders on WhatsApp and email
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Terms - Moved here */}
-                  <div className="mb-4 items-center justify-center">
-                    <label className="flex gap-2 sm:gap-3 items-center">
-                      <div
-                        onClick={() => { 
-                          setConsentGiven(v => !v); 
-                          if (errors.consent) setErrors(p => ({ ...p, consent: null })); 
-                        }}
-                        className={`w-5 h-5 sm:w-4 sm:h-4 min-w-[20px] sm:min-w-[16px] rounded border-2 flex items-center justify-center flex-shrink-0 mt-[1px] cursor-pointer transition-all duration-200 ${
-                          errors.consent ? 'border-red-400' : consentGiven ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                        }`}
-                      >
-                        {consentGiven && (
-                          <svg width="12" height="12" viewBox="0 0 10 10" fill="none" className="sm:w-[10px] sm:h-[10px]">
-                            <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-sm text-gray-600 leading-[1.4] flex-1 pt-[1px]">
-                        I agree to the <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setShowTerms(true);
-                          }}
-                          className="text-blue-600 underline cursor-pointer inline"
-                        >Terms & Conditions</button>
-                      </span>
-                    </label>
-                    {errors.consent && (
-                      <div className="text-sm text-orange-500 mt-1 pl-7 sm:pl-7 font-medium">
-                        {errors.consent}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Register Button - Moved here */}
-                  <ShinyButton
-                    onClick={handlePayment}
-                    disabled={loading || !consentGiven}
-                    className={`w-full mb-4 ${loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {loading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Processing...</span>
-                      </div>
-                    ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        <Lock className="w-4 h-4" /> Register Now ›
-                      </span>
-                    )}
-                  </ShinyButton>
-
-                   {/* 7-Day Refund Guarantee - Both mobile and desktop */}
-                  <MobileRefundBadge />
-
-                  {/* Trust badges - Moved here */}
-                  <div className="flex flex-wrap justify-center gap-3 sm:gap-5 mb-4 w-full">
-                    {[["🔒", "SSL Secured"], ["🛡️", "Razorpay Protected"]].map(([icon, label]) => (
-                      <div key={label} className="flex items-center gap-1 text-xs text-gray-500">
-                        {icon} {label}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-           
-                <div className="lg:hidden mt-4 mb-4 w-full overflow-hidden">
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="bg-white rounded-lg py-3 px-2 border border-gray-200 shadow-sm w-full"
-                  >
-                    <div className="flex items-center justify-around text-center gap-2 w-full">
-                      {[
-                        ["2,400+", "Students"],
-                        ["4.9★", "Rating"],
-                        ["1 Day", "System"]
-                      ].map(([value, label]) => (
-                        <div key={label} className="flex-1 min-w-0">
-                          <div className="text-sm font-bold text-blue-600 truncate">{value}</div>
-                          <div className="text-xs text-gray-500 truncate">{label}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4 mx-auto max-w-md"
-          >
-            Need help?{' '}
-            <a href="https://rareminds.in/contact" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
-              Contact Support
-            </a>
-          </motion.p>
-        </div>
-      ) : (
-        // Corporate Registration - Original Single Column Layout  
-        <div className="max-w-2xl mx-auto px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center mb-6 sm:mb-8"
-          >
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
-              Corporate Registration
-            </h2>
-            <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
-              Access skilled talent and hire confidently
-            </p>
+            <span className="text-gray-900 text-sm sm:text-base font-bold">{isCorporate ? 'For Corporates' : 'For Students Only'}</span>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-6 md:p-8 lg:p-10"
-          >
-            <div className="space-y-4 sm:space-y-5">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
+            Registration
+          </h2>
+          <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
+            Secure your access to {isCorporate ? 'Skill Ecosystem' : 'Skill Passport'} today
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-100 p-5 sm:p-6 md:p-8 lg:p-10"
+        >
+          <div className="space-y-4 sm:space-y-5">
+            <InputField
+              label="Full Name"
+              icon={User}
+              type="text"
+              value={form.name}
+              onChange={(e) => updateField('name', e.target.value)}
+              placeholder="Enter your full name"
+              error={errors.name}
+            />
+
+            <div>
               <InputField
-                label="Full Name"
-                icon={User}
-                type="text"
-                value={form.name}
-                onChange={(e) => updateField('name', e.target.value)}
-                placeholder="Enter your full name"
-                error={errors.name}
+                label="Email Address"
+                icon={Mail}
+                type="email"
+                value={form.email}
+                onChange={(e) => updateField('email', e.target.value)}
+                placeholder="you@example.com"
+                error={errors.email}
+                verified={emailVerified}
+                disabled={emailVerified}
+                rightElement={
+                  !emailVerified && (
+                    <button
+                      type="button"
+                      onClick={handleSendOTP}
+                      disabled={sendingOTP || !form.email}
+                      className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                    >
+                      {sendingOTP ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span className="hidden sm:inline">Sending...</span>
+                          <span className="sm:hidden">...</span>
+                        </>
+                      ) : otpSent ? (
+                        'Resend'
+                      ) : (
+                        'Verify'
+                      )}
+                    </button>
+                  )
+                }
               />
 
-              <div>
-                <InputField
-                  label="Email Address"
-                  icon={Mail}
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => updateField('email', e.target.value)}
-                  placeholder="you@example.com"
-                  error={errors.email}
-                  // Email verification disabled
-                  // verified={emailVerified}
-                  // disabled={emailVerified}
-                  // rightElement={
-                  //   !emailVerified && (
-                  //     <button
-                  //       type="button"
-                  //       onClick={handleSendOTP}
-                  //       disabled={sendingOTP || !form.email}
-                  //       className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                  //     >
-                  //       {sendingOTP ? (
-                  //         <>
-                  //           <Loader2 className="w-3 h-3 animate-spin" />
-                  //           <span className="hidden sm:inline">Sending...</span>
-                  //           <span className="sm:hidden">...</span>
-                  //         </>
-                  //       ) : otpSent ? (
-                  //         'Resend'
-                  //       ) : (
-                  //         'Verify'
-                  //       )}
-                  //     </button>
-                  //   )
-                  // }
-                />
-
-                {/* Email OTP verification UI - disabled */}
-                {/* <AnimatePresence>
-                  {otpSent && !emailVerified && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-2 sm:mt-3 overflow-hidden"
-                    >
-                      <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
-                        <OTPInput
-                          length={6}
-                          email={form.email}
-                          expirySeconds={600}
-                          onComplete={(code) => {
-                            setOtpValue(code);
-                            setTimeout(() => {
-                              if (code === generatedOTP) {
-                                setEmailVerified(true);
-                                setOtpSent(false);
-                                setOtpError('');
-                                // Clear email error when verified
-                                setErrors(prev => ({ ...prev, email: null }));
-                              } else {
-                                setOtpError('Invalid verification code. Please try again.');
-                              }
-                            }, 500);
-                          }}
-                          onResend={handleSendOTP}
-                          error={otpError}
-                          isVerifying={verifyingOTP}
-                          isSuccess={emailVerified}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence> */}
-
-                {/* Email verified badge - disabled */}
-                {/* <AnimatePresence>
-                  {emailVerified && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span className="text-xs sm:text-sm font-semibold">Email verified successfully</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence> */}
-              </div>
-
-              <div>
-                <InputField
-                  label="Phone Number"
-                  icon={Phone}
-                  type="tel"
-                  required={false}
-                  value={form.phone}
-                  onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="10-digit mobile number"
-                  error={errors.phone}
-                  verified={phoneVerified}
-                  disabled={phoneVerified}
-                  rightElement={
-                    !phoneVerified && (
-                      <button
-                        type="button"
-                        onClick={handleSendPhoneOTP}
-                        disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
-                        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
-                      >
-                        {sendingPhoneOTP ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            <span className="hidden sm:inline">Sending...</span>
-                            <span className="sm:hidden">...</span>
-                          </>
-                        ) : phoneOtpSent ? (
-                          'Resend'
-                        ) : (
-                          'Verify'
-                        )}
-                      </button>
-                    )
-                  }
-                />
-
-                <AnimatePresence>
-                  {phoneOtpSent && !phoneVerified && (
-                    <motion.div
-                      key={phoneVerificationId}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-2 sm:mt-3 overflow-hidden"
-                    >
-                      <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
-                        <OTPInput
-                          length={4}
-                          email={form.phone}
-                          expirySeconds={phoneOtpTimeout}
-                          onComplete={async (code) => {
-                            setPhoneOtpValue(code);
-                            setVerifyingPhoneOTP(true);
-                            setPhoneOtpError('');
-                            try {
-                              const result = await validatePhoneOTP(
-                                form.phone.replace(/\D/g, ''),
-                                phoneVerificationId,
-                                code
-                              );
-                              if (result.verified) {
-                                setPhoneVerified(true);
-                                setPhoneOtpSent(false);
-                                setPhoneOtpError('');
-                                // Clear phone error when verified
-                                setErrors(prev => ({ ...prev, phone: null }));
-                              } else {
-                                setPhoneOtpError('Invalid OTP. Please try again.');
-                              }
-                            } catch (error) {
-                              setPhoneOtpError(error.message || 'Invalid OTP. Please try again.');
-                            } finally {
-                              setVerifyingPhoneOTP(false);
-                            }
-                          }}
-                          onResend={handleSendPhoneOTP}
-                          error={phoneOtpError}
-                          isVerifying={verifyingPhoneOTP}
-                          isSuccess={phoneVerified}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <AnimatePresence>
-                  {phoneVerified && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* WhatsApp Opt-in - Moved here */}
-              <div className="mb-0">
-                <label className="flex gap-2 sm:gap-3 items-start cursor-pointer" onClick={() => setWhatsappOptIn(v => !v)}>
-                  <div className={`w-5 h-5 sm:w-4 sm:h-4 min-w-[20px] sm:min-w-[16px] rounded border-2 flex items-center justify-center flex-shrink-0 mt-[1px] transition-all duration-200 ${
-                    whatsappOptIn ? 'bg-green-500 border-green-500' : 'border-gray-300'
-                  }`}>
-                    {whatsappOptIn && (
-                      <svg width="12" height="12" viewBox="0 0 10 10" fill="none" className="sm:w-[10px] sm:h-[10px]">
-                        <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="text-sm text-gray-600 leading-[1.4] flex-1 pt-[1px]">
-                    I'd like to receive updates & reminders on WhatsApp and email
-                  </span>
-                </label>
-              </div>
-
-              {/* Terms - Moved here */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="mb-4"
-              >
-                <label className="flex gap-2 sm:gap-3 items-start">
-                  <div
-                    onClick={() => { 
-                      setConsentGiven(v => !v); 
-                      if (errors.consent) setErrors(p => ({ ...p, consent: null })); 
-                    }}
-                    className={`w-5 h-5 sm:w-4 sm:h-4 min-w-[20px] sm:min-w-[16px] rounded border-2 flex items-center justify-center flex-shrink-0 mt-[1px] cursor-pointer transition-all duration-200 ${
-                      errors.consent ? 'border-red-400' : consentGiven ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
-                    }`}
-                  >
-                    {consentGiven && (
-                      <svg width="12" height="12" viewBox="0 0 10 10" fill="none" className="sm:w-[10px] sm:h-[10px]">
-                        <path d="M1.5 5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="text-sm text-gray-600 leading-[1.4] flex-1 pt-[1px]">
-                    I agree to the <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setShowTerms(true);
-                      }}
-                      className="text-blue-600 underline cursor-pointer inline"
-                    >Terms & Conditions</button>
-                  </span>
-                </label>
-                {errors.consent && (
-                  <div className="text-sm text-orange-500 mt-1 pl-7 font-medium">
-                    {errors.consent}
-                  </div>
-                )}
-              </motion.div>
-
-              {/* Register Button - Moved here */}
               <AnimatePresence>
-                {paymentError && (
+                {otpSent && !emailVerified && (
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="mb-3 sm:mb-4 p-3 bg-red-50 border-2 border-red-200 rounded-lg sm:rounded-xl shadow-sm"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 sm:mt-3 overflow-hidden"
                   >
-                    <p className="text-xs sm:text-sm text-red-700 flex items-center gap-2 font-medium">
-                      <X className="w-4 h-4" />
-                      {paymentError}
-                    </p>
+                    <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                      <OTPInput
+                        length={6}
+                        email={form.email}
+                        expirySeconds={600}
+                        onComplete={(code) => {
+                          setOtpValue(code);
+                          setTimeout(() => {
+                            if (code === generatedOTP) {
+                              setEmailVerified(true);
+                              setOtpSent(false);
+                              setOtpError('');
+                            } else {
+                              setOtpError('Invalid verification code. Please try again.');
+                            }
+                          }, 500);
+                        }}
+                        onResend={handleSendOTP}
+                        error={otpError}
+                        isVerifying={verifyingOTP}
+                        isSuccess={emailVerified}
+                      />
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <button
-                onClick={handlePayment}
-                disabled={loading || !consentGiven}
-                className={`w-full bg-gradient-to-r from-gray-600 to-gray-700 border-none rounded-full py-4 text-sm font-bold text-white cursor-pointer flex items-center justify-center gap-2 font-inherit shadow-lg transition-opacity duration-150 ${
-                  loading || !consentGiven ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-                }`}
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Processing...</span>
-                  </div>
-                ) : (
-                  <>
-                    <Lock className="w-4 h-4" /> Register Now ›
-                  </>
+              <AnimatePresence>
+                {emailVerified && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-xs sm:text-sm font-semibold">Email verified successfully</span>
+                  </motion.div>
                 )}
-              </button>
+              </AnimatePresence>
+            </div>
 
-              {/* Trust badges */}
-              <div className="flex justify-center gap-5 mt-4">
-                {[["🔒", "SSL Secured"], ["🛡️", "Razorpay Protected"]].map(([icon, label]) => (
-                  <div key={label} className="flex items-center gap-1 text-xs text-gray-500">
-                    {icon} {label}
+            <div>
+              <InputField
+                label="Phone Number"
+                icon={Phone}
+                type="tel"
+                value={form.phone}
+                onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="10-digit mobile number"
+                error={errors.phone}
+                verified={phoneVerified}
+                disabled={phoneVerified}
+                rightElement={
+                  !phoneVerified && (
+                    <button
+                      type="button"
+                      onClick={handleSendPhoneOTP}
+                      disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
+                      className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                    >
+                      {sendingPhoneOTP ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span className="hidden sm:inline">Sending...</span>
+                          <span className="sm:hidden">...</span>
+                        </>
+                      ) : phoneOtpSent ? 'Resend' : 'Verify'}
+                    </button>
+                  )
+                }
+              />
+
+              <AnimatePresence>
+                {phoneOtpSent && !phoneVerified && (
+                  <motion.div
+                    key={phoneVerificationId}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 sm:mt-3 overflow-hidden"
+                  >
+                    <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                      <OTPInput
+                        length={4}
+                        email={form.phone}
+                        expirySeconds={phoneOtpTimeout}
+                        onComplete={async (code) => {
+                          setPhoneOtpValue(code);
+                          setVerifyingPhoneOTP(true);
+                          setPhoneOtpError('');
+                          try {
+                            const result = await validatePhoneOTP(
+                              form.phone.replace(/\D/g, ''),
+                              phoneVerificationId,
+                              code
+                            );
+                            if (result.verified) {
+                              setPhoneVerified(true);
+                              setPhoneOtpSent(false);
+                              setPhoneOtpError('');
+                              setErrors(prev => ({ ...prev, phone: null }));
+                            } else {
+                              setPhoneOtpError('Invalid OTP. Please try again.');
+                            }
+                          } catch (error) {
+                            setPhoneOtpError(error.message || 'Invalid OTP. Please try again.');
+                          } finally {
+                            setVerifyingPhoneOTP(false);
+                          }
+                        }}
+                        onResend={handleSendPhoneOTP}
+                        error={phoneOtpError}
+                        isVerifying={verifyingPhoneOTP}
+                        isSuccess={phoneVerified}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {phoneVerified && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="mt-5 sm:mt-6"
+          >
+            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-grey-200 shadow-md hover:shadow-lg transition-all duration-300 group">
+              <div className="absolute inset-0 bg-grey-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              <div className="relative p-4 sm:p-5">
+                <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
+                    className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 flex items-center justify-center"
+                  >
+                    <div style={{ transform: 'scale(1.5) sm:scale(1.8)', transformOrigin: 'center' }}>
+                      <DotLottieReact
+                        src="https://lottie.host/a780779d-eba6-4a45-a35d-fa077c411c67/A719VudDmU.lottie"
+                        loop
+                        autoplay
+                        style={{ width: '48px', height: '48px' }}
+                      />
+                    </div>
+                  </motion.div>
+                  <div className="flex-1">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900">Registration Fee</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 sm:gap-1.5 mt-0.5">
+                      <Lock className="w-3 h-3" />
+                      Secure payment via Razorpay
+                    </p>
                   </div>
-                ))}
+                </div>
+
+                <div className="h-px bg-gray-200 mb-3" />
+
+                <div className="flex items-center justify-between">
+                  <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Amount</span>
+                  <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-600">₹{REGISTRATION_FEE}</span>
+                </div>
               </div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.4 }}
-                className="mt-5 sm:mt-6"
-              >
-                <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-grey-200 shadow-md hover:shadow-lg transition-all duration-300 group">
-                  <div className="absolute inset-0 bg-grey-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  
-                  <div className="relative p-4 sm:p-5">
-                    <div className="flex items-center gap-2 sm:gap-3 mb-3">
-                      <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.4, type: "spring", stiffness: 200 }}
-                        className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 flex items-center justify-center"
-                      >
-                        <div style={{ transform: 'scale(1.5) sm:scale(1.8)', transformOrigin: 'center' }}>
-                          <DotLottieReact
-                            src="https://lottie.host/a780779d-eba6-4a45-a35d-fa077c411c67/A719VudDmU.lottie"
-                            loop
-                            autoplay
-                            style={{ width: '48px', height: '48px' }}
-                          />
-                        </div>
-                      </motion.div>
-                      <div className="flex-1">
-                        <h3 className="text-base sm:text-lg font-bold text-gray-900">Registration Fee</h3>
-                        <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                          <Lock className="w-3 h-3" />
-                          Secure payment via Razorpay
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="h-px bg-gray-200 mb-3" />
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-semibold text-gray-700">Total Amount</span>
-                      <span className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-600">₹{REGISTRATION_FEE}</span>
-                    </div>
-                  </div>
-
-                  <div className="h-1 sm:h-1.5 bg-blue-600" />
-                </div>
-              </motion.div>
+              <div className="h-1 sm:h-1.5 bg-blue-600" />
             </div>
           </motion.div>
 
-          <motion.p
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4 mx-auto max-w-md"
+            transition={{ delay: 0.4 }}
+            className="mt-5 sm:mt-6"
           >
-            Need help?{' '}
-            <a href="https://rareminds.in/contact" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
-              Contact Support
-            </a>
-          </motion.p>
-        </div>
-      )}
+            <label className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-gray-200 transition-all duration-200 bg-white ${
+              hasReadTerms 
+                ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30' 
+                : 'cursor-not-allowed'
+            }`}>
+              <div className="relative mt-0.5 flex-shrink-0">
+                <input
+                  type="checkbox"
+                  checked={consentGiven}
+                  disabled={!hasReadTerms}
+                  onChange={(e) => {
+                    if (hasReadTerms) {
+                      setConsentGiven(e.target.checked);
+                      if (errors.consent) setErrors(prev => ({ ...prev, consent: null }));
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md border-2 transition-all duration-200 flex items-center justify-center shadow-sm
+                  ${!hasReadTerms
+                    ? 'border-gray-300 bg-gray-100'
+                    : consentGiven
+                      ? 'bg-blue-600 border-blue-600 shadow-blue-200'
+                      : errors.consent
+                        ? 'border-red-400 bg-red-50'
+                        : 'border-gray-300 bg-white group-hover:border-blue-400'
+                  }`}
+                >
+                  {consentGiven && <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" strokeWidth={3} />}
+                </div>
+              </div>
+              <span className="text-xs sm:text-sm leading-relaxed">
+                <span className={`${!hasReadTerms ? 'text-gray-400' : 'text-gray-700'}`}>
+                  I agree to the{' '}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowTerms(true)}
+                  className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2 min-h-[44px] inline-flex items-center gap-1 transition-all duration-300"
+                >
+                  {!hasReadTerms && (
+                    <motion.span
+                      animate={{ 
+                        opacity: [1, 0.4, 1],
+                        scale: [1, 1.1, 1]
+                      }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="inline-flex text-blue-600"
+                    >
+                      →
+                    </motion.span>
+                  )}
+                  <motion.span
+                    animate={!hasReadTerms ? {
+                      backgroundColor: ['rgba(59, 130, 246, 0)', 'rgba(59, 130, 246, 0.15)', 'rgba(59, 130, 246, 0)']
+                    } : {}}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                    className="px-1 rounded"
+                  >
+                    Terms & Conditions
+                  </motion.span>
+                </button>
+                <span className={`${!hasReadTerms ? 'text-gray-400' : 'text-gray-700'}`}>
+                  {' '}and consent to the payment of ₹{REGISTRATION_FEE} for registration.
+                </span>
+                {!hasReadTerms && (
+                  <span className="block mt-1 text-xs text-amber-600 font-medium">
+                    Please read the Terms & Conditions first
+                  </span>
+                )}
+              </span>
+            </label>
+            {errors.consent && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 text-xs sm:text-sm text-red-600 flex items-center gap-1 font-medium"
+              >
+                <X className="w-3 h-3" /> {errors.consent}
+              </motion.p>
+            )}
+          </motion.div>
 
-      <UpsellModal
-        isOpen={showUpsellModal}
-        onClose={() => setShowUpsellModal(false)}
-        onConfirm={() => {
-          setUpsell(tempUpsell);
-          setShowUpsellModal(false);
-          processPayment(tempUpsell);
-        }}
-        currentUpsell={tempUpsell}
-        onToggleUpsell={() => setTempUpsell(v => !v)}
-        baseFee={BASE_FEE_STUDENT}
-        comboFee={COMBO_FEE_STUDENT}
-      />
+          <AnimatePresence>
+            {paymentError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mt-3 sm:mt-4 p-3 bg-red-50 border-2 border-red-200 rounded-lg sm:rounded-xl shadow-sm"
+              >
+                <p className="text-xs sm:text-sm text-red-700 flex items-center gap-2 font-medium">
+                  <X className="w-4 h-4" />
+                  {paymentError}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-      <TermsModal
-        isOpen={showTerms}
-        onClose={() => setShowTerms(false)}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-5 sm:mt-6"
+          >
+            <ShinyButton
+              onClick={handlePayment}
+              disabled={loading || !consentGiven}
+              className="w-full py-3 sm:py-4 text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300 min-h-[48px] sm:min-h-[56px]"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Processing...</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  <span>Register Now</span>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              )}
+            </ShinyButton>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-gray-500"
+          >
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs sm:text-sm font-medium">SSL Secured</span>
+            </div>
+            <div className="hidden sm:block w-px h-5 bg-gray-300" />
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs sm:text-sm font-medium">Razorpay Protected</span>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="text-center text-xs sm:text-sm text-gray-500 mt-5 sm:mt-6 px-4"
+        >
+          Need help?{' '}
+          <a href="https://rareminds.in/contact" className="text-blue-600 hover:text-blue-700 font-semibold underline underline-offset-2">
+            Contact Support
+          </a>
+        </motion.p>
+      </div>
+
+      <TermsModal 
+        isOpen={showTerms} 
+        onClose={() => setShowTerms(false)} 
         onAccept={() => {
           setHasReadTerms(true);
           setConsentGiven(true);
+          if (errors.consent) setErrors(prev => ({ ...prev, consent: null }));
         }}
         registrationFee={REGISTRATION_FEE}
       />
