@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { useEffect } from 'react';
 import { Toaster as HotToaster } from 'react-hot-toast';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { ToastProvider } from './components/Recruiter/components/Toast';
 import { Toaster } from './components/Students/components/ui/toaster';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
@@ -14,6 +14,7 @@ import { SupabaseAuthBridgeProvider } from './context/SupabaseAuthBridge';
 import { SupabaseAuthProvider } from './context/SupabaseAuthContext';
 import AppRoutes from './routes/AppRoutes';
 import './utils/suppressRechartsWarnings'; // Suppress Recharts warnings globally
+import { trackPageView } from './shared/lib/analytics';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -28,53 +29,70 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Analytics Wrapper Component
+ * Tracks page views on route changes for SPA navigation
+ */
+function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Track page view on route change
+    trackPageView(location.pathname);
+  }, [location]);
+
+  return <>{children}</>;
+}
+
 function App() {
   // No scroll lock management needed
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <SupabaseAuthProvider>
-          <AuthProvider>
-            <SupabaseAuthBridgeProvider>
-              <SubscriptionProvider>
-                <SearchProvider>
-                  <ToastProvider>
-                    <TourWrapper>
-                      <SubscriptionPrefetch />
-                      <TokenRefreshErrorNotification />
-                      <AppRoutes />
-                      <Toaster />
-                    <HotToaster 
-                      position="top-right"
-                      toastOptions={{
-                        duration: 5000,
-                        style: {
-                          background: '#fff',
-                          color: '#363636',
-                        },
-                        success: {
-                          duration: 3000,
-                          iconTheme: {
-                            primary: '#10b981',
-                            secondary: '#fff',
+        <AnalyticsWrapper>
+          <SupabaseAuthProvider>
+            <AuthProvider>
+              <SupabaseAuthBridgeProvider>
+                <SubscriptionProvider>
+                  <SearchProvider>
+                    <ToastProvider>
+                      <TourWrapper>
+                        <SubscriptionPrefetch />
+                        <TokenRefreshErrorNotification />
+                        <AppRoutes />
+                        <Toaster />
+                      <HotToaster 
+                        position="top-right"
+                        toastOptions={{
+                          duration: 5000,
+                          style: {
+                            background: '#fff',
+                            color: '#363636',
                           },
-                        },
-                        error: {
-                          duration: 4000,
-                          iconTheme: {
-                            primary: '#ef4444',
-                            secondary: '#fff',
+                          success: {
+                            duration: 3000,
+                            iconTheme: {
+                              primary: '#10b981',
+                              secondary: '#fff',
+                            },
                           },
-                        },
-                      }}
-                    />
-                    </TourWrapper>
-                  </ToastProvider>
-                </SearchProvider>
-              </SubscriptionProvider>
-            </SupabaseAuthBridgeProvider>
-          </AuthProvider>
-        </SupabaseAuthProvider>
+                          error: {
+                            duration: 4000,
+                            iconTheme: {
+                              primary: '#ef4444',
+                              secondary: '#fff',
+                            },
+                          },
+                        }}
+                      />
+                      </TourWrapper>
+                    </ToastProvider>
+                  </SearchProvider>
+                </SubscriptionProvider>
+              </SupabaseAuthBridgeProvider>
+            </AuthProvider>
+          </SupabaseAuthProvider>
+        </AnalyticsWrapper>
       </BrowserRouter>
     </QueryClientProvider>
   );
