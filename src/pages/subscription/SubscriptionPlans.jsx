@@ -203,7 +203,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
 
   const renderValue = useCallback((value) => {
     if (value === true) return (
-      <div className="inline-flex items-center justify-center w-7 h-7 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 shadow-lg">
+      <div className="inline-flex items-center justify-center w-7 h-7 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-500 shadow-lg">
         <Check className="h-4 w-4 text-white" strokeWidth={3} />
       </div>
     );
@@ -241,10 +241,10 @@ const FeatureComparisonTable = memo(({ plans }) => {
     <div className="mt-20">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-5xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+          <h2 className="text-5xl font-semibold text-slate-900" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
             Compare Plans
           </h2>
-          <p className="text-slate-600 mt-2 text-lg font-light">See what's included in each plan</p>
+          <p className="text-slate-600 mt-2 text-lg font-normal">See what's included in each plan</p>
         </div>
         <button
           onClick={() => setShowComparison(false)}
@@ -256,16 +256,16 @@ const FeatureComparisonTable = memo(({ plans }) => {
 
       <div className="bg-white rounded-3xl border-2 border-slate-200 overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className={`grid bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white relative`} style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}>
+        <div className={`grid bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white relative`} style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}>
           <div className="absolute inset-0 opacity-[0.03]" style={{
             backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
           }}></div>
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
 
-          <div className="relative p-8 font-light text-xl" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Features</div>
+          <div className="relative p-8 font-normal text-xl" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>Features</div>
           {plans.map((plan) => (
             <div key={plan.id} className="relative p-8 text-center border-l border-white/10">
-              <div className="font-light text-xl mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{plan.name}</div>
+              <div className="font-semibold text-xl mb-2" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>{plan.name}</div>
               {plan.price && !plan.contactSales && (
                 <div className="text-sm text-white/70 font-medium">₹{parseInt(plan.price).toLocaleString()}/{plan.duration}</div>
               )}
@@ -284,13 +284,13 @@ const FeatureComparisonTable = memo(({ plans }) => {
               className="w-full p-6 flex items-center gap-4 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-200 transition-all text-left group"
             >
               <div className={`flex items-center justify-center w-10 h-10 rounded-2xl transition-all shadow-lg ${expandedCategories[category]
-                ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white scale-110'
+                ? 'bg-gradient-to-br from-gray-800 to-gray-900 text-white scale-110'
                 : 'bg-white text-slate-600 group-hover:bg-slate-50 border-2 border-slate-200'
                 }`}>
                 {expandedCategories[category] ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
               </div>
               <div className="flex-1">
-                <span className="font-light text-2xl text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{category}</span>
+                <span className="font-semibold text-2xl text-slate-900" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>{category}</span>
                 <span className="ml-4 text-sm text-slate-500 font-medium">{Object.keys(features).length} features</span>
               </div>
             </button>
@@ -322,7 +322,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
       {/* Legend */}
       <div className="mt-8 flex items-center justify-center gap-8 text-sm text-slate-600">
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center justify-center w-7 h-7 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 shadow-lg">
+          <div className="inline-flex items-center justify-center w-7 h-7 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-500 shadow-lg">
             <Check className="h-4 w-4 text-white" strokeWidth={3} />
           </div>
           <span className="font-medium">Included</span>
@@ -396,7 +396,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
     return (
       <li key={idx} className="flex items-start gap-3 py-2 group">
-        <div className="flex-shrink-0 w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
+        <div className="flex-shrink-0 w-5 h-5 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
           <Check className="h-3 w-3 text-white" strokeWidth={3} />
         </div>
         <div className="flex-1 min-w-0">
@@ -411,7 +411,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
   return (
     <div
-      className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl ${isCurrentPlan
+      className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 ${isCurrentPlan
         ? 'border-emerald-500 shadow-emerald-500/20'
         : plan.recommended
           ? 'border-slate-900 shadow-slate-900/10 scale-105'
@@ -428,7 +428,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
       )}
       {!isCurrentPlan && plan.recommended && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-          <span className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 px-5 py-2 rounded-full text-sm font-bold shadow-xl">
+          <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl">
             Most Popular
           </span>
         </div>
@@ -444,24 +444,33 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
       <div className="p-8 flex flex-col h-full">
         {/* Header */}
         <div className="mb-6 pt-2">
-          <h3 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+          <h3 className="text-3xl font-semibold text-slate-900 mb-2" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
             {plan.name}
           </h3>
-          {plan.tagline && (
-            <p className="text-sm text-amber-600 font-semibold">{plan.tagline}</p>
-          )}
+          {/* Subheading based on plan name */}
+          {plan.name.toLowerCase().includes('freemium') || parseInt(plan.price) === 0 ? (
+            <p className="text-sm text-slate-500 font-normal mb-2">Ideal for individuals</p>
+          ) : plan.name.toLowerCase().includes('basic') ? (
+            <p className="text-sm text-slate-500 font-normal mb-2">Essential tools for individual learning</p>
+          ) : plan.name.toLowerCase().includes('professional') || plan.name.toLowerCase().includes('pro') ? (
+            <p className="text-sm text-slate-500 font-normal mb-2">Advanced features for serious learners</p>
+          ) : plan.name.toLowerCase().includes('premium') || plan.name.toLowerCase().includes('elite') ? (
+            <p className="text-sm text-slate-500 font-normal mb-2">Complete toolkit for maximum career success</p>
+          ) : null}
 
           <div className="mt-6">
             {isContactSales ? (
-              <span className="text-3xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+              <span className="text-3xl font-semibold text-slate-900" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                 Contact Sales
               </span>
             ) : (
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                <span className="text-5xl font-bold text-slate-900" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                   ₹{parseInt(plan.price).toLocaleString()}
                 </span>
-                <span className="text-slate-500 font-light">/{plan.duration}</span>
+                {parseInt(plan.price) > 0 && (
+                  <span className="text-slate-500 font-normal">/{plan.duration}</span>
+                )}
                 {isOrganizationMode && (
                   <span className="text-sm text-slate-400 ml-1">/seat</span>
                 )}
@@ -482,7 +491,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           )}
 
           {plan.positioning && (
-            <p className="mt-4 text-sm text-slate-600 font-light leading-relaxed">{plan.positioning}</p>
+            <p className="mt-4 text-sm text-slate-500 font-normal leading-relaxed">{plan.positioning}</p>
           )}
 
           {isCurrentPlan && daysRemaining !== null && (
@@ -576,7 +585,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           ) : isContactSales ? (
             <a
               href="mailto:sales@skillpassport.in?subject=Enterprise%20Plan%20Inquiry"
-              className="w-full py-4 px-4 rounded-2xl font-semibold bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2"
+              className="w-full py-4 px-4 rounded-2xl font-semibold bg-black text-white hover:bg-gray-900 transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2"
             >
               Contact Sales
             </a>
@@ -586,7 +595,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
               className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${isOrganizationMode
                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
                 : isUpgrade || plan.recommended
-                  ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
+                  ? 'bg-black text-white hover:bg-gray-900'
                   : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
             >
@@ -617,6 +626,56 @@ function SubscriptionPlans() {
   const location = useLocation();
   const { type: pathType } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Navbar scroll behavior
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const header = document.querySelector('header');
+
+      if (!header) return;
+
+      // Change from sticky to fixed positioning for scroll behavior to work
+      if (header.style.position !== 'fixed') {
+        header.style.position = 'fixed';
+        header.style.width = '100%';
+        header.style.zIndex = '50';
+      }
+
+      if (currentScrollY < 10) {
+        // At the top, show navbar
+        header.style.transform = 'translateY(0)';
+        header.style.transition = 'transform 0.3s ease-in-out';
+      } else if (currentScrollY < lastScrollY) {
+        // Scrolling up, show navbar
+        header.style.transform = 'translateY(0)';
+        header.style.transition = 'transform 0.3s ease-in-out';
+      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // Scrolling down past 100px, hide navbar
+        header.style.transform = 'translateY(-100%)';
+        header.style.transition = 'transform 0.3s ease-in-out';
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      // Reset header on unmount
+      const header = document.querySelector('header');
+      if (header) {
+        header.style.transform = '';
+        header.style.transition = '';
+        header.style.position = '';
+        header.style.width = '';
+        header.style.zIndex = '';
+      }
+    };
+  }, [lastScrollY]);
 
   // Get type from path params OR query params (for redirects from protected routes)
   const type = pathType || searchParams.get('type');
@@ -966,11 +1025,11 @@ function SubscriptionPlans() {
 
   if (!isFullyLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-blue-400 via-blue-100 to-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto"></div>
-          <p className="mt-6 text-slate-900 font-light text-xl" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Loading subscription plans…</p>
-          <p className="mt-2 text-sm text-slate-500 font-medium">Fetching latest pricing from our servers</p>
+          <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
+          <p className="mt-6 text-white font-normal text-xl" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>Loading subscription plans…</p>
+          <p className="mt-2 text-sm text-white/70 font-medium">Fetching latest pricing from our servers</p>
         </div>
       </div>
     );
@@ -979,18 +1038,18 @@ function SubscriptionPlans() {
   // API loaded but returned an error and no plans
   if (plansError && plans.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-blue-400 via-blue-100 to-white flex items-center justify-center">
         <div className="text-center max-w-md">
           <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
             <AlertCircle className="h-8 w-8 text-white" />
           </div>
-          <h2 className="text-3xl font-light text-slate-900 mb-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Unable to Load Plans</h2>
-          <p className="text-slate-600 mb-8 leading-relaxed font-light">
+          <h2 className="text-3xl font-semibold text-white mb-3" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>Unable to Load Plans</h2>
+          <p className="text-white/80 mb-8 leading-relaxed font-light">
             {plansError.message || 'An error occurred while fetching subscription plans.'}
           </p>
           <button
             onClick={refetchPlans}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl font-semibold hover:from-slate-900 hover:to-black transition-all shadow-lg hover:shadow-xl hover:scale-105"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white rounded-2xl font-semibold hover:bg-gray-900 transition-all shadow-lg hover:shadow-xl hover:scale-105"
           >
             <RefreshCw className="h-5 w-5" />
             Try Again
@@ -1002,7 +1061,7 @@ function SubscriptionPlans() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+    <div className="min-h-screen bg-gradient-to-b from-blue-400 via-blue-100 to-white">
       <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
         {/* Subscription status error banner */}
         {subscriptionError && isAuthenticated && (
@@ -1042,7 +1101,7 @@ function SubscriptionPlans() {
         {isAuthenticated && hasActiveOrPausedSubscription && (
           <div className="mb-16">
             {/* Main Status Card - Editorial Luxury Aesthetic */}
-            <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-2xl">
+            <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 shadow-2xl">
               {/* Sophisticated background pattern */}
               <div className="absolute inset-0 opacity-[0.03]" style={{
                 backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
@@ -1062,10 +1121,10 @@ function SubscriptionPlans() {
                       </span>
                     </div>
 
-                    <h2 className="text-5xl font-light text-white mb-3 tracking-tight leading-none" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                    <h2 className="text-5xl font-semibold text-white mb-3 tracking-tight leading-none" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                       {currentPlanData?.name || subscriptionData.planName || 'Professional'}
                     </h2>
-                    <p className="text-xl text-white/60 font-light tracking-wide mb-6" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                    <p className="text-xl text-white/60 font-normal tracking-wide mb-6" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                       {currentPlanData?.tagline || 'Your subscription is active'}
                     </p>
 
@@ -1096,7 +1155,7 @@ function SubscriptionPlans() {
                         <Clock className="h-5 w-5 text-white/30" />
                       </div>
                       <div className="text-center">
-                        <div className="text-6xl font-light text-white mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                        <div className="text-6xl font-semibold text-white mb-1" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                           {daysRemaining}
                         </div>
                         <div className="text-sm text-white/70 uppercase tracking-widest font-medium">
@@ -1138,7 +1197,7 @@ function SubscriptionPlans() {
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg">
                       <Sparkles className="h-5 w-5 text-white" />
                     </div>
-                    <h3 className="text-2xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                    <h3 className="text-2xl font-semibold text-slate-900" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                       Active Features
                     </h3>
                   </div>
@@ -1160,7 +1219,7 @@ function SubscriptionPlans() {
                             animation: `fadeInUp 0.5s ease-out ${index * 0.05}s both`
                           }}
                         >
-                          <div className="flex-shrink-0 w-6 h-6 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
                             <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
                           </div>
                           <div className="flex-1">
@@ -1191,7 +1250,7 @@ function SubscriptionPlans() {
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
                       <Shield className="h-5 w-5 text-white" />
                     </div>
-                    <h3 className="text-2xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                    <h3 className="text-2xl font-semibold text-slate-900" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                       Details
                     </h3>
                   </div>
@@ -1225,7 +1284,7 @@ function SubscriptionPlans() {
 
                     <div className="group">
                       <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Plan Value</div>
-                      <div className="text-2xl text-slate-900 font-light" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                      <div className="text-2xl text-slate-900 font-semibold" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                         {currentPlanData?.price ? `₹${parseInt(currentPlanData.price).toLocaleString()}` : 'Custom'}
                       </div>
                     </div>
@@ -1251,11 +1310,11 @@ function SubscriptionPlans() {
 
         {/* Hero Message */}
         {heroMessage && (
-          <div className="mb-12 relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 p-8 shadow-xl">
+          <div className="mb-12 relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 p-8 shadow-xl">
             <div className="absolute inset-0 opacity-10" style={{
               backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
             }}></div>
-            <p className="relative text-white text-lg font-light text-center" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+            <p className="relative text-white text-lg font-normal text-center" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
               {heroMessage}
             </p>
           </div>
@@ -1263,10 +1322,10 @@ function SubscriptionPlans() {
 
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-6xl font-light text-slate-900 mb-4 tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+          <h1 className="text-6xl font-normal text-white mb-4 tracking-tight" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
             {isAuthenticated && hasActiveOrPausedSubscription ? 'Manage Your Plan' : title}
           </h1>
-          <p className="text-xl text-slate-600 max-w-2xl mx-auto font-light leading-relaxed">
+          <p className="text-xl text-white/80 max-w-2xl mx-auto font-light leading-relaxed" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
             {isAuthenticated && hasActiveOrPausedSubscription ? 'Upgrade to unlock more features' : subtitle}
           </p>
         </div>
@@ -1277,7 +1336,7 @@ function SubscriptionPlans() {
             <button
               onClick={() => setActiveTab('plans')}
               className={`px-8 py-3.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'plans'
-                ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
+                ? 'bg-black text-white shadow-lg'
                 : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
@@ -1287,7 +1346,7 @@ function SubscriptionPlans() {
             <button
               onClick={() => setActiveTab('addons')}
               className={`px-8 py-3.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'addons'
-                ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
+                ? 'bg-black text-white shadow-lg'
                 : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
@@ -1312,7 +1371,7 @@ function SubscriptionPlans() {
                     <Building2 className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-light text-white mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                    <h3 className="text-2xl font-semibold text-white mb-1" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                       Organization Purchase Mode
                     </h3>
                     <p className="text-purple-100 font-light">
@@ -1346,7 +1405,7 @@ function SubscriptionPlans() {
             <div className="mt-16 flex flex-wrap items-center justify-center gap-12 text-slate-600">
               {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map((item) => (
                 <div key={item} className="flex items-center gap-3 group">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                     <Check className="h-4 w-4 text-white" strokeWidth={3} />
                   </div>
                   <span className="font-medium">{item}</span>
@@ -1368,14 +1427,14 @@ function SubscriptionPlans() {
         )}
 
         {/* Contact Section */}
-        <div className="mt-20 text-center relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-12 shadow-2xl">
+        <div className="mt-20 text-center relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-12 shadow-2xl">
           <div className="absolute inset-0 opacity-[0.03]" style={{
             backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
           }}></div>
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
 
           <div className="relative">
-            <h3 className="text-4xl font-light text-white mb-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+            <h3 className="text-4xl font-semibold text-white mb-3" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
               Need Help Choosing?
             </h3>
             <p className="text-white/70 mb-8 text-lg font-light max-w-xl mx-auto">
