@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { useLearnerProfile, useLearnerDashboard } from '@/features/learner-profile';
+import { useLearnerProfile, useLearnerDashboard, LearnerTypeSelectionModal } from '@/features/learner-profile';
 
 import { Header, ProfileHeroEdit } from '@/widgets/learner-dashboard';
 import { FloatingAIButton } from '@/features/career-assistant';
@@ -43,13 +43,31 @@ const LearnerLayout = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() => getActiveTabFromPath(location.pathname));
   const [activeModal, setActiveModal] = useState(null);
+  const [showLearnerTypeModal, setShowLearnerTypeModal] = useState(false);
   const user = useUser();
 
   // Fetch learner data using backend API (uses JWT user_id)
   const {
     profile: learnerData,
     loading: learnerLoading,
+    refresh: refreshLearnerData,
   } = useLearnerDashboard({ enabled: true });
+
+  // Check if learner_type is empty or null
+  useEffect(() => {
+    if (!learnerLoading && learnerData) {
+      const learnerType = learnerData?.learner_type || learnerData?.rawData?.learner_type;
+      if (!learnerType || learnerType === '' || learnerType === null) {
+        setShowLearnerTypeModal(true);
+      }
+    }
+  }, [learnerData, learnerLoading]);
+
+  // Handle successful learner type selection
+  const handleLearnerTypeSuccess = () => {
+    setShowLearnerTypeModal(false);
+    refreshLearnerData(); // Refresh the learner data
+  };
 
   // Sync activeTab with current route
   useEffect(() => {
@@ -170,6 +188,15 @@ const LearnerLayout = () => {
             onSave={(data) => handleSave('technicalSkills', data)}
           />
         </>
+      )}
+
+      {/* Learner Type Selection Modal */}
+      {showLearnerTypeModal && learnerData?.id && (
+        <LearnerTypeSelectionModal
+          isOpen={showLearnerTypeModal}
+          learnerId={learnerData.id}
+          onSuccess={handleLearnerTypeSuccess}
+        />
       )}
     </div>
   );
