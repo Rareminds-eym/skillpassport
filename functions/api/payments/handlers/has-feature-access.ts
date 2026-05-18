@@ -34,7 +34,7 @@ export async function handleHasFeatureAccess(context: AuthenticatedContext): Pro
 
     // First, check if user has a subscription plan that includes this feature
     const { data: subscription, error: subError } = await supabase
-      .from('subscriptions')
+      .from('subscription_cache')
       .select('plan_id, status, subscription_end_date')
       .eq('user_id', userId)
       .in('status', ['active', 'paused', 'cancelled'])

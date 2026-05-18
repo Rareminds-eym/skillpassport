@@ -30,9 +30,9 @@ class MigrationService {
         return { success: false, error: 'Plan code is required' };
       }
 
-      // Get the plan by code
+      // Get the plan by code from plans_cache (shadow of auth DB)
       const { data: plan, error: planError } = await supabase
-        .from('subscription_plans')
+        .from('plans_cache')
         .select('id, plan_code, name')
         .eq('plan_code', planCode)
         .single();
@@ -114,12 +114,12 @@ class MigrationService {
         return { success: false, error: 'User ID is required' };
       }
 
-      // Get user's current active subscription
+      // Get user's current active subscription from subscription_cache
       const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
-        .select('id, plan_id, status, current_period_end')
+        .from('subscription_cache')
+        .select('id, plan_id, plan_code, status, subscription_end_date, plan_amount')
         .eq('user_id', userId)
-        .eq('status', 'active')
+        .in('status', ['active', 'pending'])
         .single();
 
       if (subError) {
@@ -130,9 +130,9 @@ class MigrationService {
         return { success: false, error: subError.message };
       }
 
-      // Get the plan details
+      // Get the plan details from plans_cache
       const { data: plan, error: planError } = await supabase
-        .from('subscription_plans')
+        .from('plans_cache')
         .select('id, plan_code, name')
         .eq('id', subscription.plan_id)
         .single();
@@ -149,7 +149,7 @@ class MigrationService {
 
       const { features } = mappingResult.data;
 
-      // Calculate original and new prices - use subscription's stored amount
+      // Calculate original and new prices
       const originalPrice = subscription.plan_amount || 0;
       const newPrice = features.reduce((sum, f) => sum + (f.addon_price_monthly || 0), 0);
 
@@ -167,7 +167,7 @@ class MigrationService {
         .from('subscription_migrations')
         .insert({
           user_id: userId,
-          old_plan_code: plan.code,
+          old_plan_code: plan.plan_code,
           old_subscription_id: subscription.id,
           migrated_feature_keys: features.map(f => f.feature_key),
           original_price: originalPrice,
@@ -191,10 +191,10 @@ class MigrationService {
         status: 'active',
         billing_period: 'monthly',
         start_date: new Date().toISOString(),
-        end_date: subscription.current_period_end || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        end_date: subscription.subscription_end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         auto_renew: true,
-        price_at_purchase: preservePricing && priceProtectedUntil 
-          ? (originalPrice / features.length) 
+        price_at_purchase: preservePricing && priceProtectedUntil
+          ? (originalPrice / features.length)
           : feature.addon_price_monthly
       }));
 
@@ -249,12 +249,12 @@ class MigrationService {
         return { success: false, error: 'User ID is required' };
       }
 
-      // Get user's current active subscription
+      // Get user's current active subscription from subscription_cache
       const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
-        .select('id, plan_id, status, created_at')
+        .from('subscription_cache')
+        .select('id, plan_id, plan_code, status, created_at, plan_amount')
         .eq('user_id', userId)
-        .eq('status', 'active')
+        .in('status', ['active', 'pending'])
         .single();
 
       if (subError) {
@@ -265,9 +265,9 @@ class MigrationService {
         return { success: false, error: subError.message };
       }
 
-      // Get the plan details
+      // Get the plan details from plans_cache
       const { data: plan, error: planError } = await supabase
-        .from('subscription_plans')
+        .from('plans_cache')
         .select('id, plan_code, name')
         .eq('id', subscription.plan_id)
         .single();

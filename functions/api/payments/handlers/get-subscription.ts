@@ -23,7 +23,7 @@ export async function handleGetSubscription(context: AuthenticatedContext): Prom
     const supabase = getServiceClient(env);
 
     const { data, error } = await supabase
-      .from('subscriptions')
+      .from('subscription_cache')
       .select('*')
       .eq('user_id', user.sub)
       .in('status', ['active', 'paused'])

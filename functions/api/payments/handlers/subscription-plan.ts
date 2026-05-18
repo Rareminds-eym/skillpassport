@@ -37,7 +37,7 @@ export async function handleSubscriptionPlan(context: AuthenticatedContext): Pro
     const supabase = getServiceClient(env);
 
     const { data, error } = await supabase
-      .from('subscription_plans')
+      .from('plans_cache')
       .select('*')
       .eq('id', planId)
       .maybeSingle();

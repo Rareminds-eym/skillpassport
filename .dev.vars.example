@@ -26,6 +26,12 @@ RAZORPAY_SERVICE_SECRET=your_service_secret_here
 # Razorpay key ID injected into create-order responses for frontend checkout
 RAZORPAY_KEY_ID=rzp_test_YourKeyIdHere
 
+# ==================== SSO WORKER SERVICE AUTHENTICATION ====================
+# Shared secret for service-to-service authentication with SSO worker sync endpoints
+# CRITICAL: This value MUST match the SERVICE_AUTH_SECRET in sso-worker
+# Generate with: openssl rand -base64 32
+SERVICE_AUTH_SECRET=your-strong-random-secret-here-min-32-bytes-base64
+
 # ==================== EMBEDDING WORKER CONFIGURATION ====================
 # URL of the embedding worker (standalone Cloudflare Worker on port 9002)
 EMBEDDING_API_URL=http://localhost:9002

@@ -25,7 +25,7 @@ export async function handleCheckSubscriptionAccess(context: AuthenticatedContex
 
     // Query user's active or paused subscription
     const { data: subscription, error } = await supabase
-      .from('subscriptions')
+      .from('subscription_cache')
       .select('*')
       .eq('user_id', user.sub)
       .in('status', ['active', 'paused'])

@@ -29,7 +29,7 @@ export async function handleGetUserSubscriptions(context: AuthenticatedContext):
       : 'id,created_at,subscription_start_date,subscription_end_date,plan_amount,status,plan_type,billing_cycle,razorpay_payment_id';
 
     const { data, error } = await supabase
-      .from('subscriptions')
+      .from('subscription_cache')
       .select(selectFields)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })

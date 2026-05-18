@@ -17,7 +17,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
 
     if (action === 'getMigrationMapping') {
       const { planCode } = body;
-      const { data: plan, error: planError } = await supabase.from('subscription_plans').select('id, plan_code, name').eq('plan_code', planCode).single();
+      const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name').eq('plan_code', planCode).single();
       if (planError) return new Response(JSON.stringify({ success: false, error: 'PLAN_NOT_FOUND' }), { status: 200 });
 
       const { data: planFeatures } = await supabase.from('subscription_plan_features').select('*').eq('plan_id', plan.id).eq('is_included', true);
@@ -32,11 +32,12 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
     }
 
     if (action === 'calculatePriceProtection') {
-      const { data: subscription } = await supabase.from('subscriptions').select('id, plan_id, status, created_at, plan_amount').eq('user_id', userId).eq('status', 'active').single();
+      const { data: subscription } = await supabase.from('subscription_cache').select('id, plan_id, status, created_at, plan_amount, plan_code, plan_name').eq('user_id', userId).eq('status', 'active').single();
       if (!subscription) return new Response(JSON.stringify({ success: false, error: 'NO_ACTIVE_SUBSCRIPTION' }), { status: 200 });
-      
-      const { data: plan } = await supabase.from('subscription_plans').select('id, plan_code, name').eq('id', subscription.plan_id).single();
-      
+
+      // plan data is denormalized on subscription_cache; use plan_id for feature lookups
+      const plan = { id: subscription.plan_id, plan_code: subscription.plan_code, name: subscription.plan_name };
+
       const { data: planFeatures } = await supabase.from('subscription_plan_features').select('*').eq('plan_id', plan?.id).eq('is_included', true);
       const { data: addOns } = await supabase.from('subscription_plan_features').select('*').eq('is_addon', true);
       const addOnMap = new Map((addOns || []).map(a => [a.feature_key, a]));

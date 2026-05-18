@@ -16,14 +16,23 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
+import { ssoRecordTransaction } from '../../../lib/sso-client';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handleVerifyAddonPayment(context);
 });
 
+function extractAuthToken(request: Request): string {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('No auth token found');
+  }
+  return authHeader.slice(7);
+}
+
 export async function handleVerifyAddonPayment(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv;
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
     // Parse request body
@@ -105,7 +114,23 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       });
     }
 
-    // Return combined result
+    // Record transaction in auth DB (non-blocking on failure)
+    try {
+      const authToken = extractAuthToken(context.request);
+      await ssoRecordTransaction(env, authToken, {
+        user_id: user.sub,
+        razorpay_payment_id: body.razorpay_payment_id as string,
+        razorpay_order_id: body.razorpay_order_id as string,
+        amount: typeof body.amount === 'number' ? body.amount : 0,
+        currency: (body.currency as string) || 'INR',
+        status: 'success',
+        transaction_type: 'addon',
+        metadata: { addon_id: body.addon_id, addon_name: body.addon_name },
+      });
+    } catch (txError) {
+      console.error('[VerifyAddonPayment] Transaction recording in auth DB failed (non-critical):', txError);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       ...verifyResult,

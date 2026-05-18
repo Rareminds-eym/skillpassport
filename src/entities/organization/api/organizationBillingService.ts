@@ -156,29 +156,38 @@ export class OrganizationBillingService {
     try {
       // 1. Get all active subscriptions
       const { data: subscriptions, error: subError } = await supabase
-        .from('organization_subscriptions')
-        .select(`
-          *,
-          subscription_plans (
-            id,
-            name
-          )
-        `)
+        .from('subscription_cache')
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('organization_type', organizationType)
+        .eq('is_org_subscription', true)
         .in('status', ['active', 'grace_period']);
 
       if (subError) throw subError;
 
-      // 2. Get payment history
-      const { data: payments, error: payError } = await supabase
-        .from('payment_transactions')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (payError) throw payError;
+      // 2. Get payment history from auth DB via API
+      let payments: any[] = [];
+      try {
+        const { data: { session } } = await getCurrentSession();
+        if (session?.access_token) {
+          const origin = window.location.origin;
+          const res = await fetch(
+            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&limit=20`,
+            {
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          if (res.ok) {
+            const json = await res.json();
+            payments = json.transactions || json.data || [];
+          }
+        }
+      } catch (payErr) {
+        logger.error('Error fetching payment history', payErr as Error);
+      }
 
       // 3. Get addon purchases for organization
       // Note: addon_pending_orders uses addon_feature_key (text), not a foreign key to subscription_addons
@@ -203,21 +212,21 @@ export class OrganizationBillingService {
       const subscriptionSummaries: SubscriptionSummary[] = (subscriptions || []).map(sub => {
         const monthlyCost = this.calculateMonthlyCost(sub);
         subscriptionCosts += monthlyCost;
-        totalActiveSeats += sub.total_seats;
+        totalActiveSeats += sub.seat_count;
         totalAssignedSeats += sub.assigned_seats;
 
         return {
           subscriptionId: sub.id,
-          planId: sub.subscription_plan_id,
-          planName: sub.subscription_plans?.name || 'Unknown Plan',
-          seatCount: sub.total_seats,
+          planId: sub.plan_id,
+          planName: sub.plan_name || 'Unknown Plan',
+          seatCount: sub.seat_count,
           assignedSeats: sub.assigned_seats,
-          utilization: sub.total_seats > 0 
-            ? Math.round((sub.assigned_seats / sub.total_seats) * 100) 
+          utilization: sub.seat_count > 0
+            ? Math.round((sub.assigned_seats / sub.seat_count) * 100)
             : 0,
           monthlyCost,
           status: sub.status,
-          endDate: sub.end_date
+          endDate: sub.subscription_end_date
         };
       });
 
@@ -255,15 +264,15 @@ export class OrganizationBillingService {
 
       const upcomingRenewals: UpcomingRenewal[] = (subscriptions || [])
         .filter(sub => {
-          const endDate = new Date(sub.end_date);
+          const endDate = new Date(sub.subscription_end_date);
           return endDate <= thirtyDaysFromNow && sub.status === 'active';
         })
         .map(sub => ({
           subscriptionId: sub.id,
-          planName: sub.subscription_plans?.name || 'Unknown Plan',
-          renewalDate: sub.end_date,
+          planName: sub.plan_name || 'Unknown Plan',
+          renewalDate: sub.subscription_end_date,
           estimatedCost: parseFloat(sub.final_amount),
-          seatCount: sub.total_seats,
+          seatCount: sub.seat_count,
           autoRenew: sub.auto_renew
         }));
 
@@ -321,14 +330,32 @@ export class OrganizationBillingService {
     }
   ): Promise<Invoice> {
     try {
-      // 1. Get transaction details
-      const { data: transaction, error: txError } = await supabase
-        .from('payment_transactions')
-        .select('*')
-        .eq('id', transactionId)
-        .single();
+      // 1. Get transaction details from auth DB via API
+      let transaction: any = null;
+      try {
+        const { data: { session } } = await getCurrentSession();
+        if (!session?.access_token) throw new Error('Not authenticated');
 
-      if (txError || !transaction) {
+        const origin = window.location.origin;
+        const res = await fetch(
+          `${origin}/api/payments/get-user-payments?transaction_id=${transactionId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          const transactions = json.transactions || json.data || [];
+          transaction = transactions.find((t: any) => t.id === transactionId) || transactions[0];
+        }
+      } catch (fetchErr) {
+        logger.error('Error fetching transaction from API', fetchErr as Error);
+      }
+
+      if (!transaction) {
         throw new Error('Transaction not found');
       }
 
@@ -337,12 +364,10 @@ export class OrganizationBillingService {
 
       if (transaction.organization_id) {
         const { data: orgSub } = await supabase
-          .from('organization_subscriptions')
-          .select(`
-            *,
-            subscription_plans (name)
-          `)
+          .from('subscription_cache')
+          .select('*')
           .eq('organization_id', transaction.organization_id)
+          .eq('is_org_subscription', true)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
@@ -355,8 +380,8 @@ export class OrganizationBillingService {
 
           lineItems = [
             {
-              description: `${orgSub.subscription_plans?.name || 'Subscription'} - ${orgSub.total_seats} seats`,
-              quantity: orgSub.total_seats,
+              description: `${orgSub.plan_name || 'Subscription'} - ${orgSub.seat_count} seats`,
+              quantity: orgSub.seat_count,
               unitPrice: orgSub.price_per_seat,
               amount: baseAmount,
               taxRate: 0,
@@ -442,16 +467,29 @@ export class OrganizationBillingService {
     limit: number = 50
   ): Promise<Invoice[]> {
     try {
-      // Get all successful payment transactions for the organization
-      const { data: transactions, error } = await supabase
-        .from('payment_transactions')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('status', 'success')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
+      // Get all successful payment transactions from auth DB via API
+      let transactions: any[] = [];
+      try {
+        const { data: { session } } = await getCurrentSession();
+        if (session?.access_token) {
+          const origin = window.location.origin;
+          const res = await fetch(
+            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&status=success&limit=${limit}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          if (res.ok) {
+            const json = await res.json();
+            transactions = json.transactions || json.data || [];
+          }
+        }
+      } catch (fetchErr) {
+        logger.error('Error fetching transactions from API', fetchErr as Error);
+      }
 
       // Generate invoice objects for each transaction
       const invoices: Invoice[] = (transactions || []).map((tx, index) => {
@@ -537,15 +575,13 @@ export class OrganizationBillingService {
     organizationType: 'school' | 'college' | 'university'
   ): Promise<CostProjection> {
     try {
-      // Get active subscriptions
+      // Get active subscriptions from subscription_cache
       const { data: subscriptions, error: subError } = await supabase
-        .from('organization_subscriptions')
-        .select(`
-          *,
-          subscription_plans (name)
-        `)
+        .from('subscription_cache')
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('organization_type', organizationType)
+        .eq('is_organization_subscription', true)
         .eq('status', 'active');
 
       if (subError) throw subError;
@@ -611,13 +647,10 @@ export class OrganizationBillingService {
     proratedCost: number;
   }> {
     try {
-      // Get current subscription
+      // Get current subscription from subscription_cache
       const { data: subscription, error } = await supabase
-        .from('organization_subscriptions')
-        .select(`
-          *,
-          subscription_plans (name)
-        `)
+        .from('subscription_cache')
+        .select('*')
         .eq('id', subscriptionId)
         .single();
 
@@ -625,9 +658,8 @@ export class OrganizationBillingService {
         throw new Error('Subscription not found');
       }
 
-      const newTotalSeats = subscription.total_seats + additionalSeats;
-      // Use stored price_per_seat from subscription record
-      const pricePerSeat = subscription.price_per_seat;
+      const newTotalSeats = (subscription.seat_count || 0) + additionalSeats;
+      const pricePerSeat = parseFloat(subscription.price_per_seat || subscription.plan_amount || '0');
 
       // Calculate new volume discount
       const newDiscountPercentage = this.calculateVolumeDiscount(newTotalSeats);
@@ -640,9 +672,9 @@ export class OrganizationBillingService {
       const totalCost = afterDiscount + taxAmount;
 
       // Calculate proration
-      const endDate = new Date(subscription.end_date);
+      const endDate = new Date(subscription.subscription_end_date);
       const now = new Date();
-      const totalDays = Math.ceil((endDate.getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24));
+      const totalDays = Math.ceil((endDate.getTime() - new Date(subscription.subscription_start_date).getTime()) / (1000 * 60 * 60 * 24));
       const remainingDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       const proratedCost = (totalCost / totalDays) * remainingDays;
 
@@ -739,10 +771,9 @@ export class OrganizationBillingService {
    * Calculate monthly cost from subscription
    */
   private calculateMonthlyCost(subscription: any): number {
-    const finalAmount = parseFloat(subscription.final_amount);
-    // Determine if annual based on subscription duration
-    const startDate = new Date(subscription.start_date);
-    const endDate = new Date(subscription.end_date);
+    const finalAmount = parseFloat(subscription.final_amount || subscription.plan_amount || '0');
+    const startDate = new Date(subscription.subscription_start_date || subscription.start_date);
+    const endDate = new Date(subscription.subscription_end_date || subscription.end_date);
     const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     const isAnnual = durationDays > 60; // More than 2 months = annual
     

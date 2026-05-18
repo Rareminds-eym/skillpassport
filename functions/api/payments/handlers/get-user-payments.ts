@@ -3,37 +3,35 @@
  *
  * GET /api/payments/get-user-payments
  *
- * Fetches all payments for the authenticated user. Bypasses RLS. Requires SSO authentication.
+ * Fetches all payment transactions for the authenticated user from the
+ * auth DB via the SSO worker. Requires SSO authentication.
  */
 
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getServiceClient } from '../../../lib/supabase';
-import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { ssoGetUserTransactions } from '../../../lib/sso-client';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return handleGetUserPayments(context);
 });
 
+function extractAuthToken(request: Request): string {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) throw new Error('No auth token found');
+  return authHeader.slice(7);
+}
+
 export async function handleGetUserPayments(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+  const env = context.env as { SSO_SERVICE: Fetcher };
   const userId = context.data.user.sub;
 
   try {
-    const supabase = getServiceClient(env);
+    const authToken = extractAuthToken(context.request);
+    const transactions = await ssoGetUserTransactions(env, authToken, userId);
 
-    const { data, error } = await supabase
-      .from('payment_transactions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return apiDbError(error, context.request, { startTime });
-    }
-
-    return apiSuccess(data || [], context.request, { startTime });
+    return apiSuccess(transactions || [], context.request, { startTime });
   } catch (error) {
     console.error('[GetUserPayments] Error:', error);
     return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });

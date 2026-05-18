@@ -91,7 +91,7 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
     const supabase = getServiceClient(env);
 
     let query = supabase
-      .from('subscription_plans')
+      .from('plans_cache')
       .select('*')
       .eq('is_active', true)
       .order('display_order', { ascending: true });
