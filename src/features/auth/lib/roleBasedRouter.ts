@@ -9,6 +9,8 @@ const ROLE_ROUTES: Record<UserRole, string> = {
   learner: '/learner/dashboard',
   recruiter: '/recruitment/overview',
   educator: '/educator/dashboard',
+  school_educator: '/educator/dashboard',
+  college_educator: '/educator/dashboard',
   school_admin: '/school-admin/dashboard',
   college_admin: '/college-admin/dashboard',
   university_admin: '/university-admin/dashboard',

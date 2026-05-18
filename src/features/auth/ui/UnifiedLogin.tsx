@@ -29,6 +29,8 @@ const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   learner: 'Learners',
   recruiter: 'Recruiter',
   educator: 'Educator',
+  school_educator: 'School Educator',
+  college_educator: 'College Educator',
   school_admin: 'School Administrator',
   college_admin: 'College Administrator',
   university_admin: 'University Administrator',
@@ -108,7 +110,16 @@ const UnifiedLogin = () => {
       const { useAuthStore } = await import('@/shared/model/authStore');
       const currentRoles = useAuthStore.getState().user?.roles ?? [];
 
-      if (!currentRoles.includes(state.selectedRole)) {
+      // Check if user has the selected role or a variant of it
+      // For 'educator', accept 'educator', 'school_educator', or 'college_educator'
+      let hasRole = currentRoles.includes(state.selectedRole);
+      if (!hasRole && state.selectedRole === 'educator') {
+        hasRole = currentRoles.some(role =>
+          role === 'educator' || role === 'school_educator' || role === 'college_educator'
+        );
+      }
+
+      if (!hasRole) {
         // User doesn't have this role — log them out and show error
         await useAuthStore.getState().logout();
         setState((prev) => ({
@@ -120,7 +131,17 @@ const UnifiedLogin = () => {
       }
 
       // Update the primary role to match what the user selected
-      useAuthStore.setState({ role: state.selectedRole });
+      // If they selected 'educator' but have a specific variant, use the variant
+      let actualRole = state.selectedRole;
+      if (state.selectedRole === 'educator') {
+        const educatorRole = currentRoles.find(role =>
+          role === 'educator' || role === 'school_educator' || role === 'college_educator'
+        );
+        if (educatorRole) {
+          actualRole = educatorRole as UserRole;
+        }
+      }
+      useAuthStore.setState({ role: actualRole });
 
       // Redirect to the intended destination
       if (returnUrl) {
