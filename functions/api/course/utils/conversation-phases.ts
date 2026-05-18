@@ -26,22 +26,22 @@ export function getConversationPhase(messageCount: number): ConversationPhase {
 }
 
 /**
- * Get AI parameters for each conversation phase
+ * Get AI parameters for each conversation phase (optimized for free tier)
  */
 export function getPhaseParameters(phase: ConversationPhase): PhaseParameters {
   const params: Record<ConversationPhase, PhaseParameters> = {
     opening: { 
-      maxTokens: 250, 
+      maxTokens: 150,  // Reduced for free tier
       temperature: 0.8, 
       verbosity: 'low' 
     },
     exploring: { 
-      maxTokens: 1500, 
+      maxTokens: 300,  // Reduced for free tier
       temperature: 0.7, 
       verbosity: 'medium' 
     },
     deep_dive: { 
-      maxTokens: 3000, 
+      maxTokens: 500,  // Reduced for free tier
       temperature: 0.6, 
       verbosity: 'high' 
     }
