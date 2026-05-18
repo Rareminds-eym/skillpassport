@@ -6,7 +6,15 @@
  */
 
 // Types (kept for backward compatibility with consumers)
-export type UserRole = 'learner' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
+export type UserRole =
+  | 'learner'
+  | 'recruiter'
+  | 'educator'
+  | 'school_educator'
+  | 'college_educator'
+  | 'school_admin'
+  | 'college_admin'
+  | 'university_admin';
 
 export interface AuthResult {
   success: boolean;
@@ -66,5 +74,5 @@ export const getCurrentUser = async () => null;
 export const sendPasswordResetOtp = async () => ({ success: false });
 export const verifyOtpAndResetPassword = async () => ({ success: false });
 export const getCurrentAdmin = async () => null;
-export const logoutAdmin = async () => {};
+export const logoutAdmin = async () => { };
 export const checkEmailExists = async () => false;

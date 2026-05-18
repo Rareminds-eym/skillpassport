@@ -441,7 +441,7 @@ const UnifiedSignup = () => {
     if (!state.lastName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your last name' })); return false; }
     if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
-    
+
     // Phone number validation based on environment
     if (!isDevEnvironment) {
       // Production: Phone number is required
@@ -453,7 +453,7 @@ const UnifiedSignup = () => {
       if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
       if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     }
-    
+
     if (!state.password || state.password.length < 8) { setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' })); return false; }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(state.password)) { setState(prev => ({ ...prev, error: 'Password must contain uppercase, lowercase, and number' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
@@ -1072,7 +1072,7 @@ const UnifiedSignup = () => {
                     {state.roleDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
                         {allRoles.map(role => {
-                          const isAvailable = role === 'learner';
+                          const isAvailable = role === 'learner' || role === 'school_educator' || role === 'college_educator';
                           return (
                             <button
                               key={role}
@@ -1088,11 +1088,10 @@ const UnifiedSignup = () => {
                                 }
                               }}
                               disabled={!isAvailable}
-                              className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
-                                isAvailable
-                                  ? 'hover:bg-blue-50 cursor-pointer text-gray-900'
-                                  : 'cursor-not-allowed text-gray-400 bg-gray-50'
-                              } ${state.selectedRole === role ? 'bg-blue-50 text-blue-700' : ''}`}
+                              className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${isAvailable
+                                ? 'hover:bg-blue-50 cursor-pointer text-gray-900'
+                                : 'cursor-not-allowed text-gray-400 bg-gray-50'
+                                } ${state.selectedRole === role ? 'bg-blue-50 text-blue-700' : ''}`}
                             >
                               <span className="font-medium">{getRoleDisplayName(role)}</span>
                               {!isAvailable && (
