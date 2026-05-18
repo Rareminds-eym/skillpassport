@@ -30,6 +30,7 @@ import DatePicker from '../../components/Subscription/shared/DatePicker';
 // @ts-ignore - JS module without types
 import OTPInput from '../../components/OTPInput';
 import { supabase } from '../../lib/supabaseClient';
+import { trackSignup } from '../../shared/lib/analytics';
 
 type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -305,6 +306,7 @@ const UnifiedSignup = () => {
   const [cities, setCities] = useState<any[]>([]);
   const [countryCodeDropdownOpen, setCountryCodeDropdownOpen] = useState(false);
   const countryCodeRef = useRef<HTMLDivElement>(null);
+  const [hasStartedForm, setHasStartedForm] = useState(false); // Track if user has started filling form
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -354,6 +356,12 @@ const UnifiedSignup = () => {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     let processedValue: string | boolean = value;
+
+    // Track signup_start on first form interaction
+    if (!hasStartedForm && (name === 'firstName' || name === 'lastName' || name === 'email')) {
+      trackSignup.start(state.selectedRole || undefined);
+      setHasStartedForm(true);
+    }
 
     if (type === 'checkbox') processedValue = (e.target as HTMLInputElement).checked;
     if (name === 'phone') processedValue = value.replace(/\D/g, '').slice(0, 15);
@@ -445,12 +453,13 @@ const UnifiedSignup = () => {
     }
   };
 
-  // Check if OTP verification should be skipped (for localhost/development and production)
+  // Check if OTP verification should be skipped (localhost/development only)
+  // IMPORTANT: VITE_SKIP_OTP_VERIFICATION is only honoured in dev builds (import.meta.env.DEV).
+  // Production builds always require proper OTP/email verification.
   const skipOtpVerification =
-    import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true' ||
+    (import.meta.env.DEV && import.meta.env.VITE_SKIP_OTP_VERIFICATION === 'true') ||
     window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.origin === 'https://skillpassport.pages.dev';
+    window.location.hostname === '127.0.0.1';
 
   // Validate Step 1 fields
   const validateStep1 = (): boolean => {
@@ -458,7 +467,8 @@ const UnifiedSignup = () => {
     if (!state.lastName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your last name' })); return false; }
     if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
-    if (!state.emailOtpVerified) { setState(prev => ({ ...prev, error: 'Please verify your email address' })); return false; }
+    // Skip email verification in development/testing environments
+    if (!state.emailOtpVerified && !skipOtpVerification) { setState(prev => ({ ...prev, error: 'Please verify your email address' })); return false; }
     // Phone number is optional, but if provided, validate format and verification
     if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
     // Phone OTP verification - only validate if phone OTP was sent but not verified
@@ -505,6 +515,13 @@ const UnifiedSignup = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
+    
+    // Track signup_submit event
+    trackSignup.submit(
+      state.selectedRole || undefined,
+      ALL_COUNTRIES.find(c => c.isoCode === state.country)?.name
+    );
+    
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
@@ -541,6 +558,13 @@ const UnifiedSignup = () => {
       }
 
       const userId = result.data.userId;
+
+      // Track signup_success event
+      trackSignup.success(
+        userId,
+        state.email,
+        state.selectedRole || 'unknown'
+      );
 
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
@@ -598,6 +622,13 @@ const UnifiedSignup = () => {
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred during signup';
+      
+      // Track signup_failed event
+      trackSignup.failed(
+        errorMessage,
+        state.selectedRole || undefined
+      );
+      
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
     }
   };
