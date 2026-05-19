@@ -10,6 +10,8 @@ import {
   submitFeedback as submitFeedbackService,
   deleteConversation as deleteConversationService
 } from '../api/tutorService';
+import type { WorksheetConfig } from '../types/worksheet';
+import type { LessonPlanConfig } from '../types/lesson-plan';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('use-tutor-chat');
@@ -17,6 +19,8 @@ const logger = getLogger('use-tutor-chat');
 export interface UseTutorChatOptions {
   courseId: string;
   lessonId?: string;
+  worksheetConfig?: WorksheetConfig;  // Optional worksheet configuration for educators
+  lessonPlanConfig?: LessonPlanConfig;  // Optional lesson plan configuration for educators
 }
 
 export interface UseTutorChatReturn {
@@ -39,7 +43,7 @@ export interface UseTutorChatReturn {
   refreshSuggestions: () => Promise<void>;
 }
 
-export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTutorChatReturn {
+export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanConfig }: UseTutorChatOptions): UseTutorChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -117,7 +121,9 @@ export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTu
         conversationId: conversationId || undefined,
         courseId,
         lessonId,
-        message: content.trim()
+        message: content.trim(),
+        worksheetConfig,  // Pass worksheet config to API
+        lessonPlanConfig  // Pass lesson plan config to API
       });
 
       setCurrentReasoning('');
@@ -231,7 +237,8 @@ export function useTutorChat({ courseId, lessonId }: UseTutorChatOptions): UseTu
         conversationId: conversationId || undefined,
         courseId,
         lessonId,
-        message: newContent.trim()
+        message: newContent.trim(),
+        worksheetConfig  // Pass worksheet config to API
       });
 
       setCurrentReasoning('');
