@@ -258,6 +258,18 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
 
 /**
  * Hook to manage navigation state machine
+ *
+ * Key design decision: after a successful payment, the Zustand store already
+ * holds the correct subscription data (written by the payment verification
+ * response via setAccessData). We check the store FIRST — if hasAccess is
+ * already true, we navigate immediately without firing any API calls.
+ * This eliminates the race condition where refreshSubscription() hits the API
+ * before the DB has propagated the new subscription, gets stale "no data" back,
+ * and overwrites hasAccess to false — causing a redirect loop to /subscription/plans.
+ *
+ * The store-level manual override guard (MANUAL_OVERRIDE_TTL) acts as a
+ * secondary safety net in case other code paths trigger refreshSubscription()
+ * during the same window.
  */
 function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
   const [state, setState] = useState({
@@ -282,8 +294,20 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
     log.info('Starting navigation to dashboard');
 
     try {
-      // Ensure cache is refreshed
-      if (!cacheRefresh.isRefreshed) {
+      // ── PRIMARY PATH: Check the Zustand store directly. ──────────────
+      // If the store already has hasAccess=true (set by setAccessData from
+      // the payment verification response), skip the cache refresh entirely.
+      // The data is already correct — calling the API would risk overwriting
+      // it with stale results.
+      const storeHasAccess = useSubscriptionStore.getState().hasAccess;
+
+      if (storeHasAccess) {
+        log.info('Store already has hasAccess=true — navigating immediately (no API call)');
+      } else if (!cacheRefresh.isRefreshed) {
+        // FALLBACK: Store doesn't have access yet. Try refreshing from the API.
+        // This handles edge cases where setAccessData wasn't called (e.g.,
+        // subscription_created flag without a subscription object).
+        log.info('Store has hasAccess=false — attempting cache refresh before navigation');
         await cacheRefresh.refresh();
       }
 
@@ -291,7 +315,8 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
 
       setState({ status: NAV_STATES.NAVIGATING, error: null });
 
-      // Navigate with post-payment flag
+      // Navigate with post-payment flag so the route guard knows
+      // to run post-payment sync if needed.
       const dashboardUrl = getDashboardUrl();
       log.info('Navigating to:', dashboardUrl);
       navigate(dashboardUrl, {
@@ -302,7 +327,8 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
       log.error('Navigation error:', error);
       if (mountedRef.current) {
         setState({ status: NAV_STATES.ERROR, error });
-        // Still try to navigate even on error - subscription is already created
+        // Still navigate — the user has paid. Blocking them here is worse
+        // than showing a dashboard with a momentary loading state.
         toast.error('Cache refresh failed, but your subscription is active.');
         const dashboardUrl = getDashboardUrl();
         navigate(dashboardUrl, { state: { fromPayment: true } });

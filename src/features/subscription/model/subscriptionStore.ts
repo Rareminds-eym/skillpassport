@@ -117,6 +117,12 @@ interface SubscriptionState {
   _fetchSubPromise: Promise<void> | null;
   _fetchEntitlementsPromise: Promise<void> | null;
 
+  // Manual override guard — prevents fetchSubscription from downgrading
+  // hasAccess during the window after a direct setAccessData({ hasAccess: true })
+  // call (e.g., post-payment). Holds an epoch timestamp until which the
+  // override is active, or null when inactive.
+  _manualOverrideUntil: number | null;
+
   // Computed helpers
   getIsActive: () => boolean;
   getIsPaused: () => boolean;
@@ -144,6 +150,12 @@ interface SubscriptionState {
 // ============================================================================
 
 const STALE_TIME = 2 * 60 * 1000;
+
+// Manual override TTL (30 seconds)
+// After setAccessData({ hasAccess: true }), fetchSubscription will refuse to
+// downgrade access for this duration. Gives the database time to propagate
+// newly-created subscriptions.
+const MANUAL_OVERRIDE_TTL = 30 * 1000;
 
 // ============================================================================
 // Format raw subscription data from Supabase into normalized shape
@@ -289,6 +301,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     _currentUserId: null,
     _fetchSubPromise: null,
     _fetchEntitlementsPromise: null,
+    _manualOverrideUntil: null,
 
     // Computed helpers
     getIsActive: () => get().accessReason === 'active',
@@ -357,20 +370,47 @@ export const useSubscriptionStore = create<SubscriptionState>()(
               s._lastFetchTime = Date.now();
             });
           } else {
-            // No subscription
-            set((s) => {
-              s.subscription = null;
-              s.hasAccess = false;
-              s.accessReason = 'no_subscription';
-              s.showWarning = false;
-              s.warningType = null;
-              s.warningMessage = null;
-              s.daysUntilExpiry = null;
-              s.isLoading = false;
-              s.isRefetching = false;
-              s.error = null;
-              s._lastFetchTime = Date.now();
-            });
+            // No subscription from API — but check manual override guard.
+            // After a successful payment, setAccessData() stamps _manualOverrideUntil.
+            // If we're within that window and the store already says hasAccess=true,
+            // the API is returning stale data (DB hasn't propagated yet). Refuse to
+            // downgrade access — the payment verification response is the source of truth.
+            const currentState = get();
+            const isWithinOverride =
+              currentState._manualOverrideUntil != null &&
+              Date.now() < currentState._manualOverrideUntil &&
+              currentState.hasAccess === true;
+
+            if (isWithinOverride) {
+              // Keep the manually-set access state; only clear loading flags.
+              console.info(
+                '[SubscriptionStore] fetchSubscription: API returned no data but manual override is active ' +
+                `(expires in ${Math.round((currentState._manualOverrideUntil! - Date.now()) / 1000)}s). ` +
+                'Preserving hasAccess=true from payment verification.'
+              );
+              set((s) => {
+                s.isLoading = false;
+                s.isRefetching = false;
+                s.error = null;
+                // Do NOT update _lastFetchTime — let the next fetch after the
+                // override expires reconcile with the real DB state.
+              });
+            } else {
+              // Normal path: genuinely no subscription.
+              set((s) => {
+                s.subscription = null;
+                s.hasAccess = false;
+                s.accessReason = 'no_subscription';
+                s.showWarning = false;
+                s.warningType = null;
+                s.warningMessage = null;
+                s.daysUntilExpiry = null;
+                s.isLoading = false;
+                s.isRefetching = false;
+                s.error = null;
+                s._lastFetchTime = Date.now();
+              });
+            }
           }
         } catch (err) {
           if (get()._currentUserId !== userId) return;
@@ -504,6 +544,13 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         // Stamp _lastFetchTime so fetchSubscription's stale-time guard
         // won't immediately overwrite these manual updates
         state._lastFetchTime = Date.now();
+
+        // Activate manual override guard when granting access.
+        // This prevents fetchSubscription from downgrading hasAccess back
+        // to false if the API returns stale data within the override window.
+        if (data.hasAccess === true) {
+          state._manualOverrideUntil = Date.now() + MANUAL_OVERRIDE_TTL;
+        }
       });
     },
 
@@ -547,6 +594,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         state._currentUserId = null;
         state._fetchSubPromise = null;
         state._fetchEntitlementsPromise = null;
+        state._manualOverrideUntil = null;
       });
     },
 
