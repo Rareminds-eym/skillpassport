@@ -66,10 +66,6 @@ const ACTIVATION_STATES = {
 
 /** Configuration */
 const CONFIG = {
-  CACHE_REFRESH_MAX_RETRIES: 3,
-  CACHE_REFRESH_RETRY_DELAY_MS: 500,
-  CACHE_REFRESH_TIMEOUT_MS: 10000,
-  NAVIGATION_DELAY_MS: 100,
   CONFETTI_DURATION_MS: 4000,
   EMAIL_STATUS_DELAY_MS: 2000,
   NO_SESSION_REDIRECT_DELAY_MS: 2000,
@@ -123,27 +119,6 @@ const log = {
   error: (...args) => console.error('[PaymentSuccess]', ...args),
 };
 
-/** Sleep utility */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-/** Retry with exponential backoff */
-async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
-  let lastError;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (attempt < maxRetries - 1) {
-        const delay = baseDelayMs * Math.pow(2, attempt);
-        onRetry?.(attempt + 1, delay, error);
-        await sleep(delay);
-      }
-    }
-  }
-  throw lastError;
-}
-
 /** Format date for display */
 const formatDate = (d) => {
   try {
@@ -185,17 +160,14 @@ const getUserRole = (user, role) => {
 // ============================================================================
 
 /**
- * Hook to manage cache refresh with retry logic
+ * Hook to manage cache refresh — a single one-shot refresh.
+ * The store-level manual override guard handles stale API responses,
+ * so retry/backoff logic is unnecessary here.
  */
 function useCacheRefresh(refreshAccess, refreshSubscription) {
-  const [state, setState] = useState({
-    status: 'idle', // 'idle' | 'refreshing' | 'success' | 'error'
-    attempts: 0,
-    error: null,
-  });
-
-  const mountedRef = useRef(true);
+  const [status, setStatus] = useState('idle');
   const refreshPromiseRef = useRef(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -203,42 +175,25 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
   }, []);
 
   const refresh = useCallback(async () => {
-    // Return existing promise if already refreshing
-    if (refreshPromiseRef.current) {
-      return refreshPromiseRef.current;
-    }
+    if (refreshPromiseRef.current) return refreshPromiseRef.current;
 
-    setState({ status: 'refreshing', attempts: 0, error: null });
+    setStatus('refreshing');
     log.info('Starting cache refresh');
 
-    refreshPromiseRef.current = retryWithBackoff(
-      async () => {
-        await Promise.all([
-          refreshAccess(),
-          refreshSubscription(),
-        ]);
-        // Small delay to ensure React Query cache is updated
-        await sleep(CONFIG.NAVIGATION_DELAY_MS);
-      },
-      CONFIG.CACHE_REFRESH_MAX_RETRIES,
-      CONFIG.CACHE_REFRESH_RETRY_DELAY_MS,
-      (attempt, delay, error) => {
-        log.warn(`Cache refresh retry ${attempt}/${CONFIG.CACHE_REFRESH_MAX_RETRIES}`, error);
-        if (mountedRef.current) {
-          setState(prev => ({ ...prev, attempts: attempt }));
-        }
-      }
-    )
+    refreshPromiseRef.current = Promise.all([
+      refreshAccess(),
+      refreshSubscription(),
+    ])
       .then(() => {
         if (mountedRef.current) {
           log.info('Cache refresh successful');
-          setState({ status: 'success', attempts: 0, error: null });
+          setStatus('success');
         }
       })
-      .catch((error) => {
+      .catch((err) => {
         if (mountedRef.current) {
-          log.error('Cache refresh failed', error);
-          setState({ status: 'error', attempts: CONFIG.CACHE_REFRESH_MAX_RETRIES, error });
+          log.error('Cache refresh failed', err);
+          setStatus('error');
         }
       })
       .finally(() => {
@@ -249,10 +204,10 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
   }, [refreshAccess, refreshSubscription]);
 
   return {
-    ...state,
+    status,
     refresh,
-    isRefreshed: state.status === 'success',
-    isRefreshing: state.status === 'refreshing',
+    isRefreshed: status === 'success',
+    isRefreshing: status === 'refreshing',
   };
 }
 

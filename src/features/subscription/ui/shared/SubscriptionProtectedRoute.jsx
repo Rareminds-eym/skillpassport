@@ -26,7 +26,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import Loader from '@/shared/ui/Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
-import { useSubscriptionContext, useSubscriptionStore, ACCESS_REASONS } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionContext, ACCESS_REASONS } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 // ============================================================================
 // CONSTANTS
@@ -250,13 +250,13 @@ function useGuardState({
   const computedState = useMemo(() => {
     // Step 1: Auth loading
     if (authLoading) {
-      console.log('🛡️ [Guard] Step 1: authLoading=true → CHECKING_AUTH');
+      log.info('Step 1: authLoading=true → CHECKING_AUTH');
       return GUARD_STATES.CHECKING_AUTH;
     }
 
     // Step 2: Not authenticated
     if (!isAuthenticated) {
-      console.log('🛡️ [Guard] Step 2: isAuthenticated=false → ACCESS_DENIED');
+      log.info('Step 2: isAuthenticated=false → ACCESS_DENIED');
       return GUARD_STATES.ACCESS_DENIED;
     }
 
@@ -267,8 +267,7 @@ function useGuardState({
       const userIsAdmin = role === 'admin' || role?.includes('_admin');
 
       if (!(isAdminRoute && userIsAdmin)) {
-        // Not an admin exception, deny access
-        console.log('🛡️ [Guard] Step 3: Role mismatch → ACCESS_DENIED. role=', role, 'allowedRoles=', allowedRoles);
+        log.info('Step 3: Role mismatch → ACCESS_DENIED. role=', role, 'allowedRoles=', allowedRoles);
         return GUARD_STATES.ACCESS_DENIED;
       }
       // Admin exception - continue to subscription check
@@ -276,44 +275,43 @@ function useGuardState({
 
     // Step 4: Subscription not required
     if (!requireSubscription) {
-      console.log('🛡️ [Guard] Step 4: requireSubscription=false → ACCESS_GRANTED');
+      log.info('Step 4: requireSubscription=false → ACCESS_GRANTED');
       return GUARD_STATES.ACCESS_GRANTED;
     }
 
     // Step 5: Post-payment sync in progress
     if (isPostPayment && postPaymentSync.isSyncing) {
-      console.log('🛡️ [Guard] Step 5: Post-payment syncing → POST_PAYMENT_SYNC');
+      log.info('Step 5: Post-payment syncing → POST_PAYMENT_SYNC');
       return GUARD_STATES.POST_PAYMENT_SYNC;
     }
 
     // Step 6: Subscription loading or refetching
     if (subscriptionLoading || (!hasAccess && isRefetching)) {
-      console.log('🛡️ [Guard] Step 6: subscriptionLoading=', subscriptionLoading, 'isRefetching=', isRefetching, 'hasAccess=', hasAccess, '→ CHECKING_SUBSCRIPTION');
+      log.info('Step 6: subscriptionLoading=', subscriptionLoading, 'isRefetching=', isRefetching, '→ CHECKING_SUBSCRIPTION');
       return GUARD_STATES.CHECKING_SUBSCRIPTION;
     }
 
     // Step 7: Subscription error (allow with warning)
     if (subscriptionError) {
-      console.log('🛡️ [Guard] Step 7: subscriptionError=', subscriptionError, '→ ERROR');
+      log.info('Step 7: subscriptionError → ERROR');
       return GUARD_STATES.ERROR;
     }
 
     // Step 8: Check access
     if (hasAccess) {
-      console.log('🛡️ [Guard] Step 8: hasAccess=true → ACCESS_GRANTED');
+      log.info('Step 8: hasAccess=true → ACCESS_GRANTED');
       return GUARD_STATES.ACCESS_GRANTED;
     }
 
     // Step 9: Post-payment sync failed but we should still grant access
     // The user has already paid — blocking them here creates a redirect loop to plans.
     if (isPostPayment && postPaymentSync.syncFailed) {
-      console.log('🛡️ [Guard] Step 9: Post-payment sync failed, GRANTING ACCESS to prevent redirect loop');
+      log.info('Step 9: Post-payment sync failed, granting access to prevent redirect loop');
       return GUARD_STATES.ACCESS_GRANTED;
     }
 
-    console.log('🛡️ [Guard] Step 10: Fallback → ACCESS_DENIED. Full state:', {
-      authLoading, isAuthenticated, role, allowedRoles, requireSubscription,
-      subscriptionLoading, hasAccess, isRefetching, subscriptionError: subscriptionError?.message,
+    log.info('Step 10: Fallback → ACCESS_DENIED', {
+      hasAccess, subscriptionLoading, isRefetching, accessReason: subscriptionError?.message,
       isPostPayment, postPaymentSync
     });
     return GUARD_STATES.ACCESS_DENIED;
@@ -395,20 +393,6 @@ const SubscriptionProtectedRoute = ({
     refreshAccess = async () => {},
   } = subscriptionContext || {};
 
-  // DEBUG: Log subscription context values on every render
-  console.log('🛡️ [SubscriptionProtectedRoute] Render. Context values:', {
-    authLoading,
-    isAuthenticated,
-    role,
-    userId: user?.id,
-    subscriptionLoading,
-    hasAccess,
-    accessReason,
-    isRefetching,
-    subscriptionError: subscriptionError?.message || null,
-    _storeId: useSubscriptionStore?.getState?.()?._storeId || 'N/A',
-  });
-
   // Detect post-payment navigation
   const isPostPayment = location.state?.fromPayment === true;
 
@@ -452,7 +436,7 @@ const SubscriptionProtectedRoute = ({
   // RENDER BASED ON STATE
   // ============================================================================
 
-  console.log('🛡️ [SubscriptionProtectedRoute] guardState =', guardState);
+  log.state('guardState', guardState);
 
   // Loading states
   if (
@@ -461,7 +445,6 @@ const SubscriptionProtectedRoute = ({
     guardState === GUARD_STATES.CHECKING_SUBSCRIPTION ||
     guardState === GUARD_STATES.POST_PAYMENT_SYNC
   ) {
-    console.log('🛡️ [SubscriptionProtectedRoute] → Rendering <Loader /> because guardState =', guardState);
     return <Loader />;
   }
 

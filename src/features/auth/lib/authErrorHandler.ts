@@ -147,7 +147,7 @@ interface AuthErrorHandlerResult {
 export const handleAuthError = async (error: any, context: Record<string, any> = {}): Promise<AuthErrorHandlerResult> => {
   // Check if it's a JWT expiry error
   if (isJwtExpiryError(error)) {
-    console.warn('JWT expired detected, checking session validity...');
+    if (import.meta.env.DEV) console.warn('[AuthError] JWT expired detected, checking session validity...');
     
     // In SSO mode, auth-client handles token refresh automatically.
     // If we get here, the session is likely still valid (auth-client retried).
@@ -155,12 +155,12 @@ export const handleAuthError = async (error: any, context: Record<string, any> =
     const isAuthenticated = useAuthStore.getState().isAuthenticated;
     
     if (isAuthenticated) {
-      console.log('✅ Session is valid (SSO auth-client handles refresh)');
+      if (import.meta.env.DEV) console.log('[AuthError] ✅ Session is valid (SSO auth-client handles refresh)');
       return { success: true, session: null };
     }
     
     // Session is truly invalid - user needs to re-authenticate
-    console.warn('❌ Session invalid, user needs to re-authenticate');
+    if (import.meta.env.DEV) console.warn('[AuthError] ❌ Session invalid, user needs to re-authenticate');
     return { success: false, error: 'Session expired. Please log in again.' };
   }
 

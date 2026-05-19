@@ -142,7 +142,6 @@ interface SubscriptionState {
 
   // Feature access
   hasAddOnAccessSync: (featureKey: string) => boolean;
-  hasAddOnAccess: (featureKey: string) => Promise<boolean>;
 }
 
 // ============================================================================
@@ -278,9 +277,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     isLoading: true,
     isRefetching: false,
     error: null,
-
-    // DEBUG: Store identity marker
-    _storeId: 'canonical-' + Math.random().toString(36).slice(2, 8),
 
     showWarning: false,
     warningType: null,
@@ -608,11 +604,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     hasAddOnAccessSync: (featureKey) => {
       const { activeEntitlements } = get();
       return activeEntitlements.some((ent) => ent.feature_key === featureKey);
-    },
-
-    // Async check (for now returns sync check)
-    hasAddOnAccess: async (featureKey) => {
-      return get().hasAddOnAccessSync(featureKey);
     },
   }))
 );
