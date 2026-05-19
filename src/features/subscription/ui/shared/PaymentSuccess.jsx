@@ -66,10 +66,6 @@ const ACTIVATION_STATES = {
 
 /** Configuration */
 const CONFIG = {
-  CACHE_REFRESH_MAX_RETRIES: 3,
-  CACHE_REFRESH_RETRY_DELAY_MS: 500,
-  CACHE_REFRESH_TIMEOUT_MS: 10000,
-  NAVIGATION_DELAY_MS: 100,
   CONFETTI_DURATION_MS: 4000,
   EMAIL_STATUS_DELAY_MS: 2000,
   NO_SESSION_REDIRECT_DELAY_MS: 2000,
@@ -123,27 +119,6 @@ const log = {
   error: (...args) => console.error('[PaymentSuccess]', ...args),
 };
 
-/** Sleep utility */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-/** Retry with exponential backoff */
-async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
-  let lastError;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (attempt < maxRetries - 1) {
-        const delay = baseDelayMs * Math.pow(2, attempt);
-        onRetry?.(attempt + 1, delay, error);
-        await sleep(delay);
-      }
-    }
-  }
-  throw lastError;
-}
-
 /** Format date for display */
 const formatDate = (d) => {
   try {
@@ -185,17 +160,14 @@ const getUserRole = (user, role) => {
 // ============================================================================
 
 /**
- * Hook to manage cache refresh with retry logic
+ * Hook to manage cache refresh — a single one-shot refresh.
+ * The store-level manual override guard handles stale API responses,
+ * so retry/backoff logic is unnecessary here.
  */
 function useCacheRefresh(refreshAccess, refreshSubscription) {
-  const [state, setState] = useState({
-    status: 'idle', // 'idle' | 'refreshing' | 'success' | 'error'
-    attempts: 0,
-    error: null,
-  });
-
-  const mountedRef = useRef(true);
+  const [status, setStatus] = useState('idle');
   const refreshPromiseRef = useRef(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -203,42 +175,25 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
   }, []);
 
   const refresh = useCallback(async () => {
-    // Return existing promise if already refreshing
-    if (refreshPromiseRef.current) {
-      return refreshPromiseRef.current;
-    }
+    if (refreshPromiseRef.current) return refreshPromiseRef.current;
 
-    setState({ status: 'refreshing', attempts: 0, error: null });
+    setStatus('refreshing');
     log.info('Starting cache refresh');
 
-    refreshPromiseRef.current = retryWithBackoff(
-      async () => {
-        await Promise.all([
-          refreshAccess(),
-          refreshSubscription(),
-        ]);
-        // Small delay to ensure React Query cache is updated
-        await sleep(CONFIG.NAVIGATION_DELAY_MS);
-      },
-      CONFIG.CACHE_REFRESH_MAX_RETRIES,
-      CONFIG.CACHE_REFRESH_RETRY_DELAY_MS,
-      (attempt, delay, error) => {
-        log.warn(`Cache refresh retry ${attempt}/${CONFIG.CACHE_REFRESH_MAX_RETRIES}`, error);
-        if (mountedRef.current) {
-          setState(prev => ({ ...prev, attempts: attempt }));
-        }
-      }
-    )
+    refreshPromiseRef.current = Promise.all([
+      refreshAccess(),
+      refreshSubscription(),
+    ])
       .then(() => {
         if (mountedRef.current) {
           log.info('Cache refresh successful');
-          setState({ status: 'success', attempts: 0, error: null });
+          setStatus('success');
         }
       })
-      .catch((error) => {
+      .catch((err) => {
         if (mountedRef.current) {
-          log.error('Cache refresh failed', error);
-          setState({ status: 'error', attempts: CONFIG.CACHE_REFRESH_MAX_RETRIES, error });
+          log.error('Cache refresh failed', err);
+          setStatus('error');
         }
       })
       .finally(() => {
@@ -249,15 +204,27 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
   }, [refreshAccess, refreshSubscription]);
 
   return {
-    ...state,
+    status,
     refresh,
-    isRefreshed: state.status === 'success',
-    isRefreshing: state.status === 'refreshing',
+    isRefreshed: status === 'success',
+    isRefreshing: status === 'refreshing',
   };
 }
 
 /**
  * Hook to manage navigation state machine
+ *
+ * Key design decision: after a successful payment, the Zustand store already
+ * holds the correct subscription data (written by the payment verification
+ * response via setAccessData). We check the store FIRST — if hasAccess is
+ * already true, we navigate immediately without firing any API calls.
+ * This eliminates the race condition where refreshSubscription() hits the API
+ * before the DB has propagated the new subscription, gets stale "no data" back,
+ * and overwrites hasAccess to false — causing a redirect loop to /subscription/plans.
+ *
+ * The store-level manual override guard (MANUAL_OVERRIDE_TTL) acts as a
+ * secondary safety net in case other code paths trigger refreshSubscription()
+ * during the same window.
  */
 function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
   const [state, setState] = useState({
@@ -282,8 +249,20 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
     log.info('Starting navigation to dashboard');
 
     try {
-      // Ensure cache is refreshed
-      if (!cacheRefresh.isRefreshed) {
+      // ── PRIMARY PATH: Check the Zustand store directly. ──────────────
+      // If the store already has hasAccess=true (set by setAccessData from
+      // the payment verification response), skip the cache refresh entirely.
+      // The data is already correct — calling the API would risk overwriting
+      // it with stale results.
+      const storeHasAccess = useSubscriptionStore.getState().hasAccess;
+
+      if (storeHasAccess) {
+        log.info('Store already has hasAccess=true — navigating immediately (no API call)');
+      } else if (!cacheRefresh.isRefreshed) {
+        // FALLBACK: Store doesn't have access yet. Try refreshing from the API.
+        // This handles edge cases where setAccessData wasn't called (e.g.,
+        // subscription_created flag without a subscription object).
+        log.info('Store has hasAccess=false — attempting cache refresh before navigation');
         await cacheRefresh.refresh();
       }
 
@@ -291,7 +270,8 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
 
       setState({ status: NAV_STATES.NAVIGATING, error: null });
 
-      // Navigate with post-payment flag
+      // Navigate with post-payment flag so the route guard knows
+      // to run post-payment sync if needed.
       const dashboardUrl = getDashboardUrl();
       log.info('Navigating to:', dashboardUrl);
       navigate(dashboardUrl, {
@@ -302,7 +282,8 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
       log.error('Navigation error:', error);
       if (mountedRef.current) {
         setState({ status: NAV_STATES.ERROR, error });
-        // Still try to navigate even on error - subscription is already created
+        // Still navigate — the user has paid. Blocking them here is worse
+        // than showing a dashboard with a momentary loading state.
         toast.error('Cache refresh failed, but your subscription is active.');
         const dashboardUrl = getDashboardUrl();
         navigate(dashboardUrl, { state: { fromPayment: true } });

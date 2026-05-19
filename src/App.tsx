@@ -1,11 +1,13 @@
 import { Toaster as HotToaster } from 'react-hot-toast';
-import { BrowserRouter, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, useLocation, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { TourWrapper } from './app/providers/tour-wrapper';
 import { TokenRefreshErrorNotification } from './app/providers/token-refresh-notification';
 import AppRoutes from './app/routes/AppRoutes';
 import { getLogger } from '@/shared/config/logging';
+import { trackPageView } from './shared/lib/analytics';
+
 
 const logger = getLogger('app');
 
@@ -100,6 +102,21 @@ function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Analytics Wrapper Component
+ * Tracks page views on route changes for SPA navigation
+ */
+function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Track page view on route change
+    trackPageView(location.pathname);
+  }, [location]);
+
+  return <>{children}</>;
+}
+
 function App() {
   // Initialize stores on mount
   useEffect(() => {
@@ -119,7 +136,7 @@ function App() {
 
   // Clear TanStack Query cache on org switch
   useEffect(() => {
-    const unsub = ssoClient.onAuthStateChange((event) => {
+    const unsub = ssoClient.onAuthStateChange((event: string) => {
       if (event === 'REFRESH') {
         // Org switch triggers a REFRESH event with new org_id in the JWT
         queryClient.invalidateQueries();
@@ -143,37 +160,39 @@ function App() {
   return (
 
     <BrowserRouter>
-      <TourWrapper>
-        <EmailVerificationGuard>
-          <SubscriptionInitializer />
-          <TokenRefreshErrorNotification />
-          <AppRoutes />
-        </EmailVerificationGuard>
-        <HotToaster
-          position="top-right"
-          toastOptions={{
-            duration: 5000,
-            style: {
-              background: '#fff',
-              color: '#363636',
-            },
-            success: {
-              duration: 3000,
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
+      <AnalyticsWrapper>
+        <TourWrapper>
+          <EmailVerificationGuard>
+            <SubscriptionInitializer />
+            <TokenRefreshErrorNotification />
+            <AppRoutes />
+          </EmailVerificationGuard>
+          <HotToaster
+            position="top-right"
+            toastOptions={{
+              duration: 5000,
+              style: {
+                background: '#fff',
+                color: '#363636',
               },
-            },
-            error: {
-              duration: 4000,
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
               },
-            },
-          }}
-        />
-      </TourWrapper>
+              error: {
+                duration: 4000,
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+        </TourWrapper>
+      </AnalyticsWrapper>
     </BrowserRouter>
 
   );

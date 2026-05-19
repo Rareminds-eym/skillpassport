@@ -31,6 +31,8 @@ export {
   PersonalInfoEditModal
 } from './ui/modals';
 
+export { LearnerTypeSelectionModal } from './ui/LearnerTypeSelectionModal';
+
 // Default export for Header component
 
 // ============================================================================

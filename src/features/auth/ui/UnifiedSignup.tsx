@@ -30,6 +30,7 @@ import { useAuthStore } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 import { OtpInput } from '@/shared/ui';
 import { isLocalhost } from '@/shared/lib';
+import { trackSignup } from '@/shared/lib/analytics';
 
 type UserRole = 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -277,6 +278,8 @@ const UnifiedSignup = () => {
   const verifyingOtpRef = useRef(false);
   const stateRef = useRef(state);
   stateRef.current = state;
+  // Guard: signup_start fires only once per signup attempt
+  const hasStartedFormRef = useRef(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -326,6 +329,12 @@ const UnifiedSignup = () => {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     let processedValue: string | boolean = value;
+
+    // Fire signup_start once on first meaningful form interaction
+    if (!hasStartedFormRef.current && (name === 'firstName' || name === 'lastName' || name === 'email')) {
+      hasStartedFormRef.current = true;
+      trackSignup.start(state.selectedRole || undefined);
+    }
 
     if (type === 'checkbox') processedValue = (e.target as HTMLInputElement).checked;
     if (name === 'phone') processedValue = value.replace(/\D/g, '').slice(0, 15);
@@ -454,8 +463,9 @@ const UnifiedSignup = () => {
       if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     }
 
-    if (!state.password || state.password.length < 8) { setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' })); return false; }
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(state.password)) { setState(prev => ({ ...prev, error: 'Password must contain uppercase, lowercase, and number' })); return false; }
+    if (!state.password || state.password.length < 10) { setState(prev => ({ ...prev, error: 'Password must be at least 10 characters' })); return false; }
+    const typesCount = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter(r => r.test(state.password!)).length;
+    if (typesCount < 3) { setState(prev => ({ ...prev, error: 'Password must contain at least 3 of: uppercase letters, lowercase letters, numbers, special characters' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
     return true;
   };
@@ -494,6 +504,13 @@ const UnifiedSignup = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    // Track signup_submit — form is valid, API call is about to start
+    trackSignup.submit(
+      state.selectedRole || undefined,
+      ALL_COUNTRIES.find(c => c.isoCode === state.country)?.name
+    );
+
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
@@ -581,6 +598,9 @@ const UnifiedSignup = () => {
       };
       const entityType = state.selectedRole ? entityTypeMap[state.selectedRole] : 'learner';
 
+      // Track signup_success — profile created, about to redirect
+      trackSignup.success(ssoUserId, state.email, state.selectedRole || 'unknown');
+
       // Check for return URL (invitation flow) - redirect there instead of subscription plans
       if (returnUrl) {
         // Clear the stored return URL
@@ -588,7 +608,7 @@ const UnifiedSignup = () => {
         navigate(returnUrl);
       } else if (returnToFromState === '/subscription/payment' && planFromState) {
         // User selected a plan before signing up - go directly to payment
-        console.log('💳 User had pre-selected plan, redirecting to payment page');
+        if (import.meta.env.DEV) console.log('[UnifiedSignup] User had pre-selected plan, redirecting to payment page');
         navigate('/subscription/payment', {
           state: {
             plan: planFromState,
@@ -635,11 +655,12 @@ const UnifiedSignup = () => {
         });
       }
 
+      // Track signup_failed — error message and role captured for GTM
+      trackSignup.failed(errorMessage, state.selectedRole || undefined);
+
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
     }
   };
-
-  // Countdown state for when registration is not yet open
   const [countdown, setCountdown] = useState(getTimeUntilFullRegOpens());
 
   // Update countdown every second
@@ -1072,7 +1093,7 @@ const UnifiedSignup = () => {
                     {state.roleDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
                         {allRoles.map(role => {
-                          const isAvailable = role === 'learner' || role === 'school_educator' || role === 'college_educator';
+                          const isAvailable = role === 'learner';
                           return (
                             <button
                               key={role}

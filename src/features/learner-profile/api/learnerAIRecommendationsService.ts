@@ -4,11 +4,19 @@
  * Fetches AI-powered job recommendations from backend API using JWT authentication
  */
 
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-ai-recommendations-service');
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
+// Get API base URL from environment, fallback to current origin
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    return envUrl;
+  }
+  return typeof window !== 'undefined' ? window.location.origin : '';
+};
 
 export interface AIRecommendation {
   id: string;
@@ -63,17 +71,17 @@ export interface AIRecommendationsResponse {
 
 /**
  * Fetch AI recommendations from backend API
- * Uses JWT token from HTTP-only cookie for authentication
+ * Uses ssoClient to automatically inject JWT tokens
  */
 export async function getLearnerAIRecommendations(): Promise<AIRecommendationsResponse> {
   try {
-    const url = `${API_BASE_URL}/api/learners/ai-recommendations`;
+    const apiBaseUrl = getApiBaseUrl();
+    const url = `${apiBaseUrl}/api/learners/ai-recommendations`;
     
     logger.info('Fetching AI recommendations from backend', { url });
 
-    const response = await fetch(url, {
+    const response = await ssoClient.fetch(url, {
       method: 'GET',
-      credentials: 'include', // Include HTTP-only cookies (JWT token)
       headers: {
         'Content-Type': 'application/json',
       },

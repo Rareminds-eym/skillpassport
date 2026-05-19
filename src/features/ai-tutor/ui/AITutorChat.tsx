@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send,
   X,
@@ -12,12 +12,18 @@ import {
   ChevronLeft,
   Brain,
   Trash2,
-  Pencil
+  Pencil,
+  FileText
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
 import { ChatMessage } from '@/features/ai-tutor';
 import { getLogger } from '@/shared/config/logging';
+import { useUserRole } from '@/shared/model/authStore';
+import WorksheetConfigPanel from './WorksheetConfigPanel.tsx';
+import WorksheetExportButton from './WorksheetExportButton.tsx';
+import type { WorksheetConfig, WorksheetTemplateType } from '../types/worksheet';
+import { DEFAULT_WORKSHEET_CONFIG, WORKSHEET_TEMPLATES } from '../types/worksheet';
 
 const logger = getLogger('ai-tutor-chat');
 
@@ -39,6 +45,12 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
   const inputRef = useRef<HTMLInputElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Get user role to customize UI
+  const { isEducator } = useUserRole();
+
+  // Worksheet configuration state (educators only)
+  const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(DEFAULT_WORKSHEET_CONFIG);
+
   const {
     messages,
     isLoading,
@@ -56,7 +68,39 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
     deleteConversation,
     submitFeedback,
     refreshConversations
-  } = useTutorChat({ courseId, lessonId });
+  } = useTutorChat({ courseId, lessonId, worksheetConfig: isEducator ? worksheetConfig : undefined });
+
+  // Role-based UI configuration
+  const uiConfig = {
+    title: isEducator ? 'AI Teaching Assistant' : 'AI Course Tutor',
+    subtitle: isEducator 
+      ? "I'm here to help you create worksheets from course content"
+      : 'Ask me anything about this course',
+    welcomeTitle: isEducator ? 'Hi! I\'m your AI Teaching Assistant' : 'Welcome to AI Tutor!',
+    welcomeMessage: isEducator
+      ? "I'm here to help you create worksheets from course content."
+      : "I'm here to help you understand the course material. Ask me anything!",
+    placeholder: isEducator ? 'Describe the worksheet you want to create...' : 'Type your question...',
+    icon: isEducator ? FileText : MessageSquare,
+    gradientFrom: isEducator ? 'from-purple-600' : 'from-blue-600',
+    gradientTo: isEducator ? 'to-purple-700' : 'to-blue-700',
+    iconBg: isEducator ? 'bg-purple-100' : 'bg-blue-100',
+    iconColor: isEducator ? 'text-purple-600' : 'text-blue-600',
+    textColor: isEducator ? 'text-purple-100' : 'text-blue-100',
+  };
+
+  // Role-based suggested questions
+  const defaultSuggestions = isEducator ? [
+    "Create a worksheet about the main concepts in this lesson",
+    "Generate 10 multiple-choice questions about this topic",
+    "Create an answer key for this lesson"
+  ] : [
+    "Can you explain the main concepts in this lesson?",
+    "What are the key takeaways I should remember?",
+    "Can you give me a practical example?"
+  ];
+
+  const displaySuggestions = suggestedQuestions.length > 0 ? suggestedQuestions : defaultSuggestions;
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -79,8 +123,12 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
     }
   }, [editingMessageId]);
 
+  // Count user messages in current conversation
+  const userMessageCount = messages.filter(msg => msg.role === 'user').length;
+  const isLocked = userMessageCount >= 2;
+
   const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
+    if (!input.trim() || isStreaming || isLocked) return;
     const message = input;
     setInput('');
     await sendMessage(message);
@@ -95,6 +143,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
   };
 
   const handleSuggestionClick = (question: string) => {
+    if (isLocked) return;
     setInput(question);
     inputRef.current?.focus();
   };
@@ -252,6 +301,16 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
           <div className={`flex items-center gap-2 mt-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
             <span className="text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
             
+            {/* Export button for assistant messages (educators only) */}
+            {!isUser && msg.content && isEducator && (
+              <WorksheetExportButton
+                content={msg.content}
+                courseTitle="Current Course"
+                lessonTitle="Current Lesson"
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+              />
+            )}
+            
             {/* Feedback buttons for assistant messages */}
             {!isUser && msg.content && (
               <div className="flex items-center gap-1">
@@ -375,14 +434,14 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
   return (
     <div className="w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
       {/* Header */}
-      <div className="p-4 border-b bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-center justify-between">
+      <div className={`p-4 border-b bg-gradient-to-r ${uiConfig.gradientFrom} ${uiConfig.gradientTo} text-white flex items-center justify-between`}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-            <MessageSquare className="w-5 h-5" />
+            <uiConfig.icon className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-semibold">AI Course Tutor</h3>
-            <p className="text-xs text-blue-100">Ask me anything about this course</p>
+            <h3 className="font-semibold">{uiConfig.title}</h3>
+            <p className={`text-xs ${uiConfig.textColor}`}>{uiConfig.subtitle}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -406,28 +465,37 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
         </div>
       </div>
 
+      {/* Worksheet Config Panel (Educators Only) */}
+      {isEducator && (
+        <WorksheetConfigPanel
+          config={worksheetConfig}
+          onChange={setWorksheetConfig}
+        />
+      )}
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <MessageSquare className="w-8 h-8 text-blue-600" />
+            <div className={`w-16 h-16 ${uiConfig.iconBg} rounded-full flex items-center justify-center mb-4`}>
+              <uiConfig.icon className={`w-8 h-8 ${uiConfig.iconColor}`} />
             </div>
-            <h4 className="font-semibold text-gray-800 mb-2">Welcome to AI Tutor!</h4>
+            <h4 className="font-semibold text-gray-800 mb-2">{uiConfig.welcomeTitle}</h4>
             <p className="text-sm text-gray-600 mb-6">
-              I'm here to help you understand the course material. Ask me anything!
+              {uiConfig.welcomeMessage}
             </p>
             
             {/* Suggested Questions */}
-            {suggestedQuestions.length > 0 && (
+            {displaySuggestions.length > 0 && (
               <div className="w-full">
-                <p className="text-xs text-gray-500 mb-2">Suggested questions:</p>
+                <p className="text-xs text-gray-500 mb-2">{isEducator ? 'Try asking:' : 'Suggested questions:'}</p>
                 <div className="space-y-2">
-                  {suggestedQuestions.map((q, i) => (
+                  {displaySuggestions.map((q, i) => (
                     <button
                       key={i}
                       onClick={() => handleSuggestionClick(q)}
-                      className="w-full p-2 text-left text-sm bg-white border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                      disabled={isLocked}
+                      className="w-full p-2 text-left text-sm bg-white border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {q}
                     </button>
@@ -474,29 +542,51 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
 
       {/* Input Area */}
       <div className="p-4 border-t bg-white">
-        <div className="flex items-center gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your question..."
-            disabled={isStreaming}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isStreaming}
-            className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </button>
-        </div>
+        {isLocked ? (
+          <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-900">Message limit reached</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                You've used your 2 free messages. Start a new conversation to continue.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                startNewConversation();
+                inputRef.current?.focus();
+              }}
+              className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              New Chat
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={uiConfig.placeholder}
+              disabled={isStreaming}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isStreaming}
+              className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
