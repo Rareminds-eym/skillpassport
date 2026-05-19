@@ -296,7 +296,7 @@ const UnifiedSignup = () => {
   const getRoleDisplayName = (role: UserRole): string => {
     const names: Record<UserRole, string> = {
       learner: 'Learner',
-      school_educator: 'School Educator', college_educator: 'College Educator',
+      school_educator: 'Educator', college_educator: 'College Educator',
       recruiter: 'Recruiter',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
     };
@@ -1073,7 +1073,7 @@ const UnifiedSignup = () => {
                     {state.roleDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
                         {allRoles.map(role => {
-                          const isAvailable = role === 'learner' || role === 'school_educator' || role === 'college_educator';
+                          const isAvailable = role === 'learner';
                           return (
                             <button
                               key={role}
