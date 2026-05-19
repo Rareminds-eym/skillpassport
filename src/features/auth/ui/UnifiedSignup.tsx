@@ -296,7 +296,7 @@ const UnifiedSignup = () => {
   const getRoleDisplayName = (role: UserRole): string => {
     const names: Record<UserRole, string> = {
       learner: 'Learner',
-      school_educator: 'Educator', college_educator: 'College Educator',
+      school_educator: 'School Educator', college_educator: 'College Educator',
       recruiter: 'Recruiter',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
     };
