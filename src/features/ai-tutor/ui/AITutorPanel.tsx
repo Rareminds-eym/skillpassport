@@ -33,6 +33,7 @@ import { DEFAULT_LESSON_PLAN_CONFIG, LESSON_PLAN_TEMPLATES } from '../types';
 import { Link } from 'react-router-dom';
 
 import { useUser, useUserRole } from '@/shared/model/authStore';
+import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ai-tutor-panel');
@@ -70,70 +71,60 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const editTextareaRef = React.useRef<HTMLTextAreaElement>(null);
   const isAuthenticated = !!user;
 
-  // Global message counter - single source of truth
-  const GLOBAL_MESSAGE_KEY = 'ai-tutor-global-message-count';
-  
-  // Initialize global message count from localStorage
-  const [globalMessageCount, setGlobalMessageCount] = useState<number>(() => {
-    try {
-      const stored = localStorage.getItem(GLOBAL_MESSAGE_KEY);
-      return stored ? parseInt(stored, 10) : 0;
-    } catch {
-      return 0;
-    }
-  });
+  // Global message counter - tracked per user in Supabase only
+  const [globalMessageCount, setGlobalMessageCount] = useState<number>(0);
+  const [isLoadingCount, setIsLoadingCount] = useState(true);
+
+  // Fetch user's message count from Supabase on mount
+  useEffect(() => {
+    const fetchMessageCount = async () => {
+      if (!user?.id) {
+        setIsLoadingCount(false);
+        return;
+      }
+
+      try {
+        // Get count from users table metadata
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('metadata')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.warn('Could not fetch message count from database:', error);
+          setGlobalMessageCount(0);
+        } else {
+          const metadata = userData?.metadata || {};
+          const count = metadata.ai_tutor_message_count || 0;
+          setGlobalMessageCount(count);
+        }
+      } catch (err) {
+        console.error('Error fetching message count:', err);
+        setGlobalMessageCount(0);
+      } finally {
+        setIsLoadingCount(false);
+      }
+    };
+
+    fetchMessageCount();
+  }, [user?.id]);
 
   // Check if locked
   const isLocked = globalMessageCount >= 2;
 
   // Worksheet configuration state (educators only)
-  const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(() => {
-    const saved = localStorage.getItem('worksheetConfig');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Validate templateType exists in WORKSHEET_TEMPLATES
-        if (parsed.templateType && WORKSHEET_TEMPLATES[parsed.templateType as WorksheetTemplateType]) {
-          return { ...DEFAULT_WORKSHEET_CONFIG, ...parsed };
-        }
-      } catch (e) {
-        console.error('Failed to parse saved worksheet config:', e);
-      }
-    }
-    return DEFAULT_WORKSHEET_CONFIG;
-  });
+  const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(DEFAULT_WORKSHEET_CONFIG);
 
   // Lesson Plan configuration state (educators only)
-  const [lessonPlanConfig, setLessonPlanConfig] = useState<LessonPlanConfig>(() => {
-    const saved = localStorage.getItem('lessonPlanConfig');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Validate templateType exists in LESSON_PLAN_TEMPLATES
-        if (parsed.templateType && LESSON_PLAN_TEMPLATES[parsed.templateType as LessonPlanTemplateType]) {
-          return { ...DEFAULT_LESSON_PLAN_CONFIG, ...parsed };
-        }
-      } catch (e) {
-        console.error('Failed to parse saved lesson plan config:', e);
-      }
-    }
-    return DEFAULT_LESSON_PLAN_CONFIG;
-  });
+  const [lessonPlanConfig, setLessonPlanConfig] = useState<LessonPlanConfig>(DEFAULT_LESSON_PLAN_CONFIG);
 
   // Teaching Assistant Mode (educators only)
-  const [assistantMode, setAssistantMode] = useState<AssistantMode>(() => {
-    const saved = localStorage.getItem('assistantMode');
-    return (saved as AssistantMode) || 'worksheet';
-  });
+  const [assistantMode, setAssistantMode] = useState<AssistantMode>('worksheet');
 
-  // Save assistant mode to localStorage
+  // Handle assistant mode change
   const handleModeChange = (mode: AssistantMode) => {
     setAssistantMode(mode);
-    if (mode) {
-      localStorage.setItem('assistantMode', mode);
-    } else {
-      localStorage.removeItem('assistantMode');
-    }
   };
 
   // Role-based UI configuration
@@ -223,19 +214,53 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     const currentUserMessageCount = messages.filter(msg => msg.role === 'user').length;
     
     // If user message count increased, increment global counter
-    if (currentUserMessageCount > previousMessageCountRef.current) {
+    if (currentUserMessageCount > previousMessageCountRef.current && user?.id) {
       const increment = currentUserMessageCount - previousMessageCountRef.current;
       const newGlobalCount = globalMessageCount + increment;
       setGlobalMessageCount(newGlobalCount);
-      try {
-        localStorage.setItem(GLOBAL_MESSAGE_KEY, newGlobalCount.toString());
-      } catch (err) {
-        console.error('Failed to save global message count', err);
-      }
+      
+      // Update Supabase only
+      const updateCount = async () => {
+        try {
+          // First, get current metadata
+          const { data: currentUser, error: fetchError } = await supabase
+            .from('users')
+            .select('metadata')
+            .eq('id', user.id)
+            .single();
+
+          if (fetchError) {
+            console.error('Failed to fetch user metadata:', fetchError);
+            return;
+          }
+
+          // Update metadata with new count
+          const updatedMetadata = {
+            ...(currentUser?.metadata || {}),
+            ai_tutor_message_count: newGlobalCount
+          };
+
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({
+              metadata: updatedMetadata,
+              updatedAt: new Date().toISOString()
+            })
+            .eq('id', user.id);
+
+          if (updateError) {
+            console.error('Failed to update message count in database:', updateError);
+          }
+        } catch (err) {
+          console.error('Failed to save global message count', err);
+        }
+      };
+
+      updateCount();
     }
     
     previousMessageCountRef.current = currentUserMessageCount;
-  }, [messages, globalMessageCount, GLOBAL_MESSAGE_KEY]);
+  }, [messages, globalMessageCount, user?.id]);
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming || isLocked) return;

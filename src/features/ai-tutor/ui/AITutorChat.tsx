@@ -48,40 +48,8 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
   // Get user role to customize UI
   const { isEducator } = useUserRole();
 
-  // LocalStorage key for tracking message count per conversation
-  const getStorageKey = useCallback((convId: string | null) => {
-    return `ai-tutor-msg-count-${convId || 'new'}`;
-  }, []);
-  
-  // Initialize message count from localStorage
-  const [storedMessageCount, setStoredMessageCount] = useState<number>(() => {
-    try {
-      const key = `ai-tutor-msg-count-${conversationId || 'new'}`;
-      const stored = localStorage.getItem(key);
-      console.log('Initial localStorage check:', { key, stored });
-      return stored ? parseInt(stored, 10) : 0;
-    } catch {
-      return 0;
-    }
-  });
-
   // Worksheet configuration state (educators only)
-  const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(() => {
-    // Load from localStorage if available
-    const saved = localStorage.getItem('worksheetConfig');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Validate templateType exists in WORKSHEET_TEMPLATES
-        if (parsed.templateType && WORKSHEET_TEMPLATES[parsed.templateType as WorksheetTemplateType]) {
-          return { ...DEFAULT_WORKSHEET_CONFIG, ...parsed };
-        }
-      } catch (e) {
-        console.error('Failed to parse saved worksheet config:', e);
-      }
-    }
-    return DEFAULT_WORKSHEET_CONFIG;
-  });
+  const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(DEFAULT_WORKSHEET_CONFIG);
 
   const {
     messages,
@@ -157,35 +125,7 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
 
   // Count user messages in current conversation
   const userMessageCount = messages.filter(msg => msg.role === 'user').length;
-  const isLocked = userMessageCount >= 2 || storedMessageCount >= 2;
-
-  console.log('Lock status:', { userMessageCount, storedMessageCount, isLocked, messagesLength: messages.length });
-
-  // Sync message count to localStorage whenever messages change
-  useEffect(() => {
-    const currentCount = messages.filter(msg => msg.role === 'user').length;
-    setStoredMessageCount(currentCount);
-    const key = getStorageKey(conversationId);
-    try {
-      localStorage.setItem(key, currentCount.toString());
-      console.log('Saved to localStorage:', { key, count: currentCount });
-    } catch (err) {
-      console.error('Failed to save message count to localStorage', err);
-    }
-  }, [messages, conversationId, getStorageKey]);
-
-  // Sync storedMessageCount when conversationId changes (loading a conversation)
-  useEffect(() => {
-    const key = getStorageKey(conversationId);
-    try {
-      const stored = localStorage.getItem(key);
-      const count = stored ? parseInt(stored, 10) : 0;
-      setStoredMessageCount(count);
-      console.log('Loaded from localStorage:', { key, stored, count });
-    } catch {
-      setStoredMessageCount(0);
-    }
-  }, [conversationId, getStorageKey]);
+  const isLocked = userMessageCount >= 2;
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming || isLocked) return;
@@ -614,12 +554,6 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
             <button
               onClick={() => {
                 startNewConversation();
-                // Clear localStorage for the old conversation
-                try {
-                  localStorage.removeItem(getStorageKey(conversationId));
-                } catch (err) {
-                  console.error('Failed to clear localStorage', err);
-                }
                 inputRef.current?.focus();
               }}
               className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-1.5 whitespace-nowrap"

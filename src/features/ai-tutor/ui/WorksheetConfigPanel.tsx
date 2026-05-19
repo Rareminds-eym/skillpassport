@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import type { WorksheetConfig, WorksheetTemplateType, DifficultyLevel } from '../types/worksheet';
 import { WORKSHEET_TEMPLATES } from '../types/worksheet';
 
@@ -8,11 +8,6 @@ interface WorksheetConfigPanelProps {
 }
 
 const WorksheetConfigPanel: React.FC<WorksheetConfigPanelProps> = ({ config, onChange }) => {
-  // Save to localStorage whenever config changes
-  useEffect(() => {
-    localStorage.setItem('worksheetConfig', JSON.stringify(config));
-  }, [config]);
-
   const handleChange = <K extends keyof WorksheetConfig>(
     key: K,
     value: WorksheetConfig[K]
