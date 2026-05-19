@@ -22,6 +22,8 @@ import { initiateRazorpayPayment } from '@/features/subscription/api';
 import { authSessionService } from '@/features/auth';
 
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
+
+const DEBUG = import.meta.env.DEV;
 /**
  * Get the subscription manage path based on user role
  * Returns null if role is unknown to prevent wrong redirects
@@ -239,7 +241,7 @@ function PaymentCompletion() {
 
       // If not authenticated at all, redirect to register
       if (!isAuthenticated || !user) {
-        console.log('❌ User not authenticated, redirecting to signup');
+        if (DEBUG) console.log('[PaymentCompletion] User not authenticated, redirecting to signup');
         if (plan) {
           localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, learnerType }));
         }
@@ -256,7 +258,7 @@ function PaymentCompletion() {
         const { data: { session }, error: sessionError } = await authSessionService.getSession();
 
         if (sessionError || !session?.user) {
-          console.warn('⚠️ No valid Supabase session found, clearing stale data');
+          if (DEBUG) console.warn('[PaymentCompletion] No valid Supabase session found, clearing stale data');
           // Clear stale localStorage data
           localStorage.removeItem('user');
           localStorage.removeItem('userEmail');
@@ -285,7 +287,7 @@ function PaymentCompletion() {
         }
 
         if (!userData) {
-          console.warn('⚠️ User not found in database, may need to complete registration');
+          if (DEBUG) console.warn('[PaymentCompletion] User not found in database, may need to complete registration');
           // User has auth account but no database record - this is a partial signup
           // Try to get details from auth metadata
           const authUser = session.user;
@@ -310,7 +312,7 @@ function PaymentCompletion() {
           phone: userData.phone || '',
         });
 
-        console.log('✅ User validated successfully');
+        if (DEBUG) console.log('[PaymentCompletion] User validated successfully');
 
       } catch (err) {
         console.error('❌ Error validating user:', err);
@@ -414,7 +416,7 @@ function PaymentCompletion() {
 
         if (isFreemiumPlan) {
           // Handle freemium subscription creation (no payment required)
-          console.log('✅ Creating freemium subscription');
+          if (DEBUG) console.log('[PaymentCompletion] Creating freemium subscription');
 
           const { data: { session } } = await supabase.auth.getSession();
           const token = session?.access_token;

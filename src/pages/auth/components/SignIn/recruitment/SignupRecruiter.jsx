@@ -137,7 +137,7 @@ export default function SignupRecruiter() {
 
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
-      console.log('🔐 Auto-logging in after signup...');
+      if (import.meta.env.DEV) console.log('[SignupRecruiter] Auto-logging in after signup...');
       const { data: signInData, error: signInError } = await authSessionService.signInWithPassword({
         email: formData.email,
         password: formData.password,
@@ -147,7 +147,7 @@ export default function SignupRecruiter() {
         console.error('⚠️ Auto-login failed:', signInError.message);
         // Even if auto-login fails, the account was created successfully
       } else {
-        console.log('✅ Auto-login successful, session established');
+        if (import.meta.env.DEV) console.log('[SignupRecruiter] Auto-login successful, session established');
       }
 
       // Redirect to subscription plans page to choose a plan
