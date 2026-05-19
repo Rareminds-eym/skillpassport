@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import type { LessonPlanConfig, LessonPlanTemplateType } from '../types';
 import { LESSON_PLAN_TEMPLATES } from '../types';
 
@@ -8,11 +8,6 @@ interface LessonPlanConfigPanelProps {
 }
 
 const LessonPlanConfigPanel: React.FC<LessonPlanConfigPanelProps> = ({ config, onChange }) => {
-  // Save to localStorage whenever config changes
-  useEffect(() => {
-    localStorage.setItem('lessonPlanConfig', JSON.stringify(config));
-  }, [config]);
-
   const handleChange = <K extends keyof LessonPlanConfig>(
     key: K,
     value: LessonPlanConfig[K]
