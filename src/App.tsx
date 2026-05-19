@@ -7,7 +7,7 @@ import { TokenRefreshErrorNotification } from './app/providers/token-refresh-not
 import AppRoutes from './app/routes/AppRoutes';
 import { getLogger } from '@/shared/config/logging';
 import { trackPageView } from './shared/lib/analytics';
-import { trackPageView } from './shared/lib/analytics';
+
 
 const logger = getLogger('app');
 
