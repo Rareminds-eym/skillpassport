@@ -1,7 +1,8 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { getCurrentSession } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
+import type { WorksheetConfig, LessonPlanConfig } from '../types';
 
 const logger = getLogger('tutor-service');
 
@@ -15,6 +16,13 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+}
+
+interface MessageData {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
 }
 
 export interface Conversation {
@@ -32,6 +40,8 @@ export interface ChatRequest {
   courseId: string;
   lessonId?: string;
   message: string;
+  worksheetConfig?: WorksheetConfig;  // Optional worksheet configuration for educators
+  lessonPlanConfig?: LessonPlanConfig;  // Optional lesson plan configuration for educators
 }
 
 export interface ProgressData {
@@ -89,8 +99,8 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to send message');
+    const errorData = await response.json() as { error?: string };
+    throw new Error(errorData.error || 'Failed to send message');
   }
 
   const reader = response.body?.getReader();
@@ -269,10 +279,10 @@ export async function getSuggestedQuestions(lessonId: string): Promise<string[]>
       return getDefaultSuggestions();
     }
 
-    const data = await response.json();
+    const data = await response.json() as { questions?: string[] };
     return data.questions || getDefaultSuggestions();
-  } catch (error) {
-    logger.warn('Error fetching suggestions, using defaults', { lessonId });
+  } catch (err) {
+    logger.warn('Error fetching suggestions, using defaults', { lessonId, error: err instanceof Error ? err.message : String(err) });
     return getDefaultSuggestions();
   }
 }
@@ -308,8 +318,8 @@ export async function getCourseProgress(courseId: string): Promise<CourseProgres
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get progress');
+    const errorData = await response.json() as { error?: string };
+    throw new Error(errorData.error || 'Failed to get progress');
   }
 
   return response.json();
@@ -338,8 +348,8 @@ export async function updateLessonProgress(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update progress');
+    const errorData = await response.json() as { error?: string };
+    throw new Error(errorData.error || 'Failed to update progress');
   }
 }
 
@@ -401,7 +411,7 @@ export async function submitFeedback(
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to submit feedback');
+    const errorData = await response.json() as { error?: string };
+    throw new Error(errorData.error || 'Failed to submit feedback');
   }
 }

@@ -14,15 +14,25 @@ import {
   Sparkles,
   ThumbsDown,
   ThumbsUp,
-  Trash2
+  Trash2,
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
+import WorksheetConfigPanel from './WorksheetConfigPanel.tsx';
+import LessonPlanConfigPanel from './LessonPlanConfigPanel.tsx';
+import TeachingAssistantSettings, { type AssistantMode } from './TeachingAssistantSettings.tsx';
+import WorksheetExportButton from './WorksheetExportButton.tsx';
+import type { WorksheetConfig, WorksheetTemplateType } from '../types/worksheet';
+import { DEFAULT_WORKSHEET_CONFIG, WORKSHEET_TEMPLATES } from '../types/worksheet';
+import type { LessonPlanConfig, LessonPlanTemplateType } from '../types';
+import { DEFAULT_LESSON_PLAN_CONFIG, LESSON_PLAN_TEMPLATES } from '../types';
 
 import { Link } from 'react-router-dom';
 
-import { useUser } from '@/shared/model/authStore';
+import { useUser, useUserRole } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ai-tutor-panel');
@@ -46,6 +56,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   defaultExpanded = false
 }) => {
   const user = useUser();
+  const { isEducator } = useUserRole();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -58,6 +69,92 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = React.useRef<HTMLTextAreaElement>(null);
   const isAuthenticated = !!user;
+
+  // Global message counter - single source of truth
+  const GLOBAL_MESSAGE_KEY = 'ai-tutor-global-message-count';
+  
+  // Initialize global message count from localStorage
+  const [globalMessageCount, setGlobalMessageCount] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(GLOBAL_MESSAGE_KEY);
+      return stored ? parseInt(stored, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  // Check if locked
+  const isLocked = globalMessageCount >= 2;
+
+  // Worksheet configuration state (educators only)
+  const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(() => {
+    const saved = localStorage.getItem('worksheetConfig');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Validate templateType exists in WORKSHEET_TEMPLATES
+        if (parsed.templateType && WORKSHEET_TEMPLATES[parsed.templateType as WorksheetTemplateType]) {
+          return { ...DEFAULT_WORKSHEET_CONFIG, ...parsed };
+        }
+      } catch (e) {
+        console.error('Failed to parse saved worksheet config:', e);
+      }
+    }
+    return DEFAULT_WORKSHEET_CONFIG;
+  });
+
+  // Lesson Plan configuration state (educators only)
+  const [lessonPlanConfig, setLessonPlanConfig] = useState<LessonPlanConfig>(() => {
+    const saved = localStorage.getItem('lessonPlanConfig');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Validate templateType exists in LESSON_PLAN_TEMPLATES
+        if (parsed.templateType && LESSON_PLAN_TEMPLATES[parsed.templateType as LessonPlanTemplateType]) {
+          return { ...DEFAULT_LESSON_PLAN_CONFIG, ...parsed };
+        }
+      } catch (e) {
+        console.error('Failed to parse saved lesson plan config:', e);
+      }
+    }
+    return DEFAULT_LESSON_PLAN_CONFIG;
+  });
+
+  // Teaching Assistant Mode (educators only)
+  const [assistantMode, setAssistantMode] = useState<AssistantMode>(() => {
+    const saved = localStorage.getItem('assistantMode');
+    return (saved as AssistantMode) || 'worksheet';
+  });
+
+  // Save assistant mode to localStorage
+  const handleModeChange = (mode: AssistantMode) => {
+    setAssistantMode(mode);
+    if (mode) {
+      localStorage.setItem('assistantMode', mode);
+    } else {
+      localStorage.removeItem('assistantMode');
+    }
+  };
+
+  // Role-based UI configuration
+  const uiConfig = {
+    title: isEducator ? 'AI Teaching Assistant' : 'AI Course Tutor',
+    subtitle: isEducator 
+      ? "I'm here to help you create worksheets from course content"
+      : 'Ask me anything about this course',
+    welcomeTitle: isEducator ? 'Hi! I\'m your AI Teaching Assistant' : 'Hi! I\'m your AI Tutor',
+    welcomeMessage: isEducator
+      ? `I'm here to help you create worksheets from ${courseName}. Configure your worksheet settings and let's get started!`
+      : `I'm here to help you understand ${courseName}. Ask me anything about the course material!`,
+    icon: isEducator ? FileText : Brain,
+    gradientFrom: isEducator ? 'from-purple-600' : 'from-violet-600',
+    gradientTo: isEducator ? 'to-purple-700' : 'to-purple-700',
+    bgColor: isEducator ? 'bg-purple-600' : 'bg-violet-600',
+    hoverBgColor: isEducator ? 'hover:bg-purple-700' : 'hover:bg-violet-700',
+    borderColor: isEducator ? 'border-purple-500' : 'border-violet-500',
+    textColor: isEducator ? 'text-purple-600' : 'text-violet-600',
+    bgLight: isEducator ? 'bg-purple-100' : 'bg-violet-100',
+  };
 
   const {
     messages,
@@ -79,7 +176,9 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     refreshSuggestions
   } = useTutorChat({
     courseId,
-    lessonId: lessonContext?.lessonId
+    lessonId: lessonContext?.lessonId,
+    worksheetConfig: isEducator && assistantMode === 'worksheet' ? worksheetConfig : undefined,
+    lessonPlanConfig: isEducator && assistantMode === 'lesson-plan' ? lessonPlanConfig : undefined
   });
 
   // Keyboard shortcut: Cmd/Ctrl + K to toggle panel
@@ -117,8 +216,29 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     }
   }, [lessonContext?.lessonId, refreshSuggestions]);
 
+  // Track when user sends a message and increment global counter
+  const previousMessageCountRef = React.useRef(0);
+  
+  useEffect(() => {
+    const currentUserMessageCount = messages.filter(msg => msg.role === 'user').length;
+    
+    // If user message count increased, increment global counter
+    if (currentUserMessageCount > previousMessageCountRef.current) {
+      const increment = currentUserMessageCount - previousMessageCountRef.current;
+      const newGlobalCount = globalMessageCount + increment;
+      setGlobalMessageCount(newGlobalCount);
+      try {
+        localStorage.setItem(GLOBAL_MESSAGE_KEY, newGlobalCount.toString());
+      } catch (err) {
+        console.error('Failed to save global message count', err);
+      }
+    }
+    
+    previousMessageCountRef.current = currentUserMessageCount;
+  }, [messages, globalMessageCount, GLOBAL_MESSAGE_KEY]);
+
   const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
+    if (!input.trim() || isStreaming || isLocked) return;
     const message = input;
     setInput('');
     await sendMessage(message);
@@ -192,6 +312,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
   // Collapsed state - Icon strip
   if (!isExpanded) {
+    const Icon = uiConfig.icon;
     return (
       <motion.div
         initial={{ x: 100, opacity: 0 }}
@@ -200,15 +321,15 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       >
         <button
           onClick={() => setIsExpanded(true)}
-          className="group flex flex-col items-center gap-2 bg-gradient-to-b from-violet-600 to-purple-700 text-white px-3 py-4 rounded-l-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:px-4"
-          aria-label="Open AI Tutor"
+          className={`group flex flex-col items-center gap-2 bg-gradient-to-b ${uiConfig.gradientFrom} ${uiConfig.gradientTo} text-white px-3 py-4 rounded-l-xl shadow-lg hover:shadow-xl transition-all duration-200 hover:px-4`}
+          aria-label={`Open ${uiConfig.title}`}
         >
           <div className="relative">
-            <Brain className="w-6 h-6" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-violet-600 animate-pulse" />
+            <Icon className="w-6 h-6" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-purple-600 animate-pulse" />
           </div>
           <span className="text-xs font-medium writing-mode-vertical rotate-180" style={{ writingMode: 'vertical-rl' }}>
-            AI Tutor
+            {isEducator ? 'AI Assistant' : 'AI Tutor'}
           </span>
           <Sparkles className="w-4 h-4 opacity-60" />
         </button>
@@ -216,7 +337,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         {/* Tooltip */}
         <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
-            <p className="font-medium">AI Course Tutor</p>
+            <p className="font-medium">{uiConfig.title}</p>
             <p className="text-gray-400 text-xs">Press ⌘K to open</p>
           </div>
         </div>
@@ -250,13 +371,15 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         <div className="flex-1 overflow-y-auto p-4">
           <button
             onClick={() => {
+              if (isLocked) return;
               startNewConversation();
               setShowHistory(false);
             }}
-            className="w-full p-3 mb-3 border-2 border-dashed border-violet-300 rounded-xl text-violet-600 hover:border-violet-500 hover:bg-violet-50 transition-colors flex items-center justify-center gap-2"
+            disabled={isLocked}
+            className="w-full p-3 mb-3 border-2 border-dashed border-violet-300 rounded-xl text-violet-600 hover:border-violet-500 hover:bg-violet-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400"
           >
             <Plus className="w-4 h-4" />
-            New Conversation
+            {isLocked ? 'New Conversation (Locked)' : 'New Conversation'}
           </button>
 
           {conversations.length === 0 ? (
@@ -328,6 +451,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   }
 
   // Expanded chat panel
+  const Icon = uiConfig.icon;
   return (
     <motion.div
       initial={{ x: 400, opacity: 0 }}
@@ -337,17 +461,23 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       className="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col border-l border-gray-100"
     >
       {/* Header */}
-      <div className="bg-gradient-to-r from-violet-600 to-purple-700 text-white p-4">
+      <div className={`bg-gradient-to-r ${uiConfig.gradientFrom} ${uiConfig.gradientTo} text-white p-4`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-              <Brain className="w-5 h-5" />
+              <Icon className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm">AI Course Tutor</h3>
+              <h3 className="font-semibold text-sm">{uiConfig.title}</h3>
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {isEducator && (
+              <TeachingAssistantSettings
+                currentMode={assistantMode}
+                onModeChange={handleModeChange}
+              />
+            )}
             <button
               onClick={() => {
                 refreshConversations();
@@ -372,16 +502,30 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         {lessonContext?.lessonTitle && (
           <div className="bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
             <div className="flex items-center gap-2 text-xs">
-              <BookOpen className="w-3.5 h-3.5 text-violet-200" />
-              <span className="text-violet-200">Currently viewing:</span>
+              <BookOpen className="w-3.5 h-3.5 text-purple-200" />
+              <span className="text-purple-200">Currently viewing:</span>
             </div>
             <p className="text-sm font-medium truncate mt-0.5">{lessonContext.lessonTitle}</p>
             {lessonContext.moduleTitle && (
-              <p className="text-xs text-violet-200 truncate">{lessonContext.moduleTitle}</p>
+              <p className="text-xs text-purple-200 truncate">{lessonContext.moduleTitle}</p>
             )}
           </div>
         )}
       </div>
+
+      {/* Config Panel (Educators Only) */}
+      {isEducator && assistantMode === 'worksheet' && (
+        <WorksheetConfigPanel
+          config={worksheetConfig}
+          onChange={setWorksheetConfig}
+        />
+      )}
+      {isEducator && assistantMode === 'lesson-plan' && (
+        <LessonPlanConfigPanel
+          config={lessonPlanConfig}
+          onChange={setLessonPlanConfig}
+        />
+      )}
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto bg-gray-50">
@@ -404,30 +548,45 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           </div>
         ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-16 h-16 bg-violet-100 rounded-2xl flex items-center justify-center mb-4">
-              <Sparkles className="w-8 h-8 text-violet-600" />
-            </div>
-            <h4 className="font-semibold text-gray-800 mb-2">Hi! I'm your AI Tutor</h4>
-            <p className="text-sm text-gray-600 mb-6 max-w-xs">
-              I'm here to help you understand {courseName}. Ask me anything about the course material!
-            </p>
-
-            {/* Suggested Questions */}
-            {suggestedQuestions.length > 0 && (
-              <div className="w-full">
-                <p className="text-xs text-gray-500 mb-2 font-medium">Try asking:</p>
-                <div className="space-y-2">
-                  {suggestedQuestions.slice(0, 3).map((q, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setInput(q)}
-                      className="w-full p-3 text-left text-sm bg-white border border-gray-200 rounded-xl hover:border-violet-400 hover:bg-violet-50 transition-all group"
-                    >
-                      <span className="text-gray-700 group-hover:text-violet-700">{q}</span>
-                    </button>
-                  ))}
+            {isLocked ? (
+              <>
+                <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+                  <AlertCircle className="w-8 h-8 text-red-600" />
                 </div>
-              </div>
+                <h4 className="font-semibold text-gray-800 mb-2">AI Tutor Locked</h4>
+                <p className="text-sm text-gray-600 mb-4 max-w-xs">
+                  You've reached your 2-message limit. The AI Tutor feature is now locked.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className={`w-16 h-16 ${uiConfig.bgLight} rounded-2xl flex items-center justify-center mb-4`}>
+                  <Sparkles className={`w-8 h-8 ${uiConfig.textColor}`} />
+                </div>
+                <h4 className="font-semibold text-gray-800 mb-2">{uiConfig.welcomeTitle}</h4>
+                <p className="text-sm text-gray-600 mb-6 max-w-xs">
+                  {uiConfig.welcomeMessage}
+                </p>
+
+                {/* Suggested Questions */}
+                {suggestedQuestions.length > 0 && (
+                  <div className="w-full">
+                    <p className="text-xs text-gray-500 mb-2 font-medium">{isEducator ? 'Try asking:' : 'Try asking:'}</p>
+                    <div className="space-y-2">
+                      {suggestedQuestions.slice(0, 3).map((q, i) => (
+                        <button
+                          key={i}
+                          onClick={() => !isLocked && setInput(q)}
+                          disabled={isLocked}
+                          className={`w-full p-3 text-left text-sm bg-white border border-gray-200 rounded-xl hover:border-${isEducator ? 'purple' : 'violet'}-400 hover:bg-${isEducator ? 'purple' : 'violet'}-50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          <span className={`text-gray-700 group-hover:text-${isEducator ? 'purple' : 'violet'}-700`}>{q}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
@@ -529,6 +688,16 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                     <div className={`flex items-center gap-2 mt-1 ${isUser ? 'justify-end' : 'justify-start'}`}>
                       <span className="text-xs text-gray-400">{formatTime(msg.timestamp)}</span>
 
+                      {/* Export button for assistant messages (educators only) */}
+                      {!isUser && msg.content && isEducator && (
+                        <WorksheetExportButton
+                          content={msg.content}
+                          courseTitle={courseName}
+                          lessonTitle={lessonContext?.lessonTitle}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        />
+                      )}
+
                       {/* Feedback buttons */}
                       {!isUser && msg.content && (
                         <div className="flex items-center gap-1">
@@ -592,33 +761,56 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
       {/* Input Area */}
       <div className="p-4 border-t bg-white">
-        <div className="flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isAuthenticated ? "Ask about this lesson..." : "Please log in to chat"}
-            disabled={isStreaming || !isAuthenticated}
-            rows={1}
-            className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm resize-none max-h-32"
-            style={{ minHeight: '44px' }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isStreaming || !isAuthenticated}
-            className="w-11 h-11 bg-violet-600 text-white rounded-xl flex items-center justify-center hover:bg-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 mt-2 text-center">
-          Press ⌘K to toggle • Enter to send
-        </p>
+        {isLocked && isAuthenticated ? (
+          <div className="flex flex-col gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-red-900">AI Tutor Locked</p>
+                <p className="text-xs text-red-700 mt-1">
+                  You've reached your 2-message limit. The AI Tutor feature is now locked.
+                </p>
+              </div>
+            </div>
+            <button
+              disabled
+              className="w-full px-4 py-2 bg-gray-300 text-gray-500 text-sm rounded-lg cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              New Chat (Locked)
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-end gap-2">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={isAuthenticated ? "Ask about this lesson..." : "Please log in to chat"}
+                disabled={isStreaming || !isAuthenticated}
+                rows={1}
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm resize-none max-h-32"
+                style={{ minHeight: '44px' }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || isStreaming || !isAuthenticated}
+                className="w-11 h-11 bg-violet-600 text-white rounded-xl flex items-center justify-center hover:bg-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-2 text-center">
+              Press ⌘K to toggle • Enter to send
+            </p>
+          </>
+        )}
       </div>
     </motion.div>
   );
