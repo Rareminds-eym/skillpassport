@@ -30,6 +30,7 @@ import { useAuthStore } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 import { OtpInput } from '@/shared/ui';
 import { isLocalhost } from '@/shared/lib';
+import { trackSignup } from '@/shared/lib/analytics';
 
 type UserRole = 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -277,6 +278,8 @@ const UnifiedSignup = () => {
   const verifyingOtpRef = useRef(false);
   const stateRef = useRef(state);
   stateRef.current = state;
+  // Guard: signup_start fires only once per signup attempt
+  const hasStartedFormRef = useRef(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -326,6 +329,12 @@ const UnifiedSignup = () => {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     let processedValue: string | boolean = value;
+
+    // Fire signup_start once on first meaningful form interaction
+    if (!hasStartedFormRef.current && (name === 'firstName' || name === 'lastName' || name === 'email')) {
+      hasStartedFormRef.current = true;
+      trackSignup.start(state.selectedRole || undefined);
+    }
 
     if (type === 'checkbox') processedValue = (e.target as HTMLInputElement).checked;
     if (name === 'phone') processedValue = value.replace(/\D/g, '').slice(0, 15);
@@ -495,6 +504,13 @@ const UnifiedSignup = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    // Track signup_submit — form is valid, API call is about to start
+    trackSignup.submit(
+      state.selectedRole || undefined,
+      ALL_COUNTRIES.find(c => c.isoCode === state.country)?.name
+    );
+
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
@@ -582,6 +598,9 @@ const UnifiedSignup = () => {
       };
       const entityType = state.selectedRole ? entityTypeMap[state.selectedRole] : 'learner';
 
+      // Track signup_success — profile created, about to redirect
+      trackSignup.success(ssoUserId, state.email, state.selectedRole || 'unknown');
+
       // Check for return URL (invitation flow) - redirect there instead of subscription plans
       if (returnUrl) {
         // Clear the stored return URL
@@ -636,11 +655,12 @@ const UnifiedSignup = () => {
         });
       }
 
+      // Track signup_failed — error message and role captured for GTM
+      trackSignup.failed(errorMessage, state.selectedRole || undefined);
+
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
     }
   };
-
-  // Countdown state for when registration is not yet open
   const [countdown, setCountdown] = useState(getTimeUntilFullRegOpens());
 
   // Update countdown every second
