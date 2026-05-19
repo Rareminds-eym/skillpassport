@@ -4,6 +4,7 @@
  * Fetches dashboard data from backend API instead of direct Supabase calls
  */
 
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-dashboard-service');
@@ -59,12 +60,12 @@ export async function getLearnerDashboardData(): Promise<{
 
     logger.info('Fetching dashboard data', { url: url.toString() });
 
-    const response = await fetch(url.toString(), {
+    // Use ssoClient.fetch to automatically include the Authorization header
+    const response = await ssoClient.fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-      },
-      credentials: 'include', // Include cookies for SSO authentication
+      }
     });
 
     if (!response.ok) {

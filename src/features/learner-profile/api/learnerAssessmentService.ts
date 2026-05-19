@@ -4,11 +4,19 @@
  * Fetches assessment recommendations from backend API using JWT authentication
  */
 
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-assessment-service');
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ;
+// Get API base URL from environment, fallback to current origin
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    return envUrl;
+  }
+  return typeof window !== 'undefined' ? window.location.origin : '';
+};
 
 export interface AssessmentRecommendations {
   recommendedTrack: string | null;
@@ -46,17 +54,17 @@ export interface AssessmentResponse {
 
 /**
  * Fetch assessment recommendations from backend API
- * Uses JWT token from HTTP-only cookie for authentication
+ * Uses ssoClient to automatically inject JWT tokens
  */
 export async function getLearnerAssessmentData(): Promise<AssessmentResponse> {
   try {
-    const url = `${API_BASE_URL}/api/learners/assessments`;
+    const apiBaseUrl = getApiBaseUrl();
+    const url = `${apiBaseUrl}/api/learners/assessments`;
     
     logger.info('Fetching assessment data from backend', { url });
 
-    const response = await fetch(url, {
+    const response = await ssoClient.fetch(url, {
       method: 'GET',
-      credentials: 'include', // Include HTTP-only cookies (JWT token)
       headers: {
         'Content-Type': 'application/json',
       },

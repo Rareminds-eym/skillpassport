@@ -66,19 +66,60 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
     // Check if profile already exists by SSO user ID (idempotency)
     const { data: existingUser } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('id, role')
       .eq('id', userId)
       .maybeSingle();
 
     if (existingUser) {
-      return jsonResponse(
-        {
-          success: true,
-          data: { userId },
-          message: 'Profile already exists',
-        },
-        200
-      );
+      // Profile exists, but we must verify the role-specific record exists
+      // because previous failed signups might have left the users record orphaned.
+      let roleExists = false;
+      const checkRole = existingUser.role || body.role;
+      let roleTable = null;
+      
+      if (checkRole === 'learner') roleTable = 'learners';
+      else if (checkRole === 'recruiter') roleTable = 'recruiters';
+      
+      if (roleTable) {
+        const { data: existingRoleRec } = await supabaseAdmin
+          .from(roleTable)
+          .select('user_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        roleExists = !!existingRoleRec;
+      } else {
+        // Admin or educator roles that don't need a self-signup table record
+        roleExists = true; 
+      }
+
+      if (roleExists) {
+        return jsonResponse(
+          {
+            success: true,
+            data: { userId },
+            message: 'Profile already exists',
+          },
+          200
+        );
+      } else {
+        // Repair missing role record
+        console.log(`[Signup] Repairing missing ${checkRole} record for existing user ${userId}`);
+        try {
+          await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
+        } catch (repairError) {
+          console.error('Failed to repair missing role record:', repairError);
+          throw repairError;
+        }
+        
+        return jsonResponse(
+          {
+            success: true,
+            data: { userId },
+            message: 'Profile role record repaired successfully',
+          },
+          200
+        );
+      }
     }
 
     // Check if profile exists with same email but different ID (legacy Supabase Auth user)

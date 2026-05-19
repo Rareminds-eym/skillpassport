@@ -454,8 +454,9 @@ const UnifiedSignup = () => {
       if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     }
 
-    if (!state.password || state.password.length < 8) { setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' })); return false; }
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(state.password)) { setState(prev => ({ ...prev, error: 'Password must contain uppercase, lowercase, and number' })); return false; }
+    if (!state.password || state.password.length < 10) { setState(prev => ({ ...prev, error: 'Password must be at least 10 characters' })); return false; }
+    const typesCount = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter(r => r.test(state.password!)).length;
+    if (typesCount < 3) { setState(prev => ({ ...prev, error: 'Password must contain at least 3 of: uppercase letters, lowercase letters, numbers, special characters' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
     return true;
   };
