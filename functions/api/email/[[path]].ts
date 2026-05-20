@@ -36,8 +36,6 @@ export const onRequest: PagesFunction = async (context) => {
   const path = url.pathname.replace('/api/email', '');
 
   try {
-    const supabase = createSupabaseClient(env);
-
     // GET routes (PDF download and health check)
     if (request.method === 'GET') {
       // Health check
@@ -61,6 +59,7 @@ export const onRequest: PagesFunction = async (context) => {
       const pdfMatch = path.match(/^\/download-receipt\/(.+)$/);
       if (pdfMatch) {
         const orderId = pdfMatch[1];
+        const supabase = createSupabaseClient(env);
         return await handlePDFReceipt(orderId, env, supabase);
       }
       
@@ -83,6 +82,18 @@ export const onRequest: PagesFunction = async (context) => {
       }, 400);
     }
 
+    // Routes that don't need Supabase
+    if (path === '/event-confirmation') {
+      return await handleEventConfirmation(body, env);
+    }
+    
+    if (path === '/event-otp') {
+      return await handleEventOTP(body, env);
+    }
+
+    // Routes that need Supabase - create client only when needed
+    const supabase = createSupabaseClient(env);
+    
     // Route to appropriate handler
     if (path === '/invitation') {
       return await handleInvitationEmail(request, body, env, supabase);
@@ -94,14 +105,6 @@ export const onRequest: PagesFunction = async (context) => {
     
     if (path === '/send-bulk-countdown') {
       return await handleBulkCountdownEmail(body, env, supabase);
-    }
-    
-    if (path === '/event-confirmation') {
-      return await handleEventConfirmation(body, env, supabase);
-    }
-    
-    if (path === '/event-otp') {
-      return await handleEventOTP(body, env, supabase);
     }
     
     if (path === '' || path === '/' || path === '/send') {

@@ -23,11 +23,10 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { OTPInput } from '@/shared/ui';
 import { paymentsApiService } from '@/features/subscription';
 import { ShinyButton } from '@/shared/ui';
-import { sendPhoneOTP, validatePhoneOTP } from '@/features/auth/api/otpService';
+import { sendOtp, verifyOtp } from '@/features/auth/api/otpService';
 
 const REGISTRATION_FEE_STUDENT = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
-const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -69,13 +68,17 @@ const validateForm = (form, emailVerified, phoneVerified, consentGiven) => {
 };
 
 const sendOTPEmail = async (email, otp, name) => {
-  const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
+  const response = await fetch('/api/email/event-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, otp, name }),
   });
 
-  if (!response.ok) throw new Error('Failed to send verification email');
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to send verification email');
+  }
+  
   return true;
 };
 
@@ -83,7 +86,7 @@ const sendConfirmationEmail = async (details) => {
   const { name, email, phone, amount, orderId, campaign } = details;
 
   try {
-    const response = await fetch(`${EMAIL_API_URL}/event-confirmation`, {
+    const response = await fetch('/api/email/event-confirmation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, phone, amount, orderId, campaign }),
@@ -345,10 +348,14 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
     setSendingPhoneOTP(true);
     setPhoneOtpError('');
     try {
-      const result = await sendPhoneOTP(cleanPhone);
-      setPhoneVerificationId(result.verificationId);
-      setPhoneOtpTimeout(parseInt(result.timeout) || 60);
-      setPhoneOtpSent(true);
+      const result = await sendOtp(cleanPhone);
+      if (result.success && result.data?.verificationId) {
+        setPhoneVerificationId(result.data.verificationId);
+        setPhoneOtpTimeout(result.data.expiresIn || 60);
+        setPhoneOtpSent(true);
+      } else {
+        setPhoneOtpError(result.error || 'Failed to send OTP. Please try again.');
+      }
     } catch (error) {
       setPhoneOtpError(error.message || 'Failed to send OTP. Please try again.');
     } finally {
@@ -714,18 +721,18 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                           setVerifyingPhoneOTP(true);
                           setPhoneOtpError('');
                           try {
-                            const result = await validatePhoneOTP(
-                              form.phone.replace(/\D/g, ''),
-                              phoneVerificationId,
-                              code
-                            );
-                            if (result.verified) {
+                            const result = await verifyOtp({
+                              phone: form.phone.replace(/\D/g, ''),
+                              otp: code,
+                              verificationId: phoneVerificationId,
+                            });
+                            if (result.success && result.data?.verified) {
                               setPhoneVerified(true);
                               setPhoneOtpSent(false);
                               setPhoneOtpError('');
                               setErrors(prev => ({ ...prev, phone: null }));
                             } else {
-                              setPhoneOtpError('Invalid OTP. Please try again.');
+                              setPhoneOtpError(result.error || 'Invalid OTP. Please try again.');
                             }
                           } catch (error) {
                             setPhoneOtpError(error.message || 'Invalid OTP. Please try again.');
