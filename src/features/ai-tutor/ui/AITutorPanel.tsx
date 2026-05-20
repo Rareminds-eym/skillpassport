@@ -33,6 +33,7 @@ import { DEFAULT_LESSON_PLAN_CONFIG, LESSON_PLAN_TEMPLATES } from '../types';
 import { Link } from 'react-router-dom';
 
 import { useUser, useUserRole } from '@/shared/model/authStore';
+import { useLearnerType } from '@/shared/model/useLearnerType';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -57,7 +58,30 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   defaultExpanded = false
 }) => {
   const user = useUser();
-  const { isEducator } = useUserRole();
+  const { isEducator: roleIsEducator } = useUserRole();
+  
+  // NEW: Fetch learner_type from database to determine actual user type
+  const { isTeacher, loading: learnerTypeLoading, learnerType, error: learnerTypeError } = useLearnerType(user?.id);
+  
+  // DEBUG: Log the values
+  useEffect(() => {
+    console.log('🔍 AITutorPanel - User Type Detection:', {
+      userId: user?.id,
+      userRole: user?.role,
+      roleIsEducator,
+      learnerType,
+      isTeacher,
+      learnerTypeLoading,
+      error: learnerTypeError?.message,
+      finalIsEducator: isTeacher || roleIsEducator,
+    });
+  }, [user?.id, user?.role, roleIsEducator, learnerType, isTeacher, learnerTypeLoading, learnerTypeError]);
+  
+  // Determine if user should be treated as educator:
+  // 1. If learner_type === "teacher", treat as educator (database-driven)
+  // 2. Otherwise, fall back to role-based detection
+  const isEducator = isTeacher || roleIsEducator;
+  
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
