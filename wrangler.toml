@@ -29,5 +29,12 @@ binding = "SSO_SERVICE"
 service = "sso-api"
 # No entrypoint needed - sso-api uses default fetch handler
 
+# Email worker — called via RPC (WorkerEntrypoint), zero-latency, no API key needed.
+# Local dev: npx wrangler pages dev ./dist --service EMAIL_SERVICE=shared-email-api
+[[services]]
+binding = "EMAIL_SERVICE"
+service = "shared-email-api"
+entrypoint = "EmailService"
+
 # Environment variables for local development
 # These will be loaded from .dev.vars file
