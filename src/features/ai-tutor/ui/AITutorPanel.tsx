@@ -64,21 +64,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const { isEducator: roleIsEducator } = useUserRole();
   
   // NEW: Fetch learner_type from database to determine actual user type
-  const { isTeacher, loading: learnerTypeLoading, learnerType, error: learnerTypeError } = useLearnerType(user?.id);
-  
-  // DEBUG: Log the values
-  useEffect(() => {
-    console.log('🔍 AITutorPanel - User Type Detection:', {
-      userId: user?.id,
-      userRole: user?.role,
-      roleIsEducator,
-      learnerType,
-      isTeacher,
-      learnerTypeLoading,
-      error: learnerTypeError?.message,
-      finalIsEducator: isTeacher || roleIsEducator,
-    });
-  }, [user?.id, user?.role, roleIsEducator, learnerType, isTeacher, learnerTypeLoading, learnerTypeError]);
+  const { isTeacher, loading: learnerTypeLoading } = useLearnerType(user?.id);
   
   // Determine if user should be treated as educator:
   // 1. If learner_type === "teacher", treat as educator (database-driven)
@@ -124,18 +110,18 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             .single();
 
           if (error) {
-            console.warn('Could not fetch teacher generation count from database:', error);
+            logger.warn('Could not fetch teacher generation count', { error: error instanceof Error ? error.message : String(error) });
             setTeacherGenerationCount(0);
           } else {
             const metadata = userData?.metadata || {};
             const rawCount = metadata[TEACHER_LEARNER_GENERATION_COUNT_KEY];
             const parsedCount = Number(rawCount ?? 0);
             const count = Number.isFinite(parsedCount) ? Math.max(0, Math.floor(parsedCount)) : 0;
-            console.log('📊 Teacher learner generation count fetched:', count);
+            logger.info('Teacher learner generation count fetched', { count });
             setTeacherGenerationCount(count);
           }
         } catch (err) {
-          console.error('Error fetching teacher generation count:', err);
+          logger.error('Error fetching teacher generation count', err instanceof Error ? err : new Error(String(err)));
           setTeacherGenerationCount(0);
         } finally {
           setIsLoadingCount(false);

@@ -27,6 +27,9 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/auth';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { getLogger } from '../../../../src/shared/config/logging';
+
+const logger = getLogger('get-learner-type');
 
 interface RequiredEnv {
   SUPABASE_URL: string;
@@ -39,6 +42,7 @@ export const onRequestGet = async (context: TypedContext) => {
   try {
     const { request, env, data } = context;
     const authenticatedUser = data.user;
+    // strict: no-any verified
     const supabase = getServiceClient(env);
 
     // Parse query parameters
@@ -72,7 +76,7 @@ export const onRequestGet = async (context: TypedContext) => {
       .maybeSingle();
 
     if (fetchError) {
-      console.error('Failed to fetch learner_type:', fetchError);
+      logger.error('Failed to fetch learner_type', fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
       return jsonResponse({ 
         error: 'Failed to fetch learner type',
         details: fetchError.message 
@@ -91,7 +95,7 @@ export const onRequestGet = async (context: TypedContext) => {
       hasLearnerRecord,
     });
   } catch (error: unknown) {
-    console.error('Get learner type error:', error);
+    logger.error('Get learner type error', error instanceof Error ? error : new Error(String(error)));
     return jsonResponse(
       { 
         error: 'Internal server error',
