@@ -119,6 +119,8 @@ export const publicRoutes = [
   <Route key="organization-setup" path="/organization-setup" element={<OrganizationSetupPage />} />,
 
   // Skill Passport Pre-Registration
+  // Redirect /register/student to /register/learner
+  <Route key="register-student-redirect" path="/register/student" element={<Navigate to="/register/learner" replace />} />,
   <Route key="register-learner" path="/register/learner" element={<SkillPassportPreRegistration />} />,
   <Route key="register-corporate" path="/register/corporate" element={<SkillPassportPreRegistration />} />,
 

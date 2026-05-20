@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { ShieldCheck, Users, Target } from 'lucide-react';
 import { Sparkles } from '@/shared/ui';
-
+import { useLocation } from 'react-router-dom';
 export default function AboutRaremindsSection() {
   const location = useLocation();
   const isCorporate = location.pathname.includes('/register/corporate');
