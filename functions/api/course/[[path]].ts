@@ -122,8 +122,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       },
       404
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error in course-api:', error);
-    return jsonResponse({ error: error.message || 'Internal server error' }, 500);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return jsonResponse({ error: message }, 500);
   }
 };

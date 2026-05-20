@@ -26,12 +26,20 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/auth';
 import { jsonResponse } from '../../../../src/functions-lib/response';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 
-export const onRequestGet = async (context: AuthenticatedContext) => {
+interface RequiredEnv {
+  SUPABASE_URL: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+}
+
+type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
+
+export const onRequestGet = async (context: TypedContext) => {
   try {
     const { request, env, data } = context;
     const authenticatedUser = data.user;
-    const supabase = getServiceClient(env as any);
+    const supabase = getServiceClient(env);
 
     // Parse query parameters
     const url = new URL(request.url);
@@ -82,12 +90,12 @@ export const onRequestGet = async (context: AuthenticatedContext) => {
       isTeacher,
       hasLearnerRecord,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get learner type error:', error);
     return jsonResponse(
       { 
         error: 'Internal server error',
-        message: error.message 
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       500
     );

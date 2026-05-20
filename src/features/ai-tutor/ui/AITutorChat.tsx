@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import {
   Send,
@@ -494,9 +493,9 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
               <div className="w-full">
                 <p className="text-xs text-gray-500 mb-2">{isEducator ? 'Try asking:' : 'Suggested questions:'}</p>
                 <div className="space-y-2">
-                  {displaySuggestions.map((q, i) => (
+                  {displaySuggestions.map((q) => (
                     <button
-                      key={i}
+                      key={q}
                       onClick={() => handleSuggestionClick(q)}
                       className="w-full p-2 text-left text-sm bg-white border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
                     >

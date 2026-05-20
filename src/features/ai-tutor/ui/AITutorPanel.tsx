@@ -229,10 +229,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   } = useTutorChat({
     courseId,
     lessonId: lessonContext?.lessonId,
-    // Always pass config if mode matches, regardless of isEducator loading state
-    // Backend will check user role from database
-    worksheetConfig: assistantMode === 'worksheet' ? worksheetConfig : undefined,
-    lessonPlanConfig: assistantMode === 'lesson-plan' ? lessonPlanConfig : undefined,
+    // Gate config on isEducator — backend also validates, but frontend
+    // should not pass generation config for non-educator users.
+    worksheetConfig: isEducator && assistantMode === 'worksheet' ? worksheetConfig : undefined,
+    lessonPlanConfig: isEducator && assistantMode === 'lesson-plan' ? lessonPlanConfig : undefined,
     onGenerationUsageUpdate: handleGenerationUsageUpdate
   });
 

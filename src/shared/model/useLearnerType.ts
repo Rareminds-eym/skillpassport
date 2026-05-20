@@ -67,8 +67,24 @@ export function useLearnerType(userId: string | undefined): LearnerTypeData {
         if (cancelled) return;
 
         if (fetchError) {
-          logger.error('Error fetching learner_type', fetchError, { userId });
-          setError(fetchError);
+          if (fetchError.code === 'PGRST116') {
+            // maybeSingle() returns PGRST116 when multiple rows match —
+            // this means the unique constraint on learners.user_id is violated.
+            logger.error(
+              'Data integrity issue: multiple learner records found for user',
+              fetchError,
+              { userId }
+            );
+            setError(
+              new Error(
+                `Multiple learner records found for user ${userId}. ` +
+                'This indicates a database constraint violation.'
+              )
+            );
+          } else {
+            logger.error('Error fetching learner_type', fetchError, { userId });
+            setError(fetchError);
+          }
           setLearnerType(null);
         } else if (data) {
           const type = data.learner_type || null;
