@@ -32,7 +32,7 @@ export interface PagesEnv {
 
   // Email Worker configuration
   EMAIL_API_URL?: string;
-  INTERNAL_API_KEY?: string;
+  EMAIL_API_KEY?: string;
   ADMIN_EMAIL?: string;
 
   // App configuration

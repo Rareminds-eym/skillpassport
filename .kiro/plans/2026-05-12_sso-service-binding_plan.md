@@ -488,7 +488,7 @@ Remove these unused environment variables:
 
 1. **`PAYMENTS_API_URL`** - Not used in code (only in tests), service binding is used instead
 2. **`RAZORPAY_KEY_SECRET`** - Not used in skillpassport (only in payment-worker)
-3. **`RESEND_API_KEY`** - Not used anywhere (email-worker uses INTERNAL_API_KEY)
+3. **`RESEND_API_KEY`** - Not used anywhere (email-worker uses EMAIL_API_KEY)
 
 **Implementation:**
 
@@ -552,7 +552,7 @@ RAZORPAY_KEY_ID=rzp_test_YourKeyIdHere
 # The following environment variables are NO LONGER NEEDED:
 #   ❌ PAYMENTS_API_URL (removed - use PAYMENT_WORKER service binding)
 #   ❌ RAZORPAY_KEY_SECRET (removed - moved to payment-worker environment)
-#   ❌ RESEND_API_KEY (removed — email-worker uses INTERNAL_API_KEY)
+#   ❌ RESEND_API_KEY (removed — email-worker uses EMAIL_API_KEY)
 ```
 
 **Success Criteria:**
