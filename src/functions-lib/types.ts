@@ -31,7 +31,7 @@ export interface PagesEnv {
   EMBEDDING_API_KEY?: string;
 
   // Email Worker configuration
-  EMAIL_WORKER_URL?: string;
+  EMAIL_API_URL?: string;
   INTERNAL_API_KEY?: string;
   ADMIN_EMAIL?: string;
 

@@ -26,26 +26,26 @@ export interface EmailResult {
 
 /**
  * Send email via email-worker
- * @throws Error if EMAIL_WORKER_URL or INTERNAL_API_KEY is not configured
+ * @throws Error if EMAIL_API_URL or EMAIL_API_KEY is not configured
  */
 export async function sendEmail(
   env: PagesEnv,
   payload: EmailPayload
 ): Promise<EmailResult> {
   // Validate environment
-  if (!env.EMAIL_WORKER_URL) {
-    throw new Error('EMAIL_WORKER_URL environment variable is not configured');
+  if (!env.EMAIL_API_URL) {
+    throw new Error('EMAIL_API_URL environment variable is not configured');
   }
-  if (!env.INTERNAL_API_KEY) {
-    throw new Error('INTERNAL_API_KEY environment variable is not configured');
+  if (!env.EMAIL_API_KEY) {
+    throw new Error('EMAIL_API_KEY environment variable is not configured');
   }
 
   try {
-    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
+    const response = await fetch(`${env.EMAIL_API_URL}/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
+        'X-Internal-Api-Key': env.EMAIL_API_KEY,
       },
       body: JSON.stringify({
         to: payload.to,
@@ -104,11 +104,11 @@ export async function sendEmailSafe(
  * @throws Error if required environment variables are missing
  */
 export function validateEmailEnv(env: PagesEnv): void {
-  if (!env.EMAIL_WORKER_URL) {
-    throw new Error('Missing required environment variable: EMAIL_WORKER_URL');
+  if (!env.EMAIL_API_URL) {
+    throw new Error('Missing required environment variable: EMAIL_API_URL');
   }
-  if (!env.INTERNAL_API_KEY) {
-    throw new Error('Missing required environment variable: INTERNAL_API_KEY');
+  if (!env.EMAIL_API_KEY) {
+    throw new Error('Missing required environment variable: EMAIL_API_KEY');
   }
 }
 
@@ -116,5 +116,5 @@ export function validateEmailEnv(env: PagesEnv): void {
  * Check if email environment is configured (non-throwing)
  */
 export function isEmailConfigured(env: PagesEnv): boolean {
-  return !!(env.EMAIL_WORKER_URL && env.INTERNAL_API_KEY);
+  return !!(env.EMAIL_API_URL && env.EMAIL_API_KEY);
 }
