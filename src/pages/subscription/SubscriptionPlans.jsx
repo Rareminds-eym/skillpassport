@@ -627,56 +627,6 @@ function SubscriptionPlans() {
   const { type: pathType } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Navbar scroll behavior
-  const [lastScrollY, setLastScrollY] = useState(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const header = document.querySelector('header');
-
-      if (!header) return;
-
-      // Change from sticky to fixed positioning for scroll behavior to work
-      if (header.style.position !== 'fixed') {
-        header.style.position = 'fixed';
-        header.style.width = '100%';
-        header.style.zIndex = '50';
-      }
-
-      if (currentScrollY < 10) {
-        // At the top, show navbar
-        header.style.transform = 'translateY(0)';
-        header.style.transition = 'transform 0.3s ease-in-out';
-      } else if (currentScrollY < lastScrollY) {
-        // Scrolling up, show navbar
-        header.style.transform = 'translateY(0)';
-        header.style.transition = 'transform 0.3s ease-in-out';
-      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        // Scrolling down past 100px, hide navbar
-        header.style.transform = 'translateY(-100%)';
-        header.style.transition = 'transform 0.3s ease-in-out';
-      }
-
-      setLastScrollY(currentScrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      // Reset header on unmount
-      const header = document.querySelector('header');
-      if (header) {
-        header.style.transform = '';
-        header.style.transition = '';
-        header.style.position = '';
-        header.style.width = '';
-        header.style.zIndex = '';
-      }
-    };
-  }, [lastScrollY]);
-
   // Get type from path params OR query params (for redirects from protected routes)
   const type = pathType || searchParams.get('type');
 
@@ -1062,7 +1012,7 @@ function SubscriptionPlans() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-400 via-blue-100 to-white">
-      <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8">
         {/* Subscription status error banner */}
         {subscriptionError && isAuthenticated && (
           <div className="mb-8 bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 rounded-3xl p-6 flex items-center justify-between shadow-lg">
