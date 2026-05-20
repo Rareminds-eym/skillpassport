@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
+import { BookOpen, Loader2 } from 'lucide-react';
 import type { LessonPlanConfig, LessonPlanTemplateType } from '../types';
 import { LESSON_PLAN_TEMPLATES } from '../types';
 
 interface LessonPlanConfigPanelProps {
   config: LessonPlanConfig;
   onChange: (config: LessonPlanConfig) => void;
+  onGenerate: () => void;
+  isGenerating: boolean;
+  generationLimit?: number;
+  remainingGenerations?: number;
+  isGenerationLimitReached?: boolean;
+  isUsageLoading?: boolean;
 }
 
-const LessonPlanConfigPanel: React.FC<LessonPlanConfigPanelProps> = ({ config, onChange }) => {
+const LessonPlanConfigPanel = ({ 
+  config, 
+  onChange, 
+  onGenerate, 
+  isGenerating,
+  generationLimit,
+  remainingGenerations,
+  isGenerationLimitReached = false,
+  isUsageLoading = false
+}: LessonPlanConfigPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
+  const isGenerateDisabled = isGenerating || isUsageLoading || isGenerationLimitReached;
 
   const handleChange = <K extends keyof LessonPlanConfig>(
     key: K,
@@ -127,6 +144,40 @@ const LessonPlanConfigPanel: React.FC<LessonPlanConfigPanelProps> = ({ config, o
             <span className="text-xs text-gray-700">Homework</span>
           </label>
         </div>
+
+        {/* Generate Button */}
+        <button
+          onClick={onGenerate}
+          disabled={isGenerateDisabled}
+          className="w-full mt-4 px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
+        >
+          {isUsageLoading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Checking Availability...
+            </>
+          ) : isGenerating ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Generating Lesson Plan...
+            </>
+          ) : isGenerationLimitReached ? (
+            <>
+              <BookOpen className="w-5 h-5" />
+              Generation Limit Reached
+            </>
+          ) : (
+            <>
+              <BookOpen className="w-5 h-5" />
+              Generate Lesson Plan
+            </>
+          )}
+        </button>
+        {generationLimit !== undefined && remainingGenerations !== undefined && !isUsageLoading && (
+          <p className={`text-xs text-center ${isGenerationLimitReached ? 'text-red-600' : 'text-purple-700'}`}>
+            {remainingGenerations} of {generationLimit} worksheet/lesson plan generations remaining
+          </p>
+        )}
         </div>
       )}
     </div>

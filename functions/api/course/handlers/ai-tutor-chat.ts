@@ -10,11 +10,13 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import { getServiceClient } from '../../../lib/auth';
 import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
+import type { WorksheetConfig } from '../types/worksheet';
+import type { LessonPlanConfig } from '../../../../src/features/ai-tutor/types/lesson-plan';
 import {
   buildCourseContext,
   buildSystemPrompt
@@ -34,6 +36,23 @@ interface StoredMessage {
   timestamp: string;
 }
 
+interface AiTutorChatRequest {
+  conversationId?: string;
+  courseId?: string;
+  lessonId?: string;
+  message?: string;
+  worksheetConfig?: WorksheetConfig;
+  lessonPlanConfig?: LessonPlanConfig;
+}
+
+interface ServiceClientEnv {
+  SUPABASE_URL: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+}
+
+const TEACHER_LEARNER_GENERATION_LIMIT = 2;
+const TEACHER_LEARNER_GENERATION_COUNT_KEY = 'ai_tutor_generation_count';
+
 // ==================== HANDLER ====================
 
 /**
@@ -41,6 +60,8 @@ interface StoredMessage {
  */
 export const handleAiTutorChat = async (context: AuthenticatedContext) => {
   const { request, env, data } = context;
+  const pagesEnv = env as unknown as PagesEnv;
+  const serviceEnv = env as unknown as ServiceClientEnv;
   const user = data.user;
 
   if (request.method !== 'POST') {
@@ -48,13 +69,13 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
   }
 
   const learnerId = user.sub;
-  const supabase = getServiceClient(env as any);
+  const supabase = getServiceClient(serviceEnv);
 
   // Use admin client for database writes
-  const supabaseAdmin = createSupabaseAdminClient(env as any);
+  const supabaseAdmin = createSupabaseAdminClient(pagesEnv);
 
   // Parse request body
-  let body: any;
+  let body: AiTutorChatRequest;
   try {
     body = await request.json();
   } catch {
@@ -68,7 +89,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
   }
 
   // Check if AI is configured
-  const { openRouter: openRouterKey } = getAPIKeys(env);
+  const { openRouter: openRouterKey } = getAPIKeys(pagesEnv);
   if (!openRouterKey) {
     return jsonResponse({ error: 'AI service not configured' }, 500);
   }
@@ -96,9 +117,92 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
     const conversationPhase = getConversationPhase(messageCount);
     const phaseParams = getPhaseParameters(conversationPhase);
 
+    const isGenerationRequest = Boolean(worksheetConfig || lessonPlanConfig);
+
     // Extract user role from authenticated user (from JWT)
     // Supports: 'learner', 'educator', 'school_educator', 'college_educator', etc.
-    const userRole = (user.roles && user.roles[0]) || 'learner';
+    let userRole = (user.roles && user.roles[0]) || 'learner';
+
+    // learner_type is the source of truth for teacher-learner behavior.
+    const { data: learnerData } = await supabase
+      .from('learners')
+      .select('learner_type')
+      .eq('user_id', learnerId)
+      .maybeSingle();
+
+    const isTeacherLearner = learnerData?.learner_type === 'teacher';
+
+    // Teacher-learner accounts get educator generation tools, but keep their own two-use limit.
+    if (userRole === 'learner') {
+      if (isTeacherLearner) {
+        userRole = 'educator';
+        console.log(`🎓 User role override: learner_type="teacher" → treating as educator`);
+      }
+    }
+
+    let teacherGenerationMetadata: Record<string, unknown> | null = null;
+    let teacherGenerationCount = 0;
+    let generationUsage:
+      | { limit: number; used: number; remaining: number }
+      | undefined;
+
+    if (isTeacherLearner && isGenerationRequest) {
+      const { data: userData, error: usageError } = await supabaseAdmin
+        .from('users')
+        .select('metadata')
+        .eq('id', learnerId)
+        .maybeSingle();
+
+      if (usageError) {
+        console.error('❌ Failed to fetch teacher generation usage:', usageError);
+        return jsonResponse({
+          error: 'Unable to verify worksheet/lesson plan generation usage. Please try again.',
+          code: 'GENERATION_USAGE_UNAVAILABLE'
+        }, 500);
+      }
+
+      if (!userData) {
+        console.error('❌ Failed to fetch teacher generation usage: user record not found');
+        return jsonResponse({
+          error: 'Unable to verify worksheet/lesson plan generation usage. Please try again.',
+          code: 'GENERATION_USAGE_UNAVAILABLE'
+        }, 500);
+      }
+
+      const metadata = (userData.metadata || {}) as Record<string, unknown>;
+      teacherGenerationMetadata = metadata;
+      const rawGenerationCount = metadata[TEACHER_LEARNER_GENERATION_COUNT_KEY];
+      const parsedGenerationCount = Number(rawGenerationCount ?? 0);
+      teacherGenerationCount = Number.isFinite(parsedGenerationCount)
+        ? Math.max(0, Math.floor(parsedGenerationCount))
+        : 0;
+
+      if (teacherGenerationCount >= TEACHER_LEARNER_GENERATION_LIMIT) {
+        console.log(`🚫 Blocked: teacher learner reached generation limit (${teacherGenerationCount}/${TEACHER_LEARNER_GENERATION_LIMIT})`);
+        return jsonResponse({
+          error: 'You have reached your 2-generation limit for worksheet and lesson plan generation.',
+          code: 'TEACHER_GENERATION_LIMIT_REACHED',
+          limit: TEACHER_LEARNER_GENERATION_LIMIT,
+          used: teacherGenerationCount,
+          remaining: 0
+        }, 403);
+      }
+    }
+
+    // VALIDATION: Block chat functionality for educators
+    // Educators can ONLY generate worksheets/lesson plans, NOT use chat
+    if (userRole.toLowerCase().includes('educator')) {
+      // Educators MUST provide either worksheetConfig or lessonPlanConfig
+      if (!worksheetConfig && !lessonPlanConfig) {
+        console.log(`🚫 Blocked: Educator attempted to use chat without worksheet/lesson plan config`);
+        return jsonResponse({ 
+          error: 'Chat functionality is not available for educators. Please use the worksheet or lesson plan generation feature.',
+          code: 'EDUCATOR_CHAT_BLOCKED',
+          userRole: userRole
+        }, 403);
+      }
+      console.log(`✅ Educator request validated: has ${worksheetConfig ? 'worksheet' : 'lesson plan'} config`);
+    }
 
     // Override token limits for worksheet generation (educators need more tokens)
     const isWorksheetGeneration = worksheetConfig && userRole.toLowerCase().includes('educator');
@@ -411,19 +515,49 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
             }
           }
 
+          if (isTeacherLearner && isGenerationRequest && teacherGenerationMetadata) {
+            const used = teacherGenerationCount + 1;
+            const remaining = Math.max(0, TEACHER_LEARNER_GENERATION_LIMIT - used);
+
+            const { error: usageUpdateError } = await supabaseAdmin
+              .from('users')
+              .update({
+                metadata: {
+                  ...teacherGenerationMetadata,
+                  [TEACHER_LEARNER_GENERATION_COUNT_KEY]: used
+                },
+                updatedAt: new Date().toISOString()
+              })
+              .eq('id', learnerId);
+
+            if (usageUpdateError) {
+              console.error('❌ Failed to update teacher generation usage:', usageUpdateError);
+            } else {
+              console.log(`✅ Teacher generation usage updated: ${used}/${TEACHER_LEARNER_GENERATION_LIMIT}`);
+            }
+
+            generationUsage = {
+              limit: TEACHER_LEARNER_GENERATION_LIMIT,
+              used,
+              remaining
+            };
+          }
+
           // Send completion event
           controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({
             conversationId: currentConversationId,
-            messageId: assistantMessage.id
+            messageId: assistantMessage.id,
+            generationUsage
           })}\n\n`));
 
           console.log(`✅ Streaming complete: ${fullResponse.length} chars`);
           controller.close();
 
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('❌ Streaming error:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Stream processing error';
           controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({
-            error: error.message || 'Stream processing error'
+            error: errorMessage
           })}\n\n`));
           controller.close();
         }
@@ -440,8 +574,9 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
       }
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ AI Tutor Chat error:', error);
-    return jsonResponse({ error: error.message || 'Internal server error' }, 500);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return jsonResponse({ error: errorMessage }, 500);
   }
 };

@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
+import { FileText, Loader2 } from 'lucide-react';
 import type { WorksheetConfig, WorksheetTemplateType, DifficultyLevel } from '../types/worksheet';
 import { WORKSHEET_TEMPLATES } from '../types/worksheet';
 
 interface WorksheetConfigPanelProps {
   config: WorksheetConfig;
   onChange: (config: WorksheetConfig) => void;
+  onGenerate: () => void;
+  isGenerating: boolean;
+  generationLimit?: number;
+  remainingGenerations?: number;
+  isGenerationLimitReached?: boolean;
+  isUsageLoading?: boolean;
 }
 
-const WorksheetConfigPanel: React.FC<WorksheetConfigPanelProps> = ({ config, onChange }) => {
+const WorksheetConfigPanel = ({ 
+  config, 
+  onChange, 
+  onGenerate, 
+  isGenerating,
+  generationLimit,
+  remainingGenerations,
+  isGenerationLimitReached = false,
+  isUsageLoading = false
+}: WorksheetConfigPanelProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
+  const isGenerateDisabled = isGenerating || isUsageLoading || isGenerationLimitReached;
 
   const handleChange = <K extends keyof WorksheetConfig>(
     key: K,
@@ -121,6 +138,40 @@ const WorksheetConfigPanel: React.FC<WorksheetConfigPanelProps> = ({ config, onC
             <span className="text-xs text-gray-700">Include Extension Activity</span>
           </label>
         </div>
+
+        {/* Generate Button */}
+        <button
+          onClick={onGenerate}
+          disabled={isGenerateDisabled}
+          className="w-full mt-4 px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
+        >
+          {isUsageLoading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Checking Availability...
+            </>
+          ) : isGenerating ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Generating Worksheet...
+            </>
+          ) : isGenerationLimitReached ? (
+            <>
+              <FileText className="w-5 h-5" />
+              Generation Limit Reached
+            </>
+          ) : (
+            <>
+              <FileText className="w-5 h-5" />
+              Generate Worksheet
+            </>
+          )}
+        </button>
+        {generationLimit !== undefined && remainingGenerations !== undefined && !isUsageLoading && (
+          <p className={`text-xs text-center ${isGenerationLimitReached ? 'text-red-600' : 'text-purple-700'}`}>
+            {remainingGenerations} of {generationLimit} worksheet/lesson plan generations remaining
+          </p>
+        )}
         </div>
       )}
     </div>

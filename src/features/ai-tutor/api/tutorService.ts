@@ -70,6 +70,11 @@ export interface StreamChunk {
   reasoning?: string;
   conversationId?: string;
   messageId?: string;
+  generationUsage?: {
+    limit: number;
+    used: number;
+    remaining: number;
+  };
 }
 
 /**
@@ -146,7 +151,8 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
             yield {
               type: 'done',
               conversationId: parsed.conversationId,
-              messageId: parsed.messageId
+              messageId: parsed.messageId,
+              generationUsage: parsed.generationUsage
             };
           }
         } catch {
