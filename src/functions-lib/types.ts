@@ -13,6 +13,20 @@ export interface PagesEnv {
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: Fetcher;
 
+  /** Cloudflare Service Binding to the email-worker (shared-email-api) */
+  EMAIL_SERVICE?: {
+    sendEmail(payload: {
+      to: string | string[];
+      subject: string;
+      html: string;
+      text?: string;
+      from?: string;
+      fromName?: string;
+    }): Promise<{ success: boolean; messageId?: string; customMessageId?: string; recipient?: string | string[]; timestamp?: string }>;
+    sendOTP(params: { mobileNumber: string; countryCode?: string; flowType?: string }): Promise<{ verificationId: string; timeout: string }>;
+    verifyOTP(params: { mobileNumber: string; verificationId: string; code: string; countryCode?: string }): Promise<{ verified: boolean; verificationStatus: string }>;
+  };
+
   // Supabase configuration
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
