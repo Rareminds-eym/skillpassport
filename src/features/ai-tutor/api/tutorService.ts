@@ -64,12 +64,20 @@ export interface CourseProgress {
 
 // ==================== CHAT FUNCTIONS ====================
 
+// Module-level state for tracking the last conversation ID
+let lastConversationId: string | null = null;
+
 export interface StreamChunk {
   type: 'content' | 'reasoning' | 'done';
   content?: string;
   reasoning?: string;
   conversationId?: string;
   messageId?: string;
+  generationUsage?: {
+    limit: number;
+    used: number;
+    remaining: number;
+  };
 }
 
 /**
@@ -142,11 +150,12 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
           }
           // Handle done event with conversation info
           else if (parsed.conversationId) {
-            (sendMessage as any).lastConversationId = parsed.conversationId;
+            lastConversationId = parsed.conversationId;
             yield {
               type: 'done',
               conversationId: parsed.conversationId,
-              messageId: parsed.messageId
+              messageId: parsed.messageId,
+              generationUsage: parsed.generationUsage
             };
           }
         } catch {
@@ -172,7 +181,7 @@ export async function* sendMessageLegacy(request: ChatRequest): AsyncGenerator<s
  * Get the last conversation ID from the most recent sendMessage call
  */
 export function getLastConversationId(): string | null {
-  return (sendMessage as any).lastConversationId || null;
+  return lastConversationId;
 }
 
 
