@@ -69,7 +69,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   // Determine if user should be treated as educator:
   // 1. If learner_type === "teacher", treat as educator (database-driven)
   // 2. Otherwise, fall back to role-based detection
-  const isEducator = isTeacher || roleIsEducator;
+  // Database wins once resolved; fall back to role only while DB is still loading
+  const isEducator = isTeacher !== false ? isTeacher : roleIsEducator;
   
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [input, setInput] = useState('');
@@ -97,6 +98,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
       // Wait for learner type to load first
       if (learnerTypeLoading) {
+        setIsLoadingCount(true);
         return;
       }
 
@@ -190,8 +192,15 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     await sendMessage(generateMessage);
   };
 
+  // Callback to update generation count when backend reports usage
   const handleGenerationUsageUpdate = React.useCallback((usage: GenerationUsage) => {
-    setTeacherGenerationCount(usage.used);
+    try {
+      if (typeof usage?.used === 'number') {
+        setTeacherGenerationCount(usage.used);
+      }
+    } catch (err) {
+      logger.error('Failed to update generation count', err instanceof Error ? err : new Error(String(err)));
+    }
   }, []);
 
   const {

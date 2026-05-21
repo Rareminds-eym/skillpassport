@@ -67,7 +67,7 @@ export function useLearnerType(userId: string | undefined): LearnerTypeData {
         if (cancelled) return;
 
         if (fetchError) {
-          if (fetchError && typeof fetchError === 'object' && 'code' in fetchError && fetchError.code === 'PGRST116') {
+          if (fetchError && typeof fetchError === 'object' && fetchError !== null && 'code' in fetchError && fetchError.code === 'PGRST116') {
             // maybeSingle() returns PGRST116 when multiple rows match —
             // this means the unique constraint on learners.user_id is violated.
             logger.error(
