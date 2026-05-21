@@ -123,6 +123,36 @@ export async function createEventOrder({ amount, currency = 'INR', registrationI
 }
 
 /**
+ * Create a Razorpay order for learner/corporate registration
+ * Automatically generates registrationId on the backend
+ * Public endpoint - no authentication required
+ * @param {Object} params - Order parameters
+ * @param {number} params.amount - Amount in paise
+ * @param {string} params.currency - Currency code (default: INR)
+ * @param {string} params.planName - Registration plan name
+ * @param {string} params.userEmail - User's email
+ * @param {string} params.userName - User's name
+ * @param {string} params.userPhone - User's phone
+ * @param {string} params.campaign - Campaign name (e.g., 'skill-passport')
+ * @param {string} params.origin - Request origin
+ * @returns {Promise<Object>} Order details from Razorpay + auto-generated registrationId
+ */
+export async function createRegistrationOrder({ amount, currency = 'INR', planName, userEmail, userName, userPhone, campaign, origin }) {
+  const response = await fetch(`${getBaseUrl()}/create-registration-order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, // No auth token needed
+    body: JSON.stringify({ amount, currency, planName, userEmail, userName, userPhone, campaign, origin }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(error) || 'Failed to create registration order');
+  }
+
+  return response.json();
+}
+
+/**
  * Update event payment status (success or failure)
  * Worker handles: payment history tracking + status updates
  * @param {Object} params - Payment status update parameters
@@ -144,6 +174,32 @@ export async function updateEventPaymentStatus({ registrationId, orderId, paymen
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || 'Failed to update payment status');
+  }
+
+  return response.json();
+}
+
+/**
+ * Update registration payment status in pre_registrations table
+ * Public endpoint - no authentication required
+ * @param {Object} params - Payment status update parameters
+ * @param {string} params.registrationId - Registration ID (UUID)
+ * @param {string} params.orderId - Razorpay order ID
+ * @param {string} params.paymentId - Razorpay payment ID (optional for failures)
+ * @param {string} params.status - Payment status ('completed' or 'failed')
+ * @param {string} params.error - Error message (optional, for failures)
+ * @returns {Promise<Object>} Update result
+ */
+export async function updateRegistrationPaymentStatus({ registrationId, orderId, paymentId, status, error }) {
+  const response = await fetch(`${getBaseUrl()}/update-registration-payment-status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, // No auth token needed
+    body: JSON.stringify({ registrationId, orderId, paymentId, status, error }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(extractErrorMessage(errorData) || 'Failed to update registration payment status');
   }
 
   return response.json();
@@ -344,7 +400,9 @@ const paymentsApiService = {
   // Payment
   createOrder,
   createEventOrder,
+  createRegistrationOrder,
   updateEventPaymentStatus,
+  updateRegistrationPaymentStatus,
   verifyPayment,
   // Subscription management
   getSubscription,

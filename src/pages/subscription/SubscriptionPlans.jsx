@@ -627,56 +627,6 @@ function SubscriptionPlans() {
   const { type: pathType } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Navbar scroll behavior
-  const [lastScrollY, setLastScrollY] = useState(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const header = document.querySelector('header');
-
-      if (!header) return;
-
-      // Change from sticky to fixed positioning for scroll behavior to work
-      if (header.style.position !== 'fixed') {
-        header.style.position = 'fixed';
-        header.style.width = '100%';
-        header.style.zIndex = '50';
-      }
-
-      if (currentScrollY < 10) {
-        // At the top, show navbar
-        header.style.transform = 'translateY(0)';
-        header.style.transition = 'transform 0.3s ease-in-out';
-      } else if (currentScrollY < lastScrollY) {
-        // Scrolling up, show navbar
-        header.style.transform = 'translateY(0)';
-        header.style.transition = 'transform 0.3s ease-in-out';
-      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        // Scrolling down past 100px, hide navbar
-        header.style.transform = 'translateY(-100%)';
-        header.style.transition = 'transform 0.3s ease-in-out';
-      }
-
-      setLastScrollY(currentScrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      // Reset header on unmount
-      const header = document.querySelector('header');
-      if (header) {
-        header.style.transform = '';
-        header.style.transition = '';
-        header.style.position = '';
-        header.style.width = '';
-        header.style.zIndex = '';
-      }
-    };
-  }, [lastScrollY]);
-
   // Get type from path params OR query params (for redirects from protected routes)
   const type = pathType || searchParams.get('type');
 
@@ -876,7 +826,7 @@ function SubscriptionPlans() {
 
     // Check if auth is still loading
     if (authLoading) {
-      console.log('🔄 Auth still loading, please wait...');
+      if (DEBUG) console.log('[SubscriptionPlans] Auth still loading, please wait...');
       return;
     }
 
@@ -888,7 +838,7 @@ function SubscriptionPlans() {
 
     // If not authenticated, redirect to signup with plan context
     if (!isAuthenticated) {
-      console.log('🔐 User not authenticated, redirecting to signup');
+      if (DEBUG) console.log('[SubscriptionPlans] User not authenticated, redirecting to signup');
       navigate('/signup', {
         state: {
           plan,
@@ -903,7 +853,7 @@ function SubscriptionPlans() {
     const isFreemiumPlan = plan.plan_code === 'pay_as_you_go' || plan.price === 0;
 
     if (isFreemiumPlan) {
-      console.log('✅ Freemium plan selected, creating subscription directly');
+      if (DEBUG) console.log('[SubscriptionPlans] Freemium plan selected, creating subscription directly');
 
       // Show loading toast
       const loadingToast = toast.loading('Creating your free account...');
@@ -933,7 +883,7 @@ function SubscriptionPlans() {
 
         const result = await response.json();
 
-        console.log('[Freemium] API Response:', { status: response.status, result });
+        if (DEBUG) console.log('[Freemium] API Response:', { status: response.status, result });
 
         if (!response.ok || !result.success) {
           const errorMessage = result.error?.message || result.message || 'Failed to create subscription';
@@ -963,7 +913,7 @@ function SubscriptionPlans() {
     // CRITICAL: Navigate to payment page SYNCHRONOUSLY
     // The old async DB validation was causing a race condition with auth state changes.
     // PaymentCompletion.jsx already validates the user in the database, so this is not needed here.
-    console.log('✅ Navigating to payment page', { planId: plan.id, isUpgrade: !!subscriptionData });
+    if (DEBUG) console.log('[SubscriptionPlans] Navigating to payment page', { planId: plan.id, isUpgrade: !!subscriptionData });
     navigate('/subscription/payment', {
       state: {
         plan,
@@ -1062,7 +1012,7 @@ function SubscriptionPlans() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-400 via-blue-100 to-white">
-      <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8">
         {/* Subscription status error banner */}
         {subscriptionError && isAuthenticated && (
           <div className="mb-8 bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 rounded-3xl p-6 flex items-center justify-between shadow-lg">

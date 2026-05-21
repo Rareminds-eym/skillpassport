@@ -23,11 +23,10 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { OTPInput } from '@/shared/ui';
 import { paymentsApiService } from '@/features/subscription';
 import { ShinyButton } from '@/shared/ui';
+import { sendOtp, verifyOtp } from '@/features/auth/api/otpService';
 
-const REGISTRATION_FEE_LEARNER = 499;
+const REGISTRATION_FEE_STUDENT = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
-const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
-  (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -41,7 +40,7 @@ const loadRazorpay = () => new Promise((resolve, reject) => {
   document.body.appendChild(script);
 });
 
-const validateForm = (form, emailVerified, consentGiven) => {
+const validateForm = (form, emailVerified, phoneVerified, consentGiven) => {
   const errors = {};
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const phoneRegex = /^\d{10}$/;
@@ -58,6 +57,9 @@ const validateForm = (form, emailVerified, consentGiven) => {
   if (!form.phone?.trim() || !phoneRegex.test(form.phone.replace(/\D/g, ''))) {
     errors.phone = 'Please enter a valid 10-digit phone number';
   }
+  if (!phoneVerified) {
+    errors.phone = 'Please verify your phone number';
+  }
   if (!consentGiven) {
     errors.consent = 'Please agree to the terms and payment consent';
   }
@@ -66,13 +68,17 @@ const validateForm = (form, emailVerified, consentGiven) => {
 };
 
 const sendOTPEmail = async (email, otp, name) => {
-  const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
+  const response = await fetch('/api/email/event-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, otp, name }),
   });
 
-  if (!response.ok) throw new Error('Failed to send verification email');
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to send verification email');
+  }
+  
   return true;
 };
 
@@ -80,7 +86,7 @@ const sendConfirmationEmail = async (details) => {
   const { name, email, phone, amount, orderId, campaign } = details;
 
   try {
-    const response = await fetch(`${EMAIL_API_URL}/event-confirmation`, {
+    const response = await fetch('/api/email/event-confirmation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, phone, amount, orderId, campaign }),
@@ -148,7 +154,7 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
   </motion.div>
 );
 
-const TermsModal = ({ isOpen, onClose, onAccept }) => {
+const TermsModal = ({ isOpen, onClose, onAccept, registrationFee }) => {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const scrollContainerRef = useRef(null);
 
@@ -198,7 +204,7 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
               <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Registration Terms</h4>
               <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">By signing up, you agree to the following:</p>
               <ul className="text-gray-600 text-sm sm:text-base space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                <li>The registration fee is ₹{REGISTRATION_FEE} and cannot be refunded once paid.</li>
+                <li>The registration fee is ₹{registrationFee} and cannot be refunded once paid.</li>
                 <li>Your personal details will be used only for registration and official communication.</li>
                 <li>You will receive emails about your registration status and upcoming updates/events.</li>
                 <li>Access to the platform will be provided after successful verification.</li>
@@ -206,7 +212,7 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
               </ul>
               <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Payment Information</h4>
               <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6">
-                Payments are processed securely through Razorpay. Your payment details are encrypted and never stored on our servers. By making the payment, you approve the ₹{REGISTRATION_FEE} charge.
+                Payments are processed securely through Razorpay. Your payment details are encrypted and never stored on our servers. By making the payment, you approve the ₹{registrationFee} charge.
               </p>
               <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Privacy</h4>
               <p className="text-gray-600 text-sm sm:text-base">
@@ -227,10 +233,11 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
                   }
                 }}
                 disabled={!hasScrolledToBottom}
-                className={`w-full py-3 sm:py-4 text-sm sm:text-base font-bold rounded-xl sm:rounded-2xl transition-all shadow-lg min-h-[44px] ${hasScrolledToBottom
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl cursor-pointer'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                className={`w-full py-3 sm:py-4 text-sm sm:text-base font-bold rounded-xl sm:rounded-2xl transition-all shadow-lg min-h-[44px] ${
+                  hasScrolledToBottom
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl cursor-pointer'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
               >
                 {hasScrolledToBottom ? 'Accept' : 'Scroll to Accept'}
               </button>
@@ -245,8 +252,7 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
 export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const location = useLocation();
   const isCorporate = location.pathname.includes('/register/corporate');
-  const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_LEARNER;
-
+  const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_STUDENT;
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -262,6 +268,15 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
   const [sendingOTP, setSendingOTP] = useState(false);
   const [verifyingOTP, setVerifyingOTP] = useState(false);
   const [otpError, setOtpError] = useState('');
+
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneOtpValue, setPhoneOtpValue] = useState('');
+  const [phoneVerificationId, setPhoneVerificationId] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [sendingPhoneOTP, setSendingPhoneOTP] = useState(false);
+  const [verifyingPhoneOTP, setVerifyingPhoneOTP] = useState(false);
+  const [phoneOtpError, setPhoneOtpError] = useState('');
+  const [phoneOtpTimeout, setPhoneOtpTimeout] = useState(60);
 
   const [consentGiven, setConsentGiven] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -291,6 +306,14 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       setOtpValue('');
       setOtpError('');
     }
+    if (field === 'phone') {
+      setPhoneVerified(false);
+      setPhoneOtpSent(false);
+      setPhoneOtpValue('');
+      setPhoneOtpError('');
+      setPhoneVerificationId('');
+      setPhoneOtpTimeout(60);
+    }
   }, [errors]);
 
   const handleSendOTP = async () => {
@@ -315,8 +338,33 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
     }
   };
 
+  const handleSendPhoneOTP = async () => {
+    const phoneRegex = /^\d{10}$/;
+    const cleanPhone = form.phone.replace(/\D/g, '');
+    if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
+      setErrors(prev => ({ ...prev, phone: 'Please enter a valid 10-digit phone number' }));
+      return;
+    }
+    setSendingPhoneOTP(true);
+    setPhoneOtpError('');
+    try {
+      const result = await sendOtp(cleanPhone);
+      if (result.success && result.data?.verificationId) {
+        setPhoneVerificationId(result.data.verificationId);
+        setPhoneOtpTimeout(result.data.expiresIn || 60);
+        setPhoneOtpSent(true);
+      } else {
+        setPhoneOtpError(result.error || 'Failed to send OTP. Please try again.');
+      }
+    } catch (error) {
+      setPhoneOtpError(error.message || 'Failed to send OTP. Please try again.');
+    } finally {
+      setSendingPhoneOTP(false);
+    }
+  };
+
   const handlePayment = async () => {
-    const validationErrors = validateForm(form, emailVerified, consentGiven);
+    const validationErrors = validateForm(form, emailVerified, phoneVerified, consentGiven);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -331,7 +379,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
     setPaymentError(null);
 
     try {
-      const orderData = await paymentsApiService.createEventOrder({
+      const orderData = await paymentsApiService.createRegistrationOrder({
         amount: REGISTRATION_FEE * 100,
         currency: 'INR',
         planName: `Pre-Registration - ${campaign}`,
@@ -340,7 +388,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         userPhone: form.phone.replace(/\D/g, ''),
         campaign: campaign,
         origin: window.location.origin,
-      }, null);
+      });
 
       const registrationId = orderData.registrationId;
 
@@ -359,12 +407,11 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         theme: { color: '#1e40af' },
         handler: async (response) => {
           try {
-            await paymentsApiService.updateEventPaymentStatus({
+            await paymentsApiService.updateRegistrationPaymentStatus({
               registrationId: registrationId,
               orderId: response.razorpay_order_id,
               paymentId: response.razorpay_payment_id,
               status: 'completed',
-              planName: `Pre-Registration - ${campaign}`
             });
 
             await sendConfirmationEmail({
@@ -403,12 +450,11 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       const razorpay = new window.Razorpay(options);
       razorpay.on('payment.failed', async (response) => {
         try {
-          await paymentsApiService.updateEventPaymentStatus({
+          await paymentsApiService.updateRegistrationPaymentStatus({
             registrationId: registrationId,
             orderId: orderData.id,
             status: 'failed',
             error: response.error?.description,
-            planName: `Registration - ${campaign}`
           });
         } catch (err) {
           console.error('Failed to update payment failure:', err);
@@ -497,34 +543,30 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
           transition={{ duration: 0.5 }}
           className="text-center mb-6 sm:mb-8"
         >
-          {!isCorporate && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
-            >
-              <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
-                <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
-                  <DotLottieReact
-                    src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
-                    loop
-                    autoplay
-                    style={{ width: '32px', height: '32px' }}
-                  />
-                </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
+          >
+            <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
+              <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
+                <DotLottieReact
+                  src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
+                  loop
+                  autoplay
+                  style={{ width: '32px', height: '32px' }}
+                />
               </div>
-              <span className="text-gray-900 text-sm sm:text-base font-bold">For Learners Only</span>
-            </motion.div>
-          )}
+            </div>
+            <span className="text-gray-900 text-sm sm:text-base font-bold">{isCorporate ? 'For Corporates' : 'For Students Only'}</span>
+          </motion.div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
-            {isCorporate ? 'Corporate Registration' : 'Registration'}
+            Registration
           </h2>
           <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
-            {isCorporate
-              ? 'Access skilled talent and hire confidently'
-              : 'Secure your access to Skill Ecosystem today'}
+            Secure your access to {isCorporate ? 'Skill Ecosystem' : 'Skill Passport'} today
           </p>
         </motion.div>
 
@@ -629,15 +671,98 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               </AnimatePresence>
             </div>
 
-            <InputField
-              label="Phone Number"
-              icon={Phone}
-              type="tel"
-              value={form.phone}
-              onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-              placeholder="10-digit mobile number"
-              error={errors.phone}
-            />
+            <div>
+              <InputField
+                label="Phone Number"
+                icon={Phone}
+                type="tel"
+                value={form.phone}
+                onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="10-digit mobile number"
+                error={errors.phone}
+                verified={phoneVerified}
+                disabled={phoneVerified}
+                rightElement={
+                  !phoneVerified && (
+                    <button
+                      type="button"
+                      onClick={handleSendPhoneOTP}
+                      disabled={sendingPhoneOTP || !form.phone || form.phone.length !== 10}
+                      className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 disabled:cursor-not-allowed flex items-center gap-1 sm:gap-1.5 shadow-md hover:shadow-lg disabled:shadow-none min-h-[36px] sm:min-h-[40px]"
+                    >
+                      {sendingPhoneOTP ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span className="hidden sm:inline">Sending...</span>
+                          <span className="sm:hidden">...</span>
+                        </>
+                      ) : phoneOtpSent ? 'Resend' : 'Verify'}
+                    </button>
+                  )
+                }
+              />
+
+              <AnimatePresence>
+                {phoneOtpSent && !phoneVerified && (
+                  <motion.div
+                    key={phoneVerificationId}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 sm:mt-3 overflow-hidden"
+                  >
+                    <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border-2 border-blue-100 shadow-lg">
+                      <OTPInput
+                        length={4}
+                        email={form.phone}
+                        expirySeconds={phoneOtpTimeout}
+                        onComplete={async (code) => {
+                          setPhoneOtpValue(code);
+                          setVerifyingPhoneOTP(true);
+                          setPhoneOtpError('');
+                          try {
+                            const result = await verifyOtp({
+                              phone: form.phone.replace(/\D/g, ''),
+                              otp: code,
+                              verificationId: phoneVerificationId,
+                            });
+                            if (result.success && result.data?.verified) {
+                              setPhoneVerified(true);
+                              setPhoneOtpSent(false);
+                              setPhoneOtpError('');
+                              setErrors(prev => ({ ...prev, phone: null }));
+                            } else {
+                              setPhoneOtpError(result.error || 'Invalid OTP. Please try again.');
+                            }
+                          } catch (error) {
+                            setPhoneOtpError(error.message || 'Invalid OTP. Please try again.');
+                          } finally {
+                            setVerifyingPhoneOTP(false);
+                          }
+                        }}
+                        onResend={handleSendPhoneOTP}
+                        error={phoneOtpError}
+                        isVerifying={verifyingPhoneOTP}
+                        isSuccess={phoneVerified}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {phoneVerified && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-2 flex items-center gap-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span className="text-xs sm:text-sm font-semibold">Phone verified successfully</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           <motion.div
@@ -648,7 +773,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
           >
             <div className="relative overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-grey-200 shadow-md hover:shadow-lg transition-all duration-300 group">
               <div className="absolute inset-0 bg-grey-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
+              
               <div className="relative p-4 sm:p-5">
                 <div className="flex items-center gap-2 sm:gap-3 mb-3">
                   <motion.div
@@ -693,10 +818,11 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             transition={{ delay: 0.4 }}
             className="mt-5 sm:mt-6"
           >
-            <label className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-gray-200 transition-all duration-200 bg-white ${hasReadTerms
-              ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30'
-              : 'cursor-not-allowed'
-              }`}>
+            <label className={`flex items-start gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-gray-200 transition-all duration-200 bg-white ${
+              hasReadTerms 
+                ? 'cursor-pointer group hover:border-blue-300 hover:bg-blue-50/30' 
+                : 'cursor-not-allowed'
+            }`}>
               <div className="relative mt-0.5 flex-shrink-0">
                 <input
                   type="checkbox"
@@ -734,7 +860,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                 >
                   {!hasReadTerms && (
                     <motion.span
-                      animate={{
+                      animate={{ 
                         opacity: [1, 0.4, 1],
                         scale: [1, 1.1, 1]
                       }}
@@ -848,14 +974,15 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         </motion.p>
       </div>
 
-      <TermsModal
-        isOpen={showTerms}
-        onClose={() => setShowTerms(false)}
+      <TermsModal 
+        isOpen={showTerms} 
+        onClose={() => setShowTerms(false)} 
         onAccept={() => {
           setHasReadTerms(true);
           setConsentGiven(true);
           if (errors.consent) setErrors(prev => ({ ...prev, consent: null }));
         }}
+        registrationFee={REGISTRATION_FEE}
       />
     </section>
   );

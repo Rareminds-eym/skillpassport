@@ -7,11 +7,13 @@
  * - AI tutor feedback
  * - AI tutor progress tracking
  * - AI video summarizer
+ * - Learner type detection
  * 
  * All endpoints require authentication via withAuth middleware.
  * 
  * Endpoints:
  * - GET /health - Health check (public)
+ * - GET /learner-type - Get learner type for role detection (authenticated)
  * - POST /ai-tutor-suggestions - Generate suggested questions (authenticated)
  * - POST /ai-tutor-chat - AI tutor chat with streaming responses (authenticated)
  * - POST /ai-tutor-feedback - Submit feedback on AI responses (authenticated)
@@ -28,6 +30,7 @@ import { handleAiTutorChat } from './handlers/ai-tutor-chat';
 import { onRequestPost as handleAiTutorFeedback } from './handlers/ai-tutor-feedback';
 import { onRequestGet as handleAiTutorProgressGet, onRequestPost as handleAiTutorProgressPost } from './handlers/ai-tutor-progress';
 import { onRequestPost as handleAiVideoSummarizer } from './handlers/ai-video-summarizer';
+import { onRequestGet as handleGetLearnerType } from './handlers/get-learner-type';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -56,6 +59,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         timestamp: new Date().toISOString(),
         endpoints: [
           'GET /health - Health check',
+          'GET /learner-type - Get learner type for role detection',
           'POST /ai-tutor-suggestions - Generate suggested questions',
           'POST /ai-tutor-chat - AI tutor chat (streaming)',
           'POST /ai-tutor-feedback - Submit feedback',
@@ -64,6 +68,11 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           'POST /ai-video-summarizer - Video transcription and summary',
         ],
       });
+    }
+
+    // Get Learner Type (authenticated)
+    if (path === '/learner-type' && request.method === 'GET') {
+      return withAuth(handleGetLearnerType)(context);
     }
 
     // AI Tutor Suggestions (authenticated)
@@ -102,6 +111,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         message: 'Unknown endpoint',
         availableEndpoints: [
           'GET /health - Health check',
+          'GET /learner-type - Get learner type for role detection',
           'POST /ai-tutor-suggestions - Generate suggested questions',
           'POST /ai-tutor-chat - AI tutor chat (streaming)',
           'POST /ai-tutor-feedback - Submit feedback',
@@ -112,8 +122,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       },
       404
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error in course-api:', error);
-    return jsonResponse({ error: error.message || 'Internal server error' }, 500);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return jsonResponse({ error: message }, 500);
   }
 };

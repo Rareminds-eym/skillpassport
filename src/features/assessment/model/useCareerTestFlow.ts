@@ -248,17 +248,6 @@ export const useAssessmentFlow = ({
   }, [showSectionIntro, showSectionComplete, currentSectionIndex, elapsedTime]);
 
   const completeSection = useCallback(() => {
-    console.log('🔄 completeSection called');
-    console.log('📊 completeSection state:', {
-      currentSectionId: currentSection?.id,
-      currentSectionIndex,
-      sectionsLength: sections.length,
-      isLastSection: currentSectionIndex === sections.length - 1,
-      isTimed: currentSection?.isTimed,
-      timeRemaining,
-      elapsedTime
-    });
-
     if (currentSection) {
       // Calculate time spent on this section
       // For aptitude/knowledge sections, always use elapsedTime (they use per-question timers)
@@ -269,8 +258,6 @@ export const useAssessmentFlow = ({
           ? (currentSection.timeLimit || 0) - (timeRemaining || 0)
           : elapsedTime;
 
-      console.log('⏱️ Section time spent:', timeSpent);
-
       setSectionTimings(prev => ({
         ...prev,
         [currentSection.id]: timeSpent
@@ -278,7 +265,6 @@ export const useAssessmentFlow = ({
 
       onSectionComplete?.(currentSection.id, timeSpent);
     }
-    console.log('✅ Setting showSectionComplete to true');
     setShowSectionComplete(true);
   }, [currentSection, timeRemaining, elapsedTime, onSectionComplete, currentSectionIndex, sections.length]);
 
@@ -295,26 +281,13 @@ export const useAssessmentFlow = ({
   }, [currentSectionIndex, sections.length]);
 
   const jumpToSection = useCallback((sectionIndex: number) => {
-    console.log(`🎯 jumpToSection called: sectionIndex=${sectionIndex}, sections.length=${sections.length}`);
     if (sectionIndex >= 0 && sectionIndex < sections.length) {
-      console.log(`✅ Jumping to section ${sectionIndex}: ${sections[sectionIndex]?.title || 'unknown'}`);
-      console.log('📊 jumpToSection - Setting state:', {
-        currentSectionIndex: sectionIndex,
-        currentQuestionIndex: 0,
-        timeRemaining: null,
-        elapsedTime: 0,
-        showSectionIntro: true,
-        showSectionComplete: false
-      });
       setCurrentSectionIndex(sectionIndex);
       setCurrentQuestionIndex(0);
       setTimeRemaining(null);
       setElapsedTime(0);
       setShowSectionIntro(true);
       setShowSectionComplete(false);
-      console.log('✅ jumpToSection state updates queued');
-    } else {
-      console.warn(`❌ Cannot jump to section ${sectionIndex}: sections.length=${sections.length}`);
     }
   }, [sections]);
 

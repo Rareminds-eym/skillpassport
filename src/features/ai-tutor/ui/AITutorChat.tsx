@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Send,
   X,
@@ -22,8 +22,8 @@ import { getLogger } from '@/shared/config/logging';
 import { useUserRole } from '@/shared/model/authStore';
 import WorksheetConfigPanel from './WorksheetConfigPanel.tsx';
 import WorksheetExportButton from './WorksheetExportButton.tsx';
-import type { WorksheetConfig, WorksheetTemplateType } from '../types/worksheet';
-import { DEFAULT_WORKSHEET_CONFIG, WORKSHEET_TEMPLATES } from '../types/worksheet';
+import type { WorksheetConfig } from '../types/worksheet';
+import { DEFAULT_WORKSHEET_CONFIG } from '../types/worksheet';
 
 const logger = getLogger('ai-tutor-chat');
 
@@ -48,40 +48,8 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
   // Get user role to customize UI
   const { isEducator } = useUserRole();
 
-  // LocalStorage key for tracking message count per conversation
-  const getStorageKey = useCallback((convId: string | null) => {
-    return `ai-tutor-msg-count-${convId || 'new'}`;
-  }, []);
-  
-  // Initialize message count from localStorage
-  const [storedMessageCount, setStoredMessageCount] = useState<number>(() => {
-    try {
-      const key = `ai-tutor-msg-count-${conversationId || 'new'}`;
-      const stored = localStorage.getItem(key);
-      console.log('Initial localStorage check:', { key, stored });
-      return stored ? parseInt(stored, 10) : 0;
-    } catch {
-      return 0;
-    }
-  });
-
   // Worksheet configuration state (educators only)
-  const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(() => {
-    // Load from localStorage if available
-    const saved = localStorage.getItem('worksheetConfig');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Validate templateType exists in WORKSHEET_TEMPLATES
-        if (parsed.templateType && WORKSHEET_TEMPLATES[parsed.templateType as WorksheetTemplateType]) {
-          return { ...DEFAULT_WORKSHEET_CONFIG, ...parsed };
-        }
-      } catch (e) {
-        console.error('Failed to parse saved worksheet config:', e);
-      }
-    }
-    return DEFAULT_WORKSHEET_CONFIG;
-  });
+  const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(DEFAULT_WORKSHEET_CONFIG);
 
   const {
     messages,
@@ -155,40 +123,8 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
     }
   }, [editingMessageId]);
 
-  // Count user messages in current conversation
-  const userMessageCount = messages.filter(msg => msg.role === 'user').length;
-  const isLocked = userMessageCount >= 2 || storedMessageCount >= 2;
-
-  console.log('Lock status:', { userMessageCount, storedMessageCount, isLocked, messagesLength: messages.length });
-
-  // Sync message count to localStorage whenever messages change
-  useEffect(() => {
-    const currentCount = messages.filter(msg => msg.role === 'user').length;
-    setStoredMessageCount(currentCount);
-    const key = getStorageKey(conversationId);
-    try {
-      localStorage.setItem(key, currentCount.toString());
-      console.log('Saved to localStorage:', { key, count: currentCount });
-    } catch (err) {
-      console.error('Failed to save message count to localStorage', err);
-    }
-  }, [messages, conversationId, getStorageKey]);
-
-  // Sync storedMessageCount when conversationId changes (loading a conversation)
-  useEffect(() => {
-    const key = getStorageKey(conversationId);
-    try {
-      const stored = localStorage.getItem(key);
-      const count = stored ? parseInt(stored, 10) : 0;
-      setStoredMessageCount(count);
-      console.log('Loaded from localStorage:', { key, stored, count });
-    } catch {
-      setStoredMessageCount(0);
-    }
-  }, [conversationId, getStorageKey]);
-
   const handleSend = async () => {
-    if (!input.trim() || isStreaming || isLocked) return;
+    if (!input.trim() || isStreaming) return;
     const message = input;
     setInput('');
     await sendMessage(message);
@@ -203,8 +139,13 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
   };
 
   const handleSuggestionClick = (question: string) => {
-    if (isLocked) return;
     setInput(question);
+    inputRef.current?.focus();
+  };
+
+  const handleGenerateWorksheet = async () => {
+    if (isStreaming) return;
+    await sendMessage('Generate a worksheet based on the configured settings.');
     inputRef.current?.focus();
   };
 
@@ -530,6 +471,8 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
         <WorksheetConfigPanel
           config={worksheetConfig}
           onChange={setWorksheetConfig}
+          onGenerate={handleGenerateWorksheet}
+          isGenerating={isStreaming}
         />
       )}
 
@@ -550,12 +493,11 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
               <div className="w-full">
                 <p className="text-xs text-gray-500 mb-2">{isEducator ? 'Try asking:' : 'Suggested questions:'}</p>
                 <div className="space-y-2">
-                  {displaySuggestions.map((q, i) => (
+                  {displaySuggestions.map((q) => (
                     <button
-                      key={i}
+                      key={q}
                       onClick={() => handleSuggestionClick(q)}
-                      disabled={isLocked}
-                      className="w-full p-2 text-left text-sm bg-white border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full p-2 text-left text-sm bg-white border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
                     >
                       {q}
                     </button>
@@ -602,57 +544,29 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
 
       {/* Input Area */}
       <div className="p-4 border-t bg-white">
-        {isLocked ? (
-          <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-amber-900">Message limit reached</p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                You've used your 2 free messages. Start a new conversation to continue.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                startNewConversation();
-                // Clear localStorage for the old conversation
-                try {
-                  localStorage.removeItem(getStorageKey(conversationId));
-                } catch (err) {
-                  console.error('Failed to clear localStorage', err);
-                }
-                inputRef.current?.focus();
-              }}
-              className="px-3 py-1.5 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors flex items-center gap-1.5 whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" />
-              New Chat
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={uiConfig.placeholder}
-              disabled={isStreaming}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || isStreaming}
-              className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={uiConfig.placeholder}
+            disabled={isStreaming}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isStreaming}
+            className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

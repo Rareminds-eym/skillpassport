@@ -416,7 +416,7 @@ const SignupAdmin = () => {
 
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
-      console.log('🔐 Auto-logging in after signup...');
+      if (import.meta.env.DEV) console.log('[SignupAdmin] Auto-logging in after signup...');
       const { data: signInData, error: signInError } = await authSessionService.signInWithPassword({
         email: formData.adminEmail,
         password: formData.password,
@@ -426,7 +426,7 @@ const SignupAdmin = () => {
         console.error('⚠️ Auto-login failed:', signInError.message);
         // Even if auto-login fails, the account was created successfully
       } else {
-        console.log('✅ Auto-login successful, session established');
+        if (import.meta.env.DEV) console.log('[SignupAdmin] Auto-login successful, session established');
       }
 
       // Success!
