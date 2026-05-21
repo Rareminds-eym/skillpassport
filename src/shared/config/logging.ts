@@ -62,10 +62,10 @@ export function getLogLevelFromEnv(runtimeLogLevel?: string): LogLevel {
  * Falls back to 'info' if no request context is set
  */
 function getRequestLogLevel(requestContext?: object): LogLevel {
-  if (requestContext && REQUEST_LOG_LEVELS.has(requestContext)) {
-    return REQUEST_LOG_LEVELS.get(requestContext)!;
+  if (requestContext) {
+    const level = REQUEST_LOG_LEVELS.get(requestContext);
+    return level ?? getLogLevelFromEnv();
   }
-  // Fallback for client-side or when no context is provided
   return getLogLevelFromEnv();
 }
 
