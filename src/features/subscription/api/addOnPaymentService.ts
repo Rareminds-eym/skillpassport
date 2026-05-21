@@ -89,7 +89,7 @@ export const addOnPaymentService = {
           amount: data.amount,
           currency: data.currency || 'INR',
           addonName: data.addon_name,
-          razorpayKeyId: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          razorpayKeyId: data.razorpay_key_id, // Key ID from payment worker response
           userEmail,
           userName,
         }
@@ -145,7 +145,7 @@ export const addOnPaymentService = {
           bundleName: data.bundle_name,
           bundleId: bundleId, // Include for verification
           billingPeriod: billingPeriod, // Include for verification
-          razorpayKeyId: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          razorpayKeyId: data.razorpay_key_id, // Key ID from payment worker response
           userEmail,
           userName,
         }

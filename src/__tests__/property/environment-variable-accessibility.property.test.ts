@@ -14,7 +14,7 @@ import { describe, it, expect } from 'vitest';
 interface TestEnv {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
+  VITE_SUPABASE_SERVICE_ROLE_KEY?: string;
   OPENROUTER_API_KEY?: string;
   CLAUDE_API_KEY?: string;
   GEMINI_API_KEY?: string;
@@ -29,7 +29,7 @@ interface TestEnv {
 
 // API-specific environment variable requirements
 const API_ENV_REQUIREMENTS: Record<string, string[]> = {
-  'adaptive-session': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENROUTER_API_KEY'],
+  'adaptive-session': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'VITE_SUPABASE_SERVICE_ROLE_KEY', 'OPENROUTER_API_KEY'],
   'analyze-assessment': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY'],
   'career': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'GEMINI_API_KEY'],
   'course': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'CLOUDFLARE_R2_ACCESS_KEY_ID', 'CLOUDFLARE_R2_SECRET_ACCESS_KEY'],
@@ -64,7 +64,7 @@ function createCompleteEnv(): TestEnv {
   return {
     SUPABASE_URL: 'https://test.supabase.co',
     SUPABASE_ANON_KEY: 'test-anon-key',
-    SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+    VITE_SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
     OPENROUTER_API_KEY: 'test-openrouter-key',
     CLAUDE_API_KEY: 'test-claude-key',
     GEMINI_API_KEY: 'test-gemini-key',

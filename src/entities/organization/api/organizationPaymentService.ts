@@ -8,7 +8,6 @@ import { extractErrorMessage } from '@/features/subscription/api/paymentsApiServ
  */
 
 import { supabase } from '@/shared/api';
-import { getRazorpayKeyId, getRazorpayKeyMode } from '@/shared/config';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('organizationPayment');
@@ -232,7 +231,7 @@ export async function initiateOrganizationPayment(params: {
     const orderData = await createOrganizationOrder(purchaseData);
 
     // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
-    const razorpayKeyId = orderData.key;
+    const razorpayKeyId = orderData.razorpay_key_id || orderData.key;
 
     // Razorpay checkout options
     const options = {

@@ -54,14 +54,6 @@ export async function handleOrgSubscriptionsPurchase(context: AuthenticatedConte
       );
     }
 
-    // Ensure RAZORPAY_KEY_ID is available for frontend checkout
-    if (!env.RAZORPAY_KEY_ID) {
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'RAZORPAY_KEY_ID is not configured' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({
@@ -77,8 +69,11 @@ export async function handleOrgSubscriptionsPurchase(context: AuthenticatedConte
       },
     });
 
-    // Return order with Razorpay key for frontend checkout initialization
-    return new Response(JSON.stringify({ ...order, key: env.RAZORPAY_KEY_ID }), {
+    // Return order with key_id from payment worker
+    return new Response(JSON.stringify({
+      ...order,
+      razorpay_key_id: (order as any).key_id,
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

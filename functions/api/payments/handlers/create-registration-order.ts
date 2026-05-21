@@ -87,14 +87,6 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
 
     console.log(`[CreateRegistrationOrder] Created pre_registration record: ${registrationId}`);
 
-    // Ensure RAZORPAY_KEY_ID is available for frontend checkout
-    if (!env.RAZORPAY_KEY_ID) {
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'RAZORPAY_KEY_ID is not configured' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({
@@ -128,11 +120,11 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
 
     console.log(`[CreateRegistrationOrder] Order created: ${order.id} for registrationId: ${registrationId}`);
 
-    // Return order with Razorpay key and registrationId for frontend checkout initialization
+    // Return order with key_id from payment worker and registrationId
     return new Response(
       JSON.stringify({ 
         ...order, 
-        key: env.RAZORPAY_KEY_ID, 
+        razorpay_key_id: (order as any).key_id,
         registrationId: registrationId 
       }), 
       {

@@ -13,13 +13,13 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('http-client');
 
 // HTTP client configuration
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_EXTERNAL_API_KEY;
+export const API_BASE_URL = import.meta.env.VITE_APP_URL || import.meta.env.VITE_EXTERNAL_API_KEY;
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Validate required environment variables
 if (!API_BASE_URL) {
-  logger.warn('API_BASE_URL not configured. Set VITE_API_BASE_URL or VITE_EXTERNAL_API_KEY');
+  logger.warn('API_BASE_URL not configured. Set VITE_APP_URL or VITE_EXTERNAL_API_KEY');
 }
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('Missing required Supabase environment variables');

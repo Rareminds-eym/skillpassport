@@ -11,7 +11,7 @@ const logger = getLogger('learner-assessment-service');
 
 // Get API base URL from environment, fallback to current origin
 const getApiBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  const envUrl = import.meta.env.VITE_APP_URL;
   if (envUrl && envUrl.trim() !== '') {
     return envUrl;
   }

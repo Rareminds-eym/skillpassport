@@ -29,5 +29,102 @@ binding = "SSO_SERVICE"
 service = "sso-api"
 # No entrypoint needed - sso-api uses default fetch handler
 
-# Environment variables for local development
-# These will be loaded from .dev.vars file
+# ============================================================================
+# ENVIRONMENT VARIABLES
+# ============================================================================
+# Variables are categorized into:
+# 1. Client Variables (VITE_*) - Exposed to frontend via Vite build
+# 2. Pages Function Variables - Used by backend (functions/api/**)
+# 3. Secrets - Sensitive values (use .dev.vars locally, wrangler secret in production)
+
+[vars]
+# ──────────────────────────────────────────────────────────────────────────
+# NON-SECRET CONFIGURATION 
+# ──────────────────────────────────────────────────────────────────────────
+
+# SSO / Auth Configuration (Pages Functions)
+SSO_DOMAIN = "https://sso-api.dark-mode-d021.workers.dev/"
+
+# Supabase Configuration (Pages Functions)
+SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+
+# API URLs (Pages Functions)
+EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
+EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
+PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
+
+
+
+# Cloudflare R2 Configuration (Pages Functions)
+CLOUDFLARE_R2_BUCKET_NAME = "skill-echosystem"
+
+
+# ── Zoho ──────────────────────────────────────────────────────────────
+ZOHO_FLOW_WEBHOOK_URL="https://flow.zoho.in/60069206802/flow/webhook/"
+
+# ──────────────────────────────────────────────────────────────────────────
+# CLIENT VARIABLES (VITE_*) - Exposed to Frontend
+# ──────────────────────────────────────────────────────────────────────────
+# Note: These are injected into the Vite build and visible in browser.
+# Only include non-sensitive configuration here.
+
+# SSO / Auth (Frontend)
+VITE_SSO_URL = "https://sso-api.dark-mode-d021.workers.dev/"
+
+# Supabase (Frontend)
+VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+
+# API URLs (Frontend)
+VITE_APP_URL = "https://skillpassport.rareminds.in/"
+VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
+VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
+VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
+
+# Note: Razorpay keys are managed by the payment worker and returned in API responses
+
+# ──────────────────────────────────────────────────────────────────────────
+# SECRETS (DO NOT COMMIT VALUES)
+# ──────────────────────────────────────────────────────────────────────────
+# For local development: Add these to .dev.vars file (gitignored)
+# For production: Set using `wrangler secret put <KEY_NAME>`
+#
+# Required secrets:
+# - SUPABASE_ANON_KEY
+# - SUPABASE_SERVICE_ROLE_KEY
+# - VITE_SUPABASE_ANON_KEY
+# - VITE_SUPABASE_SERVICE_ROLE_KEY
+# - CLOUDFLARE_R2_ACCESS_KEY_ID
+# - CLOUDFLARE_R2_SECRET_ACCESS_KEY
+# - EMAIL_API_KEY
+# - EMBEDDING_API_KEY
+# - OPENROUTER_API_KEY (optional, for AI features)
+# - CLAUDE_API_KEY (optional, for AI features)
+# - GEMINI_API_KEY (optional, for AI features)
+# - SIGNING_SECRET (optional, for media access tokens)
+#
+# Note: Razorpay keys are NOT needed here - they are managed by the payment worker
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# VARIABLE USAGE GUIDE
+# ──────────────────────────────────────────────────────────────────────────
+#
+# CLIENT VARIABLES (VITE_*):
+# - Injected into frontend bundle during Vite build
+# - Accessible via import.meta.env.VITE_* in React components
+# - Visible in browser DevTools (never put secrets here!)
+# - Examples: API endpoints, public keys, feature flags
+#
+# PAGES FUNCTION VARIABLES (no prefix):
+# - Available to backend code in functions/api/**
+# - Accessed via context.env.VARIABLE_NAME
+# - NOT exposed to frontend
+# - Examples: Database credentials, API keys, service URLs
+#
+# SECRETS (.dev.vars or wrangler secret):
+# - Sensitive values that should never be committed
+# - Local dev: Add to .dev.vars (gitignored)
+# - Production: Use `wrangler secret put KEY_NAME`
+# - Examples: API keys, passwords, tokens
+#
+# ──────────────────────────────────────────────────────────────────────────
