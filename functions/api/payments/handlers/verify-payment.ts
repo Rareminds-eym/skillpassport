@@ -9,10 +9,12 @@
  *
  * Flow:
  * 1. Worker verifies HMAC signature via RPC (cryptographic guarantee)
- * 2. Pages Function creates subscription in DB (worker has no DB access)
- * 3. Pages Function logs payment transaction
- * 4. Pages Function generates receipt PDF and uploads to R2
- * 5. Pages Function sends payment confirmation email
+ * 2. Pages Function ensures user exists in users_shadow table (FK requirement)
+ * 3. Pages Function validates plan exists and is active
+ * 4. Pages Function creates/updates subscription in DB (worker has no DB access)
+ * 5. Pages Function logs payment transaction
+ * 6. Pages Function generates receipt PDF and uploads to R2
+ * 7. Pages Function sends payment confirmation email
  */
 
 import { withAuth } from '../../../lib/auth';
@@ -68,7 +70,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       body.razorpay_signature as string
     );
 
-    // Step 2: Signature is valid — create or update subscription in Supabase
+    // Step 2: Create or update subscription in Supabase
     // The worker only verifies the signature; it has no database access.
     const plan = body.plan as Record<string, unknown> | undefined;
     if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
@@ -82,7 +84,36 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
 
-    // Step 2.5: Validate plan exists and is active (server-side validation)
+    // Step 2.5: Ensure user exists in users_shadow table (required for FK constraint)
+    // This is critical because subscriptions table has a FK to users_shadow
+    const { error: shadowUserError } = await supabase
+      .from('users_shadow')
+      .upsert({
+        id: user.sub,
+        email: user.email || '',
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false, // Always update the email and timestamp
+      });
+
+    if (shadowUserError) {
+      console.error('[VerifyPayment] Failed to create/update shadow user:', shadowUserError);
+      return new Response(JSON.stringify({
+        error: {
+          code: 'USER_SYNC_FAILED',
+          message: 'Failed to sync user data. Please try again.',
+          details: shadowUserError.message,
+        },
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('[VerifyPayment] User synced to shadow table:', user.sub);
+
+    // Step 3: Validate plan exists and is active (server-side validation)
     const { data: validPlan, error: planError } = await supabase
       .from('subscription_plans')
       .select('id, plan_code, name, is_active')
@@ -301,7 +332,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       });
     }
 
-    // Step 3: Log payment transaction
+    // Step 4: Log payment transaction
     await supabase
       .from('payment_transactions')
       .insert({
@@ -317,7 +348,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         seat_count: 1,
       });
 
-    // Step 4: Generate receipt PDF server-side and upload to R2
+    // Step 5: Generate receipt PDF server-side and upload to R2
     // Non-blocking — a receipt failure must never fail the payment response.
     let receiptUrl: string | null = null;
     let receiptKey: string | null = null;
@@ -404,7 +435,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       console.error('[VerifyPayment] Receipt generation failed (non-critical):', receiptErr);
     }
 
-    // Step 5: Send payment confirmation email
+    // Step 6: Send payment confirmation email
     // Non-blocking — email failure must never fail the payment response
     try {
       await sendPaymentSuccessEmail(env as unknown as PagesEnv, {
