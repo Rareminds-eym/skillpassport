@@ -3,11 +3,13 @@
  * 
  * This middleware handles CORS for all Pages Functions automatically.
  * It intercepts all requests and adds appropriate CORS headers with origin validation.
+ * It also initializes logging with runtime environment variables.
  */
 
 import type { PagesFunction } from '../src/functions-lib/types';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../src/functions-lib/cors';
 import { validateFileSizeConfig } from './api/storage/config/fileSizeLimits';
+import { initializeLogging } from '../src/shared/lib/cloudflare-logging';
 
 // Validate file size configuration at worker initialization
 try {
@@ -19,6 +21,10 @@ try {
 }
 
 export const onRequest: PagesFunction = async (context) => {
+  // PRODUCTION-SAFE: Initialize logging with request-scoped context
+  // This ensures each request has isolated log level configuration
+  initializeLogging(context, context.env);
+
   // Get origin from request
   const origin = context.request.headers.get('Origin');
 

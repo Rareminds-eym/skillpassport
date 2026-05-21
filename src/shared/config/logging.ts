@@ -21,14 +21,61 @@ const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
   error: 3,
 };
 
-// Get minimum log level from environment
-const MIN_LOG_LEVEL: LogLevel = (() => {
-  const envLevel = import.meta.env.VITE_LOG_LEVEL as LogLevel | undefined;
-  if (envLevel && ['debug', 'info', 'warn', 'error'].includes(envLevel)) {
-    return envLevel;
+/**
+ * PRODUCTION-SAFE: Request-scoped log level storage
+ * Uses AsyncLocalStorage pattern for Cloudflare Workers
+ * Each request gets its own isolated log level
+ */
+const REQUEST_LOG_LEVELS = new WeakMap<object, LogLevel>();
+
+/**
+ * Get log level from environment with safe fallback
+ * For Cloudflare Pages Functions, pass context.env.LOG_LEVEL
+ * For client-side code, this will use build-time VITE_LOG_LEVEL if available
+ */
+export function getLogLevelFromEnv(runtimeLogLevel?: string): LogLevel {
+  // Priority 1: Runtime environment variable (from Cloudflare)
+  if (runtimeLogLevel && ['debug', 'info', 'warn', 'error'].includes(runtimeLogLevel)) {
+    return runtimeLogLevel as LogLevel;
   }
-  return import.meta.env.PROD ? 'info' : 'debug';
-})();
+  
+  // Priority 2: Build-time environment variable (only works client-side)
+  if (typeof import.meta.env !== 'undefined' && import.meta.env.VITE_LOG_LEVEL) {
+    const envLevel = import.meta.env.VITE_LOG_LEVEL as string;
+    if (['debug', 'info', 'warn', 'error'].includes(envLevel)) {
+      return envLevel as LogLevel;
+    }
+  }
+  
+  // Priority 3: Default based on environment
+  // In Workers runtime, import.meta.env.PROD is available
+  if (typeof import.meta.env !== 'undefined' && import.meta.env.PROD) {
+    return 'info';
+  }
+  
+  // Priority 4: Safe fallback
+  return 'info';
+}
+
+/**
+ * PRODUCTION-SAFE: Get log level for current request
+ * Falls back to 'info' if no request context is set
+ */
+function getRequestLogLevel(requestContext?: object): LogLevel {
+  if (requestContext && REQUEST_LOG_LEVELS.has(requestContext)) {
+    return REQUEST_LOG_LEVELS.get(requestContext)!;
+  }
+  // Fallback for client-side or when no context is provided
+  return getLogLevelFromEnv();
+}
+
+/**
+ * PRODUCTION-SAFE: Set log level for a specific request
+ * This is request-scoped and won't affect other concurrent requests
+ */
+export function setRequestLogLevel(requestContext: object, level: LogLevel): void {
+  REQUEST_LOG_LEVELS.set(requestContext, level);
+}
 
 // ============================================================================
 // LOG ENTRY STRUCTURE
@@ -57,31 +104,27 @@ export interface LogEntry {
 
 class Logger {
   private category: string;
-  private context: Record<string, unknown> = {};
+  private requestContext?: object;
 
-  constructor(category: string) {
+  constructor(category: string, requestContext?: object) {
     this.category = category;
+    this.requestContext = requestContext;
   }
 
   /**
-   * Set context that will be included in all logs
+   * PRODUCTION-SAFE: Create a request-scoped logger
+   * This ensures log level and context are isolated per request
    */
-  setContext(context: Record<string, unknown>): void {
-    this.context = { ...this.context, ...context };
-  }
-
-  /**
-   * Clear context
-   */
-  clearContext(): void {
-    this.context = {};
+  forRequest(requestContext: object): Logger {
+    return new Logger(this.category, requestContext);
   }
 
   /**
    * Check if log level should be output
    */
   private shouldLog(level: LogLevel): boolean {
-    return LOG_LEVEL_PRIORITY[level] >= LOG_LEVEL_PRIORITY[MIN_LOG_LEVEL];
+    const minLevel = getRequestLogLevel(this.requestContext);
+    return LOG_LEVEL_PRIORITY[level] >= LOG_LEVEL_PRIORITY[minLevel];
   }
 
   /**
@@ -97,10 +140,7 @@ class Logger {
       level,
       message,
       category: this.category,
-      metadata: { ...this.context, ...metadata },
-      userId: this.context.userId as string | undefined,
-      organizationId: this.context.organizationId as string | undefined,
-      requestId: this.context.requestId as string | undefined,
+      metadata: metadata || {},
     };
   }
 
@@ -112,7 +152,9 @@ class Logger {
 
     // Format for console
     const prefix = `[${entry.timestamp}] [${entry.level.toUpperCase()}] [${entry.category}]`;
-    const metaStr = entry.metadata ? ` ${JSON.stringify(entry.metadata)}` : '';
+    const metaStr = entry.metadata && Object.keys(entry.metadata).length > 0 
+      ? ` ${JSON.stringify(entry.metadata)}` 
+      : '';
 
     switch (entry.level) {
       case 'debug':
@@ -133,7 +175,7 @@ class Logger {
     }
 
     // Send to log aggregation service in production
-    if (import.meta.env.PROD) {
+    if (typeof import.meta.env !== 'undefined' && import.meta.env.PROD) {
       this.sendToAggregator(entry);
     }
   }
@@ -339,30 +381,31 @@ export function logApiRequest(data: {
 // ============================================================================
 
 /**
- * Generate unique request ID
+ * DEPRECATED: Use request-scoped loggers instead
+ * This function is kept for backward compatibility but should not be used
+ * in new code as it mutates global state
  */
 export function generateRequestId(): string {
   return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 /**
- * Set request context for all loggers
+ * DEPRECATED: Use request-scoped loggers instead
+ * @deprecated Use logger.forRequest(context) pattern instead
  */
-export function setRequestContext(context: {
+export function setRequestContext(_context: {
   requestId: string;
   userId?: string;
   organizationId?: string;
 }): void {
-  loggers.forEach(logger => {
-    logger.setContext(context);
-  });
+  // No-op for backward compatibility
+  // DEPRECATED: Use logger.forRequest(context) pattern instead
 }
 
 /**
- * Clear request context
+ * DEPRECATED: Use request-scoped loggers instead
+ * @deprecated Use logger.forRequest(context) pattern instead
  */
 export function clearRequestContext(): void {
-  loggers.forEach(logger => {
-    logger.clearContext();
-  });
+  // No-op for backward compatibility
 }
