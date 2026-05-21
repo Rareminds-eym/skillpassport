@@ -1093,7 +1093,7 @@ const UnifiedSignup = () => {
                     {state.roleDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
                         {allRoles.map(role => {
-                          const isAvailable = role === 'learner' || role === 'recruiter'; 
+                          const isAvailable = role === 'learner'; 
                           return (
                             <button
                               key={role}
