@@ -75,7 +75,8 @@ export const handleAiTutorChat = async (context: TypedContext) => {
   const supabase = getServiceClient(env);
 
   // Use admin client for database writes
-  const supabaseAdmin = createSupabaseAdminClient(env);
+  // strict: type-safe cast - RequiredEnv is compatible with PagesEnv
+  const supabaseAdmin = createSupabaseAdminClient(env as PagesEnv);
 
   // Parse request body
   let body: AiTutorChatRequest;
@@ -539,9 +540,12 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (usageUpdateError) {
               logger.error('Failed to update teacher generation usage', usageUpdateError instanceof Error ? usageUpdateError : new Error(String(usageUpdateError)));
-            } else {
-              logger.info('Teacher generation usage updated: ' + used + '/' + TEACHER_LEARNER_GENERATION_LIMIT);
+              return {
+                statusCode: 500,
+                body: JSON.stringify({ error: 'Failed to update generation usage. Please try again.' })
+              };
             }
+            logger.info('Teacher generation usage updated', { used, limit: TEACHER_LEARNER_GENERATION_LIMIT });
 
             generationUsage = {
               limit: TEACHER_LEARNER_GENERATION_LIMIT,
