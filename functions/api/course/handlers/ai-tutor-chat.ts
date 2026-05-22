@@ -26,6 +26,7 @@ import {
   getPhaseParameters
 } from '../utils/conversation-phases';
 import { buildLessonPlanPrompt } from '../utils/lesson-plan-templates';
+import { hasReachedLimit, incrementGenerationCount } from '../utils/generation-limit';
 import { getLogger } from '../../../../src/shared/config/logging';
 
 const logger = getLogger('ai-tutor-chat');
@@ -54,9 +55,6 @@ interface AiTutorChatRequest {
   worksheetConfig?: WorksheetConfig;
   lessonPlanConfig?: LessonPlanConfig;
 }
-
-const TEACHER_LEARNER_GENERATION_LIMIT = 2;
-const TEACHER_LEARNER_GENERATION_COUNT_KEY = 'ai_tutor_generation_count';
 
 // ==================== HANDLER ====================
 
@@ -148,51 +146,19 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       }
     }
 
-    let teacherGenerationMetadata: Record<string, unknown> | null = null;
-    let teacherGenerationCount = 0;
     let generationUsage:
       | { limit: number; used: number; remaining: number }
       | undefined;
 
+    // Check generation limit for teacher-learners
     if (isTeacherLearner && isGenerationRequest) {
-      const { data: userData, error: usageError } = await supabaseAdmin
-        .from('users')
-        .select('metadata')
-        .eq('id', learnerId)
-        .maybeSingle();
-
-      if (usageError) {
-        logger.error('Failed to fetch teacher generation usage', usageError instanceof Error ? usageError : new Error(String(usageError)));
-        return jsonResponse({
-          error: 'Unable to verify worksheet/lesson plan generation usage. Please try again.',
-          code: 'GENERATION_USAGE_UNAVAILABLE'
-        }, 500);
-      }
-
-      if (!userData) {
-        logger.error('Failed to fetch teacher generation usage: user record not found');
-        return jsonResponse({
-          error: 'Unable to verify worksheet/lesson plan generation usage. Please try again.',
-          code: 'GENERATION_USAGE_UNAVAILABLE'
-        }, 500);
-      }
-
-      const metadata = (userData.metadata || {}) as Record<string, unknown>;
-      teacherGenerationMetadata = metadata;
-      const rawGenerationCount = metadata[TEACHER_LEARNER_GENERATION_COUNT_KEY];
-      const parsedGenerationCount = Number(rawGenerationCount ?? 0);
-      teacherGenerationCount = Number.isFinite(parsedGenerationCount)
-        ? Math.max(0, Math.floor(parsedGenerationCount))
-        : 0;
-
-      if (teacherGenerationCount >= TEACHER_LEARNER_GENERATION_LIMIT) {
-        logger.warn('Blocked: teacher learner reached generation limit (' + teacherGenerationCount + '/' + TEACHER_LEARNER_GENERATION_LIMIT + ')');
+      const limitReached = await hasReachedLimit(supabaseAdmin, learnerId);
+      
+      if (limitReached) {
+        logger.warn('Blocked: teacher learner reached generation limit');
         return jsonResponse({
           error: 'You have reached your 2-generation limit for worksheet and lesson plan generation.',
           code: 'TEACHER_GENERATION_LIMIT_REACHED',
-          limit: TEACHER_LEARNER_GENERATION_LIMIT,
-          used: teacherGenerationCount,
-          remaining: 0
         }, 403);
       }
     }
@@ -217,13 +183,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const isLessonPlanGeneration = lessonPlanConfig && userRole.toLowerCase().includes('educator');
     const maxTokens = (isWorksheetGeneration || isLessonPlanGeneration) ? 2000 : phaseParams.maxTokens;
 
-    logger.info('AI Tutor Chat: phase=' + conversationPhase + ', messageCount=' + messageCount + ', userRole=' + userRole + ', hasWorksheetConfig=' + !!worksheetConfig + ', hasLessonPlanConfig=' + !!lessonPlanConfig + ', maxTokens=' + maxTokens);
-    if (worksheetConfig) {
-      logger.info('Worksheet Config', { worksheetConfig: JSON.stringify(worksheetConfig, null, 2) });
-    }
-    if (lessonPlanConfig) {
-      logger.info('Lesson Plan Config', { lessonPlanConfig: JSON.stringify(lessonPlanConfig, null, 2) });
-    }
+    logger.info('AI Tutor Chat: phase=' + conversationPhase + ', messageCount=' + messageCount + ', userRole=' + userRole + ', maxTokens=' + maxTokens);
 
     // Build course context and system prompt (role-based + optional worksheet/lesson plan config)
     const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, learnerId);
@@ -523,35 +483,18 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             }
           }
 
-          if (isTeacherLearner && isGenerationRequest && teacherGenerationMetadata) {
-            const used = teacherGenerationCount + 1;
-            const remaining = Math.max(0, TEACHER_LEARNER_GENERATION_LIMIT - used);
-
-            const { error: usageUpdateError } = await supabaseAdmin
-              .from('users')
-              .update({
-                metadata: {
-                  ...teacherGenerationMetadata,
-                  [TEACHER_LEARNER_GENERATION_COUNT_KEY]: used
-                },
-                updatedAt: new Date().toISOString()
-              })
-              .eq('id', learnerId);
-
-            if (usageUpdateError) {
-              logger.error('Failed to update teacher generation usage', usageUpdateError instanceof Error ? usageUpdateError : new Error(String(usageUpdateError)));
-              return {
-                statusCode: 500,
-                body: JSON.stringify({ error: 'Failed to update generation usage. Please try again.' })
-              };
+          // Increment generation count for teacher-learners
+          if (isTeacherLearner && isGenerationRequest) {
+            try {
+              generationUsage = await incrementGenerationCount(supabaseAdmin, learnerId);
+            } catch (err) {
+              logger.error('Failed to increment generation count', err instanceof Error ? err : new Error(String(err)));
+              controller.enqueue(encoder.encode(
+                `event: error\ndata: ${JSON.stringify({ error: 'Failed to update generation usage. Please try again.' })}\n\n`
+              ));
+              controller.close();
+              return;
             }
-            logger.info('Teacher generation usage updated', { used, limit: TEACHER_LEARNER_GENERATION_LIMIT });
-
-            generationUsage = {
-              limit: TEACHER_LEARNER_GENERATION_LIMIT,
-              used,
-              remaining
-            };
           }
 
           // Send completion event

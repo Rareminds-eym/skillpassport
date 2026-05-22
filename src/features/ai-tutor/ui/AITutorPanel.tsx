@@ -32,14 +32,11 @@ import { DEFAULT_LESSON_PLAN_CONFIG } from '../types';
 
 import { Link } from 'react-router-dom';
 
-import { useUser, useUserRole } from '@/shared/model/authStore';
-import { useLearnerType } from '@/shared/model/useLearnerType';
-import { supabase } from '@/shared/api/supabaseClient';
-import { getLogger } from '@/shared/config/logging';
+import { useUser, useUserRole, useLearnerType } from '@/shared/model';
+import { getLogger } from '@/shared/config';
+import { getSession } from '@/features/auth/api/authSessionService';
 
 const logger = getLogger('ai-tutor-panel');
-const TEACHER_LEARNER_GENERATION_LIMIT = 2;
-const TEACHER_LEARNER_GENERATION_COUNT_KEY = 'ai_tutor_generation_count';
 
 interface LessonContext {
   lessonId?: string;
@@ -85,64 +82,86 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const isAuthenticated = !!user;
 
   const [teacherGenerationCount, setTeacherGenerationCount] = useState<number>(0);
+  const [teacherGenerationLimit, setTeacherGenerationLimit] = useState<number>(2); // Default, will be updated from API
   const [isLoadingCount, setIsLoadingCount] = useState(true);
 
-  // Fetch only the worksheet/lesson-plan generation count for teacher-learner accounts.
-  useEffect(() => {
-    const fetchGenerationCount = async () => {
-      if (!user?.id) {
-        setIsLoadingCount(false);
-        return;
-      }
-
-      // Wait for learner type to load first
-      if (learnerTypeLoading) {
-        return;
-      }
-
-      // Teacher-learner accounts use a separate worksheet/lesson-plan generation quota.
-      if (isTeacher) {
-        try {
-          const { data: userData, error } = await supabase
-            .from('users')
-            .select('metadata')
-            .eq('id', user.id)
-            .single();
-
-          if (error) {
-            logger.warn('Could not fetch teacher generation count', { error: error instanceof Error ? error.message : String(error) });
-            setTeacherGenerationCount(0);
-          } else {
-            const metadata = userData?.metadata || {};
-            const rawCount = metadata[TEACHER_LEARNER_GENERATION_COUNT_KEY];
-            const parsedCount = Number(rawCount ?? 0);
-            const count = Number.isFinite(parsedCount) ? Math.max(0, Math.floor(parsedCount)) : 0;
-            logger.info('Teacher learner generation count fetched', { count });
-            setTeacherGenerationCount(count);
-          }
-        } catch (err) {
-          logger.error('Error fetching teacher generation count', err instanceof Error ? err : new Error(String(err)));
-          setTeacherGenerationCount(0);
-        } finally {
-          setIsLoadingCount(false);
-        }
-        return;
-      }
-
-      setTeacherGenerationCount(0);
+  // Fetch generation count for teacher-learner accounts
+  const fetchGenerationCount = React.useCallback(async () => {
+    if (!user?.id || learnerTypeLoading || !isTeacher) {
       setIsLoadingCount(false);
-    };
+      return;
+    }
 
-    fetchGenerationCount();
+    try {
+      setIsLoadingCount(true);
+      
+      // Get auth token
+      const { data: { session } } = await getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        logger.warn('No auth token available for generation usage fetch');
+        setTeacherGenerationCount(0);
+        return;
+      }
+
+      // Fetch generation usage from API
+      const response = await fetch('/api/course/generation-usage', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        // Handle HTTP errors
+        logger.warn('Failed to fetch generation count', { 
+          status: response.status,
+          statusText: response.statusText 
+        });
+        setTeacherGenerationCount(0);
+        return;
+      }
+
+      // Parse response
+      const data = await response.json() as { used?: unknown; limit?: unknown };
+      
+      // Validate response data
+      if (typeof data.used !== 'number') {
+        logger.warn('Invalid generation count data', { hasUsed: 'used' in data, usedType: typeof data.used });
+        setTeacherGenerationCount(0);
+        return;
+      }
+
+      // Update state with validated count and limit from backend
+      const count = Math.max(0, Math.floor(data.used));
+      const limit = typeof data.limit === 'number' ? data.limit : 2; // Fallback to 2
+      
+      setTeacherGenerationCount(count);
+      setTeacherGenerationLimit(limit);
+      
+    } catch (err) {
+      // Handle network errors, JSON parse errors, etc.
+      logger.error('Error fetching generation count', err instanceof Error ? err : new Error(String(err)));
+      setTeacherGenerationCount(0);
+    } finally {
+      // Always set loading to false
+      setIsLoadingCount(false);
+    }
   }, [user?.id, learnerTypeLoading, isTeacher]);
+
+  useEffect(() => {
+    fetchGenerationCount();
+  }, [fetchGenerationCount]);
 
   const remainingTeacherGenerations = Math.max(
     0,
-    TEACHER_LEARNER_GENERATION_LIMIT - teacherGenerationCount
+    teacherGenerationLimit - teacherGenerationCount
   );
   const isGenerationLocked = !learnerTypeLoading
     && isTeacher
-    && teacherGenerationCount >= TEACHER_LEARNER_GENERATION_LIMIT;
+    && teacherGenerationCount >= teacherGenerationLimit;
   const isCheckingGenerationUsage = isTeacher && (learnerTypeLoading || isLoadingCount);
 
   // Worksheet configuration state (educators only)
@@ -188,10 +207,25 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       : 'Generate a lesson plan based on the configured settings.';
     
     await sendMessage(generateMessage);
+    
+    // Refetch count after generation to ensure UI is in sync
+    if (isTeacher) {
+      await fetchGenerationCount();
+    }
   };
 
   const handleGenerationUsageUpdate = React.useCallback((usage: GenerationUsage) => {
-    setTeacherGenerationCount(usage.used);
+    try {
+      if (typeof usage?.used === 'number') {
+        setTeacherGenerationCount(usage.used);
+      }
+      if (typeof usage?.limit === 'number') {
+        setTeacherGenerationLimit(usage.limit);
+      }
+      setIsLoadingCount(false);
+    } catch (err) {
+      logger.error('Failed to update generation usage', err instanceof Error ? err : new Error(String(err)));
+    }
   }, []);
 
   const {
@@ -534,11 +568,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       {/* Config Panel (Educators Only) */}
       {isEducator && assistantMode === 'worksheet' && (
         <WorksheetConfigPanel
+          key={`worksheet-${teacherGenerationCount}`}
           config={worksheetConfig}
           onChange={setWorksheetConfig}
           onGenerate={handleGenerate}
           isGenerating={isStreaming}
-          generationLimit={isTeacher ? TEACHER_LEARNER_GENERATION_LIMIT : undefined}
+          generationLimit={isTeacher ? teacherGenerationLimit : undefined}
           remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
           isGenerationLimitReached={isGenerationLocked}
           isUsageLoading={isCheckingGenerationUsage}
@@ -546,11 +581,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       )}
       {isEducator && assistantMode === 'lesson-plan' && (
         <LessonPlanConfigPanel
+          key={`lesson-plan-${teacherGenerationCount}`}
           config={lessonPlanConfig}
           onChange={setLessonPlanConfig}
           onGenerate={handleGenerate}
           isGenerating={isStreaming}
-          generationLimit={isTeacher ? TEACHER_LEARNER_GENERATION_LIMIT : undefined}
+          generationLimit={isTeacher ? teacherGenerationLimit : undefined}
           remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
           isGenerationLimitReached={isGenerationLocked}
           isUsageLoading={isCheckingGenerationUsage}
