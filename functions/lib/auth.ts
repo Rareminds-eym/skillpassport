@@ -11,12 +11,12 @@ import { getServiceClient } from './supabase';
  */
 export function initAuthFromEnv(env: Record<string, string | Fetcher>) {
   // Validate SSO_DOMAIN is a string
-  const ssoDomainRaw = env.SSO_DOMAIN || env.VITE_SSO_URL;
+  const ssoDomainRaw = env.SSO_DOMAIN;
   
   if (!ssoDomainRaw) {
     throw new Error(
       'SSO_DOMAIN environment variable is not configured. ' +
-      'Set SSO_DOMAIN (or VITE_SSO_URL) to your SSO worker URL (e.g., https://sso-api.example.workers.dev)'
+      'Set SSO_DOMAIN to your SSO worker URL (e.g., https://sso-api.example.workers.dev)'
     );
   }
   

@@ -43,6 +43,7 @@ export interface RazorpayOrder {
   attempts: number;
   notes: Record<string, string>;
   created_at: number;
+  key_id?: string; // Injected by payment worker for frontend checkout
 }
 
 export interface RazorpayPayment {

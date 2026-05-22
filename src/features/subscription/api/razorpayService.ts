@@ -177,7 +177,7 @@ export const initiateRazorpayPayment = async ({
     });
 
     // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
-    const razorpayKeyId = orderData.key;
+    const razorpayKeyId = orderData.razorpay_key_id || orderData.key;
 
     // Razorpay checkout options — all callbacks stay in-app (no window.location.href)
     const options = {

@@ -560,7 +560,7 @@ export class MemberInvitationService {
     const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
       (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
     // Use current origin in development, production URL otherwise
-    const APP_URL = import.meta.env.DEV 
+    const VITE_APP_URL = import.meta.env.DEV 
       ? window.location.origin 
       : 'https://skillpassport.rareminds.in';
 
@@ -571,7 +571,7 @@ export class MemberInvitationService {
         invitation.organization_type
       );
 
-      const invitationLink = `${APP_URL}/accept-invitation?token=${invitation.invitation_token}`;
+      const invitationLink = `${VITE_APP_URL}/accept-invitation?token=${invitation.invitation_token}`;
       const memberType = invitation.invitee_role;
       const memberTypeDisplay = memberType.includes('educator') ? 'Educator' : 'Learner';
       const expiresDate = new Date(invitation.expires_at).toLocaleDateString('en-US', {
