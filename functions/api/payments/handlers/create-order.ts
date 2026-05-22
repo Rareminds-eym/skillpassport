@@ -117,7 +117,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       );
     }
 
->>>>>>> subscription-migration
+
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({
