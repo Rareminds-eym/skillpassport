@@ -10,6 +10,9 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { createLogger } from '../../../lib/logger';
+
+const logger = createLogger('payments:create-addon-order');
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handleCreateAddonOrder(context);
@@ -67,6 +70,15 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
       },
     });
 
+    // Validate that payment worker returned key_id
+    if (!order.key_id) {
+      logger.error('Payment worker did not return key_id');
+      return new Response(
+        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Return order with key_id from payment worker
     // The payment worker injects key_id to ensure it matches the key used to create the order
     return new Response(JSON.stringify({
@@ -77,7 +89,7 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[CreateAddonOrder] Error:', error);
+    logger.error('Error creating addon order', error);
     return rpcErrorResponse(error);
   }
 }

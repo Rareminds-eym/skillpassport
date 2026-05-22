@@ -10,6 +10,9 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { createLogger } from '../../../lib/logger';
+
+const logger = createLogger('payments:create-org-order');
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   return handleCreateOrgOrder(context);
@@ -74,6 +77,15 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
       },
     });
 
+    // Validate that payment worker returned key_id
+    if (!order.key_id) {
+      logger.error('Payment worker did not return key_id');
+      return new Response(
+        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Return order with key_id from payment worker
     return new Response(JSON.stringify({
       ...order,
@@ -83,7 +95,7 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[CreateOrgOrder] Error:', error);
+    logger.error('Error creating org order', error);
     return rpcErrorResponse(error);
   }
 }

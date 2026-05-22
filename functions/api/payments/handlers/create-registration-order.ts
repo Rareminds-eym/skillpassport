@@ -11,6 +11,9 @@
 import type { PagesFunction } from '@cloudflare/workers-types';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger } from '../../../lib/logger';
+
+const logger = createLogger('payments:create-registration-order');
 
 export const onRequestPost: PagesFunction = async (context) => {
   return handleCreateRegistrationOrder(context);
@@ -70,7 +73,7 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
       .single();
 
     if (insertError) {
-      console.error('[CreateRegistrationOrder] Database insert error:', insertError);
+      logger.error('Database insert error', insertError);
       return new Response(
         JSON.stringify({ 
           error: { 
@@ -85,7 +88,7 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
 
     const registrationId = preReg.id;
 
-    console.log(`[CreateRegistrationOrder] Created pre_registration record: ${registrationId}`);
+    logger.info('Created pre_registration record', { registrationId });
 
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
@@ -115,10 +118,19 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
       .eq('id', registrationId);
 
     if (updateError) {
-      console.error('[CreateRegistrationOrder] Failed to update order_id:', updateError);
+      logger.error('Failed to update order_id', updateError);
     }
 
-    console.log(`[CreateRegistrationOrder] Order created: ${order.id} for registrationId: ${registrationId}`);
+    logger.info('Order created', { orderId: order.id, registrationId });
+
+    // Validate that payment worker returned key_id
+    if (!order.key_id) {
+      logger.error('Payment worker did not return key_id');
+      return new Response(
+        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Return order with key_id from payment worker and registrationId
     return new Response(
@@ -133,7 +145,7 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
       }
     );
   } catch (error) {
-    console.error('[CreateRegistrationOrder] Error:', error);
+    logger.error('Error creating registration order', error);
     return rpcErrorResponse(error);
   }
 }
