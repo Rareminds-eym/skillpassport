@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Member Invitation Service
  * 
@@ -7,6 +6,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  */
 
 import { supabase } from '@/shared/api';
+import { useAuthStore } from '@/shared/model/authStore';
 import { LicenseAssignment, licenseManagementService } from './licenseManagementService';
 import { getLogger } from '@/shared/config/logging';
 
@@ -87,7 +87,7 @@ export class MemberInvitationService {
       }
 
       // 2. Get current user and their role
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -226,7 +226,7 @@ export class MemberInvitationService {
   async cancelInvitation(invitationId: string): Promise<void> {
     try {
       // Get current user for cancelled_by field
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('User not authenticated');
       }

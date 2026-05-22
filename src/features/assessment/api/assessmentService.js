@@ -1,10 +1,10 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Assessment Service
  * Handles all database operations for the assessment system
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { getCurrentSession } from '@/shared/api/authUtils';
 import { calculateStreamRecommendations } from '../lib/streamMatchingEngine';
 
 /**
@@ -362,8 +362,8 @@ export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId)
     });
 
     // Get auth token
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token;
+    const user = useAuthStore.getState().user;
+    const token = ssoClient.getAccessToken();
 
     if (!token) {
       console.warn('⚠️ [updateAttemptAdaptiveSession] No auth token available');
@@ -371,11 +371,11 @@ export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId)
     }
 
     // Call the API endpoint to link session (uses admin client to bypass RLS)
-    const response = await fetch('/api/adaptive-session/link-to-attempt', {
+    const response = await ssoClient.fetch('/api/adaptive-session/link-to-attempt', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        
       },
       body: JSON.stringify({
         attemptId,

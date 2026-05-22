@@ -22,10 +22,6 @@ const PLAN_TABLE_MAP: Record<string, string> = {
   bootcamp: 'bootcamp_registrations',
 };
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleUpdateEventPaymentStatus(context);
-});
-
 export async function handleUpdateEventPaymentStatus(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 

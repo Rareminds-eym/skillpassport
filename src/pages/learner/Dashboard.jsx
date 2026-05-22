@@ -651,8 +651,8 @@ const LearnerDashboard = () => {
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
 
   // Check if user is on Freemium plan
-  const isFreemium = subscriptionData?.plan === PLAN_IDS.PAY_AS_YOU_GO;
-  const userPlan = subscriptionData?.plan || PLAN_IDS.PAY_AS_YOU_GO;
+  const isFreemium = subscriptionData?.plan === PLAN_IDS.FREEMIUM;
+  const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
   // State for upgrade prompt
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -2953,7 +2953,7 @@ const LearnerDashboard = () => {
             <div key={cardName} className="h-full relative">
               {/* Disabled overlay for freemium users - just blur, no text */}
               {isFreemium && !isViewingOthersProfile && (
-                <div className="absolute inset-0 rounded-xl z-10 cursor-not-allowed" />
+                <div className="absolute inset-0 rounded-xl z-10 cursor-not-allowed pointer-events-auto" />
               )}
               {card}
             </div>

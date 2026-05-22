@@ -15,10 +15,6 @@ import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('payments:org-subscriptions-purchase');
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleOrgSubscriptionsPurchase(context);
-});
-
 export async function handleOrgSubscriptionsPurchase(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as unknown as PaymentWorkerEnv;

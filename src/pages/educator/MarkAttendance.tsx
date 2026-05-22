@@ -17,7 +17,6 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('MarkAttendance');
 
@@ -110,7 +109,7 @@ const MarkAttendance: React.FC = () => {
   useEffect(() => {
     const fetchEducatorInfo = async () => {
       try {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (!user) {
           logger.info('No user found');
           return;

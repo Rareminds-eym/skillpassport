@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+
 import { ArrowDownTrayIcon, CheckCircleIcon, DocumentArrowUpIcon, ExclamationTriangleIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Papa from 'papaparse'
 import React, { useEffect, useState } from 'react'
@@ -357,7 +357,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       // Get authenticated user once for reuse
-      const { data: { user: authUser } } = await getCurrentUser()
+      const authUser = useAuthStore.getState().user;
 
       // Get schoolId or collegeId from localStorage
       let schoolId = null
@@ -413,29 +413,10 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       // Refresh session to ensure we have a valid token
-      const { data: refreshData, error: refreshError } = Promise.resolve({ data: null, error: null })
-
-      if (refreshError) {
-        // Try to get existing session
-        const { data: { session }, error: sessionError } = await getCurrentSession()
-
-        if (sessionError || !session) {
-          logger.error('No valid session available', new Error('No valid session available'))
-          throw new Error('Authentication expired. Please login again.')
-        }
-      }
-
-      const finalSession = refreshData?.session || (await getCurrentSession()).data.session
-
-      if (!finalSession) {
-        throw new Error('No active session. Please login again.')
-      }
-
-      const token = finalSession.access_token
+      const token = ssoClient.getAccessToken();
 
       if (!token) {
-        logger.error('No access token in session', new Error('No access token in session'))
-        throw new Error('No authentication token available')
+        throw new Error('No active session. Please login again.')
       }
 
       // Call Cloudflare Worker via userApiService
@@ -706,8 +687,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const updatelearnerDocuments = async (learnerId: string, documents: Array<{ name: string, url: string, size: number, type: string }>) => {
     try {
       // Get fresh token
-      const { data: { session } } = await getCurrentSession()
-      const token = session?.access_token
+      const token = ssoClient.getAccessToken()
 
       if (!token) {
         throw new Error('No authentication token available for document update')
@@ -957,10 +937,10 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setUploadProgress(null)
 
     try {
-      // Refresh session
-      const { data: { session } } = await getCurrentSession()
-      if (session) {
-        Promise.resolve({ data: null, error: null })
+      // Get session
+      const token = ssoClient.getAccessToken()
+      if (!token) {
+        throw new Error('Authentication expired. Please login again.')
       }
 
       // Parse CSV using PapaParse
@@ -1165,8 +1145,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
               const batchPromises = batch.map(async ({ row, data }) => {
                 try {
-                  const { data: { session } } = await getCurrentSession()
-                  const token = session?.access_token
+                  const token = ssoClient.getAccessToken()
 
                   if (!token) {
                     throw new Error('No authentication token available')

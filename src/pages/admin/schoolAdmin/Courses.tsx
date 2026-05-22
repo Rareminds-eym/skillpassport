@@ -27,7 +27,7 @@ import toast from 'react-hot-toast'
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+
 
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 const logger = getLogger('school-admin-courses');
@@ -91,18 +91,18 @@ const Courses: React.FC = () => {
         logger.info('User authenticated from AuthContext', { userId: user.id, email: user.email, role: user.role });
 
         // Verify Supabase session and use Supabase user ID
-        const { data: { session } } = await authSessionService.getSession();
+        const user = useAuthStore.getState().user;
         if (!session) {
           logger.error('No Supabase session found');
           setError('Authentication session expired. Please log in again.');
           setLoading(false);
           return;
         }
-        logger.info('Supabase session verified', { supabaseUserId: session.user.id, authContextUserId: user.id });
+        logger.info('Supabase session verified', { supabaseUserId: user.id, authContextUserId: user.id });
         
         // IMPORTANT: Use Supabase auth user ID, not AuthContext user ID
         // This ensures the ID matches what RLS policies expect
-        const supabaseUserId = session.user.id;
+        const supabaseUserId = user.id;
         setEducatorId(supabaseUserId);
 
         // Use full_name from AuthContext if available
@@ -126,7 +126,7 @@ const Courses: React.FC = () => {
             .from('organizations')
             .select('id')
             .eq('organization_type', 'school')
-            .or(`admin_id.eq.${supabaseUserId},email.eq.${session.user.email}`)
+            .or(`admin_id.eq.${supabaseUserId},email.eq.${user.email}`)
             .maybeSingle();
 
           if (org?.id) {
@@ -260,7 +260,7 @@ const Courses: React.FC = () => {
     }
 
     // Verify Supabase session before creating
-    const { data: { session } } = await authSessionService.getSession();
+    const user = useAuthStore.getState().user;
     if (!session) {
       logger.error('No Supabase session');
       setError('Authentication session expired. Please log in again.');

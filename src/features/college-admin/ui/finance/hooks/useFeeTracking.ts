@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { supabase } from '@/shared/api/supabaseClient';
@@ -28,7 +27,7 @@ export const useFeeTracking = () => {
       }
 
       // If not found in localStorage, try Supabase Auth
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (user) {
         // Get user role from users table
         const { data: userRecord } = await supabase
@@ -221,7 +220,7 @@ export const useFeeTracking = () => {
     paymentData: Partial<FeePayment>
   ): Promise<boolean> => {
     try {
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         toast.error("User not authenticated");
         return false;
@@ -288,7 +287,7 @@ export const useFeeTracking = () => {
 
   const verifyPayment = async (paymentId: string): Promise<boolean> => {
     try {
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       const { error } = await supabase
         .from("fee_payments")
         .update({

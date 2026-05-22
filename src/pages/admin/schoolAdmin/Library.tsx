@@ -11,7 +11,6 @@ import toast from 'react-hot-toast';
 import { useLearners } from '@/entities/learner/model/useAdminLearners';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('school-admin-library');
 
@@ -142,7 +141,7 @@ export default function LibraryModule() {
         }
 
         // Then try Supabase auth
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (user) {
           // Check school_educators table first - use maybeSingle() to avoid 406 error
           const { data: educator } = await supabase

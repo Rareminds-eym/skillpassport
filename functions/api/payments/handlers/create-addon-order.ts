@@ -14,10 +14,6 @@ import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('payments:create-addon-order');
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateAddonOrder(context);
-});
-
 export async function handleCreateAddonOrder(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as unknown as PaymentWorkerEnv;

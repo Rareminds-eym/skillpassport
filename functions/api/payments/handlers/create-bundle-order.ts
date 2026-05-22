@@ -14,10 +14,6 @@ import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('payments:create-bundle-order');
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateBundleOrder(context);
-});
-
 export async function handleCreateBundleOrder(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as unknown as PaymentWorkerEnv;

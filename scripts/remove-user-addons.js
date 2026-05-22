@@ -24,19 +24,6 @@ async function removeAddons() {
     console.log('user_entitlements error:', entErr.message);
   }
 
-  // Check addon_pending_orders
-  const { data: pendingOrders, error: pendingErr } = await supabase
-    .from('addon_pending_orders')
-    .select('*')
-    .eq('user_id', learnerId);
-
-  if (!pendingErr) {
-    console.log('\nFound addon_pending_orders:', pendingOrders?.length || 0);
-    if (pendingOrders?.length) console.log(JSON.stringify(pendingOrders, null, 2));
-  } else {
-    console.log('addon_pending_orders error:', pendingErr.message);
-  }
-
   console.log('\n=== DELETING ADDON RECORDS ===\n');
 
   // Delete user_entitlements
@@ -45,14 +32,6 @@ async function removeAddons() {
     console.log('Deleted user_entitlements:', error ? error.message : '✅ Success');
   } else {
     console.log('No user_entitlements to delete');
-  }
-
-  // Delete addon_pending_orders
-  if (pendingOrders?.length) {
-    const { error } = await supabase.from('addon_pending_orders').delete().eq('user_id', learnerId);
-    console.log('Deleted addon_pending_orders:', error ? error.message : '✅ Success');
-  } else {
-    console.log('No addon_pending_orders to delete');
   }
 
   // Verify

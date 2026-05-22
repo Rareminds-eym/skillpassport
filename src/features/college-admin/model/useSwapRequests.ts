@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api';
-import { authSessionService } from '@/features/auth';
+
 import { getLogger } from '@/shared/config/logging';
 import {
   getSwapRequests,
@@ -58,7 +58,7 @@ export const useSwapRequests = (): UseSwapRequestsReturn => {
 
   const loadEducatorData = async () => {
     try {
-      const userData = await authSessionService.getUser();
+      const userData = { data: { user: useAuthStore.getState().user } };
       if (!userData?.user?.id) return;
 
       const userId = userData.user.id;

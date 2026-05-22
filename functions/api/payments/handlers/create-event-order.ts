@@ -14,10 +14,6 @@ import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('payments:create-event-order');
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateEventOrder(context);
-});
-
 export async function handleCreateEventOrder(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as unknown as PaymentWorkerEnv;

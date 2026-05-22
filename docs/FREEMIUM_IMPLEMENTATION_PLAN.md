@@ -19,7 +19,7 @@ This document outlines the comprehensive implementation plan for enhancing the s
 
 3. **Minimal Database Changes** - We're using existing infrastructure:
    - ✅ **No new tables needed** - Use existing `subscription_plans` and `subscriptions` tables
-   - ✅ **Simple migration** - Just add freemium plan (plan_code: `pay_as_you_go`) to `subscription_plans`
+   - ✅ **Simple migration** - Just add freemium plan (plan_code: `freemium`) to `subscription_plans`
 
 4. **Pricing Strategy**:
    - Freemium: ₹0 (dashboard only)
@@ -33,7 +33,7 @@ This document outlines the comprehensive implementation plan for enhancing the s
 ## Quick Start TODO
 
 ### Database (Day 1-2)
-- [ ] Add `pay_as_you_go` plan to `subscription_plans` table (₹0, no features)
+- [ ] Add `freemium` plan to `subscription_plans` table (₹0, no features)
 - [ ] Verify existing `subscriptions` table is ready
 
 ### Backend API (Day 3-5)
@@ -43,7 +43,7 @@ This document outlines the comprehensive implementation plan for enhancing the s
 - [ ] Update feature gating logic in `featureGating.ts`
 
 ### Frontend (Day 6-10)
-- [ ] Add Freemium plan card to `SubscriptionPlans.jsx` (₹0 tier, plan_code: `pay_as_you_go`)
+- [ ] Add Freemium plan card to `SubscriptionPlans.jsx` (₹0 tier, plan_code: `freemium`)
 - [ ] Update `UnifiedSignup.tsx` - redirect to subscription plans page (no change needed)
 - [ ] Bypass Razorpay payment for Freemium tier (auto-create subscription)
 - [ ] Add Freemium banner to dashboard with "View Plans" button
@@ -426,7 +426,7 @@ Plans Page with Freemium Option (NEW ₹0 tier added)
 
 #### A. Add Freemium Plan to `subscription_plans`
 
-**Migration File: `supabase/migrations/YYYYMMDDHHMMSS_add_pay_as_you_go_plan.sql`**
+**Migration File: `supabase/migrations/YYYYMMDDHHMMSS_add_freemium_plan.sql`**
 
 ```sql
 -- Add Freemium plan (₹0 with NO features)
@@ -447,7 +447,7 @@ INSERT INTO public.subscription_plans (
   created_at,
   updated_at
 ) VALUES (
-  'pay_as_you_go',
+  'freemium',
   'Freemium',
   'b2c',
   'all',
@@ -472,14 +472,14 @@ INSERT INTO public.subscription_plans (
 -- Update plan hierarchy comment
 COMMENT ON TABLE public.subscription_plans IS 
 'Master table for subscription plan definitions. 
-Plan hierarchy: pay_as_you_go < basic < professional < enterprise < enterprise_ecosystem';
+Plan hierarchy: freemium < basic < professional < enterprise < enterprise_ecosystem';
 ```
 
 #### B. Verify Migration
 
 After adding the Freemium plan, verify:
 - Plan exists in `subscription_plans` table
-- `plan_code = 'pay_as_you_go'`
+- `plan_code = 'freemium'`
 - `price = 0.00`
 - `is_active = true`
 
@@ -495,7 +495,7 @@ After adding the Freemium plan, verify:
  * Plan code identifiers — must match plan_code values in Supabase subscription_plans table.
  */
 export const PLAN_IDS = {
-  PAY_AS_YOU_GO: 'pay_as_you_go',  // NEW - Pay per feature
+  PAY_AS_YOU_GO: 'freemium',  // NEW - Pay per feature
   BASIC: 'basic',
   PROFESSIONAL: 'professional',
   ENTERPRISE: 'enterprise',
@@ -675,7 +675,7 @@ function SubscriptionPlans() {
     if (!plans || plans.length === 0) return [];
     
     // Check if Freemium plan exists in DB
-    const hasFreemium = plans.some(p => p.plan_code === 'pay_as_you_go');
+    const hasFreemium = plans.some(p => p.plan_code === 'freemium');
     
     if (hasFreemium) {
       return plans;
@@ -684,7 +684,7 @@ function SubscriptionPlans() {
     // If not in DB, add it manually (fallback)
     const freemiumPlan = {
       id: 'freemium-temp',
-      plan_code: 'pay_as_you_go',
+      plan_code: 'freemium',
       name: 'Freemium',
       price: 0,
       duration: 'lifetime',
@@ -707,7 +707,7 @@ function SubscriptionPlans() {
   // Handle plan selection
   const handleSelectPlan = async (plan) => {
     // NEW: Bypass Razorpay for Freemium tier
-    if (plan.plan_code === 'pay_as_you_go' || plan.isFree) {
+    if (plan.plan_code === 'freemium' || plan.isFree) {
       try {
         setLoading(true);
         
@@ -749,7 +749,7 @@ function SubscriptionPlans() {
 
 **Key Changes:**
 - Add Freemium plan as first option (₹0)
-- Check for `plan_code === 'pay_as_you_go'` or `isFree` flag
+- Check for `plan_code === 'freemium'` or `isFree` flag
 - Bypass Razorpay and auto-create subscription for Freemium tier
 - All other plans go through normal Razorpay payment flow
 
@@ -1090,7 +1090,7 @@ const LearnerDashboard = () => {
   const { subscriptionData } = useSubscriptionQuery();
   const { stats, loading: limitsLoading } = useFeatureLimits();
 
-  const isPayAsYouGo = subscriptionData?.plan_code === 'pay_as_you_go';
+  const isPayAsYouGo = subscriptionData?.plan_code === 'freemium';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1281,7 +1281,7 @@ export async function onRequestPost(context: any) {
     const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
       .select('*')
-      .eq('plan_code', 'pay_as_you_go')
+      .eq('plan_code', 'freemium')
       .eq('is_active', true)
       .single();
 
@@ -1601,7 +1601,7 @@ subscriptions
 └── subscription_end_date
 ```
 
-**Note:** We're using existing tables only. No new tables needed for pay-as-you-go implementation.
+**Note:** We're using existing tables only. No new tables needed for freemium implementation.
 
 ### B. API Endpoints Reference
 

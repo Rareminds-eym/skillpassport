@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { getCurrentSession } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 
 
@@ -849,8 +849,8 @@ function SubscriptionPlans() {
       return;
     }
 
-    // Check if this is a freemium plan (₹0 or plan_code = 'pay_as_you_go')
-    const isFreemiumPlan = plan.plan_code === 'pay_as_you_go' || plan.price === 0;
+    // Check if this is a freemium plan (₹0 or plan_code = 'freemium')
+    const isFreemiumPlan = plan.plan_code === 'freemium' || plan.price === 0;
 
     if (isFreemiumPlan) {
       if (DEBUG) console.log('[SubscriptionPlans] Freemium plan selected, creating subscription directly');
@@ -859,25 +859,16 @@ function SubscriptionPlans() {
       const loadingToast = toast.loading('Creating your free account...');
 
       try {
-        // Get auth token
-        const { data: { session } } = await getCurrentSession();
-        const token = session?.access_token;
-
-        if (!token) {
-          toast.error('Authentication required', { id: loadingToast });
-          return;
-        }
-
-        // Create freemium subscription directly
-        const response = await fetch('/api/payments/create-freemium-subscription', {
+        // Create freemium subscription — auth handled automatically by ssoClient.fetch()
+        const response = await ssoClient.fetch('/api/payments/create-order', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: user.id,
-            email: user.email
+            email: user.email,
+            amount: 0,
+            planId: 'freemium',
+            planName: 'freemium'
           })
         });
 

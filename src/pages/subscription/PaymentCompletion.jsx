@@ -19,9 +19,8 @@ import { useSubscription } from '@/features/subscription/model';
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { initiateRazorpayPayment } from '@/features/subscription/api';
-import { authSessionService } from '@/features/auth';
 
-import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole, useAuthStore } from '@/shared/model/authStore';
 
 const DEBUG = import.meta.env.DEV;
 /**
@@ -255,9 +254,9 @@ function PaymentCompletion() {
       // CRITICAL: Verify user actually exists in database (not just localStorage)
       try {
         // First check if user exists in auth.users via session
-        const { data: { session }, error: sessionError } = await authSessionService.getSession();
+        const user = useAuthStore.getState().user; const sessionError = null;
 
-        if (sessionError || !session?.user) {
+        if (sessionError || !user) {
           if (DEBUG) console.warn('[PaymentCompletion] No valid Supabase session found, clearing stale data');
           // Clear stale localStorage data
           localStorage.removeItem('user');
@@ -279,7 +278,7 @@ function PaymentCompletion() {
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('id, firstName, lastName, phone, email')
-          .eq('id', session.user.id)
+          .eq('id', user.id)
           .maybeSingle();
 
         if (userError) {
@@ -290,7 +289,7 @@ function PaymentCompletion() {
           if (DEBUG) console.warn('[PaymentCompletion] User not found in database, may need to complete registration');
           // User has auth account but no database record - this is a partial signup
           // Try to get details from auth metadata
-          const authUser = session.user;
+          const authUser = user;
           const metadata = authUser.user_metadata || {};
 
           setUserDetails({
@@ -411,53 +410,7 @@ function PaymentCompletion() {
       setFieldErrors({});
 
       try {
-        // Check if this is a freemium plan
-        const isFreemiumPlan = isFreemium || plan?.plan_code === 'pay_as_you_go' || plan?.price === 0;
-
-        if (isFreemiumPlan) {
-          // Handle freemium subscription creation (no payment required)
-          if (DEBUG) console.log('[PaymentCompletion] Creating freemium subscription');
-
-          const { data: { session } } = await supabase.auth.getSession();
-          const token = session?.access_token;
-
-          if (!token) {
-            throw new Error('Not authenticated');
-          }
-
-          const response = await fetch('/api/payments/create-freemium-subscription', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              userId: user.id,
-              email: userDetails.email
-            })
-          });
-
-          const result = await response.json();
-
-          if (!response.ok || !result.success) {
-            throw new Error(result.error?.message || 'Failed to create freemium subscription');
-          }
-
-          setLoading(false);
-
-          // Navigate to success page
-          navigate('/subscription/payment/success', {
-            state: {
-              plan: result.data,
-              learnerType,
-              isFreemium: true
-            },
-            replace: true,
-          });
-          return;
-        }
-
-        // Regular paid plan - use Razorpay
+        // Unified pipeline for both freemium and paid subscriptions
         await initiateRazorpayPayment({
           plan,
           userDetails: { ...userDetails, learnerType },
@@ -646,7 +599,7 @@ function PaymentCompletion() {
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           Processing...
                         </>
-                      ) : (isFreemium || plan?.plan_code === 'pay_as_you_go' || plan?.price === 0) ? (
+                      ) : (isFreemium || plan?.plan_code === 'freemium' || plan?.price === 0) ? (
                         <>
                           <Check className="w-4 h-4" />
                           Start Free

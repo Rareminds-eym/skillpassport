@@ -14,7 +14,6 @@ import { AlertCircle, Building2, Check, Clock, LogIn, RefreshCw, UserPlus, X } f
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { authSessionService } from '@/features/auth';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('invitation-acceptance');
@@ -46,7 +45,7 @@ export default function AcceptInvitationPage() {
 
     try {
       // Check if user is logged in
-      const { data: { user: currentUser } } = await authSessionService.getUser();
+      const { data: { user: currentUser } } = { data: { user: useAuthStore.getState().user } };
       setUser(currentUser);
 
       // Load invitation details

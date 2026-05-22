@@ -14,7 +14,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('EducatorProfile');
 
@@ -111,7 +110,7 @@ const Profile = () => {
       }
       
       // Method 3: Fallback to Supabase auth
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       
       if (user && user.email) {
         logger.info('Using Supabase user', { email: user.email });
@@ -226,7 +225,7 @@ const Profile = () => {
       
       // Get current user from Supabase Auth if not provided
       if (!user) {
-        const { data: { user: currentUser } } = await authSessionService.getUser();
+        const { data: { user: currentUser } } = { data: { user: useAuthStore.getState().user } };
         user = currentUser;
       }
       

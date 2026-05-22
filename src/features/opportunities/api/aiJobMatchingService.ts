@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * AI Job Matching Service
  * Uses vector embeddings and cosine similarity to match learner profiles with job opportunities
@@ -35,8 +35,8 @@ export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = f
   const API_URL = getApiUrl('career');
 
   // Get auth token from existing supabase client
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
+  const user = useAuthStore.getState().user;
+  const token = ssoClient.getAccessToken();
 
   const learnerId = learnerProfile?.id || learnerProfile?.learner_id;
   if (!learnerId) {
@@ -46,11 +46,11 @@ export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = f
   // NOTE: The API auto-generates learner embeddings if missing
   // No need to call ensurelearnerEmbedding here
 
-  const response = await fetch(`${API_URL}/recommend-opportunities`, {
+  const response = await ssoClient.fetch(`${API_URL}/recommend-opportunities`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
+      ...(token && { })
     },
     body: JSON.stringify({
       learnerId,

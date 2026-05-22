@@ -651,7 +651,7 @@ const ClassManagement = () => {
 
   const fetchSchoolId = async () => {
     try {
-      const { data: { user } } = await authSessionService.getUser()
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } }
       if (!user) {
         logger.warn("No user found")
         return
@@ -1464,6 +1464,6 @@ const ClassManagement = () => {
 // Import modal components
 import { AssignEducatorModal as AssignEducatorModalComponent, ManageLearnersModal as ManagelearnersModalComponent } from '@/features/college-admin'
 import { Pagination } from '@/shared/ui'
-import { authSessionService } from '@/features/auth';
+
 
 export default ClassManagement

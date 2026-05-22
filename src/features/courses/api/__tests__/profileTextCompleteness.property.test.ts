@@ -83,10 +83,10 @@ describe('Property 3: Profile Text Completeness', () => {
   
   it('should contain all priority A skill gap names in the profile text', async () => {
     await fc.assert(
-      fc.property(
+      fc.asyncProperty(
         validAssessmentResultsArbitrary,
-        (assessmentResults) => {
-          const profileText = buildProfileText(assessmentResults);
+        async (assessmentResults) => {
+          const profileText = await buildProfileText(assessmentResults);
           
           // Property: All priority A skill names must appear in the profile text
           const priorityASkills = assessmentResults.skillGap.priorityA;
@@ -105,10 +105,10 @@ describe('Property 3: Profile Text Completeness', () => {
 
   it('should contain the top career cluster title in the profile text', async () => {
     await fc.assert(
-      fc.property(
+      fc.asyncProperty(
         validAssessmentResultsArbitrary,
-        (assessmentResults) => {
-          const profileText = buildProfileText(assessmentResults);
+        async (assessmentResults) => {
+          const profileText = await buildProfileText(assessmentResults);
           
           // Property: The top career cluster title must appear in the profile text
           const topCluster = assessmentResults.careerFit.clusters[0];
@@ -125,12 +125,12 @@ describe('Property 3: Profile Text Completeness', () => {
 
   it('should contain all priority B skill gap names when present', async () => {
     await fc.assert(
-      fc.property(
+      fc.asyncProperty(
         validAssessmentResultsArbitrary.filter(ar => 
           ar.skillGap.priorityB && ar.skillGap.priorityB.length > 0
         ),
-        (assessmentResults) => {
-          const profileText = buildProfileText(assessmentResults);
+        async (assessmentResults) => {
+          const profileText = await buildProfileText(assessmentResults);
           
           // Property: All priority B skill names must appear in the profile text
           const priorityBSkills = assessmentResults.skillGap.priorityB;
@@ -149,10 +149,10 @@ describe('Property 3: Profile Text Completeness', () => {
 
   it('should produce valid profile text with only skill gaps (no career clusters)', async () => {
     await fc.assert(
-      fc.property(
+      fc.asyncProperty(
         skillGapOnlyAssessmentArbitrary,
-        (assessmentResults) => {
-          const profileText = buildProfileText(assessmentResults);
+        async (assessmentResults) => {
+          const profileText = await buildProfileText(assessmentResults);
           
           // Property: Profile text should be non-empty and contain skill gap info
           expect(profileText.length).toBeGreaterThan(0);
@@ -171,10 +171,10 @@ describe('Property 3: Profile Text Completeness', () => {
 
   it('should produce valid profile text with only career clusters (no skill gaps)', async () => {
     await fc.assert(
-      fc.property(
+      fc.asyncProperty(
         careerClusterOnlyAssessmentArbitrary,
-        (assessmentResults) => {
-          const profileText = buildProfileText(assessmentResults);
+        async (assessmentResults) => {
+          const profileText = await buildProfileText(assessmentResults);
           
           // Property: Profile text should be non-empty and contain career cluster info
           expect(profileText.length).toBeGreaterThan(0);
@@ -199,10 +199,10 @@ describe('Property 3: Profile Text Completeness', () => {
     );
 
     await fc.assert(
-      fc.property(
+      fc.asyncProperty(
         assessmentWithEmployability,
-        (assessmentResults) => {
-          const profileText = buildProfileText(assessmentResults);
+        async (assessmentResults) => {
+          const profileText = await buildProfileText(assessmentResults);
           
           // Property: Employability improvement areas should appear in profile text
           const improvementAreas = assessmentResults.employability!.improvementAreas;
@@ -221,10 +221,10 @@ describe('Property 3: Profile Text Completeness', () => {
 
   it('should weight skill gaps and career clusters as primary factors (appear first)', async () => {
     await fc.assert(
-      fc.property(
+      fc.asyncProperty(
         validAssessmentResultsArbitrary,
-        (assessmentResults) => {
-          const profileText = buildProfileText(assessmentResults);
+        async (assessmentResults) => {
+          const profileText = await buildProfileText(assessmentResults);
           
           // Property: Skill gaps section should appear before employability section (Requirement 2.2)
           // We check for section headers rather than individual values to avoid false positives
@@ -264,15 +264,15 @@ describe('Property 3: Profile Text Completeness', () => {
     );
   });
 
-  it('should throw error for null or undefined assessment results', () => {
+  it('should throw error for null or undefined assessment results', async () => {
     // Property: buildProfileText should throw for invalid input
-    expect(() => buildProfileText(null as any)).toThrow('Assessment results are required');
-    expect(() => buildProfileText(undefined as any)).toThrow('Assessment results are required');
+    await expect(buildProfileText(null as any)).rejects.toThrow('Assessment results are required');
+    await expect(buildProfileText(undefined as any)).rejects.toThrow('Assessment results are required');
   });
 
-  it('should throw error for assessment results with no skill gaps or career clusters', () => {
+  it('should throw error for assessment results with no skill gaps or career clusters', async () => {
     // Property: buildProfileText should throw when no meaningful data exists
-    expect(() => buildProfileText({})).toThrow('Assessment results must contain skill gaps or career clusters');
-    expect(() => buildProfileText({ skillGap: {}, careerFit: {} })).toThrow('Assessment results must contain skill gaps or career clusters');
+    await expect(buildProfileText({})).rejects.toThrow('Assessment results must contain skill gaps or career clusters');
+    await expect(buildProfileText({ skillGap: {}, careerFit: {} })).rejects.toThrow('Assessment results must contain skill gaps or career clusters');
   });
 });

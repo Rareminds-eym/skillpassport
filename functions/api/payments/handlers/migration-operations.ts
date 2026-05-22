@@ -2,10 +2,6 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleMigrationOperations(context);
-});
-
 export async function handleMigrationOperations(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
   const userId = context.data.user.sub;
@@ -17,32 +13,36 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
 
     if (action === 'getMigrationMapping') {
       const { planCode } = body;
-      const { data: plan, error: planError } = await supabase.from('subscription_plans').select('id, plan_code, name').eq('plan_code', planCode).single();
+      const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name, base_features').eq('plan_code', planCode).single();
       if (planError) return new Response(JSON.stringify({ success: false, error: 'PLAN_NOT_FOUND' }), { status: 200 });
 
-      const { data: planFeatures } = await supabase.from('subscription_plan_features').select('*').eq('plan_id', plan.id).eq('is_included', true);
-      const { data: addOns } = await supabase.from('subscription_plan_features').select('*').eq('is_addon', true);
-      const addOnMap = new Map((addOns || []).map(a => [a.feature_key, a]));
+      const addonsResp = await env.SSO_SERVICE.fetch(new Request('http://sso-worker/api/addon-catalog', { method: 'GET' }));
+      if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
+      const { addons } = await addonsResp.json() as { addons: any[] };
 
-      const mappedFeatures = (planFeatures || []).filter(pf => addOnMap.has(pf.feature_key)).map(pf => {
-        const addOn = addOnMap.get(pf.feature_key);
-        return { feature_key: pf.feature_key, feature_name: pf.feature_name, addon_price_monthly: addOn?.addon_price_monthly, addon_price_annual: addOn?.addon_price_annual };
+      const addOnMap = new Map((addons || []).map(a => [a.feature_key, a]));
+
+      const planFeatures = Array.isArray(plan.base_features) ? plan.base_features : [];
+      const mappedFeatures = planFeatures.filter(featureKey => addOnMap.has(featureKey)).map(featureKey => {
+        const addOn = addOnMap.get(featureKey);
+        return { feature_key: featureKey, feature_name: addOn.name || addOn.feature_name, addon_price_monthly: parseFloat(addOn.price_monthly) || 0, addon_price_annual: parseFloat(addOn.price_annual) || 0 };
       });
       return new Response(JSON.stringify({ success: true, data: { planCode, planName: plan.name, planId: plan.id, features: mappedFeatures } }), { status: 200 });
     }
 
     if (action === 'calculatePriceProtection') {
-      const { data: subscription } = await supabase.from('subscriptions').select('id, plan_id, status, created_at, plan_amount').eq('user_id', userId).eq('status', 'active').single();
+      const { data: subscription } = await supabase.from('subscription_cache').select('id, plan_id, status, created_at, plan_amount, plan_code, plan_name, features').eq('user_id', userId).eq('status', 'active').single();
       if (!subscription) return new Response(JSON.stringify({ success: false, error: 'NO_ACTIVE_SUBSCRIPTION' }), { status: 200 });
+
+      const addonsResp = await env.SSO_SERVICE.fetch(new Request('http://sso-worker/api/addon-catalog', { method: 'GET' }));
+      if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
+      const { addons } = await addonsResp.json() as { addons: any[] };
+
+      const addOnMap = new Map((addons || []).map(a => [a.feature_key, a]));
       
-      const { data: plan } = await supabase.from('subscription_plans').select('id, plan_code, name').eq('id', subscription.plan_id).single();
-      
-      const { data: planFeatures } = await supabase.from('subscription_plan_features').select('*').eq('plan_id', plan?.id).eq('is_included', true);
-      const { data: addOns } = await supabase.from('subscription_plan_features').select('*').eq('is_addon', true);
-      const addOnMap = new Map((addOns || []).map(a => [a.feature_key, a]));
-      
-      const newPrice = (planFeatures || []).filter(pf => addOnMap.has(pf.feature_key)).reduce((sum, pf) => sum + (addOnMap.get(pf.feature_key)?.addon_price_monthly || 0), 0);
-      const originalPrice = subscription.plan_amount || 0;
+      const planFeatures = Array.isArray(subscription.features) ? subscription.features : [];
+      const newPrice = planFeatures.filter(featureKey => addOnMap.has(featureKey)).reduce((sum, featureKey) => sum + (parseFloat(addOnMap.get(featureKey)?.price_monthly) || 0), 0);
+      const originalPrice = parseFloat(subscription.plan_amount) || 0;
       const eligible = newPrice > originalPrice;
       const protectedUntil = new Date(); protectedUntil.setFullYear(protectedUntil.getFullYear() + 1);
 

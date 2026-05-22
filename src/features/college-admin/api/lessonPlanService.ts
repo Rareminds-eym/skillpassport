@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -63,7 +62,7 @@ export interface CollegeLessonPlan {
 
 // Get current user's college ID
 async function getCurrentUserCollegeId(): Promise<string | null> {
-  const { data: { user } } = await getCurrentUser();
+  const user = useAuthStore.getState().user;
   if (!user) return null;
 
   // Try college_lecturers first
@@ -333,7 +332,7 @@ export const lessonPlanService = {
    */
   async createLessonPlan(data: Omit<CollegeLessonPlan, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'college_id'>): Promise<{ success: boolean; data?: CollegeLessonPlan; error?: any }> {
     try {
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }
@@ -399,7 +398,7 @@ export const lessonPlanService = {
    */
   async updateLessonPlan(id: string, updates: Partial<CollegeLessonPlan>): Promise<{ success: boolean; data?: CollegeLessonPlan; error?: any }> {
     try {
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }
@@ -462,7 +461,7 @@ export const lessonPlanService = {
         return { success: false, error: { message: 'Unable to determine user college' } };
       }
 
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }

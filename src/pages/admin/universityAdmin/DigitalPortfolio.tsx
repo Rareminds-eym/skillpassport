@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { SearchBar } from '@/shared/ui';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+
 
 const logger = getLogger('university-admin-digital-portfolio');
 
@@ -225,7 +225,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       
       // If not in localStorage, check Supabase auth
       if (!universityId) {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (user) {
           const { data: dbUser } = await supabase
             .from('users')
@@ -281,7 +281,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       }
       
       if (!universityId) {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (user) {
           const { data: dbUser } = await supabase
             .from('users')

@@ -1,3 +1,4 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Logging Configuration for Organization Subscription Management
  * 
@@ -118,7 +119,7 @@ class Logger {
   private sendToAggregator(_entry: LogEntry): void {
     // TODO: Integrate with log aggregation service (e.g., Datadog, Logtail)
     // Example:
-    // fetch(LOG_AGGREGATOR_URL, {
+    // ssoClient.fetch(LOG_AGGREGATOR_URL, {
     //   method: 'POST',
     //   headers: { 'Content-Type': 'application/json' },
     //   body: JSON.stringify(_entry),

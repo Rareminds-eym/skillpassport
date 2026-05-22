@@ -63,8 +63,8 @@ const Header = ({ activeTab, setActiveTab }) => {
   // Get subscription data for feature gating
   const subscriptionContext = useSubscriptionContext();
   const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
-  const isFreemium = userPlan === PLAN_IDS.PAY_AS_YOU_GO;
+  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
+  const isFreemium = userPlan === PLAN_IDS.FREEMIUM;
 
   // Map navigation items to feature keys
   const featureKeyMap = {

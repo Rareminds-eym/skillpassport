@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * User Entity - API Queries
  * Data fetching functions for user data
@@ -54,7 +53,8 @@ export const getUsers = async (filters?: {
 
 
 export const getCurrentUser = async (): Promise<User | null> => {
-  const { data: { user }, error } = await getCurrentUser();
+  const user = useAuthStore.getState().user;
+    const error = null;
   
   if (error || !user) return null;
   

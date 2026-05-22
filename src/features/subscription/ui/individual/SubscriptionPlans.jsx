@@ -8,6 +8,7 @@ import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subsc
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from '@/shared/lib/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription/lib';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 /**
@@ -346,7 +347,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   const isContactSales = plan.contactSales;
   
   // Check if user is on Freemium plan
-  const isFreemiumUser = subscriptionData && subscriptionData.planCode === PLAN_IDS.PAY_AS_YOU_GO;
+  const isFreemiumUser = subscriptionData && subscriptionData.planCode === PLAN_IDS.FREEMIUM;
 
   // Group features by category for better display
   const featuresByCategory = useMemo(() => {
@@ -582,7 +583,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
               onClick={handleClick}
               className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${isOrganizationMode
                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
-                : (plan.plan_code === 'pay_as_you_go' || plan.isFree)
+                : (plan.plan_code === 'freemium' || plan.isFree)
                   ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
                   : isUpgrade || plan.recommended
                     ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
@@ -594,7 +595,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                   <Building2 className="h-5 w-5" />
                   Buy for Organization
                 </>
-              ) : (plan.plan_code === 'pay_as_you_go' || plan.isFree) ? (
+              ) : (plan.plan_code === 'freemium' || plan.isFree) ? (
                 <>
                   <Sparkles className="h-5 w-5" />
                   Start Free
@@ -720,19 +721,19 @@ function SubscriptionPlans() {
     if (!dbPlans || dbPlans.length === 0) return [];
     
     // Check if Freemium plan exists in DB
-    const hasFreemium = dbPlans.some(p => p.plan_code === PLAN_IDS.PAY_AS_YOU_GO);
+    const hasFreemium = dbPlans.some(p => p.plan_code === PLAN_IDS.FREEMIUM);
     
     if (hasFreemium) {
       // Freemium exists in DB, ensure it's first
-      const freemiumPlan = dbPlans.find(p => p.plan_code === PLAN_IDS.PAY_AS_YOU_GO);
-      const otherPlans = dbPlans.filter(p => p.plan_code !== PLAN_IDS.PAY_AS_YOU_GO);
+      const freemiumPlan = dbPlans.find(p => p.plan_code === PLAN_IDS.FREEMIUM);
+      const otherPlans = dbPlans.filter(p => p.plan_code !== PLAN_IDS.FREEMIUM);
       return [freemiumPlan, ...otherPlans];
     }
     
     // Fallback: Add Freemium plan manually if not in DB
     const freemiumPlan = {
       id: 'freemium-temp',
-      plan_code: PLAN_IDS.PAY_AS_YOU_GO,
+      plan_code: PLAN_IDS.FREEMIUM,
       name: 'Freemium',
       price: 0,
       duration: 'lifetime',
@@ -888,7 +889,7 @@ function SubscriptionPlans() {
     }
 
     // Bypass Razorpay for Freemium tier
-    if (plan.plan_code === PLAN_IDS.PAY_AS_YOU_GO || plan.isFree) {
+    if (plan.plan_code === PLAN_IDS.FREEMIUM || plan.isFree) {
       console.log('✅ Freemium plan selected, creating subscription without payment');
       handleFreemiumSubscription(plan);
       return;
@@ -911,12 +912,16 @@ function SubscriptionPlans() {
   // Handler for Freemium subscription creation
   const handleFreemiumSubscription = useCallback(async (plan) => {
     try {
-      const response = await fetch('/api/payments/create-freemium-subscription', {
+      // Auth handled automatically by ssoClient.fetch()
+      const response = await ssoClient.fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           userId: user.id, 
-          email: user.email 
+          email: user.email,
+          amount: 0,
+          planId: plan.id,
+          planName: plan.plan_code
         })
       });
 

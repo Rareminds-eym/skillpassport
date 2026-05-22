@@ -1,4 +1,12 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+/**
+ * Add-on Payment Service
+ * Handles all add-on specific payment operations.
+ * 
+ * Authentication is handled automatically by ssoClient.fetch() from @rareminds-eym/auth-client.
+ * No manual token management required.
+ */
+
+import { ssoClient } from '@/shared/api/ssoClient';
 import { apiGet } from '@/shared/api/apiClient';
 import { extractErrorMessage } from './paymentsApiService';
 
@@ -9,44 +17,13 @@ const getBaseUrl = () => {
 };
 
 /**
- * Helper function to make fetch requests with retry logic
- * @param {string} url - URL to fetch
- * @param {Object} options - Fetch options
- * @param {number} retries - Number of retries
- * @returns {Promise<Response>} - Fetch response
- */
-async function fetchWithRetry(url, options, retries = 3) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      return response;
-    } catch (error) {
-      if (attempt === retries) {
-        throw error;
-      }
-
-      // Wait before retrying (exponential backoff)
-      const delay = attempt * 1000;
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-}
-
-/**
  * Add-on Payment Service
  * Handles all add-on specific payment operations
  */
 export const addOnPaymentService = {
   /**
-   * Create an add-on order (used by purchaseAddOn in subscriptionStore) with retry logic
+   * Create an add-on order with retry logic
+   * Auth is handled automatically by ssoClient.fetch().
    * @param {Object} params - Order parameters
    * @param {string} params.featureKey - Feature key from subscription_plan_features
    * @param {string} params.userId - User ID
@@ -57,18 +34,9 @@ export const addOnPaymentService = {
    */
   async createAddOnOrder({ featureKey, userId, billingPeriod, userEmail, userName }) {
     try {
-      const { data: { session } } = await getCurrentSession();
-
-      if (!session) {
-        return { success: false, error: 'User not authenticated' };
-      }
-
-      const response = await fetchWithRetry(`${getBaseUrl()}/create-addon-order`, {
+      const response = await ssoClient.fetch(`${getBaseUrl()}/create-addon-order`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
           feature_key: featureKey,
@@ -101,6 +69,7 @@ export const addOnPaymentService = {
 
   /**
    * Create a bundle order
+   * Auth is handled automatically by ssoClient.fetch().
    * @param {Object} params - Order parameters
    * @param {string} params.bundleId - Bundle ID
    * @param {string} params.userId - User ID
@@ -111,18 +80,9 @@ export const addOnPaymentService = {
    */
   async createBundleOrder({ bundleId, userId, billingPeriod, userEmail, userName }) {
     try {
-      const { data: { session } } = await getCurrentSession();
-
-      if (!session) {
-        return { success: false, error: 'User not authenticated' };
-      }
-
-      const response = await fetch(`${getBaseUrl()}/create-bundle-order`, {
+      const response = await ssoClient.fetch(`${getBaseUrl()}/create-bundle-order`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
           bundle_id: bundleId,
@@ -145,7 +105,7 @@ export const addOnPaymentService = {
           bundleName: data.bundle_name,
           bundleId: bundleId, // Include for verification
           billingPeriod: billingPeriod, // Include for verification
-          razorpayKeyId: data.razorpay_key_id, // Key ID from payment worker response
+          razorpayKeyId: data.razorpay_key_id || data.key || import.meta.env.VITE_RAZORPAY_KEY_ID, // Key ID from payment worker response
           userEmail,
           userName,
         }
@@ -156,7 +116,7 @@ export const addOnPaymentService = {
   },
 
   /**
-   * Initiate an add-on purchase (legacy method)
+   * Initiate an add-on purchase
    * @param {string} userId - User ID
    * @param {string} featureKey - Feature key from subscription_plan_features
    * @param {string} billingPeriod - 'monthly' or 'annual'
@@ -184,39 +144,23 @@ export const addOnPaymentService = {
 
   /**
    * Verify add-on payment after Razorpay callback with retry logic
-   * @param {string} razorpayOrderId - Razorpay order ID
-   * @param {string} razorpayPaymentId - Razorpay payment ID
-   * @param {string} razorpaySignature - Razorpay signature
-   * @param {number} retries - Number of retries (default: 3)
-   * @returns {Promise<Object>} - Verification result
+   * Auth is handled automatically by ssoClient.fetch().
    */
-  async verifyAddonPayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, retries = 3) {
+  async verifyAddonPayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, featureKey, amount, billingPeriod, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        const { data: { session } } = await getCurrentSession();
-
-        if (!session) {
-          throw new Error('User not authenticated');
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-        const response = await fetch(`${getBaseUrl()}/verify-addon-payment`, {
+        const response = await ssoClient.fetch(`${getBaseUrl()}/verify-addon-payment`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             razorpay_order_id: razorpayOrderId,
             razorpay_payment_id: razorpayPaymentId,
             razorpay_signature: razorpaySignature,
+            feature_key: featureKey,
+            amount: amount,
+            billing_period: billingPeriod
           }),
-          signal: controller.signal,
         });
-
-        clearTimeout(timeoutId);
 
         const data = await response.json();
 
@@ -226,71 +170,45 @@ export const addOnPaymentService = {
 
         return {
           success: true,
-          entitlementId: data.entitlement_id,
-          featureKey: data.feature_key,
-          endDate: data.end_date,
-          message: data.message,
+          verified: true,
+          data
         };
       } catch (error) {
-        // If we have retries left and it's a network error, retry
-        if (attempt < retries && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
-          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        if (attempt < retries) {
+          // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.pow(2, attempt - 1) * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
           return attemptVerification(attempt + 1);
         }
-
-        throw error;
+        return {
+          success: false,
+          verified: false,
+          error: error.message
+        };
       }
     };
 
-    try {
-      return await attemptVerification(1);
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Verification failed',
-      };
-    }
+    return attemptVerification(1);
   },
 
   /**
-   * Verify bundle payment after Razorpay callback with retry logic
-   * @param {string} razorpayOrderId - Razorpay order ID
-   * @param {string} razorpayPaymentId - Razorpay payment ID
-   * @param {string} razorpaySignature - Razorpay signature
-   * @param {string} bundleId - Bundle ID
-   * @param {string} billingPeriod - 'monthly' or 'annual'
-   * @param {number} retries - Number of retries (default: 3)
-   * @returns {Promise<Object>} - Verification result
+   * Verify bundle payment after Razorpay callback
    */
-  async verifyBundlePayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, bundleId, billingPeriod, retries = 3) {
+  async verifyBundlePayment(razorpayOrderId, razorpayPaymentId, razorpaySignature, bundleId, amount, billingPeriod, retries = 3) {
     const attemptVerification = async (attempt) => {
       try {
-        const { data: { session } } = await getCurrentSession();
-
-        if (!session) {
-          throw new Error('User not authenticated');
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-
-        const response = await fetch(`${getBaseUrl()}/verify-bundle-payment`, {
+        const response = await ssoClient.fetch(`${getBaseUrl()}/verify-bundle-payment`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             razorpay_order_id: razorpayOrderId,
             razorpay_payment_id: razorpayPaymentId,
             razorpay_signature: razorpaySignature,
             bundle_id: bundleId,
-            billing_period: billingPeriod,
+            amount: amount,
+            billing_period: billingPeriod
           }),
-          signal: controller.signal,
         });
-
-        clearTimeout(timeoutId);
 
         const data = await response.json();
 
@@ -300,65 +218,25 @@ export const addOnPaymentService = {
 
         return {
           success: true,
-          entitlements: data.entitlements,
-          bundleName: data.bundle_name,
-          endDate: data.end_date,
-          message: data.message,
+          verified: true,
+          data
         };
       } catch (error) {
-        // If we have retries left and it's a network error, retry
-        if (attempt < retries && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
-          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        if (attempt < retries) {
+          const delay = Math.pow(2, attempt - 1) * 1000;
+          await new Promise(resolve => setTimeout(resolve, delay));
           return attemptVerification(attempt + 1);
         }
-
-        throw error;
+        return {
+          success: false,
+          verified: false,
+          error: error.message
+        };
       }
     };
 
-    try {
-      return await attemptVerification(1);
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Verification failed',
-      };
-    }
-  },
-
-  /**
-   * Get user's add-on purchase history
-   * @param {string} userId - User ID
-   * @returns {Promise<Array>} - List of add-on purchases
-   */
-  async getAddonPurchaseHistory(userId: string) {
-    try {
-      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
-        `/payments/addon-orders?action=getAddonPurchaseHistory`
-      );
-      return result.success ? result.data || [] : [];
-    } catch (error) {
-      return [];
-    }
-  },
-
-  /**
-   * Check if user has a pending addon order
-   * @param {string} userId - User ID
-   * @param {string} featureKey - Feature key
-   * @returns {Promise<Object|null>} - Pending order if exists
-   */
-  async getPendingAddonOrder(userId: string, featureKey: string) {
-    try {
-      const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
-        `/payments/addon-orders?action=getPendingAddonOrder&featureKey=${featureKey}`
-      );
-      return result.success ? result.data : null;
-    } catch (error) {
-      return null;
-    }
+    return attemptVerification(1);
   },
 };
 
-// Default export for compatibility
 export default addOnPaymentService;

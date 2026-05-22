@@ -1,3 +1,4 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Authenticated Media Service
  * 
@@ -5,7 +6,6 @@
  * Ensures media can only be accessed by enrolled users on their registered device.
  */
 
-import { getCurrentSession } from "./authUtils";
 import { getBrowserFingerprint, getDeviceContext } from "@/shared/lib/fingerprint";
 import { getLogger } from '@/shared/config/logging';
 
@@ -33,24 +33,20 @@ export async function getAuthenticatedMediaUrl(
 ): Promise<string | null> {
   try {
     // Get current session token
-    const { data: { session } } = await getCurrentSession();
+    const user = useAuthStore.getState().user;
     
-    if (!session?.access_token) {
-      logger.error('No active session');
-      return null;
-    }
-
+    
     // Get browser fingerprint and session ID
     const fingerprint = await getBrowserFingerprint();
     const deviceContext = getDeviceContext();
     const sessionId = deviceContext.sessionId;
 
     // Call authenticated URL endpoint
-    const response = await fetch('/api/storage/get-authenticated-url', {
+    const response = await ssoClient.fetch('/api/storage/get-authenticated-url', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
+        
       },
       body: JSON.stringify({
         fileUrl,

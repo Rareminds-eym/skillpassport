@@ -28,8 +28,7 @@ export interface User {
   role?: string;
 }
 
-// Auth Session Service (SSO adapter for backward compatibility)
-export { authSessionService, getUser, getSession } from './authSessionService';
+// Auth Session Service removed
 
 // OTP Service (deprecated — kept as no-op stubs for consumers that haven't migrated)
 export const sendOtp = async () => ({ success: false, error: 'OTP is no longer supported. Use password login.' });

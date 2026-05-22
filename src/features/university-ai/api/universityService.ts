@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -96,7 +95,7 @@ export const createUniversity = async (universityData, userId = null) => {
         let uid = userId;
 
         if (!uid) {
-            const { data: { user } } = await getCurrentUser();
+            const user = useAuthStore.getState().user;
             if (user) {
                 uid = user.id;
             }
@@ -176,7 +175,7 @@ export const createUniversityCollege = async (collegeData, userId = null) => {
         let uid = userId;
 
         if (!uid) {
-            const { data: { user } } = await getCurrentUser();
+            const user = useAuthStore.getState().user;
             if (user) {
                 uid = user.id;
             }
