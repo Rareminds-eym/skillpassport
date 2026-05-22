@@ -3,7 +3,6 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api/supabaseClient';
 import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
 import {
   LibraryHeader,
   LibraryStatsCards,
@@ -275,7 +274,7 @@ export default function LibraryModule() {
       }
 
       if (!schoolId && !collegeId) {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
 
         if (user) {
           userId = user.id;

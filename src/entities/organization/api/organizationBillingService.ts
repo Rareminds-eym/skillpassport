@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Organization Billing Service
  * 
@@ -7,6 +6,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  */
 
 import { supabase } from '@/shared/api';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('organizationBilling');
@@ -168,36 +168,25 @@ export class OrganizationBillingService {
       // 2. Get payment history from auth DB via API
       let payments: any[] = [];
       try {
-        const { data: { session } } = await getCurrentSession();
-        if (session?.access_token) {
-          const origin = window.location.origin;
-          const res = await fetch(
-            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&limit=20`,
-            {
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
+        const origin = window.location.origin;
+        const res = await ssoClient.fetch(
+            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&limit=20`, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
           if (res.ok) {
             const json = await res.json();
             payments = json.transactions || json.data || [];
           }
-        }
       } catch (payErr) {
         logger.error('Error fetching payment history', payErr as Error);
       }
 
       // 3. Get addon purchases for organization
-      // Note: addon_pending_orders uses addon_feature_key (text), not a foreign key to subscription_addons
-      const { data: addons, error: addonError } = await supabase
-        .from('addon_pending_orders')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('status', 'completed');
-
-      if (addonError) throw addonError;
+      // We no longer query the deprecated addon_pending_orders table.
+      // Instead, we filter addon purchases from the payment history.
+      const addons = payments.filter(p => p.transaction_type === 'addon' && p.status === 'success');
 
       // 4. Calculate current period
       const now = new Date();
@@ -236,10 +225,10 @@ export class OrganizationBillingService {
       const addonMap = new Map<string, AddonSummary>();
 
       (addons || []).forEach(addon => {
-        const addonKey = addon.addon_feature_key;
+        const addonKey = addon.metadata?.feature_key || 'unknown';
         const existing = addonMap.get(addonKey);
-        const memberCount = addon.target_member_ids?.length || 1;
-        // Use the amount from the order itself since there's no subscription_addons table
+        const memberCount = addon.metadata?.target_member_ids?.length || addon.seat_count || 1;
+        // Use the amount from the transaction
         const cost = parseFloat(addon.amount || 0);
 
         if (existing) {
@@ -248,7 +237,7 @@ export class OrganizationBillingService {
         } else {
           addonMap.set(addonKey, {
             addonId: addonKey,
-            addonName: addonKey?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown Addon',
+            addonName: addonKey.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
             memberCount,
             monthlyCost: cost
           });
@@ -333,19 +322,13 @@ export class OrganizationBillingService {
       // 1. Get transaction details from auth DB via API
       let transaction: any = null;
       try {
-        const { data: { session } } = await getCurrentSession();
-        if (!session?.access_token) throw new Error('Not authenticated');
-
         const origin = window.location.origin;
-        const res = await fetch(
-          `${origin}/api/payments/get-user-payments?transaction_id=${transactionId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json'
-            }
+        const res = await ssoClient.fetch(
+          `${origin}/api/payments/get-user-payments?transaction_id=${transactionId}`, {
+          headers: {
+            'Content-Type': 'application/json'
           }
-        );
+        });
         if (res.ok) {
           const json = await res.json();
           const transactions = json.transactions || json.data || [];
@@ -470,23 +453,17 @@ export class OrganizationBillingService {
       // Get all successful payment transactions from auth DB via API
       let transactions: any[] = [];
       try {
-        const { data: { session } } = await getCurrentSession();
-        if (session?.access_token) {
-          const origin = window.location.origin;
-          const res = await fetch(
-            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&status=success&limit=${limit}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
+        const origin = window.location.origin;
+        const res = await ssoClient.fetch(
+            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&status=success&limit=${limit}`, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
           if (res.ok) {
             const json = await res.json();
             transactions = json.transactions || json.data || [];
           }
-        }
       } catch (fetchErr) {
         logger.error('Error fetching transactions from API', fetchErr as Error);
       }
@@ -537,22 +514,14 @@ export class OrganizationBillingService {
    */
   async downloadInvoice(invoiceId: string): Promise<Blob> {
     try {
-      const { data: { session } } = await getCurrentSession();
-      if (!session?.access_token) {
-        throw new Error('Not authenticated');
-      }
-
       const origin = window.location.origin;
-      const response = await fetch(
-        `${origin}/api/payments/org-billing/invoice/${invoiceId}/download`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
+      const response = await ssoClient.fetch(
+        `${origin}/api/payments/org-billing/invoice/${invoiceId}/download`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
         }
-      );
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -586,28 +555,31 @@ export class OrganizationBillingService {
 
       if (subError) throw subError;
 
-      // Get addon costs
-      // Note: addon_pending_orders uses addon_feature_key (text), not a foreign key to subscription_addons
-      const { data: addons, error: addonError } = await supabase
-        .from('addon_pending_orders')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('status', 'completed');
-
-      if (addonError) throw addonError;
-
       // Calculate subscription costs
       let subscriptionCost = 0;
       (subscriptions || []).forEach(sub => {
         subscriptionCost += this.calculateMonthlyCost(sub);
       });
 
-      // Calculate addon costs
+      // Get addon costs from auth DB via API
       let addonCost = 0;
-      (addons || []).forEach(addon => {
-        // Use the amount from the order itself
-        addonCost += parseFloat(addon.amount || 0);
-      });
+      try {
+        const origin = window.location.origin;
+        const res = await ssoClient.fetch(
+            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&limit=50`, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const payments = json.transactions || json.data || [];
+          payments.filter((p: any) => p.transaction_type === 'addon' && p.status === 'success')
+                 .forEach((addon: any) => {
+                   addonCost += parseFloat(addon.amount || 0);
+                 });
+        }
+      } catch (addonError) {
+        logger.error('Error fetching addons for projection', addonError as Error);
+      }
 
       const totalBeforeTax = subscriptionCost + addonCost;
       const taxes = totalBeforeTax * 0.18;

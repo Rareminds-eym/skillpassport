@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Usage Statistics Service
  * 
@@ -17,7 +16,7 @@ const logger = getLogger('usage-statistics');
  */
 export const getUserUsageStatistics = async () => {
   try {
-    const { data: { user } } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
     
     if (!user) {
       return {

@@ -19,11 +19,7 @@ import {
   ssoRecordTransaction,
   ssoSyncSubscription,
 } from '../../../lib/sso-client';
-import { syncSubscriptionCache } from '../../../lib/sync-shadow';
-
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleVerifyOrgPayment(context);
-});
+import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 
 function extractAuthToken(request: Request): string {
   const authHeader = request.headers.get('Authorization');
@@ -35,7 +31,7 @@ function extractAuthToken(request: Request): string {
 
 export async function handleVerifyOrgPayment(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string };
 
   try {
     let body: Record<string, unknown>;
@@ -159,6 +155,9 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
 
     // Step 4: Sync shadow table in app DB
     try {
+      // Ensure user exists in users_shadow (FK constraint for subscription_cache)
+      await syncUserShadow(supabase, user.sub, (user as any).email);
+
       const syncData = await ssoSyncSubscription(env, authToken, user.sub);
       if (syncData.subscription) {
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);

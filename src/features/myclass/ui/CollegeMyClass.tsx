@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useState, useEffect } from 'react';
 import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip } from 'lucide-react';
 
@@ -211,13 +210,10 @@ const CollegeMyClass: React.FC = () => {
 
     try {
       // Get user token from Supabase session
-      const { data: { session }, error: sessionError } = await getCurrentSession();
+      const user = useAuthStore.getState().user;
+    const sessionError = null;
 
-      if (!session?.access_token) {
-        showNotificationModal('error', 'Authentication Required', 'Authentication required. Please log in again.');
-        return;
-      }
-
+      
       // Simulate initial progress
       setUploadProgress(10);
 

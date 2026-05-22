@@ -11,21 +11,13 @@
  *   error = ...    → fetch failed
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getCurrentSession } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 // Use Pages Functions for payments (not direct worker access)
 const getBaseUrl = () => {
   const origin = window.location.origin;
   return `${origin}/api/payments`;
 };
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
-  return token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
-}
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
@@ -90,8 +82,7 @@ export function useSubscriptionPlansData(options = {}) {
       const url = `${getBaseUrl()}/subscription-plans?${params}`;
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(url, { headers });
+        const response = await ssoClient.fetch(url);
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
@@ -172,10 +163,8 @@ export function useSubscriptionPlan(planCode) {
       setError(null);
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(
-          `${getBaseUrl()}/subscription-plan?planCode=${encodeURIComponent(planCode)}`,
-          { headers }
+        const response = await ssoClient.fetch(
+          `${getBaseUrl()}/subscription-plan?planCode=${encodeURIComponent(planCode)}`
         );
 
         if (!response.ok) {
@@ -228,10 +217,8 @@ export function useSubscriptionFeaturesComparison() {
       setError(null);
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(
-          `${getBaseUrl()}/subscription-features`,
-          { headers }
+        const response = await ssoClient.fetch(
+          `${getBaseUrl()}/subscription-features`
         );
 
         if (!response.ok) {

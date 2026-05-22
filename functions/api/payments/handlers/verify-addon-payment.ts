@@ -18,10 +18,6 @@ import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../li
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoRecordTransaction } from '../../../lib/sso-client';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleVerifyAddonPayment(context);
-});
-
 function extractAuthToken(request: Request): string {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -32,7 +28,7 @@ function extractAuthToken(request: Request): string {
 
 export async function handleVerifyAddonPayment(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string; SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
     // Parse request body
@@ -60,10 +56,10 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
     }
 
     // Validate addon details
-    if (!body.addon_id || !body.addon_name) {
+    if (!body.feature_key) {
       return new Response(
         JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'addon_id and addon_name are required' },
+          error: { code: 'INVALID_INPUT', message: 'feature_key is required' },
         }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
@@ -77,70 +73,78 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       body.razorpay_signature as string
     );
 
-    // Step 2: Signature is valid — create addon purchase record in Supabase
-    const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
+    const priceAtPurchase = typeof body.amount === 'number' ? body.amount : 0;
+    const billingPeriod = (body.billing_period as string) || 'monthly';
 
-    const { data: purchase, error: purchaseError } = await supabase
-      .from('addon_purchases')
-      .insert({
+    // Step 2: Record purchase in Auth DB via SSO Worker
+    const ssoResponse = await env.SSO_SERVICE.fetch(new Request('http://sso-worker/api/addon-purchases/record', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.SERVICE_AUTH_SECRET}`,
+      },
+      body: JSON.stringify({
         user_id: user.sub,
-        addon_id: body.addon_id,
-        addon_name: body.addon_name,
-        amount: body.amount || null,
-        currency: (body.currency as string) || 'INR',
+        feature_key: body.feature_key,
+        billing_period: billingPeriod,
+        price_at_purchase: priceAtPurchase,
         razorpay_order_id: body.razorpay_order_id,
         razorpay_payment_id: body.razorpay_payment_id,
-        status: 'completed',
-        email: user.email || '',
+        razorpay_signature: body.razorpay_signature,
       })
-      .select()
-      .single();
+    }));
 
-    if (purchaseError) {
-      console.error('[VerifyAddonPayment] Failed to create addon purchase:', purchaseError);
-      // Signature is verified but purchase creation failed — return partial success (207)
-      return new Response(JSON.stringify({
-        success: true,
-        ...verifyResult,
-        purchase_created: false,
-        error: {
-          code: 'PURCHASE_CREATE_FAILED',
-          message: 'Payment verified but addon purchase record creation failed. Please contact support.',
-          details: purchaseError.message,
-        },
-      }), {
-        status: 207,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (!ssoResponse.ok) {
+      console.error('[VerifyAddonPayment] SSO Worker failed to record purchase:', await ssoResponse.text());
     }
 
-    // Record transaction in auth DB (non-blocking on failure)
+    // Step 3: Grant App DB entitlement locally for immediate access
+    const supabase = getServiceClient(env);
+    const endDate = new Date();
+    if (billingPeriod === 'annual') endDate.setFullYear(endDate.getFullYear() + 1);
+    else endDate.setMonth(endDate.getMonth() + 1);
+
+    const { data: entitlement, error: entError } = await supabase.from('user_entitlements').insert({
+      user_id: user.sub,
+      feature_key: body.feature_key as string,
+      status: 'active',
+      billing_period: billingPeriod,
+      price_at_purchase: priceAtPurchase,
+      razorpay_subscription_id: body.razorpay_order_id as string,
+      start_date: new Date().toISOString(),
+      end_date: endDate.toISOString()
+    }).select().single();
+
+    if (entError) {
+      console.error('[VerifyAddonPayment] Failed to create user entitlement:', entError);
+    }
+
+    // Record transaction in auth DB (non-blocking)
     try {
       const authToken = extractAuthToken(context.request);
       await ssoRecordTransaction(env, authToken, {
         user_id: user.sub,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
-        amount: typeof body.amount === 'number' ? body.amount : 0,
+        amount: priceAtPurchase,
         currency: (body.currency as string) || 'INR',
         status: 'success',
         transaction_type: 'addon',
-        metadata: { addon_id: body.addon_id, addon_name: body.addon_name },
+        metadata: { feature_key: body.feature_key },
       });
     } catch (txError) {
-      console.error('[VerifyAddonPayment] Transaction recording in auth DB failed (non-critical):', txError);
+      console.error('[VerifyAddonPayment] Transaction recording in auth DB failed:', txError);
     }
 
     return new Response(JSON.stringify({
       success: true,
       ...verifyResult,
       purchase_created: true,
-      purchase: {
-        id: purchase.id,
-        addon_id: purchase.addon_id,
-        addon_name: purchase.addon_name,
-        status: purchase.status,
-      },
+      purchase: entitlement ? {
+        id: entitlement.id,
+        feature_key: entitlement.feature_key,
+        status: entitlement.status,
+      } : null,
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

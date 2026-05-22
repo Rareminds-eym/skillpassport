@@ -1,3 +1,4 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Consolidated Learner Service
  * Handles all learner-related operations with TypeScript types
@@ -309,15 +310,16 @@ function transformProfileData(profile: ProfileInput | null, email: string, learn
 export const getlearnerByEmail = async (email: string): Promise<ServiceResponse> => {
   try {
     // Route through the secure backend endpoint to bypass RLS
-    const { getCurrentSession } = await import('@/shared/api/authUtils');
-    const { data: { session } } = await getCurrentSession();
+    const { ssoClient } = await import('@/shared/api/ssoClient');
+    const getCurrentSession = () => ({ data: { session: { access_token: ssoClient.getAccessToken() } } });
+    const user = useAuthStore.getState().user;
 
     const origin = window.location.origin;
-    const response = await fetch(`${origin}/api/learners/by-email?email=${encodeURIComponent(email)}`, {
+    const response = await ssoClient.fetch(`${origin}/api/learners/by-email?email=${encodeURIComponent(email)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        ...(ssoClient.getAccessToken() ? { } : {}),
       },
     });
 

@@ -11,10 +11,6 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { ssoGetUserTransactions } from '../../../lib/sso-client';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleGetSubscriptionPayments(context);
-});
-
 function extractAuthToken(request: Request): string {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) throw new Error('No auth token found');
@@ -22,7 +18,7 @@ function extractAuthToken(request: Request): string {
 }
 
 export async function handleGetSubscriptionPayments(context: AuthenticatedContext): Promise<Response> {
-  const env = context.env as { SSO_SERVICE: Fetcher };
+  const env = context.env as { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string };
   const userId = context.data.user.sub;
   const url = new URL(context.request.url);
   const subscriptionId = url.searchParams.get('subscriptionId');

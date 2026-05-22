@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * License Management Service
  * 
@@ -38,6 +37,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  */
 
 import { supabase } from '@/shared/api';
+import { useAuthStore } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('licenseManagement');
@@ -110,7 +110,7 @@ export class LicenseManagementService {
   async createLicensePool(request: CreatePoolRequest): Promise<LicensePool> {
     try {
       // Get current user
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('User not authenticated');
       }

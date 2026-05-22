@@ -12,14 +12,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { isStale } from '../../lib/sync-shadow';
 
 const PLAN_HIERARCHY = [
-  'pay_as_you_go',
+  'freemium',
   'basic',
   'professional',
   'enterprise',
   'enterprise_ecosystem',
 ];
 
-const PAY_AS_YOU_GO_FEATURES: Record<string, boolean> = {
+const FREEMIUM_FEATURES: Record<string, boolean> = {
   dashboard_access: true,
   profile_creation: true,
   marketplace_access: true,
@@ -92,8 +92,8 @@ export async function checkServerFeatureAccess(
       };
     }
 
-    if (planCode === 'pay_as_you_go') {
-      const hasAccess = PAY_AS_YOU_GO_FEATURES[feature] === true;
+    if (planCode === 'freemium') {
+      const hasAccess = FREEMIUM_FEATURES[feature] === true;
       return {
         hasAccess,
         reason: hasAccess ? undefined : 'Feature not included in Freemium plan',
@@ -180,11 +180,11 @@ export async function canUpgradeToPlan(
       return { canUpgrade: false, reason: 'Invalid plan code', currentPlanCode };
     }
 
-    const canUpgrade = targetIndex >= currentIndex;
+    const canUpgrade = targetIndex > currentIndex;
 
     return {
       canUpgrade,
-      reason: canUpgrade ? undefined : 'Cannot downgrade to lower tier',
+      reason: canUpgrade ? undefined : 'Cannot downgrade or make lateral moves to the same tier',
       currentPlanCode,
     };
   } catch (error) {
@@ -222,9 +222,32 @@ export function requireFeature(feature: string) {
   };
 }
 
-async function refreshCacheAsync(supabase: SupabaseClient, _userId: string): Promise<void> {
-  // This is a placeholder for the self-healing refresh.
-  // In production, this would call the SSO worker sync endpoint.
-  // For now, just log — the reconciliation cron handles drift correction.
-  console.log('[ServerFeatureGating] Stale cache detected, reconciliation will correct');
+async function refreshCacheAsync(supabase: SupabaseClient, userId: string): Promise<void> {
+  // Self-healing: when a stale cache entry is detected during a feature check,
+  // attempt to refresh it from the auth DB. Since this module doesn't have
+  // access to the Cloudflare env (SSO_SERVICE binding), we use the supabase
+  // client to call the `refresh_subscription_cache` RPC if it exists,
+  // or fall back to marking the entry for the reconciliation cron to pick up.
+  try {
+    // Attempt direct sync via database function (if deployed)
+    const { error: rpcError } = await supabase.rpc('refresh_subscription_cache_for_user', {
+      target_user_id: userId,
+    });
+
+    if (rpcError) {
+      // RPC not deployed or failed — this is expected pre-migration.
+      // The nightly reconciliation cron will correct the stale data.
+      // Also, the next payment handler call will write-through sync.
+      console.warn(
+        `[ServerFeatureGating] Self-heal RPC unavailable for user ${userId}: ${rpcError.message}. ` +
+        'Reconciliation cron will correct on next cycle.'
+      );
+    } else {
+      console.log(`[ServerFeatureGating] Self-healed stale cache for user ${userId}`);
+    }
+  } catch (err) {
+    // Non-critical — feature gating still uses whatever cache data exists.
+    // The write-through sync on the next mutation will correct this.
+    console.warn('[ServerFeatureGating] Self-heal failed (non-critical):', err);
+  }
 }

@@ -1,5 +1,4 @@
 import { supabase } from '@/shared/api/supabaseClient';
-import { getCurrentUser, getCurrentSession } from '@/shared/api/authUtils';
 
 /**
  * Debug utility for recent updates functionality
@@ -10,7 +9,8 @@ export const debugRecentUpdates = async (userEmail = null) => {
   
   try {
     // Test 1: Check authentication status (via SSO, not Supabase auth)
-    const { data: { user }, error: authError } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
+    const authError = null;
     
     if (authError) {
     }
@@ -19,11 +19,12 @@ export const debugRecentUpdates = async (userEmail = null) => {
     
     // Test 1.5: Check current session more thoroughly
     if (isAuthenticated) {
-      const { data: { session }, error: sessionError } = await getCurrentSession();
+      const user = useAuthStore.getState().user;
+    const sessionError = null;
       console.log('Session check:', {
         hasSession: !!session, 
         sessionError: sessionError?.message,
-        accessToken: session?.access_token ? 'Present' : 'Missing',
+        accessToken: ssoClient.getAccessToken() ? 'Present' : 'Missing',
         refreshToken: session?.refresh_token ? 'Present' : 'Missing'
       });
     }
@@ -196,7 +197,8 @@ const createSampleRecentUpdates = async (userId) => {
 export const clearRecentUpdatesDebugData = async () => {
   try {
     
-    const { data: { user }, error: authError } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
+    const authError = null;
     if (authError || !user) {
       return false;
     }
@@ -223,7 +225,8 @@ export const clearRecentUpdatesDebugData = async () => {
  * Get comprehensive debug info
  */
 export const getRecentUpdatesDebugInfo = async () => {
-  const { data: { user }, error: authError } = await getCurrentUser();
+  const user = useAuthStore.getState().user;
+    const authError = null;
   
   return {
     timestamp: new Date().toISOString(),
@@ -273,8 +276,9 @@ const getSampleDataCount = async () => {
  * Quick auth check function for browser console
  */
 export const checkAuth = async () => {
-  const { data: { user }, error } = await getCurrentUser();
-  const { data: { session } } = await getCurrentSession();
+  const user = useAuthStore.getState().user;
+    const error = null;
+  const user = useAuthStore.getState().user;
   
   
   return { user, session, error };

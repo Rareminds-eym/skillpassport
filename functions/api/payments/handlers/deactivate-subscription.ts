@@ -21,13 +21,9 @@ function extractAuthToken(request: Request): string {
   return authHeader.slice(7);
 }
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleDeactivateSubscription(context);
-});
-
 export async function handleDeactivateSubscription(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; SSO_SERVICE: Fetcher };
+  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string };
 
   try {
     const authToken = extractAuthToken(context.request);

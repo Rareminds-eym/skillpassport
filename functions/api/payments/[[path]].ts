@@ -26,7 +26,6 @@
  * - POST /api/payments/create-org-order
  * - POST /api/payments/verify-org-payment
  * - POST /api/payments/org-subscriptions/purchase
- * - POST /api/payments/create-freemium-subscription
  * - GET  /api/payments/health
  */
 
@@ -50,7 +49,6 @@ import { handleLicensePoolQueries } from './handlers/license-pool-queries';
 import { handleMigrationOperations } from './handlers/migration-operations';
 import { handleAddonCatalog } from './handlers/addon-catalog';
 import { handleAddonAnalytics } from './handlers/addon-analytics';
-import { handleAddonOrders } from './handlers/addon-orders';
 import { handleGetUserEntitlements } from './handlers/get-user-entitlements';
 import { handleHasFeatureAccess } from './handlers/has-feature-access';
 import { handleGetAvailableAddons } from './handlers/get-available-addons';
@@ -72,7 +70,7 @@ import { handleCreateEventOrder } from './handlers/create-event-order';
 import { handleCreateOrgOrder } from './handlers/create-org-order';
 import { handleVerifyOrgPayment } from './handlers/verify-org-payment';
 import { handleOrgSubscriptionsPurchase } from './handlers/org-subscriptions-purchase';
-import { handleCreateFreemiumSubscription } from './handlers/create-freemium-subscription';
+
 
 function methodNotAllowed(): Response {
   return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -217,10 +215,7 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
     return handleOrgSubscriptionsPurchase(context);
   }
 
-  if (path === '/create-freemium-subscription') {
-    if (method !== 'POST') return methodNotAllowed();
-    return handleCreateFreemiumSubscription(context);
-  }
+
 
   // --- GET routes ---
 
@@ -272,11 +267,6 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
   if (path === '/addon-catalog') {
     if (method !== 'GET') return methodNotAllowed();
     return handleAddonCatalog(context);
-  }
-
-  if (path === '/addon-orders') {
-    if (method !== 'GET') return methodNotAllowed();
-    return handleAddonOrders(context);
   }
 
   if (path === '/get-user-entitlements') {

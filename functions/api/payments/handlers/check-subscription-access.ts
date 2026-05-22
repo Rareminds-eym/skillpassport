@@ -12,10 +12,6 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleCheckSubscriptionAccess(context);
-});
-
 export async function handleCheckSubscriptionAccess(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -28,7 +24,7 @@ export async function handleCheckSubscriptionAccess(context: AuthenticatedContex
       .from('subscription_cache')
       .select('*')
       .eq('user_id', user.sub)
-      .in('status', ['active', 'paused'])
+      .in('status', ['active', 'paused', 'grace_period'])
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -75,6 +71,28 @@ export async function handleCheckSubscriptionAccess(context: AuthenticatedContex
           accessReason: 'active_subscription',
           subscription,
           showWarning: false,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // If the auth DB has already marked this as grace_period, honour it directly
+    if (subscription.status === 'grace_period') {
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const daysSinceExpiry = endDate < now
+        ? Math.ceil((now.getTime() - endDate.getTime()) / msPerDay)
+        : 0;
+      const gracePeriodDays = 7;
+      return new Response(
+        JSON.stringify({
+          success: true,
+          hasAccess: true,
+          accessReason: 'grace_period',
+          subscription,
+          showWarning: true,
+          warningType: 'grace_period',
+          warningMessage: `Your subscription is in a grace period. ${gracePeriodDays - daysSinceExpiry} day(s) remaining. Please renew to maintain access.`,
+          daysUntilExpiry: -(daysSinceExpiry),
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       );

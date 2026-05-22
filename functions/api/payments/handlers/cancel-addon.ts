@@ -16,10 +16,6 @@ import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
 import { CancelAddonSchema, validateBody } from '../../../lib/validation';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCancelAddon(context);
-});
-
 export async function handleCancelAddon(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };

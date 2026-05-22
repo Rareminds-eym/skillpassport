@@ -10,14 +10,14 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
-
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateOrder(context);
-});
+import { getServiceClient } from '../../../lib/supabase';
+import { ssoCreateFreemiumSubscription, ssoSyncSubscription } from '../../../lib/sso-client';
+import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 
 export async function handleCreateOrder(context: AuthenticatedContext): Promise<Response> {
+  const startTime = Date.now();
   const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv;
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string, SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
     // Parse request body
@@ -32,14 +32,76 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     }
 
     // Validate required fields
-    if (!body.amount || typeof body.amount !== 'number') {
+    if (body.amount === undefined || typeof body.amount !== 'number') {
       return new Response(
         JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'amount is required and must be a number' } }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Ensure RAZORPAY_KEY_ID is available for frontend checkout
+    // Check if it's a freemium or zero-cost plan
+    const isFreemium = body.amount === 0 || body.planId === 'freemium' || body.planName?.toString().toLowerCase() === 'freemium';
+
+    if (isFreemium) {
+      // Direct freemium subscription creation logic
+      const supabase = getServiceClient(env);
+      const authHeader = context.request.headers.get('Authorization');
+      const authToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+
+      if (!authToken) {
+        return new Response(JSON.stringify({ error: { code: 'UNAUTHORIZED', message: 'No auth token found' } }), { status: 401 });
+      }
+
+      // Ensure user exists in shadow table
+      await syncUserShadow(supabase, user.sub, (body.userEmail as string) || user.email);
+
+      // Create subscription in auth DB via SSO worker
+      let subscription: Record<string, unknown>;
+      try {
+        subscription = await ssoCreateFreemiumSubscription(env as any, authToken, {
+          user_id: user.sub,
+          email: (body.userEmail as string) || user.email,
+          full_name: (body.userName as string) || (user as any).name || 'Freemium User',
+        });
+      } catch (ssoError: any) {
+        if (ssoError.message?.includes('23505') || ssoError.message?.includes('duplicate')) {
+           return new Response(JSON.stringify({ error: { code: 'SUBSCRIPTION_EXISTS', message: 'User already has an active subscription' } }), { status: 409 });
+        }
+        throw ssoError;
+      }
+
+      // Sync shadow table
+      try {
+        const syncData = await ssoSyncSubscription(env as any, authToken, user.sub);
+        if (syncData.subscription) {
+          await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+        }
+      } catch (syncError) {
+        console.error('[CreateOrder] Shadow sync failed:', syncError);
+      }
+
+      // Return simulated success response structure expected by frontend for freemium
+      return new Response(JSON.stringify({ 
+        success: true,
+        isFreemium: true,
+        data: {
+          id: subscription.id,
+          userId: subscription.user_id,
+          planId: subscription.plan_id,
+          planCode: subscription.plan_code || 'freemium',
+          planName: 'Freemium',
+          status: subscription.status,
+          startDate: subscription.subscription_start_date,
+          endDate: subscription.subscription_end_date,
+          autoRenew: subscription.auto_renew,
+        }
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // PAID PLAN LOGIC - Ensure RAZORPAY_KEY_ID is available
     if (!env.RAZORPAY_KEY_ID) {
       return new Response(
         JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'RAZORPAY_KEY_ID is not configured' } }),
@@ -61,8 +123,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       },
     });
 
-    // Return flattened order with Razorpay key for frontend checkout initialization
-    // The key is returned by the payment-worker to ensure it perfectly matches the key used to create the order.
+    // Return flattened order with Razorpay key
     return new Response(JSON.stringify({ ...order, key: (order as any).key_id || env.RAZORPAY_KEY_ID }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

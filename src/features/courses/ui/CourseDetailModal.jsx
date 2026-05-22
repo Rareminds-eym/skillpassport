@@ -13,7 +13,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
   const user = useUser();
   const subscriptionContext = useSubscriptionContext();
   const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
+  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
 
   // Check feature access for course enrollment
   const accessResult = checkFeatureAccess(userPlan, 'course_enrollment', [], {}, user?.id);

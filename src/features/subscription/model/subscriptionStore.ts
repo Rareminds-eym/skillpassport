@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { useAuthStore } from '@/shared/model/authStore';
 ﻿import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { getActiveSubscription } from '@/features/subscription/api';
@@ -436,16 +436,16 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     refreshSubscription: async () => {
       let userId = get()._currentUserId;
       
-      // If _currentUserId is null (e.g. right after signup), try to get it from the session
+      // If _currentUserId is null (e.g. right after signup), try to get it from the auth store
       if (!userId) {
         try {
-          const { data: { user } } = await getCurrentUser();
+          const user = useAuthStore.getState().user;
           userId = user?.id || null;
           if (userId) {
             set((s) => { s._currentUserId = userId; });
           }
         } catch {
-          // getCurrentUser failed — can't refresh without user ID
+          // Auth store not ready — can't refresh without user ID
         }
       }
       
@@ -684,16 +684,16 @@ export const useSubscriptionPurchase = () => {
 
   // Convenience wrapper: create add-on order via the payments API
   const purchaseAddOn = async (featureKey: string, billingPeriod: string = 'monthly') => {
-    const { data: { session } } = await getCurrentSession();
-    if (!session?.user) throw new Error('Not authenticated');
+    const user = useAuthStore.getState().user;
+    if (!user) throw new Error('Not authenticated');
     setPurchaseState({ isPurchasing: true, purchaseError: null });
     try {
       const result = await addOnPaymentService.createAddOnOrder({
         featureKey,
-        userId: session.user.id,
+        userId: user.id,
         billingPeriod,
-        userEmail: session.user.email || '',
-        userName: session.user.user_metadata?.name || session.user.email || '',
+        userEmail: user.email || '',
+        userName: user.user_metadata?.name || user.email || '',
       });
       setPurchaseState({ isPurchasing: false });
       return result;
@@ -705,16 +705,16 @@ export const useSubscriptionPurchase = () => {
 
   // Convenience wrapper: create bundle order via the payments API
   const purchaseBundle = async (bundleId: string, billingPeriod: string = 'monthly') => {
-    const { data: { session } } = await getCurrentSession();
-    if (!session?.user) throw new Error('Not authenticated');
+    const user = useAuthStore.getState().user;
+    if (!user) throw new Error('Not authenticated');
     setPurchaseState({ isPurchasing: true, purchaseError: null });
     try {
       const result = await addOnPaymentService.createBundleOrder({
         bundleId,
-        userId: session.user.id,
+        userId: user.id,
         billingPeriod,
-        userEmail: session.user.email || '',
-        userName: session.user.user_metadata?.name || session.user.email || '',
+        userEmail: user.email || '',
+        userName: user.user_metadata?.name || user.email || '',
       });
       setPurchaseState({ isPurchasing: false });
       return result;

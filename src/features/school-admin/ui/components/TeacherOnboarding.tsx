@@ -7,7 +7,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { storageService } from '@/shared/api';
 import { createTeacher } from '@/features/educator-copilot';
 import { validateDocument } from "@/entities/user/lib/teacherValidation";
-import { authSessionService } from '@/features/auth';
+
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('TeacherOnboarding');
@@ -436,7 +436,7 @@ const TeacherOnboardingPage: React.FC = () => {
 
       // If not found in school_educators, check organizations table
       if (!schoolId) {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         const { data: schoolData } = await supabase
           .from("organizations")
           .select("id")
@@ -454,11 +454,8 @@ const TeacherOnboardingPage: React.FC = () => {
       }
 
       // Get auth token for worker API
-      const { data: { session } } = await authSessionService.getSession();
-      if (!session?.access_token) {
-        throw new Error("Not authenticated. Please log in again.");
-      }
-
+      const user = useAuthStore.getState().user;
+      
       // Use Worker API to create teacher with proper rollback
       // Note: Worker expects data wrapped in a 'teacher' object
       const teacherData = {
@@ -488,7 +485,7 @@ const TeacherOnboardingPage: React.FC = () => {
         }
       };
 
-      const teacherResult = await createTeacher(teacherData, session.access_token);
+      const teacherResult = await createTeacher(teacherData, ssoClient.getAccessToken());
 
       if (!teacherResult.success) {
         throw new Error(teacherResult.error || "Failed to create teacher");

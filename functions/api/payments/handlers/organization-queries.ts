@@ -2,10 +2,6 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleOrganizationQueries(context);
-});
-
 export async function handleOrganizationQueries(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
   const userId = context.data.user.sub;

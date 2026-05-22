@@ -11,10 +11,6 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateAddonOrder(context);
-});
-
 export async function handleCreateAddonOrder(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as unknown as PaymentWorkerEnv;

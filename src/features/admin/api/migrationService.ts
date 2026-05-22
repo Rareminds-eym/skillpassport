@@ -30,69 +30,19 @@ class MigrationService {
         return { success: false, error: 'Plan code is required' };
       }
 
-      // Get the plan by code from plans_cache (shadow of auth DB)
-      const { data: plan, error: planError } = await supabase
-        .from('plans_cache')
-        .select('id, plan_code, name')
-        .eq('plan_code', planCode)
-        .single();
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) return { success: false, error: 'Unauthorized' };
 
-      if (planError) {
-        if (planError.code === 'PGRST116') {
-          return { success: false, error: 'PLAN_NOT_FOUND' };
-        }
-        logger.error('Failed to fetch subscription plan', planError as Error);
-        return { success: false, error: planError.message };
-      }
+      const response = await fetch('/api/payments/migration-operations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.session.access_token}`
+        },
+        body: JSON.stringify({ action: 'getMigrationMapping', planCode })
+      });
 
-      // Get all features included in this plan that have add-on equivalents
-      const { data: planFeatures, error: featuresError } = await supabase
-        .from('subscription_plan_features')
-        .select('feature_key, feature_name, is_included, is_addon, addon_price_monthly, addon_price_annual')
-        .eq('plan_id', plan.id)
-        .eq('is_included', true);
-
-      if (featuresError) {
-        logger.error('Failed to fetch plan features', featuresError as Error);
-        return { success: false, error: featuresError.message };
-      }
-
-      // Get all available add-ons to map features
-      const { data: addOns, error: addOnsError } = await supabase
-        .from('subscription_plan_features')
-        .select('feature_key, feature_name, addon_price_monthly, addon_price_annual')
-        .eq('is_addon', true);
-
-      if (addOnsError) {
-        logger.error('Failed to fetch add-ons', addOnsError as Error);
-        return { success: false, error: addOnsError.message };
-      }
-
-      // Create a map of add-on feature keys for quick lookup
-      const addOnMap = new Map(addOns.map(a => [a.feature_key, a]));
-
-      // Map plan features to add-ons
-      const mappedFeatures = (planFeatures || [])
-        .filter(pf => addOnMap.has(pf.feature_key))
-        .map(pf => {
-          const addOn = addOnMap.get(pf.feature_key);
-          return {
-            feature_key: pf.feature_key,
-            feature_name: pf.feature_name,
-            addon_price_monthly: addOn.addon_price_monthly,
-            addon_price_annual: addOn.addon_price_annual
-          };
-        });
-
-      return {
-        success: true,
-        data: {
-          planCode,
-          planName: plan.name,
-          planId: plan.id,
-          features: mappedFeatures
-        }
-      };
+      return await response.json();
     } catch (error) {
       logger.error('Failed to get migration mapping', error as Error);
       return { success: false, error: error.message };

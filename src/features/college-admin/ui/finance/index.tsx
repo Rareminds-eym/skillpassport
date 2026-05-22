@@ -14,7 +14,7 @@ import { useFeeStructures } from "./hooks/useFeeStructures";
 import { useFeeTracking } from "./hooks/useFeeTracking";
 import { usePrograms } from "./hooks/usePrograms";
 import { FeeStructure, LearnerFeeSummary } from '@/features/learner-profile/model';
-import { authSessionService } from '@/features/auth';
+
 
 const logger = getLogger('finance-module');
 
@@ -53,7 +53,7 @@ const FinanceModule: React.FC = () => {
           }
         }
 
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (user) {
           const { data: org } = await supabase
             .from('organizations')

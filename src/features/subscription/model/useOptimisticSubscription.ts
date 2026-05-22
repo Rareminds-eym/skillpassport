@@ -10,6 +10,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createOptimisticSubscription, type OptimisticSubscription } from '../lib/optimisticUpdates';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 interface UseOptimisticSubscriptionOptions {
   userId: string;
@@ -34,7 +35,7 @@ export function useOptimisticSubscription({
    * Create a freemium subscription with optimistic updates
    */
   const createFreemiumSubscription = useCallback(
-    async (planCode: string = PLAN_IDS.PAY_AS_YOU_GO) => {
+    async (planCode: string = PLAN_IDS.FREEMIUM) => {
       // Atomic check to prevent duplicate requests
       if (isCreatingRef.current) {
         console.warn('[useOptimisticSubscription] Already creating subscription');
@@ -65,11 +66,17 @@ export function useOptimisticSubscription({
       }));
 
       try {
-        // Step 3: Make actual API call
-        const response = await fetch('/api/payments/create-freemium-subscription', {
+        // Step 3: Make actual API call (auth handled automatically by ssoClient.fetch)
+        const response = await ssoClient.fetch('/api/payments/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, email }),
+          body: JSON.stringify({ 
+            userId, 
+            email, 
+            amount: 0, 
+            planId: planCode,
+            planName: 'freemium'
+          }),
           signal: abortControllerRef.current.signal,
         });
 

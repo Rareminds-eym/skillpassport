@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -73,7 +72,7 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
 
         // If not found in localStorage, try Supabase Auth (for educators/teachers)
         if (!schoolId) {
-            const { data: { user } } = await getCurrentUser();
+            const user = useAuthStore.getState().user;
             if (user) {
                 // Check school_educators table
                 const { data: educator } = await supabase

@@ -192,7 +192,7 @@ export class FreemiumSubscriptionService {
   ) {}
   
   async createFreemiumSubscription(userId: string, email: string): Promise<Subscription> {
-    const plan = await this.planRepo.findByCode('pay_as_you_go');
+    const plan = await this.planRepo.findByCode('freemium');
     if (!plan) throw new PlanNotFoundError();
     
     const existing = await this.subscriptionRepo.findActiveByUserId(userId);
@@ -204,7 +204,7 @@ export class FreemiumSubscriptionService {
       planId: plan.id,
     });
     
-    await this.auditLogger.logSubscriptionCreation(userId, 'pay_as_you_go', 'success');
+    await this.auditLogger.logSubscriptionCreation(userId, 'freemium', 'success');
     return subscription;
   }
 }

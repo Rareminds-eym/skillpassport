@@ -8,7 +8,8 @@
 interface SsoClientEnv {
   SSO_SERVICE: Fetcher;
   SSO_DOMAIN?: string;
-  SERVICE_AUTH_SECRET?: string;
+  /** Required: shared secret for authenticating with the sso-worker */
+  SERVICE_AUTH_SECRET: string;
 }
 
 interface SsoSubscriptionData {
@@ -52,6 +53,11 @@ interface SsoTransactionData {
   metadata?: Record<string, unknown>;
 }
 
+// Cloudflare Service Bindings require a full URL for the Fetch API, 
+// but the hostname is ignored by the internal router.
+// Using a .internal TLD makes it clear this is a direct worker-to-worker call.
+const INTERNAL_SSO_HOST = 'http://sso-worker.internal';
+
 function getFetcher(env: SsoClientEnv): Fetcher {
   if (!env.SSO_SERVICE) {
     throw new Error("SSO_SERVICE binding is not configured in wrangler.toml");
@@ -62,7 +68,7 @@ function getFetcher(env: SsoClientEnv): Fetcher {
 async function ssoFetch(env: SsoClientEnv, path: string, options: RequestInit, authToken: string, useServiceAuth?: boolean): Promise<Response> {
   const fetcher = getFetcher(env);
   const token = useServiceAuth ? env.SERVICE_AUTH_SECRET : authToken;
-  return fetcher.fetch(`https://sso-api${path}`, {
+  return fetcher.fetch(`${INTERNAL_SSO_HOST}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -74,13 +80,13 @@ async function ssoFetch(env: SsoClientEnv, path: string, options: RequestInit, a
 
 export async function ssoCreateSubscription(
   env: SsoClientEnv,
-  authToken: string,
+  _authToken: string,
   data: SsoSubscriptionData,
 ): Promise<Record<string, unknown>> {
   const res = await ssoFetch(env, "/api/subscriptions/create", {
     method: "POST",
     body: JSON.stringify(data),
-  }, authToken);
+  }, "", true);
 
   if (!res.ok) {
     const text = await res.text();
@@ -91,13 +97,13 @@ export async function ssoCreateSubscription(
 
 export async function ssoCreateFreemiumSubscription(
   env: SsoClientEnv,
-  authToken: string,
+  _authToken: string,
   data: { user_id: string; email: string; full_name?: string },
 ): Promise<Record<string, unknown>> {
   const res = await ssoFetch(env, "/api/subscriptions/create-freemium", {
     method: "POST",
     body: JSON.stringify(data),
-  }, authToken);
+  }, "", true);
 
   if (!res.ok) {
     const text = await res.text();
@@ -108,14 +114,14 @@ export async function ssoCreateFreemiumSubscription(
 
 export async function ssoUpdateSubscriptionStatus(
   env: SsoClientEnv,
-  authToken: string,
+  _authToken: string,
   subscriptionId: string,
   data: { status: string; receipt_url?: string; cancellation_reason?: string; cancelled_by?: string },
 ): Promise<Record<string, unknown>> {
   const res = await ssoFetch(env, `/api/subscriptions/${subscriptionId}/status`, {
     method: "PUT",
     body: JSON.stringify(data),
-  }, authToken);
+  }, "", true);
 
   if (!res.ok) {
     const text = await res.text();
@@ -126,14 +132,14 @@ export async function ssoUpdateSubscriptionStatus(
 
 export async function ssoUpdateSubscriptionField(
   env: SsoClientEnv,
-  authToken: string,
+  _authToken: string,
   subscriptionId: string,
   data: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const res = await ssoFetch(env, `/api/subscriptions/${subscriptionId}/update`, {
     method: "PUT",
     body: JSON.stringify(data),
-  }, authToken);
+  }, "", true);
 
   if (!res.ok) {
     const text = await res.text();
@@ -144,13 +150,13 @@ export async function ssoUpdateSubscriptionField(
 
 export async function ssoRecordTransaction(
   env: SsoClientEnv,
-  authToken: string,
+  _authToken: string,
   data: SsoTransactionData,
 ): Promise<Record<string, unknown>> {
   const res = await ssoFetch(env, "/api/transactions/record", {
     method: "POST",
     body: JSON.stringify(data),
-  }, authToken);
+  }, "", true);
 
   if (!res.ok) {
     const text = await res.text();
@@ -161,12 +167,12 @@ export async function ssoRecordTransaction(
 
 export async function ssoGetUserSubscription(
   env: SsoClientEnv,
-  authToken: string,
+  _authToken: string,
   userId: string,
 ): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }> {
   const res = await ssoFetch(env, `/api/subscriptions/user/${userId}`, {
     method: "GET",
-  }, authToken);
+  }, "", true);
 
   if (!res.ok) {
     const text = await res.text();
@@ -194,7 +200,7 @@ export async function ssoSyncSubscription(
 
 export async function ssoGetUserTransactions(
   env: SsoClientEnv,
-  authToken: string,
+  _authToken: string,
   userId: string,
   subscriptionId?: string,
 ): Promise<Record<string, unknown>[]> {
@@ -202,7 +208,7 @@ export async function ssoGetUserTransactions(
   if (subscriptionId) params.set('subscription_id', subscriptionId);
   const res = await ssoFetch(env, `/api/transactions/user?${params}`, {
     method: "GET",
-  }, authToken);
+  }, "", true);
 
   if (!res.ok) {
     const text = await res.text();

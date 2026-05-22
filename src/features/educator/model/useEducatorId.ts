@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useUser } from '@/shared/model/authStore';
@@ -39,9 +38,10 @@ export function useEducatorId(): EducatorIdData {
         }
 
         // Get current Supabase session to ensure we have the right user ID
-        const { data: { session }, error: sessionError } = await getCurrentSession();
+        const user = useAuthStore.getState().user;
+    const sessionError = null;
         
-        if (sessionError || !session?.user) {
+        if (sessionError || !user) {
           throw new Error('No active session found');
         }
 
@@ -50,7 +50,7 @@ export function useEducatorId(): EducatorIdData {
         const { data: schoolEducatorData, error: schoolEducatorError } = await supabase
           .from('school_educators')
           .select('id')
-          .eq('user_id', session.user.id)
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (schoolEducatorError && schoolEducatorError.code !== 'PGRST116') {
@@ -67,7 +67,7 @@ export function useEducatorId(): EducatorIdData {
         const { data: collegeEducatorData, error: collegeEducatorError } = await supabase
           .from('college_lecturers')
           .select('id')
-          .eq('user_id', session.user.id)
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (collegeEducatorError && collegeEducatorError.code !== 'PGRST116') {

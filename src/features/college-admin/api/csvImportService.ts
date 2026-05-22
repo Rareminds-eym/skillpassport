@@ -1,10 +1,11 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * CSV Import Service for Learner Data
  * Handles validation, auto-mapping, capacity checks, and preview generation
  */
 
 import { supabase } from '@/shared/api/supabaseClient'
+import { ssoClient } from '@/shared/api/ssoClient'
+import userApiService from '@/entities/user/api/userApiService'
 
 // Mandatory field categories
 export const MANDATORY_FIELDS = {
@@ -538,8 +539,6 @@ export async function processCSVData(
 /**
  * Import validated learners
  */
-import userApiService from '@/entities/user/api/userApiService'
-
 /**
  * Import validated learners
  */
@@ -551,8 +550,7 @@ export async function importlearners(
   let failed = 0
   const errors: string[] = []
 
-  const { data: { session } } = await getCurrentSession()
-  const token = session?.access_token
+  const token = ssoClient.getAccessToken()
 
   if (!token) {
     return { success: 0, failed: validRows.length, errors: ['Authentication token missing'] }

@@ -10,7 +10,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
-import { getCurrentUser } from '@/shared/api/authUtils';
 
 // ✅ NEW: Import transformation service
 import { 
@@ -39,7 +38,7 @@ export const useAssessmentResults = () => {
       setError(null);
 
       // Get current user
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('User not authenticated');
       }

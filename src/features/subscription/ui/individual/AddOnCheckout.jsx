@@ -190,11 +190,26 @@ export function AddOnCheckout({
             console.log('[AddOnCheckout] Payment successful, verifying...', response);
             
             try {
-              const verifyResult = await addOnPaymentService.verifyAddonPayment(
-                response.razorpay_order_id,
-                response.razorpay_payment_id,
-                response.razorpay_signature
-              );
+              let verifyResult;
+              if (type === 'addon') {
+                verifyResult = await addOnPaymentService.verifyAddonPayment(
+                  response.razorpay_order_id,
+                  response.razorpay_payment_id,
+                  response.razorpay_signature,
+                  item.feature_key,
+                  totals.total,
+                  billingPeriod
+                );
+              } else {
+                verifyResult = await addOnPaymentService.verifyBundlePayment(
+                  response.razorpay_order_id,
+                  response.razorpay_payment_id,
+                  response.razorpay_signature,
+                  item.id,
+                  totals.total,
+                  billingPeriod
+                );
+              }
               
               if (verifyResult.success) {
                 console.log('[AddOnCheckout] Payment verified and entitlement created!');

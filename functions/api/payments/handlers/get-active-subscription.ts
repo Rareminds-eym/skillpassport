@@ -15,10 +15,6 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleGetActiveSubscription(context);
-});
-
 export async function handleGetActiveSubscription(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
   const user = context.data.user;

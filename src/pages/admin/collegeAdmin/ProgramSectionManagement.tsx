@@ -14,7 +14,6 @@ import {
 import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
 
 interface ProgramSection {
   id: string;
@@ -72,7 +71,7 @@ const ProgramSectionManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchCollegeId = async () => {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
       
       try {
@@ -230,7 +229,7 @@ const ProgramSectionManagement: React.FC = () => {
 
   const handleSaveSection = async (data: Partial<ProgramSection>) => {
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       
       if (selectedSection) {
         // Update existing section

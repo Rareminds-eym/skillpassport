@@ -3,7 +3,7 @@
  * Handles feature access control based on subscription status
  */
 
-import { PLAN_IDS, PAY_AS_YOU_GO_FEATURES } from '@/shared/config/subscriptionPlans';
+import { PLAN_IDS, FREEMIUM_FEATURES } from '@/shared/config/subscriptionPlans';
 import { createFeatureAccessErrorLog, logError } from '@/shared/lib/error-logging';
 
 /**
@@ -36,7 +36,7 @@ export function checkFeatureAccess(
 ): FeatureAccessResult {
   try {
     // Handle Freemium tier
-    if (userPlan === PLAN_IDS.PAY_AS_YOU_GO) {
+    if (userPlan === PLAN_IDS.FREEMIUM) {
       return checkFreemiumAccess(feature);
     }
 
@@ -77,7 +77,7 @@ export function checkFeatureAccess(
 
     // Graceful degradation: fail open for paid plans, fail closed for freemium
     // This prevents legitimate users from being locked out due to transient errors
-    const shouldFailOpen = userPlan !== PLAN_IDS.PAY_AS_YOU_GO;
+    const shouldFailOpen = userPlan !== PLAN_IDS.FREEMIUM;
 
     return {
       hasAccess: shouldFailOpen,
@@ -119,10 +119,10 @@ function isTransientError(error: any): boolean {
 
 /**
  * Check Freemium plan access
- * Returns access result based on PAY_AS_YOU_GO_FEATURES configuration
+ * Returns access result based on FREEMIUM_FEATURES configuration
  */
 function checkFreemiumAccess(feature: string): FeatureAccessResult {
-  const featureConfig = PAY_AS_YOU_GO_FEATURES[feature];
+  const featureConfig = FREEMIUM_FEATURES[feature];
 
   // Feature not defined - deny by default
   if (featureConfig === undefined) {

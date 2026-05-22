@@ -34,6 +34,7 @@ export async function syncSubscriptionCache(
       is_organization_subscription: subscription.is_organization_subscription || false,
       organization_type: subscription.organization_type || null,
       seat_count: subscription.seat_count || 1,
+      product_id: subscription.product_id || (plan as Record<string, unknown>)?.product_id || null,
       synced_at: new Date().toISOString(),
       auth_updated_at: subscription.updated_at,
     }, { onConflict: 'id' });
@@ -60,6 +61,7 @@ export async function syncPlanCache(
       entity_config: plan.entity_config,
       display_order: plan.display_order,
       is_active: plan.is_active,
+      product_id: plan.product_id || null,
       synced_at: new Date().toISOString(),
       auth_updated_at: plan.updated_at,
     }, { onConflict: 'id' });
@@ -83,4 +85,31 @@ export function isStale(syncedAt: string | null, thresholdMinutes = STALENESS_TH
   const synced = new Date(syncedAt).getTime();
   const threshold = thresholdMinutes * 60 * 1000;
   return Date.now() - synced > threshold;
+}
+
+/**
+ * Ensure a user exists in users_shadow (App DB).
+ * Must be called before syncSubscriptionCache since subscription_cache
+ * has a FK constraint → users_shadow(id).
+ */
+export async function syncUserShadow(
+  supabase: SupabaseClient,
+  userId: string,
+  email?: string,
+): Promise<void> {
+  const { data: existing } = await supabase
+    .from('users_shadow')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!existing) {
+    const { error } = await supabase
+      .from('users_shadow')
+      .insert({ id: userId, email: email || `${userId}@unknown` });
+
+    if (error) {
+      console.error('[sync-shadow] Failed to sync users_shadow:', error.message);
+    }
+  }
 }

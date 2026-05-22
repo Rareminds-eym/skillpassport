@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/api/supabaseClient';
 import { Plus, Edit, Trash2, Search, BookOpen } from 'lucide-react';
-import { authSessionService } from '@/features/auth';
+
 
 import { queryKeys } from '@/shared/lib/queryKeys';
 interface Course {
@@ -29,7 +29,7 @@ const CourseManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchUserCollege = async () => {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (user) {
         const { data: userData } = await supabase
           .from('users')
@@ -328,7 +328,7 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
     setError(null);
 
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       
       const courseData = {
         ...formData,

@@ -55,9 +55,11 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
     }
 
     // 2. Find stale subscription_cache entries
+    const threshold = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { data: staleEntries, error: staleError } = await supabase
       .from('subscription_cache')
       .select('id, user_id, synced_at')
+      .lt('synced_at', threshold)
       .order('synced_at', { ascending: true })
       .limit(100);
 

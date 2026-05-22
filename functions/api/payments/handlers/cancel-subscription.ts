@@ -38,7 +38,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 });
 
 export async function handleCancelSubscription(context: AuthenticatedContext, subscriptionId: string): Promise<Response> {
-  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string };
   const user = context.data.user;
 
   try {

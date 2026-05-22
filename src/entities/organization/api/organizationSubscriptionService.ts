@@ -1,5 +1,5 @@
-import { getCurrentSession } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('organizationSubscription');
@@ -103,16 +103,11 @@ export function calculateBulkPricing(
 // ============================================================================
 
 async function authenticatedFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  const { data: { session } } = await getCurrentSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
   const origin = window.location.origin;
-  return fetch(`${origin}${path}`, {
+  return ssoClient.fetch(`${origin}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
       ...(options.headers || {}),
     },
   });

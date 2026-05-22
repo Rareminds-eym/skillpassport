@@ -5,8 +5,8 @@
  * ALL subscription write operations go through this service → Pages Functions → Worker → Supabase
  * This ensures security, consistency, and proper audit trails.
  * 
- * The Pages Functions validate the user's SSO token and create a Service JWT
- * for secure communication with the payment-worker.
+ * Authentication is handled automatically by ssoClient.fetch() from @rareminds-eym/auth-client.
+ * Callers do NOT need to pass tokens — they are injected by the auth client.
  * 
  * AVAILABLE METHODS:
  * - createOrder()              - Create Razorpay order for subscription
@@ -20,20 +20,12 @@
  * - resumeSubscription()       - Resume paused subscription
  */
 
+import { ssoClient } from '@/shared/api/ssoClient';
+
 // Use Pages Functions for payments (not direct worker access)
-// The Pages Functions handle SSO validation and Service JWT creation
 const getBaseUrl = () => {
-  // In development, use the local dev server URL
-  // In production, the Pages Functions are served from the same origin
   const origin = window.location.origin;
   return `${origin}/api/payments`;
-};
-
-const getAuthHeaders = (token) => {
-  const headers = { 'Content-Type': 'application/json' };
-  // The SSO token is passed to the Pages Functions for validation
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  return headers;
 };
 
 /**
@@ -41,19 +33,16 @@ const getAuthHeaders = (token) => {
  * Handles both formats:
  *   - Worker v2: { success: false, error: { code, message } }
  *   - Pages Functions: { error: { code, message } }
- *   - Legacy: { error: "string" }
+ *   - Flat: { error: "string" }
  */
 export function extractErrorMessage(errorObj) {
   if (!errorObj) return 'Unknown error';
-  // Worker v2 format: { error: { code, message } }
   if (errorObj.error && typeof errorObj.error === 'object' && errorObj.error.message) {
     return errorObj.error.message;
   }
-  // Flat string format: { error: "something" }
   if (typeof errorObj.error === 'string') {
     return errorObj.error;
   }
-  // Fallback
   return errorObj.message || errorObj.details || 'Unknown error';
 }
 
@@ -68,19 +57,17 @@ export function extractErrorMessage(errorObj) {
  * @param {string} params.planName - Plan display name
  * @param {string} params.userEmail - User's email
  * @param {string} params.userName - User's name
- * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Order details from Razorpay
  */
-export async function createOrder({ amount, currency = 'INR', planId, planName, userEmail, userName, isUpgrade }, token) {
-  const response = await fetch(`${getBaseUrl()}/create-order`, {
+export async function createOrder({ amount, currency = 'INR', planId, planName, userEmail, userName, isUpgrade }) {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/create-order`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ amount, currency, planId, planName, userEmail, userName, isUpgrade }),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    // Include razorpay error details if available
     const baseMessage = extractErrorMessage(error);
     const errorMessage = error.razorpay_error
       ? `${baseMessage}: ${error.razorpay_error}`
@@ -93,24 +80,22 @@ export async function createOrder({ amount, currency = 'INR', planId, planName, 
 
 /**
  * Create a Razorpay order for event registration
- * Worker handles: registration creation/lookup + order creation + payment history
  * @param {Object} params - Order parameters
  * @param {number} params.amount - Amount in paise
  * @param {string} params.currency - Currency code
- * @param {string} params.registrationId - Event registration ID (optional - worker can create)
+ * @param {string} params.registrationId - Event registration ID (optional)
  * @param {string} params.planName - Event name
  * @param {string} params.userEmail - User's email
  * @param {string} params.userName - User's name
  * @param {string} params.userPhone - User's phone
  * @param {string} params.campaign - Campaign name
- * @param {string} params.origin - Request origin for test/prod detection
- * @param {string} token - Auth token (optional for events)
+ * @param {string} params.origin - Request origin
  * @returns {Promise<Object>} Order details from Razorpay + registration ID
  */
-export async function createEventOrder({ amount, currency = 'INR', registrationId, planName, userEmail, userName, userPhone, campaign, origin }, token) {
-  const response = await fetch(`${getBaseUrl()}/create-event-order`, {
+export async function createEventOrder({ amount, currency = 'INR', registrationId, planName, userEmail, userName, userPhone, campaign, origin }) {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/create-event-order`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ amount, currency, registrationId, planName, userEmail, userName, userPhone, campaign, origin }),
   });
 
@@ -124,7 +109,6 @@ export async function createEventOrder({ amount, currency = 'INR', registrationI
 
 /**
  * Update event payment status (success or failure)
- * Worker handles: payment history tracking + status updates
  * @param {Object} params - Payment status update parameters
  * @param {string} params.registrationId - Registration ID (UUID)
  * @param {string} params.orderId - Razorpay order ID
@@ -134,10 +118,10 @@ export async function createEventOrder({ amount, currency = 'INR', registrationI
  * @param {string} params.planName - Plan name (to determine table)
  * @returns {Promise<Object>} Update result
  */
-export async function updateEventPaymentStatus({ registrationId, orderId, paymentId, status, error, planName }, token?) {
-  const response = await fetch(`${getBaseUrl()}/update-event-payment-status`, {
+export async function updateEventPaymentStatus({ registrationId, orderId, paymentId, status, error, planName }) {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/update-event-payment-status`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ registrationId, orderId, paymentId, status, error, planName }),
   });
 
@@ -157,13 +141,12 @@ export async function updateEventPaymentStatus({ registrationId, orderId, paymen
  * @param {string} params.razorpay_payment_id - Razorpay payment ID
  * @param {string} params.razorpay_signature - Razorpay signature
  * @param {Object} params.plan - Plan details for subscription creation
- * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Verification result with subscription data
  */
-export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature, plan }, token) {
-  const response = await fetch(`${getBaseUrl()}/verify-payment`, {
+export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, razorpay_signature, plan }) {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/verify-payment`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature, plan }),
   });
 
@@ -179,13 +162,12 @@ export async function verifyPayment({ razorpay_order_id, razorpay_payment_id, ra
 
 /**
  * Get user's active subscription
- * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Subscription data
  */
-export async function getSubscription(token) {
-  const response = await fetch(`${getBaseUrl()}/get-subscription`, {
+export async function getSubscription() {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/get-subscription`, {
     method: 'GET',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
   });
 
   if (!response.ok) {
@@ -198,25 +180,15 @@ export async function getSubscription(token) {
 
 /**
  * Check subscription access for route protection
- * Returns detailed access information including grace period handling
- * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Access check result
- * @returns {boolean} result.hasAccess - Whether user has access
- * @returns {string} result.accessReason - Reason for access decision
- * @returns {Object|null} result.subscription - Subscription data if exists
- * @returns {boolean} result.showWarning - Whether to show warning banner
- * @returns {string} result.warningType - Type of warning (expiring_soon, grace_period, paused)
- * @returns {string} result.warningMessage - Warning message to display
- * @returns {number} result.daysUntilExpiry - Days until subscription expires
  */
-export async function checkSubscriptionAccess(token) {
-  const response = await fetch(`${getBaseUrl()}/check-subscription-access`, {
+export async function checkSubscriptionAccess() {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/check-subscription-access`, {
     method: 'GET',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
   });
 
   if (!response.ok) {
-    // On 401, return no access
     if (response.status === 401) {
       return {
         success: false,
@@ -236,16 +208,14 @@ export async function checkSubscriptionAccess(token) {
 
 /**
  * Cancel a Razorpay recurring subscription
- * Use this for subscriptions with razorpay_subscription_id
  * @param {string} subscriptionId - Razorpay subscription ID
  * @param {boolean} cancelAtCycleEnd - Whether to cancel at end of billing cycle
- * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Cancellation result
  */
-export async function cancelSubscription(subscriptionId, cancelAtCycleEnd = false, token) {
-  const response = await fetch(`${getBaseUrl()}/subscription/${subscriptionId}/cancel`, {
+export async function cancelSubscription(subscriptionId, cancelAtCycleEnd = false) {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/subscription/${subscriptionId}/cancel`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subscription_id: subscriptionId, cancel_at_cycle_end: cancelAtCycleEnd }),
   });
 
@@ -259,16 +229,14 @@ export async function cancelSubscription(subscriptionId, cancelAtCycleEnd = fals
 
 /**
  * Deactivate/cancel a subscription in database
- * Use this for one-time payment subscriptions (no Razorpay subscription)
  * @param {string} subscriptionId - Database subscription ID (UUID)
  * @param {string} cancellationReason - Reason for cancellation
- * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Deactivation result
  */
-export async function deactivateSubscription(subscriptionId, cancellationReason = 'other', token) {
-  const response = await fetch(`${getBaseUrl()}/deactivate-subscription`, {
+export async function deactivateSubscription(subscriptionId, cancellationReason = 'other') {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/deactivate-subscription`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subscription_id: subscriptionId, cancellation_reason: cancellationReason }),
   });
 
@@ -282,16 +250,14 @@ export async function deactivateSubscription(subscriptionId, cancellationReason 
 
 /**
  * Pause a subscription for 1-3 months
- * Subscription end date is extended by pause duration
  * @param {string} subscriptionId - Database subscription ID (UUID)
  * @param {number} pauseMonths - Number of months to pause (1-3)
- * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Pause result with updated subscription
  */
-export async function pauseSubscription(subscriptionId, pauseMonths = 1, token) {
-  const response = await fetch(`${getBaseUrl()}/pause-subscription`, {
+export async function pauseSubscription(subscriptionId, pauseMonths = 1) {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/pause-subscription`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subscription_id: subscriptionId, pause_months: pauseMonths }),
   });
 
@@ -306,13 +272,12 @@ export async function pauseSubscription(subscriptionId, pauseMonths = 1, token) 
 /**
  * Resume a paused subscription
  * @param {string} subscriptionId - Database subscription ID (UUID)
- * @param {string} token - Auth token (SSO token)
  * @returns {Promise<Object>} Resume result with updated subscription
  */
-export async function resumeSubscription(subscriptionId, token) {
-  const response = await fetch(`${getBaseUrl()}/resume-subscription`, {
+export async function resumeSubscription(subscriptionId) {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/resume-subscription`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subscription_id: subscriptionId }),
   });
 

@@ -12,7 +12,6 @@
  */
 
 import { supabase } from './api';
-import { getCurrentUser } from '@/shared/api/authUtils';
 import { 
   learnerData as mocklearnerData,
   educationData,
@@ -29,7 +28,8 @@ export async function setupTestData() {
   try {
 
     // 1. Get current user (via SSO, not Supabase auth)
-    const { data: { user }, error: userError } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
+    const userError = null;
     
     if (userError || !user) {
       console.error('❌ No Supabase user logged in!', userError);
@@ -217,7 +217,7 @@ export async function setupTestData() {
 // Also export a function to check current data
 export async function checkCurrentData() {
   try {
-    const { data: { user } } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
     
     if (!user) {
       return null;

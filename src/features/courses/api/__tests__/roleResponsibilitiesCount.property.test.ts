@@ -52,7 +52,7 @@ function getFallbackResponsibilities(roleName: string): string[] {
   return [
     `Design and develop solutions in the ${roleName} domain`,
     `Collaborate with cross-functional teams on projects`,
-    `Continuously learn and apply new skills in your field`
+    `Research and apply new skills in your field`
   ];
 }
 

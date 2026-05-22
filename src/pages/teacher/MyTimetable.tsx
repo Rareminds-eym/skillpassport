@@ -28,7 +28,7 @@ import {
 } from "@/features/college-admin";
 import type { ClassSwapRequest, CreateSwapRequestPayload, SlotInfo } from '@/shared/types/classSwap';
 import SwapRequestsDashboard from "./SwapRequestsDashboard";
-import { authSessionService } from '@/features/auth';
+
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 
 import {
@@ -228,7 +228,7 @@ const MyTimetable: React.FC = () => {
 
   const loadEducatorData = async () => {
     try {
-      const { data: userData } = await authSessionService.getUser();
+      const { data: userData } = { data: { user: useAuthStore.getState().user } };
       if (!userData?.user?.id) {
         throw new Error("User not authenticated");
       }

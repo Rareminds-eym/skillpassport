@@ -14,20 +14,27 @@ const logger = getLogger('progress-sync-manager');
 class ProgressSyncManager {
   constructor() {
     this.db = null;
-    this.isOnline = navigator.onLine;
+    this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
     this.syncInProgress = false;
     this.listeners = new Set();
     
     // Listen for online/offline events
-    window.addEventListener('online', () => this.handleOnline());
-    window.addEventListener('offline', () => this.handleOffline());
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => this.handleOnline());
+      window.addEventListener('offline', () => this.handleOffline());
+    }
     
     // Initialize database
-    this.initDB();
+    if (typeof indexedDB !== 'undefined') {
+      this.initDB();
+    }
   }
 
   // Initialize IndexedDB
   async initDB() {
+    if (typeof indexedDB === 'undefined') {
+      return null;
+    }
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -88,6 +95,10 @@ class ProgressSyncManager {
   // Queue progress update for sync
   async queueProgress(type, data) {
     if (!this.db) await this.initDB();
+    if (!this.db) {
+      logger.warn('Cannot queue progress: IndexedDB not available');
+      return null;
+    }
 
     const item = {
       type,
@@ -121,6 +132,7 @@ class ProgressSyncManager {
   // Get all pending progress items
   async getPendingProgress() {
     if (!this.db) await this.initDB();
+    if (!this.db) return [];
 
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction([STORE_NAME], 'readonly');

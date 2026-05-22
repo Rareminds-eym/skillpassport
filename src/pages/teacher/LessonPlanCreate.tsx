@@ -1,7 +1,6 @@
 import { AlertCircle, CheckCircle, Plus, Save, Send, X } from "lucide-react";
 import React, { useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
 
 interface Activity {
   description: string;
@@ -84,7 +83,7 @@ const LessonPlanCreate: React.FC = () => {
       }
 
       // Get current teacher
-      const { data: userData } = await authSessionService.getUser();
+      const { data: userData } = { data: { user: useAuthStore.getState().user } };
       const { data: teacherData } = await supabase
         .from("school_educators")
         .select("id")
