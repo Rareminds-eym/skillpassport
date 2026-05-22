@@ -273,7 +273,7 @@ describe('Property 3: Shared Module Consistency', () => {
           const env: Partial<PagesEnv> = {
             VITE_SUPABASE_URL: hasUrl ? 'https://test.supabase.co' : undefined,
             VITE_SUPABASE_ANON_KEY: hasAnonKey ? 'test-anon-key' : undefined,
-            VITE_SUPABASE_SERVICE_ROLE_KEY: hasServiceKey ? 'test-service-key' : undefined,
+            SUPABASE_SERVICE_ROLE_KEY: hasServiceKey ? 'test-service-key' : undefined,
           };
 
           // Regular client requires URL and anon key

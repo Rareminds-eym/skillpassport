@@ -18,7 +18,7 @@ export interface PagesEnv {
   SUPABASE_ANON_KEY?: string;
   VITE_SUPABASE_URL: string;
   VITE_SUPABASE_ANON_KEY: string;
-  VITE_SUPABASE_SERVICE_ROLE_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
   SUPABASE_JWT_SECRET?: string;
 
   // Payment Worker configuration

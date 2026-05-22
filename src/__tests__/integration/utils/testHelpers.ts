@@ -73,7 +73,6 @@ export function createMockEnv() {
   return {
     SUPABASE_URL: 'https://test.supabase.co',
     SUPABASE_ANON_KEY: 'test-anon-key',
-    VITE_SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
     VITE_SUPABASE_URL: 'https://test.supabase.co',
     VITE_SUPABASE_ANON_KEY: 'test-anon-key'
   };
