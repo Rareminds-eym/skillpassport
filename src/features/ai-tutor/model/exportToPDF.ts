@@ -20,16 +20,14 @@ const MAX_WIDTH = PAGE_WIDTH - (MARGIN * 2);
 
 /**
  * Add watermark to all pages in the PDF
+ * GState must be passed from the caller since it's part of the jsPDF dynamic import
  */
-function addWatermark(doc: jsPDF): void {
+function addWatermark(doc: jsPDF, GStateConstructor: new (options: { opacity: number }) => unknown): void {
   const totalPages = doc.getNumberOfPages();
   
-  // Import GState from jsPDF for opacity control
-  const { GState } = require('jspdf');
-  
   // Hoist GState objects outside the loop
-  const dimState = new GState({ opacity: 0.15 });
-  const fullState = new GState({ opacity: 1 });
+  const dimState = new GStateConstructor({ opacity: 0.15 });
+  const fullState = new GStateConstructor({ opacity: 1 });
   
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
@@ -38,7 +36,9 @@ function addWatermark(doc: jsPDF): void {
     doc.setFontSize(55);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(210, 210, 210);
-    doc.setGState(dimState);
+    
+    // Apply opacity using setGState
+    (doc as unknown as { setGState: (state: unknown) => void }).setGState(dimState);
     
     // Center of page
     const centerX = PAGE_WIDTH / 2;
@@ -51,7 +51,7 @@ function addWatermark(doc: jsPDF): void {
     });
     
     // Restore ALL state properties
-    doc.setGState(fullState);
+    (doc as unknown as { setGState: (state: unknown) => void }).setGState(fullState);
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
@@ -116,7 +116,15 @@ export async function exportToPDF({
     }
 
     // Lazy load jsPDF - reduces initial bundle by ~200KB
-    const { jsPDF } = await import('jspdf');
+    const jsPDFModule = await import('jspdf');
+    const { jsPDF } = jsPDFModule;
+    
+    // GState is needed for watermark opacity
+    const GState = (jsPDFModule as unknown as { GState?: new (options: { opacity: number }) => unknown }).GState;
+    
+    if (!GState) {
+      throw new Error('jsPDF GState not available');
+    }
 
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -357,7 +365,7 @@ export async function exportToPDF({
     }
 
     // Add watermark to all pages
-    addWatermark(doc);
+    addWatermark(doc, GState);
 
     // Add page numbers to all pages
     const totalPages = doc.getNumberOfPages();
