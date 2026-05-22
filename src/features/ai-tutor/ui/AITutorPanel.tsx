@@ -24,7 +24,7 @@ import { useTutorChat, type GenerationUsage } from '@/features/ai-tutor/model/us
 import WorksheetConfigPanel from './WorksheetConfigPanel.tsx';
 import LessonPlanConfigPanel from './LessonPlanConfigPanel.tsx';
 import TeachingAssistantSettings, { type AssistantMode } from './TeachingAssistantSettings.tsx';
-import WorksheetExportButton from './WorksheetExportButton.tsx';
+import { WorksheetExportButton } from './WorksheetExportButton.tsx';
 import type { WorksheetConfig } from '../types/worksheet';
 import { DEFAULT_WORKSHEET_CONFIG } from '../types/worksheet';
 import type { LessonPlanConfig } from '../types';

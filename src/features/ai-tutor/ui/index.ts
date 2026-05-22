@@ -4,6 +4,6 @@ export { default as AITutorPanel } from './AITutorPanel';
 export { default as VideoSummarizer } from './VideoSummarizer';
 export { default as VideoLearningPanel } from './VideoLearningPanel';
 export { default as WorksheetConfigPanel } from './WorksheetConfigPanel';
-export { default as WorksheetExportButton } from './WorksheetExportButton';
+export { WorksheetExportButton } from './WorksheetExportButton';
 export { default as LessonPlanConfigPanel } from './LessonPlanConfigPanel';
 export { default as TeachingAssistantSettings } from './TeachingAssistantSettings';
