@@ -92,10 +92,7 @@ export interface PaymentWorkerBinding {
 export interface PaymentWorkerEnv {
   /** Service binding to the payment-worker (razorpay-api) */
   PAYMENT_WORKER: PaymentWorkerBinding;
-
-  /** Razorpay publishable key — injected into order responses for frontend checkout */
-  RAZORPAY_KEY_ID: string;
-
+  
   /** Supabase connection */
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
