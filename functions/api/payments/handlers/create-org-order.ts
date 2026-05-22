@@ -77,7 +77,7 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
     // Return order with key_id from payment worker
     return new Response(JSON.stringify({
       ...order,
-      razorpay_key_id: (order as any).key_id,
+      razorpay_key_id: order.key_id,
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

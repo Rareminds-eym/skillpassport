@@ -67,7 +67,7 @@ export async function handleCreateEventOrder(context: AuthenticatedContext): Pro
     // Return order with key_id from payment worker and registrationId
     return new Response(JSON.stringify({
       ...order,
-      razorpay_key_id: (order as any).key_id,
+      razorpay_key_id: order.key_id,
       registrationId: body.registrationId,
     }), {
       status: 200,

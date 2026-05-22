@@ -71,7 +71,7 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
     // The payment worker injects key_id to ensure it matches the key used to create the order
     return new Response(JSON.stringify({
       ...order,
-      razorpay_key_id: (order as any).key_id, // Expose as razorpay_key_id for frontend
+      razorpay_key_id: order.key_id, // Expose as razorpay_key_id for frontend
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

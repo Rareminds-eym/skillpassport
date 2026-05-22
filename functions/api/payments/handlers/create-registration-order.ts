@@ -124,7 +124,7 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
     return new Response(
       JSON.stringify({ 
         ...order, 
-        razorpay_key_id: (order as any).key_id,
+        razorpay_key_id: order.key_id,
         registrationId: registrationId 
       }), 
       {
