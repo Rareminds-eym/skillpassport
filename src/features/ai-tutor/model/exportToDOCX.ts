@@ -1,7 +1,17 @@
 import { saveAs } from 'file-saver';
-import { getLogger } from '@/shared/config/logging';
+import { getLogger } from '@/shared/config';
 import { loadLogo, WATERMARK_CONFIG } from './logoLoader';
-import { parseMarkdownLines, type ParsedLine } from '@/shared/utils/markdownParser';
+import { parseMarkdownLines, type ParsedLine } from '@/shared/utils';
+import type {
+  IParagraphOptions,
+  IRunOptions,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  BorderStyle,
+  ShadingType,
+  UnderlineType,
+} from 'docx';
 
 const logger = getLogger('export-to-docx');
 
@@ -13,15 +23,13 @@ interface ExportToDOCXOptions {
 }
 
 interface DocxConstructors {
-  Paragraph: new (options: Record<string, unknown>) => unknown;
-  TextRun: new (options: Record<string, unknown>) => unknown;
-  HeadingLevel: Record<string, string>;
-  BorderStyle: Record<string, string>;
-  ShadingType: Record<string, string>;
-  UnderlineType: Record<string, string>;
+  Paragraph: new (_options: IParagraphOptions) => Paragraph;
+  TextRun: new (_options: IRunOptions) => TextRun;
+  HeadingLevel: typeof HeadingLevel;
+  BorderStyle: typeof BorderStyle;
+  ShadingType: typeof ShadingType;
+  UnderlineType: typeof UnderlineType;
 }
-
-type DocxElement = InstanceType<DocxConstructors['Paragraph']>;
 
 /**
  * Render parsed markdown lines to DOCX paragraphs
@@ -29,7 +37,7 @@ type DocxElement = InstanceType<DocxConstructors['Paragraph']>;
 async function renderParsedLinesToDocx(
   parsedLines: ParsedLine[],
   docxConstructors: DocxConstructors
-): Promise<DocxElement[]> {
+): Promise<Paragraph[]> {
   const {
     Paragraph,
     TextRun,
@@ -39,7 +47,7 @@ async function renderParsedLinesToDocx(
     UnderlineType,
   } = docxConstructors;
 
-  const paragraphs: DocxElement[] = [];
+  const paragraphs: Paragraph[] = [];
 
   for (const line of parsedLines) {
     switch (line.type) {
@@ -91,7 +99,7 @@ async function renderParsedLinesToDocx(
 
       case 'blank_line': {
         const parts = line.raw.split('__________');
-        const runs: unknown[] = [];
+        const runs: TextRun[] = [];
 
         for (let i = 0; i < parts.length; i++) {
           if (parts[i]) {
@@ -154,7 +162,7 @@ async function renderParsedLinesToDocx(
         break;
 
       case 'bold': {
-        const runs: unknown[] = [];
+        const runs: TextRun[] = [];
         for (const segment of line.segments) {
           runs.push(
             new TextRun({
@@ -247,7 +255,7 @@ export async function exportToDOCX({
       UnderlineType,
     } = await import('docx');
 
-    const sections: unknown[] = [];
+    const sections: Paragraph[] = [];
 
     // Add branding logo at the top
     const logo = await loadLogo();
@@ -385,7 +393,7 @@ export async function exportToDOCX({
         },
         type: 'absolute',
       },
-    }) as unknown;
+    });
 
     // Create document with watermark in header and page numbers in footer
     const doc = new Document({
@@ -393,7 +401,7 @@ export async function exportToDOCX({
         {
           headers: {
             default: new Header({
-              children: [watermarkParagraph as never],
+              children: [watermarkParagraph],
             }),
           },
           footers: {
@@ -423,7 +431,7 @@ export async function exportToDOCX({
               margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
             },
           },
-          children: sections as never[],
+          children: sections,
         },
       ],
       numbering: {

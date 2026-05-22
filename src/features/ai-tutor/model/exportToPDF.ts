@@ -1,17 +1,9 @@
-import { getLogger } from '@/shared/config/logging';
+import { getLogger } from '@/shared/config';
 import { loadLogo, WATERMARK_CONFIG } from './logoLoader';
-import { parseMarkdownLines, type ParsedLine } from '@/shared/utils/markdownParser';
+import { parseMarkdownLines } from '@/shared/utils';
 import type { jsPDF } from 'jspdf';
 
 const logger = getLogger('export-to-pdf');
-
-/**
- * Extended jsPDF interface with GState support for opacity control
- */
-interface JsPDFWithGState extends jsPDF {
-  GState: new (options: { opacity: number }) => unknown;
-  setGState: (state: unknown) => void;
-}
 
 interface ExportToPDFOptions {
   content: string;
@@ -32,12 +24,12 @@ const MAX_WIDTH = PAGE_WIDTH - (MARGIN * 2);
 function addWatermark(doc: jsPDF): void {
   const totalPages = doc.getNumberOfPages();
   
-  // Cast to extended interface for GState support
-  const docWithGState = doc as unknown as JsPDFWithGState;
+  // Import GState from jsPDF for opacity control
+  const { GState } = require('jspdf');
   
   // Hoist GState objects outside the loop
-  const dimState = new docWithGState.GState({ opacity: 0.15 });
-  const fullState = new docWithGState.GState({ opacity: 1 });
+  const dimState = new GState({ opacity: 0.15 });
+  const fullState = new GState({ opacity: 1 });
   
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
@@ -46,7 +38,7 @@ function addWatermark(doc: jsPDF): void {
     doc.setFontSize(55);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(210, 210, 210);
-    docWithGState.setGState(dimState);
+    doc.setGState(dimState);
     
     // Center of page
     const centerX = PAGE_WIDTH / 2;
@@ -59,7 +51,7 @@ function addWatermark(doc: jsPDF): void {
     });
     
     // Restore ALL state properties
-    docWithGState.setGState(fullState);
+    doc.setGState(fullState);
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
@@ -164,7 +156,7 @@ export async function exportToPDF({
         doc.addImage(logo.dataUrl, 'PNG', logoX, logoY, finalLogoWidth, finalLogoHeight);
         state.y = MARGIN + finalLogoHeight + 3; // tight spacing after logo
       } catch (err) {
-        logger.warn('Failed to add logo to PDF', err instanceof Error ? err : new Error(String(err)));
+        logger.warn('Failed to add logo to PDF', { error: err instanceof Error ? err.message : String(err) });
         // Continue without logo if it fails
       }
     }

@@ -74,11 +74,12 @@ export async function loadLogo(): Promise<LogoData | null> {
     }
     
     // Step 4: Convert dataUrl to ArrayBuffer for DOCX
-    const base64Data = pngResult.dataUrl.split(',')[1];
-    if (!base64Data) {
+    const parts = pngResult.dataUrl.split(',');
+    if (parts.length !== 2 || !parts[1]) {
       logger.warn('Failed to extract base64 data from PNG dataUrl');
       return null;
     }
+    const base64Data = parts[1];
     
     const binaryString = atob(base64Data);
     const bytes = new Uint8Array(binaryString.length);
@@ -94,7 +95,7 @@ export async function loadLogo(): Promise<LogoData | null> {
       naturalHeight: pngResult.height,
     };
   } catch (err) {
-    logger.warn('Failed to load logo', err instanceof Error ? err : new Error(String(err)));
+    logger.warn('Failed to load logo', { error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }
