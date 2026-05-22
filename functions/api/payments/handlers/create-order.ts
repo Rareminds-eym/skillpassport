@@ -109,13 +109,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       });
     }
 
-    // PAID PLAN LOGIC - Ensure RAZORPAY_KEY_ID is available
-    if (!env.RAZORPAY_KEY_ID) {
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'RAZORPAY_KEY_ID is not configured' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+   
 
 
     // Call payment-worker via Service Binding RPC
@@ -133,8 +127,8 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     });
 
     // Validate that payment worker returned key_id
-    if (!order.key_id && !env.RAZORPAY_KEY_ID) {
-      logger.error('Payment worker did not return key_id and env.RAZORPAY_KEY_ID is missing');
+    if (!order.key_id) {
+      logger.error('Payment worker did not return key_id');
       return new Response(
         JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -145,8 +139,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     // The payment worker injects key_id to ensure it matches the key used to create the order
     return new Response(JSON.stringify({
       ...order,
-      razorpay_key_id: (order as any).key_id || env.RAZORPAY_KEY_ID,
-      key: (order as any).key_id || env.RAZORPAY_KEY_ID,
+      razorpay_key_id: order.key_id, // Expose as razorpay_key_id for frontend
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
