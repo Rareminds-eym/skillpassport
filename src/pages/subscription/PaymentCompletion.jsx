@@ -20,7 +20,7 @@ import { useSubscription } from '@/features/subscription/model';
 import { supabase } from '@/shared/api/supabaseClient';
 import { initiateRazorpayPayment } from '@/features/subscription/api';
 
-import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
+import { useUser, useIsAuthenticated, useAuthLoading, useUserRole, useAuthStore } from '@/shared/model/authStore';
 
 const DEBUG = import.meta.env.DEV;
 /**

@@ -1,4 +1,5 @@
 import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
 /**
  * Consolidated Learner Service
  * Handles all learner-related operations with TypeScript types

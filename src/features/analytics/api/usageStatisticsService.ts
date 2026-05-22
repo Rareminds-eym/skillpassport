@@ -7,6 +7,7 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('usage-statistics');
 
