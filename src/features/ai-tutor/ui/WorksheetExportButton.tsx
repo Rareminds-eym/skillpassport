@@ -159,3 +159,5 @@ export const WorksheetExportButton = ({
     </div>
   );
 };
+
+export default WorksheetExportButton;

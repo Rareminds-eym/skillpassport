@@ -12,21 +12,24 @@ interface ExportToDOCXOptions {
   filename: string;
 }
 
+interface DocxConstructors {
+  Paragraph: new (options: Record<string, unknown>) => unknown;
+  TextRun: new (options: Record<string, unknown>) => unknown;
+  HeadingLevel: Record<string, string>;
+  BorderStyle: Record<string, string>;
+  ShadingType: Record<string, string>;
+  UnderlineType: Record<string, string>;
+}
+
+type DocxElement = InstanceType<DocxConstructors['Paragraph']>;
+
 /**
  * Render parsed markdown lines to DOCX paragraphs
  */
 async function renderParsedLinesToDocx(
   parsedLines: ParsedLine[],
-  docxConstructors: {
-    Paragraph: any;
-    TextRun: any;
-    HeadingLevel: any;
-    BorderStyle: any;
-    ShadingType: any;
-    UnderlineType: any;
-    Table: any;
-  }
-): Promise<Array<any>> {
+  docxConstructors: DocxConstructors
+): Promise<DocxElement[]> {
   const {
     Paragraph,
     TextRun,
@@ -36,7 +39,7 @@ async function renderParsedLinesToDocx(
     UnderlineType,
   } = docxConstructors;
 
-  const paragraphs: Array<any> = [];
+  const paragraphs: DocxElement[] = [];
 
   for (const line of parsedLines) {
     switch (line.type) {
@@ -88,7 +91,7 @@ async function renderParsedLinesToDocx(
 
       case 'blank_line': {
         const parts = line.raw.split('__________');
-        const runs: any[] = [];
+        const runs: unknown[] = [];
 
         for (let i = 0; i < parts.length; i++) {
           if (parts[i]) {
@@ -151,7 +154,7 @@ async function renderParsedLinesToDocx(
         break;
 
       case 'bold': {
-        const runs: any[] = [];
+        const runs: unknown[] = [];
         for (const segment of line.segments) {
           runs.push(
             new TextRun({
@@ -242,10 +245,9 @@ export async function exportToDOCX({
       HeadingLevel,
       ShadingType,
       UnderlineType,
-      Table,
     } = await import('docx');
 
-    const sections: Array<typeof Paragraph | typeof ImageRun | typeof Table> = [];
+    const sections: unknown[] = [];
 
     // Add branding logo at the top
     const logo = await loadLogo();
@@ -280,7 +282,9 @@ export async function exportToDOCX({
           })
         );
       } catch (err) {
-        logger.warn('Failed to add logo to DOCX', err instanceof Error ? err : new Error(String(err)));
+        logger.warn('Failed to add logo to DOCX', { 
+          error: err instanceof Error ? err.message : String(err) 
+        });
         // Continue without logo if it fails
       }
     }
@@ -356,7 +360,6 @@ export async function exportToDOCX({
       BorderStyle,
       ShadingType,
       UnderlineType,
-      Table,
     });
     sections.push(...contentParagraphs);
 
@@ -380,13 +383,9 @@ export async function exportToDOCX({
           horizontal: 'page',
           vertical: 'page',
         },
-        alignment: {
-          x: 'center',
-          y: 'center',
-        },
         type: 'absolute',
       },
-    });
+    }) as unknown;
 
     // Create document with watermark in header and page numbers in footer
     const doc = new Document({
@@ -394,7 +393,7 @@ export async function exportToDOCX({
         {
           headers: {
             default: new Header({
-              children: [watermarkParagraph],
+              children: [watermarkParagraph as never],
             }),
           },
           footers: {
@@ -424,7 +423,7 @@ export async function exportToDOCX({
               margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
             },
           },
-          children: sections,
+          children: sections as never[],
         },
       ],
       numbering: {

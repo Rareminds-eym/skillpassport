@@ -21,7 +21,7 @@ import { ChatMessage } from '@/features/ai-tutor';
 import { getLogger } from '@/shared/config/logging';
 import { useUserRole } from '@/shared/model/authStore';
 import WorksheetConfigPanel from './WorksheetConfigPanel.tsx';
-import { WorksheetExportButton } from './WorksheetExportButton.tsx';
+import WorksheetExportButton from './WorksheetExportButton.tsx';
 import type { WorksheetConfig } from '../types/worksheet';
 import { DEFAULT_WORKSHEET_CONFIG } from '../types/worksheet';
 

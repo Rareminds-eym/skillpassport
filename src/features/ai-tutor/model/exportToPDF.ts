@@ -5,6 +5,14 @@ import type { jsPDF } from 'jspdf';
 
 const logger = getLogger('export-to-pdf');
 
+/**
+ * Extended jsPDF interface with GState support for opacity control
+ */
+interface JsPDFWithGState extends jsPDF {
+  GState: new (options: { opacity: number }) => unknown;
+  setGState: (state: unknown) => void;
+}
+
 interface ExportToPDFOptions {
   content: string;
   courseTitle: string;
@@ -24,9 +32,12 @@ const MAX_WIDTH = PAGE_WIDTH - (MARGIN * 2);
 function addWatermark(doc: jsPDF): void {
   const totalPages = doc.getNumberOfPages();
   
+  // Cast to extended interface for GState support
+  const docWithGState = doc as unknown as JsPDFWithGState;
+  
   // Hoist GState objects outside the loop
-  const dimState = new (doc as any).GState({ opacity: 0.15 });
-  const fullState = new (doc as any).GState({ opacity: 1 });
+  const dimState = new docWithGState.GState({ opacity: 0.15 });
+  const fullState = new docWithGState.GState({ opacity: 1 });
   
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
@@ -35,7 +46,7 @@ function addWatermark(doc: jsPDF): void {
     doc.setFontSize(55);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(210, 210, 210);
-    doc.setGState(dimState);
+    docWithGState.setGState(dimState);
     
     // Center of page
     const centerX = PAGE_WIDTH / 2;
@@ -48,7 +59,7 @@ function addWatermark(doc: jsPDF): void {
     });
     
     // Restore ALL state properties
-    doc.setGState(fullState);
+    docWithGState.setGState(fullState);
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
@@ -58,6 +69,14 @@ function addWatermark(doc: jsPDF): void {
 
 /**
  * Split text into lines that fit within the page width
+ * 
+ * This function breaks down a text string into multiple lines based on word boundaries,
+ * ensuring each line fits within the specified maximum width when rendered in the PDF.
+ * 
+ * @param doc - A jsPDF instance used to measure text width via `doc.getTextWidth()`
+ * @param text - The text string to split into lines
+ * @param maxWidth - The maximum width (in mm) that each line can occupy
+ * @returns An array of strings, where each string represents a line that fits within maxWidth
  */
 function splitTextToLines(doc: jsPDF, text: string, maxWidth: number): string[] {
   if (!text) return [''];

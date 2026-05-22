@@ -39,8 +39,10 @@ export function useExport({
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
 
-  useEffect(() => { onSuccessRef.current = onSuccess; }, [onSuccess]);
-  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+  // Sync latest callbacks into refs so `exportAs` can call them
+  // without needing them in its dependency array (avoids unnecessary re-creation).
+  useEffect(() => { onSuccessRef.current = onSuccess; }, [onSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onErrorRef.current = onError; }, [onError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isExportingRef = useRef(false);
 
