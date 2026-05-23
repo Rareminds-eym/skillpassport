@@ -11,7 +11,7 @@ import { useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AddOnCheckout } from '@/features/subscription';
 import { AddOnMarketplace } from '@/features/subscription';
-import { useUser } from '@/shared/model/authStore';
+import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
 
 
 /**
