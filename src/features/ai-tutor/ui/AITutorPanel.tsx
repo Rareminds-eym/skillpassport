@@ -34,7 +34,7 @@ import { Link } from 'react-router-dom';
 
 import { useUser, useUserRole, useLearnerType } from '@/shared/model';
 import { getLogger } from '@/shared/config';
-import { supabase } from '@/shared/api';
+import { getSession } from '@/features/auth/api/authSessionService';
 
 const logger = getLogger('ai-tutor-panel');
 
@@ -97,7 +97,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     // Get auth token
     let token: string | undefined;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await getSession();
       token = session?.access_token;
     } catch (err) {
       logger.error('Failed to get auth session', err instanceof Error ? err : new Error(String(err)));
