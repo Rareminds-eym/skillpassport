@@ -34,7 +34,7 @@ import { Link } from 'react-router-dom';
 
 import { useUser, useUserRole, useLearnerType } from '@/shared/model';
 import { getLogger } from '@/shared/config';
-import { getSession } from '@/features/auth/api/authSessionService';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('ai-tutor-panel');
 
@@ -95,17 +95,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     setIsLoadingCount(true);
 
     // Get auth token
-    let token: string | undefined;
-    try {
-      const { data: { session } } = await getSession();
-      token = session?.access_token;
-    } catch (err) {
-      logger.error('Failed to get auth session', err instanceof Error ? err : new Error(String(err)));
-      setTeacherGenerationCount(0);
-      setIsLoadingCount(false);
-      return;
-    }
-
+    const token = ssoClient.getAccessToken();
+    
     if (!token) {
       logger.warn('No auth token available for generation usage fetch');
       setTeacherGenerationCount(0);
