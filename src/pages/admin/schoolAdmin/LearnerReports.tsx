@@ -12,7 +12,6 @@ import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 import { supabase } from '@/shared/api/supabaseClient';
 import { attendanceService, learnerReportService } from '@/features/learner-profile/api';
-import { authSessionService } from '@/features/auth';
 
 interface LearnerReportData {
   id: string;
@@ -63,7 +62,7 @@ const LearnerReports: React.FC = () => {
 
       // If not found in localStorage, try Supabase Auth (for educators/teachers)
       if (!currentSchoolId) {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         
         if (user) {
           // Check school_educators table - use maybeSingle() to avoid 406 error

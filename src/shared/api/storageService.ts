@@ -1,3 +1,4 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Storage Service for handling file uploads to Cloudflare R2
  * 
@@ -7,7 +8,6 @@
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { getCurrentSession } from "./authUtils";
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('storage-service');
@@ -53,11 +53,11 @@ class StorageService {
    */
   private async getAuthToken(): Promise<string | null> {
     try {
-      const { data: { session } } = await getCurrentSession(); const error = null;
+      const user = useAuthStore.getState().user; const error = null;
       if (error || !session) {
         return null;
       }
-      return session.access_token;
+      return ssoClient.getAccessToken();
     } catch (error) {
       logger.error('Error getting auth token', error as Error);
       return null;
@@ -82,11 +82,9 @@ class StorageService {
       formData.append('file', file);
       formData.append('filename', filename || file.name);
 
-      const response = await fetch(`${this.baseUrl}/upload`, {
+      const response = await ssoClient.fetch(`${this.baseUrl}/upload`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+
         body: formData,
       });
 
@@ -238,12 +236,11 @@ class StorageService {
         };
       }
 
-      const response = await fetch(`${this.baseUrl}/presigned`, {
+      const response = await ssoClient.fetch(`${this.baseUrl}/presigned`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          },
         body: JSON.stringify({
           filename,
           contentType,
@@ -284,12 +281,11 @@ class StorageService {
         };
       }
 
-      const response = await fetch(`${this.baseUrl}/confirm`, {
+      const response = await ssoClient.fetch(`${this.baseUrl}/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          },
         body: JSON.stringify({
           fileKey,
           fileName,
@@ -330,12 +326,11 @@ class StorageService {
         };
       }
 
-      const response = await fetch(`${this.baseUrl}/delete`, {
+      const response = await ssoClient.fetch(`${this.baseUrl}/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          },
         body: JSON.stringify({ url }),
       });
 
@@ -362,7 +357,7 @@ class StorageService {
    */
   async getFileUrl(fileKey: string): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
-      const response = await fetch(`${this.baseUrl}/get-file-url`, {
+      const response = await ssoClient.fetch(`${this.baseUrl}/get-file-url`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -395,12 +390,11 @@ class StorageService {
         };
       }
 
-      const response = await fetch(`${this.baseUrl}/signed-url`, {
+      const response = await ssoClient.fetch(`${this.baseUrl}/signed-url`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          },
         body: JSON.stringify({ 
           url,
           expiresIn // seconds

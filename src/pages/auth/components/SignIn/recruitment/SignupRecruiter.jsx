@@ -1,4 +1,4 @@
-import { authSessionService } from '@/features/auth';
+
 
 import { motion } from "framer-motion";
 import { AlertCircle, BarChart3, CheckCircle, Zap } from "lucide-react";
@@ -138,7 +138,7 @@ export default function SignupRecruiter() {
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
       if (import.meta.env.DEV) console.log('[SignupRecruiter] Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await authSessionService.signInWithPassword({
+      const { data: signInData, error: signInError } = await ssoClient.login({
         email: formData.email,
         password: formData.password,
       });

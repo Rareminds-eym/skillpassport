@@ -9,7 +9,7 @@ import { LearnerLedgerModal } from "./components/LearnerLedgerModal";
 import { useFeeStructures } from "./hooks/useFeeStructures";
 import { useFeeTracking } from "./hooks/useFeeTracking";
 import { FeeStructure, LearnerFeeSummary } from '@/features/learner-profile/model';
-import { authSessionService } from '@/features/auth';
+
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('SchoolFinanceModule');
@@ -50,7 +50,7 @@ const SchoolFinanceModule: React.FC = () => {
         }
         
         // If not found in localStorage, try Supabase Auth
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (user) {
           // Check for school admin by matching email in organizations table
           const { data: org } = await supabase

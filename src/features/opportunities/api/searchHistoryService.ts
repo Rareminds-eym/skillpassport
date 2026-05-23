@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 // import { supabase } from '@/shared/api/supabaseClient';
 
 // /**
@@ -20,7 +19,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const trimmedTerm = searchTerm.trim();
 
 //       // Get user session
-//       const { data: { session } } = await getCurrentSession();
+//       const user = useAuthStore.getState().user;
 //       if (!session) {
 //         return { success: false, message: 'User not authenticated' };
 //       }
@@ -29,7 +28,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { data: existing } = await supabase
 //         .from('search_history')
 //         .select('id, search_count')
-//         .eq('learner_id', session.user.id) // Use authenticated user's ID
+//         .eq('learner_id', user.id) // Use authenticated user's ID
 //         .eq('search_term', trimmedTerm)
 //         .maybeSingle();
 
@@ -82,7 +81,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { data, error } = await supabase
 //         .from('search_history')
 //         .insert([{
-//           learner_id: session.user.id, // Use authenticated user's ID
+//           learner_id: user.id, // Use authenticated user's ID
 //           search_term: trimmedTerm,
 //           search_count: 1,
 //           last_searched_at: new Date().toISOString()
@@ -115,7 +114,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   static async getSearchHistory(learnerId) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = await getCurrentSession();
+//       const user = useAuthStore.getState().user;
 //       if (!session) {
 //         return [];
 //       }
@@ -123,7 +122,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { data, error } = await supabase
 //         .from('search_history')
 //         .select('*')
-//         .eq('learner_id', session.user.id)
+//         .eq('learner_id', user.id)
 //         .order('last_searched_at', { ascending: false })
 //         .limit(5);
 
@@ -145,7 +144,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   static async deleteSearchTerm(learnerId, searchHistoryId) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = await getCurrentSession();
+//       const user = useAuthStore.getState().user;
 //       if (!session) {
 //         return { success: false, message: 'User not authenticated' };
 //       }
@@ -154,7 +153,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //         .from('search_history')
 //         .delete()
 //         .eq('id', searchHistoryId)
-//         .eq('learner_id', session.user.id);
+//         .eq('learner_id', user.id);
 
 //       if (error) throw error;
 
@@ -180,7 +179,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   static async clearSearchHistory(learnerId) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = await getCurrentSession();
+//       const user = useAuthStore.getState().user;
 //       if (!session) {
 //         return { success: false, message: 'User not authenticated' };
 //       }
@@ -188,7 +187,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { error } = await supabase
 //         .from('search_history')
 //         .delete()
-//         .eq('learner_id', session.user.id);
+//         .eq('learner_id', user.id);
 
 //       if (error) throw error;
 
@@ -215,7 +214,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //   static async getMostSearchedTerms(learnerId, limit = 5) {
 //     try {
 //       // Get user session
-//       const { data: { session } } = await getCurrentSession();
+//       const user = useAuthStore.getState().user;
 //       if (!session) {
 //         return [];
 //       }
@@ -223,7 +222,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 //       const { data, error } = await supabase
 //         .from('search_history')
 //         .select('*')
-//         .eq('learner_id', session.user.id)
+//         .eq('learner_id', user.id)
 //         .order('search_count', { ascending: false })
 //         .limit(limit);
 

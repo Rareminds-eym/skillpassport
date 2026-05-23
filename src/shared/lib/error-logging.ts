@@ -1,3 +1,4 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Error Logging Utility
  * 
@@ -133,7 +134,7 @@ export function retryPendingErrors(): void {
 
     // Try to send each pending error
     pendingErrors.forEach((error: ErrorLog) => {
-      fetch('/api/log-error', {
+      ssoClient.fetch('/api/log-error', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(error),

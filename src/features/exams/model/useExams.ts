@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { Assessment, AssessmentType, CurriculumSubject, ExamRoom, examsService, ExamTimetable, MarkEntry, SchoolClass, SchoolEducator, Learner } from '@/features/assessment';
@@ -392,7 +391,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
@@ -650,7 +649,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
@@ -748,7 +747,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (!user?.id) {
           throw new Error('User not authenticated');
         }
@@ -853,7 +852,7 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
-        const { data: { user } } = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (!user?.id) {
           throw new Error('User not authenticated');
         }

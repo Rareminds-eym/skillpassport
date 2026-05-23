@@ -25,7 +25,6 @@ import { opportunitiesService } from '@/features/opportunities';
 import type { Opportunity } from '@/features/opportunities';
 import { applicationTrackingService } from '@/features/opportunities';
 import type { ApplicationTrackingData, ApplicationStats } from '@/features/opportunities';
-import { authSessionService } from '@/features/auth';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('application-tracking');
@@ -116,7 +115,7 @@ const ApplicationTracking: React.FC = () => {
       setApplicationError(null);
 
       // Get current user's college ID
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) {
         throw new Error('Not authenticated');
       }

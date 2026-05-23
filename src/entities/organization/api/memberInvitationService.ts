@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Member Invitation Service
  * 
@@ -7,6 +6,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  */
 
 import { supabase } from '@/shared/api';
+import { useAuthStore } from '@/shared/model/authStore';
 import { LicenseAssignment, licenseManagementService } from './licenseManagementService';
 import { getLogger } from '@/shared/config/logging';
 
@@ -87,7 +87,7 @@ export class MemberInvitationService {
       }
 
       // 2. Get current user and their role
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -226,7 +226,7 @@ export class MemberInvitationService {
   async cancelInvitation(invitationId: string): Promise<void> {
     try {
       // Get current user for cancelled_by field
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('User not authenticated');
       }
@@ -560,7 +560,7 @@ export class MemberInvitationService {
     const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
       (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
     // Use current origin in development, production URL otherwise
-    const APP_URL = import.meta.env.DEV 
+    const VITE_APP_URL = import.meta.env.DEV 
       ? window.location.origin 
       : 'https://skillpassport.rareminds.in';
 
@@ -571,7 +571,7 @@ export class MemberInvitationService {
         invitation.organization_type
       );
 
-      const invitationLink = `${APP_URL}/accept-invitation?token=${invitation.invitation_token}`;
+      const invitationLink = `${VITE_APP_URL}/accept-invitation?token=${invitation.invitation_token}`;
       const memberType = invitation.invitee_role;
       const memberTypeDisplay = memberType.includes('educator') ? 'Educator' : 'Learner';
       const expiresDate = new Date(invitation.expires_at).toLocaleDateString('en-US', {

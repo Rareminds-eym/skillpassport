@@ -11,10 +11,6 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleHasFeatureAccess(context);
-});
-
 export async function handleHasFeatureAccess(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -34,8 +30,8 @@ export async function handleHasFeatureAccess(context: AuthenticatedContext): Pro
 
     // First, check if user has a subscription plan that includes this feature
     const { data: subscription, error: subError } = await supabase
-      .from('subscriptions')
-      .select('plan_id, status, subscription_end_date')
+      .from('subscription_cache')
+      .select('plan_id, status, subscription_end_date, features')
       .eq('user_id', userId)
       .in('status', ['active', 'paused', 'cancelled'])
       .order('created_at', { ascending: false })
@@ -43,38 +39,21 @@ export async function handleHasFeatureAccess(context: AuthenticatedContext): Pro
       .maybeSingle();
 
     if (!subError && subscription?.plan_id) {
+      const planFeatures = Array.isArray(subscription.features) ? subscription.features : [];
       if (subscription.status === 'cancelled') {
         const endDate = new Date(subscription.subscription_end_date);
         const now = new Date();
-        if (endDate >= now) {
-          const { data: planFeature, error: featureError } = await supabase
-            .from('subscription_plan_features')
-            .select('is_included')
-            .eq('plan_id', subscription.plan_id)
-            .eq('feature_key', featureKey)
-            .maybeSingle();
-
-          if (!featureError && planFeature?.is_included) {
-            return new Response(
-              JSON.stringify({ success: true, data: { hasAccess: true, accessSource: 'plan' } }),
-              { status: 200, headers: { 'Content-Type': 'application/json' } }
-            );
-          }
-        }
-      } else {
-        const { data: planFeature, error: featureError } = await supabase
-          .from('subscription_plan_features')
-          .select('is_included')
-          .eq('plan_id', subscription.plan_id)
-          .eq('feature_key', featureKey)
-          .maybeSingle();
-
-        if (!featureError && planFeature?.is_included) {
+        if (endDate >= now && planFeatures.includes(featureKey)) {
           return new Response(
             JSON.stringify({ success: true, data: { hasAccess: true, accessSource: 'plan' } }),
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           );
         }
+      } else if (planFeatures.includes(featureKey)) {
+        return new Response(
+          JSON.stringify({ success: true, data: { hasAccess: true, accessSource: 'plan' } }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
       }
     }
 

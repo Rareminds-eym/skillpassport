@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { extractErrorMessage } from '@/features/subscription/api/paymentsApiService';
 /**
  * Organization Payment Service
@@ -8,6 +7,7 @@ import { extractErrorMessage } from '@/features/subscription/api/paymentsApiServ
  */
 
 import { supabase } from '@/shared/api';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getRazorpayKeyId, getRazorpayKeyMode } from '@/shared/config';
 import { getLogger } from '@/shared/config/logging';
 
@@ -62,16 +62,8 @@ export interface OrganizationOrderResult {
 // ============================================================================
 
 const getAuthHeaders = async () => {
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
-  
-  if (!token) {
-    throw new Error('No authentication token available');
-  }
-  
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
   };
 };
 
@@ -107,7 +99,7 @@ export async function createOrganizationOrder(
     const headers = await getAuthHeaders();
     
     // Create order via Worker
-    const response = await fetch(`${getBaseUrl()}/create-org-order`, {
+    const response = await ssoClient.fetch(`${getBaseUrl()}/create-org-order`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -150,7 +142,7 @@ export async function verifyOrganizationPayment(paymentData: {
   try {
     const headers = await getAuthHeaders();
     
-    const response = await fetch(`${getBaseUrl()}/verify-org-payment`, {
+    const response = await ssoClient.fetch(`${getBaseUrl()}/verify-org-payment`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -182,7 +174,7 @@ export async function purchaseOrganizationSubscription(
   try {
     const headers = await getAuthHeaders();
     
-    const response = await fetch(`${getBaseUrl()}/org-subscriptions/purchase`, {
+    const response = await ssoClient.fetch(`${getBaseUrl()}/org-subscriptions/purchase`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -232,7 +224,7 @@ export async function initiateOrganizationPayment(params: {
     const orderData = await createOrganizationOrder(purchaseData);
 
     // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
-    const razorpayKeyId = orderData.key;
+    const razorpayKeyId = orderData.razorpay_key_id || orderData.key;
 
     // Razorpay checkout options
     const options = {

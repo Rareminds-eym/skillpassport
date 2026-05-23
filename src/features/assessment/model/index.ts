@@ -1,14 +1,17 @@
 /**
  * Assessment Hooks - Main Export
- * 
+ *
  * Centralized exports for all assessment-related hooks.
- * 
+ *
  * @module features/assessment/model
  */
 
+// Types
+export * from './types';
+
 // Core assessment flow
-export { useAssessmentFlow } from './useAssessmentFlow';
-export type { AssessmentFlowState, AssessmentAction } from './useAssessmentFlow';
+export { useAssessmentFlow } from './useCareerTestFlow';
+export type { AssessmentFlowState, AssessmentAction } from './useCareerTestFlow';
 
 // Timer management
 export { default as useAssessmentTimer } from './useAssessmentTimer';
@@ -51,6 +54,3 @@ export { default as useAssessment } from './useAssessment';
 
 // Assessment context
 export { AssessmentProvider, useAssessmentContext } from './AssessmentContext';
-
-// Promotional events
-export { useAssessmentPromotional } from './useAssessmentPromotional';

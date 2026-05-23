@@ -23,7 +23,6 @@ import { useLearners } from '@/entities/learner';
 import { supabase } from '@/shared/api/supabaseClient';
 import { saveMentorNote } from '@/features/educator';
 import { mentorNotesService } from "@/features/counselling";
-import { authSessionService } from '@/features/auth';
 
 interface MentorNote {
   id: string;
@@ -276,7 +275,7 @@ const MentorNotesContent = () => {
       }
 
       // Get the current user
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) {
         showNotification("Error", "User not authenticated!", "error");
         return;

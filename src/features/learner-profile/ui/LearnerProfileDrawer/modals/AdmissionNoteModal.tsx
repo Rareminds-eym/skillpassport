@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
@@ -58,7 +57,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
   const sendNoteAsCommunication = async () => {
     try {
       // Get current user
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('Not authenticated');
       }

@@ -94,7 +94,7 @@ const validQuestionArbitrary: fc.Arbitrary<Question> = fc.record({
   gradeLevel: gradeLevelArbitrary,
   phase: testPhaseArbitrary,
   explanation: fc.option(nonEmptyStringArbitrary, { nil: undefined }),
-  createdAt: fc.option(fc.date().map((d) => d.toISOString()), { nil: undefined }),
+  createdAt: fc.option(fc.integer({ min: 0, max: 1893456000000 }).map((ts) => new Date(ts).toISOString()), { nil: undefined }),
 });
 
 // =============================================================================

@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Organization Helper Utilities
  * 
@@ -27,7 +26,7 @@ export async function getCurrentUserOrganizationId(
   organizationType: OrganizationType
 ): Promise<OrganizationResult> {
   try {
-    const { data: { user } } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
     if (!user) {
       return { id: null, name: null, error: 'User not authenticated' };
     }

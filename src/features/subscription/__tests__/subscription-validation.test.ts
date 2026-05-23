@@ -25,13 +25,11 @@ import {
   FeatureGate,
 } from '../index';
 
-import {
-  subscriptionService,
-  paymentVerificationService,
-  razorpayService,
-  organizationService,
-  licensePoolService,
-} from '../api';
+import * as subscriptionService from '../api/subscriptionService';
+import * as paymentVerificationService from '../api/paymentVerificationService';
+import * as razorpayService from '../api/razorpayService';
+import * as organizationService from '../api/organizationService';
+import * as licensePoolService from '../api/licensePoolService';
 
 import {
   useSubscription,

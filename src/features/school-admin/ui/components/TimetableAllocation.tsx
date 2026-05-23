@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import { useUserRole } from "@/entities/user";
 import { supabase } from '@/shared/api/supabaseClient';
 import { timetableSlotsService } from "@/features/school-admin";
-import { authSessionService } from '@/features/auth';
+
 
 import { useUser } from '@/shared/model/authStore';
 interface Teacher {
@@ -130,7 +130,7 @@ const TimetableAllocationPage: React.FC = () => {
     try {
       const {
         data: { user },
-      } = await authSessionService.getUser();
+      } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
 
       const { data: userData } = await supabase

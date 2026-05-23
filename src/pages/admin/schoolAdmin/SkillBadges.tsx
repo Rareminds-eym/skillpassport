@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { KPICard } from '@/features/analytics';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+
 
 const logger = getLogger('school-admin-skill-badges');
 
@@ -81,7 +81,7 @@ const CompetitionResults = () => {
       
       // If not found in localStorage, try Supabase Auth (for educators/teachers)
       if (!schoolId) {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         
         if (user) {
           logger.info('Checking Supabase auth user', { email: user.email });

@@ -10,10 +10,9 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { createLogger } from '../../../lib/logger';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateBundleOrder(context);
-});
+const logger = createLogger('payments:create-bundle-order');
 
 export async function handleCreateBundleOrder(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
@@ -53,14 +52,6 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
       );
     }
 
-    // Ensure RAZORPAY_KEY_ID is available for frontend checkout
-    if (!env.RAZORPAY_KEY_ID) {
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'RAZORPAY_KEY_ID is not configured' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({
@@ -74,13 +65,25 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
       },
     });
 
-    // Return order with Razorpay key for frontend checkout initialization
-    return new Response(JSON.stringify({ ...order, key: env.RAZORPAY_KEY_ID }), {
+    // Validate that payment worker returned key_id
+    if (!order.key_id) {
+      logger.error('Payment worker did not return key_id');
+      return new Response(
+        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Return order with key_id from payment worker
+    return new Response(JSON.stringify({
+      ...order,
+      razorpay_key_id: order.key_id,
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('[CreateBundleOrder] Error:', error);
+    logger.error('Error creating bundle order', error);
     return rpcErrorResponse(error);
   }
 }

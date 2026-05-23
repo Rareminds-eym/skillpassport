@@ -6,7 +6,6 @@ import { getLogger } from '@/shared/config/logging';
 import { uploadFile, uploadMultipleFiles, validateFile } from '@/shared/api';
 // @ts-ignore - userApiService is a .js file
 import { userApiService } from '@/entities/user';
-import { authSessionService } from '@/features/auth';
 
 import { useUser } from '@/shared/model/authStore';
 
@@ -298,11 +297,8 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       const experienceUrls = uploadStatus.experience_letters.urls;
 
       // Get auth token for worker API
-      const { data: { session } } = await authSessionService.getSession();
-      if (!session?.access_token) {
-        throw new Error("Not authenticated. Please log in again.");
-      }
-
+      const user = useAuthStore.getState().user;
+      
       // Map role to display format for worker API
       const roleDisplayMap: Record<string, string> = {
         'college_admin': 'College Admin',
@@ -328,7 +324,7 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
           experience_years: formData.experience_years,
         },
         collegeId: collegeId,
-      }, session.access_token);
+      }, ssoClient.getAccessToken());
 
       if (!staffResult.success) {
         throw new Error(staffResult.error || "Failed to create faculty member");

@@ -76,12 +76,13 @@ export const updateSeatCount = async (
   newSeatCount: number
 ): Promise<OrganizationSubscription> => {
   const { data, error } = await supabase
-    .from('organization_subscriptions')
+    .from('subscription_cache')
     .update({
-      total_seats: newSeatCount,
+      seat_count: newSeatCount,
       updated_at: new Date().toISOString()
     })
     .eq('id', subscriptionId)
+    .eq('is_org_subscription', true)
     .select()
     .single();
 
@@ -94,7 +95,7 @@ export const cancelSubscription = async (
   reason: string
 ): Promise<void> => {
   const { error } = await supabase
-    .from('organization_subscriptions')
+    .from('subscription_cache')
     .update({
       status: 'cancelled',
       cancelled_at: new Date().toISOString(),
@@ -102,7 +103,8 @@ export const cancelSubscription = async (
       auto_renew: false,
       updated_at: new Date().toISOString()
     })
-    .eq('id', subscriptionId);
+    .eq('id', subscriptionId)
+    .eq('is_org_subscription', true);
 
   if (error) throw error;
 };
@@ -125,9 +127,10 @@ export const renewSubscription = async (
   }
 
   const { data, error } = await supabase
-    .from('organization_subscriptions')
+    .from('subscription_cache')
     .update(updateData)
     .eq('id', subscriptionId)
+    .eq('is_org_subscription', true)
     .select()
     .single();
 
@@ -140,12 +143,13 @@ export const upgradeSubscription = async (
   newPlanId: string
 ): Promise<OrganizationSubscription> => {
   const { data, error } = await supabase
-    .from('organization_subscriptions')
+    .from('subscription_cache')
     .update({
-      subscription_plan_id: newPlanId,
+      plan_id: newPlanId,
       updated_at: new Date().toISOString()
     })
     .eq('id', subscriptionId)
+    .eq('is_org_subscription', true)
     .select()
     .single();
 

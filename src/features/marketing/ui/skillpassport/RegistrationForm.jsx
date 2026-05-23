@@ -393,7 +393,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       const registrationId = orderData.registrationId;
 
       const options = {
-        key: orderData.key,
+        key: orderData.razorpay_key_id || orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
         name: isCorporate ? 'Skill Ecosystem' : 'Skill Passport',

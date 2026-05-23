@@ -24,7 +24,6 @@ import { curriculumApprovalService, type CurriculumApprovalDashboard } from '@/f
 import { curriculumChangeRequestService } from '@/features/college-admin';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('university-admin-syllabus-approval');
 
@@ -87,7 +86,7 @@ const SyllabusApproval: React.FC = () => {
   useEffect(() => {
     const fetchUserUniversityId = async () => {
       try {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (!user) {
           logger.warn('No authenticated user found');
           toast.error('User not authenticated');
