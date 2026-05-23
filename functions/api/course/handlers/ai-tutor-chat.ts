@@ -26,6 +26,7 @@ import {
   getPhaseParameters
 } from '../utils/conversation-phases';
 import { buildLessonPlanPrompt } from '../utils/lesson-plan-templates';
+import { hasReachedLimit, incrementGenerationCount } from '../utils/generation-limit';
 import { getLogger } from '../../../../src/shared/config/logging';
 
 const logger = getLogger('ai-tutor-chat');
@@ -46,6 +47,25 @@ interface StoredMessage {
   timestamp: string;
 }
 
+interface OpenRouterResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+}
+
+function isValidOpenRouterResponse(data: unknown): data is OpenRouterResponse {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  if (!Array.isArray(obj.choices)) return false;
+  return obj.choices.every(choice => 
+    typeof choice === 'object' && 
+    choice !== null &&
+    (!('message' in choice) || typeof choice.message === 'object')
+  );
+}
+
 interface AiTutorChatRequest {
   conversationId?: string;
   courseId?: string;
@@ -54,9 +74,6 @@ interface AiTutorChatRequest {
   worksheetConfig?: WorksheetConfig;
   lessonPlanConfig?: LessonPlanConfig;
 }
-
-const TEACHER_LEARNER_GENERATION_LIMIT = 2;
-const TEACHER_LEARNER_GENERATION_COUNT_KEY = 'ai_tutor_generation_count';
 
 // ==================== HANDLER ====================
 
@@ -148,51 +165,19 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       }
     }
 
-    let teacherGenerationMetadata: Record<string, unknown> | null = null;
-    let teacherGenerationCount = 0;
     let generationUsage:
       | { limit: number; used: number; remaining: number }
       | undefined;
 
+    // Check generation limit for teacher-learners
     if (isTeacherLearner && isGenerationRequest) {
-      const { data: userData, error: usageError } = await supabaseAdmin
-        .from('users')
-        .select('metadata')
-        .eq('id', learnerId)
-        .maybeSingle();
-
-      if (usageError) {
-        logger.error('Failed to fetch teacher generation usage', usageError instanceof Error ? usageError : new Error(String(usageError)));
-        return jsonResponse({
-          error: 'Unable to verify worksheet/lesson plan generation usage. Please try again.',
-          code: 'GENERATION_USAGE_UNAVAILABLE'
-        }, 500);
-      }
-
-      if (!userData) {
-        logger.error('Failed to fetch teacher generation usage: user record not found');
-        return jsonResponse({
-          error: 'Unable to verify worksheet/lesson plan generation usage. Please try again.',
-          code: 'GENERATION_USAGE_UNAVAILABLE'
-        }, 500);
-      }
-
-      const metadata = (userData.metadata || {}) as Record<string, unknown>;
-      teacherGenerationMetadata = metadata;
-      const rawGenerationCount = metadata[TEACHER_LEARNER_GENERATION_COUNT_KEY];
-      const parsedGenerationCount = Number(rawGenerationCount ?? 0);
-      teacherGenerationCount = Number.isFinite(parsedGenerationCount)
-        ? Math.max(0, Math.floor(parsedGenerationCount))
-        : 0;
-
-      if (teacherGenerationCount >= TEACHER_LEARNER_GENERATION_LIMIT) {
-        logger.warn('Blocked: teacher learner reached generation limit (' + teacherGenerationCount + '/' + TEACHER_LEARNER_GENERATION_LIMIT + ')');
+      const limitReached = await hasReachedLimit(supabaseAdmin, learnerId);
+      
+      if (limitReached) {
+        logger.warn('Blocked: teacher learner reached generation limit');
         return jsonResponse({
           error: 'You have reached your 2-generation limit for worksheet and lesson plan generation.',
           code: 'TEACHER_GENERATION_LIMIT_REACHED',
-          limit: TEACHER_LEARNER_GENERATION_LIMIT,
-          used: teacherGenerationCount,
-          remaining: 0
         }, 403);
       }
     }
@@ -209,7 +194,10 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           userRole: userRole
         }, 403);
       }
-      logger.info('Educator request validated: has ' + (worksheetConfig ? 'worksheet' : 'lesson plan') + ' config');
+      logger.info('Educator request validated', { 
+        hasWorksheetConfig: !!worksheetConfig, 
+        hasLessonPlanConfig: !!lessonPlanConfig 
+      });
     }
 
     // Override token limits for worksheet generation (educators need more tokens)
@@ -217,28 +205,27 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const isLessonPlanGeneration = lessonPlanConfig && userRole.toLowerCase().includes('educator');
     const maxTokens = (isWorksheetGeneration || isLessonPlanGeneration) ? 2000 : phaseParams.maxTokens;
 
-    logger.info('AI Tutor Chat: phase=' + conversationPhase + ', messageCount=' + messageCount + ', userRole=' + userRole + ', hasWorksheetConfig=' + !!worksheetConfig + ', hasLessonPlanConfig=' + !!lessonPlanConfig + ', maxTokens=' + maxTokens);
-    if (worksheetConfig) {
-      logger.info('Worksheet Config', { worksheetConfig: JSON.stringify(worksheetConfig, null, 2) });
-    }
-    if (lessonPlanConfig) {
-      logger.info('Lesson Plan Config', { lessonPlanConfig: JSON.stringify(lessonPlanConfig, null, 2) });
-    }
+    logger.info('AI Tutor Chat started', { 
+      phase: conversationPhase, 
+      messageCount, 
+      userRole, 
+      maxTokens 
+    });
 
     // Build course context and system prompt (role-based + optional worksheet/lesson plan config)
     const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, learnerId);
     const systemPrompt = buildSystemPrompt(courseContext, conversationPhase, userRole, worksheetConfig, lessonPlanConfig);
     
-    logger.info('System Prompt Preview (first 500 chars): ' + systemPrompt.substring(0, 500));
+    logger.info('System prompt built', { promptLength: systemPrompt.length });
 
     // Get model and endpoint from shared config
     const chatModel = AI_MODELS.GPT_4O_MINI;
     const endpoint = API_CONFIG.OPENROUTER.endpoint;
 
     // Create user message
-    const turnId = crypto.randomUUID();
+    const userMessageId = crypto.randomUUID();
     const userMessage: StoredMessage = {
-      id: turnId,
+      id: userMessageId,
       role: 'user',
       content: message,
       timestamp: new Date().toISOString()
@@ -290,16 +277,31 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (!outlineResponse.ok) {
               const errorText = await outlineResponse.text();
-              logger.error('Outline generation error: ' + outlineResponse.status + ' ' + errorText);
+              logger.error('Outline generation error', new Error(`HTTP ${outlineResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate outline' })}\n\n`));
               controller.close();
               return;
             }
 
-            const outlineData = await outlineResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
+            let outlineData: unknown;
+            try {
+              outlineData = await outlineResponse.json();
+            } catch (parseErr) {
+              logger.error('Failed to parse outline response', parseErr instanceof Error ? parseErr : new Error(String(parseErr)));
+              controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Invalid outline response format' })}\n\n`));
+              controller.close();
+              return;
+            }
+
+            if (!isValidOpenRouterResponse(outlineData)) {
+              logger.error('Invalid outline response structure');
+              controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Invalid outline response from AI service' })}\n\n`));
+              controller.close();
+              return;
+            }
             const outline = outlineData.choices?.[0]?.message?.content || '';
             
-            logger.info('Outline generated: ' + outline.substring(0, 200) + '...');
+            logger.info('Outline generated', { outlineLength: outline.length });
 
             // SECOND PASS: Generate full lesson plan using outline
             logger.info('Two-Pass Mode: Generating full lesson plan...');
@@ -325,7 +327,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (!finalResponse.ok) {
               const errorText = await finalResponse.text();
-              logger.error('Lesson plan generation error: ' + finalResponse.status + ' ' + errorText);
+              logger.error('Lesson plan generation error', new Error(`HTTP ${finalResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate lesson plan' })}\n\n`));
               controller.close();
               return;
@@ -369,7 +371,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               }
             }
 
-            logger.info('Two-pass lesson plan complete: ' + fullResponse.length + ' chars');
+            logger.info('Two-pass lesson plan complete', { responseLength: fullResponse.length });
           } else {
             // SINGLE-PASS MODE: Original implementation
             // Call OpenRouter with streaming
@@ -392,7 +394,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (!response.ok) {
               const errorText = await response.text();
-              logger.error('OpenRouter error: ' + response.status + ' ' + errorText);
+              logger.error('OpenRouter error', new Error(`HTTP ${response.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'AI service error' })}\n\n`));
               controller.close();
               return;
@@ -438,8 +440,9 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           }
 
           // Create assistant message
+          const assistantMessageId = crypto.randomUUID();
           const assistantMessage: StoredMessage = {
-            id: turnId,
+            id: assistantMessageId,
             role: 'assistant',
             content: fullResponse,
             timestamp: new Date().toISOString()
@@ -449,32 +452,27 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
           // Save conversation to database
           if (currentConversationId) {
-            // Update existing conversation
-            // Re-fetch latest to avoid race condition
-            const { data: latestConv } = await supabaseAdmin
-              .from('tutor_conversations')
-              .select('messages')
-              .eq('id', currentConversationId)
-              .maybeSingle();
+            // Update existing conversation atomically using raw SQL
+            const { error: updateError } = await supabaseAdmin.rpc('append_tutor_messages', {
+              p_conversation_id: currentConversationId,
+              p_learner_id: learnerId,
+              p_new_messages: [userMessage, assistantMessage]
+            });
 
-            const latestMessages: StoredMessage[] = latestConv?.messages || existingMessages;
-            const finalMessages = [...latestMessages, userMessage, assistantMessage];
-
-            await supabaseAdmin
-              .from('tutor_conversations')
-              .update({
-                messages: finalMessages,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', currentConversationId)
-              .eq('learner_id', learnerId);
-
-            logger.info('Updated conversation: ' + currentConversationId);
+            if (updateError) {
+              logger.error('Failed to append messages', updateError);
+              // Continue anyway - the generation succeeded
+            } else {
+              logger.info('Updated conversation', { conversationId: currentConversationId });
+            }
           } else {
             // Create new conversation with generated title
             let title = message.slice(0, 50);
 
             try {
+              const titleAbortController = new AbortController();
+              const titleTimeoutId = setTimeout(() => titleAbortController.abort(), 5000);
+
               const titleResponse = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
@@ -491,14 +489,29 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                   }],
                   max_tokens: 60,
                   temperature: 0.5
-                })
+                }),
+                signal: titleAbortController.signal
               });
 
+              clearTimeout(titleTimeoutId);
+
               if (titleResponse.ok) {
-                const titleData = await titleResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
-                const generatedTitle = titleData.choices?.[0]?.message?.content?.trim();
-                if (generatedTitle) {
-                  title = generatedTitle;
+                let titleData: unknown;
+                try {
+                  titleData = await titleResponse.json();
+                } catch (parseErr) {
+                  logger.warn('Failed to parse title response, using default', { error: parseErr instanceof Error ? parseErr.message : String(parseErr) });
+                  // Continue with default title
+                  titleData = null;
+                }
+
+                if (titleData && !isValidOpenRouterResponse(titleData)) {
+                  logger.warn('Invalid title response structure, using default');
+                } else if (titleData) {
+                  const generatedTitle = (titleData as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message?.content?.trim();
+                  if (generatedTitle) {
+                    title = generatedTitle;
+                  }
                 }
               }
             } catch (error) {
@@ -519,39 +532,19 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (newConv) {
               currentConversationId = newConv.id;
-              logger.info('Created new conversation: ' + currentConversationId);
+              logger.info('Created new conversation', { conversationId: currentConversationId });
             }
           }
 
-          if (isTeacherLearner && isGenerationRequest && teacherGenerationMetadata) {
-            const used = teacherGenerationCount + 1;
-            const remaining = Math.max(0, TEACHER_LEARNER_GENERATION_LIMIT - used);
-
-            const { error: usageUpdateError } = await supabaseAdmin
-              .from('users')
-              .update({
-                metadata: {
-                  ...teacherGenerationMetadata,
-                  [TEACHER_LEARNER_GENERATION_COUNT_KEY]: used
-                },
-                updatedAt: new Date().toISOString()
-              })
-              .eq('id', learnerId);
-
-            if (usageUpdateError) {
-              logger.error('Failed to update teacher generation usage', usageUpdateError instanceof Error ? usageUpdateError : new Error(String(usageUpdateError)));
-              return {
-                statusCode: 500,
-                body: JSON.stringify({ error: 'Failed to update generation usage. Please try again.' })
-              };
+          // Increment generation count for teacher-learners
+          if (isTeacherLearner && isGenerationRequest) {
+            try {
+              generationUsage = await incrementGenerationCount(supabaseAdmin, learnerId);
+              logger.info('Generation count incremented', { used: generationUsage.used, remaining: generationUsage.remaining });
+            } catch (err) {
+              // Log error but don't fail the stream - the generation already succeeded
+              logger.error('Failed to increment generation count', err instanceof Error ? err : new Error(String(err)));
             }
-            logger.info('Teacher generation usage updated', { used, limit: TEACHER_LEARNER_GENERATION_LIMIT });
-
-            generationUsage = {
-              limit: TEACHER_LEARNER_GENERATION_LIMIT,
-              used,
-              remaining
-            };
           }
 
           // Send completion event
@@ -561,7 +554,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             generationUsage
           })}\n\n`));
 
-          logger.info('Streaming complete: ' + fullResponse.length + ' chars');
+          logger.info('Streaming complete', { responseLength: fullResponse.length });
           controller.close();
 
         } catch (error: unknown) {

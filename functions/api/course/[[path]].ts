@@ -31,6 +31,7 @@ import { onRequestPost as handleAiTutorFeedback } from './handlers/ai-tutor-feed
 import { onRequestGet as handleAiTutorProgressGet, onRequestPost as handleAiTutorProgressPost } from './handlers/ai-tutor-progress';
 import { onRequestPost as handleAiVideoSummarizer } from './handlers/ai-video-summarizer';
 import { onRequestGet as handleGetLearnerType } from './handlers/get-learner-type';
+import { onRequestGet as handleGetGenerationUsage } from './handlers/get-generation-usage';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -60,6 +61,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         endpoints: [
           'GET /health - Health check',
           'GET /learner-type - Get learner type for role detection',
+          'GET /generation-usage - Get worksheet/lesson plan generation usage',
           'POST /ai-tutor-suggestions - Generate suggested questions',
           'POST /ai-tutor-chat - AI tutor chat (streaming)',
           'POST /ai-tutor-feedback - Submit feedback',
@@ -73,6 +75,11 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     // Get Learner Type (authenticated)
     if (path === '/learner-type' && request.method === 'GET') {
       return withAuth(handleGetLearnerType)(context);
+    }
+
+    // Get Generation Usage (authenticated)
+    if (path === '/generation-usage' && request.method === 'GET') {
+      return withAuth(handleGetGenerationUsage)(context);
     }
 
     // AI Tutor Suggestions (authenticated)
@@ -112,6 +119,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         availableEndpoints: [
           'GET /health - Health check',
           'GET /learner-type - Get learner type for role detection',
+          'GET /generation-usage - Get worksheet/lesson plan generation usage',
           'POST /ai-tutor-suggestions - Generate suggested questions',
           'POST /ai-tutor-chat - AI tutor chat (streaming)',
           'POST /ai-tutor-feedback - Submit feedback',
