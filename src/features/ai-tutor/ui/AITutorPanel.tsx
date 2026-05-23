@@ -170,7 +170,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   }, [user?.id, learnerTypeLoading, isTeacher]);
 
   useEffect(() => {
-    fetchGenerationCount();
+    fetchGenerationCount().catch((err) => {
+      logger.error(
+        'Unhandled error in fetchGenerationCount',
+        err instanceof Error ? err : new Error(String(err))
+      );
+    });
   }, [fetchGenerationCount]);
 
   const remainingTeacherGenerations = Math.max(

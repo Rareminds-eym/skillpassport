@@ -171,8 +171,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
     // Check generation limit for teacher-learners
     if (isTeacherLearner && isGenerationRequest) {
-      // Type assertion needed due to dual node_modules (root + functions)
-      const limitReached = await hasReachedLimit(supabaseAdmin as any, learnerId);
+      const limitReached = await hasReachedLimit(supabaseAdmin, learnerId);
       
       if (limitReached) {
         logger.warn('Blocked: teacher learner reached generation limit');
@@ -195,7 +194,10 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           userRole: userRole
         }, 403);
       }
-      logger.info('Educator request validated: has ' + (worksheetConfig ? 'worksheet' : 'lesson plan') + ' config');
+      logger.info('Educator request validated', { 
+        hasWorksheetConfig: !!worksheetConfig, 
+        hasLessonPlanConfig: !!lessonPlanConfig 
+      });
     }
 
     // Override token limits for worksheet generation (educators need more tokens)
@@ -203,13 +205,18 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const isLessonPlanGeneration = lessonPlanConfig && userRole.toLowerCase().includes('educator');
     const maxTokens = (isWorksheetGeneration || isLessonPlanGeneration) ? 2000 : phaseParams.maxTokens;
 
-    logger.info('AI Tutor Chat: phase=' + conversationPhase + ', messageCount=' + messageCount + ', userRole=' + userRole + ', maxTokens=' + maxTokens);
+    logger.info('AI Tutor Chat started', { 
+      phase: conversationPhase, 
+      messageCount, 
+      userRole, 
+      maxTokens 
+    });
 
     // Build course context and system prompt (role-based + optional worksheet/lesson plan config)
     const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, learnerId);
     const systemPrompt = buildSystemPrompt(courseContext, conversationPhase, userRole, worksheetConfig, lessonPlanConfig);
     
-    logger.info('System Prompt Preview (first 500 chars): ' + systemPrompt.substring(0, 500));
+    logger.info('System prompt built', { promptLength: systemPrompt.length });
 
     // Get model and endpoint from shared config
     const chatModel = AI_MODELS.GPT_4O_MINI;
@@ -270,13 +277,22 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (!outlineResponse.ok) {
               const errorText = await outlineResponse.text();
-              logger.error('Outline generation error: ' + outlineResponse.status + ' ' + errorText);
+              logger.error('Outline generation error', new Error(`HTTP ${outlineResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate outline' })}\n\n`));
               controller.close();
               return;
             }
 
-            const outlineData: unknown = await outlineResponse.json();
+            let outlineData: unknown;
+            try {
+              outlineData = await outlineResponse.json();
+            } catch (parseErr) {
+              logger.error('Failed to parse outline response', parseErr instanceof Error ? parseErr : new Error(String(parseErr)));
+              controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Invalid outline response format' })}\n\n`));
+              controller.close();
+              return;
+            }
+
             if (!isValidOpenRouterResponse(outlineData)) {
               logger.error('Invalid outline response structure');
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Invalid outline response from AI service' })}\n\n`));
@@ -285,7 +301,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             }
             const outline = outlineData.choices?.[0]?.message?.content || '';
             
-            logger.info('Outline generated: ' + outline.substring(0, 200) + '...');
+            logger.info('Outline generated', { outlineLength: outline.length });
 
             // SECOND PASS: Generate full lesson plan using outline
             logger.info('Two-Pass Mode: Generating full lesson plan...');
@@ -311,7 +327,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (!finalResponse.ok) {
               const errorText = await finalResponse.text();
-              logger.error('Lesson plan generation error: ' + finalResponse.status + ' ' + errorText);
+              logger.error('Lesson plan generation error', new Error(`HTTP ${finalResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate lesson plan' })}\n\n`));
               controller.close();
               return;
@@ -355,7 +371,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               }
             }
 
-            logger.info('Two-pass lesson plan complete: ' + fullResponse.length + ' chars');
+            logger.info('Two-pass lesson plan complete', { responseLength: fullResponse.length });
           } else {
             // SINGLE-PASS MODE: Original implementation
             // Call OpenRouter with streaming
@@ -378,7 +394,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (!response.ok) {
               const errorText = await response.text();
-              logger.error('OpenRouter error: ' + response.status + ' ' + errorText);
+              logger.error('OpenRouter error', new Error(`HTTP ${response.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'AI service error' })}\n\n`));
               controller.close();
               return;
@@ -447,7 +463,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               logger.error('Failed to append messages', updateError);
               // Continue anyway - the generation succeeded
             } else {
-              logger.info('Updated conversation: ' + currentConversationId);
+              logger.info('Updated conversation', { conversationId: currentConversationId });
             }
           } else {
             // Create new conversation with generated title
@@ -480,11 +496,19 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               clearTimeout(titleTimeoutId);
 
               if (titleResponse.ok) {
-                const titleData: unknown = await titleResponse.json();
-                if (!isValidOpenRouterResponse(titleData)) {
+                let titleData: unknown;
+                try {
+                  titleData = await titleResponse.json();
+                } catch (parseErr) {
+                  logger.warn('Failed to parse title response, using default', { error: parseErr instanceof Error ? parseErr.message : String(parseErr) });
+                  // Continue with default title
+                  titleData = null;
+                }
+
+                if (titleData && !isValidOpenRouterResponse(titleData)) {
                   logger.warn('Invalid title response structure, using default');
-                } else {
-                  const generatedTitle = titleData.choices?.[0]?.message?.content?.trim();
+                } else if (titleData) {
+                  const generatedTitle = (titleData as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message?.content?.trim();
                   if (generatedTitle) {
                     title = generatedTitle;
                   }
@@ -508,7 +532,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             if (newConv) {
               currentConversationId = newConv.id;
-              logger.info('Created new conversation: ' + currentConversationId);
+              logger.info('Created new conversation', { conversationId: currentConversationId });
             }
           }
 
@@ -530,7 +554,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             generationUsage
           })}\n\n`));
 
-          logger.info('Streaming complete: ' + fullResponse.length + ' chars');
+          logger.info('Streaming complete', { responseLength: fullResponse.length });
           controller.close();
 
         } catch (error: unknown) {

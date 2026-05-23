@@ -7,7 +7,6 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { getServiceClient } from '../../../lib/auth';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
@@ -36,7 +35,6 @@ export const onRequestGet = async (context: TypedContext) => {
     const { request, env, data } = context;
     const authenticatedUser = data.user;
     const supabase = getServiceClient(env);
-    const supabaseAdmin = createSupabaseAdminClient(env as PagesEnv);
 
     // Parse query parameters
     const url = new URL(request.url);
@@ -90,7 +88,7 @@ export const onRequestGet = async (context: TypedContext) => {
     }
 
     // Get generation usage using centralized utility
-    const usage = await getGenerationUsage(supabaseAdmin, userId);
+    const usage = await getGenerationUsage(supabase, userId);
 
     return jsonResponse({
       userId,
