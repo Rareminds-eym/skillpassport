@@ -40,7 +40,11 @@ export async function getGenerationUsage(
     throw new Error('Failed to fetch generation usage');
   }
 
-  const metadata = (userData.metadata || {}) as Record<string, unknown>;
+  const rawMetadata = userData.metadata;
+  const metadata: Record<string, unknown> =
+    typeof rawMetadata === 'object' && rawMetadata !== null && !Array.isArray(rawMetadata)
+      ? (rawMetadata as Record<string, unknown>)
+      : {};
   const rawCount = metadata[GENERATION_COUNT_KEY];
   const used = Number.isFinite(Number(rawCount)) ? Math.max(0, Math.floor(Number(rawCount))) : 0;
   const remaining = Math.max(0, TEACHER_GENERATION_LIMIT - used);
@@ -83,7 +87,11 @@ export async function incrementGenerationCount(
     throw new Error('Failed to update generation usage');
   }
 
-  const latestMetadata = (latestUserData.metadata || {}) as Record<string, unknown>;
+  const rawLatestMetadata = latestUserData.metadata;
+  const latestMetadata: Record<string, unknown> =
+    typeof rawLatestMetadata === 'object' && rawLatestMetadata !== null && !Array.isArray(rawLatestMetadata)
+      ? (rawLatestMetadata as Record<string, unknown>)
+      : {};
   const latestRawCount = latestMetadata[GENERATION_COUNT_KEY];
   const latestCount = Number.isFinite(Number(latestRawCount)) ? Math.max(0, Math.floor(Number(latestRawCount))) : 0;
   const newCount = latestCount + 1;

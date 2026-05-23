@@ -47,6 +47,25 @@ interface StoredMessage {
   timestamp: string;
 }
 
+interface OpenRouterResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+}
+
+function isValidOpenRouterResponse(data: unknown): data is OpenRouterResponse {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  if (!Array.isArray(obj.choices)) return false;
+  return obj.choices.every(choice => 
+    typeof choice === 'object' && 
+    choice !== null &&
+    (!('message' in choice) || typeof choice.message === 'object')
+  );
+}
+
 interface AiTutorChatRequest {
   conversationId?: string;
   courseId?: string;
@@ -152,7 +171,8 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
     // Check generation limit for teacher-learners
     if (isTeacherLearner && isGenerationRequest) {
-      const limitReached = await hasReachedLimit(supabaseAdmin, learnerId);
+      // Type assertion needed due to dual node_modules (root + functions)
+      const limitReached = await hasReachedLimit(supabaseAdmin as any, learnerId);
       
       if (limitReached) {
         logger.warn('Blocked: teacher learner reached generation limit');
@@ -196,9 +216,9 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const endpoint = API_CONFIG.OPENROUTER.endpoint;
 
     // Create user message
-    const turnId = crypto.randomUUID();
+    const userMessageId = crypto.randomUUID();
     const userMessage: StoredMessage = {
-      id: turnId,
+      id: userMessageId,
       role: 'user',
       content: message,
       timestamp: new Date().toISOString()
@@ -256,7 +276,13 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               return;
             }
 
-            const outlineData = await outlineResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
+            const outlineData: unknown = await outlineResponse.json();
+            if (!isValidOpenRouterResponse(outlineData)) {
+              logger.error('Invalid outline response structure');
+              controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Invalid outline response from AI service' })}\n\n`));
+              controller.close();
+              return;
+            }
             const outline = outlineData.choices?.[0]?.message?.content || '';
             
             logger.info('Outline generated: ' + outline.substring(0, 200) + '...');
@@ -398,8 +424,9 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           }
 
           // Create assistant message
+          const assistantMessageId = crypto.randomUUID();
           const assistantMessage: StoredMessage = {
-            id: turnId,
+            id: assistantMessageId,
             role: 'assistant',
             content: fullResponse,
             timestamp: new Date().toISOString()
@@ -409,32 +436,27 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
           // Save conversation to database
           if (currentConversationId) {
-            // Update existing conversation
-            // Re-fetch latest to avoid race condition
-            const { data: latestConv } = await supabaseAdmin
-              .from('tutor_conversations')
-              .select('messages')
-              .eq('id', currentConversationId)
-              .maybeSingle();
+            // Update existing conversation atomically using raw SQL
+            const { error: updateError } = await supabaseAdmin.rpc('append_tutor_messages', {
+              p_conversation_id: currentConversationId,
+              p_learner_id: learnerId,
+              p_new_messages: [userMessage, assistantMessage]
+            });
 
-            const latestMessages: StoredMessage[] = latestConv?.messages || existingMessages;
-            const finalMessages = [...latestMessages, userMessage, assistantMessage];
-
-            await supabaseAdmin
-              .from('tutor_conversations')
-              .update({
-                messages: finalMessages,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', currentConversationId)
-              .eq('learner_id', learnerId);
-
-            logger.info('Updated conversation: ' + currentConversationId);
+            if (updateError) {
+              logger.error('Failed to append messages', updateError);
+              // Continue anyway - the generation succeeded
+            } else {
+              logger.info('Updated conversation: ' + currentConversationId);
+            }
           } else {
             // Create new conversation with generated title
             let title = message.slice(0, 50);
 
             try {
+              const titleAbortController = new AbortController();
+              const titleTimeoutId = setTimeout(() => titleAbortController.abort(), 5000);
+
               const titleResponse = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
@@ -451,14 +473,21 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                   }],
                   max_tokens: 60,
                   temperature: 0.5
-                })
+                }),
+                signal: titleAbortController.signal
               });
 
+              clearTimeout(titleTimeoutId);
+
               if (titleResponse.ok) {
-                const titleData = await titleResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
-                const generatedTitle = titleData.choices?.[0]?.message?.content?.trim();
-                if (generatedTitle) {
-                  title = generatedTitle;
+                const titleData: unknown = await titleResponse.json();
+                if (!isValidOpenRouterResponse(titleData)) {
+                  logger.warn('Invalid title response structure, using default');
+                } else {
+                  const generatedTitle = titleData.choices?.[0]?.message?.content?.trim();
+                  if (generatedTitle) {
+                    title = generatedTitle;
+                  }
                 }
               }
             } catch (error) {
@@ -487,13 +516,10 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           if (isTeacherLearner && isGenerationRequest) {
             try {
               generationUsage = await incrementGenerationCount(supabaseAdmin, learnerId);
+              logger.info('Generation count incremented', { used: generationUsage.used, remaining: generationUsage.remaining });
             } catch (err) {
+              // Log error but don't fail the stream - the generation already succeeded
               logger.error('Failed to increment generation count', err instanceof Error ? err : new Error(String(err)));
-              controller.enqueue(encoder.encode(
-                `event: error\ndata: ${JSON.stringify({ error: 'Failed to update generation usage. Please try again.' })}\n\n`
-              ));
-              controller.close();
-              return;
             }
           }
 

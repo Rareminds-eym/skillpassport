@@ -92,18 +92,28 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       return;
     }
 
-    try {
-      setIsLoadingCount(true);
-      
-      // Get auth token
-      const { data: { session } } = await getSession();
-      const token = session?.access_token;
+    setIsLoadingCount(true);
 
-      if (!token) {
-        logger.warn('No auth token available for generation usage fetch');
-        setTeacherGenerationCount(0);
-        return;
-      }
+    // Get auth token
+    let token: string | undefined;
+    try {
+      const { data: { session } } = await getSession();
+      token = session?.access_token;
+    } catch (err) {
+      logger.error('Failed to get auth session', err instanceof Error ? err : new Error(String(err)));
+      setTeacherGenerationCount(0);
+      setIsLoadingCount(false);
+      return;
+    }
+
+    if (!token) {
+      logger.warn('No auth token available for generation usage fetch');
+      setTeacherGenerationCount(0);
+      setIsLoadingCount(false);
+      return;
+    }
+
+    try {
 
       // Fetch generation usage from API
       const response = await fetch('/api/course/generation-usage', {
@@ -121,32 +131,40 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           statusText: response.statusText 
         });
         setTeacherGenerationCount(0);
+        setIsLoadingCount(false);
         return;
       }
 
       // Parse response
       const data = await response.json() as { used?: unknown; limit?: unknown };
       
-      // Validate response data
+      // Validate response data - backend is single source of truth
       if (typeof data.used !== 'number') {
-        logger.warn('Invalid generation count data', { hasUsed: 'used' in data, usedType: typeof data.used });
+        logger.warn('Invalid generation count data: missing or invalid used', { hasUsed: 'used' in data, usedType: typeof data.used });
         setTeacherGenerationCount(0);
+        setIsLoadingCount(false);
+        return;
+      }
+
+      if (typeof data.limit !== 'number') {
+        logger.warn('Invalid generation count data: missing or invalid limit', { hasLimit: 'limit' in data, limitType: typeof data.limit });
+        setTeacherGenerationCount(0);
+        setIsLoadingCount(false);
         return;
       }
 
       // Update state with validated count and limit from backend
       const count = Math.max(0, Math.floor(data.used));
-      const limit = typeof data.limit === 'number' ? data.limit : 2; // Fallback to 2
+      const limit = Math.max(0, Math.floor(data.limit));
       
       setTeacherGenerationCount(count);
       setTeacherGenerationLimit(limit);
+      setIsLoadingCount(false);
       
     } catch (err) {
       // Handle network errors, JSON parse errors, etc.
       logger.error('Error fetching generation count', err instanceof Error ? err : new Error(String(err)));
       setTeacherGenerationCount(0);
-    } finally {
-      // Always set loading to false
       setIsLoadingCount(false);
     }
   }, [user?.id, learnerTypeLoading, isTeacher]);
@@ -210,7 +228,11 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     
     // Refetch count after generation to ensure UI is in sync
     if (isTeacher) {
-      await fetchGenerationCount();
+      try {
+        await fetchGenerationCount();
+      } catch (err) {
+        logger.error('Failed to refetch generation count after generation', err instanceof Error ? err : new Error(String(err)));
+      }
     }
   };
 

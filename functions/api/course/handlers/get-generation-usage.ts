@@ -16,6 +16,14 @@ import { getLogger } from '../../../../src/shared/config/logging';
 
 const logger = getLogger('get-generation-usage');
 
+const ADMIN_ROLES = new Set([
+  'admin',
+  'school_admin',
+  'college_admin',
+  'university_admin',
+  'owner',
+]);
+
 interface RequiredEnv {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -42,11 +50,11 @@ export const onRequestGet = async (context: TypedContext) => {
     }
 
     // Security check: Only allow users to fetch their own generation usage unless admin
-    const isAdmin = authenticatedUser.roles?.some(
-      (role: unknown): role is string =>
-        typeof role === 'string' &&
-        ['admin', 'school_admin', 'college_admin', 'university_admin', 'owner'].includes(role)
-    );
+    const isAdmin =
+      Array.isArray(authenticatedUser.roles) &&
+      authenticatedUser.roles.some(
+        (role: unknown) => typeof role === 'string' && ADMIN_ROLES.has(role)
+      );
 
     if (requestedUserId && requestedUserId !== authenticatedUser.sub && !isAdmin) {
       return jsonResponse({ 
