@@ -16,27 +16,28 @@ import {
   ThumbsUp,
   Trash2,
   FileText,
-  AlertCircle
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useTutorChat } from '@/features/ai-tutor/model/useTutorChat';
+import { useTutorChat, type GenerationUsage } from '@/features/ai-tutor/model/useTutorChat';
 import WorksheetConfigPanel from './WorksheetConfigPanel.tsx';
 import LessonPlanConfigPanel from './LessonPlanConfigPanel.tsx';
 import TeachingAssistantSettings, { type AssistantMode } from './TeachingAssistantSettings.tsx';
 import WorksheetExportButton from './WorksheetExportButton.tsx';
-import type { WorksheetConfig, WorksheetTemplateType } from '../types/worksheet';
-import { DEFAULT_WORKSHEET_CONFIG, WORKSHEET_TEMPLATES } from '../types/worksheet';
-import type { LessonPlanConfig, LessonPlanTemplateType } from '../types';
-import { DEFAULT_LESSON_PLAN_CONFIG, LESSON_PLAN_TEMPLATES } from '../types';
+import type { WorksheetConfig } from '../types/worksheet';
+import { DEFAULT_WORKSHEET_CONFIG } from '../types/worksheet';
+import type { LessonPlanConfig } from '../types';
+import { DEFAULT_LESSON_PLAN_CONFIG } from '../types';
 
 import { Link } from 'react-router-dom';
 
-import { useUser, useUserRole } from '@/shared/model/authStore';
-import { supabase } from '@/shared/api/supabaseClient';
-import { getLogger } from '@/shared/config/logging';
+import { useUser, useUserRole, useLearnerType } from '@/shared/model';
+import { getLogger } from '@/shared/config';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('ai-tutor-panel');
+
 interface LessonContext {
   lessonId?: string;
   lessonTitle?: string;
@@ -57,7 +58,16 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   defaultExpanded = false
 }) => {
   const user = useUser();
-  const { isEducator } = useUserRole();
+  const { isEducator: roleIsEducator } = useUserRole();
+  
+  // NEW: Fetch learner_type from database to determine actual user type
+  const { isTeacher, loading: learnerTypeLoading } = useLearnerType(user?.id);
+  
+  // Determine if user should be treated as educator:
+  // 1. If learner_type === "teacher", treat as educator (database-driven)
+  // 2. Otherwise, fall back to role-based detection
+  const isEducator = isTeacher || roleIsEducator;
+  
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -71,47 +81,102 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const editTextareaRef = React.useRef<HTMLTextAreaElement>(null);
   const isAuthenticated = !!user;
 
-  // Global message counter - tracked per user in Supabase only
-  const [globalMessageCount, setGlobalMessageCount] = useState<number>(0);
+  const [teacherGenerationCount, setTeacherGenerationCount] = useState<number>(0);
+  const [teacherGenerationLimit, setTeacherGenerationLimit] = useState<number>(2); // Default, will be updated from API
   const [isLoadingCount, setIsLoadingCount] = useState(true);
 
-  // Fetch user's message count from Supabase on mount
-  useEffect(() => {
-    const fetchMessageCount = async () => {
-      if (!user?.id) {
+  // Fetch generation count for teacher-learner accounts
+  const fetchGenerationCount = React.useCallback(async () => {
+    if (!user?.id || learnerTypeLoading || !isTeacher) {
+      setIsLoadingCount(false);
+      return;
+    }
+
+    setIsLoadingCount(true);
+
+    // Get auth token
+    const token = ssoClient.getAccessToken();
+    
+    if (!token) {
+      logger.warn('No auth token available for generation usage fetch');
+      setTeacherGenerationCount(0);
+      setIsLoadingCount(false);
+      return;
+    }
+
+    try {
+
+      // Fetch generation usage from API
+      const response = await fetch('/api/course/generation-usage', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        // Handle HTTP errors
+        logger.warn('Failed to fetch generation count', { 
+          status: response.status,
+          statusText: response.statusText 
+        });
+        setTeacherGenerationCount(0);
         setIsLoadingCount(false);
         return;
       }
 
-      try {
-        // Get count from users table metadata
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('metadata')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.warn('Could not fetch message count from database:', error);
-          setGlobalMessageCount(0);
-        } else {
-          const metadata = userData?.metadata || {};
-          const count = metadata.ai_tutor_message_count || 0;
-          setGlobalMessageCount(count);
-        }
-      } catch (err) {
-        console.error('Error fetching message count:', err);
-        setGlobalMessageCount(0);
-      } finally {
+      // Parse response
+      const data = await response.json() as { used?: unknown; limit?: unknown };
+      
+      // Validate response data - backend is single source of truth
+      if (typeof data.used !== 'number') {
+        logger.warn('Invalid generation count data: missing or invalid used', { hasUsed: 'used' in data, usedType: typeof data.used });
+        setTeacherGenerationCount(0);
         setIsLoadingCount(false);
+        return;
       }
-    };
 
-    fetchMessageCount();
-  }, [user?.id]);
+      if (typeof data.limit !== 'number') {
+        logger.warn('Invalid generation count data: missing or invalid limit', { hasLimit: 'limit' in data, limitType: typeof data.limit });
+        setTeacherGenerationCount(0);
+        setIsLoadingCount(false);
+        return;
+      }
 
-  // Check if locked
-  const isLocked = globalMessageCount >= 2;
+      // Update state with validated count and limit from backend
+      const count = Math.max(0, Math.floor(data.used));
+      const limit = Math.max(0, Math.floor(data.limit));
+      
+      setTeacherGenerationCount(count);
+      setTeacherGenerationLimit(limit);
+      setIsLoadingCount(false);
+      
+    } catch (err) {
+      // Handle network errors, JSON parse errors, etc.
+      logger.error('Error fetching generation count', err instanceof Error ? err : new Error(String(err)));
+      setTeacherGenerationCount(0);
+      setIsLoadingCount(false);
+    }
+  }, [user?.id, learnerTypeLoading, isTeacher]);
+
+  useEffect(() => {
+    fetchGenerationCount().catch((err) => {
+      logger.error(
+        'Unhandled error in fetchGenerationCount',
+        err instanceof Error ? err : new Error(String(err))
+      );
+    });
+  }, [fetchGenerationCount]);
+
+  const remainingTeacherGenerations = Math.max(
+    0,
+    teacherGenerationLimit - teacherGenerationCount
+  );
+  const isGenerationLocked = !learnerTypeLoading
+    && isTeacher
+    && teacherGenerationCount >= teacherGenerationLimit;
+  const isCheckingGenerationUsage = isTeacher && (learnerTypeLoading || isLoadingCount);
 
   // Worksheet configuration state (educators only)
   const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(DEFAULT_WORKSHEET_CONFIG);
@@ -135,7 +200,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       : 'Ask me anything about this course',
     welcomeTitle: isEducator ? 'Hi! I\'m your AI Teaching Assistant' : 'Hi! I\'m your AI Tutor',
     welcomeMessage: isEducator
-      ? `I'm here to help you create worksheets from ${courseName}. Configure your worksheet settings and let's get started!`
+      ? `Configure your ${assistantMode === 'worksheet' ? 'worksheet' : 'lesson plan'} settings above and click Generate to create content from ${courseName}.`
       : `I'm here to help you understand ${courseName}. Ask me anything about the course material!`,
     icon: isEducator ? FileText : Brain,
     gradientFrom: isEducator ? 'from-purple-600' : 'from-violet-600',
@@ -146,6 +211,40 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     textColor: isEducator ? 'text-purple-600' : 'text-violet-600',
     bgLight: isEducator ? 'bg-purple-100' : 'bg-violet-100',
   };
+
+  // Handle generate button click for educators
+  const handleGenerate = async () => {
+    if (isStreaming || isGenerationLocked || isCheckingGenerationUsage) return;
+
+    const generateMessage = assistantMode === 'worksheet' 
+      ? 'Generate a worksheet based on the configured settings.'
+      : 'Generate a lesson plan based on the configured settings.';
+    
+    await sendMessage(generateMessage);
+    
+    // Refetch count after generation to ensure UI is in sync
+    if (isTeacher) {
+      try {
+        await fetchGenerationCount();
+      } catch (err) {
+        logger.error('Failed to refetch generation count after generation', err instanceof Error ? err : new Error(String(err)));
+      }
+    }
+  };
+
+  const handleGenerationUsageUpdate = React.useCallback((usage: GenerationUsage) => {
+    try {
+      if (typeof usage?.used === 'number') {
+        setTeacherGenerationCount(usage.used);
+      }
+      if (typeof usage?.limit === 'number') {
+        setTeacherGenerationLimit(usage.limit);
+      }
+      setIsLoadingCount(false);
+    } catch (err) {
+      logger.error('Failed to update generation usage', err instanceof Error ? err : new Error(String(err)));
+    }
+  }, []);
 
   const {
     messages,
@@ -168,8 +267,11 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   } = useTutorChat({
     courseId,
     lessonId: lessonContext?.lessonId,
+    // Gate config on isEducator — backend also validates, but frontend
+    // should not pass generation config for non-educator users.
     worksheetConfig: isEducator && assistantMode === 'worksheet' ? worksheetConfig : undefined,
-    lessonPlanConfig: isEducator && assistantMode === 'lesson-plan' ? lessonPlanConfig : undefined
+    lessonPlanConfig: isEducator && assistantMode === 'lesson-plan' ? lessonPlanConfig : undefined,
+    onGenerationUsageUpdate: handleGenerationUsageUpdate
   });
 
   // Keyboard shortcut: Cmd/Ctrl + K to toggle panel
@@ -207,63 +309,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     }
   }, [lessonContext?.lessonId, refreshSuggestions]);
 
-  // Track when user sends a message and increment global counter
-  const previousMessageCountRef = React.useRef(0);
-  
-  useEffect(() => {
-    const currentUserMessageCount = messages.filter(msg => msg.role === 'user').length;
-    
-    // If user message count increased, increment global counter
-    if (currentUserMessageCount > previousMessageCountRef.current && user?.id) {
-      const increment = currentUserMessageCount - previousMessageCountRef.current;
-      const newGlobalCount = globalMessageCount + increment;
-      setGlobalMessageCount(newGlobalCount);
-      
-      // Update Supabase only
-      const updateCount = async () => {
-        try {
-          // First, get current metadata
-          const { data: currentUser, error: fetchError } = await supabase
-            .from('users')
-            .select('metadata')
-            .eq('id', user.id)
-            .single();
-
-          if (fetchError) {
-            console.error('Failed to fetch user metadata:', fetchError);
-            return;
-          }
-
-          // Update metadata with new count
-          const updatedMetadata = {
-            ...(currentUser?.metadata || {}),
-            ai_tutor_message_count: newGlobalCount
-          };
-
-          const { error: updateError } = await supabase
-            .from('users')
-            .update({
-              metadata: updatedMetadata,
-              updatedAt: new Date().toISOString()
-            })
-            .eq('id', user.id);
-
-          if (updateError) {
-            console.error('Failed to update message count in database:', updateError);
-          }
-        } catch (err) {
-          console.error('Failed to save global message count', err);
-        }
-      };
-
-      updateCount();
-    }
-    
-    previousMessageCountRef.current = currentUserMessageCount;
-  }, [messages, globalMessageCount, user?.id]);
-
   const handleSend = async () => {
-    if (!input.trim() || isStreaming || isLocked) return;
+    if (!input.trim() || isStreaming) return;
     const message = input;
     setInput('');
     await sendMessage(message);
@@ -396,15 +443,13 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         <div className="flex-1 overflow-y-auto p-4">
           <button
             onClick={() => {
-              if (isLocked) return;
               startNewConversation();
               setShowHistory(false);
             }}
-            disabled={isLocked}
-            className="w-full p-3 mb-3 border-2 border-dashed border-violet-300 rounded-xl text-violet-600 hover:border-violet-500 hover:bg-violet-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400"
+            className="w-full p-3 mb-3 border-2 border-dashed border-violet-300 rounded-xl text-violet-600 hover:border-violet-500 hover:bg-violet-50 transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            {isLocked ? 'New Conversation (Locked)' : 'New Conversation'}
+            New Conversation
           </button>
 
           {conversations.length === 0 ? (
@@ -541,14 +586,28 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       {/* Config Panel (Educators Only) */}
       {isEducator && assistantMode === 'worksheet' && (
         <WorksheetConfigPanel
+          key={`worksheet-${teacherGenerationCount}`}
           config={worksheetConfig}
           onChange={setWorksheetConfig}
+          onGenerate={handleGenerate}
+          isGenerating={isStreaming}
+          generationLimit={isTeacher ? teacherGenerationLimit : undefined}
+          remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
+          isGenerationLimitReached={isGenerationLocked}
+          isUsageLoading={isCheckingGenerationUsage}
         />
       )}
       {isEducator && assistantMode === 'lesson-plan' && (
         <LessonPlanConfigPanel
+          key={`lesson-plan-${teacherGenerationCount}`}
           config={lessonPlanConfig}
           onChange={setLessonPlanConfig}
+          onGenerate={handleGenerate}
+          isGenerating={isStreaming}
+          generationLimit={isTeacher ? teacherGenerationLimit : undefined}
+          remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
+          isGenerationLimitReached={isGenerationLocked}
+          isUsageLoading={isCheckingGenerationUsage}
         />
       )}
 
@@ -573,45 +632,30 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
           </div>
         ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-            {isLocked ? (
-              <>
-                <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-600" />
-                </div>
-                <h4 className="font-semibold text-gray-800 mb-2">AI Tutor Locked</h4>
-                <p className="text-sm text-gray-600 mb-4 max-w-xs">
-                  You've reached your 2-message limit. The AI Tutor feature is now locked.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className={`w-16 h-16 ${uiConfig.bgLight} rounded-2xl flex items-center justify-center mb-4`}>
-                  <Sparkles className={`w-8 h-8 ${uiConfig.textColor}`} />
-                </div>
-                <h4 className="font-semibold text-gray-800 mb-2">{uiConfig.welcomeTitle}</h4>
-                <p className="text-sm text-gray-600 mb-6 max-w-xs">
-                  {uiConfig.welcomeMessage}
-                </p>
+            <div className={`w-16 h-16 ${uiConfig.bgLight} rounded-2xl flex items-center justify-center mb-4`}>
+              <Sparkles className={`w-8 h-8 ${uiConfig.textColor}`} />
+            </div>
+            <h4 className="font-semibold text-gray-800 mb-2">{uiConfig.welcomeTitle}</h4>
+            <p className="text-sm text-gray-600 mb-6 max-w-xs">
+              {uiConfig.welcomeMessage}
+            </p>
 
-                {/* Suggested Questions */}
-                {suggestedQuestions.length > 0 && (
-                  <div className="w-full">
-                    <p className="text-xs text-gray-500 mb-2 font-medium">{isEducator ? 'Try asking:' : 'Try asking:'}</p>
-                    <div className="space-y-2">
-                      {suggestedQuestions.slice(0, 3).map((q, i) => (
-                        <button
-                          key={i}
-                          onClick={() => !isLocked && setInput(q)}
-                          disabled={isLocked}
-                          className={`w-full p-3 text-left text-sm bg-white border border-gray-200 rounded-xl hover:border-${isEducator ? 'purple' : 'violet'}-400 hover:bg-${isEducator ? 'purple' : 'violet'}-50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed`}
-                        >
-                          <span className={`text-gray-700 group-hover:text-${isEducator ? 'purple' : 'violet'}-700`}>{q}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+            {/* Suggested Questions - Only for Learners */}
+            {!isEducator && suggestedQuestions.length > 0 && (
+              <div className="w-full">
+                <p className="text-xs text-gray-500 mb-2 font-medium">Try asking:</p>
+                <div className="space-y-2">
+                  {suggestedQuestions.slice(0, 3).map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setInput(q)}
+                      className="w-full p-3 text-left text-sm bg-white border border-gray-200 rounded-xl hover:border-violet-400 hover:bg-violet-50 transition-all group"
+                    >
+                      <span className="text-gray-700 group-hover:text-violet-700">{q}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         ) : (
@@ -784,59 +828,38 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         </div>
       )}
 
-      {/* Input Area */}
-      <div className="p-4 border-t bg-white">
-        {isLocked && isAuthenticated ? (
-          <div className="flex flex-col gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-red-900">AI Tutor Locked</p>
-                <p className="text-xs text-red-700 mt-1">
-                  You've reached your 2-message limit. The AI Tutor feature is now locked.
-                </p>
-              </div>
-            </div>
+      {/* Input Area - Only for Learners */}
+      {!isEducator && (
+        <div className="p-4 border-t bg-white">
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={isAuthenticated ? "Ask about this lesson..." : "Please log in to chat"}
+              disabled={isStreaming || !isAuthenticated}
+              rows={1}
+              className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm resize-none max-h-32"
+              style={{ minHeight: '44px' }}
+            />
             <button
-              disabled
-              className="w-full px-4 py-2 bg-gray-300 text-gray-500 text-sm rounded-lg cursor-not-allowed flex items-center justify-center gap-2"
+              onClick={handleSend}
+              disabled={!input.trim() || isStreaming || !isAuthenticated}
+              className="w-11 h-11 bg-violet-600 text-white rounded-xl flex items-center justify-center hover:bg-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex-shrink-0"
             >
-              <Plus className="w-4 h-4" />
-              New Chat (Locked)
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
             </button>
           </div>
-        ) : (
-          <>
-            <div className="flex items-end gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={isAuthenticated ? "Ask about this lesson..." : "Please log in to chat"}
-                disabled={isStreaming || !isAuthenticated}
-                rows={1}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm resize-none max-h-32"
-                style={{ minHeight: '44px' }}
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || isStreaming || !isAuthenticated}
-                className="w-11 h-11 bg-violet-600 text-white rounded-xl flex items-center justify-center hover:bg-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Send className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 mt-2 text-center">
-              Press ⌘K to toggle • Enter to send
-            </p>
-          </>
-        )}
-      </div>
+          <p className="text-xs text-gray-400 mt-2 text-center">
+            Press ⌘K to toggle • Enter to send
+          </p>
+        </div>
+      )}
     </motion.div>
   );
 };

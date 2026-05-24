@@ -30,7 +30,16 @@ vi.mock('@/shared/api/supabaseClient', () => ({
   }
 }));
 
+// Mock SSO client
+vi.mock('@/shared/api/ssoClient', () => ({
+  ssoClient: {
+    fetch: vi.fn(),
+    getAccessToken: vi.fn(() => 'test-token')
+  }
+}));
+
 import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 describe('OrganizationSubscriptionService', () => {
   let service: OrganizationSubscriptionService;
@@ -152,67 +161,36 @@ describe('OrganizationSubscriptionService', () => {
 
     const mockPlan = {
       id: 'plan-456',
+      plan_code: 'PREMIUM',
       name: 'Premium Plan',
-      price: 100
-    };
-
-    const mockUser = {
-      id: 'user-789'
+      pricing_matrix: { monthly: 100 }
     };
 
     it('should create subscription successfully', async () => {
-      const mockSubscription = {
-        id: 'sub-001',
-        organization_id: 'org-123',
-        organization_type: 'school',
-        subscription_plan_id: 'plan-456',
-        purchased_by: 'user-789',
-        total_seats: 50,
-        assigned_seats: 0,
-        available_seats: 50,
-        target_member_type: 'educator',
-        status: 'active',
-        start_date: new Date().toISOString(),
-        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        auto_renew: true,
-        price_per_seat: '106.20',
-        total_amount: '5000',
-        discount_percentage: 10,
-        final_amount: '5310',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      // Mock plan lookup
+      // Mock plans_cache lookup
       vi.mocked(supabase.from).mockImplementation((table: string) => {
-        if (table === 'subscription_plans') {
+        if (table === 'plans_cache') {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: mockPlan, error: null })
           } as any;
         }
-        if (table === 'organization_subscriptions') {
-          return {
-            insert: vi.fn().mockReturnThis(),
-            select: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null })
-          } as any;
-        }
         return {} as any;
       });
 
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: mockUser },
-        error: null
+      // Mock SSO API response
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ orderId: 'order-123', key: 'key-123', amount: 531000 })
       } as any);
 
       const result = await service.purchaseSubscription(mockPurchaseRequest);
 
       expect(result).toBeDefined();
-      expect(result.organizationId).toBe('org-123');
-      expect(result.totalSeats).toBe(50);
-      expect(result.status).toBe('active');
+      expect(result.orderId).toBe('order-123');
+      expect(result.amount).toBe(531000);
+      expect(ssoClient.fetch).toHaveBeenCalled();
     });
 
     it('should throw error when plan not found', async () => {
@@ -233,9 +211,10 @@ describe('OrganizationSubscriptionService', () => {
         single: vi.fn().mockResolvedValue({ data: mockPlan, error: null })
       } as any));
 
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: null },
-        error: null
+      // Mock SSO API returning unauthenticated error
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: { message: 'User not authenticated' } })
       } as any);
 
       await expect(service.purchaseSubscription(mockPurchaseRequest))
@@ -250,15 +229,14 @@ describe('OrganizationSubscriptionService', () => {
           id: 'sub-001',
           organization_id: 'org-123',
           organization_type: 'school',
-          subscription_plan_id: 'plan-456',
-          purchased_by: 'user-789',
-          total_seats: 50,
+          plan_id: 'plan-456',
+          user_id: 'user-789',
+          seat_count: 50,
           assigned_seats: 25,
-          available_seats: 25,
           target_member_type: 'educator',
           status: 'active',
-          start_date: new Date().toISOString(),
-          end_date: new Date().toISOString(),
+          subscription_start_date: new Date().toISOString(),
+          subscription_end_date: new Date().toISOString(),
           auto_renew: true,
           price_per_seat: '100',
           total_amount: '5000',
@@ -302,15 +280,14 @@ describe('OrganizationSubscriptionService', () => {
         id: 'sub-001',
         organization_id: 'org-123',
         organization_type: 'school',
-        subscription_plan_id: 'plan-456',
-        purchased_by: 'user-789',
-        total_seats: 50,
+        plan_id: 'plan-456',
+        user_id: 'user-789',
+        seat_count: 50,
         assigned_seats: 25,
-        available_seats: 25,
         target_member_type: 'educator',
         status: 'active',
-        start_date: new Date().toISOString(),
-        end_date: new Date().toISOString(),
+        subscription_start_date: new Date().toISOString(),
+        subscription_end_date: new Date().toISOString(),
         auto_renew: true,
         price_per_seat: '100',
         total_amount: '5000',
@@ -320,25 +297,20 @@ describe('OrganizationSubscriptionService', () => {
         updated_at: new Date().toISOString()
       };
 
-      const mockUpdatedSub = { ...mockCurrentSub, total_seats: 75 };
+      const mockUpdatedSub = { ...mockCurrentSub, seat_count: 75 };
 
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          // First call: getSubscriptionById
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockCurrentSub, error: null })
-          } as any;
-        }
-        // Second call: update
+      let mockSub = mockCurrentSub;
+      vi.mocked(supabase.from).mockImplementation(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockImplementation(async () => ({ data: mockSub, error: null }))
+      } as any));
+
+      vi.mocked(ssoClient.fetch).mockImplementation(async () => {
+        mockSub = mockUpdatedSub;
         return {
-          update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockUpdatedSub, error: null })
+          ok: true,
+          json: async () => mockUpdatedSub
         } as any;
       });
 
@@ -350,7 +322,7 @@ describe('OrganizationSubscriptionService', () => {
     it('should throw error when reducing below assigned seats', async () => {
       const mockCurrentSub = {
         id: 'sub-001',
-        total_seats: 50,
+        seat_count: 50,
         assigned_seats: 30,
         price_per_seat: '100'
       };
@@ -368,23 +340,23 @@ describe('OrganizationSubscriptionService', () => {
 
   describe('cancelSubscription', () => {
     it('should cancel subscription successfully', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ error: null })
-      } as any));
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true })
+      } as any);
 
       await expect(service.cancelSubscription('sub-001', 'No longer needed'))
         .resolves.not.toThrow();
     });
 
-    it('should throw error on database failure', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        update: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ error: { message: 'Database error' } })
-      } as any));
+    it('should throw error on failure', async () => {
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: { message: 'Database error' } })
+      } as any);
 
       await expect(service.cancelSubscription('sub-001', 'Test'))
-        .rejects.toThrow();
+        .rejects.toThrow('Database error');
     });
   });
 
@@ -394,15 +366,14 @@ describe('OrganizationSubscriptionService', () => {
         id: 'sub-001',
         organization_id: 'org-123',
         organization_type: 'school',
-        subscription_plan_id: 'plan-456',
-        purchased_by: 'user-789',
-        total_seats: 50,
+        plan_id: 'plan-456',
+        user_id: 'user-789',
+        seat_count: 50,
         assigned_seats: 25,
-        available_seats: 25,
         target_member_type: 'educator',
         status: 'active',
-        start_date: new Date().toISOString(),
-        end_date: new Date().toISOString(),
+        subscription_start_date: new Date().toISOString(),
+        subscription_end_date: new Date().toISOString(),
         auto_renew: true,
         price_per_seat: '100',
         total_amount: '5000',
@@ -412,21 +383,17 @@ describe('OrganizationSubscriptionService', () => {
         updated_at: new Date().toISOString()
       };
 
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockCurrentSub, error: null })
-          } as any;
-        }
+      let mockSub = mockCurrentSub;
+      vi.mocked(supabase.from).mockImplementation(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockImplementation(async () => ({ data: mockSub, error: null }))
+      } as any));
+
+      vi.mocked(ssoClient.fetch).mockImplementation(async () => {
         return {
-          update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockCurrentSub, error: null })
+          ok: true,
+          json: async () => mockCurrentSub
         } as any;
       });
 
@@ -439,30 +406,39 @@ describe('OrganizationSubscriptionService', () => {
     it('should renew subscription with new seat count', async () => {
       const mockCurrentSub = {
         id: 'sub-001',
-        total_seats: 50,
+        organization_id: 'org-123',
+        organization_type: 'school',
+        plan_id: 'plan-456',
+        user_id: 'user-789',
+        seat_count: 50,
         assigned_seats: 25,
-        price_per_seat: '100',
+        target_member_type: 'educator',
+        status: 'active',
+        subscription_start_date: new Date().toISOString(),
+        subscription_end_date: new Date().toISOString(),
         auto_renew: true,
-        end_date: new Date().toISOString()
+        price_per_seat: '100',
+        total_amount: '5000',
+        discount_percentage: 10,
+        final_amount: '5310',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      const mockUpdatedSub = { ...mockCurrentSub, total_seats: 100 };
+      const mockUpdatedSub = { ...mockCurrentSub, seat_count: 100 };
 
-      let callCount = 0;
-      vi.mocked(supabase.from).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockCurrentSub, error: null })
-          } as any;
-        }
+      let mockSub = mockCurrentSub;
+      vi.mocked(supabase.from).mockImplementation(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockImplementation(async () => ({ data: mockSub, error: null }))
+      } as any));
+
+      vi.mocked(ssoClient.fetch).mockImplementation(async () => {
+        mockSub = mockUpdatedSub;
         return {
-          update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockUpdatedSub, error: null })
+          ok: true,
+          json: async () => mockUpdatedSub
         } as any;
       });
 
@@ -476,44 +452,59 @@ describe('OrganizationSubscriptionService', () => {
     it('should upgrade to new plan successfully', async () => {
       const mockNewPlan = {
         id: 'plan-premium',
+        plan_code: 'PREMIUM',
         name: 'Premium Plan',
-        price: 200
+        pricing_matrix: { monthly: 200 }
       };
 
       const mockCurrentSub = {
         id: 'sub-001',
-        total_seats: 50,
-        price_per_seat: '100'
+        organization_id: 'org-123',
+        organization_type: 'school',
+        plan_id: 'plan-456',
+        user_id: 'user-789',
+        seat_count: 50,
+        assigned_seats: 25,
+        target_member_type: 'educator',
+        status: 'active',
+        subscription_start_date: new Date().toISOString(),
+        subscription_end_date: new Date().toISOString(),
+        auto_renew: true,
+        price_per_seat: '100',
+        total_amount: '5000',
+        discount_percentage: 10,
+        final_amount: '5310',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
       const mockUpdatedSub = {
         ...mockCurrentSub,
-        subscription_plan_id: 'plan-premium',
+        plan_id: 'plan-premium',
         price_per_seat: '200'
       };
 
-      let callCount = 0;
+      let mockSub = mockCurrentSub;
       vi.mocked(supabase.from).mockImplementation((table: string) => {
-        callCount++;
-        if (table === 'subscription_plans') {
+        if (table === 'plans_cache') {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: mockNewPlan, error: null })
           } as any;
         }
-        if (callCount === 2) {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockCurrentSub, error: null })
-          } as any;
-        }
         return {
-          update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
           select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockUpdatedSub, error: null })
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockImplementation(async () => ({ data: mockSub, error: null }))
+        } as any;
+      });
+
+      vi.mocked(ssoClient.fetch).mockImplementation(async () => {
+        mockSub = mockUpdatedSub;
+        return {
+          ok: true,
+          json: async () => mockUpdatedSub
         } as any;
       });
 
@@ -523,11 +514,11 @@ describe('OrganizationSubscriptionService', () => {
     });
 
     it('should throw error when new plan not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } })
-      } as any));
+      // Mock ssoClient.fetch returning an error from API (e.g. plan validation failed)
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: { message: 'New subscription plan not found' } })
+      } as any);
 
       await expect(service.upgradeSubscription('sub-001', 'invalid-plan'))
         .rejects.toThrow('New subscription plan not found');

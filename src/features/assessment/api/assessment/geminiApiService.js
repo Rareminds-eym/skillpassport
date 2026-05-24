@@ -1,3 +1,4 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Gemini API Service
  * Handles API communication with OpenRouter via Cloudflare Worker
@@ -7,7 +8,7 @@
 
 import { prepareAssessmentData, validateResults } from './assessmentDataPrep.js';
 import { addCourseRecommendations } from './courseIntegration.js';
-import { getCurrentSession } from '@/shared/api/authUtils';
+
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('gemini-api-service');
@@ -55,8 +56,8 @@ export const callOpenRouterAssessment = async (assessmentData) => {
 
   // Get auth token (via SSO, not Supabase auth which is disabled)
   updateProgress('sending', 'Authenticating...');
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
+  const user = useAuthStore.getState().user;
+  const token = ssoClient.getAccessToken();
 
   if (!token) {
     logger.error('[FRONTEND] ❌ No auth token found');
@@ -77,12 +78,11 @@ export const callOpenRouterAssessment = async (assessmentData) => {
     
     const requestBody = { assessmentData };
     
-    const response = await fetch(apiUrl, {
+    const response = await ssoClient.fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
+        },
       body: JSON.stringify(requestBody)
     });
 

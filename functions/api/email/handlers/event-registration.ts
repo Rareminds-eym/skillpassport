@@ -4,7 +4,6 @@
  * POST /api/email/event-otp - Send OTP verification email
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Env } from '../../../../src/functions-lib/types';
 import type { EventConfirmationRequest, EventOTPRequest } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
@@ -26,8 +25,7 @@ import {
  */
 export async function handleEventConfirmation(
   body: EventConfirmationRequest,
-  env: Env,
-  supabase: SupabaseClient
+  env: Env
 ): Promise<Response> {
   const { name, email, phone, amount, orderId, campaign } = body;
 
@@ -140,8 +138,7 @@ export async function handleEventConfirmation(
  */
 export async function handleEventOTP(
   body: EventOTPRequest,
-  env: Env,
-  supabase: SupabaseClient
+  env: Env
 ): Promise<Response> {
   const { email, otp, name } = body;
 

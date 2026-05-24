@@ -1,9 +1,10 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 // @ts-ignore - userApiService is a .js file
 import type { ApiResponse, BulkImportResult, User } from '@/shared/types/college';
 import userApiService from '@/entities/user/api/userApiService';
+import { useAuthStore } from '@/shared/model/authStore';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('user-management-service');
 
@@ -61,19 +62,19 @@ export const userManagementService = {
       }
 
       // Get auth token for worker API
-      const { data: { session } } = await getCurrentSession();
-      if (!session?.access_token) {
+      const token = ssoClient.getAccessToken();
+      if (!token) {
         return {
           success: false,
           error: {
             code: 'AUTH_ERROR',
-            message: 'Not authenticated. Please log in again.',
+            message: 'Authentication required. Please log in.',
           },
         };
       }
 
       // Get college ID from current user context
-      const { data: { user: currentUser } } = await getCurrentUser();
+      const currentUser = useAuthStore.getState().user;
       let collegeId = null;
 
       if (currentUser?.id || currentUser?.email) {
@@ -117,7 +118,7 @@ export const userManagementService = {
           employeeId: userData.employee_id,
           department: userData.department_id,
           role: userData.roles[0]?.toLowerCase().replace(' ', '_') || 'lecturer',
-        }, session.access_token);
+        }, ssoClient.getAccessToken());
 
         if (!staffResult.success) {
           return {
@@ -437,7 +438,7 @@ export const userManagementService = {
       const users: User[] = [];
 
       // Get current user's college ID
-      const { data: { user: currentUser } } = await getCurrentUser();
+      const currentUser = useAuthStore.getState().user;
       if (!currentUser) {
         throw new Error('Not authenticated');
       }

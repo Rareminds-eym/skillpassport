@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -97,7 +96,7 @@ class SchoolLibraryService {
     }
     
     // If not found in localStorage, try Supabase Auth
-    const { data: { user } } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
     if (!user) throw new Error('User not authenticated');
     
     // Check school_educators table

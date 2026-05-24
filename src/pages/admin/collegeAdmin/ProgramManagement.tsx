@@ -13,7 +13,6 @@ import {
 import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
 
 interface Program {
   id: string;
@@ -52,7 +51,7 @@ const ProgramManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchCollegeId = async () => {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
       
       try {
@@ -177,7 +176,7 @@ const ProgramManagement: React.FC = () => {
 
   const handleSaveProgram = async (data: Partial<Program>) => {
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       
       if (selectedProgram) {
         // Update existing program

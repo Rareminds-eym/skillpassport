@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Adaptive Aptitude API Service
  * 
@@ -77,29 +77,15 @@ export interface ResumeTestResult {
 // =============================================================================
 
 /**
- * Gets the authentication token from Supabase session
- */
-async function getAuthToken(): Promise<string | null> {
-  const { data: { session } } = await getCurrentSession();
-  return session?.access_token || null;
-}
-
-/**
  * Makes an authenticated API request
  */
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = await getAuthToken();
-  
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
   
   // Merge with any existing headers from options
   if (options.headers) {
@@ -111,7 +97,7 @@ async function apiRequest<T>(
   
   console.log(`🌐 [AdaptiveAptitudeApiService] ${options.method || 'GET'} ${url}`);
   
-  const response = await fetch(url, {
+  const response = await ssoClient.fetch(url, {
     ...options,
     headers,
   });

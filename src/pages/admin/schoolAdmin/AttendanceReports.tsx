@@ -29,7 +29,7 @@ import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
+
 
 // ==================== TYPES ====================
 interface AttendanceRecord {
@@ -217,7 +217,7 @@ const AttendanceReports: React.FC = () => {
 
         // If not found in localStorage, try Supabase Auth (for educators/teachers)
         if (!currentSchoolId) {
-          const { data: { user } } = await authSessionService.getUser();
+          const { data: { user } } = { data: { user: useAuthStore.getState().user } };
           
           if (user) {
             // Check school_educators table - use maybeSingle() to avoid 406 error

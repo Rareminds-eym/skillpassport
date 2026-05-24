@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Career AI Worker Service
  * Calls the Cloudflare Worker for career AI processing
@@ -38,7 +37,8 @@ export async function streamCareerChat(
   abortSignal?: AbortSignal
 ): Promise<CareerChatResult> {
   try {
-    const { data: { session }, error: sessionError } = await getCurrentSession();
+    const user = useAuthStore.getState().user;
+    const sessionError = null;
 
     if (sessionError || !session) {
       logger.error('Authentication failed for career AI service', sessionError as Error);
@@ -50,7 +50,7 @@ export async function streamCareerChat(
     await new Promise<void>((resolve) => {
       careerApiService.sendCareerChatMessage(
         { conversationId: conversationId || undefined, message, selectedChips },
-        session.access_token,
+        ssoClient.getAccessToken(),
         (content) => onChunk(content),
         (data) => {
           const response = data as any;

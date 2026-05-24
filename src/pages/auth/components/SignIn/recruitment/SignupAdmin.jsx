@@ -1,4 +1,4 @@
-import { authSessionService } from '@/features/auth';
+
 
 import { City, State } from 'country-state-city';
 import { AlertCircle, Building2, CheckCircle2, Eye, EyeOff, Gift, Globe, Languages, Loader2, MapPin, Phone, Shield, User } from 'lucide-react';
@@ -416,8 +416,8 @@ const SignupAdmin = () => {
 
       // CRITICAL FIX: Auto-login after successful signup
       // This establishes a Supabase session so the user is authenticated
-      console.log('🔐 Auto-logging in after signup...');
-      const { data: signInData, error: signInError } = await authSessionService.signInWithPassword({
+      if (import.meta.env.DEV) console.log('[SignupAdmin] Auto-logging in after signup...');
+      const { data: signInData, error: signInError } = await ssoClient.login({
         email: formData.adminEmail,
         password: formData.password,
       });
@@ -426,7 +426,7 @@ const SignupAdmin = () => {
         console.error('⚠️ Auto-login failed:', signInError.message);
         // Even if auto-login fails, the account was created successfully
       } else {
-        console.log('✅ Auto-login successful, session established');
+        if (import.meta.env.DEV) console.log('[SignupAdmin] Auto-login successful, session established');
       }
 
       // Success!

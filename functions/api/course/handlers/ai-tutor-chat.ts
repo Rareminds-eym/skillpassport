@@ -10,11 +10,13 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import { getServiceClient } from '../../../lib/auth';
 import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
+import type { WorksheetConfig } from '../types/worksheet';
+import type { LessonPlanConfig } from '../../../../src/features/ai-tutor/types/lesson-plan';
 import {
   buildCourseContext,
   buildSystemPrompt
@@ -24,8 +26,19 @@ import {
   getPhaseParameters
 } from '../utils/conversation-phases';
 import { buildLessonPlanPrompt } from '../utils/lesson-plan-templates';
+import { hasReachedLimit, incrementGenerationCount } from '../utils/generation-limit';
+import { getLogger } from '../../../../src/shared/config/logging';
+
+const logger = getLogger('ai-tutor-chat');
 
 // ==================== TYPES ====================
+
+interface RequiredEnv {
+  SUPABASE_URL: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+}
+
+type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
 
 interface StoredMessage {
   id: string;
@@ -34,12 +47,40 @@ interface StoredMessage {
   timestamp: string;
 }
 
+interface OpenRouterResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+}
+
+function isValidOpenRouterResponse(data: unknown): data is OpenRouterResponse {
+  if (!data || typeof data !== 'object') return false;
+  const obj = data as Record<string, unknown>;
+  if (!Array.isArray(obj.choices)) return false;
+  return obj.choices.every(choice => 
+    typeof choice === 'object' && 
+    choice !== null &&
+    (!('message' in choice) || typeof choice.message === 'object')
+  );
+}
+
+interface AiTutorChatRequest {
+  conversationId?: string;
+  courseId?: string;
+  lessonId?: string;
+  message?: string;
+  worksheetConfig?: WorksheetConfig;
+  lessonPlanConfig?: LessonPlanConfig;
+}
+
 // ==================== HANDLER ====================
 
 /**
  * Handle AI tutor chat with streaming responses
  */
-export const handleAiTutorChat = async (context: AuthenticatedContext) => {
+export const handleAiTutorChat = async (context: TypedContext) => {
   const { request, env, data } = context;
   const user = data.user;
 
@@ -48,17 +89,22 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
   }
 
   const learnerId = user.sub;
-  const supabase = getServiceClient(env as any);
+  const supabase = getServiceClient(env);
 
   // Use admin client for database writes
-  const supabaseAdmin = createSupabaseAdminClient(env as any);
+  // strict: type-safe cast - RequiredEnv is compatible with PagesEnv
+  const supabaseAdmin = createSupabaseAdminClient(env as PagesEnv);
 
   // Parse request body
-  let body: any;
+  let body: AiTutorChatRequest;
   try {
     body = await request.json();
   } catch {
     return jsonResponse({ error: 'Invalid JSON body' }, 400);
+  }
+
+  if (!body || typeof body !== 'object') {
+    return jsonResponse({ error: 'Invalid request body' }, 400);
   }
 
   const { conversationId, courseId, lessonId, message, worksheetConfig, lessonPlanConfig } = body;
@@ -96,37 +142,90 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
     const conversationPhase = getConversationPhase(messageCount);
     const phaseParams = getPhaseParameters(conversationPhase);
 
+    const isGenerationRequest = Boolean(worksheetConfig || lessonPlanConfig);
+
     // Extract user role from authenticated user (from JWT)
     // Supports: 'learner', 'educator', 'school_educator', 'college_educator', etc.
-    const userRole = (user.roles && user.roles[0]) || 'learner';
+    let userRole = (user.roles && user.roles[0]) || 'learner';
+
+    // learner_type is the source of truth for teacher-learner behavior.
+    const { data: learnerData } = await supabase
+      .from('learners')
+      .select('learner_type')
+      .eq('user_id', learnerId)
+      .maybeSingle();
+
+    const isTeacherLearner = learnerData?.learner_type === 'teacher';
+
+    // Teacher-learner accounts get educator generation tools, but keep their own two-use limit.
+    if (userRole === 'learner') {
+      if (isTeacherLearner) {
+        userRole = 'educator';
+        logger.info('User role override: learner_type="teacher" → treating as educator');
+      }
+    }
+
+    let generationUsage:
+      | { limit: number; used: number; remaining: number }
+      | undefined;
+
+    // Check generation limit for teacher-learners
+    if (isTeacherLearner && isGenerationRequest) {
+      const limitReached = await hasReachedLimit(supabaseAdmin, learnerId);
+      
+      if (limitReached) {
+        logger.warn('Blocked: teacher learner reached generation limit');
+        return jsonResponse({
+          error: 'You have reached your 2-generation limit for worksheet and lesson plan generation.',
+          code: 'TEACHER_GENERATION_LIMIT_REACHED',
+        }, 403);
+      }
+    }
+
+    // VALIDATION: Block chat functionality for educators
+    // Educators can ONLY generate worksheets/lesson plans, NOT use chat
+    if (userRole.toLowerCase().includes('educator')) {
+      // Educators MUST provide either worksheetConfig or lessonPlanConfig
+      if (!worksheetConfig && !lessonPlanConfig) {
+        logger.warn('Blocked: Educator attempted to use chat without worksheet/lesson plan config');
+        return jsonResponse({ 
+          error: 'Chat functionality is not available for educators. Please use the worksheet or lesson plan generation feature.',
+          code: 'EDUCATOR_CHAT_BLOCKED',
+          userRole: userRole
+        }, 403);
+      }
+      logger.info('Educator request validated', { 
+        hasWorksheetConfig: !!worksheetConfig, 
+        hasLessonPlanConfig: !!lessonPlanConfig 
+      });
+    }
 
     // Override token limits for worksheet generation (educators need more tokens)
     const isWorksheetGeneration = worksheetConfig && userRole.toLowerCase().includes('educator');
     const isLessonPlanGeneration = lessonPlanConfig && userRole.toLowerCase().includes('educator');
     const maxTokens = (isWorksheetGeneration || isLessonPlanGeneration) ? 2000 : phaseParams.maxTokens;
 
-    console.log(`💬 AI Tutor Chat: phase=${conversationPhase}, messageCount=${messageCount}, userRole=${userRole}, hasWorksheetConfig=${!!worksheetConfig}, hasLessonPlanConfig=${!!lessonPlanConfig}, maxTokens=${maxTokens}`);
-    if (worksheetConfig) {
-      console.log(`📋 Worksheet Config:`, JSON.stringify(worksheetConfig, null, 2));
-    }
-    if (lessonPlanConfig) {
-      console.log(`📚 Lesson Plan Config:`, JSON.stringify(lessonPlanConfig, null, 2));
-    }
+    logger.info('AI Tutor Chat started', { 
+      phase: conversationPhase, 
+      messageCount, 
+      userRole, 
+      maxTokens 
+    });
 
     // Build course context and system prompt (role-based + optional worksheet/lesson plan config)
     const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, learnerId);
     const systemPrompt = buildSystemPrompt(courseContext, conversationPhase, userRole, worksheetConfig, lessonPlanConfig);
     
-    console.log(`🤖 System Prompt Preview (first 500 chars):`, systemPrompt.substring(0, 500));
+    logger.info('System prompt built', { promptLength: systemPrompt.length });
 
     // Get model and endpoint from shared config
     const chatModel = AI_MODELS.GPT_4O_MINI;
     const endpoint = API_CONFIG.OPENROUTER.endpoint;
 
     // Create user message
-    const turnId = crypto.randomUUID();
+    const userMessageId = crypto.randomUUID();
     const userMessage: StoredMessage = {
-      id: turnId,
+      id: userMessageId,
       role: 'user',
       content: message,
       timestamp: new Date().toISOString()
@@ -154,7 +253,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
           const useTwoPass = isLessonPlanGeneration && lessonPlanConfig?.useTwoPass;
 
           if (useTwoPass) {
-            console.log('🎯 Two-Pass Mode: Starting outline generation...');
+            logger.info('Two-Pass Mode: Starting outline generation...');
             
             // FIRST PASS: Generate outline (non-streaming, silent)
             const outlinePrompt = buildLessonPlanPrompt(lessonPlanConfig, courseContext, true);
@@ -164,7 +263,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
               headers: {
                 'Authorization': `Bearer ${openRouterKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '') as string,
+                'HTTP-Referer': env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '',
                 'X-Title': 'AI Course Tutor - Lesson Plan Outline'
               },
               body: JSON.stringify({
@@ -178,19 +277,34 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
 
             if (!outlineResponse.ok) {
               const errorText = await outlineResponse.text();
-              console.error('❌ Outline generation error:', outlineResponse.status, errorText);
+              logger.error('Outline generation error', new Error(`HTTP ${outlineResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate outline' })}\n\n`));
               controller.close();
               return;
             }
 
-            const outlineData = await outlineResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
+            let outlineData: unknown;
+            try {
+              outlineData = await outlineResponse.json();
+            } catch (parseErr) {
+              logger.error('Failed to parse outline response', parseErr instanceof Error ? parseErr : new Error(String(parseErr)));
+              controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Invalid outline response format' })}\n\n`));
+              controller.close();
+              return;
+            }
+
+            if (!isValidOpenRouterResponse(outlineData)) {
+              logger.error('Invalid outline response structure');
+              controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Invalid outline response from AI service' })}\n\n`));
+              controller.close();
+              return;
+            }
             const outline = outlineData.choices?.[0]?.message?.content || '';
             
-            console.log('✅ Outline generated:', outline.substring(0, 200) + '...');
+            logger.info('Outline generated', { outlineLength: outline.length });
 
             // SECOND PASS: Generate full lesson plan using outline
-            console.log('📝 Two-Pass Mode: Generating full lesson plan...');
+            logger.info('Two-Pass Mode: Generating full lesson plan...');
             
             const finalPrompt = buildLessonPlanPrompt(lessonPlanConfig, courseContext, true, outline);
             
@@ -199,7 +313,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
               headers: {
                 'Authorization': `Bearer ${openRouterKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '') as string,
+                'HTTP-Referer': env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '',
                 'X-Title': 'AI Course Tutor - Lesson Plan'
               },
               body: JSON.stringify({
@@ -213,7 +327,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
 
             if (!finalResponse.ok) {
               const errorText = await finalResponse.text();
-              console.error('❌ Lesson plan generation error:', finalResponse.status, errorText);
+              logger.error('Lesson plan generation error', new Error(`HTTP ${finalResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate lesson plan' })}\n\n`));
               controller.close();
               return;
@@ -257,7 +371,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
               }
             }
 
-            console.log('✅ Two-pass lesson plan complete:', fullResponse.length, 'chars');
+            logger.info('Two-pass lesson plan complete', { responseLength: fullResponse.length });
           } else {
             // SINGLE-PASS MODE: Original implementation
             // Call OpenRouter with streaming
@@ -266,7 +380,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
               headers: {
                 'Authorization': `Bearer ${openRouterKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '') as string,
+                'HTTP-Referer': env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '',
                 'X-Title': 'AI Course Tutor'
               },
               body: JSON.stringify({
@@ -280,7 +394,7 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
 
             if (!response.ok) {
               const errorText = await response.text();
-              console.error('❌ OpenRouter error:', response.status, errorText);
+              logger.error('OpenRouter error', new Error(`HTTP ${response.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'AI service error' })}\n\n`));
               controller.close();
               return;
@@ -326,8 +440,9 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
           }
 
           // Create assistant message
+          const assistantMessageId = crypto.randomUUID();
           const assistantMessage: StoredMessage = {
-            id: turnId,
+            id: assistantMessageId,
             role: 'assistant',
             content: fullResponse,
             timestamp: new Date().toISOString()
@@ -337,38 +452,33 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
 
           // Save conversation to database
           if (currentConversationId) {
-            // Update existing conversation
-            // Re-fetch latest to avoid race condition
-            const { data: latestConv } = await supabaseAdmin
-              .from('tutor_conversations')
-              .select('messages')
-              .eq('id', currentConversationId)
-              .maybeSingle();
+            // Update existing conversation atomically using raw SQL
+            const { error: updateError } = await supabaseAdmin.rpc('append_tutor_messages', {
+              p_conversation_id: currentConversationId,
+              p_learner_id: learnerId,
+              p_new_messages: [userMessage, assistantMessage]
+            });
 
-            const latestMessages: StoredMessage[] = latestConv?.messages || existingMessages;
-            const finalMessages = [...latestMessages, userMessage, assistantMessage];
-
-            await supabaseAdmin
-              .from('tutor_conversations')
-              .update({
-                messages: finalMessages,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', currentConversationId)
-              .eq('learner_id', learnerId);
-
-            console.log(`✅ Updated conversation: ${currentConversationId}`);
+            if (updateError) {
+              logger.error('Failed to append messages', updateError);
+              // Continue anyway - the generation succeeded
+            } else {
+              logger.info('Updated conversation', { conversationId: currentConversationId });
+            }
           } else {
             // Create new conversation with generated title
             let title = message.slice(0, 50);
 
             try {
+              const titleAbortController = new AbortController();
+              const titleTimeoutId = setTimeout(() => titleAbortController.abort(), 5000);
+
               const titleResponse = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${openRouterKey}`,
                   'Content-Type': 'application/json',
-                  'HTTP-Referer': (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '') as string,
+                  'HTTP-Referer': env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '',
                   'X-Title': 'AI Course Tutor - Title Generation'
                 },
                 body: JSON.stringify({
@@ -379,18 +489,33 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
                   }],
                   max_tokens: 60,
                   temperature: 0.5
-                })
+                }),
+                signal: titleAbortController.signal
               });
 
+              clearTimeout(titleTimeoutId);
+
               if (titleResponse.ok) {
-                const titleData = await titleResponse.json() as { choices?: Array<{ message?: { content?: string } }> };
-                const generatedTitle = titleData.choices?.[0]?.message?.content?.trim();
-                if (generatedTitle) {
-                  title = generatedTitle;
+                let titleData: unknown;
+                try {
+                  titleData = await titleResponse.json();
+                } catch (parseErr) {
+                  logger.warn('Failed to parse title response, using default', { error: parseErr instanceof Error ? parseErr.message : String(parseErr) });
+                  // Continue with default title
+                  titleData = null;
+                }
+
+                if (titleData && !isValidOpenRouterResponse(titleData)) {
+                  logger.warn('Invalid title response structure, using default');
+                } else if (titleData) {
+                  const generatedTitle = (titleData as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message?.content?.trim();
+                  if (generatedTitle) {
+                    title = generatedTitle;
+                  }
                 }
               }
             } catch (error) {
-              console.warn('⚠️ Title generation failed, using default:', error);
+              logger.warn('Title generation failed, using default', { error: error instanceof Error ? error.message : String(error) });
             }
 
             const { data: newConv } = await supabaseAdmin
@@ -407,23 +532,36 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
 
             if (newConv) {
               currentConversationId = newConv.id;
-              console.log(`✅ Created new conversation: ${currentConversationId}`);
+              logger.info('Created new conversation', { conversationId: currentConversationId });
+            }
+          }
+
+          // Increment generation count for teacher-learners
+          if (isTeacherLearner && isGenerationRequest) {
+            try {
+              generationUsage = await incrementGenerationCount(supabaseAdmin, learnerId);
+              logger.info('Generation count incremented', { used: generationUsage.used, remaining: generationUsage.remaining });
+            } catch (err) {
+              // Log error but don't fail the stream - the generation already succeeded
+              logger.error('Failed to increment generation count', err instanceof Error ? err : new Error(String(err)));
             }
           }
 
           // Send completion event
           controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({
             conversationId: currentConversationId,
-            messageId: assistantMessage.id
+            messageId: assistantMessage.id,
+            generationUsage
           })}\n\n`));
 
-          console.log(`✅ Streaming complete: ${fullResponse.length} chars`);
+          logger.info('Streaming complete', { responseLength: fullResponse.length });
           controller.close();
 
-        } catch (error: any) {
-          console.error('❌ Streaming error:', error);
+        } catch (error: unknown) {
+          logger.error('Streaming error', error instanceof Error ? error : new Error(String(error)));
+          const errorMessage = error instanceof Error ? error.message : 'Stream processing error';
           controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({
-            error: error.message || 'Stream processing error'
+            error: errorMessage
           })}\n\n`));
           controller.close();
         }
@@ -440,8 +578,9 @@ export const handleAiTutorChat = async (context: AuthenticatedContext) => {
       }
     });
 
-  } catch (error: any) {
-    console.error('❌ AI Tutor Chat error:', error);
-    return jsonResponse({ error: error.message || 'Internal server error' }, 500);
+  } catch (error: unknown) {
+    logger.error('AI Tutor Chat error', error instanceof Error ? error : new Error(String(error)));
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return jsonResponse({ error: errorMessage }, 500);
   }
 };

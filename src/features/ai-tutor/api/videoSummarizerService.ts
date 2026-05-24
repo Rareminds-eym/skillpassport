@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
@@ -154,19 +154,18 @@ export async function processVideo(
   logger.info('Starting enhanced video processing', { videoUrl: request.videoUrl });
   onProgress?.('Connecting to AI service...', 5);
 
-  const { data: { session } } = await getCurrentSession();
+  const user = useAuthStore.getState().user;
 
   try {
     onProgress?.('Starting video analysis...', 10);
 
-    const response = await fetch(
+    const response = await ssoClient.fetch(
       `${API_URL}/ai-video-summarizer`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token || ''}`,
-        },
+                  },
         body: JSON.stringify({
           ...request,
           enableQuiz: request.enableQuiz ?? true,

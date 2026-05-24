@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * DEPENDENCY INJECTION PATTERN APPLIED
  * 
@@ -70,7 +69,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
   const sendNoteAsCommunication = async () => {
     try {
       // Get current user
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('Not authenticated');
       }

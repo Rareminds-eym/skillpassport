@@ -5,31 +5,59 @@
 
 import { describe, it, expect } from 'vitest';
 
+// Local helper to reset all stores (previously in store utilities)
+const resetAllStores = async () => {
+  const { useAuthStore } = await import('../authStore');
+  const { useSearchStore } = await import('../stores/searchStore');
+  const { usePortfolioStore } = await import('@/features/digital-portfolio/model/portfolioStore');
+  const { useTourStore } = await import('../stores/tourStore');
+  const { useAssessmentStore } = await import('@/features/assessment/model/assessmentStore');
+  const { useSubscriptionStore } = await import('@/features/subscription/model/subscriptionStore');
+
+  // Reset individual stores
+  await useAuthStore.getState().logout();
+  useSearchStore.getState().clearSearch();
+  usePortfolioStore.getState().clearLearner();
+  useTourStore.getState().reset();
+  useAssessmentStore.getState().reset();
+  useSubscriptionStore.getState().clearAccessCache();
+};
+
 // Test store imports
 describe('Store Imports', () => {
   it('should import all stores without errors', async () => {
-    const stores = await import('../index');
-    
+    const storesIndex = await import('../index');
+    const authStore = await import('../authStore');
+    const globalPresenceStore = await import('../globalPresenceStore');
+    const useMessageStore = await import('../useMessageStore');
+    const portfolioStore = await import('@/features/digital-portfolio/model/portfolioStore');
+    const assessmentStore = await import('@/features/assessment/model/assessmentStore');
+    const subscriptionStore = await import('@/features/subscription/model/subscriptionStore');
+    const testStore = await import('@/features/assessment/model/testStore');
+    const promotionalStore = await import('@/features/promotional/model/promotionalStore');
+    const careerAssistantStore = await import('@/features/career-assistant/model/careerAssistantStore');
+    const counsellingStore = await import('@/features/counselling/model/counsellingStore');
+
     // Core stores
-    expect(stores.useThemeStore).toBeDefined();
-    expect(stores.useAuthStore).toBeDefined();
-    expect(stores.useSearchStore).toBeDefined();
-    expect(stores.usePortfolioStore).toBeDefined();
-    expect(stores.useTourStore).toBeDefined();
-    expect(stores.useAssessmentStore).toBeDefined();
-    expect(stores.useSubscriptionStore).toBeDefined();
+    expect(storesIndex.useThemeStore).toBeDefined();
+    expect(authStore.useAuthStore).toBeDefined();
+    expect(storesIndex.useSearchStore).toBeDefined();
+    expect(portfolioStore.usePortfolioStore).toBeDefined();
+    expect(storesIndex.useTourStore).toBeDefined();
+    expect(assessmentStore.useAssessmentStore).toBeDefined();
+    expect(subscriptionStore.useSubscriptionStore).toBeDefined();
     
     // Additional stores
-    expect(stores.useGlobalPresenceStore).toBeDefined();
-    expect(stores.useTestStore).toBeDefined();
-    expect(stores.usePromotionalStore).toBeDefined();
-    expect(stores.useCareerAssistantStore).toBeDefined();
-    expect(stores.useCounsellingStore).toBeDefined();
-    expect(stores.useMessageStore).toBeDefined();
+    expect(globalPresenceStore.useGlobalPresenceStore).toBeDefined();
+    expect(testStore.useTestStore).toBeDefined();
+    expect(promotionalStore.usePromotionalStore).toBeDefined();
+    expect(careerAssistantStore.useCareerAssistantStore).toBeDefined();
+    expect(counsellingStore.useCounsellingStore).toBeDefined();
+    expect(useMessageStore.useMessageStore).toBeDefined();
     
     // Utilities
-    expect(stores.resetAllStores).toBeDefined();
-    expect(stores.initializeStores).toBeDefined();
+    expect(resetAllStores).toBeDefined();
+    expect(authStore.initializeStores).toBeDefined();
   });
 });
 
@@ -103,7 +131,7 @@ describe('Search Store', () => {
 // Test portfolio store
 describe('Portfolio Store', () => {
   it('should have correct initial state', async () => {
-    const { usePortfolioStore } = await import('../index');
+    const { usePortfolioStore } = await import('@/features/digital-portfolio/model/portfolioStore');
     const state = usePortfolioStore.getState();
     
     expect(state.learner).toBeNull();
@@ -113,7 +141,7 @@ describe('Portfolio Store', () => {
   });
 
   it('should set viewer role with defaults', async () => {
-    const { usePortfolioStore } = await import('../index');
+    const { usePortfolioStore } = await import('@/features/digital-portfolio/model/portfolioStore');
     const store = usePortfolioStore.getState();
     
     store.setViewerRole('learner');
@@ -150,7 +178,7 @@ describe('Tour Store', () => {
 // Test test store
 describe('Test Store', () => {
   it('should have correct initial state', async () => {
-    const { useTestStore } = await import('../index');
+    const { useTestStore } = await import('@/features/assessment/model/testStore');
     const state = useTestStore.getState();
     
     expect(state.questions).toEqual([]);
@@ -159,7 +187,7 @@ describe('Test Store', () => {
   });
 
   it('should set questions and initialize answers', async () => {
-    const { useTestStore } = await import('../index');
+    const { useTestStore } = await import('@/features/assessment/model/testStore');
     const store = useTestStore.getState();
     
     store.setQuestions([
@@ -173,7 +201,7 @@ describe('Test Store', () => {
   });
 
   it('should set answers', async () => {
-    const { useTestStore } = await import('../index');
+    const { useTestStore } = await import('@/features/assessment/model/testStore');
     const store = useTestStore.getState();
     
     store.setQuestions([{ id: '1', text: 'Q1' }, { id: '2', text: 'Q2' }]);
@@ -187,7 +215,7 @@ describe('Test Store', () => {
 // Test promotional store
 describe('Promotional Store', () => {
   it('should have correct initial state', async () => {
-    const { usePromotionalStore } = await import('../index');
+    const { usePromotionalStore } = await import('@/features/promotional/model/promotionalStore');
     const state = usePromotionalStore.getState();
     
     expect(state.assessmentEvent).toBeNull();
@@ -196,7 +224,7 @@ describe('Promotional Store', () => {
   });
 
   it('should calculate time remaining', async () => {
-    const { usePromotionalStore } = await import('../index');
+    const { usePromotionalStore } = await import('@/features/promotional/model/promotionalStore');
     const store = usePromotionalStore.getState();
     
     // Set an event with future end date
@@ -220,7 +248,7 @@ describe('Promotional Store', () => {
 // Test career assistant store
 describe('Career Assistant Store', () => {
   it('should have correct initial state', async () => {
-    const { useCareerAssistantStore } = await import('../index');
+    const { useCareerAssistantStore } = await import('@/features/career-assistant/model/careerAssistantStore');
     const state = useCareerAssistantStore.getState();
     
     expect(state.conversations).toEqual([]);
@@ -230,7 +258,7 @@ describe('Career Assistant Store', () => {
   });
 
   it('should add conversation', async () => {
-    const { useCareerAssistantStore } = await import('../index');
+    const { useCareerAssistantStore } = await import('@/features/career-assistant/model/careerAssistantStore');
     const store = useCareerAssistantStore.getState();
     
     store.addConversation({
@@ -244,7 +272,7 @@ describe('Career Assistant Store', () => {
   });
 
   it('should add and remove chips', async () => {
-    const { useCareerAssistantStore } = await import('../index');
+    const { useCareerAssistantStore } = await import('@/features/career-assistant/model/careerAssistantStore');
     const store = useCareerAssistantStore.getState();
     
     store.addChip('career');
@@ -262,7 +290,7 @@ describe('Career Assistant Store', () => {
 // Test global presence store
 describe('Global Presence Store', () => {
   it('should have correct initial state', async () => {
-    const { useGlobalPresenceStore } = await import('../index');
+    const { useGlobalPresenceStore } = await import('../globalPresenceStore');
     const state = useGlobalPresenceStore.getState();
     
     expect(state.onlineUsers).toEqual([]);
@@ -271,7 +299,7 @@ describe('Global Presence Store', () => {
   });
 
   it('should add and remove online users', async () => {
-    const { useGlobalPresenceStore } = await import('../index');
+    const { useGlobalPresenceStore } = await import('../globalPresenceStore');
     const store = useGlobalPresenceStore.getState();
     
     store.addOnlineUser({
@@ -294,7 +322,7 @@ describe('Global Presence Store', () => {
 // Test assessment store
 describe('Assessment Store', () => {
   it('should have correct initial state', async () => {
-    const { useAssessmentStore } = await import('../index');
+    const { useAssessmentStore } = await import('@/features/assessment/model/assessmentStore');
     const state = useAssessmentStore.getState();
     
     expect(state.status).toBe('idle');
@@ -304,7 +332,7 @@ describe('Assessment Store', () => {
   });
 
   it('should set grade level and change status', async () => {
-    const { useAssessmentStore } = await import('../index');
+    const { useAssessmentStore } = await import('@/features/assessment/model/assessmentStore');
     const store = useAssessmentStore.getState();
     
     store.setGradeLevel('12');
@@ -314,7 +342,7 @@ describe('Assessment Store', () => {
   });
 
   it('should set answers', async () => {
-    const { useAssessmentStore } = await import('../index');
+    const { useAssessmentStore } = await import('@/features/assessment/model/assessmentStore');
     const store = useAssessmentStore.getState();
     
     store.setAnswer('q1', 'answer1');
@@ -324,7 +352,7 @@ describe('Assessment Store', () => {
   });
 
   it('should reset to initial state', async () => {
-    const { useAssessmentStore } = await import('../index');
+    const { useAssessmentStore } = await import('@/features/assessment/model/assessmentStore');
     const store = useAssessmentStore.getState();
     
     // Change some state
@@ -343,7 +371,7 @@ describe('Assessment Store', () => {
 // Test subscription store
 describe('Subscription Store', () => {
   it('should have correct initial state', async () => {
-    const { useSubscriptionStore } = await import('../index');
+    const { useSubscriptionStore } = await import('@/features/subscription/model/subscriptionStore');
     const state = useSubscriptionStore.getState();
     
     expect(state.hasAccess).toBe(false);
@@ -353,7 +381,7 @@ describe('Subscription Store', () => {
   });
 
   it('should set access data', async () => {
-    const { useSubscriptionStore } = await import('../index');
+    const { useSubscriptionStore } = await import('@/features/subscription/model/subscriptionStore');
     const store = useSubscriptionStore.getState();
     
     store.setAccessData({
@@ -370,7 +398,8 @@ describe('Subscription Store', () => {
 // Test utility functions
 describe('Store Utilities', () => {
   it('should reset all stores', async () => {
-    const { resetAllStores, useSearchStore, useTourStore } = await import('../index');
+    const { useSearchStore } = await import('../index');
+    const { useTourStore } = await import('../index');
     
     // Set some state
     useSearchStore.getState().setSearchQuery('test');

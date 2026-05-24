@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Usage Statistics Service
  * 
@@ -8,6 +7,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('usage-statistics');
 
@@ -17,7 +17,7 @@ const logger = getLogger('usage-statistics');
  */
 export const getUserUsageStatistics = async () => {
   try {
-    const { data: { user } } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
     
     if (!user) {
       return {

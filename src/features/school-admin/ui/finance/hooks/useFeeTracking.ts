@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
@@ -204,7 +203,7 @@ export const useFeeTracking = (schoolId: string | null) => {
     paymentData: Partial<FeePayment>
   ): Promise<boolean> => {
     try {
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         toast.error("User not authenticated");
         return false;

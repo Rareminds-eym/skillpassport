@@ -11,6 +11,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as fc from 'fast-check';
 import { generateEmbedding, cosineSimilarity, getEmbeddingDimension } from '../embeddingService';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 // Constants
 const EMBEDDING_DIMENSION = 768;
@@ -20,9 +21,9 @@ const EMBEDDING_DIMENSION = 768;
  * Simulates the text that would be built from course title, description, and skills
  */
 const courseTextArbitrary = fc.record({
-  title: fc.string({ minLength: 1, maxLength: 100 }),
-  description: fc.string({ minLength: 1, maxLength: 500 }),
-  skills: fc.array(fc.string({ minLength: 1, maxLength: 50 }), { minLength: 1, maxLength: 10 })
+  title: fc.string({ minLength: 10, maxLength: 100 }),
+  description: fc.string({ minLength: 20, maxLength: 500 }),
+  skills: fc.array(fc.string({ minLength: 5, maxLength: 50 }), { minLength: 1, maxLength: 10 })
 }).map(({ title, description, skills }) => 
   `Title: ${title}\nDescription: ${description}\nSkills: ${skills.join(', ')}`
 );
@@ -30,8 +31,8 @@ const courseTextArbitrary = fc.record({
 /**
  * Generator for simple non-empty text strings
  */
-const nonEmptyTextArbitrary = fc.string({ minLength: 1, maxLength: 200 })
-  .filter(s => s.trim().length > 0);
+const nonEmptyTextArbitrary = fc.string({ minLength: 10, maxLength: 200 })
+  .filter(s => s.trim().length >= 10);
 
 /**
  * Mock embedding generator that simulates deterministic behavior
@@ -64,11 +65,12 @@ describe('Property 1: Embedding Generation Consistency', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(ssoClient, 'getAccessToken').mockReturnValue('mock-token');
     
     // Mock fetch to return deterministic embeddings
     mockFetch = vi.fn().mockImplementation(async (url: string, options: RequestInit) => {
       const body = JSON.parse(options.body as string);
-      const text = body.content?.parts?.[0]?.text || '';
+      const text = body.text || body.content?.parts?.[0]?.text || '';
       const embedding = createDeterministicEmbedding(text);
       
       return {

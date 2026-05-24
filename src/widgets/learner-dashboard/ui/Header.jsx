@@ -63,8 +63,8 @@ const Header = ({ activeTab, setActiveTab }) => {
   // Get subscription data for feature gating
   const subscriptionContext = useSubscriptionContext();
   const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
-  const isFreemium = userPlan === PLAN_IDS.PAY_AS_YOU_GO;
+  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
+  const isFreemium = userPlan === PLAN_IDS.FREEMIUM;
 
   // Map navigation items to feature keys
   const featureKeyMap = {
@@ -181,7 +181,7 @@ const Header = ({ activeTab, setActiveTab }) => {
         </div>
       )}
 
-      <header className={`bg-white border-b border-gray-200 shadow-sm sticky z-50 ${isFreemium && showFreemiumBanner ? 'top-[40px]' : 'top-0'}`}>
+      <header className={`bg-white border-b border-gray-200 shadow-sm sticky z-50 ${isFreemium && showFreemiumBanner ? 'top-[30px]' : 'top-0'}`}>
         <div className="w-full">
           <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 lg:px-8">
 

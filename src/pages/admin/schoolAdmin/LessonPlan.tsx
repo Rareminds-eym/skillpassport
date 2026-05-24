@@ -37,7 +37,7 @@ import { uploadFile, validateFile } from '@/shared/api';
 import { deleteFile } from '@/shared/api/storageApiService';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+
 
 const logger = getLogger('school-admin-lesson-plan');
 
@@ -1114,7 +1114,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         let currentSchoolId = schoolId;
         if (!currentSchoolId) {
           // Fetch school_id from current educator
-          const { data: { user } } = await authSessionService.getUser();
+          const { data: { user } } = { data: { user: useAuthStore.getState().user } };
           if (user) {
             const { data: educatorData } = await supabase
               .from('school_educators')

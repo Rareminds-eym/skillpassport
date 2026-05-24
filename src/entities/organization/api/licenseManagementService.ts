@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * License Management Service
  * 
@@ -38,6 +37,7 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  */
 
 import { supabase } from '@/shared/api';
+import { useAuthStore } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('licenseManagement');
@@ -110,19 +110,21 @@ export class LicenseManagementService {
   async createLicensePool(request: CreatePoolRequest): Promise<LicensePool> {
     try {
       // Get current user
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('User not authenticated');
       }
 
       // Validate subscription has enough available seats
       const { data: subscription } = await supabase
-        .from('organization_subscriptions')
-        .select('available_seats')
+        .from('subscription_cache')
+        .select('seat_count, assigned_seats')
         .eq('id', request.organizationSubscriptionId)
+        .eq('is_org_subscription', true)
         .single();
 
-      if (!subscription || subscription.available_seats < request.allocatedSeats) {
+      const availableSeats = subscription ? (subscription.seat_count - subscription.assigned_seats) : 0;
+      if (!subscription || availableSeats < request.allocatedSeats) {
         throw new Error('Insufficient available seats in subscription');
       }
 

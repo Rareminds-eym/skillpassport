@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useState, useEffect } from "react";
 import {
   Users,
@@ -115,7 +114,7 @@ const ApplicationTracking: React.FC = () => {
       setApplicationError(null);
 
       // Get current user's college ID
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('Not authenticated');
       }

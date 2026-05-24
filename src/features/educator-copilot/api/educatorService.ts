@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -11,7 +10,8 @@ const logger = getLogger('educator-service');
 export const getCurrentEducator = async () => {
   try {
     // Get current authenticated user
-    const { data: { user }, error: authError } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
+    const authError = null;
     
     if (authError) throw authError;
     if (!user) {

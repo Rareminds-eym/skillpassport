@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import { supabase } from '@/shared/api/supabaseClient';
-import { getCurrentUser } from '@/shared/api/authUtils';
 import toast from 'react-hot-toast';
 
 // Small Message Modal Component
@@ -183,7 +182,7 @@ const NewLearnerConversationModalEducator = ({ isOpen, onClose, onCreateConversa
         // Only do complex lookup if schoolId not provided
         if (!schoolId) {
           // Get current user to access email
-          const { data: { user } } = await getCurrentUser();
+          const user = useAuthStore.getState().user;
           if (!user) {
             console.log('❌ No authenticated user found');
             setlearners([]);

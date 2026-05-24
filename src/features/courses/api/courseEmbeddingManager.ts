@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Course Embedding Manager
  * Manages the generation and storage of vector embeddings for courses
@@ -28,19 +28,18 @@ async function generateEmbedding(text) {
   }
 
   // Get auth token
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
+  const user = useAuthStore.getState().user;
+  const token = ssoClient.getAccessToken();
   
   if (!token) {
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
+  const response = await ssoClient.fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
+      },
     body: JSON.stringify({ text, returnEmbedding: true })
   });
 
@@ -162,8 +161,8 @@ const fetchCourseWithSkills = async (courseId) => {
  */
 export const embedCourse = async (courseId) => {
   try {
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token;
+    const user = useAuthStore.getState().user;
+    const token = ssoClient.getAccessToken();
 
     if (!token) {
       return {
@@ -173,12 +172,11 @@ export const embedCourse = async (courseId) => {
       };
     }
 
-    const response = await fetch(`${EMBEDDING_API_URL}/regenerate?table=courses&id=${courseId}`, {
+    const response = await ssoClient.fetch(`${EMBEDDING_API_URL}/regenerate?table=courses&id=${courseId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
+        }
     });
 
     if (response.ok) {

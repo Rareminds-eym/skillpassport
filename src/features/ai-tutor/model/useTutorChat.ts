@@ -16,11 +16,22 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('use-tutor-chat');
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+export interface GenerationUsage {
+  limit: number;
+  used: number;
+  remaining: number;
+}
+
 export interface UseTutorChatOptions {
   courseId: string;
   lessonId?: string;
   worksheetConfig?: WorksheetConfig;  // Optional worksheet configuration for educators
   lessonPlanConfig?: LessonPlanConfig;  // Optional lesson plan configuration for educators
+  onGenerationUsageUpdate?: (usage: GenerationUsage) => void;
 }
 
 export interface UseTutorChatReturn {
@@ -43,7 +54,13 @@ export interface UseTutorChatReturn {
   refreshSuggestions: () => Promise<void>;
 }
 
-export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanConfig }: UseTutorChatOptions): UseTutorChatReturn {
+export function useTutorChat({
+  courseId,
+  lessonId,
+  worksheetConfig,
+  lessonPlanConfig,
+  onGenerationUsageUpdate
+}: UseTutorChatOptions): UseTutorChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -145,6 +162,10 @@ export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanCo
           );
         } else if (chunk.type === 'done') {
           // Stream complete
+          if (chunk.generationUsage) {
+            onGenerationUsageUpdate?.(chunk.generationUsage);
+          }
+
           if (chunk.conversationId && !conversationId) {
             setConversationId(chunk.conversationId);
             refreshConversations();
@@ -158,8 +179,8 @@ export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanCo
         setConversationId(newConvId);
         refreshConversations();
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to send message');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to send message'));
       // Remove the empty assistant message on error
       setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
     } finally {
@@ -167,7 +188,16 @@ export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanCo
       setIsStreaming(false);
       setIsReasoning(false);
     }
-  }, [conversationId, courseId, lessonId, isStreaming, refreshConversations]);
+  }, [
+    conversationId,
+    courseId,
+    lessonId,
+    isStreaming,
+    refreshConversations,
+    worksheetConfig,
+    lessonPlanConfig,
+    onGenerationUsageUpdate
+  ]);
 
   // Load an existing conversation
   const loadConversation = useCallback(async (convId: string) => {
@@ -182,8 +212,8 @@ export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanCo
       } else {
         setError('Conversation not found');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load conversation');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load conversation'));
     } finally {
       setIsLoading(false);
     }
@@ -238,7 +268,8 @@ export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanCo
         courseId,
         lessonId,
         message: newContent.trim(),
-        worksheetConfig  // Pass worksheet config to API
+        worksheetConfig,  // Pass worksheet config to API
+        lessonPlanConfig  // Pass lesson plan config to API
       });
 
       setCurrentReasoning('');
@@ -257,6 +288,10 @@ export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanCo
             )
           );
         } else if (chunk.type === 'done') {
+          if (chunk.generationUsage) {
+            onGenerationUsageUpdate?.(chunk.generationUsage);
+          }
+
           if (chunk.conversationId && !conversationId) {
             setConversationId(chunk.conversationId);
             refreshConversations();
@@ -269,15 +304,25 @@ export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanCo
         setConversationId(newConvId);
         refreshConversations();
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to regenerate response');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to regenerate response'));
       setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
       setIsReasoning(false);
     }
-  }, [messages, conversationId, courseId, lessonId, isStreaming, refreshConversations]);
+  }, [
+    messages,
+    conversationId,
+    courseId,
+    lessonId,
+    isStreaming,
+    refreshConversations,
+    worksheetConfig,
+    lessonPlanConfig,
+    onGenerationUsageUpdate
+  ]);
 
   // Delete a conversation permanently
   const handleDeleteConversation = useCallback(async (convId: string) => {
@@ -291,8 +336,8 @@ export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanCo
       }
       // Refresh the conversations list
       await refreshConversations();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete conversation');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to delete conversation'));
       throw err;
     }
   }, [conversationId, refreshConversations]);
@@ -310,8 +355,8 @@ export function useTutorChat({ courseId, lessonId, worksheetConfig, lessonPlanCo
 
     try {
       await submitFeedbackService(conversationId, messageIndex, rating, feedbackText);
-    } catch (err: any) {
-      setError(err.message || 'Failed to submit feedback');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to submit feedback'));
     }
   }, [conversationId]);
 

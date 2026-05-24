@@ -608,7 +608,7 @@ const UnifiedSignup = () => {
         navigate(returnUrl);
       } else if (returnToFromState === '/subscription/payment' && planFromState) {
         // User selected a plan before signing up - go directly to payment
-        console.log('💳 User had pre-selected plan, redirecting to payment page');
+        if (import.meta.env.DEV) console.log('[UnifiedSignup] User had pre-selected plan, redirecting to payment page');
         navigate('/subscription/payment', {
           state: {
             plan: planFromState,

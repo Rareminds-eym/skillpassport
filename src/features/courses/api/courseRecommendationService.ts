@@ -1,33 +1,48 @@
 /**
  * Course Recommendation Service
  * 
- * DEPRECATED: This file is kept for backward compatibility.
- * The service has been modularized into src/services/courseRecommendation/
- * 
- * New imports should use:
- * import { getRecommendedCourses } from './courseRecommendation';
- * 
- * @deprecated Use imports from './courseRecommendation' instead
+ * Backward compatibility layer redirecting to modular course recommendation components.
  */
 
-// TODO: Restore courseRecommendation module or implement these functions
-// Re-export everything from the modular structure
-// export {
-//   buildProfileText,
-//   fetchCoursesWithEmbeddings,
-//   fetchCoursesBySkillType,
-//   getRecommendedCourses,
-//   getRecommendedCoursesByType,
-//   getCoursesForSkillGap,
-//   getCoursesForMultipleSkillGaps,
-//   saveRecommendations,
-//   getSavedRecommendations,
-//   updateRecommendationStatus,
-//   getAndSaveRecommendations
-// } from './courseRecommendation';
+export { buildProfileText } from './profileBuilder';
 
-// Default export for backward compatibility
-// export { default } from './courseRecommendation';
+export {
+  fetchCoursesWithEmbeddings,
+  fetchCoursesBySkillType,
+  fetchBasicCourses,
+  fetchCoursesBySkillName
+} from './courseRepository';
 
-export default {};
+export {
+  getRecommendedCourses,
+  getRecommendedCoursesByType,
+  fallbackKeywordMatching
+} from './recommendationService';
 
+export {
+  getCoursesForSkillGap,
+  getCoursesForMultipleSkillGaps,
+  getDirectSkillMatches,
+  getSemanticSkillMatches,
+  combineAndRankCourses
+} from './skillGapMatcher';
+
+export {
+  saveRecommendations,
+  getSavedRecommendations,
+  updateRecommendationStatus,
+  getAndSaveRecommendations
+} from './recommendationStorage';
+
+const recommendationService = {
+  buildProfileText: async (ar: any) => {
+    const { buildProfileText: bp } = await import('./profileBuilder');
+    return bp(ar);
+  },
+  getRecommendedCourses: async (ar: any) => {
+    const { getRecommendedCourses: rc } = await import('./recommendationService');
+    return rc(ar);
+  }
+};
+
+export default recommendationService;

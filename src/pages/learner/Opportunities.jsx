@@ -277,7 +277,7 @@ const Opportunities = () => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const subscriptionContext = useSubscriptionContext();
   const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
+  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
 
   // Check feature access for job applications
   const accessResult = checkFeatureAccess(userPlan, 'opportunities_access', [], {}, user?.id);

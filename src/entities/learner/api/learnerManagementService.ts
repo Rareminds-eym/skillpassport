@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+
 // TODO: Type Import from Feature
 // These types are imported from @/features/school-admin
 // They should be moved to @/shared/types or @/entities/learner/model/types
@@ -914,7 +914,7 @@ export const learnerReportService = {
 
   // Create report record
   async createReport(reportData: Partial<LearnerReport>) {
-    const { data: user } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
     
     return await supabase
       .from('learner_reports')

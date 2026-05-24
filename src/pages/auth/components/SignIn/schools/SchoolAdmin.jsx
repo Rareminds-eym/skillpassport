@@ -478,7 +478,7 @@ const SchoolAdmin = () => {
       // TODO: Add actual database saving logic here
       // The finalFormData contains firstName and lastName separately with proper capitalization
       await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('School admin account created:', finalFormData);
+      if (import.meta.env.DEV) console.log('[SchoolAdmin] School admin account created:', finalFormData);
       alert('School admin account created successfully!');
       // Reset form
       setFormData({

@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import {
     ChatBubbleLeftRightIcon,
     DocumentTextIcon,

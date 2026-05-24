@@ -6,6 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useAuthStore } from '@/shared/model/authStore';
 import {
     LicenseManagementService,
     type CreatePoolRequest
@@ -30,11 +31,23 @@ vi.mock('@/shared/api/supabaseClient', () => ({
 
 import { supabase } from '@/shared/api/supabaseClient';
 
+// Mock useAuthStore
+vi.mock('@/shared/model/authStore', () => ({
+  useAuthStore: {
+    getState: vi.fn(() => ({
+      user: { id: 'user-789' }
+    }))
+  }
+}));
+
 describe('LicenseManagementService', () => {
   let service: LicenseManagementService;
 
   beforeEach(() => {
     service = new LicenseManagementService();
+    vi.mocked(useAuthStore.getState).mockReturnValue({
+      user: { id: 'user-789' }
+    } as any);
     vi.clearAllMocks();
   });
 
@@ -86,21 +99,21 @@ describe('LicenseManagementService', () => {
       let callCount = 0;
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         callCount++;
-        if (table === 'organization_subscriptions') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ 
-              data: { available_seats: 50 }, 
-              error: null 
-            })
-          } as any;
+        if (table === 'subscription_cache') {
+          const chainable: any = {};
+          chainable.select = vi.fn().mockReturnValue(chainable);
+          chainable.eq = vi.fn().mockReturnValue(chainable);
+          chainable.single = vi.fn().mockResolvedValue({ 
+            data: { seat_count: 50, assigned_seats: 0 }, 
+            error: null 
+          });
+          return chainable;
         }
-        return {
-          insert: vi.fn().mockReturnThis(),
-          select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockPool, error: null })
-        } as any;
+        const insertMock: any = {};
+        insertMock.insert = vi.fn().mockReturnValue(insertMock);
+        insertMock.select = vi.fn().mockReturnValue(insertMock);
+        insertMock.single = vi.fn().mockResolvedValue({ data: mockPool, error: null });
+        return insertMock;
       });
 
       const result = await service.createLicensePool(mockCreateRequest);
@@ -112,9 +125,8 @@ describe('LicenseManagementService', () => {
     });
 
     it('should throw error when user not authenticated', async () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: null },
-        error: null
+      vi.mocked(useAuthStore.getState).mockReturnValue({
+        user: null
       } as any);
 
       await expect(service.createLicensePool(mockCreateRequest))
@@ -122,19 +134,16 @@ describe('LicenseManagementService', () => {
     });
 
     it('should throw error when insufficient seats available', async () => {
-      vi.mocked(supabase.auth.getUser).mockResolvedValue({
-        data: { user: mockUser },
-        error: null
-      } as any);
-
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ 
-          data: { available_seats: 10 }, // Less than requested 20
+      vi.mocked(supabase.from).mockImplementation(() => {
+        const chainable: any = {};
+        chainable.select = vi.fn().mockReturnValue(chainable);
+        chainable.eq = vi.fn().mockReturnValue(chainable);
+        chainable.single = vi.fn().mockResolvedValue({ 
+          data: { seat_count: 10, assigned_seats: 0 }, // Less than requested 20
           error: null 
-        })
-      } as any));
+        });
+        return chainable;
+      });
 
       await expect(service.createLicensePool(mockCreateRequest))
         .rejects.toThrow('Insufficient available seats in subscription');

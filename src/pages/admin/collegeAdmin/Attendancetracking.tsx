@@ -38,7 +38,7 @@ import ReactApexChart from "react-apexcharts";
 import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
-import { authSessionService } from '@/features/auth';
+
 
 
 
@@ -488,7 +488,7 @@ const AttendanceTracking: React.FC = () => {
   const fetchFilterOptions = async () => {
     try {
       // Get current user's college_id first
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       let currentCollegeId = null;
       
       if (user) {
@@ -763,7 +763,7 @@ const AttendanceTracking: React.FC = () => {
   // useEffect hooks
   useEffect(() => {
     const fetchCollegeId = async () => {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
       
       try {
@@ -1149,7 +1149,7 @@ const AttendanceTracking: React.FC = () => {
 
     try {
       // Get current user
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) {
         alert("Please log in to create a session.");
         return;
