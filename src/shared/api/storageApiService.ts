@@ -1,4 +1,5 @@
 import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
 /**
  * Storage API Service
  * Connects to Cloudflare Pages Function for file storage API calls
