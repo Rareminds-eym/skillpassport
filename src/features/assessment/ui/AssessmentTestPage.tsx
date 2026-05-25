@@ -82,6 +82,7 @@ const AssessmentTestPage: React.FC = () => {
   const [selectedStream, setSelectedStream] = useState<string | null>(null);
   const [showSectionIntro, setShowSectionIntro] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [adaptiveTimer, setAdaptiveTimer] = useState(90); // 90 seconds per question
   const [resumeData, setResumeData] = useState<any>(null);
   const [isLoadingResume, setIsLoadingResume] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -118,16 +119,12 @@ const AssessmentTestPage: React.FC = () => {
   const adaptiveHook = useAdaptiveAptitude({
     learnerId: learnerId || '',
     gradeLevel: getAdaptiveGradeLevel(selectedGrade),
-    onTestComplete: () => {
-      logger.info('✅ Adaptive test completed');
-      // Move to next section or submit
-      if (store.currentSectionIndex === store.sections.length - 1) {
-        handleSubmit();
-      } else {
-        store.nextSection();
-        setShowSectionIntro(true);
-        setCurrentScreen('section-intro');
-      }
+    onTestComplete: async () => {
+      logger.info('✅ Adaptive test completed - submitting assessment');
+      
+      // Always submit the assessment when adaptive test completes
+      // The adaptive test is always the last section
+      await handleSubmit();
     },
     onError: (err) => {
       logger.error('❌ Adaptive test error', err);
@@ -364,6 +361,10 @@ const AssessmentTestPage: React.FC = () => {
 
       if (result.success) {
         store.setStatus('completed');
+        
+        // Show a loading message while AI analyzes the assessment
+        logger.info('Assessment submitted - AI analysis will begin shortly');
+        
         setCurrentScreen('complete');
       } else {
         store.setError(result.error || 'Failed to submit assessment');
@@ -423,6 +424,40 @@ const AssessmentTestPage: React.FC = () => {
       return () => clearInterval(timer);
     }
   }, [store.currentSectionIndex, currentScreen, showSectionIntro, store.sections]);
+
+  // Adaptive timer countdown (90 seconds per question)
+  useEffect(() => {
+    const currentSection = store.sections[store.currentSectionIndex];
+    const isAdaptive = isAdaptiveSection(currentSection);
+    const shouldRunTimer = isAdaptive && currentScreen === 'assessment' && !showSectionIntro && adaptiveHook.currentQuestion;
+
+    if (shouldRunTimer) {
+      const timer = setInterval(() => {
+        setAdaptiveTimer(prev => {
+          if (prev <= 1) {
+            // Time's up - auto-submit current answer or skip
+            const currentAnswer = selectedAnswer;
+            if (currentAnswer) {
+              adaptiveHook.submitAnswer(currentAnswer);
+              setSelectedAnswer(null);
+            }
+            return 90; // Reset for next question
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections]);
+
+  // Reset adaptive timer when question changes
+  useEffect(() => {
+    const currentSection = store.sections[store.currentSectionIndex];
+    if (isAdaptiveSection(currentSection) && adaptiveHook.currentQuestion) {
+      setAdaptiveTimer(90); // Reset to 90 seconds for new question
+    }
+  }, [adaptiveHook.questionsAnswered, store.currentSectionIndex, adaptiveHook.currentQuestion, store.sections]);
 
   // Reset elapsed time when section changes
   const previousSectionIndexRef = useRef<number | null>(null);
@@ -570,6 +605,8 @@ const AssessmentTestPage: React.FC = () => {
                 currentQuestionIndex={adaptiveHook.questionsAnswered}
                 totalQuestions={ADAPTIVE_TOTAL_QUESTIONS}
                 elapsedTime={elapsedTime}
+                perQuestionTimer={adaptiveTimer}
+                showPerQuestionTimer={true}
                 showNoWrongAnswers={true}
                 isAnswered={!!selectedAnswer}
                 isLastQuestion={adaptiveHook.isTestComplete}
@@ -590,6 +627,7 @@ const AssessmentTestPage: React.FC = () => {
                   answer={selectedAnswer}
                   onAnswer={setSelectedAnswer}
                   isAdaptive={true}
+                  adaptiveTimer={adaptiveTimer}
                   adaptiveDifficulty={adaptiveHook.difficulty}
                   adaptiveLoading={adaptiveHook.loading}
                   color={currentSection.color}

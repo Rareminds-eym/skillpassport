@@ -2538,11 +2538,11 @@ const LearnerDashboard = () => {
           )}
 
           {/* AI-Powered Recommendations Section */}
-          {hasAssessment && assessmentRecommendations && (
+          {hasAssessment && aiRecommendations && (
             <div className="mb-6">
               <div className="max-h-[400px] overflow-y-auto pr-2">
                 <TrainingRecommendations
-                  recommendations={assessmentRecommendations}
+                  recommendations={aiRecommendations}
                   showAll={showAllTraining}
                 />
               </div>
