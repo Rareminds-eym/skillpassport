@@ -2,7 +2,7 @@
 # This is used for local development with `wrangler pages dev`
 
 name = "skill-passport-portal"
-compatibility_date = "2025-05-09"
+compatibility_date = "2026-05-25"
 compatibility_flags = ["nodejs_compat"]
 
 # ============================================================================
@@ -75,7 +75,6 @@ VITE_SSO_URL = "https://sso-api.dark-mode-d021.workers.dev/"
 VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Frontend)
-VITE_APP_URL = "https://skillpassport.rareminds.in/"
 VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
 VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"

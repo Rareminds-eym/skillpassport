@@ -9,14 +9,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-assessment-service');
 
-// Get API base URL from environment, fallback to current origin
-const getApiBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_APP_URL;
-  if (envUrl && envUrl.trim() !== '') {
-    return envUrl;
-  }
-  return typeof window !== 'undefined' ? window.location.origin : '';
-};
+const ORIGIN = typeof window !== 'undefined' ? window.location.origin : '';
 
 export interface AssessmentRecommendations {
   recommendedTrack: string | null;
@@ -58,8 +51,7 @@ export interface AssessmentResponse {
  */
 export async function getLearnerAssessmentData(): Promise<AssessmentResponse> {
   try {
-    const apiBaseUrl = getApiBaseUrl();
-    const url = `${apiBaseUrl}/api/learners/assessments`;
+    const url = `${ORIGIN}/api/learners/assessments`;
     
     logger.info('Fetching assessment data from backend', { url });
 
