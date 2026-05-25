@@ -53,7 +53,7 @@ export const addOnPaymentService = {
       return {
         success: true,
         data: {
-          orderId: data.razorpay_order_id,
+          orderId: data.id,
           amount: data.amount,
           currency: data.currency || 'INR',
           addonName: data.addon_name,
@@ -99,7 +99,7 @@ export const addOnPaymentService = {
       return {
         success: true,
         data: {
-          orderId: data.razorpay_order_id,
+          orderId: data.id,
           amount: data.amount,
           currency: data.currency || 'INR',
           bundleName: data.bundle_name,

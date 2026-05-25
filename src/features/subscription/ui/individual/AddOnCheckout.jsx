@@ -196,7 +196,7 @@ export function AddOnCheckout({
                   response.razorpay_payment_id,
                   response.razorpay_signature,
                   item.feature_key,
-                  totals.total,
+                  data.amount,
                   billingPeriod
                 );
               } else {
@@ -205,7 +205,7 @@ export function AddOnCheckout({
                   response.razorpay_payment_id,
                   response.razorpay_signature,
                   item.id,
-                  totals.total,
+                  data.amount,
                   billingPeriod
                 );
               }

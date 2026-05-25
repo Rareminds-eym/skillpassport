@@ -106,9 +106,9 @@ export function AddOnMarketplace({
         return;
       }
 
-      const orderResult = await purchaseAddOn(featureKey, period);
+        const orderResult = await purchaseAddOn(featureKey, period);
       if (orderResult?.success && window.Razorpay) {
-        initializeRazorpay(orderResult.data, 'addon');
+        initializeRazorpay(orderResult.data, 'addon', featureKey, period);
       } else if (orderResult?.error) {
         setPurchaseError(orderResult.error);
       }
@@ -145,9 +145,9 @@ export function AddOnMarketplace({
         return;
       }
 
-      const orderResult = await purchaseBundle(bundleId, period);
+        const orderResult = await purchaseBundle(bundleId, period);
       if (orderResult?.success && window.Razorpay) {
-        initializeRazorpay(orderResult.data, 'bundle');
+        initializeRazorpay(orderResult.data, 'bundle', null, period);
       } else if (orderResult?.error) {
         setPurchaseError(orderResult.error);
       }
@@ -163,7 +163,7 @@ export function AddOnMarketplace({
   };
 
   // Initialize Razorpay checkout with proper verification
-  const initializeRazorpay = (orderData, type = 'addon') => {
+  const initializeRazorpay = (orderData, type = 'addon', featureKey = null, billingPeriod = 'monthly') => {
     const options = {
       key: orderData.razorpayKeyId,
       amount: orderData.amount,
@@ -185,14 +185,18 @@ export function AddOnMarketplace({
               response.razorpay_payment_id,
               response.razorpay_signature,
               orderData.bundleId,
-              orderData.billingPeriod
+              orderData.amount,
+              orderData.billingPeriod || billingPeriod
             );
           } else {
             // Use addon verification endpoint
             verifyResult = await addOnPaymentService.verifyAddonPayment(
               response.razorpay_order_id,
               response.razorpay_payment_id,
-              response.razorpay_signature
+              response.razorpay_signature,
+              featureKey,
+              orderData.amount,
+              billingPeriod
             );
           }
 

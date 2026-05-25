@@ -372,7 +372,10 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
             const verifyResult = await addOnPaymentService.verifyAddonPayment(
               response.razorpay_order_id,
               response.razorpay_payment_id,
-              response.razorpay_signature
+              response.razorpay_signature,
+              addOn.feature_key,
+              data.amount,
+              billing
             );
             
             console.log('[PurchaseModal] Verification result:', verifyResult);

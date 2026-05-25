@@ -191,7 +191,10 @@ export function AddOnCheckout({
               const verifyResult = await addOnPaymentService.verifyAddonPayment(
                 response.razorpay_order_id,
                 response.razorpay_payment_id,
-                response.razorpay_signature
+                response.razorpay_signature,
+                item.feature_key,
+                data.amount,
+                billingPeriod
               );
               
               if (verifyResult.success) {
