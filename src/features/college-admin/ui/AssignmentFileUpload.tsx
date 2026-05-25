@@ -10,7 +10,7 @@ import {
 import { uploadInstructionFile, deleteInstructionFile } from '@/features/educator-copilot';
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabase';
+import { supabase } from '@/shared/api/supabaseClient';
 import { ConfirmationModal, NotificationModal } from '@/shared/ui';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';

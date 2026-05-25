@@ -1,37 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/shared/api/supabaseClient';
 import { Learner } from '@/shared/types/learner';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('supabase-utils');
 
-// TEST: Prove logger is working
-logger.info('✅ Logger is working! This is from supabase-utils');
-
-// These are safe to expose in frontend - they're public configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing required Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
-}
-
-// Note: Auth is DISABLED on this client. All authentication is handled by the SSO Worker
-// via @rareminds-eym/auth-client (ssoClient). For data operations, prefer importing
-// supabase from '@/shared/api/supabaseClient' which also has auth disabled.
-// This client is kept for specific utility functions only.
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-  global: {
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
-  },
-});
+export { supabase };
 
 export const learnerService = {
   async getLearner(id: string): Promise<Learner | null> {

@@ -37,7 +37,7 @@ export default function WhoIsThisForSection() {
                 />
               ) : (
                 <DotLottieReact
-                  src="https://lottie.host/8762c3c1-db94-4087-9ccc-46615033bf52/2wX4r7hVjN.lottie"
+                  src="/animations/whois.lottie"
                   loop
                   autoplay
                   className="w-full h-full"
@@ -129,7 +129,7 @@ export default function WhoIsThisForSection() {
                   />
                 ) : (
                   <DotLottieReact
-                    src="https://lottie.host/8762c3c1-db94-4087-9ccc-46615033bf52/2wX4r7hVjN.lottie"
+                    src="/animations/whois.lottie"
                     loop
                     autoplay
                     className="w-full h-full"
