@@ -90,7 +90,7 @@ export function AddOnCheckout({
       }
     });
 
-    const discount = appliedDiscount?.totalDiscount || 0;
+    const discount = appliedDiscount?.totalDiscount ?? 0;
     const total = Math.max(subtotal - discount, 0);
 
     return { subtotal, discount, total };

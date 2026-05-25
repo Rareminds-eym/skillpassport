@@ -42,8 +42,8 @@ export function AddOnCard({
 
   if (!addOn) return null;
 
-  const monthlyPrice = addOn.addon_price_monthly || 0;
-  const annualPrice = addOn.addon_price_annual || 0;
+  const monthlyPrice = addOn.addon_price_monthly ?? 0;
+  const annualPrice = addOn.addon_price_annual ?? 0;
   const currentPrice = billingPeriod === 'monthly' ? monthlyPrice : annualPrice;
   
   // Calculate annual savings

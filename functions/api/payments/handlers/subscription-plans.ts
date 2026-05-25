@@ -54,10 +54,10 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
     business_type: raw.business_type,
     // Flat pricing fields the frontend expects
     // Note: paid plans are yearly-only. monthly = yearly for backward compat.
-    price: pricing.yearly || pricing.monthly || 0,
-    yearlyPrice: pricing.yearly || 0,
+    price: pricing.yearly ?? pricing.monthly ?? 0,
+    yearlyPrice: pricing.yearly ?? 0,
     currency: (pricing.currency as string) || 'INR',
-    duration: (config.duration as string) || 'yearly',
+    duration: (config.duration as string) ?? 'yearly',
     // Config fields
     tagline: (config.tagline as string) || '',
     recommended: (config.is_recommended as boolean) || false,

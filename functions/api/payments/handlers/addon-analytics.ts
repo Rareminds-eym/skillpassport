@@ -32,7 +32,7 @@ export async function handleAddonAnalytics(context: AuthenticatedContext): Promi
       const { data: entitlements, error: entError } = await supabase.from('user_entitlements').select('feature_key, price_at_purchase, billing_period, created_at, bundle_id').gte('created_at', start).lte('created_at', end);
       if (entError) throw entError;
 
-      const totalRevenue = (entitlements || []).reduce((sum, ent) => sum + (parseFloat(ent.price_at_purchase) || 0), 0);
+      const totalRevenue = (entitlements || []).reduce((sum, ent) => sum + (parseFloat(ent.price_at_purchase) ?? 0), 0);
       return new Response(JSON.stringify({ success: true, data: { period: { startDate: start, endDate: end }, totalRevenue, totalTransactions: entitlements?.length || 0 } }), { status: 200 });
     }
 

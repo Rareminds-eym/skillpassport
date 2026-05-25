@@ -77,9 +77,18 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     // Step 2: Signature valid — create org subscription in auth DB
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
 
+    if (!body.billing_cycle || typeof body.billing_cycle !== 'string') {
+      return new Response(
+        JSON.stringify({
+          error: { code: 'INVALID_INPUT', message: 'billing_cycle is required' },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
     const planAmount = typeof body.amount === 'number' ? body.amount : 0;
-    const billingCycle = (body.billing_cycle as string) || 'monthly';
+    const billingCycle = body.billing_cycle as string;
 
     const now = new Date();
     const endDate = new Date(now);

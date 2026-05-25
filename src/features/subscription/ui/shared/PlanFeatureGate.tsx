@@ -1,6 +1,6 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
-import { useSubscriptionQuery } from '@/features/subscription/model';
+import { useSubscriptionQuery, useSubscriptionPlansData } from '@/features/subscription/model';
 import { UpgradePrompt } from './UpgradePrompt';
 
 interface PlanFeatureGateProps {
@@ -9,12 +9,18 @@ interface PlanFeatureGateProps {
   children: ReactNode;
 }
 
+const FALLBACK_PLANS = [
+  { name: 'Basic',        price: 499,  duration: 'yearly', recommended: false },
+  { name: 'Professional', price: 749,  duration: 'yearly', recommended: true  },
+  { name: 'Premium',      price: 999,  duration: 'yearly', recommended: false },
+];
+
 /**
  * PlanFeatureGate Component
  * 
  * Conditionally renders children based on user's subscription plan and feature access.
- * Specifically designed for plan-based feature gating (Freemium vs paid plans).
- * If access is denied, renders a fallback component or default UpgradePrompt.
+ * Prices are sourced from the API via useSubscriptionPlansData.
+ * FALLBACK_PLANS are ONLY used while the API call is in-flight.
  * 
  * @param feature - The feature key to check access for
  * @param fallback - Optional custom component to render when access is denied
@@ -22,7 +28,15 @@ interface PlanFeatureGateProps {
  */
 export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGateProps) {
   const { subscriptionData, loading, error } = useSubscriptionQuery();
+  const { plans: apiPlans, loading: plansLoading, error: plansError } = useSubscriptionPlansData();
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+
+  // Warn if using hardcoded fallback (should never happen in normal operation)
+  useEffect(() => {
+    if (!plansLoading && plansError) {
+      console.warn('[PlanFeatureGate] Failed to fetch plans from API, using hardcoded fallback');
+    }
+  }, [plansLoading, plansError]);
 
   // Handle loading state
   if (loading) {
@@ -74,34 +88,22 @@ export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGate
     return <>{fallback}</>;
   }
 
-  // Default UpgradePrompt — prices match DB plans_cache
-  const defaultPlans = [
-    {
-      name: 'Basic',
-      price: 499,
-      duration: 'yearly',
-      recommended: false,
-    },
-    {
-      name: 'Professional',
-      price: 749,
-      duration: 'yearly',
-      recommended: true,
-    },
-    {
-      name: 'Premium',
-      price: 999,
-      duration: 'yearly',
-      recommended: false,
-    },
-  ];
+  // Use API-fetched plans if loaded, fall back to static while loading
+  const availablePlans = apiPlans && apiPlans.length > 0
+    ? apiPlans.map((p: Record<string, unknown>) => ({
+        name: p.name as string,
+        price: p.price as number,
+        duration: p.duration as string,
+        recommended: p.recommended as boolean,
+      }))
+    : FALLBACK_PLANS;
 
   return (
     <>
       {showUpgradePrompt && (
         <UpgradePrompt
           featureName={feature.replace(/_/g, ' ')}
-          availablePlans={defaultPlans}
+          availablePlans={availablePlans}
           onClose={() => setShowUpgradePrompt(false)}
         />
       )}

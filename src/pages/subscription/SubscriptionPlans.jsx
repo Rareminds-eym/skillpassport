@@ -346,8 +346,8 @@ FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 // Plan Card Component - Editorial luxury design
 const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
-  const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
-  const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
+  const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price ?? 0);
+  const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price ?? 0);
   const isContactSales = plan.contactSales;
 
   // Group features by category for better display
@@ -1200,7 +1200,7 @@ function SubscriptionPlans() {
                     <div className="group">
                       <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Billing Cycle</div>
                       <div className="text-lg text-slate-900 font-medium">
-                        {currentPlanData?.duration || 'Monthly'}
+                        {currentPlanData?.duration || subscriptionData?.billingCycle || ''}
                       </div>
                     </div>
 

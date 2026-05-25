@@ -65,8 +65,17 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
       body.razorpay_signature as string
     );
 
+    if (!body.billing_period || typeof body.billing_period !== 'string') {
+      return new Response(
+        JSON.stringify({
+          error: { code: 'INVALID_INPUT', message: 'billing_period is required' },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const priceAtPurchase = typeof body.amount === 'number' ? body.amount : 0;
-    const billingPeriod = (body.billing_period as string) || 'monthly';
+    const billingPeriod = body.billing_period as string;
 
     // Step 2: Record purchase in Auth DB via SSO Worker RPC
     try {

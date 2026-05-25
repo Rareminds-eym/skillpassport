@@ -106,6 +106,42 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
    
 
 
+    // Validate amount against DB plan price (industrial-grade: never trust client)
+    if (body.planId) {
+      const supabase = getServiceClient(env);
+      const { data: dbPlan } = await supabase
+        .from('plans_cache')
+        .select('pricing_matrix')
+        .eq('id', body.planId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (dbPlan) {
+        const yearlyPrice = dbPlan.pricing_matrix?.all?.yearly;
+        if (typeof yearlyPrice !== 'number') {
+          logger.warn('Plan has no yearly price:', body.planId, dbPlan.pricing_matrix);
+          return new Response(
+            JSON.stringify({
+              error: { code: 'INVALID_PLAN', message: 'Selected plan has no valid pricing' },
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        const expectedPaise = Math.round(yearlyPrice * 100);
+        if (body.amount !== expectedPaise) {
+          logger.warn('Price mismatch — client sent', body.amount, 'expected', expectedPaise, 'for plan', body.planId);
+          return new Response(
+            JSON.stringify({
+              error: { code: 'PRICE_MISMATCH', message: 'Plan price does not match. Please refresh and try again.' },
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        logger.warn('Plan not found in plans_cache:', body.planId);
+      }
+    }
+
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({

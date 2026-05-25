@@ -44,8 +44,8 @@ export function BundleCard({
 
   if (!bundle) return null;
 
-  const monthlyPrice = bundle.monthly_price || 0;
-  const annualPrice = bundle.annual_price || 0;
+  const monthlyPrice = bundle.monthly_price ?? 0;
+  const annualPrice = bundle.annual_price ?? 0;
   const currentPrice = billingPeriod === 'monthly' ? monthlyPrice : annualPrice;
   const featureKeys = bundle.bundle_features?.map(bf => bf.feature_key) || [];
   const totalFeatures = featureKeys.length;

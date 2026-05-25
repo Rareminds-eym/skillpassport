@@ -41,8 +41,8 @@ export async function handleGetAvailableAddons(context: AuthenticatedContext): P
       name: addon.feature_name,
       description: addon.description,
       category: addon.category,
-      price_monthly: parseFloat(addon.price_monthly) || 0,
-      price_annual: parseFloat(addon.price_annual) || 0,
+      price_monthly: parseFloat(addon.price_monthly) ?? 0,
+      price_annual: parseFloat(addon.price_annual) ?? 0,
       target_roles: addon.target_roles || [],
       icon_url: addon.icon,
     }));

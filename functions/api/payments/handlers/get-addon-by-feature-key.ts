@@ -50,8 +50,8 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
       name: addon.feature_name,
       description: addon.description,
       category: addon.category,
-      price_monthly: parseFloat(addon.price_monthly) || 199,
-      price_annual: parseFloat(addon.price_annual) || 1990,
+      price_monthly: parseFloat(addon.price_monthly) ?? 0,
+      price_annual: parseFloat(addon.price_annual) ?? 0,
       icon_url: addon.icon,
     };
 

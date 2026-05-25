@@ -139,7 +139,7 @@ const formatAmount = (a) => {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0
-    }).format(a || 0);
+    }).format(a ?? 0);
   } catch {
     return '₹0';
   }
@@ -468,7 +468,7 @@ function PaymentSuccess() {
   const displayAmount = useMemo(() => {
     if (transactionDetails?.amount) return transactionDetails.amount / 100;
     if (subscriptionData?.plan_amount) return subscriptionData.plan_amount;
-    return planDetails?.price || 0;
+    return planDetails?.price ?? 0;
   }, [transactionDetails, subscriptionData, planDetails]);
 
   const getDashboardUrl = useCallback(() => {
@@ -761,7 +761,7 @@ function PaymentSuccess() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Cycle</span>
-                  <span className="font-medium text-gray-900">{String(subscriptionData.billing_cycle || planDetails?.duration || 'Monthly')}</span>
+                  <span className="font-medium text-gray-900">{String(subscriptionData.billing_cycle || planDetails?.duration || '')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Valid Until</span>

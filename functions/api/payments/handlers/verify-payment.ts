@@ -79,7 +79,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 2.5: Validate plan exists via plans_cache (local shadow of auth DB)
     const { data: validPlan, error: planError } = await supabase
       .from('plans_cache')
-      .select('id, plan_code, name, is_active')
+      .select('id, plan_code, name, is_active, pricing_matrix')
       .eq('id', plan.id)
       .eq('is_active', true)
       .maybeSingle();
@@ -96,6 +96,16 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         headers: { 'Content-Type': 'application/json' },
       });
     }
+
+    // Authoritative price from DB — never trust client-supplied price
+    const yearlyPrice = validPlan.pricing_matrix?.all?.yearly;
+    if (typeof yearlyPrice !== 'number') {
+      console.error('[VerifyPayment] Plan has no yearly price:', plan.id, validPlan.pricing_matrix);
+      return new Response(JSON.stringify({
+        error: { code: 'INVALID_PLAN', message: 'Selected plan has no valid pricing' },
+      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+    const planPrice = yearlyPrice;
 
     // Calculate subscription dates
     const now = new Date();
@@ -127,14 +137,19 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         .single();
 
       if (currentPlan) {
-        const currentPrice = currentPlan.pricing_matrix?.annual || 0;
-        const newPrice = parseFloat(String(plan.price));
+        const currentPrice = currentPlan.pricing_matrix?.all?.yearly;
+        if (typeof currentPrice !== 'number' || typeof planPrice !== 'number') {
+          console.warn('[VerifyPayment] Cannot compare plan pricing:', { currentPrice, planPrice });
+          return new Response(JSON.stringify({
+            error: { code: 'UPGRADE_FAILED', message: 'Cannot determine plan pricing. Please contact support.' },
+          }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        }
 
-        if (newPrice <= currentPrice) {
+        if (planPrice <= currentPrice) {
           console.warn('[VerifyPayment] Downgrade blocked:', {
             currentPlan: currentPlan.plan_code,
             currentPrice,
-            newPrice,
+            newPrice: planPrice,
           });
           return new Response(JSON.stringify({
             error: {
@@ -153,7 +168,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           plan_id: plan.id,
           plan_code: validPlan.plan_code,
           plan_type: plan.name,
-          plan_amount: parseFloat(String(plan.price)),
+          plan_amount: planPrice,
           billing_cycle: plan.duration,
           razorpay_order_id: body.razorpay_order_id,
           razorpay_payment_id: body.razorpay_payment_id,
@@ -171,7 +186,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             user_id: user.sub,
             razorpay_order_id: body.razorpay_order_id as string,
             razorpay_payment_id: body.razorpay_payment_id as string,
-            amount: parseFloat(String(plan.price)),
+            amount: planPrice,
             status: 'failed',
             transaction_type: 'upgrade',
             metadata: {
@@ -209,7 +224,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           plan_id: plan.id as string,
           plan_code: validPlan.plan_code,
           plan_type: plan.name as string,
-          plan_amount: parseFloat(String(plan.price)),
+          plan_amount: planPrice,
           billing_cycle: plan.duration as string,
           features: validPlan.base_features || [],
           full_name: (user as any).name || user.email || '',
@@ -245,7 +260,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         user_id: user.sub,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
-        amount: parseFloat(String(plan.price)),
+        amount: planPrice,
         currency: 'INR',
         status: 'success',
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
@@ -295,7 +310,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         transaction: {
           payment_id: body.razorpay_payment_id as string,
           order_id: body.razorpay_order_id as string,
-          amount: parseFloat(String(plan.price)),
+          amount: planPrice,
           currency: 'INR',
           payment_method: 'Card',
           payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -350,7 +365,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         name: subscription.full_name as string,
         email: (subscription.email as string) || user.email || '',
         phone: (subscription.phone as string) || '',
-        amount: parseFloat(String(plan.price)),
+        amount: planPrice,
         orderId: body.razorpay_order_id as string,
         campaign: subscription.plan_type as string,
         receiptUrl: receiptUrl || undefined,
