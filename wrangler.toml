@@ -79,6 +79,9 @@ VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
 VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
 
+# Analytics (Frontend)
+VITE_GTM_ID = "GTM-PN3VM4SX"
+
 # Note: Razorpay keys are managed by the payment worker and returned in API responses
 
 # ──────────────────────────────────────────────────────────────────────────
