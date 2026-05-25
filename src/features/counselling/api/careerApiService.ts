@@ -48,8 +48,7 @@ export async function sendCareerChatMessage(
     // Use interceptor to handle token validation and refresh
     const response = await getInterceptor().fetch(`${API_URL}/chat`, {
       method: 'POST',
-      headers: getAuthHeaders(token),
-      body: JSON.stringify({ conversationId, message, selectedChips }),
+            body: JSON.stringify({ conversationId, message, selectedChips }),
       signal: abortSignal,
     });
 

@@ -135,16 +135,11 @@ export const getOrganizationSubscriptions = async (
   organizationType: OrganizationType
 ): Promise<OrganizationSubscription[]> => {
   const { data, error } = await supabase
-    .from('organization_subscriptions')
-    .select(`
-      *,
-      subscription_plans:subscription_plan_id (
-        name,
-        plan_code
-      )
-    `)
+    .from('subscription_cache')
+    .select('*')
     .eq('organization_id', organizationId)
     .eq('organization_type', organizationType)
+    .eq('is_organization_subscription', true)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
@@ -155,14 +150,8 @@ export const getSubscriptionById = async (
   subscriptionId: string
 ): Promise<OrganizationSubscription | null> => {
   const { data, error } = await supabase
-    .from('organization_subscriptions')
-    .select(`
-      *,
-      subscription_plans:subscription_plan_id (
-        name,
-        plan_code
-      )
-    `)
+    .from('subscription_cache')
+    .select('*')
     .eq('id', subscriptionId)
     .single();
 

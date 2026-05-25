@@ -3,8 +3,8 @@
  *
  * POST /api/payments/pause-subscription
  *
- * Pauses a user's active subscription by updating its status in Supabase.
- * Extends the subscription end date by the pause duration.
+ * Pauses a user's active subscription by updating its status through the SSO worker
+ * (auth DB is source of truth) and syncing the local shadow table.
  * Validates that the subscription belongs to the authenticated user and is currently active.
  * Requires SSO authentication.
  */
@@ -12,17 +12,22 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
-// Cache invalidation removed - KV dependency eliminated
+import { ssoUpdateSubscriptionStatus, ssoSyncSubscription } from '../../../lib/sso-client';
+import { syncSubscriptionCache } from '../../../lib/sync-shadow';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handlePauseSubscription(context);
-});
+function extractAuthToken(request: Request): string {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) throw new Error('No auth token found');
+  return authHeader.slice(7);
+}
 
 export async function handlePauseSubscription(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string };
 
   try {
+    const authToken = extractAuthToken(context.request);
+
     // Parse request body
     let body: Record<string, unknown>;
     try {
@@ -37,7 +42,6 @@ export async function handlePauseSubscription(context: AuthenticatedContext): Pr
     }
 
     const subscriptionId = body.subscription_id as string;
-    const pauseMonths = Math.min(3, Math.max(1, Number(body.pause_months) || 1));
 
     if (!subscriptionId) {
       return new Response(
@@ -50,9 +54,9 @@ export async function handlePauseSubscription(context: AuthenticatedContext): Pr
 
     const supabase = getServiceClient(env);
 
-    // Validate subscription belongs to user and is active
+    // Validate subscription belongs to user and is active (read from shadow table)
     const { data: existing, error: fetchError } = await supabase
-      .from('subscriptions')
+      .from('subscription_cache')
       .select('*')
       .eq('id', subscriptionId)
       .eq('user_id', user.sub)
@@ -86,40 +90,23 @@ export async function handlePauseSubscription(context: AuthenticatedContext): Pr
       );
     }
 
-    // Extend subscription end date by pause_months
-    const currentEndDate = existing.subscription_end_date
-      ? new Date(existing.subscription_end_date)
-      : new Date();
-    currentEndDate.setMonth(currentEndDate.getMonth() + pauseMonths);
+    // Write status change through SSO worker (auth DB is source of truth)
+    const ssoResult = await ssoUpdateSubscriptionStatus(env, authToken, subscriptionId, {
+      status: 'paused',
+    });
 
-    // Update subscription status to paused
-    const { data: updated, error: updateError } = await supabase
-      .from('subscriptions')
-      .update({
-        status: 'paused',
-        paused_at: new Date().toISOString(),
-        subscription_end_date: currentEndDate.toISOString(),
-      })
-      .eq('id', subscriptionId)
-      .eq('user_id', user.sub)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('[PauseSubscription] Update error:', updateError);
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INTERNAL_ERROR', message: 'Failed to pause subscription' },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+    // Sync shadow table (non-blocking on failure)
+    try {
+      const syncResult = await ssoSyncSubscription(env, authToken, user.sub);
+      if (syncResult.subscription) {
+        await syncSubscriptionCache(supabase, syncResult.subscription, syncResult.plan);
+      }
+    } catch (syncError) {
+      console.error('[PauseSubscription] Shadow sync failed (non-blocking):', syncError);
     }
 
-    // Cache invalidation removed - KV dependency eliminated
-    // Client-side queries will refetch data as needed
-
     return new Response(
-      JSON.stringify({ success: true, subscription: updated }),
+      JSON.stringify({ success: true, subscription: ssoResult }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {

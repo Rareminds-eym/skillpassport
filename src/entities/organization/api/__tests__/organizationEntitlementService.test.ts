@@ -63,11 +63,11 @@ describe('OrganizationEntitlementService', () => {
 
     it('should grant entitlements for all plan features', async () => {
       const mockSubscription = {
-        subscription_plan_id: 'plan-001'
+        plan_id: 'plan-001'
       };
 
       const mockPlan = {
-        features: ['feature_ai_assistant', 'feature_analytics', 'feature_reports']
+        base_features: ['feature_ai_assistant', 'feature_analytics', 'feature_reports']
       };
 
       const mockEntitlement = {
@@ -85,14 +85,14 @@ describe('OrganizationEntitlementService', () => {
       let callCount = 0;
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         callCount++;
-        if (table === 'organization_subscriptions') {
+        if (table === 'subscription_cache') {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null })
           } as any;
         }
-        if (table === 'subscription_plans') {
+        if (table === 'plans_cache') {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
@@ -126,13 +126,13 @@ describe('OrganizationEntitlementService', () => {
 
     it('should throw error when plan features not found', async () => {
       const mockSubscription = {
-        subscription_plan_id: 'plan-001'
+        plan_id: 'plan-001'
       };
 
       let callCount = 0;
       vi.mocked(supabase.from).mockImplementation((table: string) => {
         callCount++;
-        if (table === 'organization_subscriptions') {
+        if (table === 'subscription_cache') {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
@@ -378,8 +378,8 @@ describe('OrganizationEntitlementService', () => {
         }
       ];
 
-      const mockSubscription = { subscription_plan_id: 'plan-001' };
-      const mockPlan = { features: ['feature_ai'] };
+      const mockSubscription = { plan_id: 'plan-001' };
+      const mockPlan = { base_features: ['feature_ai'] };
 
       let callCount = 0;
       vi.mocked(supabase.from).mockImplementation((table: string) => {
@@ -399,7 +399,7 @@ describe('OrganizationEntitlementService', () => {
           update: vi.fn().mockReturnThis(),
           insert: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: table === 'organization_subscriptions' ? mockSubscription : mockPlan, error: null })
+          single: vi.fn().mockResolvedValue({ data: table === 'subscription_cache' ? mockSubscription : mockPlan, error: null })
         } as any;
       });
 

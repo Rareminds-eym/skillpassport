@@ -26,7 +26,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '@/features/subscription';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
 
-import { getCurrentSession } from '@/shared/api/authUtils';
+
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '@/features/subscription/lib';
@@ -182,15 +182,10 @@ function MySubscription() {
     setIsCancelling(true);
 
     try {
-      // Get auth token (via SSO, not Supabase auth which is disabled)
-      const { data: { session } } = await getCurrentSession();
-      const token = session?.access_token;
-
-      // Call Worker via paymentsApiService
+      // Auth is handled automatically by paymentsApiService via ssoClient.fetch()
       const result = await deactivateSubscription(
         subscriptionData.id,
-        cancelReason,
-        token
+        cancelReason
       );
 
       if (result.success) {
@@ -221,14 +216,10 @@ function MySubscription() {
     setIsPausing(true);
 
     try {
-      // Get auth token (via SSO, not Supabase auth which is disabled)
-      const { data: { session } } = await getCurrentSession();
-      const token = session?.access_token;
-
+      // Auth is handled automatically by paymentsApiService via ssoClient.fetch()
       const result = await pauseSubscription(
         subscriptionData.id,
-        pauseMonths,
-        token
+        pauseMonths
       );
 
       if (result.success) {
@@ -256,11 +247,8 @@ function MySubscription() {
     setIsPausing(true); // Reuse isPausing state for loading
 
     try {
-      // Get auth token (via SSO, not Supabase auth which is disabled)
-      const { data: { session } } = await getCurrentSession();
-      const token = session?.access_token;
-
-      const result = await resumeSubscription(subscriptionData.id, token);
+      // Auth is handled automatically by paymentsApiService via ssoClient.fetch()
+      const result = await resumeSubscription(subscriptionData.id);
 
       if (result.success) {
         alert('Subscription resumed successfully!');

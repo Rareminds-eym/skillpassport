@@ -1,9 +1,11 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Payment Verification Service
  * 
  * Handles payment verification via Cloudflare Worker.
  * Worker handles: signature verification + subscription creation + transaction logging
+ * 
+ * Authentication is handled automatically by paymentsApiService via ssoClient.fetch()
+ * from @rareminds-eym/auth-client. No manual token management required.
  * 
  * This service provides:
  * - verifyPaymentSignature() - Verify payment via Worker
@@ -12,9 +14,9 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  * - clearVerificationCache() - Clear cache (for testing)
  */
 
-
 import paymentsApiService from './paymentsApiService';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('payment-verification');
 
@@ -25,6 +27,7 @@ const CACHE_TTL = 5 * 60 * 1000;
 /**
  * Verify payment signature via Cloudflare Worker
  * Worker handles: verification + subscription creation + transaction logging
+ * Auth is handled automatically by paymentsApiService.
  * 
  * @param {Object} paymentData - Payment verification data
  * @param {string} paymentData.razorpay_payment_id - Payment ID from Razorpay
@@ -54,17 +57,13 @@ export const verifyPaymentSignature = async (paymentData) => {
       return cached.result;
     }
 
-    // Get auth token (optional - Worker can verify via order)
-    const sessionResult = await getCurrentSession();
-    const token = sessionResult?.data?.session?.access_token;
-
-    // Call Worker - handles verification + subscription creation
+    // Call Worker — auth is handled automatically by paymentsApiService
     const result = await paymentsApiService.verifyPayment({
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
       plan,
-    }, token);
+    });
 
     // Cache the result
     verificationCache.set(cacheKey, {
@@ -135,12 +134,10 @@ export const logFailedTransaction = async (transactionData) => {
   try {
     const { razorpay_payment_id, razorpay_order_id, amount, currency, error, error_description } = transactionData;
     
-    // Get current user if available
-    const sessionResult = await getCurrentSession();
-    const userId = sessionResult?.data?.session?.user?.id;
+    // Get current user from auth store
+    const userId = useAuthStore.getState().user?.id;
 
     // Optionally log to database if needed
-    // This can be expanded to store in a failed_transactions table
     
     return { success: true, logged: true };
   } catch (err) {

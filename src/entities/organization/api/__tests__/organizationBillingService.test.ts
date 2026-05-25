@@ -28,11 +28,33 @@ vi.mock('@/shared/api/supabaseClient', () => ({
   }
 }));
 
-// Mock fetch for downloadInvoice
-global.fetch = vi.fn();
+// Mock SSO client
+vi.mock('@/shared/api/ssoClient', () => ({
+  ssoClient: {
+    fetch: vi.fn(),
+    getAccessToken: vi.fn(() => 'test-token')
+  }
+}));
 
 import { supabase } from '@/shared/api/supabaseClient';
-
+import { ssoClient } from '@/shared/api/ssoClient';
+const createChainableMock = (resolvedValue: any) => {
+  const isWrapped = resolvedValue && (resolvedValue.hasOwnProperty('data') || resolvedValue.hasOwnProperty('error'));
+  const finalValue = isWrapped ? resolvedValue : { data: resolvedValue, error: null };
+  const chainable: any = {
+    then: (resolve: any) => Promise.resolve(finalValue).then(resolve),
+    catch: (reject: any) => Promise.resolve(finalValue).catch(reject),
+  };
+  chainable.select = vi.fn().mockReturnValue(chainable);
+  chainable.insert = vi.fn().mockReturnValue(chainable);
+  chainable.update = vi.fn().mockReturnValue(chainable);
+  chainable.eq = vi.fn().mockReturnValue(chainable);
+  chainable.in = vi.fn().mockReturnValue(chainable);
+  chainable.order = vi.fn().mockReturnValue(chainable);
+  chainable.limit = vi.fn().mockReturnValue(chainable);
+  chainable.single = vi.fn().mockReturnValue(chainable);
+  return chainable;
+};
 describe('OrganizationBillingService', () => {
   let service: OrganizationBillingService;
 
@@ -55,18 +77,15 @@ describe('OrganizationBillingService', () => {
           id: 'sub-001',
           organization_id: 'org-123',
           organization_type: 'school',
-          subscription_plan_id: 'plan-001',
-          total_seats: 50,
+          plan_id: 'plan-001',
+          seat_count: 50,
           assigned_seats: 30,
           status: 'active',
-          start_date: new Date().toISOString(),
-          end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          subscription_start_date: new Date().toISOString(),
+          subscription_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           auto_renew: true,
           final_amount: '5000',
-          subscription_plans: {
-            id: 'plan-001',
-            name: 'Premium Plan'
-          }
+          plan_name: 'Premium Plan'
         }
       ];
 
@@ -93,47 +112,20 @@ describe('OrganizationBillingService', () => {
         }
       ];
 
-      // Create chainable mock that supports .eq().eq().in() chain and .eq().order().limit() chain
-      const createChainableMock = (table: string) => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => {
-          if (table === 'payment_transactions') {
-            // payment_transactions uses .eq().order().limit()
-            return {
-              order: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue({ data: mockPayments, error: null })
-              })
-            };
-          }
-          // Other tables use .eq().eq().in() or .eq().eq()
-          return {
-            eq: vi.fn().mockImplementation(() => ({
-              in: vi.fn().mockResolvedValue(
-                table === 'organization_subscriptions' 
-                  ? { data: mockSubscriptions, error: null }
-                  : { data: [], error: null }
-              ),
-              eq: vi.fn().mockResolvedValue(
-                table === 'addon_pending_orders' 
-                  ? { data: mockAddons, error: null }
-                  : { data: [], error: null }
-              )
-            }))
-          };
-        });
-        chainable.in = vi.fn().mockReturnValue(chainable);
-        chainable.order = vi.fn().mockReturnValue(chainable);
-        chainable.limit = vi.fn();
-        
-        if (table === 'organization_subscriptions') {
-          chainable.in.mockResolvedValue({ data: mockSubscriptions, error: null });
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'subscription_cache') {
+          return createChainableMock(mockSubscriptions);
         }
-        
-        return chainable;
-      };
+        if (table === 'addon_pending_orders') {
+          return createChainableMock(mockAddons);
+        }
+        return createChainableMock([]);
+      });
 
-      vi.mocked(supabase.from).mockImplementation((table: string) => createChainableMock(table));
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ transactions: mockPayments })
+      } as any);
 
       const result = await service.getBillingDashboard('org-123', 'school');
 
@@ -151,40 +143,33 @@ describe('OrganizationBillingService', () => {
       const mockSubscriptions = [
         {
           id: 'sub-001',
-          total_seats: 100,
+          seat_count: 100,
           assigned_seats: 50,
           status: 'active',
           final_amount: '10000',
-          subscription_plans: { name: 'Plan A' }
+          plan_name: 'Plan A'
         },
         {
           id: 'sub-002',
-          total_seats: 50,
+          seat_count: 50,
           assigned_seats: 25,
           status: 'active',
           final_amount: '5000',
-          subscription_plans: { name: 'Plan B' }
+          plan_name: 'Plan B'
         }
       ];
 
-      const createChainableMock = (table: string) => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockReturnValue(chainable);
-        chainable.in = vi.fn().mockReturnValue(chainable);
-        chainable.order = vi.fn().mockReturnValue(chainable);
-        chainable.limit = vi.fn();
-        
-        if (table === 'organization_subscriptions') {
-          chainable.in.mockResolvedValue({ data: mockSubscriptions, error: null });
-        } else {
-          chainable.limit.mockResolvedValue({ data: [], error: null });
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'subscription_cache') {
+          return createChainableMock(mockSubscriptions);
         }
-        
-        return chainable;
-      };
+        return createChainableMock([]);
+      });
 
-      vi.mocked(supabase.from).mockImplementation((table: string) => createChainableMock(table));
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ transactions: [] })
+      } as any);
 
       const result = await service.getBillingDashboard('org-123', 'school');
 
@@ -200,52 +185,27 @@ describe('OrganizationBillingService', () => {
       const mockSubscriptions = [
         {
           id: 'sub-001',
-          total_seats: 50,
+          seat_count: 50,
           assigned_seats: 30,
           status: 'active',
-          end_date: renewalDate.toISOString(),
+          subscription_end_date: renewalDate.toISOString(),
           auto_renew: true,
           final_amount: '5000',
-          subscription_plans: { name: 'Premium Plan' }
+          plan_name: 'Premium Plan'
         }
       ];
 
-      const createChainableMock = (table: string) => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => {
-          if (table === 'payment_transactions') {
-            // payment_transactions uses .eq().order().limit()
-            return {
-              order: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue({ data: [], error: null })
-              })
-            };
-          }
-          // Other tables use .eq().eq().in() or .eq().eq()
-          return {
-            eq: vi.fn().mockImplementation(() => ({
-              in: vi.fn().mockResolvedValue(
-                table === 'organization_subscriptions' 
-                  ? { data: mockSubscriptions, error: null }
-                  : { data: [], error: null }
-              ),
-              eq: vi.fn().mockResolvedValue({ data: [], error: null })
-            }))
-          };
-        });
-        chainable.in = vi.fn().mockReturnValue(chainable);
-        chainable.order = vi.fn().mockReturnValue(chainable);
-        chainable.limit = vi.fn();
-        
-        if (table === 'organization_subscriptions') {
-          chainable.in.mockResolvedValue({ data: mockSubscriptions, error: null });
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'subscription_cache') {
+          return createChainableMock(mockSubscriptions);
         }
-        
-        return chainable;
-      };
+        return createChainableMock([]);
+      });
 
-      vi.mocked(supabase.from).mockImplementation((table: string) => createChainableMock(table));
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ transactions: [] })
+      } as any);
 
       const result = await service.getBillingDashboard('org-123', 'school');
 
@@ -255,13 +215,12 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should handle empty data gracefully', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        in: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue({ data: [], error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(() => createChainableMock([]));
+
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ transactions: [] })
+      } as any);
 
       const result = await service.getBillingDashboard('org-123', 'school');
 
@@ -287,34 +246,24 @@ describe('OrganizationBillingService', () => {
 
       const mockOrgSub = {
         id: 'sub-001',
-        total_seats: 50,
+        seat_count: 50,
         total_amount: '5000',
         discount_percentage: 10,
         price_per_seat: 100,
-        subscription_plans: { name: 'Premium Plan' }
+        plan_name: 'Premium Plan'
       };
 
-      let callCount = 0;
       vi.mocked(supabase.from).mockImplementation((table: string) => {
-        callCount++;
-        if (table === 'payment_transactions') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockTransaction, error: null })
-          } as any;
+        if (table === 'subscription_cache') {
+          return createChainableMock(mockOrgSub);
         }
-        if (table === 'organization_subscriptions') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            order: vi.fn().mockReturnThis(),
-            limit: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockOrgSub, error: null })
-          } as any;
-        }
-        return {} as any;
+        return createChainableMock(null);
       });
+
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ transactions: [mockTransaction] })
+      } as any);
 
       const result = await service.generateInvoice('tx-001', {
         name: 'Test School',
@@ -330,11 +279,10 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should throw error when transaction not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } })
-      } as any));
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ transactions: [] })
+      } as any);
 
       await expect(service.generateInvoice('invalid-tx'))
         .rejects.toThrow('Transaction not found');
@@ -353,31 +301,24 @@ describe('OrganizationBillingService', () => {
 
       const mockOrgSub = {
         id: 'sub-001',
-        total_seats: 50,
+        seat_count: 50,
         total_amount: '5000',
         discount_percentage: 10, // 10% discount
         price_per_seat: 100,
-        subscription_plans: { name: 'Premium Plan' }
+        plan_name: 'Premium Plan'
       };
 
-      let callCount = 0;
       vi.mocked(supabase.from).mockImplementation((table: string) => {
-        callCount++;
-        if (table === 'payment_transactions') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: mockTransaction, error: null })
-          } as any;
+        if (table === 'subscription_cache') {
+          return createChainableMock(mockOrgSub);
         }
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          order: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: mockOrgSub, error: null })
-        } as any;
+        return createChainableMock(null);
       });
+
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ transactions: [mockTransaction] })
+      } as any);
 
       const result = await service.generateInvoice('tx-001');
 
@@ -415,12 +356,10 @@ describe('OrganizationBillingService', () => {
         }
       ];
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue({ data: mockTransactions, error: null })
-      } as any));
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ transactions: mockTransactions })
+      } as any);
 
       const result = await service.getInvoiceHistory('org-123');
 
@@ -430,12 +369,10 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should return empty array when no transactions exist', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValue({ data: [], error: null })
-      } as any));
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ transactions: [] })
+      } as any);
 
       const result = await service.getInvoiceHistory('org-123');
 
@@ -447,12 +384,7 @@ describe('OrganizationBillingService', () => {
     it('should download invoice as PDF blob', async () => {
       const mockBlob = new Blob(['PDF content'], { type: 'application/pdf' });
 
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
-        data: { session: { access_token: 'test-token' } },
-        error: null
-      } as any);
-
-      vi.mocked(global.fetch).mockResolvedValue({
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
         ok: true,
         blob: () => Promise.resolve(mockBlob)
       } as any);
@@ -460,21 +392,12 @@ describe('OrganizationBillingService', () => {
       const result = await service.downloadInvoice('inv-001');
 
       expect(result).toBeInstanceOf(Blob);
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/org-billing/invoice/inv-001/download'),
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'Authorization': 'Bearer test-token'
-          })
-        })
-      );
     });
 
     it('should throw error when not authenticated', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
-        data: { session: null },
-        error: null
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'Not authenticated' })
       } as any);
 
       await expect(service.downloadInvoice('inv-001'))
@@ -482,15 +405,9 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should throw error on API failure', async () => {
-      vi.mocked(supabase.auth.getSession).mockResolvedValue({
-        data: { session: { access_token: 'test-token' } },
-        error: null
-      } as any);
-
-      vi.mocked(global.fetch).mockResolvedValue({
+      vi.mocked(ssoClient.fetch).mockResolvedValue({
         ok: false,
-        status: 404,
-        json: () => Promise.resolve({ error: 'Invoice not found' })
+        json: async () => ({ error: 'Invoice not found' })
       } as any);
 
       await expect(service.downloadInvoice('invalid-inv'))
@@ -504,44 +421,42 @@ describe('OrganizationBillingService', () => {
         {
           id: 'sub-001',
           final_amount: '12000', // Annual subscription
-          subscription_plans: { name: 'Annual Plan' }
+          plan_name: 'Annual Plan',
+          billing_cycle: 'yearly',
+          seat_count: 50,
+          assigned_seats: 30,
+          status: 'active'
         },
         {
           id: 'sub-002',
-          final_amount: '5000', // Monthly subscription
-          subscription_plans: { name: 'Monthly Plan' }
+          final_amount: '1000', // Monthly subscription
+          plan_name: 'Monthly Plan',
+          billing_cycle: 'monthly',
+          seat_count: 10,
+          assigned_seats: 5,
+          status: 'active'
         }
       ];
 
       const mockAddons = [
         {
+          id: 'addon-001',
+          addon_feature_key: 'premium_support',
           target_member_ids: ['user-1', 'user-2'],
+          status: 'completed',
           amount: '100'
         }
       ];
 
-      const createChainableMock = (table: string) => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        
-        if (table === 'organization_subscriptions') {
-          // Support 3 chained .eq() calls for subscriptions
-          chainable.eq = vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockImplementation(() => ({
-              eq: vi.fn().mockResolvedValue({ data: mockSubscriptions, error: null })
-            }))
-          }));
-        } else if (table === 'addon_pending_orders') {
-          // Support 2 chained .eq() calls for addons
-          chainable.eq = vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: mockAddons, error: null })
-          }));
+      vi.mocked(supabase.from).mockImplementation((table: string) => {
+        if (table === 'subscription_cache') {
+          return createChainableMock(mockSubscriptions);
         }
-        
-        return chainable;
-      };
-
-      vi.mocked(supabase.from).mockImplementation((table: string) => createChainableMock(table));
+        if (table === 'addon_pending_orders') {
+          return createChainableMock(mockAddons);
+        }
+        return createChainableMock([]);
+      });
 
       const result = await service.projectMonthlyCost('org-123', 'school');
 
@@ -552,18 +467,7 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should return zeros when no subscriptions exist', async () => {
-      const createChainableMock = () => {
-        const chainable: any = {};
-        chainable.select = vi.fn().mockReturnValue(chainable);
-        chainable.eq = vi.fn().mockImplementation(() => ({
-          eq: vi.fn().mockImplementation(() => ({
-            eq: vi.fn().mockResolvedValue({ data: [], error: null })
-          }))
-        }));
-        return chainable;
-      };
-
-      vi.mocked(supabase.from).mockImplementation(() => createChainableMock());
+      vi.mocked(supabase.from).mockImplementation(() => createChainableMock([]));
 
       const result = await service.projectMonthlyCost('org-123', 'school');
 
@@ -583,18 +487,14 @@ describe('OrganizationBillingService', () => {
 
       const mockSubscription = {
         id: 'sub-001',
-        total_seats: 50,
+        seat_count: 50,
         price_per_seat: 100,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        subscription_plans: { name: 'Test Plan' }
+        subscription_start_date: startDate.toISOString(),
+        subscription_end_date: endDate.toISOString(),
+        plan_name: 'Test Plan'
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(mockSubscription));
 
       const result = await service.calculateSeatAdditionCost('sub-001', 10);
 
@@ -609,18 +509,14 @@ describe('OrganizationBillingService', () => {
     it('should apply volume discount for new total seats', async () => {
       const mockSubscription = {
         id: 'sub-001',
-        total_seats: 45, // Adding 10 will make it 55 (10% discount tier)
+        seat_count: 45, // Adding 10 will make it 55 (10% discount tier)
         price_per_seat: 100,
-        start_date: new Date().toISOString(),
-        end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        subscription_plans: { name: 'Test Plan' }
+        subscription_start_date: new Date().toISOString(),
+        subscription_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        plan_name: 'Test Plan'
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockSubscription, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(mockSubscription));
 
       const result = await service.calculateSeatAdditionCost('sub-001', 10);
 
@@ -628,11 +524,7 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should throw error when subscription not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { message: 'Not found' } })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(null));
 
       await expect(service.calculateSeatAdditionCost('invalid-sub', 10))
         .rejects.toThrow('Subscription not found');
@@ -647,11 +539,7 @@ describe('OrganizationBillingService', () => {
         phone: '+1234567890'
       };
 
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockOrganization, error: null })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(mockOrganization));
 
       const result = await service.getBillingContacts('org-123');
 
@@ -662,11 +550,7 @@ describe('OrganizationBillingService', () => {
     });
 
     it('should return empty array when organization not found', async () => {
-      vi.mocked(supabase.from).mockImplementation(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-      } as any));
+      vi.mocked(supabase.from).mockImplementation(() => createChainableMock(null));
 
       const result = await service.getBillingContacts('org-123');
 

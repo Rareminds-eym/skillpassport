@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
 import { getLogger } from '@/shared/config/logging';
@@ -44,7 +43,7 @@ const After12AssessmentResultTour: React.FC = () => {
 
     const startTourWhenReady = async () => {
       try {
-        const { data: { user } } = await getCurrentUser();
+        const user = useAuthStore.getState().user;
         if (!user) {
           return;
         }

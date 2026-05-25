@@ -31,7 +31,7 @@ import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
-import { authSessionService } from '@/features/auth';
+
 
 import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
 /**
@@ -181,15 +181,10 @@ function MySubscription() {
     setIsCancelling(true);
 
     try {
-      // Get auth token
-      const { data: { session } } = await authSessionService.getSession();
-      const token = session?.access_token;
-
-      // Call Worker via paymentsApiService
+      // Auth is handled automatically by paymentsApiService via ssoClient.fetch()
       const result = await deactivateSubscription(
         subscriptionData.id,
-        cancelReason,
-        token
+        cancelReason
       );
 
       if (result.success) {
@@ -220,14 +215,10 @@ function MySubscription() {
     setIsPausing(true);
 
     try {
-      // Get auth token
-      const { data: { session } } = await authSessionService.getSession();
-      const token = session?.access_token;
-
+      // Auth is handled automatically by paymentsApiService via ssoClient.fetch()
       const result = await pauseSubscription(
         subscriptionData.id,
-        pauseMonths,
-        token
+        pauseMonths
       );
 
       if (result.success) {
@@ -255,11 +246,8 @@ function MySubscription() {
     setIsPausing(true); // Reuse isPausing state for loading
 
     try {
-      // Get auth token
-      const { data: { session } } = await authSessionService.getSession();
-      const token = session?.access_token;
-
-      const result = await resumeSubscription(subscriptionData.id, token);
+      // Auth is handled automatically by paymentsApiService via ssoClient.fetch()
+      const result = await resumeSubscription(subscriptionData.id);
 
       if (result.success) {
         alert('Subscription resumed successfully!');

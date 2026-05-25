@@ -8,64 +8,44 @@
 
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getServiceClient } from '../../../lib/supabase';
-
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleGetAvailableAddons(context);
-});
-
 export async function handleGetAvailableAddons(context: AuthenticatedContext): Promise<Response> {
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+  const env = context.env as { SSO_SERVICE: Fetcher };
   const url = new URL(context.request.url);
   const category = url.searchParams.get('category');
   const role = url.searchParams.get('role');
 
   try {
-    const supabase = getServiceClient(env);
+    const ssoUrl = new URL('http://sso-worker/api/addon-catalog');
+    if (category) ssoUrl.searchParams.set('category', category);
+    if (role) ssoUrl.searchParams.set('role', role);
 
-    let query = supabase
-      .from('subscription_plan_features')
-      .select('id, feature_key, feature_name, category, addon_price_monthly, addon_price_annual, addon_description, target_roles, icon_url, sort_order_addon')
-      .eq('is_addon', true)
-      .order('sort_order_addon', { ascending: true });
+    const ssoResponse = await env.SSO_SERVICE.fetch(new Request(ssoUrl.toString(), {
+      method: 'GET',
+    }));
 
-    if (category) {
-      query = query.eq('category', category);
-    }
-
-    if (role) {
-      query = query.contains('target_roles', [role]);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('[GetAvailableAddons] Supabase error:', error);
+    if (!ssoResponse.ok) {
+      const errText = await ssoResponse.text();
+      console.error('[GetAvailableAddons] SSO Worker error:', ssoResponse.status, errText);
       return new Response(
-        JSON.stringify({ success: false, data: null, error: error.message }),
+        JSON.stringify({ success: false, data: null, error: `SSO Worker error: ${ssoResponse.status}` }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Deduplicate by feature_key as done in the frontend
-    const uniqueAddons = new Map();
-    (data || []).forEach(addon => {
-      if (!uniqueAddons.has(addon.feature_key)) {
-        uniqueAddons.set(addon.feature_key, {
-          id: addon.id,
-          feature_key: addon.feature_key,
-          name: addon.feature_name,
-          description: addon.addon_description,
-          category: addon.category,
-          price_monthly: parseFloat(addon.addon_price_monthly) || 0,
-          price_annual: parseFloat(addon.addon_price_annual) || 0,
-          target_roles: addon.target_roles || [],
-          icon_url: addon.icon_url,
-        });
-      }
-    });
+    const { addons } = await ssoResponse.json() as { addons: any[] };
 
-    const resultData = Array.from(uniqueAddons.values());
+    // Format for the frontend
+    const resultData = addons.map(addon => ({
+      id: addon.id,
+      feature_key: addon.feature_key,
+      name: addon.feature_name,
+      description: addon.description,
+      category: addon.category,
+      price_monthly: parseFloat(addon.price_monthly) || 0,
+      price_annual: parseFloat(addon.price_annual) || 0,
+      target_roles: addon.target_roles || [],
+      icon_url: addon.icon,
+    }));
 
     return new Response(
       JSON.stringify({ success: true, data: resultData, error: null }),

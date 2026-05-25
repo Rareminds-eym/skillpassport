@@ -1,13 +1,32 @@
-import React from 'react';
+import { useState } from 'react';
+import { FileText, Loader2 } from 'lucide-react';
 import type { WorksheetConfig, WorksheetTemplateType, DifficultyLevel } from '../types/worksheet';
 import { WORKSHEET_TEMPLATES } from '../types/worksheet';
 
 interface WorksheetConfigPanelProps {
   config: WorksheetConfig;
   onChange: (config: WorksheetConfig) => void;
+  onGenerate: () => void;
+  isGenerating: boolean;
+  generationLimit?: number;
+  remainingGenerations?: number;
+  isGenerationLimitReached?: boolean;
+  isUsageLoading?: boolean;
 }
 
-const WorksheetConfigPanel: React.FC<WorksheetConfigPanelProps> = ({ config, onChange }) => {
+const WorksheetConfigPanel = ({ 
+  config, 
+  onChange, 
+  onGenerate, 
+  isGenerating,
+  generationLimit,
+  remainingGenerations,
+  isGenerationLimitReached = false,
+  isUsageLoading = false
+}: WorksheetConfigPanelProps) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const isGenerateDisabled = isGenerating || isUsageLoading || isGenerationLimitReached;
+
   const handleChange = <K extends keyof WorksheetConfig>(
     key: K,
     value: WorksheetConfig[K]
@@ -16,10 +35,24 @@ const WorksheetConfigPanel: React.FC<WorksheetConfigPanelProps> = ({ config, onC
   };
 
   return (
-    <div className="border-b border-gray-200 bg-purple-50 p-4">
-      <h4 className="text-sm font-semibold text-purple-900 mb-3">Worksheet Settings</h4>
+    <div className="border-b border-gray-200 bg-purple-50">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between p-4 hover:bg-purple-100 transition-colors"
+      >
+        <h4 className="text-sm font-semibold text-purple-900">Worksheet Settings</h4>
+        <svg
+          className={`w-5 h-5 text-purple-900 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
       
-      <div className="space-y-3">
+      {isExpanded && (
+        <div className="px-4 pb-4 space-y-3">
         {/* Template Type */}
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -105,7 +138,45 @@ const WorksheetConfigPanel: React.FC<WorksheetConfigPanelProps> = ({ config, onC
             <span className="text-xs text-gray-700">Include Extension Activity</span>
           </label>
         </div>
-      </div>
+
+        {/* Generate Button */}
+        <button
+          onClick={onGenerate}
+          disabled={isGenerateDisabled}
+          className="w-full mt-4 px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 font-medium"
+        >
+          {isUsageLoading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Checking Availability...
+            </>
+          ) : isGenerating ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Generating Worksheet...
+            </>
+          ) : isGenerationLimitReached ? (
+            <>
+              <FileText className="w-5 h-5" />
+              Generation Limit Reached
+            </>
+          ) : (
+            <>
+              <FileText className="w-5 h-5" />
+              Generate Worksheet
+            </>
+          )}
+        </button>
+        {generationLimit !== undefined && remainingGenerations !== undefined && !isUsageLoading && (
+          <p className={`text-xs text-center ${isGenerationLimitReached ? 'text-red-600 font-semibold' : 'text-purple-700'}`}>
+            {isGenerationLimitReached 
+              ? `Generation limit reached (${generationLimit}/${generationLimit} used)`
+              : `${remainingGenerations} of ${generationLimit} generations remaining`
+            }
+          </p>
+        )}
+        </div>
+      )}
     </div>
   );
 };

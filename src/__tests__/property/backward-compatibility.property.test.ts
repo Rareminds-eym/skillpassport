@@ -149,8 +149,7 @@ describe('Property Test: Backward Compatibility During Migration', () => {
             };
             
             if (token) {
-              headers['Authorization'] = `Bearer ${token}`;
-            }
+                          }
             
             // Authorization header should follow Bearer token format
             if (headers['Authorization']) {

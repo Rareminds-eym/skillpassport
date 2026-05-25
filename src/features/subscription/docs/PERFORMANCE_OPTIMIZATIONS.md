@@ -123,7 +123,7 @@ Creates an optimistic subscription object:
 ```tsx
 import { createOptimisticSubscription } from '@/features/subscription';
 
-const optimisticSub = createOptimisticSubscription(userId, 'pay_as_you_go');
+const optimisticSub = createOptimisticSubscription(userId, 'freemium');
 ```
 
 ### mergeSubscriptionData

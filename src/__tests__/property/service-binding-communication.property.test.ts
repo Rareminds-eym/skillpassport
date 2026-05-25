@@ -1,3 +1,4 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Property-Based Tests for Service Binding Communication
  * Feature: cloudflare-consolidation, Property 6: Service Binding Communication
@@ -12,7 +13,7 @@ import * as fc from 'fast-check';
 
 // Mock service binding interface
 interface ServiceBinding {
-  fetch(request: Request): Promise<Response>;
+  ssoClient.fetch(request: Request): Promise<Response>;
 }
 
 // Mock environment with service bindings

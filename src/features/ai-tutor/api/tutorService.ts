@@ -1,4 +1,5 @@
-import { getCurrentSession } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
@@ -64,12 +65,20 @@ export interface CourseProgress {
 
 // ==================== CHAT FUNCTIONS ====================
 
+// Module-level state for tracking the last conversation ID
+let lastConversationId: string | null = null;
+
 export interface StreamChunk {
   type: 'content' | 'reasoning' | 'done';
   content?: string;
   reasoning?: string;
   conversationId?: string;
   messageId?: string;
+  generationUsage?: {
+    limit: number;
+    used: number;
+    remaining: number;
+  };
 }
 
 /**
@@ -77,24 +86,20 @@ export interface StreamChunk {
  * Returns an async generator that yields content and reasoning chunks
  */
 export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
-  const { data: { session }, error: sessionError } = await getCurrentSession();
+  const user = useAuthStore.getState().user;
+    const sessionError = null;
 
   if (sessionError) {
     logger.error('Session error in sendMessage', sessionError instanceof Error ? sessionError : new Error(String(sessionError)));
     throw new Error('Authentication error. Please try logging in again.');
   }
 
-  if (!session?.access_token) {
-    logger.error('No session or access token found', new Error('Authentication failed'));
-    throw new Error('Please log in to use the AI Tutor');
-  }
-
-  const response = await fetch(
+  
+  const response = await ssoClient.fetch(
     `${API_URL}/ai-tutor-chat`,
     {
       method: 'POST',
-      headers: getAuthHeaders(session.access_token),
-      body: JSON.stringify(request),
+            body: JSON.stringify(request),
     }
   );
 
@@ -142,11 +147,12 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
           }
           // Handle done event with conversation info
           else if (parsed.conversationId) {
-            (sendMessage as any).lastConversationId = parsed.conversationId;
+            lastConversationId = parsed.conversationId;
             yield {
               type: 'done',
               conversationId: parsed.conversationId,
-              messageId: parsed.messageId
+              messageId: parsed.messageId,
+              generationUsage: parsed.generationUsage
             };
           }
         } catch {
@@ -172,7 +178,7 @@ export async function* sendMessageLegacy(request: ChatRequest): AsyncGenerator<s
  * Get the last conversation ID from the most recent sendMessage call
  */
 export function getLastConversationId(): string | null {
-  return (sendMessage as any).lastConversationId || null;
+  return lastConversationId;
 }
 
 
@@ -251,19 +257,19 @@ export async function getConversation(conversationId: string): Promise<Conversat
  */
 export async function getSuggestedQuestions(lessonId: string): Promise<string[]> {
   try {
-    const { data: { session }, error: sessionError } = await getCurrentSession();
+    const user = useAuthStore.getState().user;
+    const sessionError = null;
 
     if (sessionError) {
       logger.error('Session error in getSuggestedQuestions', sessionError instanceof Error ? sessionError : new Error(String(sessionError)), { lessonId });
       return getDefaultSuggestions();
     }
 
-    const response = await fetch(
+    const response = await ssoClient.fetch(
       `${API_URL}/ai-tutor-suggestions`,
       {
         method: 'POST',
-        headers: getAuthHeaders(session?.access_token),
-        body: JSON.stringify({ lessonId }),
+                body: JSON.stringify({ lessonId }),
       }
     );
 
@@ -304,17 +310,13 @@ function getDefaultSuggestions(): string[] {
  * Get learner progress for a course
  */
 export async function getCourseProgress(courseId: string): Promise<CourseProgress> {
-  const { data: { session } } = await getCurrentSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
-
-  const response = await fetch(
+  const user = useAuthStore.getState().user;
+  
+  const response = await ssoClient.fetch(
     `${API_URL}/ai-tutor-progress?courseId=${courseId}`,
     {
       method: 'GET',
-      headers: getAuthHeaders(session.access_token),
-    }
+          }
   );
 
   if (!response.ok) {
@@ -333,17 +335,13 @@ export async function updateLessonProgress(
   lessonId: string,
   status: 'not_started' | 'in_progress' | 'completed'
 ): Promise<void> {
-  const { data: { session } } = await getCurrentSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
-
-  const response = await fetch(
+  const user = useAuthStore.getState().user;
+  
+  const response = await ssoClient.fetch(
     `${API_URL}/ai-tutor-progress`,
     {
       method: 'POST',
-      headers: getAuthHeaders(session.access_token),
-      body: JSON.stringify({ courseId, lessonId, status }),
+            body: JSON.stringify({ courseId, lessonId, status }),
     }
   );
 
@@ -359,11 +357,8 @@ export async function updateLessonProgress(
  * Delete a conversation and all related data permanently
  */
 export async function deleteConversation(conversationId: string): Promise<void> {
-  const { data: { session } } = await getCurrentSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
-
+  const user = useAuthStore.getState().user;
+  
   // First, delete related feedback records
   const { error: feedbackError } = await supabase
     .from('tutor_feedback')
@@ -396,17 +391,13 @@ export async function submitFeedback(
   rating: 1 | -1,
   feedbackText?: string
 ): Promise<void> {
-  const { data: { session } } = await getCurrentSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
-
-  const response = await fetch(
+  const user = useAuthStore.getState().user;
+  
+  const response = await ssoClient.fetch(
     `${API_URL}/ai-tutor-feedback`,
     {
       method: 'POST',
-      headers: getAuthHeaders(session.access_token),
-      body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
+            body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
     }
   );
 

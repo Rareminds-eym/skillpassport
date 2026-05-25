@@ -12,7 +12,6 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('EducatorManagement');
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
 
 interface SchoolEducator {
   id: string;
@@ -99,7 +98,7 @@ const EducatorManagement = () => {
 
   const loadUsers = async () => {
     try {
-      const { data, error } = await authSessionService.listUsers();
+      const { data, error } = await supabase.from('users').select('*').in('role', ['educator', 'school_admin']);
       if (error) throw error;
       setUsers(data?.users || []);
     } catch (error) {

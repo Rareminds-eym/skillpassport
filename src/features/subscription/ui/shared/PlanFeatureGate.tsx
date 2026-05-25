@@ -61,7 +61,7 @@ export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGate
   }
 
   // Check feature access
-  const planCode = subscriptionData?.plan || 'pay_as_you_go';
+  const planCode = subscriptionData?.plan || 'freemium';
   const accessResult = checkFeatureAccess(planCode, feature);
 
   // User has access - render children

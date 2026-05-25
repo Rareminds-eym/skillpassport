@@ -36,7 +36,7 @@ import ModerationPanel from "@/features/college-admin/ui/components/ModerationPa
 import InvigilatorAssignment from "@/features/college-admin/ui/components/InvigilatorAssignment";
 import TranscriptForm from "@/features/college-admin/ui/components/TranscriptForm";
 import type { Assessment, ExamSlot, MarkEntry, Transcript } from '@/shared/types/college';
-import { authSessionService } from '@/features/auth';
+
 
 import { queryKeys } from '@/shared/lib/queryKeys';
 const ExaminationManagement: React.FC = () => {
@@ -62,7 +62,7 @@ const ExaminationManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchUserCollege = async () => {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (user) {
         const { data: userData } = await supabase
           .from('users')
@@ -477,7 +477,7 @@ const ExaminationManagement: React.FC = () => {
 
   const handleModerate = async (entryId: string, newMarks: number, reason: string) => {
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
 
       const { error } = await supabase
         .from('mark_entries')
@@ -516,7 +516,7 @@ const ExaminationManagement: React.FC = () => {
 
   const handleAssignInvigilator = async (slotId: string, facultyId: string) => {
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
 
       await examinationService.assignInvigilator({
         exam_timetable_id: slotId,

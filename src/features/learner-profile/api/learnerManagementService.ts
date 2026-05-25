@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api';
 import type {
   AdmissionApplication,
@@ -941,7 +940,7 @@ export const learnerReportService = {
 
   // Create report record
   async createReport(reportData: Partial<LearnerReport>) {
-    const { data: user } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
     
     return await supabase
       .from('learner_reports')

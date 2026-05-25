@@ -3,7 +3,6 @@ import { BookOpen, CheckCircle, XCircle, Eye, MessageSquare, Clock } from "lucid
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
 
 interface LessonPlan {
   id: string;
@@ -68,7 +67,7 @@ const LessonPlanApprovals: React.FC = () => {
   const handleApprove = async (planId: string) => {
     setActionLoading(true);
     try {
-      const { data: userData } = await authSessionService.getUser();
+      const { data: userData } = { data: { user: useAuthStore.getState().user } };
 
       const { error } = await supabase
         .from("lesson_plans")
@@ -101,7 +100,7 @@ const LessonPlanApprovals: React.FC = () => {
 
     setActionLoading(true);
     try {
-      const { data: userData } = await authSessionService.getUser();
+      const { data: userData } = { data: { user: useAuthStore.getState().user } };
 
       const { error } = await supabase
         .from("lesson_plans")
@@ -134,7 +133,7 @@ const LessonPlanApprovals: React.FC = () => {
 
     setActionLoading(true);
     try {
-      const { data: userData } = await authSessionService.getUser();
+      const { data: userData } = { data: { user: useAuthStore.getState().user } };
 
       const { error } = await supabase
         .from("lesson_plans")

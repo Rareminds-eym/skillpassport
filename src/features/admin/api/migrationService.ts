@@ -30,69 +30,19 @@ class MigrationService {
         return { success: false, error: 'Plan code is required' };
       }
 
-      // Get the plan by code
-      const { data: plan, error: planError } = await supabase
-        .from('subscription_plans')
-        .select('id, plan_code, name')
-        .eq('plan_code', planCode)
-        .single();
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) return { success: false, error: 'Unauthorized' };
 
-      if (planError) {
-        if (planError.code === 'PGRST116') {
-          return { success: false, error: 'PLAN_NOT_FOUND' };
-        }
-        logger.error('Failed to fetch subscription plan', planError as Error);
-        return { success: false, error: planError.message };
-      }
+      const response = await fetch('/api/payments/migration-operations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.session.access_token}`
+        },
+        body: JSON.stringify({ action: 'getMigrationMapping', planCode })
+      });
 
-      // Get all features included in this plan that have add-on equivalents
-      const { data: planFeatures, error: featuresError } = await supabase
-        .from('subscription_plan_features')
-        .select('feature_key, feature_name, is_included, is_addon, addon_price_monthly, addon_price_annual')
-        .eq('plan_id', plan.id)
-        .eq('is_included', true);
-
-      if (featuresError) {
-        logger.error('Failed to fetch plan features', featuresError as Error);
-        return { success: false, error: featuresError.message };
-      }
-
-      // Get all available add-ons to map features
-      const { data: addOns, error: addOnsError } = await supabase
-        .from('subscription_plan_features')
-        .select('feature_key, feature_name, addon_price_monthly, addon_price_annual')
-        .eq('is_addon', true);
-
-      if (addOnsError) {
-        logger.error('Failed to fetch add-ons', addOnsError as Error);
-        return { success: false, error: addOnsError.message };
-      }
-
-      // Create a map of add-on feature keys for quick lookup
-      const addOnMap = new Map(addOns.map(a => [a.feature_key, a]));
-
-      // Map plan features to add-ons
-      const mappedFeatures = (planFeatures || [])
-        .filter(pf => addOnMap.has(pf.feature_key))
-        .map(pf => {
-          const addOn = addOnMap.get(pf.feature_key);
-          return {
-            feature_key: pf.feature_key,
-            feature_name: pf.feature_name,
-            addon_price_monthly: addOn.addon_price_monthly,
-            addon_price_annual: addOn.addon_price_annual
-          };
-        });
-
-      return {
-        success: true,
-        data: {
-          planCode,
-          planName: plan.name,
-          planId: plan.id,
-          features: mappedFeatures
-        }
-      };
+      return await response.json();
     } catch (error) {
       logger.error('Failed to get migration mapping', error as Error);
       return { success: false, error: error.message };
@@ -114,12 +64,12 @@ class MigrationService {
         return { success: false, error: 'User ID is required' };
       }
 
-      // Get user's current active subscription
+      // Get user's current active subscription from subscription_cache
       const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
-        .select('id, plan_id, status, current_period_end')
+        .from('subscription_cache')
+        .select('id, plan_id, plan_code, status, subscription_end_date, plan_amount')
         .eq('user_id', userId)
-        .eq('status', 'active')
+        .in('status', ['active', 'pending'])
         .single();
 
       if (subError) {
@@ -130,9 +80,9 @@ class MigrationService {
         return { success: false, error: subError.message };
       }
 
-      // Get the plan details
+      // Get the plan details from plans_cache
       const { data: plan, error: planError } = await supabase
-        .from('subscription_plans')
+        .from('plans_cache')
         .select('id, plan_code, name')
         .eq('id', subscription.plan_id)
         .single();
@@ -149,7 +99,7 @@ class MigrationService {
 
       const { features } = mappingResult.data;
 
-      // Calculate original and new prices - use subscription's stored amount
+      // Calculate original and new prices
       const originalPrice = subscription.plan_amount || 0;
       const newPrice = features.reduce((sum, f) => sum + (f.addon_price_monthly || 0), 0);
 
@@ -167,7 +117,7 @@ class MigrationService {
         .from('subscription_migrations')
         .insert({
           user_id: userId,
-          old_plan_code: plan.code,
+          old_plan_code: plan.plan_code,
           old_subscription_id: subscription.id,
           migrated_feature_keys: features.map(f => f.feature_key),
           original_price: originalPrice,
@@ -191,10 +141,10 @@ class MigrationService {
         status: 'active',
         billing_period: 'monthly',
         start_date: new Date().toISOString(),
-        end_date: subscription.current_period_end || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        end_date: subscription.subscription_end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         auto_renew: true,
-        price_at_purchase: preservePricing && priceProtectedUntil 
-          ? (originalPrice / features.length) 
+        price_at_purchase: preservePricing && priceProtectedUntil
+          ? (originalPrice / features.length)
           : feature.addon_price_monthly
       }));
 
@@ -249,12 +199,12 @@ class MigrationService {
         return { success: false, error: 'User ID is required' };
       }
 
-      // Get user's current active subscription
+      // Get user's current active subscription from subscription_cache
       const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
-        .select('id, plan_id, status, created_at')
+        .from('subscription_cache')
+        .select('id, plan_id, plan_code, status, created_at, plan_amount')
         .eq('user_id', userId)
-        .eq('status', 'active')
+        .in('status', ['active', 'pending'])
         .single();
 
       if (subError) {
@@ -265,9 +215,9 @@ class MigrationService {
         return { success: false, error: subError.message };
       }
 
-      // Get the plan details
+      // Get the plan details from plans_cache
       const { data: plan, error: planError } = await supabase
-        .from('subscription_plans')
+        .from('plans_cache')
         .select('id, plan_code, name')
         .eq('id', subscription.plan_id)
         .single();

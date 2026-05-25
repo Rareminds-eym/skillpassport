@@ -26,7 +26,6 @@
  * - POST /api/payments/create-org-order
  * - POST /api/payments/verify-org-payment
  * - POST /api/payments/org-subscriptions/purchase
- * - POST /api/payments/create-freemium-subscription
  * - GET  /api/payments/health
  */
 
@@ -50,7 +49,6 @@ import { handleLicensePoolQueries } from './handlers/license-pool-queries';
 import { handleMigrationOperations } from './handlers/migration-operations';
 import { handleAddonCatalog } from './handlers/addon-catalog';
 import { handleAddonAnalytics } from './handlers/addon-analytics';
-import { handleAddonOrders } from './handlers/addon-orders';
 import { handleGetUserEntitlements } from './handlers/get-user-entitlements';
 import { handleHasFeatureAccess } from './handlers/has-feature-access';
 import { handleGetAvailableAddons } from './handlers/get-available-addons';
@@ -69,10 +67,12 @@ import { handleVerifyAddonPayment } from './handlers/verify-addon-payment';
 import { handleCreateBundleOrder } from './handlers/create-bundle-order';
 import { handleVerifyBundlePayment } from './handlers/verify-bundle-payment';
 import { handleCreateEventOrder } from './handlers/create-event-order';
+import { handleCreateRegistrationOrder } from './handlers/create-registration-order';
+import { handleUpdateRegistrationPaymentStatus } from './handlers/update-registration-payment-status';
 import { handleCreateOrgOrder } from './handlers/create-org-order';
 import { handleVerifyOrgPayment } from './handlers/verify-org-payment';
 import { handleOrgSubscriptionsPurchase } from './handlers/org-subscriptions-purchase';
-import { handleCreateFreemiumSubscription } from './handlers/create-freemium-subscription';
+
 
 function methodNotAllowed(): Response {
   return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -91,12 +91,13 @@ function notFound(): Response {
 /**
  * Route dispatcher for payments API.
  *
- * Health check is handled WITHOUT auth — monitoring systems don't have SSO tokens.
+ * Health check and create-registration-order are handled WITHOUT auth.
  * All other endpoints require SSO authentication via withAuth.
  */
 export async function onRequest(context: { request: Request; env: Record<string, unknown>; data?: any }) {
   const url = new URL(context.request.url);
   const path = url.pathname.replace('/api/payments', '').replace(/\/$/, '');
+  const method = context.request.method;
 
   // Health check — no auth required (monitoring systems don't have SSO tokens)
   // The service binding itself proves connectivity to the payment-worker
@@ -110,6 +111,19 @@ export async function onRequest(context: { request: Request; env: Record<string,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
+  }
+
+  // Create registration order — no auth required (for /register/learner and /register/corporate)
+  // Automatically generates registrationId and stores in pre_registrations table
+  if (path === '/create-registration-order') {
+    if (method !== 'POST') return methodNotAllowed();
+    return handleCreateRegistrationOrder(context as any);
+  }
+
+  // Update registration payment status — no auth required (called after Razorpay payment)
+  if (path === '/update-registration-payment-status') {
+    if (method !== 'POST') return methodNotAllowed();
+    return handleUpdateRegistrationPaymentStatus(context as any);
   }
 
   // All other endpoints require SSO authentication
@@ -217,10 +231,7 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
     return handleOrgSubscriptionsPurchase(context);
   }
 
-  if (path === '/create-freemium-subscription') {
-    if (method !== 'POST') return methodNotAllowed();
-    return handleCreateFreemiumSubscription(context);
-  }
+
 
   // --- GET routes ---
 
@@ -272,11 +283,6 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
   if (path === '/addon-catalog') {
     if (method !== 'GET') return methodNotAllowed();
     return handleAddonCatalog(context);
-  }
-
-  if (path === '/addon-orders') {
-    if (method !== 'GET') return methodNotAllowed();
-    return handleAddonOrders(context);
   }
 
   if (path === '/get-user-entitlements') {

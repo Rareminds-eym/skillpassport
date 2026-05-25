@@ -339,8 +339,7 @@ export async function checkCompanyCode(code: string): Promise<any> {
 export async function createLearner(learnerData: any, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-learner`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(learnerData),
+        body: JSON.stringify(learnerData),
   });
 
   if (!response.ok) {
@@ -367,8 +366,7 @@ export async function createLearner(learnerData: any, token?: string): Promise<a
 export async function createTeacher(teacherData: any, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-teacher`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(teacherData),
+        body: JSON.stringify(teacherData),
   });
 
   if (!response.ok) {
@@ -390,8 +388,7 @@ interface ResetPasswordParams {
 export async function resetPassword(params: ResetPasswordParams, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/reset-password`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(params),
+        body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -415,8 +412,7 @@ interface CreateEventUserParams {
 export async function createEventUser(params: CreateEventUserParams, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-event-user`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(params),
+        body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -437,8 +433,7 @@ interface InterviewReminderParams {
 export async function sendInterviewReminder(params: InterviewReminderParams, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/send-interview-reminder`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(params),
+        body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -456,8 +451,7 @@ export async function updatelearnerDocuments(
 ): Promise<any> {
   const response = await fetch(`${API_URL}/update-learner-documents`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify({ learnerId, documents }),
+        body: JSON.stringify({ learnerId, documents }),
   });
 
   if (!response.ok) {
@@ -488,8 +482,7 @@ export async function updateTeacherDocuments(
 ): Promise<any> {
   const response = await fetch(`${API_URL}/update-teacher-documents`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify({ teacherId, documents }),
+        body: JSON.stringify({ teacherId, documents }),
   });
 
   if (!response.ok) {
@@ -516,8 +509,7 @@ export async function updateTeacherDocuments(
 export async function createCollegeStaff(staffData: any, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-college-staff`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(staffData),
+        body: JSON.stringify(staffData),
   });
 
   if (!response.ok) {

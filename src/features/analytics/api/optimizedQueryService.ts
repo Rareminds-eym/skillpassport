@@ -176,10 +176,10 @@ export const getActiveSubscriptionOptimized = async (userId) => {
   }
 
   const { data, error } = await supabase
-    .from('subscriptions')
+    .from('subscription_cache')
     .select('*')
-    .eq('learner_id', userId)
-    .eq('status', 'active')
+    .eq('user_id', userId)
+    .in('status', ['active', 'pending'])
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

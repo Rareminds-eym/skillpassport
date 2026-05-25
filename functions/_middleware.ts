@@ -6,7 +6,7 @@
  */
 
 import type { PagesFunction } from '../src/functions-lib/types';
-import { getCorsHeaders, handleCorsPreflightRequest } from '../src/functions-lib/cors';
+import { getCorsHeaders } from '../src/functions-lib/cors';
 import { validateFileSizeConfig } from './api/storage/config/fileSizeLimits';
 
 // Validate file size configuration at worker initialization

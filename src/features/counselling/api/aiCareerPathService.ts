@@ -387,7 +387,7 @@ export function getFallbackResponsibilities(roleName: string): string[] {
   return [
     `[AI UNAVAILABLE] Design and develop solutions in the ${roleName} domain`,
     `[AI UNAVAILABLE] Collaborate with cross-functional teams on projects`,
-    `[AI UNAVAILABLE] Continuously learn and apply new skills in your field`
+    `[AI UNAVAILABLE] Research and apply new skills in your field`
   ];
 }
 

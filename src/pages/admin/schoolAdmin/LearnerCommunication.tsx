@@ -27,7 +27,7 @@ import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 import { NewLearnerConversationModal } from '@/features/messaging';
 import { NewSchoolAdminEducatorConversationModal } from '@/features/messaging';
-import { authSessionService } from '@/features/auth';
+
 
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useUser } from '@/shared/model/authStore';
@@ -106,7 +106,7 @@ const LearnerCommunication = () => {
 
       // Fallback: Check organizations table for school admins
       logger.info('Trying fallback: organizations table');
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       logger.info('Current user', { userId: user?.id, email: user?.email });
 
       if (user) {

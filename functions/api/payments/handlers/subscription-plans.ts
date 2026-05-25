@@ -12,10 +12,6 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleSubscriptionPlans(context);
-});
-
 /**
  * Transform a raw subscription_plans row into the shape the frontend PlanCard expects.
  *
@@ -91,7 +87,7 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
     const supabase = getServiceClient(env);
 
     let query = supabase
-      .from('subscription_plans')
+      .from('plans_cache')
       .select('*')
       .eq('is_active', true)
       .order('display_order', { ascending: true });
@@ -125,39 +121,46 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
     // Transform raw DB rows into the shape the frontend expects
     const plans = (data || []).map((row: Record<string, unknown>) => transformPlan(row, entityType));
 
-    // Also fetch detailed features from subscription_plan_features if available
+    // Enrich with detailed features from subscription_plan_features (legacy table).
+    // This is a graceful fallback — plans_cache.base_features is the primary source.
+    // After Phase 10 cleanup drops the legacy table, this block silently no-ops.
     const planIds = plans.map((p: Record<string, unknown>) => p.id);
     if (planIds.length > 0) {
-      const { data: featuresData } = await supabase
-        .from('subscription_plan_features')
-        .select('*')
-        .in('plan_id', planIds)
-        .order('display_order', { ascending: true });
+      try {
+        const { data: featuresData } = await supabase
+          .from('subscription_plan_features')
+          .select('*')
+          .in('plan_id', planIds)
+          .order('display_order', { ascending: true });
 
-      // Attach detailed features to each plan
-      if (featuresData && featuresData.length > 0) {
-        const featuresByPlan: Record<string, unknown[]> = {};
-        for (const f of featuresData) {
-          const planId = f.plan_id as string;
-          if (!featuresByPlan[planId]) featuresByPlan[planId] = [];
-          featuresByPlan[planId].push(f);
-        }
+        // Attach detailed features to each plan
+        if (featuresData && featuresData.length > 0) {
+          const featuresByPlan: Record<string, unknown[]> = {};
+          for (const f of featuresData) {
+            const planId = f.plan_id as string;
+            if (!featuresByPlan[planId]) featuresByPlan[planId] = [];
+            featuresByPlan[planId].push(f);
+          }
 
-        for (const plan of plans) {
-          const detailedFeatures = featuresByPlan[plan.id as string];
-          if (detailedFeatures) {
-            (plan as Record<string, unknown>).detailedFeatures = detailedFeatures;
-            // Override features with detailed ones if available
-            (plan as Record<string, unknown>).features = detailedFeatures.map((f: Record<string, unknown>) => ({
-              name: f.feature_name,
-              feature_key: f.feature_key,
-              value: f.feature_value,
-              category: f.category,
-              is_included: f.is_included,
-              is_addon: f.is_addon,
-            }));
+          for (const plan of plans) {
+            const detailedFeatures = featuresByPlan[plan.id as string];
+            if (detailedFeatures) {
+              (plan as Record<string, unknown>).detailedFeatures = detailedFeatures;
+              // Override features with detailed ones if available
+              (plan as Record<string, unknown>).features = detailedFeatures.map((f: Record<string, unknown>) => ({
+                name: f.feature_name,
+                feature_key: f.feature_key,
+                value: f.feature_value,
+                category: f.category,
+                is_included: f.is_included,
+                is_addon: f.is_addon,
+              }));
+            }
           }
         }
+      } catch (featureErr) {
+        // Non-critical: subscription_plan_features may not exist after Phase 10 cleanup
+        console.warn('[SubscriptionPlans] subscription_plan_features query failed (non-critical):', featureErr);
       }
     }
 
