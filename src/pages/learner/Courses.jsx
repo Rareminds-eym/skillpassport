@@ -10,6 +10,7 @@ import {
     Eye,
     Grid3x3,
     List,
+    Lock,
     Play,
     TrendingUp,
     Users
@@ -34,11 +35,17 @@ import {
 import { supabase } from '@/shared/api/supabaseClient';
 import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
+import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 
 import { useUser } from '@/shared/model/authStore';
 const Courses = () => {
   const navigate = useNavigate();
   const user = useUser();
+  const subscriptionContext = useSubscriptionContext();
+  const subscription = subscriptionContext?.subscription;
+  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
+  
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -74,6 +81,31 @@ const Courses = () => {
   const hasFetchedCoursesRef = useRef(false);
   const hasFetchedEnrollmentsRef = useRef(false);
   const userEmailRef = useRef(user?.email);
+  
+  // Helper function to check if user has access to a course
+  const canAccessCourse = (course) => {
+    const coursePlanType = course.plan_type?.toLowerCase() || 'freemium';
+    
+    // If course is freemium, everyone can access
+    if (coursePlanType === 'freemium') {
+      return true;
+    }
+    
+    // For non-freemium courses, check user's plan level
+    const planHierarchy = {
+      'freemium': 0,
+      'basic': 1,
+      'professional': 2,
+      'premium': 3,
+      'enterprise': 3,
+      'ecosystem': 3
+    };
+    
+    const userPlanLevel = planHierarchy[userPlan?.toLowerCase()] || 0;
+    const coursePlanLevel = planHierarchy[coursePlanType] || 0;
+    
+    return userPlanLevel >= coursePlanLevel;
+  };
 
   // Handle window resize for responsive pagination
   useEffect(() => {
@@ -351,9 +383,61 @@ const Courses = () => {
   const handleViewCertificate = (courseId, courseName, e) => {
     e?.stopPropagation();
     const certUrl = getCertificateUrl(courseId);
-    if (certUrl) {
+    
+    if (!certUrl) {
+      return;
+    }
+
+    try {
+      // Special handling for data URLs (base64 encoded images)
+      // Browser security prevents opening data URLs directly in new tabs
+      if (certUrl.startsWith('data:')) {
+        try {
+          // Convert data URL to blob
+          const arr = certUrl.split(',');
+          const mime = arr[0].match(/:(.*?);/)[1];
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          const blob = new Blob([u8arr], { type: mime });
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const newWindow = window.open(blobUrl, '_blank');
+          
+          if (!newWindow) {
+            alert('Please allow popups for this site to view the certificate.');
+          }
+          
+          // Clean up blob URL after a delay
+          setTimeout(() => {
+            URL.revokeObjectURL(blobUrl);
+          }, 60000);
+          
+          return; // Exit early for data URLs
+        } catch (blobError) {
+          alert('Error displaying certificate. Please try downloading instead.');
+          return;
+        }
+      }
+      
+      // For non-data URLs, use the proxy URL
       const viewUrl = getCertificateProxyUrl(certUrl, 'inline');
-      window.open(viewUrl, '_blank');
+      
+      if (!viewUrl || viewUrl.trim() === '') {
+        alert('Failed to generate certificate viewing URL. Please try downloading instead.');
+        return;
+      }
+      
+      const newWindow = window.open(viewUrl, '_blank');
+      
+      if (!newWindow) {
+        alert('Please allow popups for this site to view the certificate.');
+      }
+    } catch (error) {
+      alert('Error displaying certificate. Please try downloading instead.');
     }
   };
 
@@ -852,16 +936,26 @@ const Courses = () => {
                       <motion.img
                         src={course.thumbnail}
                         alt={course.title}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${!canAccessCourse(course) ? 'opacity-60' : ''}`}
                         whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.3 }}
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
+                      <div className={`w-full h-full flex flex-col items-center justify-center bg-slate-100 ${!canAccessCourse(course) ? 'opacity-60' : ''}`}>
                         <BookOpen className="h-12 w-12 text-slate-400 mb-2" />
                         <span className="text-slate-500 text-xs font-medium">No Image</span>
                       </div>
                     )}
+                    
+                    {/* Lock Overlay for restricted courses */}
+                    {!canAccessCourse(course) && (
+                      <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                        <div className="bg-white rounded-full p-3 shadow-lg">
+                          <Lock className="w-6 h-6 text-gray-700" />
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Badges */}
                     <div className="absolute top-2 left-2 flex gap-2">
                       {isCourseCompleted(course.course_id) ? (

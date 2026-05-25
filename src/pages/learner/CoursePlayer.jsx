@@ -16,17 +16,21 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
 import { RestoreProgressModal } from '@/features/courses';
 import { Badge, Button, Card, CardContent } from '@/shared/ui';
 import { useUser } from '@/features/auth';
 import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
 import { supabase } from '@/shared/api/supabaseClient';
-import { generateCourseCertificate } from '@/features/digital-portfolio';
+import { generateCourseCertificate, downloadCertificate } from '@/features/digital-portfolio';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
 import { courseProgressService } from '@/features/courses';
 import { fileService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('course-player');
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -1298,6 +1302,30 @@ const CoursePlayer = () => {
 
     // Update course enrollment to completed status
     try {
+      // Get learner's database ID and user's name from users table
+      const { data: learnerRecord, error: learnerError } = await supabase
+        .from('learners')
+        .select(`
+          id,
+          learner_id,
+          users!inner(firstName, lastName)
+        `)
+        .eq('user_id', user.id)
+        .single();
+
+      if (learnerError || !learnerRecord) {
+        logger.error('Error fetching learner record', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
+        return;
+      }
+
+      const learnerId = learnerRecord.id;
+      const learnerIdText = learnerRecord.learner_id; // Text field to display on certificate
+      
+      // Get learner name from users table firstName and lastName
+      const firstName = learnerRecord.users?.firstName || '';
+      const lastName = learnerRecord.users?.lastName || '';
+      const learnerName = `${firstName} ${lastName}`.trim() || user?.email?.split('@')[0] || 'Learner';
+
       const { error } = await supabase
         .from('course_enrollments')
         .update({ 
@@ -1305,46 +1333,79 @@ const CoursePlayer = () => {
           completed_at: new Date().toISOString(),
           progress: 100
         })
-        .eq('learner_id', user.id)
+        .eq('learner_id', learnerId)
         .eq('course_id', courseId);
 
       if (error) {
-        console.error('Error completing course:', error);
+        logger.error('Error completing course', error instanceof Error ? error : new Error(String(error)));
       } else {
-        console.log('🎉 Course completed successfully!');
+        logger.info('Course completed successfully');
         
         // Generate certificate for the completed course
-        const learnerName = user?.name || user?.email?.split('@')[0] || 'Learner';
         const courseName = course?.title || 'Course';
         const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
+        const courseType = course?.course_type || 'course'; // Get course type from database
+        const issuedOnDate = course?.issued_on || null; // Get issued_on date for webinars
+        const isWebinar = courseType === 'webinar';
         
-        console.log('📜 Generating certificate...');
+        logger.info('Generating certificate', { learnerId, courseName, courseType, issuedOnDate, isWebinar });
         const certResult = await generateCourseCertificate(
-          user.id,
+          learnerId,
           learnerName,
           courseId,
           courseName,
-          educatorName
+          educatorName,
+          learnerIdText,
+          courseType,
+          issuedOnDate
         );
         
         if (certResult.success) {
-          console.log('✅ Certificate generated:', certResult.credentialId);
-          // Navigate to my learning page with success message
-          navigate('/learner/my-learning', { 
-            state: { 
-              courseCompleted: true, 
-              courseName,
-              certificateUrl: certResult.certificateUrl 
-            } 
-          });
+          logger.info('Certificate generated successfully', { credentialId: certResult.credentialId });
+          
+          // For webinars, download certificate immediately
+          if (isWebinar) {
+            try {
+              await downloadCertificate(certResult.certificateUrl, courseName);
+              logger.info('Webinar certificate downloaded successfully');
+              // Show success toast and navigate to courses
+              toast.success(` Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
+              setTimeout(() => {
+                navigate('/learner/courses');
+              }, 1500);
+            } catch (downloadError) {
+              logger.error('Failed to download webinar certificate', downloadError instanceof Error ? downloadError : new Error(String(downloadError)));
+              toast.error('Certificate generated but download failed. You can download it from My Learning page.', {
+                duration: 4000,
+                position: 'top-right',
+              });
+              // Still navigate even if download fails
+              navigate('/learner/my-learning', { 
+                state: { 
+                  courseCompleted: true, 
+                  courseName,
+                  certificateUrl: certResult.certificateUrl 
+                } 
+              });
+            }
+          } else {
+            // For courses, navigate to my learning page with success message
+            navigate('/learner/my-learning', { 
+              state: { 
+                courseCompleted: true, 
+                courseName,
+                certificateUrl: certResult.certificateUrl 
+              } 
+            });
+          }
         } else {
-          console.error('Certificate generation failed:', certResult.error);
+          logger.error('Certificate generation failed', new Error(certResult.error));
           // Still navigate even if certificate fails
           navigate('/learner/my-learning');
         }
       }
     } catch (error) {
-      console.error('Error in completeCourse:', error);
+      logger.error('Error in completeCourse', error instanceof Error ? error : new Error(String(error)));
     }
   };
 
@@ -1725,8 +1786,8 @@ const CoursePlayer = () => {
         </div>
       </div>
 
-      {/* AI Course Tutor Panel */}
-      {courseId && (
+      {/* AI Course Tutor Panel - Only show for courses, not webinars */}
+      {courseId && course?.course_type !== 'webinar' && (
         <AITutorPanel
           courseId={courseId}
           courseName={course?.title}
