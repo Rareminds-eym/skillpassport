@@ -3,7 +3,9 @@
  *
  * POST /api/payments/create-addon-order
  *
- * Creates a Razorpay order for an addon purchase via the payment-worker RPC binding.
+ * Accepts a feature_key and billing_period, looks up the addon from
+ * the SSO Auth DB (via SSO worker) to get the correct price (server-side),
+ * then creates a Razorpay order via the payment-worker RPC binding.
  * Requires SSO authentication.
  */
 
@@ -16,10 +18,9 @@ const logger = createLogger('payments:create-addon-order');
 
 export async function handleCreateAddonOrder(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv;
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
-    // Parse request body
     let body: Record<string, unknown>;
     try {
       body = (await context.request.json()) as Record<string, unknown>;
@@ -30,43 +31,60 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
       );
     }
 
-    // Validate required fields
-    if (!body.amount || typeof body.amount !== 'number') {
+    if (!body.feature_key || typeof body.feature_key !== 'string') {
       return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'amount is required and must be a number' } }),
+        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'feature_key is required' } }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!body.addon_id || typeof body.addon_id !== 'string') {
+    if (!body.billing_period || typeof body.billing_period !== 'string') {
       return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'addon_id is required' } }),
+        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'billing_period is required' } }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!body.addon_name || typeof body.addon_name !== 'string') {
+    // Look up addon from SSO Auth DB to get server-side price
+    const ssoUrl = new URL(`http://sso-worker/api/addon-catalog/${encodeURIComponent(body.feature_key as string)}`);
+    const ssoResponse = await env.SSO_SERVICE.fetch(new Request(ssoUrl.toString(), { method: 'GET' }));
+
+    if (!ssoResponse.ok) {
+      logger.error('Addon lookup failed', { feature_key: body.feature_key, status: ssoResponse.status });
       return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'addon_name is required' } }),
+        JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Addon not found or inactive' } }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const addon = await ssoResponse.json() as Record<string, any>;
+
+    // DB stores prices in rupees (1999.00 = ₹1,999); Razorpay expects paise
+    const amount = Math.round((body.billing_period === 'annual'
+      ? parseFloat(addon.price_annual)
+      : parseFloat(addon.price_monthly)) * 100);
+
+    if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
+      logger.error('Invalid addon price', { feature_key: body.feature_key, amount });
+      return new Response(
+        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Addon price is invalid' } }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({
-      amount: body.amount as number,
+      amount,
       currency: (body.currency as string) || undefined,
       notes: {
-        addon_id: body.addon_id as string,
-        addon_name: body.addon_name as string,
+        addon_id: addon.id,
+        addon_name: addon.feature_name,
         user_id: user.sub,
         user_email: (body.user_email as string) || user.email || '',
         type: 'addon',
       },
     });
 
-    // Validate that payment worker returned key_id
     if (!order.key_id) {
       logger.error('Payment worker did not return key_id');
       return new Response(
@@ -75,11 +93,9 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
       );
     }
 
-    // Return order with key_id from payment worker
-    // The payment worker injects key_id to ensure it matches the key used to create the order
     return new Response(JSON.stringify({
       ...order,
-      razorpay_key_id: order.key_id, // Expose as razorpay_key_id for frontend
+      razorpay_key_id: order.key_id,
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

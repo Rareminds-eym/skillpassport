@@ -106,9 +106,11 @@ export function AddOnMarketplace({
         return;
       }
       
-      const orderData = await purchaseAddOn(featureKey, period);
-      if (orderData && window.Razorpay) {
-        initializeRazorpay(orderData, 'addon');
+      const orderResult = await purchaseAddOn(featureKey, period);
+      if (orderResult?.success && window.Razorpay) {
+        initializeRazorpay(orderResult.data, 'addon');
+      } else if (orderResult?.error) {
+        setPurchaseError(orderResult.error);
       }
     } catch (error) {
       console.error('Purchase failed:', error);
@@ -143,9 +145,11 @@ export function AddOnMarketplace({
         return;
       }
       
-      const orderData = await purchaseBundle(bundleId, period);
-      if (orderData && window.Razorpay) {
-        initializeRazorpay(orderData, 'bundle');
+      const orderResult = await purchaseBundle(bundleId, period);
+      if (orderResult?.success && window.Razorpay) {
+        initializeRazorpay(orderResult.data, 'bundle');
+      } else if (orderResult?.error) {
+        setPurchaseError(orderResult.error);
       }
     } catch (error) {
       console.error('Bundle purchase failed:', error);

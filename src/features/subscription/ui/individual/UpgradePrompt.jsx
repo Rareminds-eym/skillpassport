@@ -102,16 +102,17 @@ export function UpgradePrompt({
         return;
       }
       
-      const orderData = await purchaseAddOn(key, billingPeriod);
+      const orderResult = await purchaseAddOn(key, billingPeriod);
       
-      if (orderData && window.Razorpay) {
+      if (orderResult?.success && window.Razorpay) {
+        const data = orderResult.data;
         const options = {
-          key: orderData.razorpayKeyId,
-          amount: orderData.amount,
-          currency: orderData.currency,
+          key: data.razorpayKeyId,
+          amount: data.amount,
+          currency: data.currency,
           name: 'SkillPassport',
-          description: addOn?.feature_name || 'Premium Feature',
-          order_id: orderData.orderId,
+          description: addOn?.feature_name ?? addOn?.name ?? 'Premium Feature',
+          order_id: data.orderId,
           handler: async function(response) {
             // Payment successful - verify and create entitlement
             console.log('[UpgradePrompt] Payment successful, verifying...', response);
@@ -158,6 +159,8 @@ export function UpgradePrompt({
         });
         
         rzp.open();
+      } else if (orderResult?.error) {
+        setError(orderResult.error);
       }
     } catch (err) {
       setError(err.message || 'Failed to initiate purchase');

@@ -47,10 +47,14 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
     const transformedData = {
       id: addon.id,
       feature_key: addon.feature_key,
+      feature_name: addon.feature_name,
       name: addon.feature_name,
+      addon_description: addon.description,
       description: addon.description,
       category: addon.category,
+      addon_price_monthly: parseFloat(addon.price_monthly) ?? 0,
       price_monthly: parseFloat(addon.price_monthly) ?? 0,
+      addon_price_annual: parseFloat(addon.price_annual) ?? 0,
       price_annual: parseFloat(addon.price_annual) ?? 0,
       icon_url: addon.icon,
     };

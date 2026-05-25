@@ -336,11 +336,11 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
       }
       console.log('[PurchaseModal] Razorpay script loaded successfully');
       
-      const order = await onPurchase(addOn.feature_key, billing);
-      console.log('[PurchaseModal] Order received:', order);
+      const orderResult = await onPurchase(addOn.feature_key, billing);
+      console.log('[PurchaseModal] Order result:', orderResult);
       
-      if (!order) {
-        setError('Failed to create order - no response received');
+      if (!orderResult?.success) {
+        setError(orderResult?.error || 'Failed to create order - no response received');
         return;
       }
       
@@ -349,19 +349,20 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
         return;
       }
       
+      const data = orderResult.data;
       console.log('[PurchaseModal] Opening Razorpay with:', {
-        key: order.razorpayKeyId,
-        amount: order.amount,
-        order_id: order.orderId
+        key: data.razorpayKeyId,
+        amount: data.amount,
+        order_id: data.orderId
       });
       
       const razorpay = new window.Razorpay({
-        key: order.razorpayKeyId,
-        amount: order.amount,
-        currency: order.currency,
+        key: data.razorpayKeyId,
+        amount: data.amount,
+        currency: data.currency,
         name: 'SkillPassport',
-        description: `${addOn.feature_name || addOn.name} - ${billing === 'monthly' ? 'Monthly' : 'Annual'}`,
-        order_id: order.orderId,
+        description: `${addOn.feature_name ?? addOn.name} - ${billing === 'monthly' ? 'Monthly' : 'Annual'}`,
+        order_id: data.orderId,
         handler: async (response) => {
           // Payment successful - now verify and create entitlement
           console.log('[PurchaseModal] Payment successful, verifying...', response);
