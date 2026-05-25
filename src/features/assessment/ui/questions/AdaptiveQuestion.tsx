@@ -51,15 +51,6 @@ export const AdaptiveQuestion: React.FC<AdaptiveQuestionProps> = ({
     return 'bg-indigo-100 text-indigo-700';
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8">
-        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
-        <p className="text-gray-600">Loading next question...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Info Badges with Timer */}

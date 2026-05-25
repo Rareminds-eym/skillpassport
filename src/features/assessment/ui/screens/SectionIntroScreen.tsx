@@ -1,9 +1,9 @@
 /**
  * SectionIntroScreen Component
- * 
+ *
  * Displays the introduction screen for each assessment section
  * with title, description, and instructions.
- * 
+ *
  * @module features/assessment/career-test/components/questions/SectionIntroScreen
  */
 
@@ -60,7 +60,7 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
   // Get time per question label for adaptive aptitude
   const getAdaptiveTimeLabel = () => {
     // Middle school (6-8) gets 5 minutes per question
-    if (gradeLevel === '6-8') {
+    if (gradeLevel === 'middle') {
       return '5 min per question';
     }
     // All other grades get 1 minute per question
@@ -70,7 +70,7 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
   // Get total time label for adaptive aptitude
   const getAdaptiveTotalTime = () => {
     // Middle school (6-8): 50 questions × 5 minutes = 250 minutes
-    if (gradeLevel === '6-8') {
+    if (gradeLevel === 'middle') {
       return '250 min total';
     }
     // All other grades: 50 questions × 1 minute = 50 minutes
@@ -117,7 +117,7 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50"
+      className="min-h-screen flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50"
     >
       {/* Icon with Glassmorphism */}
       <motion.div
@@ -132,9 +132,9 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
       >
         {/* Glass shine effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-3xl" />
-        
-        <img 
-          src={icon} 
+
+        <img
+          src={icon}
           alt={title}
           className="w-full h-full object-contain relative z-10 drop-shadow-lg"
         />

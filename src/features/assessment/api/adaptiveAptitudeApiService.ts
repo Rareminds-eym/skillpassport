@@ -1,14 +1,14 @@
-import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Adaptive Aptitude API Service
- * 
+ *
  * Frontend wrapper for the Adaptive Session API.
  * Replaces direct Supabase calls with API calls to Cloudflare Pages Functions.
- * 
- * Requirements: Task 65 - Frontend API client
+ *
+ * Pattern: Component → Hook → Service (this file) → Backend API
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { getLogger } from '@/shared/config/logging';
 import {
   Question,
   TestSession,
@@ -17,6 +17,8 @@ import {
   TestPhase,
   AnswerResult,
 } from '@/shared/types/adaptiveAptitude';
+
+const logger = getLogger('AdaptiveAptitudeApiService');
 
 // =============================================================================
 // TYPES
@@ -86,46 +88,69 @@ async function apiRequest<T>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
+
   // Merge with any existing headers from options
   if (options.headers) {
     const existingHeaders = options.headers as Record<string, string>;
     Object.assign(headers, existingHeaders);
   }
-  
+
   const url = `/api/adaptive-session${endpoint}`;
-  
-  console.log(`🌐 [AdaptiveAptitudeApiService] ${options.method || 'GET'} ${url}`);
-  
-  const response = await ssoClient.fetch(url, {
-    ...options,
-    headers,
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage: string;
-    
-    try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.error || errorJson.message || `API request failed: ${response.status}`;
-    } catch {
-      errorMessage = errorText || `API request failed: ${response.status}`;
-    }
-    
-    console.error(`❌ [AdaptiveAptitudeApiService] API error:`, {
+  const method = options.method || 'GET';
+
+  logger.info(`🌐 [apiRequest] Making request`, { method, url });
+
+  try {
+    const response = await ssoClient.fetch(url, {
+      ...options,
+      headers,
+    });
+
+    logger.info(`📨 [apiRequest] Response received`, {
+      method,
       url,
       status: response.status,
-      error: errorMessage,
+      ok: response.ok,
     });
-    
-    throw new Error(errorMessage);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage: string;
+
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error || errorJson.message || `API request failed: ${response.status}`;
+      } catch {
+        errorMessage = errorText || `API request failed: ${response.status}`;
+      }
+
+      logger.error(`❌ [apiRequest] API error response`, {
+        method,
+        url,
+        status: response.status,
+        error: errorMessage,
+      });
+
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    logger.info(`✅ [apiRequest] Response parsed successfully`, {
+      method,
+      url,
+      hasData: !!data,
+    });
+
+    return data;
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logger.error(`❌ [apiRequest] Request failed`, {
+      method,
+      url,
+      error: errorMsg,
+    });
+    throw error;
   }
-  
-  const data = await response.json();
-  console.log(`✅ [AdaptiveAptitudeApiService] API response received`);
-  
-  return data;
 }
 
 // =============================================================================
@@ -144,18 +169,24 @@ export async function initializeTest(
   gradeLevel: GradeLevel,
   learnerCourse?: string | null
 ): Promise<InitializeTestResult> {
-  console.log('🚀 [AdaptiveAptitudeApiService] initializeTest:', { learnerId, gradeLevel, learnerCourse });
-  
+  logger.info('🚀 [initializeTest] Starting test initialization', {
+    learnerId,
+    gradeLevel,
+    learnerCourse,
+  });
+
   const result = await apiRequest<InitializeTestResult>('/initialize', {
     method: 'POST',
     body: JSON.stringify({ learnerId, gradeLevel, learnerCourse }),
   });
-  
-  console.log('✅ [AdaptiveAptitudeApiService] Test initialized:', {
+
+  logger.info('✅ [initializeTest] Test initialized successfully', {
     sessionId: result.session.id,
     firstQuestionId: result.firstQuestion.id,
+    phase: result.session.currentPhase,
+    difficulty: result.session.currentDifficulty,
   });
-  
+
   return result;
 }
 

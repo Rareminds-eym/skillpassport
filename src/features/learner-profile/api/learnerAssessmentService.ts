@@ -54,14 +54,19 @@ export interface AssessmentResponse {
 
 /**
  * Fetch assessment recommendations from backend API
- * Uses ssoClient to automatically inject JWT tokens
+ * Uses learnerId from store for consistency
  */
-export async function getLearnerAssessmentData(): Promise<AssessmentResponse> {
+export async function getLearnerAssessmentData(learnerId?: string): Promise<AssessmentResponse> {
   try {
     const apiBaseUrl = getApiBaseUrl();
-    const url = `${apiBaseUrl}/api/learners/assessments`;
-    
-    logger.info('Fetching assessment data from backend', { url });
+    let url = `${apiBaseUrl}/api/learners/assessments`;
+
+    // If learnerId provided, use it; otherwise rely on JWT
+    if (learnerId) {
+      url += `?id=${encodeURIComponent(learnerId)}`;
+    }
+
+    logger.info('Fetching assessment data from backend', { url, learnerId });
 
     const response = await ssoClient.fetch(url, {
       method: 'GET',

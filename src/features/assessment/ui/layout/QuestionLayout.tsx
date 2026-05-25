@@ -8,12 +8,14 @@
  */
 
 import React from 'react';
-import { 
+import { motion } from 'framer-motion';
+import {
   Clock,
   Layers,
   HelpCircle,
   CheckCircle
 } from 'lucide-react';
+import { QuestionNavigation } from '../QuestionNavigation';
 
 interface QuestionLayoutProps {
   children: React.ReactNode;
@@ -21,6 +23,7 @@ interface QuestionLayoutProps {
   sectionDescription: string;
   sectionInstruction?: string;
   sectionId: string;
+  sectionIcon?: string;
   sectionColor?: string;
   currentSectionIndex: number;
   totalSections: number;
@@ -28,59 +31,41 @@ interface QuestionLayoutProps {
   totalQuestions: number;
   elapsedTime: number;
   showNoWrongAnswers?: boolean;
-  perQuestionTimer?: number | null; // Per-question timer (for aptitude/knowledge)
-  showPerQuestionTimer?: boolean; // Whether to show per-question timer instead of elapsed time
+  perQuestionTimer?: number | null;
+  showPerQuestionTimer?: boolean;
+  isAnswered?: boolean;
+  isLastQuestion?: boolean;
+  isSubmitting?: boolean;
+  onNext?: () => void;
+  onPrevious?: () => void;
+  canGoPrevious?: boolean;
 }
 
 /**
- * Get icon image path for a section based on section ID
+ * Map section name to icon file path
  */
-const getSectionIconPath = (sectionId: string): string => {
-  const iconMap: Record<string, string> = {
-    // Career Interests (RIASEC)
-    'riasec': '/assets/Assessment Icons/Career Interests.png',
-    
-    // Big Five Personality
-    'bigfive': '/assets/Assessment Icons/Big 5 Personality.png',
-    
-    // Work Values & Motivators
-    'values': '/assets/Assessment Icons/Work Value & Motivators.png',
-    
-    // Employability Skills
-    'employability': '/assets/Assessment Icons/Employability Skills.png',
-    
-    // Stream Based Aptitude
-    'aptitude': '/assets/Assessment Icons/Multi-Aptitude.png',
-    
-    // Stream Knowledge
-    'knowledge': '/assets/Assessment Icons/Stream Knowledge.png',
-    
-    // Middle School - Interest Explorer
-    'middle_interest_explorer': '/assets/Assessment Icons/Interest Explorer.png',
-    
-    // Middle School - Strengths & Character
-    'middle_strengths_character': '/assets/Assessment Icons/Strenghts & Character.png',
-    
-    // Middle School - Learning & Work Preferences
-    'middle_learning_preferences': '/assets/Assessment Icons/Learning & Work Preference.png',
-    
-    // High School - Interest Explorer
-    'hs_interest_explorer': '/assets/Assessment Icons/Interest Explorer.png',
-    
-    // High School - Strengths & Character
-    'hs_strengths_character': '/assets/Assessment Icons/Strenghts & Character.png',
-    
-    // High School - Learning & Work Preferences
-    'hs_learning_preferences': '/assets/Assessment Icons/Learning & Work Preference.png',
-    
-    // High School - Aptitude Sampling
-    'hs_aptitude_sampling': '/assets/Assessment Icons/Aptitude Sampling.png',
-    
-    // Adaptive Aptitude Test
-    'adaptive_aptitude': '/assets/Assessment Icons/Adaptive Aptitude Test.png',
-  };
-  
-  return iconMap[sectionId] || '/assets/Assessment Icons/Career Interests.png';
+const getIconPathFromName = (sectionName?: string | null): string => {
+  if (!sectionName) return '/assets/Assessment Icons/Career Interests.png';
+
+  const name = sectionName.toLowerCase();
+
+  if (name.includes('interest_explorer')) {
+    return '/assets/Assessment Icons/Interest Explorer.png';
+  }
+  if (name.includes('strengths_character') || name.includes('strength')) {
+    return '/assets/Assessment Icons/Strenghts & Character.png';
+  }
+  if (name.includes('learning_preferences') || name.includes('learning_preference')) {
+    return '/assets/Assessment Icons/Learning & Work Preference.png';
+  }
+  if (name.includes('aptitude_sampling') || name.includes('aptitude_')) {
+    return '/assets/Assessment Icons/Aptitude Sampling.png';
+  }
+  if (name.includes('riasec') || name.includes('bigfive') || name.includes('employability')) {
+    return '/assets/Assessment Icons/Career Interests.png';
+  }
+
+  return '/assets/Assessment Icons/Career Interests.png';
 };
 
 /**
@@ -117,6 +102,7 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
   sectionDescription,
   sectionInstruction,
   sectionId,
+  sectionIcon,
   sectionColor = 'indigo',
   currentSectionIndex,
   totalSections,
@@ -126,6 +112,12 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
   showNoWrongAnswers = true,
   perQuestionTimer = null,
   showPerQuestionTimer = false,
+  isAnswered = false,
+  isLastQuestion = false,
+  isSubmitting = false,
+  onNext,
+  onPrevious,
+  canGoPrevious = false,
 }) => {
   const colors = getColorClasses(sectionColor);
   
@@ -162,8 +154,8 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
               {/* Glass shine effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-3xl" />
               
-              <img 
-                src={getSectionIconPath(sectionId)} 
+              <img
+                src={getIconPathFromName(sectionIcon)}
                 alt={sectionTitle}
                 className="w-full h-full object-contain relative z-10 drop-shadow-lg"
               />
@@ -225,9 +217,39 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
       >
         {/* Glass shine effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-r-2xl pointer-events-none z-0" />
-        
+
         <div className="relative z-10 p-6 flex-1 flex flex-col">
-          {children}
+          {/* Question Counter Badge */}
+          <div className="mb-8">
+            <div className="inline-block bg-white/60 backdrop-blur-sm rounded-xl border border-blue-200/50 px-4 py-3">
+              <p className="text-base font-semibold text-indigo-600">
+                QUESTION {currentQuestionIndex + 1} / {totalQuestions}
+              </p>
+            </div>
+          </div>
+
+          {/* Question Content - Animated */}
+          <motion.div 
+            className="flex-1"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {children}
+          </motion.div>
+
+          {/* Navigation */}
+          {onNext && onPrevious && (
+            <QuestionNavigation
+              canGoPrevious={canGoPrevious}
+              isAnswered={isAnswered}
+              isSubmitting={isSubmitting}
+              isLastQuestion={isLastQuestion}
+              onPrevious={onPrevious}
+              onNext={onNext}
+            />
+          )}
         </div>
       </div>
     </div>

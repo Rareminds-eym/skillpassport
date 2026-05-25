@@ -47,10 +47,15 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     const learnerId = learnerData.id;
-    logger.info('Learner found', { learnerId, userId });
+    logger.info('Learner found', { learnerId, userId, learnerDataId: learnerData.id });
 
     // Step 2: Check for in-progress assessment
-    const { data: inProgressAttempt, error: inProgressError } = await supabase
+    logger.info('Querying for in-progress attempts', {
+      learnerId,
+      queryFilters: { learner_id: learnerId, status: 'in_progress' }
+    });
+
+    const { data: inProgressAttempt, error: inProgressError, status } = await supabase
       .from('personal_assessment_attempts')
       .select('*')
       .eq('learner_id', learnerId)
@@ -60,8 +65,24 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       .maybeSingle();
 
     if (inProgressError) {
-      logger.error('Error fetching in-progress attempt', { learnerId, error: inProgressError });
+      logger.error('Error fetching in-progress attempt', {
+        learnerId,
+        errorMessage: inProgressError.message,
+        errorCode: inProgressError.code,
+        fullError: inProgressError
+      });
     }
+
+    logger.info('In-progress attempt check completed', {
+      learnerId,
+      found: !!inProgressAttempt,
+      attemptId: inProgressAttempt?.id,
+      status: inProgressAttempt?.status,
+      currentSectionIndex: inProgressAttempt?.current_section_index,
+      currentQuestionIndex: inProgressAttempt?.current_question_index,
+      queryStatus: status,
+      queryError: inProgressError
+    });
 
     // Step 3: Get latest completed assessment result
     const { data: latestResult, error: resultError } = await supabase
@@ -176,11 +197,18 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       latestResult: latestResult || null,
     };
 
-    logger.info('Assessment data fetched successfully', { 
-      learnerId, 
+    logger.info('Assessment data fetched successfully', {
+      learnerId,
       userId,
       hasAssessment: hasCompletedAssessment,
-      hasInProgress: !!inProgressAttempt
+      hasInProgress: !!inProgressAttempt,
+      inProgressAttemptFound: !!inProgressAttempt,
+      responseSummary: {
+        hasAssessment: assessmentData.hasAssessment,
+        hasInProgressAssessment: assessmentData.hasInProgressAssessment,
+        latestAttemptId: assessmentData.latestAttemptId,
+        inProgressAttemptId: assessmentData.inProgressAttempt?.id
+      }
     });
     
     return apiSuccess(assessmentData, context.request, { startTime });
