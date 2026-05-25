@@ -18,7 +18,7 @@ import { stdin as input, stdout as output } from 'node:process';
 // ─── Local-only config (never points to production) ──────────────
 
 const LOCAL_SERVICE_ROLE_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96Bq2I5RsnS6DZgxVwLllfJREcKQ9F4PFOkEIbs';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
 
 const APP_DB = {
   name: 'App DB (skillpassport)',
@@ -50,7 +50,7 @@ async function lookupUserId(
   email: string,
 ): Promise<string | null> {
   const { data, error } = await supabase
-    .from('users', { schema: 'auth' })
+    .from('users')
     .select('id')
     .eq('email', email.toLowerCase())
     .maybeSingle();
