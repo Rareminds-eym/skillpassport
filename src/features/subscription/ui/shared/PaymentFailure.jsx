@@ -66,7 +66,7 @@ function PaymentFailure() {
         await logFailedTransaction({
           razorpay_payment_id: paymentId,
           razorpay_order_id: orderId,
-          amount: planDetails?.price || 0,
+          amount: planDetails?.price ?? 0,
           currency: 'INR',
           error: failureReason,
           error_description: stateData.error_description

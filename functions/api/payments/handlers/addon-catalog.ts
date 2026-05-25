@@ -43,8 +43,8 @@ export async function handleAddonCatalog(context: AuthenticatedContext): Promise
       
       // Calculate total price of included features if purchased individually as addons
       const includedAddons = addons.filter(a => featureKeys.includes(a.feature_key as string));
-      const totalIndividual = includedAddons.reduce((sum, addOn) => sum + (parseFloat(addOn.price_monthly as string) || 0), 0);
-      const bundlePrice = parseFloat(bundle.monthly_price as string) || 0;
+      const totalIndividual = includedAddons.reduce((sum, addOn) => sum + (parseFloat(addOn.price_monthly as string) ?? 0), 0);
+      const bundlePrice = parseFloat(bundle.monthly_price as string) ?? 0;
       const savings = totalIndividual > bundlePrice ? totalIndividual - bundlePrice : 0;
       
       return new Response(JSON.stringify({ success: true, data: { totalIndividual, bundlePrice, savings } }), { status: 200 });

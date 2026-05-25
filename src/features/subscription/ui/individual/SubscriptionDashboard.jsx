@@ -138,7 +138,7 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
           <div>
             <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Current Plan</p>
             <h2 className="text-4xl font-light mb-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-              {subscriptionData?.planName || subscriptionData?.plan_name || subscriptionData?.plan_type || 'Basic Plan'}
+              {subscriptionData?.planName || subscriptionData?.plan_name || subscriptionData?.plan_type || ''}
             </h2>
             {subscriptionData?.current_period_end && (
               <p className="text-white/70 text-sm flex items-center gap-2 font-medium">
@@ -148,10 +148,13 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
             )}
           </div>
           <div className="text-right">
-            <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Monthly Cost</p>
+            <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Plan Cost</p>
             <p className="text-5xl font-light" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-              ₹{subscriptionData?.planPrice || subscriptionData?.plan_amount || 0}
+              ₹{subscriptionData?.planPrice ?? subscriptionData?.plan_amount ?? 0}
             </p>
+            {subscriptionData?.billingCycle && (
+              <p className="text-white/50 text-xs font-medium mt-1">({subscriptionData.billingCycle})</p>
+            )}
           </div>
         </div>
 
@@ -187,7 +190,7 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
       <div className="grid md:grid-cols-3 gap-6">
         <CostCard
           title="Base Plan"
-          amount={subscriptionData?.planPrice || subscriptionData?.plan_amount || 0}
+          amount={subscriptionData?.planPrice ?? subscriptionData?.plan_amount ?? 0}
           period="month"
           icon={CreditCard}
         />
@@ -199,7 +202,7 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
         />
         <CostCard
           title="Total"
-          amount={Math.round(((subscriptionData?.planPrice || subscriptionData?.plan_amount || 0) + totalAddOnCost.monthly) * 100) / 100}
+          amount={Math.round(((subscriptionData?.planPrice ?? subscriptionData?.plan_amount ?? 0) + totalAddOnCost.monthly) * 100) / 100}
           period="month"
           icon={DollarSign}
           highlight

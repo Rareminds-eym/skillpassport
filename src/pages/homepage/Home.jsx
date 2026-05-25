@@ -14,12 +14,43 @@ import {
 
 import SEOHead from '@/shared/ui/SEOHead';
 import { useAssessmentPromotional } from '@/features/promotional/model/promotionalStore';
+import { useEffect, useRef } from 'react';
+import { trackEvent, AnalyticsEvents } from '@/shared/lib/analytics';
 const Home = () => {
   const {
     showModal: showAssessmentModal,
     dismissModal: dismissAssessmentModal,
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotional();
+
+  // Track scroll depth - fires once when user scrolls past 50%
+  const hasTrackedScroll = useRef(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (hasTrackedScroll.current) return;
+
+      const scrollTop = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      const scrollPercent = ((scrollTop + windowHeight) / documentHeight) * 100;
+
+      if (scrollPercent >= 50) {
+        hasTrackedScroll.current = true;
+        trackEvent(AnalyticsEvents.SCROLL_DEPTH, {
+          page_path: window.location.pathname,
+        });
+        window.removeEventListener('scroll', handleScroll);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen">

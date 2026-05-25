@@ -25,7 +25,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const planFeatures = Array.isArray(plan.base_features) ? plan.base_features : [];
       const mappedFeatures = planFeatures.filter(featureKey => addOnMap.has(featureKey)).map(featureKey => {
         const addOn = addOnMap.get(featureKey);
-        return { feature_key: featureKey, feature_name: addOn.name || addOn.feature_name, addon_price_monthly: parseFloat(addOn.price_monthly) || 0, addon_price_annual: parseFloat(addOn.price_annual) || 0 };
+        return { feature_key: featureKey, feature_name: addOn.name || addOn.feature_name, addon_price_monthly: parseFloat(addOn.price_monthly) ?? 0, addon_price_annual: parseFloat(addOn.price_annual) ?? 0 };
       });
       return new Response(JSON.stringify({ success: true, data: { planCode, planName: plan.name, planId: plan.id, features: mappedFeatures } }), { status: 200 });
     }
@@ -41,8 +41,8 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const addOnMap = new Map((addons || []).map(a => [a.feature_key, a]));
       
       const planFeatures = Array.isArray(subscription.features) ? subscription.features : [];
-      const newPrice = planFeatures.filter(featureKey => addOnMap.has(featureKey)).reduce((sum, featureKey) => sum + (parseFloat(addOnMap.get(featureKey)?.price_monthly) || 0), 0);
-      const originalPrice = parseFloat(subscription.plan_amount) || 0;
+      const newPrice = planFeatures.filter(featureKey => addOnMap.has(featureKey)).reduce((sum, featureKey) => sum + (parseFloat(addOnMap.get(featureKey)?.price_monthly) ?? 0), 0);
+      const originalPrice = parseFloat(subscription.plan_amount) ?? 0;
       const eligible = newPrice > originalPrice;
       const protectedUntil = new Date(); protectedUntil.setFullYear(protectedUntil.getFullYear() + 1);
 

@@ -254,7 +254,7 @@ export async function generateReceipt(receiptData) {
   });
   
   // Format amount properly for Indian Rupees - simpler approach
-  const amount = transaction.amount || 0;
+  const amount = transaction.amount ?? 0;
   const formattedAmount = `Rs. ${amount.toLocaleString('en-IN')}`;
   
   addText(formattedAmount, pageWidth - margin - 8, yPosition, { 
@@ -513,7 +513,7 @@ export async function generateReceiptBase64(receiptData) {
     style: 'currency',
     currency: transaction.currency || 'INR',
     minimumFractionDigits: 0
-  }).format(transaction.amount || 0);
+  }).format(transaction.amount ?? 0);
   
   addText(formattedAmount, pageWidth - margin - 5, yPosition, { 
     fontSize: 14, 

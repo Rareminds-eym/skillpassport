@@ -21,17 +21,9 @@ import {
 } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 
-function extractAuthToken(request: Request): string {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('No auth token found');
-  }
-  return authHeader.slice(7);
-}
-
 export async function handleVerifyOrgPayment(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string };
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
     let body: Record<string, unknown>;
@@ -84,11 +76,19 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
 
     // Step 2: Signature valid — create org subscription in auth DB
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
-    const authToken = extractAuthToken(context.request);
+
+    if (!body.billing_cycle || typeof body.billing_cycle !== 'string') {
+      return new Response(
+        JSON.stringify({
+          error: { code: 'INVALID_INPUT', message: 'billing_cycle is required' },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     const seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
     const planAmount = typeof body.amount === 'number' ? body.amount : 0;
-    const billingCycle = (body.billing_cycle as string) || 'monthly';
+    const billingCycle = body.billing_cycle as string;
 
     const now = new Date();
     const endDate = new Date(now);
@@ -97,7 +97,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
 
     let subscription: Record<string, unknown>;
     try {
-      subscription = await ssoCreateSubscription(env, authToken, {
+      subscription = await ssoCreateSubscription(env, {
         user_id: user.sub,
         plan_id: (body.plan_id as string) || '',
         plan_code: (body.plan_code as string) || body.plan_name as string,
@@ -136,7 +136,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
 
     // Step 3: Record transaction in auth DB
     try {
-      await ssoRecordTransaction(env, authToken, {
+      await ssoRecordTransaction(env, {
         subscription_id: subscription.id as string,
         user_id: user.sub,
         razorpay_payment_id: body.razorpay_payment_id as string,
@@ -158,7 +158,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
       await syncUserShadow(supabase, user.sub, (user as any).email);
 
-      const syncData = await ssoSyncSubscription(env, authToken, user.sub);
+      const syncData = await ssoSyncSubscription(env, user.sub);
       if (syncData.subscription) {
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
       }

@@ -100,7 +100,7 @@ class MigrationService {
       const { features } = mappingResult.data;
 
       // Calculate original and new prices
-      const originalPrice = subscription.plan_amount || 0;
+      const originalPrice = subscription.plan_amount ?? 0;
       const newPrice = features.reduce((sum, f) => sum + (f.addon_price_monthly || 0), 0);
 
       // Calculate price protection if preserving pricing
@@ -235,7 +235,7 @@ class MigrationService {
       const { features } = mappingResult.data;
 
       // Calculate original and new prices - use subscription's stored amount
-      const originalPrice = subscription.plan_amount || 0;
+      const originalPrice = subscription.plan_amount ?? 0;
       const newPrice = features.reduce((sum, f) => sum + (f.addon_price_monthly || 0), 0);
 
       // User is eligible for price protection if new price is higher

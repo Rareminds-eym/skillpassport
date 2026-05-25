@@ -24,7 +24,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 export async function handleCreateOrder(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
   const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string, SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
     // Parse request body
@@ -53,20 +53,14 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     if (isFreemium) {
       // Direct freemium subscription creation logic
       const supabase = getServiceClient(env);
-      const authHeader = context.request.headers.get('Authorization');
-      const authToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-
-      if (!authToken) {
-        return new Response(JSON.stringify({ error: { code: 'UNAUTHORIZED', message: 'No auth token found' } }), { status: 401 });
-      }
 
       // Ensure user exists in shadow table
       await syncUserShadow(supabase, user.sub, (body.userEmail as string) || user.email);
 
-      // Create subscription in auth DB via SSO worker
+      // Create subscription in auth DB via SSO worker RPC
       let subscription: Record<string, unknown>;
       try {
-        subscription = await ssoCreateFreemiumSubscription(env as any, authToken, {
+        subscription = await ssoCreateFreemiumSubscription(env, {
           user_id: user.sub,
           email: (body.userEmail as string) || user.email,
           full_name: (body.userName as string) || (user as any).name || 'Freemium User',
@@ -80,7 +74,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
 
       // Sync shadow table
       try {
-        const syncData = await ssoSyncSubscription(env as any, authToken, user.sub);
+        const syncData = await ssoSyncSubscription(env, user.sub);
         if (syncData.subscription) {
           await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
         }
@@ -111,6 +105,42 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
 
    
 
+
+    // Validate amount against DB plan price (industrial-grade: never trust client)
+    if (body.planId) {
+      const supabase = getServiceClient(env);
+      const { data: dbPlan } = await supabase
+        .from('plans_cache')
+        .select('pricing_matrix')
+        .eq('id', body.planId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (dbPlan) {
+        const yearlyPrice = dbPlan.pricing_matrix?.all?.yearly;
+        if (typeof yearlyPrice !== 'number') {
+          logger.warn('Plan has no yearly price:', body.planId, dbPlan.pricing_matrix);
+          return new Response(
+            JSON.stringify({
+              error: { code: 'INVALID_PLAN', message: 'Selected plan has no valid pricing' },
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        const expectedPaise = Math.round(yearlyPrice * 100);
+        if (body.amount !== expectedPaise) {
+          logger.warn('Price mismatch — client sent', body.amount, 'expected', expectedPaise, 'for plan', body.planId);
+          return new Response(
+            JSON.stringify({
+              error: { code: 'PRICE_MISMATCH', message: 'Plan price does not match. Please refresh and try again.' },
+            }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        logger.warn('Plan not found in plans_cache:', body.planId);
+      }
+    }
 
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);

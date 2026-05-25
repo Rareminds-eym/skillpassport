@@ -229,7 +229,7 @@ export class OrganizationBillingService {
         const existing = addonMap.get(addonKey);
         const memberCount = addon.metadata?.target_member_ids?.length || addon.seat_count || 1;
         // Use the amount from the transaction
-        const cost = parseFloat(addon.amount || 0);
+        const cost = parseFloat(addon.amount ?? 0);
 
         if (existing) {
           existing.memberCount += memberCount;
@@ -260,7 +260,7 @@ export class OrganizationBillingService {
           subscriptionId: sub.id,
           planName: sub.plan_name || 'Unknown Plan',
           renewalDate: sub.subscription_end_date,
-          estimatedCost: parseFloat(sub.final_amount),
+          estimatedCost: parseFloat(sub.final_amount) || 0,
           seatCount: sub.seat_count,
           autoRenew: sub.auto_renew
         }));
@@ -574,7 +574,7 @@ export class OrganizationBillingService {
           const payments = json.transactions || json.data || [];
           payments.filter((p: any) => p.transaction_type === 'addon' && p.status === 'success')
                  .forEach((addon: any) => {
-                   addonCost += parseFloat(addon.amount || 0);
+                   addonCost += parseFloat(addon.amount ?? 0);
                  });
         }
       } catch (addonError) {
@@ -631,7 +631,7 @@ export class OrganizationBillingService {
       }
 
       const newTotalSeats = (subscription.seat_count || 0) + additionalSeats;
-      const pricePerSeat = parseFloat(subscription.price_per_seat || subscription.plan_amount || '0');
+      const pricePerSeat = parseFloat(subscription.price_per_seat ?? subscription.plan_amount ?? '0');
 
       // Calculate new volume discount
       const newDiscountPercentage = this.calculateVolumeDiscount(newTotalSeats);
@@ -743,7 +743,7 @@ export class OrganizationBillingService {
    * Calculate monthly cost from subscription
    */
   private calculateMonthlyCost(subscription: any): number {
-    const finalAmount = parseFloat(subscription.final_amount || subscription.plan_amount || '0');
+    const finalAmount = parseFloat(subscription.final_amount ?? subscription.plan_amount ?? '0');
     const startDate = new Date(subscription.subscription_start_date || subscription.start_date);
     const endDate = new Date(subscription.subscription_end_date || subscription.end_date);
     const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));

@@ -78,7 +78,7 @@ export function UpgradePrompt({
                 <span className="text-3xl font-bold text-slate-900">
                   ₹{plan.price}
                 </span>
-                <span className="text-slate-500">/{plan.duration}</span>
+                <span className="text-slate-500"> ({plan.duration})</span>
               </div>
 
               <div className="flex items-center gap-2 text-sm text-emerald-600 mb-4">

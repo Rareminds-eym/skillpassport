@@ -133,7 +133,7 @@ function MySubscription() {
         price: plan.price,
         priceLabel: plan.contactSales ? 'Contact Sales' : 'Per Person',
         features: plan.features || [],
-        totalFeatures: plan.totalFeatures || plan.features?.length || 0,
+        totalFeatures: plan.totalFeatures ?? plan.features?.length ?? 0,
         hasMoreFeatures: plan.hasMoreFeatures || false,
         detailedFeatures: plan.detailedFeatures || [],
         limits: plan.limits
@@ -339,9 +339,11 @@ function MySubscription() {
           .map(sub => ({
             id: sub.id,
             date: sub.created_at || sub.subscription_start_date,
-            amount: sub.plan_amount || '0',
+            amount: sub.plan_amount || '',
             status: sub.status === 'active' ? 'paid' : 'completed',
-            description: `${sub.plan_type || 'Basic Plan'} - ${sub.billing_cycle || 'Monthly'}`,
+            description: sub.billing_cycle
+              ? `${sub.plan_type ?? ''} — ${sub.billing_cycle}`
+              : `${sub.plan_type ?? ''}`,
             planType: sub.plan_type,
             billingCycle: sub.billing_cycle,
             subscriptionStatus: sub.status
@@ -708,7 +710,7 @@ function MySubscription() {
                           </span>
                         </div>
                         <h2 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                          {subscriptionData?.planName || subscriptionData?.plan_type || currentPlan?.name || 'Basic Plan'}
+                          {subscriptionData?.planName || subscriptionData?.plan_type || currentPlan?.name || ''}
                         </h2>
                         <div className="flex items-baseline gap-1">
                           <span className="text-4xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>

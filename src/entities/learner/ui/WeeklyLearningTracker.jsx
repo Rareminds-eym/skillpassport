@@ -34,7 +34,7 @@ const ContinueLearningHero = ({ course, onContinue }) => {
       >
         <div className="drop-shadow-xl" style={{ width: 128, height: 128 }}>
           <DotLottieReact
-            src="https://lottie.host/45abe60c-5bde-4cc9-b112-d35f11a7ffd0/DwMCYzvoQM.lottie"
+            src="/animations/tracker.lottie"
             loop
             autoplay
             renderConfig={{
@@ -117,7 +117,7 @@ const WeeklyOverviewCard = ({ stats, activeDays }) => {
         <div className="flex items-center gap-3">
           <div style={{ width: 64, height: 64, flexShrink: 0 }}>
             <DotLottieReact
-              src="https://lottie.host/c64de14f-ce23-41a2-90a6-b64b2d11ea54/nqY24O7vea.lottie"
+              src="/animations/tracker2.lottie"
               loop
               autoplay
               renderConfig={{

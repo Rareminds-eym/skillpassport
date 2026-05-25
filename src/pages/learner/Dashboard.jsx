@@ -1915,7 +1915,7 @@ const LearnerDashboard = () => {
             <div className="flex items-center gap-2">
               <div className="w-10 h-10">
                 <DotLottieReact
-                  src="https://lottie.host/d2e9c81b-68e5-4817-8cdb-232a1a4d96d1/IrCaxvOj5s.lottie"
+                  src="/animations/assessment.lottie"
                   loop
                   autoplay
                   style={{ width: '100%', height: '100%' }}

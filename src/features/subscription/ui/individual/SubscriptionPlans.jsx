@@ -263,7 +263,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
             <div key={plan.id} className="relative p-8 text-center border-l border-white/10">
               <div className="font-light text-xl mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{plan.name}</div>
               {plan.price && !plan.contactSales && (
-                <div className="text-sm text-white/70 font-medium">₹{parseInt(plan.price).toLocaleString()}/{plan.duration}</div>
+                <div className="text-sm text-white/70 font-medium">₹{parseInt(plan.price).toLocaleString()} ({plan.duration})</div>
               )}
               {plan.contactSales && (
                 <div className="text-sm text-white/70 font-medium">Custom</div>
@@ -342,12 +342,13 @@ FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 // Plan Card Component - Editorial luxury design
 const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
-  const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
-  const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
+  const currentPlanInList = allPlans.find(p => p.plan_code === subscriptionData?.plan || p.id === subscriptionData?.plan);
+  const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(currentPlanInList?.price ?? 0);
+  const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(currentPlanInList?.price ?? 0);
   const isContactSales = plan.contactSales;
   
   // Check if user is on Freemium plan
-  const isFreemiumUser = subscriptionData && subscriptionData.planCode === PLAN_IDS.FREEMIUM;
+  const isFreemiumUser = subscriptionData && subscriptionData.plan === PLAN_IDS.FREEMIUM;
 
   // Group features by category for better display
   const featuresByCategory = useMemo(() => {
@@ -376,12 +377,16 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
   // Handle organization purchase click
   const handleClick = useCallback(() => {
+    if (isDowngrade) {
+      toast('To downgrade your plan, please contact our support team.', { duration: 5000, icon: '📧' });
+      return;
+    }
     if (isOrganizationMode && onOrganizationPurchase) {
       onOrganizationPurchase(plan);
     } else {
       onSelect(plan);
     }
-  }, [isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
+  }, [isDowngrade, isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
 
   // Render feature item
   const renderFeature = (feature, idx) => {
@@ -459,7 +464,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                 <span className="text-5xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                   ₹{parseInt(plan.price).toLocaleString()}
                 </span>
-                <span className="text-slate-500 font-light">/{plan.duration}</span>
+                <span className="text-slate-500 font-light"> ({plan.duration})</span>
                 {isOrganizationMode && (
                   <span className="text-sm text-slate-400 ml-1">/seat</span>
                 )}
@@ -547,10 +552,6 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
         <div className="mt-auto space-y-3">
           {isCurrentPlan ? (
             <>
-              <div className="w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-50 border-2 border-emerald-200 text-emerald-700 text-center flex items-center justify-center gap-2">
-                <Check className="h-5 w-5" /> Your Current Plan
-              </div>
-
               {subscriptionData?.status === 'cancelled' && (
                 <button
                   onClick={() => onSelect(plan)}
@@ -587,7 +588,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                   ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
                   : isUpgrade || plan.recommended
                     ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
-                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
+                    : isDowngrade
+                      ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
+                      : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
             >
               {isOrganizationMode ? (
@@ -605,10 +608,15 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                   <TrendingUp className="h-5 w-5" />
                   Upgrade
                 </>
+              ) : isDowngrade ? (
+                <span className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  Contact Support
+                </span>
               ) : subscriptionData && !isCurrentPlan ? (
                 <>
                   {isUpgrade && <TrendingUp className="h-5 w-5" />}
-                  {isUpgrade ? 'Upgrade' : isDowngrade ? 'Switch Plan' : 'Select Plan'}
+                  {isUpgrade ? 'Upgrade' : 'Select Plan'}
                 </>
               ) : (
                 'Select Plan'
@@ -790,7 +798,7 @@ function SubscriptionPlans() {
   }, [subscriptionData]);
 
   const currentPlanData = useMemo(
-    () => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null,
+    () => subscriptionData ? plans.find(p => p.plan_code === subscriptionData.plan || p.id === subscriptionData.plan) : null,
     [subscriptionData, plans]
   );
 
@@ -857,7 +865,7 @@ function SubscriptionPlans() {
   const handlePlanSelection = useCallback((plan) => {
     // If user is currently on their ACTIVE plan (not cancelled), go to manage page
     // Cancelled subscriptions should allow re-purchase of the same plan
-    if (subscriptionData && subscriptionData.plan === plan.id && subscriptionData.status !== 'cancelled') {
+    if (subscriptionData && (subscriptionData.plan === plan.plan_code || subscriptionData.plan === plan.id) && subscriptionData.status !== 'cancelled') {
       const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${learnerType}`;
       navigate(targetPath);
       return;
@@ -1104,7 +1112,7 @@ function SubscriptionPlans() {
                     </div>
 
                     <h2 className="text-5xl font-light text-white mb-3 tracking-tight leading-none" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                      {currentPlanData?.name || subscriptionData.planName || 'Professional'}
+                      {currentPlanData?.name ?? subscriptionData.planName ?? 'Your Plan'}
                     </h2>
                     <p className="text-xl text-white/60 font-light tracking-wide mb-6" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                       {currentPlanData?.tagline || 'Your subscription is active'}
@@ -1241,7 +1249,7 @@ function SubscriptionPlans() {
                     <div className="group">
                       <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Billing Cycle</div>
                       <div className="text-lg text-slate-900 font-medium">
-                        {currentPlanData?.duration || 'Monthly'}
+                        {currentPlanData?.duration || subscriptionData?.billingCycle || ''}
                       </div>
                     </div>
 
@@ -1372,7 +1380,7 @@ function SubscriptionPlans() {
                   plan={plan}
                   index={index}
                   allPlans={plans}
-                  isCurrentPlan={isAuthenticated && hasCurrentSubscription && subscriptionData?.plan === plan.id}
+                  isCurrentPlan={isAuthenticated && hasCurrentSubscription && (subscriptionData?.plan === plan.plan_code || subscriptionData?.plan === plan.id)}
                   onSelect={handlePlanSelection}
                   onManage={() => navigate(managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${learnerType}`)}
                   subscriptionData={isAuthenticated && hasCurrentSubscription ? subscriptionData : null}
