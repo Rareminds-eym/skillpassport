@@ -245,7 +245,7 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
             <div className="flex items-center justify-between mb-5">
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-gray-900">Γé╣{monthlyPrice}</span>
+                  <span className="text-3xl font-bold text-gray-900">₹{monthlyPrice}</span>
                   <span className="text-gray-400 text-sm">/month</span>
                 </div>
                 {savings > 0 && (
@@ -487,12 +487,12 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
               <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-3xl p-5 mb-5 border-2 border-slate-200">
                 <div className="flex items-baseline justify-between mb-1">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900">Γé╣{price}</span>
+                    <span className="text-4xl font-bold text-gray-900">₹{price}</span>
                     <span className="text-gray-400 text-sm">/{billing === 'monthly' ? 'mo' : 'yr'}</span>
                   </div>
                   {billing === 'annual' && (
                     <div className="text-right">
-                      <p className="text-xs text-gray-400">Γé╣{monthlyEquivalent}/mo</p>
+                      <p className="text-xs text-gray-400">₹{monthlyEquivalent}/mo</p>
                     </div>
                   )}
                 </div>
@@ -502,7 +502,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                     <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
                       <Check className="w-2.5 h-2.5 text-emerald-600" strokeWidth={3} />
                     </div>
-                    <span className="text-emerald-600 text-sm font-medium">Save Γé╣{savings} per year</span>
+                    <span className="text-emerald-600 text-sm font-medium">Save ₹{savings} per year</span>
                   </div>
                 )}
               </div>
@@ -556,7 +556,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                   <Shield className="w-3.5 h-3.5" />
                   Secure checkout
                 </span>
-                <span>ΓÇó</span>
+                <span>•</span>
                 <span>Powered by Razorpay</span>
               </div>
             </>
