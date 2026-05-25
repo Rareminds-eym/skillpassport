@@ -79,19 +79,19 @@ export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGate
     {
       name: 'Basic',
       price: 499,
-      duration: 'month',
+      duration: 'yearly',
       recommended: false,
     },
     {
       name: 'Professional',
       price: 749,
-      duration: 'month',
+      duration: 'yearly',
       recommended: true,
     },
     {
       name: 'Premium',
       price: 999,
-      duration: 'month',
+      duration: 'yearly',
       recommended: false,
     },
   ];

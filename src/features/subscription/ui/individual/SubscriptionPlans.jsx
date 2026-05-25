@@ -263,7 +263,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
             <div key={plan.id} className="relative p-8 text-center border-l border-white/10">
               <div className="font-light text-xl mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{plan.name}</div>
               {plan.price && !plan.contactSales && (
-                <div className="text-sm text-white/70 font-medium">₹{parseInt(plan.price).toLocaleString()}/{plan.duration}</div>
+                <div className="text-sm text-white/70 font-medium">₹{parseInt(plan.price).toLocaleString()} ({plan.duration})</div>
               )}
               {plan.contactSales && (
                 <div className="text-sm text-white/70 font-medium">Custom</div>
@@ -459,7 +459,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                 <span className="text-5xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                   ₹{parseInt(plan.price).toLocaleString()}
                 </span>
-                <span className="text-slate-500 font-light">/{plan.duration}</span>
+                <span className="text-slate-500 font-light"> ({plan.duration})</span>
                 {isOrganizationMode && (
                   <span className="text-sm text-slate-400 ml-1">/seat</span>
                 )}
