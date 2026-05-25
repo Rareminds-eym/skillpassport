@@ -74,7 +74,8 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       );
     }
 
-    const priceAtPurchase = typeof body.amount === 'number' ? body.amount : 0;
+    // body.amount is in paise (from Razorpay API); DB columns expect rupees
+    const priceAtPurchase = typeof body.amount === 'number' ? body.amount / 100 : 0;
     const billingPeriod = body.billing_period as string;
 
     // Step 2: Record purchase in Auth DB via SSO Worker RPC

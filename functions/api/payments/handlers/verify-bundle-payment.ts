@@ -74,7 +74,7 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
       );
     }
 
-    const priceAtPurchase = typeof body.amount === 'number' ? body.amount : 0;
+    const priceAtPurchase = typeof body.amount === 'number' ? body.amount / 100 : 0;
     const billingPeriod = body.billing_period as string;
 
     // Step 2: Record purchase in Auth DB via SSO Worker RPC
