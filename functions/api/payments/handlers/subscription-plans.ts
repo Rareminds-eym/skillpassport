@@ -63,7 +63,7 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
     recommended: (config.is_recommended as boolean) || false,
     ideal_for: (config.ideal_for as string) || '',
     description: (config.description as string) || '',
-    max_users: (config.max_users as number) || 1,
+    max_users: (config.max_users as number) ?? 1,
     positioning: (config.positioning as string) || '',
     color: (config.color as string) || '',
     display_name: (config.display_name as string) || raw.name,

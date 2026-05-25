@@ -342,8 +342,8 @@ function MySubscription() {
             amount: sub.plan_amount || '',
             status: sub.status === 'active' ? 'paid' : 'completed',
             description: sub.billing_cycle
-              ? `${sub.plan_type || 'Basic Plan'} — ${sub.billing_cycle}`
-              : `${sub.plan_type || 'Basic Plan'}`,
+              ? `${sub.plan_type ?? ''} — ${sub.billing_cycle}`
+              : `${sub.plan_type ?? ''}`,
             planType: sub.plan_type,
             billingCycle: sub.billing_cycle,
             subscriptionStatus: sub.status

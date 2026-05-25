@@ -354,7 +354,7 @@ export class OrganizationSubscriptionService {
       organizationId: data.organization_id,
       organizationType: data.organization_type,
       subscriptionPlanId: data.plan_id,
-      planName: data.plan_name || 'Standard Plan',
+      planName: data.plan_name ?? 'Standard Plan',
       planCode: data.plan_code,
       purchasedBy: data.user_id,
       totalSeats: data.seat_count || 0,
