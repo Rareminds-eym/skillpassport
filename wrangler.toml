@@ -23,11 +23,11 @@ service = "razorpay-api"
 entrypoint = "PaymentService"
 
 # SSO worker — authentication service, zero-latency internal routing
-# HTTP-style binding (no entrypoint) for JWKS fetching and token refresh
+# RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]
 binding = "SSO_SERVICE"
 service = "sso-api"
-# No entrypoint needed - sso-api uses default fetch handler
+entrypoint = "SsoWorker"
 
 # ============================================================================
 # ENVIRONMENT VARIABLES

@@ -12,20 +12,13 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { ssoGetUserTransactions } from '../../../lib/sso-client';
 
-function extractAuthToken(request: Request): string {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) throw new Error('No auth token found');
-  return authHeader.slice(7);
-}
-
 export async function handleGetUserPayments(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
-  const env = context.env as { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string };
+  const env = context.env as { SSO_SERVICE: Fetcher };
   const userId = context.data.user.sub;
 
   try {
-    const authToken = extractAuthToken(context.request);
-    const transactions = await ssoGetUserTransactions(env, authToken, userId);
+    const transactions = await ssoGetUserTransactions(env, userId);
 
     return apiSuccess(transactions || [], context.request, { startTime });
   } catch (error) {
