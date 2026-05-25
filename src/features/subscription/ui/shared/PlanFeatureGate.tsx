@@ -74,7 +74,7 @@ export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGate
     return <>{fallback}</>;
   }
 
-  // Default UpgradePrompt
+  // Default UpgradePrompt — prices match DB plans_cache
   const defaultPlans = [
     {
       name: 'Basic',
@@ -89,7 +89,7 @@ export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGate
       recommended: true,
     },
     {
-      name: 'Enterprise',
+      name: 'Premium',
       price: 999,
       duration: 'month',
       recommended: false,
