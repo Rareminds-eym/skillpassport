@@ -18,7 +18,6 @@ interface ReconcileEnv {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   SSO_SERVICE: Fetcher;
-  SERVICE_AUTH_SECRET: string;
   CRON_SECRET?: string;
 }
 
@@ -76,7 +75,7 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
     // 3. Re-sync each entry from auth DB
     for (const entry of staleEntries || []) {
       try {
-        const syncData = await ssoSyncSubscription(env, "", entry.user_id);
+        const syncData = await ssoSyncSubscription(env, entry.user_id);
         if (syncData.subscription) {
           await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
           results.subscriptions_synced++;

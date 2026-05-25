@@ -29,17 +29,9 @@ import {
 } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 
-function extractAuthToken(request: Request): string {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('No auth token found');
-  }
-  return authHeader.slice(7);
-}
-
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string };
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
     let body: Record<string, unknown>;
@@ -83,7 +75,6 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
 
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
-    const authToken = extractAuthToken(context.request);
 
     // Step 2.5: Validate plan exists via plans_cache (local shadow of auth DB)
     const { data: validPlan, error: planError } = await supabase
@@ -158,7 +149,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       }
 
       try {
-        subscription = await ssoUpdateSubscriptionField(env, authToken, existingCache.id, {
+        subscription = await ssoUpdateSubscriptionField(env, existingCache.id, {
           plan_id: plan.id,
           plan_code: validPlan.plan_code,
           plan_type: plan.name,
@@ -176,7 +167,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
         // Record failed upgrade as an event in auth DB
         try {
-          await ssoRecordTransaction(env, authToken, {
+          await ssoRecordTransaction(env, {
             user_id: user.sub,
             razorpay_order_id: body.razorpay_order_id as string,
             razorpay_payment_id: body.razorpay_payment_id as string,
@@ -213,7 +204,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       console.log('[VerifyPayment] Creating new subscription for user:', user.sub);
 
       try {
-        subscription = await ssoCreateSubscription(env, authToken, {
+        subscription = await ssoCreateSubscription(env, {
           user_id: user.sub,
           plan_id: plan.id as string,
           plan_code: validPlan.plan_code,
@@ -249,7 +240,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     // Step 3: Record payment transaction in auth DB
     try {
-      await ssoRecordTransaction(env, authToken, {
+      await ssoRecordTransaction(env, {
         subscription_id: subscription.id as string,
         user_id: user.sub,
         razorpay_payment_id: body.razorpay_payment_id as string,
@@ -268,7 +259,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
       await syncUserShadow(supabase, user.sub, body.email || (user as any).email);
 
-      const syncData = await ssoSyncSubscription(env, authToken, user.sub);
+      const syncData = await ssoSyncSubscription(env, user.sub);
       if (syncData.subscription) {
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
       }

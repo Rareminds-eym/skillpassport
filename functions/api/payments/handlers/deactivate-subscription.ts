@@ -15,19 +15,11 @@ import { getServiceClient } from '../../../lib/supabase';
 import { ssoUpdateSubscriptionStatus, ssoSyncSubscription } from '../../../lib/sso-client';
 import { syncSubscriptionCache } from '../../../lib/sync-shadow';
 
-function extractAuthToken(request: Request): string {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) throw new Error('No auth token found');
-  return authHeader.slice(7);
-}
-
 export async function handleDeactivateSubscription(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string };
+  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; SSO_SERVICE: Fetcher };
 
   try {
-    const authToken = extractAuthToken(context.request);
-
     // Parse request body
     let body: Record<string, unknown>;
     try {
@@ -83,7 +75,7 @@ export async function handleDeactivateSubscription(context: AuthenticatedContext
     }
 
     // Write status change through SSO worker (auth DB is source of truth)
-    const ssoResult = await ssoUpdateSubscriptionStatus(env, authToken, subscriptionId, {
+    const ssoResult = await ssoUpdateSubscriptionStatus(env, subscriptionId, {
       status: 'cancelled',
       cancellation_reason: cancellationReason,
       cancelled_by: user.sub,
@@ -91,7 +83,7 @@ export async function handleDeactivateSubscription(context: AuthenticatedContext
 
     // Sync shadow table (non-blocking on failure)
     try {
-      const syncResult = await ssoSyncSubscription(env, authToken, user.sub);
+      const syncResult = await ssoSyncSubscription(env, user.sub);
       if (syncResult.subscription) {
         await syncSubscriptionCache(supabase, syncResult.subscription, syncResult.plan);
       }
