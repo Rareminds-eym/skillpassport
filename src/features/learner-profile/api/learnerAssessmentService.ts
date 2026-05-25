@@ -51,7 +51,7 @@ export interface AssessmentResponse {
  */
 export async function getLearnerAssessmentData(learnerId?: string): Promise<AssessmentResponse> {
   try {
-    const url = `${ORIGIN}/api/learners/assessments`;
+    let url = `${ORIGIN}/api/learners/assessments`;
     // If learnerId provided, use it; otherwise rely on JWT
     if (learnerId) {
       url += `?id=${encodeURIComponent(learnerId)}`;
