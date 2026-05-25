@@ -1,11 +1,12 @@
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
-import { ChangeEvent, FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { UserRole } from '@/features/auth/api';
 import { redirectToRoleDashboard } from '@/features/auth/lib';
 import { useAuthActions } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { trackLogin } from '@/shared/lib/analytics';
 
 interface LoginState {
   email: string;
@@ -53,12 +54,28 @@ const UnifiedLogin = () => {
     selectedRole: null,
   });
 
+  // Guard: login_start fires only once per login attempt
+  const hasStartedLoginRef = useRef(false);
+
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
+    // Fire login_start once on first meaningful interaction
+    // Only track if role is selected to ensure accurate analytics data
+    if (!hasStartedLoginRef.current && (name === 'email' || name === 'password')) {
+      hasStartedLoginRef.current = true;
+      if (state.selectedRole) {
+        trackLogin.start(state.selectedRole);
+      }
+    }
+
     setState((prev) => ({ ...prev, [name]: value, error: '' }));
   };
 
   const handleRoleChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    // Reset ref when role changes to allow tracking new login attempt
+    hasStartedLoginRef.current = false;
+    
     setState((prev) => ({
       ...prev,
       selectedRole: (e.target.value || null) as UserRole | null,
@@ -99,6 +116,9 @@ const UnifiedLogin = () => {
       return;
     }
 
+    // Track login_submit — all validation passed, API call about to start
+    trackLogin.submit(state.selectedRole || undefined);
+
     setState((prev) => ({ ...prev, loading: true, error: '' }));
 
     try {
@@ -122,6 +142,12 @@ const UnifiedLogin = () => {
       if (!hasRole) {
         // User doesn't have this role — log them out and show error
         await useAuthStore.getState().logout();
+        // Track login_failed — role mismatch path
+        trackLogin.failed(
+          `You do not have access to the ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role.`,
+          state.selectedRole || undefined
+        );
+        hasStartedLoginRef.current = false;
         setState((prev) => ({
           ...prev,
           loading: false,
@@ -143,6 +169,9 @@ const UnifiedLogin = () => {
       }
       useAuthStore.setState({ role: actualRole });
 
+      // Track login_success — login complete, role verified, store updated
+      trackLogin.success(useAuthStore.getState().user?.id || '', actualRole);
+
       // Redirect to the intended destination
       if (returnUrl) {
         sessionStorage.removeItem('invitation_return_url');
@@ -151,6 +180,9 @@ const UnifiedLogin = () => {
         redirectToRoleDashboard(state.selectedRole, navigate);
       }
     } catch (error) {
+      // Track login_failed — network/auth error path
+      trackLogin.failed(mapAuthError(error), state.selectedRole || undefined);
+      hasStartedLoginRef.current = false;
       setState((prev) => ({
         ...prev,
         loading: false,
@@ -160,6 +192,7 @@ const UnifiedLogin = () => {
   };
 
   const handleForgotPassword = () => {
+    trackLogin.forgotPasswordClick();
     navigate('/password-reset');
   };
 
