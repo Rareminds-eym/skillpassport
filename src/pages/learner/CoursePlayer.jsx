@@ -1329,9 +1329,9 @@ const CoursePlayer = () => {
       const learnerId = learnerRecord.id;
       const learnerIdText = learnerRecord.learner_id; // Text field to display on certificate
       
-      // Get learner name from users table firstName and lastName
-      const firstName = learnerRecord.users?.firstName || '';
-      const lastName = learnerRecord.users?.lastName || '';
+      // Get learner name from users table firstName and lastName with proper null checks
+      const firstName = learnerRecord?.users?.firstName || '';
+      const lastName = learnerRecord?.users?.lastName || '';
       const learnerName = `${firstName} ${lastName}`.trim() || user?.email?.split('@')[0] || 'Learner';
 
       const { error } = await supabase

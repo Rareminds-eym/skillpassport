@@ -77,7 +77,7 @@ const generateCertificateImage = async (
     const logoY = 70; // 70px from top edge (inside the border)
     ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
   } catch (error) {
-    console.error('Failed to load RareMinds logo:', error);
+    logger.error('Failed to load RareMinds logo:', error instanceof Error ? error : new Error(String(error)));
     // Continue without logo if it fails to load
   }
 
@@ -162,7 +162,7 @@ const generateCertificateImage = async (
     const adminX = rightLineCenter - (signatureWidth / 2); // Center the signature
     ctx.drawImage(adminSig, adminX, signatureYPosition, signatureWidth, adminHeight);
   } catch (error) {
-    console.error('Failed to load signature images:', error);
+    logger.error('Failed to load signature images:', error instanceof Error ? error : new Error(String(error)));
     // Continue without signatures if images fail to load
   }
 
@@ -359,7 +359,7 @@ export const generateCourseCertificate = async (
     return { success: true, certificateUrl, credentialId };
   } catch (error) {
     logger.error('Failed to generate course certificate', error instanceof Error ? error : new Error('Unknown error'));
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
   }
 };
 

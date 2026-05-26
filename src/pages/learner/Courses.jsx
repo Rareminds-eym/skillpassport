@@ -37,8 +37,12 @@ import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
+import { getLogger } from '@/shared/config/logging';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('courses-page');
+
 const Courses = () => {
   const navigate = useNavigate();
   const user = useUser();
@@ -384,9 +388,20 @@ const Courses = () => {
       // Browser security prevents opening data URLs directly in new tabs
       if (certUrl.startsWith('data:')) {
         try {
-          // Convert data URL to blob
+          // Convert data URL to blob with proper validation
           const arr = certUrl.split(',');
-          const mime = arr[0].match(/:(.*?);/)[1];
+          
+          // Validate data URL format
+          if (arr.length < 2) {
+            throw new Error('Invalid data URL: missing base64 content');
+          }
+          
+          const mimeMatch = arr[0].match(/:(.*?);/);
+          if (!mimeMatch || !mimeMatch[1]) {
+            throw new Error('Invalid data URL format: missing MIME type');
+          }
+          const mime = mimeMatch[1];
+          
           const bstr = atob(arr[1]);
           let n = bstr.length;
           const u8arr = new Uint8Array(n);
@@ -400,15 +415,18 @@ const Courses = () => {
           
           if (!newWindow) {
             alert('Please allow popups for this site to view the certificate.');
-          }
-          
-          // Clean up blob URL after a delay
-          setTimeout(() => {
+            // Revoke immediately if window didn't open
             URL.revokeObjectURL(blobUrl);
-          }, 60000);
+          } else {
+            // Revoke after a reasonable delay to allow browser to load the blob
+            setTimeout(() => {
+              URL.revokeObjectURL(blobUrl);
+            }, 5000); // Reduced from 60000ms
+          }
           
           return; // Exit early for data URLs
         } catch (blobError) {
+          logger.error('Error converting data URL to blob', blobError instanceof Error ? blobError : new Error(String(blobError)));
           alert('Error displaying certificate. Please try downloading instead.');
           return;
         }
