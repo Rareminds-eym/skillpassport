@@ -88,20 +88,33 @@ export const ResumePromptScreen = ({
 
   const streamLabel = getStreamLabel(pendingAttempt.stream_id);
 
-  // Calculate total answered questions correctly (no double counting)
-  // restoredResponses already contains all responses (UUID + non-UUID combined)
-  let totalAnsweredQuestions = Object.keys(pendingAttempt.restoredResponses || {}).length;
+  // Determine if this is an adaptive test in progress
+  const isAdaptiveTest = pendingAttempt.isAdaptiveInProgress === true;
 
-  // Fallback: If restoredResponses is empty but all_responses has data, use all_responses
-  if (totalAnsweredQuestions === 0 && pendingAttempt.all_responses) {
-    totalAnsweredQuestions = Object.keys(pendingAttempt.all_responses).length;
+  // Calculate total answered questions
+  let answeredCount = 0;
+
+  if (isAdaptiveTest && pendingAttempt.adaptiveSession) {
+    // For adaptive tests, use adaptiveSession data
+    answeredCount = pendingAttempt.adaptiveSession.questionsAnswered ||
+                    pendingAttempt.adaptiveProgress?.questionsAnswered || 0;
+  } else {
+    // For regular assessments, calculate from responses
+    let totalAnsweredQuestions = Object.keys(pendingAttempt.restoredResponses || {}).length;
+
+    // Fallback: If restoredResponses is empty but all_responses has data, use all_responses
+    if (totalAnsweredQuestions === 0 && pendingAttempt.all_responses) {
+      totalAnsweredQuestions = Object.keys(pendingAttempt.all_responses).length;
+    }
+
+    const adaptiveQuestionsAnswered = pendingAttempt.adaptiveProgress?.questionsAnswered || 0;
+    answeredCount = totalAnsweredQuestions + adaptiveQuestionsAnswered;
   }
 
-  const adaptiveQuestionsAnswered = pendingAttempt.adaptiveProgress?.questionsAnswered || 0;
-  const answeredCount = totalAnsweredQuestions + adaptiveQuestionsAnswered;
-
-  // Calculate progress - use reasonable default if total not provided
-  const progress = calculateProgress(answeredCount, null);
+  // Calculate progress
+  const progress = isAdaptiveTest
+    ? calculateProgress(answeredCount, 50)  // Adaptive tests have 50 questions
+    : calculateProgress(answeredCount, null);
 
   const startedAt = formatDate(pendingAttempt.started_at);
 
@@ -126,8 +139,10 @@ export const ResumePromptScreen = ({
           <div className="bg-gray-50 rounded-xl p-5 mb-6 border border-gray-100">
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Stream</span>
-                <span className="text-sm font-semibold text-gray-800">{streamLabel}</span>
+                <span className="text-sm text-gray-600">Assessment Type</span>
+                <span className="text-sm font-semibold text-gray-800">
+                  {isAdaptiveTest ? 'Adaptive Aptitude Test' : streamLabel}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Started</span>

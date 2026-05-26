@@ -7,9 +7,7 @@
  */
 
 import { ssoClient } from '@/shared/api/ssoClient';
-import { getLogger } from '@/shared/config/logging';
 
-const logger = getLogger('assessment-api');
 const API_BASE = '/api/assessment';
 
 // ============================================================================
@@ -51,6 +49,21 @@ export interface SubmitAssessmentResponse {
   error?: string;
 }
 
+export interface AdaptiveSessionInfo {
+  sessionId: string;
+  currentQuestionIndex: number;
+  questionsAnswered: number;
+  status: string;
+  phase: string;
+  difficulty: number;
+  currentPhaseQuestions: unknown[];
+  allResponses: unknown[];
+}
+
+export interface AdaptiveProgress {
+  questionsAnswered: number;
+}
+
 export interface CheckInProgressResponse {
   success: boolean;
   hasInProgress: boolean;
@@ -66,6 +79,12 @@ export interface CheckInProgressResponse {
   timerRemaining?: number | null;
   elapsedTime?: number;
   started_at?: string;
+  // Adaptive test resume fields
+  adaptiveSession?: AdaptiveSessionInfo | null;
+  isAdaptiveInProgress?: boolean;
+  totalQuestionsAdaptive?: number;
+  // Legacy format for ResumePromptScreen compatibility
+  adaptiveProgress?: AdaptiveProgress;
   error?: string;
 }
 
@@ -91,39 +110,48 @@ export interface UpdateProgressResponse {
 
 /**
  * Start a new assessment attempt
- * Backend creates attempt record and returns sections
+ * Backend checks for existing in-progress attempt first:
+ * - If matching grade/stream exists, reuses it
+ * - If different grade/stream exists, returns 409 Conflict
+ * - Otherwise creates new attempt
  */
 export async function startAssessment(request: StartAssessmentRequest): Promise<StartAssessmentResponse> {
   try {
-    logger.info('Starting assessment', { gradeLevel: request.gradeLevel, streamId: request.streamId });
-
     const response = await ssoClient.fetch(`${API_BASE}/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
     });
 
+    // Handle 409 Conflict - existing assessment for different grade/stream
+    if (response.status === 409) {
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+      return {
+        success: false,
+        error: error.error || 'You have an in-progress assessment for a different grade level. Please abandon it first.',
+        existingAttemptId: error.existingAttemptId
+      };
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      logger.error('Failed to start assessment', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to start assessment' 
+      return {
+        success: false,
+        error: error.message || 'Failed to start assessment'
       };
     }
 
     const data = await response.json();
-    logger.info('Assessment started', { attemptId: data.attemptId });
-    return { 
-      success: true, 
-      attemptId: data.attemptId, 
-      sections: data.sections 
+    return {
+      success: true,
+      attemptId: data.attemptId,
+      sections: data.sections,
+      isResumed: data.isResumed || false
     };
   } catch (err: any) {
-    logger.error('Error starting assessment', err);
-    return { 
-      success: false, 
-      error: err.message || 'Network error' 
+    return {
+      success: false,
+      error: err.message || 'Network error'
     };
   }
 }
@@ -142,16 +170,14 @@ export async function saveResponse(request: SaveResponseRequest): Promise<SaveRe
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      logger.error('Failed to save response', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to save response' 
+      return {
+        success: false,
+        error: error.message || 'Failed to save response'
       };
     }
 
     return { success: true };
   } catch (err: any) {
-    logger.error('Error saving response', err);
     return { 
       success: false, 
       error: err.message || 'Network error' 
@@ -173,9 +199,8 @@ export async function updateProgress(request: UpdateProgressRequest): Promise<Up
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      logger.error('Failed to update progress', error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error.message || 'Failed to update progress',
         userMessage: error.userMessage || 'Could not save your progress. Please check your internet connection.'
       };
@@ -183,7 +208,6 @@ export async function updateProgress(request: UpdateProgressRequest): Promise<Up
 
     return { success: true };
   } catch (err: any) {
-    logger.error('Error updating progress', err);
     return { 
       success: false, 
       error: err.message || 'Network error',
@@ -198,8 +222,6 @@ export async function updateProgress(request: UpdateProgressRequest): Promise<Up
  */
 export async function submitAssessment(request: SubmitAssessmentRequest): Promise<SubmitAssessmentResponse> {
   try {
-    logger.info('Submitting assessment', { attemptId: request.attemptId });
-
     const response = await ssoClient.fetch(`${API_BASE}/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -208,24 +230,21 @@ export async function submitAssessment(request: SubmitAssessmentRequest): Promis
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      logger.error('Failed to submit assessment', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to submit assessment' 
+      return {
+        success: false,
+        error: error.message || 'Failed to submit assessment'
       };
     }
 
     const data = await response.json();
-    logger.info('Assessment submitted successfully', { resultId: data.resultId });
     return { 
       success: true, 
-      resultId: data.resultId 
+      resultId: data.resultId
     };
   } catch (err: any) {
-    logger.error('Error submitting assessment', err);
-    return { 
-      success: false, 
-      error: err.message || 'Network error' 
+    return {
+      success: false,
+      error: err.message || 'Network error'
     };
   }
 }
@@ -243,11 +262,10 @@ export async function checkInProgress(): Promise<CheckInProgressResponse> {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      logger.error('Failed to check in-progress', error);
-      return { 
-        success: false, 
-        hasInProgress: false, 
-        error: error.message 
+      return {
+        success: false,
+        hasInProgress: false,
+        error: error.message
       };
     }
 
@@ -266,14 +284,19 @@ export async function checkInProgress(): Promise<CheckInProgressResponse> {
       sectionTimings: data.sectionTimings,
       timerRemaining: data.timerRemaining,
       elapsedTime: data.elapsedTime,
-      started_at: data.started_at
+      started_at: data.started_at,
+      // Adaptive test resume fields
+      adaptiveSession: data.adaptiveSession,
+      isAdaptiveInProgress: data.isAdaptiveInProgress,
+      totalQuestionsAdaptive: data.totalQuestionsAdaptive,
+      // Legacy format for ResumePromptScreen compatibility
+      adaptiveProgress: data.adaptiveProgress
     };
   } catch (err: any) {
-    logger.error('Error checking in-progress assessment', err);
-    return { 
-      success: false, 
-      hasInProgress: false, 
-      error: err.message || 'Network error' 
+    return {
+      success: false,
+      hasInProgress: false,
+      error: err.message || 'Network error'
     };
   }
 }
@@ -292,19 +315,17 @@ export async function abandonAttempt(attemptId: string): Promise<{ success: bool
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      logger.error('Failed to abandon attempt', error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to abandon attempt' 
+      return {
+        success: false,
+        error: error.message || 'Failed to abandon attempt'
       };
     }
 
     return { success: true };
   } catch (err: any) {
-    logger.error('Error abandoning attempt', err);
-    return { 
-      success: false, 
-      error: err.message || 'Network error' 
+    return {
+      success: false,
+      error: err.message || 'Network error'
     };
   }
 }

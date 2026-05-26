@@ -68,7 +68,31 @@ export interface StartAssessmentResult {
 }
 
 /**
+ * Adaptive session data for resume context
+ */
+export interface AdaptiveSessionInfo {
+  sessionId: string;
+  currentQuestionIndex: number;
+  questionsAnswered: number;
+  status: string;
+  phase: string;
+  difficulty: number;
+  currentPhaseQuestions: unknown[];
+  allResponses: unknown[];
+}
+
+/**
+ * Adaptive progress (legacy format for ResumePromptScreen)
+ */
+export interface AdaptiveProgress {
+  questionsAnswered: number;
+}
+
+/**
  * Result of checking in-progress status
+ *
+ * Supports both regular assessment and adaptive aptitude test resume
+ * If isAdaptiveInProgress is true, use adaptiveSession data for resume
  */
 export interface CheckInProgressResult {
   success: boolean;
@@ -85,6 +109,12 @@ export interface CheckInProgressResult {
   timerRemaining: number | null;
   elapsedTime: number;
   started_at: string | null;
+  // Adaptive test resume fields
+  adaptiveSession?: AdaptiveSessionInfo | null;
+  isAdaptiveInProgress?: boolean;
+  totalQuestionsAdaptive?: number;
+  // Legacy format for ResumePromptScreen compatibility
+  adaptiveProgress?: AdaptiveProgress;
 }
 
 /**

@@ -44,14 +44,67 @@ export async function startHandler(context: AuthenticatedContext) {
 
     const learnerId = learnerData!.id;
 
+    // **CRITICAL: Check for existing in-progress attempt BEFORE creating new one**
+    const { data: existingAttempts, error: existingError } = await supabase
+      .from('personal_assessment_attempts')
+      .select('id, grade_level, stream_id, status, all_responses, current_section_index, current_question_index')
+      .eq('learner_id', learnerId)
+      .eq('status', 'in_progress')
+      .order('started_at', { ascending: false })
+      .limit(1);
+
+    let attempt = null;
+
+    // If in-progress attempt exists for same grade/stream, reuse it
+    if (existingAttempts && existingAttempts.length > 0) {
+      const existingAttempt = existingAttempts[0];
+      const sameGrade = existingAttempt.grade_level === gradeLevel;
+      const sameStream = existingAttempt.stream_id === streamId || (streamId === null && existingAttempt.stream_id === null);
+
+      if (sameGrade && sameStream) {
+        attempt = existingAttempt;
+      } else {
+        return Response.json(
+          {
+            error: 'You have an in-progress assessment for a different grade/stream level. Please abandon it first or resume it.',
+            existingAttemptId: existingAttempt.id,
+            existingGradeLevel: existingAttempt.grade_level,
+            existingStreamId: existingAttempt.stream_id
+          },
+          { status: 409 } // 409 Conflict
+        );
+      }
+    }
+
+    // Only create NEW attempt if no matching in-progress one exists
+    if (!attempt) {
+      const { data: newAttempt, error: insertError } = await supabase
+        .from('personal_assessment_attempts')
+        .insert({
+          learner_id: learnerId,
+          grade_level: gradeLevel,
+          stream_id: streamId || null,
+          status: 'in_progress',
+          all_responses: {},
+          timer_remaining: null,
+          elapsed_time: 0,
+          current_section_index: 0,
+          current_question_index: 0
+        })
+        .select('*')
+        .single();
+
+      if (insertError || !newAttempt) {
+        return Response.json({ error: 'Failed to create assessment attempt', message: insertError?.message }, { status: 500 });
+      }
+
+      attempt = newAttempt;
+    }
+
     let sections;
     try {
-      const loadStart = Date.now();
       sections = await loadSectionsWithQuestions(supabase, gradeLevel, streamId);
-      const loadTime = Date.now() - loadStart;
-      console.log(`[StartHandler] Loaded sections in ${loadTime}ms`);
     } catch (loadError) {
-      console.error('[StartHandler] Error loading sections:', loadError);
       return Response.json(
         { error: 'Failed to load assessment sections', message: loadError instanceof Error ? loadError.message : 'Unknown error' },
         { status: 500 }
@@ -60,26 +113,6 @@ export async function startHandler(context: AuthenticatedContext) {
 
     if (!sections || sections.length === 0) {
       return Response.json({ error: 'No assessment sections available for this grade level' }, { status: 404 });
-    }
-
-    const { data: attempt, error: insertError } = await supabase
-      .from('personal_assessment_attempts')
-      .insert({
-        learner_id: learnerId,
-        grade_level: gradeLevel,
-        stream_id: streamId || null,
-        status: 'in_progress',
-        all_responses: {},
-        timer_remaining: null,
-        elapsed_time: 0,
-        current_section_index: 0,
-        current_question_index: 0
-      })
-      .select('*')
-      .single();
-
-    if (insertError || !attempt) {
-      return Response.json({ error: 'Failed to create assessment attempt', message: insertError?.message }, { status: 500 });
     }
 
     const attemptValidation = validateAttemptData(attempt);
@@ -96,7 +129,6 @@ export async function startHandler(context: AuthenticatedContext) {
 
     return Response.json(result, { status: 201 });
   } catch (error) {
-    console.error('[StartHandler] Error starting assessment:', error);
     return Response.json(
       {
         error: 'Failed to start assessment',

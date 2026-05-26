@@ -2,7 +2,6 @@ import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useUser } from '@/shared/model/authStore';
-import { getLogger } from '@/shared/config/logging';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, Button } from '@/shared/ui';
 
@@ -38,7 +37,8 @@ import ResumePromptScreen from './ResumePromptScreen';
 // Config
 import type { GradeLevel as AdaptiveGradeLevel } from '@/shared/types/adaptiveAptitude';
 
-const logger = getLogger('assessment-page');
+// Adaptive Aptitude Service
+import AdaptiveAptitudeApiService from '../api/adaptiveAptitudeApiService';
 
 type ScreenType = 'loading' | 'grade-selection' | 'category-selection' | 'section-intro' | 'assessment' | 'complete' | 'error' | 'resume-prompt';
 
@@ -86,6 +86,7 @@ const AssessmentTestPage: React.FC = () => {
   const [resumeData, setResumeData] = useState<any>(null);
   const [isLoadingResume, setIsLoadingResume] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [isResumingAdaptive, setIsResumingAdaptive] = useState(false);
 
   // Learner grade hook - get complete profile data
   const {
@@ -120,14 +121,11 @@ const AssessmentTestPage: React.FC = () => {
     learnerId: learnerId || '',
     gradeLevel: getAdaptiveGradeLevel(selectedGrade),
     onTestComplete: async () => {
-      logger.info('✅ Adaptive test completed - submitting assessment');
-      
       // Always submit the assessment when adaptive test completes
       // The adaptive test is always the last section
       await handleSubmit();
     },
     onError: (err) => {
-      logger.error('❌ Adaptive test error', err);
       store.setError(err.message);
     },
   });
@@ -145,14 +143,6 @@ const AssessmentTestPage: React.FC = () => {
         // Check if there's an in-progress assessment to resume
         const inProgressResponse = await checkInProgress();
 
-        logger.info('Check in-progress response', {
-          success: inProgressResponse.success,
-          hasInProgress: inProgressResponse.hasInProgress,
-          attemptId: inProgressResponse.attemptId,
-          gradeLevel: inProgressResponse.gradeLevel,
-          streamId: inProgressResponse.streamId,
-        });
-
         if (inProgressResponse.success && inProgressResponse.hasInProgress) {
           // Show resume prompt with available data (will fetch sections on Resume click)
           setResumeData(inProgressResponse);
@@ -162,13 +152,11 @@ const AssessmentTestPage: React.FC = () => {
           if (learnerId) {
             setCurrentScreen('grade-selection');
           } else {
-            logger.warn('No learner data available');
             setCurrentScreen('grade-selection');
           }
         }
       } catch (err: unknown) {
         const error = err instanceof Error ? err : new Error('Unknown error');
-        logger.error('Error initializing assessment', error);
         setCurrentScreen('grade-selection');
       }
     };
@@ -190,12 +178,6 @@ const AssessmentTestPage: React.FC = () => {
       const resumeStreamId = resumeData?.streamId || resumeData?.stream_id;
       if (resumeData?.gradeLevel === selectedGrade && resumeStreamId === streamId) {
         // Resume existing attempt instead of creating a new one
-        logger.info('Resuming existing in-progress assessment', {
-          attemptId: resumeData.attemptId,
-          gradeLevel: selectedGrade,
-          streamId,
-        });
-
         const { gradeLevel, streamId: resumeStreamId, currentSectionIndex, currentQuestionIndex, answers, elapsedTime, attemptId, sections } = resumeData;
 
         if (sections) {
@@ -265,6 +247,12 @@ const AssessmentTestPage: React.FC = () => {
     if (!resumeData) return;
 
     setIsLoadingResume(true);
+    // Set flag immediately to prevent startTest() from being called during resume
+    const isAdaptiveInProgress = resumeData.isAdaptiveInProgress;
+    if (isAdaptiveInProgress) {
+      setIsResumingAdaptive(true);
+    }
+
     try {
       const gradeLevel = resumeData.gradeLevel;
       const streamId = resumeData.streamId || resumeData.stream_id;
@@ -285,37 +273,81 @@ const AssessmentTestPage: React.FC = () => {
           streamId
         );
 
-        // Set current position to where user left off
-        store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
+        // If resuming adaptive test, restore it properly
+        if (isAdaptiveInProgress && resumeData.adaptiveSession) {
+          // Find the adaptive section
+          const adaptiveSection = sectionsToUse.find((s: any) => s.isAdaptive || s.name === 'adaptive_aptitude');
+          if (adaptiveSection) {
+            const adaptiveSectionIndex = sectionsToUse.indexOf(adaptiveSection);
 
-        // Restore all previous answers
-        if (answers && Object.keys(answers).length > 0) {
-          Object.entries(answers).forEach(([questionId, answer]) => {
-            store.saveAnswer(questionId, answer);
-          });
+            // Initialize store to point to adaptive section
+            store.setCurrentQuestion(adaptiveSectionIndex, 0);
+
+            // Restore adaptive session from backend
+            try {
+              const resumedSessionData = await AdaptiveAptitudeApiService.resumeTest(
+                resumeData.adaptiveSession.sessionId
+              );
+
+              if (resumedSessionData.session && resumedSessionData.currentQuestion) {
+                // Initialize both store AND hook with resumed session data
+                store.initializeAdaptiveSession(
+                  resumedSessionData.session,
+                  resumedSessionData.currentQuestion
+                );
+
+                // Set selectedGrade so the hook's gradeLevel matches
+                const resumedGradeLevel = resumeData.gradeLevel;
+                if (resumedGradeLevel) {
+                  setSelectedGrade(resumedGradeLevel);
+                }
+
+                setShowSectionIntro(false);
+                setCurrentScreen('assessment');
+                setIsResumingAdaptive(false);
+              } else {
+                throw new Error('Failed to resume adaptive test');
+              }
+            } catch (resumeError) {
+              store.setError('Failed to resume adaptive test');
+              setCurrentScreen('error');
+              setIsResumingAdaptive(false);
+              return;
+            }
+          }
+        } else {
+          // Regular resume flow
+          // Set current position to where user left off
+          store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
+
+          // Restore all previous answers
+          if (answers && Object.keys(answers).length > 0) {
+            Object.entries(answers).forEach(([questionId, answer]) => {
+              store.saveAnswer(questionId, answer);
+            });
+          }
+
+          // Set elapsed time for non-timed sections
+          if (elapsedTime) {
+            setElapsedTime(elapsedTime);
+          }
+
+          // Skip intro and go directly to assessment
+          setShowSectionIntro(false);
+          setCurrentScreen('assessment');
         }
-
-        // Set elapsed time for non-timed sections
-        if (elapsedTime) {
-          setElapsedTime(elapsedTime);
-        }
-
-        // Skip intro and go directly to assessment
-        setShowSectionIntro(false);
-        setCurrentScreen('assessment');
       } else {
         store.setError('Failed to load assessment');
         setCurrentScreen('error');
       }
     } catch (error) {
       const err = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('Error resuming assessment:', err);
       store.setError(err);
       setCurrentScreen('error');
     } finally {
       setIsLoadingResume(false);
     }
-  }, [resumeData, store]);
+  }, [resumeData, store, adaptiveHook]);
 
   // Handle start fresh - abandon previous attempt
   const handleStartFresh = useCallback(async (): Promise<void> => {
@@ -334,7 +366,7 @@ const AssessmentTestPage: React.FC = () => {
       setShowSectionIntro(true);
       setCurrentScreen('grade-selection');
     } catch (error) {
-      logger.error('Error abandoning attempt:', error);
+      // Silently fail on abandon
     } finally {
       setIsLoadingResume(false);
     }
@@ -361,10 +393,6 @@ const AssessmentTestPage: React.FC = () => {
 
       if (result.success) {
         store.setStatus('completed');
-        
-        // Show a loading message while AI analyzes the assessment
-        logger.info('Assessment submitted - AI analysis will begin shortly');
-        
         setCurrentScreen('complete');
       } else {
         store.setError(result.error || 'Failed to submit assessment');
@@ -405,10 +433,16 @@ const AssessmentTestPage: React.FC = () => {
 
     const currentSection = store.sections[store.currentSectionIndex];
 
-    if (isAdaptiveSection(currentSection) && !adaptiveHook.sessionId) {
+    // Only start a NEW test if:
+    // 1. We're in an adaptive section
+    // 2. AND we don't already have a session (either resumed or already started)
+    // 3. AND we're not currently in the process of resuming
+    const alreadyHasSession = adaptiveHook.sessionId || store.adaptiveSessionId;
+
+    if (isAdaptiveSection(currentSection) && !alreadyHasSession && !isResumingAdaptive) {
       adaptiveHook.startTest();
     }
-  }, [store.currentSectionIndex, learnerId, selectedGrade, adaptiveHook.sessionId]);
+  }, [store.currentSectionIndex, learnerId, selectedGrade, adaptiveHook.sessionId, store.adaptiveSessionId, isResumingAdaptive]);
 
   // Timer for non-timed sections
   useEffect(() => {
@@ -695,10 +729,6 @@ const AssessmentTestPage: React.FC = () => {
                 onNext={() => {
                   // Block only if offline
                   if (!syncStatus.isOnline) {
-                    logger.warn('Cannot proceed: offline', {
-                      attemptId: store.attemptId,
-                      currentQuestion: currentQuestion?.id,
-                    });
                     toast.error('Cannot proceed. No internet connection.', {
                       duration: 3000,
                       position: 'top-right',
