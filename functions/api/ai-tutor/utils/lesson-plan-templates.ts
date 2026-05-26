@@ -5,9 +5,8 @@
  * AI prompts using Role-Task-Context-Format + Chain-of-Thought reasoning.
  */
 
-import type { LessonPlanConfig, LessonPlanTemplateType } from '../../../../src/features/ai-tutor/types/lesson-plan';
-import type { CourseContext } from './course-context';
-import { formatCourseContextForPrompt } from './course-context';
+import type { LessonPlanConfig, LessonPlanTemplateType } from '../types/lesson-plan';
+import { type CourseContext, formatCourseContextForPrompt } from './course-context';
 
 // ==================== HELPER FUNCTIONS ====================
 

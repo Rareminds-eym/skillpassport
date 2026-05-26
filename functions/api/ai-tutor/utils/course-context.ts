@@ -13,7 +13,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { ConversationPhase, getPhaseInstructions } from './conversation-phases';
 import type { WorksheetConfig } from '../types/worksheet';
 import { buildWorksheetPrompt } from './worksheet-templates';
-import type { LessonPlanConfig } from '../../../../src/features/ai-tutor/types/lesson-plan';
+import type { LessonPlanConfig } from '../types/lesson-plan';
 import { buildLessonPlanPrompt } from './lesson-plan-templates';
 
 // ==================== USER ROLE TYPES ====================

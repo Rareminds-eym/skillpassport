@@ -10,13 +10,12 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 import { getServiceClient } from '../../../lib/auth';
 import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
 import type { WorksheetConfig } from '../types/worksheet';
-import type { LessonPlanConfig } from '../../../../src/features/ai-tutor/types/lesson-plan';
+import type { LessonPlanConfig } from '../types/lesson-plan';
 import {
   buildCourseContext,
   buildSystemPrompt
@@ -90,10 +89,6 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
   const learnerId = user.sub;
   const supabase = getServiceClient(env);
-
-  // Use admin client for database writes
-  // strict: type-safe cast - RequiredEnv is compatible with PagesEnv
-  const supabaseAdmin = createSupabaseAdminClient(env as PagesEnv);
 
   // Parse request body
   let body: AiTutorChatRequest;
@@ -171,7 +166,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
     // Check generation limit for teacher-learners
     if (isTeacherLearner && isGenerationRequest) {
-      const limitReached = await hasReachedLimit(supabaseAdmin, learnerId);
+      const limitReached = await hasReachedLimit(supabase, learnerId);
       
       if (limitReached) {
         logger.warn('Blocked: teacher learner reached generation limit');
@@ -453,7 +448,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           // Save conversation to database
           if (currentConversationId) {
             // Update existing conversation atomically using raw SQL
-            const { error: updateError } = await supabaseAdmin.rpc('append_tutor_messages', {
+            const { error: updateError } = await supabase.rpc('append_tutor_messages', {
               p_conversation_id: currentConversationId,
               p_learner_id: learnerId,
               p_new_messages: [userMessage, assistantMessage]
@@ -518,7 +513,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               logger.warn('Title generation failed, using default', { error: error instanceof Error ? error.message : String(error) });
             }
 
-            const { data: newConv } = await supabaseAdmin
+            const { data: newConv } = await supabase
               .from('tutor_conversations')
               .insert({
                 learner_id: learnerId,
@@ -539,7 +534,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           // Increment generation count for teacher-learners
           if (isTeacherLearner && isGenerationRequest) {
             try {
-              generationUsage = await incrementGenerationCount(supabaseAdmin, learnerId);
+              generationUsage = await incrementGenerationCount(supabase, learnerId);
               logger.info('Generation count incremented', { used: generationUsage.used, remaining: generationUsage.remaining });
             } catch (err) {
               // Log error but don't fail the stream - the generation already succeeded
