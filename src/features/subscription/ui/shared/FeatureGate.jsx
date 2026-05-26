@@ -400,7 +400,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
             setIsVerifying(false);
           }
         },
-        prefill: { email: order.userEmail, name: order.userName },
+        prefill: { email: data.userEmail, name: data.userName },
         theme: { color: '#4f46e5' },
         modal: {
           ondismiss: () => {
