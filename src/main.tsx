@@ -9,6 +9,7 @@ import { GlobalErrorBoundary } from './app/providers/GlobalErrorBoundary';
 import { validateFileSizeConfig } from './shared/config/fileSizeLimits';
 import { getLogger } from '@/shared/config/logging';
 import { getAnalyticsConfig, validateAnalyticsConfig } from '@/shared/config/analytics';
+import { initializeAnalytics } from '@/shared/lib/analytics';
 
 const logger = getLogger('main');
 
@@ -38,6 +39,9 @@ try {
       auth: analyticsConfig.debugMode ? undefined : undefined,
       preview: analyticsConfig.debugMode ? undefined : undefined,
     });
+
+    // Initialize analytics module after GTM is loaded
+    initializeAnalytics();
 
     if (analyticsConfig.debugMode) {
       logger.info('[Analytics] GTM initialized', {
