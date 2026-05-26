@@ -36,7 +36,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
-import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 
 import { useUser } from '@/shared/model/authStore';
 const Courses = () => {
@@ -91,18 +91,9 @@ const Courses = () => {
       return true;
     }
     
-    // For non-freemium courses, check user's plan level
-    const planHierarchy = {
-      'freemium': 0,
-      'basic': 1,
-      'professional': 2,
-      'premium': 3,
-      'enterprise': 3,
-      'ecosystem': 3
-    };
-    
-    const userPlanLevel = planHierarchy[userPlan?.toLowerCase()] || 0;
-    const coursePlanLevel = planHierarchy[coursePlanType] || 0;
+    // For non-freemium courses, check user's plan level using shared constant
+    const userPlanLevel = PLAN_HIERARCHY_LEVELS[userPlan?.toLowerCase()] || 0;
+    const coursePlanLevel = PLAN_HIERARCHY_LEVELS[coursePlanType] || 0;
     
     return userPlanLevel >= coursePlanLevel;
   };

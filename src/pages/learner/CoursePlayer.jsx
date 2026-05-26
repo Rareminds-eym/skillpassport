@@ -1303,18 +1303,26 @@ const CoursePlayer = () => {
     // Update course enrollment to completed status
     try {
       // Get learner's database ID and user's name from users table
-      const { data: learnerRecord, error: learnerError } = await supabase
-        .from('learners')
-        .select(`
-          id,
-          learner_id,
-          users!inner(firstName, lastName)
-        `)
-        .eq('user_id', user.id)
-        .single();
+      let learnerRecord;
+      try {
+        const { data, error: learnerError } = await supabase
+          .from('learners')
+          .select(`
+            id,
+            learner_id,
+            users!inner(firstName, lastName)
+          `)
+          .eq('user_id', user.id)
+          .single();
 
-      if (learnerError || !learnerRecord) {
-        logger.error('Error fetching learner record', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
+        if (learnerError || !data) {
+          logger.error('Error fetching learner record', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
+          return;
+        }
+        
+        learnerRecord = data;
+      } catch (err) {
+        logger.error('Unexpected error fetching learner record', err instanceof Error ? err : new Error(String(err)));
         return;
       }
 
@@ -1365,9 +1373,11 @@ const CoursePlayer = () => {
           
           // For webinars, download certificate immediately
           if (isWebinar) {
+            let downloadSucceeded = false;
             try {
               await downloadCertificate(certResult.certificateUrl, courseName);
               logger.info('Webinar certificate downloaded successfully');
+              downloadSucceeded = true;
               // Show success toast and navigate to courses
               toast.success(` Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
               setTimeout(() => {
@@ -1379,14 +1389,20 @@ const CoursePlayer = () => {
                 duration: 4000,
                 position: 'top-right',
               });
-              // Still navigate even if download fails
-              navigate('/learner/my-learning', { 
-                state: { 
-                  courseCompleted: true, 
-                  courseName,
-                  certificateUrl: certResult.certificateUrl 
-                } 
-              });
+            } finally {
+              // Ensure navigation happens even if unexpected error occurs
+              if (!downloadSucceeded) {
+                // Navigate to my learning page if download failed
+                setTimeout(() => {
+                  navigate('/learner/my-learning', { 
+                    state: { 
+                      courseCompleted: true, 
+                      courseName,
+                      certificateUrl: certResult.certificateUrl 
+                    } 
+                  });
+                }, 1500);
+              }
             }
           } else {
             // For courses, navigate to my learning page with success message

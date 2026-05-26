@@ -35,6 +35,20 @@ export const PLAN_HIERARCHY = [
 ];
 
 /**
+ * Plan hierarchy levels for access control
+ * Maps plan codes to numeric levels for comparison
+ */
+export const PLAN_HIERARCHY_LEVELS = {
+  'freemium': 0,
+  'basic': 1,
+  'professional': 2,
+  'premium': 3,
+  'enterprise': 3,
+  'ecosystem': 3,
+  'enterprise_ecosystem': 3
+};
+
+/**
  * Freemium plan feature configuration
  * Only these features are accessible on Freemium tier (freemium)
  */
@@ -77,4 +91,4 @@ export function meetsMinimumPlan(userPlanId, requiredPlanId) {
   return userIndex >= requiredIndex;
 }
 
-export default { PLAN_IDS, PLAN_HIERARCHY, FREEMIUM_FEATURES, meetsMinimumPlan };
+export default { PLAN_IDS, PLAN_HIERARCHY, PLAN_HIERARCHY_LEVELS, FREEMIUM_FEATURES, meetsMinimumPlan };

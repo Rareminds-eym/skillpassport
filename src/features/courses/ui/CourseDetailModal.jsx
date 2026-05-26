@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/shared/model/authStore';
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
-import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 
 const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress }) => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -18,31 +18,12 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
   // Check if user has access to this course based on course's plan_type
   const coursePlanType = course.plan_type?.toLowerCase() || 'freemium';
-   
-  // Define plan hierarchy
-  const planHierarchy = {
-    'freemium': 0,
-    'basic': 1,
-    'professional': 2,
-    'premium': 3,
-    'enterprise': 3,
-    'ecosystem': 3
-  };
   
-  // If course is freemium, everyone can access it
-  if (coursePlanType === 'freemium') {
-    var hasAccess = true;
-    var requiredPlan = null;
-    } else {
-    // For non-freemium courses, check if user's plan meets the course requirement
-    const userPlanLevel = planHierarchy[userPlan?.toLowerCase()] || 0;
-    const coursePlanLevel = planHierarchy[coursePlanType] || 0;
-    
-    var hasAccess = userPlanLevel >= coursePlanLevel;
-    var requiredPlan = coursePlanType;
-    
-
-  }
+  // Calculate access and required plan using const with ternary and shared constant
+  const userPlanLevel = PLAN_HIERARCHY_LEVELS[userPlan?.toLowerCase()] || 0;
+  const coursePlanLevel = PLAN_HIERARCHY_LEVELS[coursePlanType] || 0;
+  const hasAccess = coursePlanType === 'freemium' ? true : userPlanLevel >= coursePlanLevel;
+  const requiredPlan = coursePlanType === 'freemium' ? null : coursePlanType;
 
   // Get progress for this course
   const progress = enrollmentProgress?.[course.course_id];

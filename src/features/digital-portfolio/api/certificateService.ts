@@ -17,7 +17,14 @@ const generateCredentialId = () => {
   return `CERT-${timestamp}-${random}`;
 };
 
-const generateCertificateImage = async (learnerName, courseName, completionDate, credentialId, learnerIdText, courseType = 'course') => {
+const generateCertificateImage = async (
+  learnerName: string,
+  courseName: string,
+  completionDate: string,
+  credentialId: string,
+  learnerIdText: string | null,
+  courseType: 'course' | 'webinar' = 'course'
+): Promise<string> => {
   // Determine text based on course type
   const isWebinar = courseType === 'webinar';
   const certificateSubtitle = isWebinar ? 'OF PARTICIPATION' : 'OF COMPLETION';
@@ -52,7 +59,7 @@ const generateCertificateImage = async (learnerName, courseName, completionDate,
   });
 
   // Load and draw RareMinds logo at top left
-  const loadImage = (src) => {
+  const loadImage = (src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve(img);
@@ -182,7 +189,7 @@ const generateCertificateImage = async (learnerName, courseName, completionDate,
   return canvas.toDataURL('image/png', 1.0);
 };
 
-const dataURLtoBlob = (dataURL) => {
+const dataURLtoBlob = (dataURL: string): Blob => {
   const [header, data] = dataURL.split(',');
   const mime = header.match(/:(.*?);/)[1];
   const binary = atob(data);
@@ -193,7 +200,12 @@ const dataURLtoBlob = (dataURL) => {
   return new Blob([array], { type: mime });
 };
 
-const uploadToR2 = async (blob, learnerId, courseId, credentialId) => {
+const uploadToR2 = async (
+  blob: Blob,
+  learnerId: string,
+  courseId: string,
+  credentialId: string
+): Promise<string> => {
   const { ssoClient } = await import('@/shared/api/ssoClient');
   
   const filename = `certificates/${learnerId}/${courseId}/${credentialId}.png`;
@@ -234,7 +246,24 @@ const uploadToR2 = async (blob, learnerId, courseId, credentialId) => {
   return proxyUrl;
 };
 
-export const generateCourseCertificate = async (learnerId, learnerName, courseId, courseName, educatorName, learnerIdText = null, courseType = 'course', issuedOnDate = null) => {
+interface CertificateResult {
+  success: boolean;
+  certificateUrl: string;
+  credentialId: string;
+  warning?: string;
+  error?: string;
+}
+
+export const generateCourseCertificate = async (
+  learnerId: string,
+  learnerName: string,
+  courseId: string,
+  courseName: string,
+  educatorName: string,
+  learnerIdText: string | null = null,
+  courseType: 'course' | 'webinar' = 'course',
+  issuedOnDate: string | null = null
+): Promise<CertificateResult> => {
   try {
     const credentialId = generateCredentialId();
     
@@ -391,10 +420,10 @@ export const downloadCertificate = async (certificateUrl, courseName) => {
 /**
  * Get the viewable/downloadable URL for a certificate
  * Converts direct R2 URLs to proxy URLs that work without public bucket access
- * @param {string} certificateUrl - The certificate URL
+ * @param {string | null} certificateUrl - The certificate URL
  * @param {string} mode - 'inline' for viewing in browser, 'download' for downloading
  */
-export const getCertificateProxyUrl = (certificateUrl: string, mode: 'inline' | 'download' = 'inline'): string | null => {
+export const getCertificateProxyUrl = (certificateUrl: string | null, mode: 'inline' | 'download' = 'inline'): string | null => {
   const STORAGE_API_URL = getApiUrl('storage');
 
   if (!certificateUrl) {
