@@ -1032,9 +1032,18 @@ const ModernLearningCard = ({
 
         {/* Course Title & Provider */}
         <div className="mb-4 sm:mb-5">
-          <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-            {item.course || item.title}
-          </h3>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors flex-1">
+              {item.course || item.title}
+            </h3>
+            {/* Issued Date Badge - Only show if issued_on is available */}
+            {item.issued_on && (
+              <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-200">
+                <Calendar className="w-3 h-3" />
+                <span>{new Date(item.issued_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+            )}
+          </div>
           <p className="text-slate-600 text-sm line-clamp-1 flex items-center gap-1.5">
             <Users className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400" />
             {item.provider || item.organization}

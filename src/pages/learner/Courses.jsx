@@ -988,16 +988,6 @@ const Courses = () => {
                           </Badge>
                         </motion.div>
                       )}
-                      {/* {isNewCourse(course.created_at) && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                        >
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                            NEW
-                          </Badge>
-                        </motion.div>
-                      )} */}
                     </div>
                   </div>
 
@@ -1009,6 +999,14 @@ const Courses = () => {
                         </Badge>
                       </div> */}
                       <span className="text-xs font-medium text-gray-500">{course.code}</span>
+                      
+                      {/* Issued Date - Right Side */}
+                      {course.issued_on && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Clock className="w-3 h-3" />
+                          <span>{new Date(course.issued_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                      )}
                     </div>
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
                   </CardHeader>
