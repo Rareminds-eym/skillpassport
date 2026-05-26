@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getUserRole } from '../roleLookupService';
+import { getUserRole } from '@/entities/user/api/roleLookupService';
 import { supabase } from '@/shared/api/supabaseClient';
 
 // Mock supabase
@@ -30,7 +30,10 @@ describe('roleLookupService', () => {
         school_id: 'school-1'
       };
 
-      vi.mocked(supabase.from).mockReturnValue(createMockQuery(mockLearner) as any);
+      vi.mocked(supabase.from).mockImplementation((table) => {
+        if (table === 'learners') return createMockQuery(mockLearner) as any;
+        return createMockQuery(null) as any;
+      });
 
       const result = await getUserRole('user-123', 'learner@example.com');
 
@@ -47,10 +50,10 @@ describe('roleLookupService', () => {
         name: 'Jane Smith'
       };
 
-      // First call (learners) returns null, second call (recruiters) returns data
-      vi.mocked(supabase.from)
-        .mockReturnValueOnce(createMockQuery(null) as any)
-        .mockReturnValueOnce(createMockQuery(mockRecruiter) as any);
+      vi.mocked(supabase.from).mockImplementation((table) => {
+        if (table === 'recruiters') return createMockQuery(mockRecruiter) as any;
+        return createMockQuery(null) as any;
+      });
 
       const result = await getUserRole('user-123', 'recruiter@example.com');
 
@@ -68,11 +71,10 @@ describe('roleLookupService', () => {
         school_id: 'school-1'
       };
 
-      // Learners and recruiters return null, school_educators returns data
-      vi.mocked(supabase.from)
-        .mockReturnValueOnce(createMockQuery(null) as any)
-        .mockReturnValueOnce(createMockQuery(null) as any)
-        .mockReturnValueOnce(createMockQuery(mockEducator) as any);
+      vi.mocked(supabase.from).mockImplementation((table) => {
+        if (table === 'school_educators') return createMockQuery(mockEducator) as any;
+        return createMockQuery(null) as any;
+      });
 
       const result = await getUserRole('user-123', 'educator@example.com');
 
@@ -89,13 +91,10 @@ describe('roleLookupService', () => {
         role: 'school_admin'
       };
 
-      // All previous tables return null, users table returns admin
-      vi.mocked(supabase.from)
-        .mockReturnValueOnce(createMockQuery(null) as any)
-        .mockReturnValueOnce(createMockQuery(null) as any)
-        .mockReturnValueOnce(createMockQuery(null) as any)
-        .mockReturnValueOnce(createMockQuery(null) as any)
-        .mockReturnValueOnce(createMockQuery(mockAdmin) as any);
+      vi.mocked(supabase.from).mockImplementation((table) => {
+        if (table === 'users') return createMockQuery(mockAdmin) as any;
+        return createMockQuery(null) as any;
+      });
 
       const result = await getUserRole('user-123', 'admin@example.com');
 
@@ -115,11 +114,9 @@ describe('roleLookupService', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      const mockError = { message: 'Database connection failed' };
-      
-      vi.mocked(supabase.from).mockReturnValue(
-        createMockQuery(null, mockError) as any
-      );
+      vi.mocked(supabase.from).mockImplementation(() => {
+        throw new Error('Database connection failed');
+      });
 
       const result = await getUserRole('user-123', 'test@example.com');
 
@@ -136,7 +133,10 @@ describe('roleLookupService', () => {
         name: 'John Doe'
       };
 
-      vi.mocked(supabase.from).mockReturnValue(createMockQuery(mockLearner) as any);
+      vi.mocked(supabase.from).mockImplementation((table) => {
+        if (table === 'learners') return createMockQuery(mockLearner) as any;
+        return createMockQuery(null) as any;
+      });
 
       const result = await getUserRole('user-123', 'learner@example.com');
 
@@ -161,11 +161,11 @@ describe('roleLookupService', () => {
         name: 'Multi Role User'
       };
 
-      // First call (learners) returns data, second call (recruiters) returns data
-      vi.mocked(supabase.from)
-        .mockReturnValueOnce(createMockQuery(mockLearner) as any)
-        .mockReturnValueOnce(createMockQuery(mockRecruiter) as any)
-        .mockReturnValue(createMockQuery(null) as any);
+      vi.mocked(supabase.from).mockImplementation((table) => {
+        if (table === 'learners') return createMockQuery(mockLearner) as any;
+        if (table === 'recruiters') return createMockQuery(mockRecruiter) as any;
+        return createMockQuery(null) as any;
+      });
 
       const result = await getUserRole('user-123', 'multi@example.com');
 

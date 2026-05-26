@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 
 /**
@@ -6,16 +5,14 @@ import { supabase } from '@/shared/api/supabaseClient';
  */
 
 export const getAuthSession = async () => {
-  const { data: { session }, error } = await getCurrentSession();
+  const user = useAuthStore.getState().user;
+    const error = null;
   
   if (error) {
     throw new Error(`Session error: ${error.message}`);
   }
   
-  if (!session?.access_token) {
-    throw new Error('No access token found in session');
-  }
-  
+    
   return session;
 };
 

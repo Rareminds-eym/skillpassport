@@ -154,7 +154,7 @@ class EntitlementService {
       let annualTotal = 0;
 
       entitlements.forEach(ent => {
-        const price = parseFloat(ent.price_at_purchase) || 0;
+        const price = parseFloat(ent.price_at_purchase) ?? 0;
         
         if (ent.billing_period === 'monthly') {
           monthlyTotal += price;

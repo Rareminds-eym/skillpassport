@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getAllTimetableConflicts, validateTimetableSlot, ValidationConflict } from '@/features/courses';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+
 
 const logger = getLogger('school-admin-timetable-builder');
 
@@ -115,7 +115,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
 
   const getSchoolId = async (): Promise<string | null> => {
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) {
         logger.error('No user found');
         return null;

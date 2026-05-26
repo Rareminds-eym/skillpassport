@@ -28,7 +28,7 @@ import { getLogger } from '@/shared/config/logging';
 
 
 const logger = getLogger('EducatorAssessments');
-import { authSessionService } from '@/features/auth';
+
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 import {
     assignTaskTolearners,
@@ -291,7 +291,7 @@ const Assessments = () => {
 
                 // If not in localStorage, try to get from authenticated user and fetch educator record
                 if (!educatorId) {
-                    const { user, error: authError } = await authSessionService.getUser();
+                    const { user, error: authError } = { data: { user: useAuthStore.getState().user } };
 
                     if (user && !authError) {
                         // Fetch the school_educators record to get the educator_id
@@ -551,8 +551,8 @@ const Assessments = () => {
             }
 
             // Get token for file uploads
-            const { session } = await authSessionService.getSession();
-            const token = session?.access_token || user?.access_token;
+            const user = useAuthStore.getState().user;
+            const token = ssoClient.getAccessToken() || user?.access_token;
 
             if (!token) {
                 showNotificationModal('error', 'Authentication Error', 'Authentication required. Please log in again.');

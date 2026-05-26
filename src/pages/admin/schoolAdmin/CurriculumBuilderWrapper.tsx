@@ -4,7 +4,6 @@ import toast from 'react-hot-toast';
 import { FeatureGate } from '@/features/subscription';
 import { useCurriculum } from '@/features/college-admin/model/useCurriculum';
 import * as curriculumService from '@/features/college-admin';
-import { authSessionService } from '@/features/auth';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-curriculum-wrapper');
@@ -198,7 +197,7 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
   const handleSubmitForApproval = async () => {
     try {
       // Check if user is school_admin to show appropriate message - use maybeSingle() to avoid 406 error
-      const { user } = await authSessionService.getUser();
+      const { user } = { data: { user: useAuthStore.getState().user } };
       let isSchoolAdmin = false;
       
       if (user) {

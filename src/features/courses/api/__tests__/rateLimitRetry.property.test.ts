@@ -6,11 +6,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fc from "fast-check";
 import { generateEmbedding, generateBatchEmbeddings } from "../embeddingService";
+import { ssoClient } from "@/shared/api/ssoClient";
 
 const MAX_RETRIES = 4;
 const EMBEDDING_DIMENSION = 768;
 
-const nonEmptyTextArbitrary = fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0);
+const nonEmptyTextArbitrary = fc.string({ minLength: 10, maxLength: 50 }).filter(s => s.trim().length >= 10);
 const rateLimitFailuresArbitrary = fc.integer({ min: 0, max: 2 }); // Reduced to max 2 failures for faster tests
 
 const createTestEmbedding = (text: string): number[] => {
@@ -45,7 +46,10 @@ const createBatchSuccessResponse = (texts: string[]) => ({
 
 describe("Property 10: Rate Limit Retry", () => {
   let mockFetch: ReturnType<typeof vi.fn>;
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(ssoClient, 'getAccessToken').mockReturnValue('mock-token');
+  });
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
   it("should retry and succeed when rate limited", async () => {

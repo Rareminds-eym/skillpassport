@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useState } from 'react';
 import { supabase } from '@/shared/api/supabaseClient';
 import { Learner } from '@/features/learner-profile/model';
@@ -197,7 +196,7 @@ export const useLearnerActions = (learner: Learner | null) => {
         : `${new Date().getFullYear()}-${(new Date().getFullYear() + 1).toString().slice(-2)}`; // Fallback
 
       // Get current user ID and find the appropriate admin record
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       let promotedByAdminId = null;
 
       if (user?.id) {

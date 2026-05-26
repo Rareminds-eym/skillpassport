@@ -651,8 +651,8 @@ const LearnerDashboard = () => {
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
 
   // Check if user is on Freemium plan
-  const isFreemium = subscriptionData?.plan === PLAN_IDS.PAY_AS_YOU_GO;
-  const userPlan = subscriptionData?.plan || PLAN_IDS.PAY_AS_YOU_GO;
+  const isFreemium = subscriptionData?.plan === PLAN_IDS.FREEMIUM;
+  const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
   // State for upgrade prompt
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -1900,7 +1900,7 @@ const LearnerDashboard = () => {
             <div className="flex items-center gap-2">
               <div className="w-10 h-10">
                 <DotLottieReact
-                  src="https://lottie.host/d2e9c81b-68e5-4817-8cdb-232a1a4d96d1/IrCaxvOj5s.lottie"
+                  src="/animations/assessment.lottie"
                   loop
                   autoplay
                   style={{ width: '100%', height: '100%' }}
@@ -2953,7 +2953,7 @@ const LearnerDashboard = () => {
             <div key={cardName} className="h-full relative">
               {/* Disabled overlay for freemium users - just blur, no text */}
               {isFreemium && !isViewingOthersProfile && (
-                <div className="absolute inset-0 rounded-xl z-10 cursor-not-allowed" />
+                <div className="absolute inset-0 rounded-xl z-10 cursor-not-allowed pointer-events-auto" />
               )}
               {card}
             </div>

@@ -33,8 +33,8 @@ let _authInitialized = false;
 
 function ensureAuthInitialized(env: Record<string, string>): void {
   if (_authInitialized) return;
-  const ssoDomain = env.SSO_DOMAIN || env.VITE_SSO_URL;
-  if (!ssoDomain) throw new Error('Missing SSO_DOMAIN / VITE_SSO_URL configuration');
+  const ssoDomain = env.SSO_DOMAIN;
+  if (!ssoDomain) throw new Error('Missing SSO_DOMAIN  configuration');
   initAuth({ ssoDomain });
   _authInitialized = true;
 }

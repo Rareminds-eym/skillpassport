@@ -1,12 +1,5 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-/**
- * Organization Subscription Service
- * 
- * Handles organization-level subscription purchases, management, and lifecycle operations.
- * Supports bulk seat purchases with volume discounts and Razorpay integration.
- */
-
 import { supabase } from '@/shared/api';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('organizationSubscription');
@@ -20,7 +13,8 @@ export interface OrganizationSubscription {
   organizationId: string;
   organizationType: 'school' | 'college' | 'university';
   subscriptionPlanId: string;
-  planName?: string; // Fetched from subscription_plans table
+  planName?: string;
+  planCode?: string;
   purchasedBy: string;
   totalSeats: number;
   assignedSeats: number;
@@ -74,12 +68,6 @@ export interface RenewalOptions {
 // Volume Discount Calculation
 // ============================================================================
 
-/**
- * Calculate volume discount based on seat count
- * - 50-99 seats: 10% discount
- * - 100-499 seats: 20% discount
- * - 500+ seats: 30% discount
- */
 export function calculateVolumeDiscount(seatCount: number): number {
   if (seatCount >= 500) return 30;
   if (seatCount >= 100) return 20;
@@ -87,9 +75,6 @@ export function calculateVolumeDiscount(seatCount: number): number {
   return 0;
 }
 
-/**
- * Calculate complete pricing breakdown with discounts and taxes
- */
 export function calculateBulkPricing(
   basePricePerSeat: number,
   seatCount: number
@@ -98,9 +83,9 @@ export function calculateBulkPricing(
   const discountPercentage = calculateVolumeDiscount(seatCount);
   const discountAmount = (subtotal * discountPercentage) / 100;
   const afterDiscount = subtotal - discountAmount;
-  const taxAmount = afterDiscount * 0.18; // 18% GST
+  const taxAmount = afterDiscount * 0.18;
   const finalAmount = afterDiscount + taxAmount;
-  
+
   return {
     basePrice: basePricePerSeat,
     seatCount,
@@ -114,77 +99,65 @@ export function calculateBulkPricing(
 }
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+async function authenticatedFetch(path: string, options: RequestInit = {}): Promise<Response> {
+  const origin = window.location.origin;
+  return ssoClient.fetch(`${origin}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+}
+
+// ============================================================================
 // Service Class
 // ============================================================================
 
 export class OrganizationSubscriptionService {
   /**
-   * Purchase a new organization subscription
+   * Purchase a new organization subscription.
+   * This initiates the Razorpay order flow via the backend API.
+   * The actual subscription is created upon payment verification.
    */
   async purchaseSubscription(
     request: OrgSubscriptionPurchaseRequest
-  ): Promise<OrganizationSubscription> {
+  ): Promise<{ orderId: string; key: string; amount: number }> {
     try {
-      // 1. Get plan details - need to specify entity type to get correct pricing
-      const entityType = request.organizationType; // 'school', 'college', or 'university'
-      
-      const { data: planJson, error: planError } = await supabase
-        .rpc('get_plan_for_entity', {
-          p_plan_code: request.planId,
-          p_entity_type: entityType
-        });
-
-      if (planError || !planJson) {
-        throw new Error('Subscription plan not found');
-      }
-
-      // 2. Calculate pricing - use price_monthly or price_yearly from helper function
-      const basePrice = request.billingCycle === 'annual' ? planJson.price_yearly : planJson.price_monthly;
-      const pricing = calculateBulkPricing(basePrice, request.seatCount);
-
-      // 3. Calculate subscription dates
-      const startDate = new Date();
-      const endDate = new Date(startDate);
-      if (request.billingCycle === 'annual') {
-        endDate.setFullYear(endDate.getFullYear() + 1);
-      } else {
-        endDate.setMonth(endDate.getMonth() + 1);
-      }
-
-      // 4. Get current user
-      const { data: { user } } = await getCurrentUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // 5. Create organization subscription record - use plan ID from planJson
-      const { data: subscription, error: subError } = await supabase
-        .from('organization_subscriptions')
-        .insert({
-          organization_id: request.organizationId,
-          organization_type: request.organizationType,
-          subscription_plan_id: planJson.id, // Use the actual UUID from the plan
-          purchased_by: user.id,
-          total_seats: request.seatCount,
-          assigned_seats: 0,
-          target_member_type: request.targetMemberType,
-          status: 'active',
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          auto_renew: request.autoRenew,
-          price_per_seat: pricing.pricePerSeat,
-          total_amount: pricing.subtotal,
-          discount_percentage: pricing.discountPercentage,
-          final_amount: pricing.finalAmount
-        })
-        .select()
+      const { data: plan } = await supabase
+        .from('plans_cache')
+        .select('id, plan_code, name, pricing_matrix')
+        .eq('id', request.planId)
         .single();
 
-      if (subError) {
-        throw subError;
+      if (!plan) throw new Error('Subscription plan not found');
+
+      const pricing = calculateBulkPricing(
+        (plan.pricing_matrix as any)?.[request.billingCycle] ?? 0,
+        request.seatCount
+      );
+
+      const res = await authenticatedFetch('/api/payments/org-subscriptions/purchase', {
+        method: 'POST',
+        body: JSON.stringify({
+          amount: Math.round(pricing.finalAmount * 100),
+          org_id: request.organizationId,
+          seat_count: request.seatCount,
+          plan_id: plan.plan_code,
+          plan_name: plan.name,
+          currency: 'INR',
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Failed to create order');
       }
 
-      return this.mapToOrganizationSubscription(subscription);
+      return res.json();
     } catch (error) {
       logger.error('Error purchasing subscription', error as Error);
       throw error;
@@ -192,7 +165,7 @@ export class OrganizationSubscriptionService {
   }
 
   /**
-   * Get all subscriptions for an organization
+   * Get all subscriptions for an organization (reads from subscription_cache)
    */
   async getOrganizationSubscriptions(
     organizationId: string,
@@ -200,16 +173,11 @@ export class OrganizationSubscriptionService {
   ): Promise<OrganizationSubscription[]> {
     try {
       const { data, error } = await supabase
-        .from('organization_subscriptions')
-        .select(`
-          *,
-          subscription_plans:subscription_plan_id (
-            name,
-            plan_code
-          )
-        `)
+        .from('subscription_cache')
+        .select('*')
         .eq('organization_id', organizationId)
         .eq('organization_type', organizationType)
+        .eq('is_organization_subscription', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -222,19 +190,13 @@ export class OrganizationSubscriptionService {
   }
 
   /**
-   * Get a single subscription by ID
+   * Get a single subscription by ID (reads from subscription_cache)
    */
   async getSubscriptionById(subscriptionId: string): Promise<OrganizationSubscription | null> {
     try {
       const { data, error } = await supabase
-        .from('organization_subscriptions')
-        .select(`
-          *,
-          subscription_plans:subscription_plan_id (
-            name,
-            plan_code
-          )
-        `)
+        .from('subscription_cache')
+        .select('*')
         .eq('id', subscriptionId)
         .single();
 
@@ -248,46 +210,39 @@ export class OrganizationSubscriptionService {
   }
 
   /**
-   * Update seat count for a subscription (add or reduce seats)
+   * Update seat count for a subscription via backend API
    */
   async updateSeatCount(
     subscriptionId: string,
     newSeatCount: number
   ): Promise<OrganizationSubscription> {
     try {
-      // Get current subscription
       const current = await this.getSubscriptionById(subscriptionId);
-      if (!current) {
-        throw new Error('Subscription not found');
-      }
+      if (!current) throw new Error('Subscription not found');
 
-      // Validate new seat count
       if (newSeatCount < current.assignedSeats) {
         throw new Error(
           `Cannot reduce seats below assigned count (${current.assignedSeats})`
         );
       }
 
-      // Recalculate pricing
-      const pricing = calculateBulkPricing(current.pricePerSeat, newSeatCount);
+      const res = await authenticatedFetch('/api/payments/update-subscription', {
+        method: 'POST',
+        body: JSON.stringify({
+          subscriptionId,
+          field: 'seat_count',
+          value: newSeatCount,
+        }),
+      });
 
-      // Update subscription
-      const { data, error } = await supabase
-        .from('organization_subscriptions')
-        .update({
-          total_seats: newSeatCount,
-          total_amount: pricing.subtotal,
-          discount_percentage: pricing.discountPercentage,
-          final_amount: pricing.finalAmount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId)
-        .select()
-        .single();
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Failed to update seat count');
+      }
 
-      if (error) throw error;
-
-      return this.mapToOrganizationSubscription(data);
+      const updated = await this.getSubscriptionById(subscriptionId);
+      if (!updated) throw new Error('Subscription not found after update');
+      return updated;
     } catch (error) {
       logger.error('Error updating seat count', error as Error);
       throw error;
@@ -295,25 +250,25 @@ export class OrganizationSubscriptionService {
   }
 
   /**
-   * Cancel a subscription
+   * Cancel a subscription via backend API
    */
   async cancelSubscription(
     subscriptionId: string,
     reason: string
   ): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('organization_subscriptions')
-        .update({
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString(),
-          cancellation_reason: reason,
-          auto_renew: false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId);
+      const res = await authenticatedFetch('/api/payments/cancel-subscription', {
+        method: 'POST',
+        body: JSON.stringify({
+          subscriptionId,
+          reason,
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Failed to cancel subscription');
+      }
     } catch (error) {
       logger.error('Error cancelling subscription', error as Error);
       throw error;
@@ -321,51 +276,29 @@ export class OrganizationSubscriptionService {
   }
 
   /**
-   * Renew a subscription
+   * Renew a subscription via backend API
    */
   async renewSubscription(
     subscriptionId: string,
     options?: RenewalOptions
   ): Promise<OrganizationSubscription> {
     try {
-      const current = await this.getSubscriptionById(subscriptionId);
-      if (!current) {
-        throw new Error('Subscription not found');
+      const res = await authenticatedFetch('/api/payments/renew-subscription', {
+        method: 'POST',
+        body: JSON.stringify({
+          subscriptionId,
+          ...options,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Failed to renew subscription');
       }
 
-      const seatCount = options?.seatCount || current.totalSeats;
-      const autoRenew = options?.autoRenew !== undefined ? options.autoRenew : current.autoRenew;
-
-      // Calculate new end date
-      const newEndDate = new Date(current.endDate);
-      if (options?.billingCycle === 'annual') {
-        newEndDate.setFullYear(newEndDate.getFullYear() + 1);
-      } else {
-        newEndDate.setMonth(newEndDate.getMonth() + 1);
-      }
-
-      // Recalculate pricing if seat count changed
-      const pricing = calculateBulkPricing(current.pricePerSeat, seatCount);
-
-      const { data, error } = await supabase
-        .from('organization_subscriptions')
-        .update({
-          total_seats: seatCount,
-          end_date: newEndDate.toISOString(),
-          auto_renew: autoRenew,
-          status: 'active',
-          total_amount: pricing.subtotal,
-          discount_percentage: pricing.discountPercentage,
-          final_amount: pricing.finalAmount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return this.mapToOrganizationSubscription(data);
+      const updated = await this.getSubscriptionById(subscriptionId);
+      if (!updated) throw new Error('Subscription not found after renewal');
+      return updated;
     } catch (error) {
       logger.error('Error renewing subscription', error as Error);
       throw error;
@@ -373,50 +306,29 @@ export class OrganizationSubscriptionService {
   }
 
   /**
-   * Upgrade subscription to a higher plan
+   * Upgrade subscription to a higher plan via backend API
    */
   async upgradeSubscription(
     subscriptionId: string,
     newPlanId: string
   ): Promise<OrganizationSubscription> {
     try {
-      const current = await this.getSubscriptionById(subscriptionId);
-      if (!current) {
-        throw new Error('Current subscription not found');
+      const res = await authenticatedFetch('/api/payments/upgrade-subscription', {
+        method: 'POST',
+        body: JSON.stringify({
+          subscriptionId,
+          newPlanId,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Failed to upgrade subscription');
       }
 
-      // Get new plan details for the organization type
-      const { data: newPlanJson, error: planError } = await supabase
-        .rpc('get_plan_for_entity', {
-          p_plan_code: newPlanId,
-          p_entity_type: current.organizationType
-        });
-
-      if (planError || !newPlanJson) {
-        throw new Error('New subscription plan not found');
-      }
-
-      // Recalculate pricing with new plan - use price_monthly as default
-      const basePrice = newPlanJson.price_monthly || newPlanJson.price_yearly;
-      const pricing = calculateBulkPricing(basePrice, current.totalSeats);
-
-      const { data, error } = await supabase
-        .from('organization_subscriptions')
-        .update({
-          subscription_plan_id: newPlanJson.id, // Use actual UUID
-          price_per_seat: pricing.pricePerSeat,
-          total_amount: pricing.subtotal,
-          discount_percentage: pricing.discountPercentage,
-          final_amount: pricing.finalAmount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return this.mapToOrganizationSubscription(data);
+      const updated = await this.getSubscriptionById(subscriptionId);
+      if (!updated) throw new Error('Subscription not found after upgrade');
+      return updated;
     } catch (error) {
       logger.error('Error upgrading subscription', error as Error);
       throw error;
@@ -430,38 +342,33 @@ export class OrganizationSubscriptionService {
     subscriptionId: string,
     newPlanId: string
   ): Promise<OrganizationSubscription> {
-    // Same implementation as upgrade, but with validation for feature compatibility
     return this.upgradeSubscription(subscriptionId, newPlanId);
   }
 
   /**
-   * Map database record to OrganizationSubscription interface
+   * Map subscription_cache record to OrganizationSubscription interface
    */
   private mapToOrganizationSubscription(data: any): OrganizationSubscription {
-    // Extract plan name from joined subscription_plans data
-    const planName = data.subscription_plans?.name || 
-                     data.subscription_plans?.plan_code || 
-                     'Standard Plan';
-    
     return {
       id: data.id,
       organizationId: data.organization_id,
       organizationType: data.organization_type,
-      subscriptionPlanId: data.subscription_plan_id,
-      planName,
-      purchasedBy: data.purchased_by,
-      totalSeats: data.total_seats,
-      assignedSeats: data.assigned_seats,
-      availableSeats: data.available_seats,
-      targetMemberType: data.target_member_type,
+      subscriptionPlanId: data.plan_id,
+      planName: data.plan_name ?? 'Standard Plan',
+      planCode: data.plan_code,
+      purchasedBy: data.user_id,
+      totalSeats: data.seat_count || 0,
+      assignedSeats: data.assigned_seats || 0,
+      availableSeats: (data.seat_count || 0) - (data.assigned_seats || 0),
+      targetMemberType: data.target_member_type || 'both',
       status: data.status,
-      startDate: data.start_date,
-      endDate: data.end_date,
-      autoRenew: data.auto_renew,
-      pricePerSeat: parseFloat(data.price_per_seat),
-      totalAmount: parseFloat(data.total_amount),
-      discountPercentage: data.discount_percentage,
-      finalAmount: parseFloat(data.final_amount),
+      startDate: data.subscription_start_date,
+      endDate: data.subscription_end_date,
+      autoRenew: data.auto_renew ?? false,
+      pricePerSeat: parseFloat(data.price_per_seat ?? '0'),
+      totalAmount: parseFloat(data.total_amount ?? data.plan_amount ?? '0'),
+      discountPercentage: data.discount_percentage || 0,
+      finalAmount: parseFloat(data.final_amount ?? data.plan_amount ?? '0'),
       razorpaySubscriptionId: data.razorpay_subscription_id,
       razorpayOrderId: data.razorpay_order_id,
       createdAt: data.created_at,

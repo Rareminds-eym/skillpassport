@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Authenticated Media Service
  *
@@ -33,21 +33,18 @@ export async function getAuthenticatedMediaUrl(
   lessonId?: string
 ): Promise<string | null> {
   try {
-    const { data: { session } } = await getCurrentSession();
+    const user = useAuthStore.getState().user;
 
-    if (!session?.access_token) {
-      return null;
-    }
-
+    
     const fingerprint = await getBrowserFingerprint();
     const deviceContext = getDeviceContext();
     const sessionId = deviceContext.sessionId;
 
-    const response = await fetch('/api/storage/get-authenticated-url', {
+    const response = await ssoClient.fetch('/api/storage/get-authenticated-url', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
+        
       },
       body: JSON.stringify({
         fileUrl,

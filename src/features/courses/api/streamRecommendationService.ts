@@ -1,4 +1,5 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
+
 /**
  * Stream Recommendation Service
  * Generates AI-based Science/Commerce/Arts stream recommendations for learners
@@ -510,8 +511,8 @@ Respond ONLY with valid JSON. No markdown, no explanations outside JSON.`;
  */
 const callAIForStreamRecommendation = async (learnerData) => {
   // Get auth token
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
+  const user = useAuthStore.getState().user;
+  const token = ssoClient.getAccessToken();
 
   if (!token) {
     throw new Error('Authentication required for AI analysis');
@@ -519,12 +520,11 @@ const callAIForStreamRecommendation = async (learnerData) => {
 
   const prompt = buildStreamRecommendationPrompt(learnerData);
 
-  const response = await fetch(`${CAREER_API_URL}/stream-recommendation`, {
+  const response = await ssoClient.fetch(`${CAREER_API_URL}/stream-recommendation`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
+      },
     body: JSON.stringify({ 
       learnerData,
       prompt 

@@ -90,7 +90,7 @@ export function AddOnCheckout({
       }
     });
 
-    const discount = appliedDiscount?.totalDiscount || 0;
+    const discount = appliedDiscount?.totalDiscount ?? 0;
     const total = Math.max(subtotal - discount, 0);
 
     return { subtotal, discount, total };
@@ -167,34 +167,48 @@ export function AddOnCheckout({
       }
       
       // For simplicity, process first item (can be extended for multi-item cart)
-      let orderData;
+      let orderResult;
 
       if (type === 'addon') {
-        orderData = await purchaseAddOn(item.feature_key, billingPeriod);
+        orderResult = await purchaseAddOn(item.feature_key, billingPeriod);
       } else {
-        orderData = await purchaseBundle(item.id, billingPeriod);
+        orderResult = await purchaseBundle(item.id, billingPeriod);
       }
 
-      if (orderData && window.Razorpay) {
+      if (orderResult?.success && window.Razorpay) {
+        const data = orderResult.data;
         const options = {
-          key: orderData.razorpayKeyId,
-          amount: orderData.amount,
-          currency: orderData.currency,
+          key: data.razorpayKeyId,
+          amount: data.amount,
+          currency: data.currency,
           name: 'SkillPassport',
-          description: type === 'addon' 
-            ? `${item.feature_name} (${billingPeriod})`
-            : `${item.name} Bundle (${billingPeriod})`,
-          order_id: orderData.orderId,
+          description: `${item.feature_name ?? item.name} (${billingPeriod})`,
+          order_id: data.orderId,
           handler: async function(response) {
             // Payment successful - verify and create entitlement
             console.log('[AddOnCheckout] Payment successful, verifying...', response);
             
             try {
-              const verifyResult = await addOnPaymentService.verifyAddonPayment(
-                response.razorpay_order_id,
-                response.razorpay_payment_id,
-                response.razorpay_signature
-              );
+              let verifyResult;
+              if (type === 'addon') {
+                verifyResult = await addOnPaymentService.verifyAddonPayment(
+                  response.razorpay_order_id,
+                  response.razorpay_payment_id,
+                  response.razorpay_signature,
+                  item.feature_key,
+                  data.amount,
+                  billingPeriod
+                );
+              } else {
+                verifyResult = await addOnPaymentService.verifyBundlePayment(
+                  response.razorpay_order_id,
+                  response.razorpay_payment_id,
+                  response.razorpay_signature,
+                  item.id,
+                  data.amount,
+                  billingPeriod
+                );
+              }
               
               if (verifyResult.success) {
                 console.log('[AddOnCheckout] Payment verified and entitlement created!');
@@ -232,6 +246,8 @@ export function AddOnCheckout({
         });
         
         rzp.open();
+      } else if (orderResult?.error) {
+        setCheckoutError(orderResult.error);
       }
     } catch (error) {
       setCheckoutError(error.message || 'Checkout failed');

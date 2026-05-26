@@ -51,10 +51,10 @@ export class OrganizationEntitlementService {
     assignment: LicenseAssignment
   ): Promise<UserEntitlement[]> {
     try {
-      // Get subscription plan features
+      // Get subscription from subscription_cache (shadow of auth DB)
       const { data: subscription } = await supabase
-        .from('organization_subscriptions')
-        .select('subscription_plan_id')
+        .from('subscription_cache')
+        .select('plan_id, plan_code, features')
         .eq('id', assignment.organizationSubscriptionId)
         .single();
 
@@ -62,20 +62,22 @@ export class OrganizationEntitlementService {
         throw new Error('Subscription not found');
       }
 
-      // Get plan features - need to get base_features from the plan
+      // Get plan features from plans_cache (shadow of auth DB)
       const { data: plan } = await supabase
-        .from('subscription_plans')
+        .from('plans_cache')
         .select('base_features')
-        .eq('id', subscription.subscription_plan_id)
+        .eq('id', subscription.plan_id)
         .single();
 
-      if (!plan || !plan.base_features) {
+      // Use features from subscription_cache first, then fall back to plans_cache
+      const featureSource = subscription.features || plan?.base_features;
+      if (!featureSource) {
         throw new Error('Plan features not found');
       }
 
       // Grant entitlements for each feature
       const entitlements: UserEntitlement[] = [];
-      const features = Array.isArray(plan.base_features) ? plan.base_features : [];
+      const features = Array.isArray(featureSource) ? featureSource : [];
 
       for (const featureKey of features) {
         const { data, error } = await supabase

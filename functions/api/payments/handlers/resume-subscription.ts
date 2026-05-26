@@ -3,7 +3,8 @@
  *
  * POST /api/payments/resume-subscription
  *
- * Resumes a user's paused subscription by updating its status back to active.
+ * Resumes a user's paused subscription by updating its status through the SSO worker
+ * (auth DB is source of truth) and syncing the local shadow table.
  * Validates that the subscription belongs to the authenticated user and is currently paused.
  * Requires SSO authentication.
  */
@@ -11,15 +12,12 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
-// Cache invalidation removed - KV dependency eliminated
-
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleResumeSubscription(context);
-});
+import { ssoUpdateSubscriptionStatus, ssoSyncSubscription } from '../../../lib/sso-client';
+import { syncSubscriptionCache } from '../../../lib/sync-shadow';
 
 export async function handleResumeSubscription(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; SSO_SERVICE: Fetcher };
 
   try {
     // Parse request body
@@ -48,9 +46,9 @@ export async function handleResumeSubscription(context: AuthenticatedContext): P
 
     const supabase = getServiceClient(env);
 
-    // Validate subscription belongs to user and is paused
+    // Validate subscription belongs to user and is paused (read from shadow table)
     const { data: existing, error: fetchError } = await supabase
-      .from('subscriptions')
+      .from('subscription_cache')
       .select('*')
       .eq('id', subscriptionId)
       .eq('user_id', user.sub)
@@ -84,33 +82,23 @@ export async function handleResumeSubscription(context: AuthenticatedContext): P
       );
     }
 
-    // Update subscription status to active, clear paused_at
-    const { data: updated, error: updateError } = await supabase
-      .from('subscriptions')
-      .update({
-        status: 'active',
-        paused_at: null,
-      })
-      .eq('id', subscriptionId)
-      .eq('user_id', user.sub)
-      .select()
-      .single();
+    // Write status change through SSO worker (auth DB is source of truth)
+    const ssoResult = await ssoUpdateSubscriptionStatus(env, subscriptionId, {
+      status: 'active',
+    });
 
-    if (updateError) {
-      console.error('[ResumeSubscription] Update error:', updateError);
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INTERNAL_ERROR', message: 'Failed to resume subscription' },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+    // Sync shadow table (non-blocking on failure)
+    try {
+      const syncResult = await ssoSyncSubscription(env, user.sub);
+      if (syncResult.subscription) {
+        await syncSubscriptionCache(supabase, syncResult.subscription, syncResult.plan);
+      }
+    } catch (syncError) {
+      console.error('[ResumeSubscription] Shadow sync failed (non-blocking):', syncError);
     }
 
-    // Cache invalidation removed - KV dependency eliminated
-    // Client-side queries will refetch data as needed
-
     return new Response(
-      JSON.stringify({ success: true, subscription: updated }),
+      JSON.stringify({ success: true, subscription: ssoResult }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {

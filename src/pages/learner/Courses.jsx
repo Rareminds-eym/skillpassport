@@ -10,6 +10,7 @@ import {
     Eye,
     Grid3x3,
     List,
+    Lock,
     Play,
     TrendingUp,
     Users
@@ -34,11 +35,22 @@ import {
 import { supabase } from '@/shared/api/supabaseClient';
 import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
+import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
+import { getLogger } from '@/shared/config/logging';
+import toast from 'react-hot-toast';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('courses-page');
+
 const Courses = () => {
   const navigate = useNavigate();
   const user = useUser();
+  const subscriptionContext = useSubscriptionContext();
+  const subscription = subscriptionContext?.subscription;
+  const userPlan = subscription?.plan ?? PLAN_IDS.FREEMIUM;
+  
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -74,6 +86,22 @@ const Courses = () => {
   const hasFetchedCoursesRef = useRef(false);
   const hasFetchedEnrollmentsRef = useRef(false);
   const userEmailRef = useRef(user?.email);
+  
+  // Helper function to check if user has access to a course
+  const canAccessCourse = useCallback((course) => {
+    const coursePlanType = course.plan_type?.toLowerCase() || 'freemium';
+    
+    // If course is freemium, everyone can access
+    if (coursePlanType === 'freemium') {
+      return true;
+    }
+    
+    // For non-freemium courses, check user's plan level using shared constant
+    const userPlanLevel = PLAN_HIERARCHY_LEVELS[userPlan?.toLowerCase()] || 0;
+    const coursePlanLevel = PLAN_HIERARCHY_LEVELS[coursePlanType] || 0;
+    
+    return userPlanLevel >= coursePlanLevel;
+  }, [userPlan]);
 
   // Handle window resize for responsive pagination
   useEffect(() => {
@@ -351,9 +379,83 @@ const Courses = () => {
   const handleViewCertificate = (courseId, courseName, e) => {
     e?.stopPropagation();
     const certUrl = getCertificateUrl(courseId);
-    if (certUrl) {
+    
+    if (!certUrl) {
+      return;
+    }
+
+    try {
+      // Special handling for data URLs (base64 encoded images)
+      // Browser security prevents opening data URLs directly in new tabs
+      if (certUrl.startsWith('data:')) {
+        try {
+          // Convert data URL to blob with proper validation
+          const arr = certUrl.split(',');
+          
+          // Validate data URL format
+          if (arr.length < 2) {
+            throw new Error('Invalid data URL: missing base64 content');
+          }
+          
+          const mimeMatch = arr[0].match(/:(.*?);/);
+          if (!mimeMatch || !mimeMatch[1]) {
+            throw new Error('Invalid data URL format: missing MIME type');
+          }
+          const mime = mimeMatch[1];
+          
+          // Decode base64 with error handling
+          let bstr;
+          try {
+            bstr = atob(arr[1]);
+          } catch (decodeError) {
+            throw new Error('Invalid base64 encoding in data URL');
+          }
+          
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          const blob = new Blob([u8arr], { type: mime });
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const newWindow = window.open(blobUrl, '_blank');
+          
+          if (!newWindow) {
+            toast.error('Please allow popups for this site to view the certificate.');
+            // Revoke immediately if window didn't open
+            URL.revokeObjectURL(blobUrl);
+          } else {
+            // Revoke after a reasonable delay to allow browser to load the blob
+            setTimeout(() => {
+              URL.revokeObjectURL(blobUrl);
+            }, 5000);
+          }
+          
+          return; // Exit early for data URLs
+        } catch (blobError) {
+          logger.error('Error converting data URL to blob', blobError instanceof Error ? blobError : new Error(String(blobError)));
+          toast.error('Error displaying certificate. Please try downloading instead.');
+          return;
+        }
+      }
+      
+      // For non-data URLs, use the proxy URL
       const viewUrl = getCertificateProxyUrl(certUrl, 'inline');
-      window.open(viewUrl, '_blank');
+      
+      if (!viewUrl || viewUrl.trim() === '') {
+        toast.error('Failed to generate certificate viewing URL. Please try downloading instead.');
+        return;
+      }
+      
+      const newWindow = window.open(viewUrl, '_blank');
+      
+      if (!newWindow) {
+        toast.error('Please allow popups for this site to view the certificate.');
+      }
+    } catch (error) {
+      logger.error('Error opening certificate', error instanceof Error ? error : new Error(String(error)));
+      toast.error('Error opening certificate. Please try downloading instead.');
     }
   };
 
@@ -852,16 +954,26 @@ const Courses = () => {
                       <motion.img
                         src={course.thumbnail}
                         alt={course.title}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${!canAccessCourse(course) ? 'opacity-60' : ''}`}
                         whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.3 }}
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
+                      <div className={`w-full h-full flex flex-col items-center justify-center bg-slate-100 ${!canAccessCourse(course) ? 'opacity-60' : ''}`}>
                         <BookOpen className="h-12 w-12 text-slate-400 mb-2" />
                         <span className="text-slate-500 text-xs font-medium">No Image</span>
                       </div>
                     )}
+                    
+                    {/* Lock Overlay for restricted courses */}
+                    {!canAccessCourse(course) && (
+                      <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                        <div className="bg-white rounded-full p-3 shadow-lg">
+                          <Lock className="w-6 h-6 text-gray-700" />
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Badges */}
                     <div className="absolute top-2 left-2 flex gap-2">
                       {isCourseCompleted(course.course_id) ? (
@@ -894,16 +1006,6 @@ const Courses = () => {
                           </Badge>
                         </motion.div>
                       )}
-                      {/* {isNewCourse(course.created_at) && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                        >
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                            NEW
-                          </Badge>
-                        </motion.div>
-                      )} */}
                     </div>
                   </div>
 
@@ -915,6 +1017,14 @@ const Courses = () => {
                         </Badge>
                       </div> */}
                       <span className="text-xs font-medium text-gray-500">{course.code}</span>
+                      
+                      {/* Issued Date - Right Side */}
+                      {course.issued_on && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Clock className="w-3 h-3" />
+                          <span>{new Date(course.issued_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                      )}
                     </div>
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
                   </CardHeader>

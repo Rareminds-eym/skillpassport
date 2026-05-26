@@ -80,7 +80,7 @@ export default function HeroSection() {
             >
               <div className="w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0">
                 <DotLottieReact
-                  src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
+                  src="/animations/hero.lottie"
                   loop
                   autoplay
                   style={{ width: '100%', height: '100%' }}

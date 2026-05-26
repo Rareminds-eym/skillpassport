@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Fallback implementation for curriculum change requests
  * Uses direct database operations instead of RPC functions to avoid auth issues
@@ -23,7 +22,8 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; data?: string; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
+    const authError = null;
       
       if (authError || !user) {
         return { 
@@ -239,7 +239,8 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
+    const authError = null;
 
       if (authError || !user) {
         logger.error('Authentication failed in approvePendingChange', authError as Error, { curriculumId, changeId });
@@ -379,7 +380,8 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
+    const authError = null;
 
       if (authError || !user) {
         logger.error('Authentication failed in cancelPendingChange', authError as Error, { curriculumId, changeId });
@@ -460,7 +462,8 @@ export class CurriculumChangeFallbackService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Check authentication
-      const { data: { user }, error: authError } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
+    const authError = null;
 
       if (authError || !user) {
         logger.error('Authentication failed in rejectPendingChange', authError as Error, { curriculumId, changeId });

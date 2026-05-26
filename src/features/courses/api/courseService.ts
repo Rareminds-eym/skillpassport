@@ -45,8 +45,7 @@ export async function getFileUrl(fileKey: string): Promise<string> {
 export async function getAiTutorSuggestions(lessonId: string, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/ai-tutor-suggestions`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify({ lessonId }),
+        body: JSON.stringify({ lessonId }),
   });
 
   if (!response.ok) {
@@ -77,8 +76,7 @@ export async function sendAiTutorMessage(
   try {
     const response = await fetch(`${API_URL}/ai-tutor-chat`, {
       method: 'POST',
-      headers: getAuthHeaders(token),
-      body: JSON.stringify(params),
+            body: JSON.stringify(params),
     });
 
     if (!response.ok) {
@@ -146,8 +144,7 @@ export async function submitAiTutorFeedback(
 ): Promise<any> {
   const response = await fetch(`${API_URL}/ai-tutor-feedback`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(params),
+        body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -164,8 +161,7 @@ export async function submitAiTutorFeedback(
 export async function getAiTutorProgress(courseId: string, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/ai-tutor-progress?courseId=${encodeURIComponent(courseId)}`, {
     method: 'GET',
-    headers: getAuthHeaders(token),
-  });
+      });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -190,8 +186,7 @@ export async function updateAiTutorProgress(
 ): Promise<any> {
   const response = await fetch(`${API_URL}/ai-tutor-progress`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(params),
+        body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -222,8 +217,7 @@ export async function summarizeVideo(
 ): Promise<any> {
   const response = await fetch(`${API_URL}/ai-video-summarizer`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify({ ...params, language: params.language || 'en' }),
+        body: JSON.stringify({ ...params, language: params.language || 'en' }),
   });
 
   if (!response.ok) {

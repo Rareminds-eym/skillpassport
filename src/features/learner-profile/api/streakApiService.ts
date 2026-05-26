@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Streak API Service
  * Connects to Cloudflare Pages Function
@@ -11,8 +11,8 @@ const API_URL = getApiUrl('streak');
 async function getAuthToken(): Promise<string> {
   try {
     const { supabase } = await import('./supabaseClient');
-    const { data: { session } } = await getCurrentSession();
-    return session?.access_token || '';
+    const user = useAuthStore.getState().user;
+    return ssoClient.getAccessToken() || '';
   } catch {
     return '';
   }
@@ -24,7 +24,7 @@ async function getAuthToken(): Promise<string> {
 export async function getlearnerStreak(learnerId: string, token?: string): Promise<unknown> {
   const authToken = token || await getAuthToken();
 
-  const response = await fetch(`${API_URL}/${learnerId}`, {
+  const response = await ssoClient.fetch(`${API_URL}/${learnerId}`, {
     method: 'GET',
     headers: getAuthHeaders(authToken),
   });
@@ -43,7 +43,7 @@ export async function getlearnerStreak(learnerId: string, token?: string): Promi
 export async function completeStreak(learnerId: string, token?: string): Promise<unknown> {
   const authToken = token || await getAuthToken();
 
-  const response = await fetch(`${API_URL}/${learnerId}/complete`, {
+  const response = await ssoClient.fetch(`${API_URL}/${learnerId}/complete`, {
     method: 'POST',
     headers: getAuthHeaders(authToken),
   });
@@ -62,7 +62,7 @@ export async function completeStreak(learnerId: string, token?: string): Promise
 export async function getNotificationHistory(learnerId: string, limit = 10, token?: string): Promise<unknown> {
   const authToken = token || await getAuthToken();
 
-  const response = await fetch(`${API_URL}/${learnerId}/notifications?limit=${limit}`, {
+  const response = await ssoClient.fetch(`${API_URL}/${learnerId}/notifications?limit=${limit}`, {
     method: 'GET',
     headers: getAuthHeaders(authToken),
   });
@@ -81,7 +81,7 @@ export async function getNotificationHistory(learnerId: string, limit = 10, toke
 export async function processStreak(learnerId: string, token?: string): Promise<unknown> {
   const authToken = token || await getAuthToken();
 
-  const response = await fetch(`${API_URL}/${learnerId}/process`, {
+  const response = await ssoClient.fetch(`${API_URL}/${learnerId}/process`, {
     method: 'POST',
     headers: getAuthHeaders(authToken),
   });
@@ -98,7 +98,7 @@ export async function processStreak(learnerId: string, token?: string): Promise<
  * Health check
  */
 export async function healthCheck(): Promise<unknown> {
-  const response = await fetch(`${API_URL}/health`, {
+  const response = await ssoClient.fetch(`${API_URL}/health`, {
     method: 'GET',
   });
 

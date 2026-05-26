@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getDocumentUrl } from '@/shared/api';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('EducatorProfileFixed');
 
@@ -127,7 +126,7 @@ const ProfileFixed = () => {
       logger.info('Loading profile', { email });
 
       // Get current user ID from auth
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) {
         logger.error('No authenticated user');
         navigate('/login/educator');

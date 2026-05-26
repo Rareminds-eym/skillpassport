@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
@@ -72,7 +71,7 @@ export interface CurriculumWithDetails extends CollegeCurriculum {
 
 // Get current user's college ID
 async function getCurrentUserCollegeId(): Promise<string | null> {
-  const { data: { user } } = await getCurrentUser();
+  const user = useAuthStore.getState().user;
   if (!user) {
     logger.error('No authenticated user found', new Error('User not authenticated'), {});
     return null;
@@ -116,7 +115,7 @@ export const curriculumService = {
     academic_year: string;
   }): Promise<{ success: boolean; data?: CollegeCurriculum; error?: any }> {
     try {
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }
@@ -584,7 +583,7 @@ export const curriculumService = {
    */
   async approveCurriculum(id: string): Promise<{ success: boolean; error?: any }> {
     try {
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }
@@ -669,7 +668,7 @@ export const curriculumService = {
    */
   async publishCurriculum(id: string): Promise<{ success: boolean; error?: any }> {
     try {
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }
@@ -738,7 +737,7 @@ export const curriculumService = {
     program_id?: string;
   }): Promise<{ success: boolean; data?: CollegeCurriculum; error?: any }> {
     try {
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         return { success: false, error: { message: 'User not authenticated' } };
       }

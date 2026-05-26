@@ -25,7 +25,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { SearchBar } from '@/shared/ui';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+
 
 const logger = getLogger('school-admin-curriculum-builder');
 
@@ -1586,7 +1586,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
   React.useEffect(() => {
     const initializeUser = async () => {
       try {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (user) {
           setCurrentUser(user);
           

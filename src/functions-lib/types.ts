@@ -47,15 +47,8 @@ export interface PagesEnv {
   OPENROUTER_API_KEY?: string;
   GEMINI_API_KEY?: string;
 
-  // AWS credentials (for SNS, S3, etc.)
-  AWS_ACCESS_KEY_ID?: string;
-  AWS_SECRET_ACCESS_KEY?: string;
-  AWS_REGION?: string;
 
-  // OTP configuration
-  OTP_LENGTH?: string;
-  OTP_EXPIRY_MINUTES?: string;
-  SMS_SENDER_ID?: string;
+ 
 
   // R2 Storage configuration
   CLOUDFLARE_ACCOUNT_ID?: string;

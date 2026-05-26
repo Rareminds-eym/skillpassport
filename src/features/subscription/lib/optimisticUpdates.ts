@@ -6,6 +6,7 @@
  */
 
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 export interface OptimisticSubscription {
   id: string;
@@ -22,7 +23,7 @@ export interface OptimisticSubscription {
  */
 export function createOptimisticSubscription(
   userId: string,
-  planCode: string = PLAN_IDS.PAY_AS_YOU_GO
+  planCode: string = PLAN_IDS.FREEMIUM
 ): OptimisticSubscription {
   return {
     id: `optimistic-${Date.now()}`,
@@ -63,17 +64,23 @@ export function createOptimisticSubscriptionHandler(
   onSuccess: (subscription: any) => void,
   onError: (error: Error) => void
 ) {
-  return async (planCode: string = PLAN_IDS.PAY_AS_YOU_GO) => {
+  return async (planCode: string = PLAN_IDS.FREEMIUM) => {
     // Step 1: Create optimistic subscription
     const optimisticSub = createOptimisticSubscription(userId, planCode);
     onOptimisticUpdate(optimisticSub);
 
     try {
-      // Step 2: Make actual API call
-      const response = await fetch('/api/payments/create-freemium-subscription', {
+      // Step 2: Make actual API call (auth handled automatically by ssoClient.fetch)
+      const response = await ssoClient.fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, email: '' }), // Email will be fetched from user context
+        body: JSON.stringify({ 
+          userId, 
+          email: '', 
+          amount: 0, 
+          planId: planCode,
+          planName: 'freemium'
+        }), 
       });
 
       if (!response.ok) {

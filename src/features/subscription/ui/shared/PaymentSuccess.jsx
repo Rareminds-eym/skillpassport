@@ -139,7 +139,7 @@ const formatAmount = (a) => {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0
-    }).format(a || 0);
+    }).format(a ?? 0);
   } catch {
     return '₹0';
   }
@@ -468,7 +468,7 @@ function PaymentSuccess() {
   const displayAmount = useMemo(() => {
     if (transactionDetails?.amount) return transactionDetails.amount / 100;
     if (subscriptionData?.plan_amount) return subscriptionData.plan_amount;
-    return planDetails?.price || 0;
+    return planDetails?.price ?? 0;
   }, [transactionDetails, subscriptionData, planDetails]);
 
   const getDashboardUrl = useCallback(() => {
@@ -757,11 +757,11 @@ function PaymentSuccess() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Plan</span>
-                  <span className="font-semibold text-[#2663EB]">{String(subscriptionData.plan_type || subscriptionData.plan_name || planDetails?.name || 'Premium')}</span>
+                  <span className="font-semibold text-[#2663EB]">{String(subscriptionData.plan_type ?? subscriptionData.plan_name ?? planDetails?.name ?? '')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Cycle</span>
-                  <span className="font-medium text-gray-900">{String(subscriptionData.billing_cycle || planDetails?.duration || 'Monthly')}</span>
+                  <span className="font-medium text-gray-900">{String(subscriptionData.billing_cycle || planDetails?.duration || '')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Valid Until</span>

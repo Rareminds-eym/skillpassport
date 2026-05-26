@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api';
 import { getLogger } from '@/shared/config/logging';
 
@@ -86,7 +85,7 @@ let userIdCache: string | null = null;
 async function getCurrentUserCollegeId(): Promise<string | null> {
   if (userCollegeIdCache) return userCollegeIdCache;
 
-  const { data: { user } } = await getCurrentUser();
+  const user = useAuthStore.getState().user;
   if (!user) return null;
 
   // Try college_lecturers first
@@ -119,7 +118,7 @@ async function getCurrentUserCollegeId(): Promise<string | null> {
 async function getCurrentUserId(): Promise<string | null> {
   if (userIdCache) return userIdCache;
 
-  const { data: { user } } = await getCurrentUser();
+  const user = useAuthStore.getState().user;
   userIdCache = user?.id || null;
   return userIdCache;
 }

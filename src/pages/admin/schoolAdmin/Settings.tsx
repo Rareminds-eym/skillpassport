@@ -31,7 +31,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-settings');
 // import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
+
 
 /* ==============================
    TYPES & INTERFACES
@@ -1698,7 +1698,7 @@ const Settings = () => {
   const fetchCurrentSchool = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
 
       if (!user) {
         logger.error('No authenticated user');
@@ -1927,7 +1927,7 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
 
       // Fetch from user_settings table using privacy_settings JSONB column
@@ -1969,7 +1969,7 @@ const Settings = () => {
   // Save role permissions to database
   const saveRolePermissionsToDb = async (permissions: Record<string, string[]>) => {
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
 
       // Check if user_settings record exists
@@ -2025,7 +2025,7 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
 
       // Fetch from user_settings table using notification_preferences JSONB column
@@ -2094,7 +2094,7 @@ const Settings = () => {
   // Save notification settings to database
   const saveNotificationSettingsToDb = async (settings: NotificationSetting[]) => {
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
 
       // Check if user_settings record exists

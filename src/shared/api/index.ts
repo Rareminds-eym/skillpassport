@@ -5,7 +5,6 @@
 export * from './httpClient';
 export * from './apiUtils';
 export * from './constants';
-export * from './authUtils';
 
 // Supabase client
 export { supabase } from './supabaseClient';

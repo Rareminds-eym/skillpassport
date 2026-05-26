@@ -53,7 +53,6 @@ export {
   getUserRole,
   loginLearner,
   loginRecruiter,
-  authSessionService,
   checkAuthentication,
   signUpWithRole,
   checkUserRole,

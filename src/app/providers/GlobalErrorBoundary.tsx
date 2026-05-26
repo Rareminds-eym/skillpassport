@@ -27,7 +27,7 @@ function ErrorFallback({
             <div className="max-w-md w-full text-center">
                 <div className="w-72 h-72 mx-auto mb-2">
                     <DotLottieReact
-                        src="https://lottie.host/b8e1f2b2-90ef-4aa5-9446-194702fa5d41/s91P8OlT7A.lottie"
+                        src="/animations/error.lottie"
                         loop
                         autoplay
                         className="w-full h-full"

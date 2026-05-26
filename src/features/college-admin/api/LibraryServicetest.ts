@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api/supabaseClient';
 
 export interface LibraryBook {
@@ -82,7 +81,7 @@ export interface OverdueBook extends LibraryBookIssue {
 class LibraryService {
   // Get current user's college ID
   private async getCurrentCollegeId(): Promise<string> {
-    const { data: { user } } = await getCurrentUser();
+    const user = useAuthStore.getState().user;
     if (!user) throw new Error('User not authenticated');
     
     // Try to get college_id from user metadata first

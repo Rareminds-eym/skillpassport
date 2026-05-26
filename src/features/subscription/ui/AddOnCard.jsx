@@ -42,8 +42,8 @@ export function AddOnCard({
 
   if (!addOn) return null;
 
-  const monthlyPrice = addOn.addon_price_monthly || 0;
-  const annualPrice = addOn.addon_price_annual || 0;
+  const monthlyPrice = addOn.price_monthly ?? addOn.addon_price_monthly ?? 0;
+  const annualPrice = addOn.price_annual ?? addOn.addon_price_annual ?? 0;
   const currentPrice = billingPeriod === 'monthly' ? monthlyPrice : annualPrice;
   
   // Calculate annual savings
@@ -99,20 +99,20 @@ export function AddOnCard({
             <CategoryIcon className="w-6 h-6 text-white" />
           </div>
 
-          {/* Title & Category */}
+          {/* Category & Title */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-light text-xl text-slate-900 mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-              {addOn.feature_name}
-            </h3>
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
+            <span className="text-xs text-amber-600 uppercase tracking-wider font-bold">
               {addOn.category?.replace(/_/g, ' ')}
             </span>
+            <h3 className="font-light text-xl text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+              {addOn.feature_name ?? addOn.name}
+            </h3>
           </div>
         </div>
 
         {/* Description */}
         <p className="text-sm text-slate-600 mb-6 line-clamp-2 leading-relaxed font-light">
-          {addOn.addon_description || 'Enhance your experience with this premium feature.'}
+          {addOn.description || addOn.addon_description || 'Enhance your experience with this premium feature.'}
         </p>
 
         {/* Pricing */}
@@ -194,8 +194,8 @@ export function AddOnCardCompact({
   if (!addOn) return null;
 
   const currentPrice = billingPeriod === 'monthly' 
-    ? addOn.addon_price_monthly 
-    : addOn.addon_price_annual;
+    ? (addOn.price_monthly ?? addOn.addon_price_monthly)
+    : (addOn.price_annual ?? addOn.addon_price_annual);
 
   return (
     <div className={`
@@ -210,7 +210,7 @@ export function AddOnCardCompact({
           </div>
         )}
         <div>
-          <h4 className="font-light text-lg text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{addOn.feature_name}</h4>
+          <h4 className="font-light text-lg text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{addOn.name ?? addOn.feature_name}</h4>
           <p className="text-sm text-slate-500 font-medium mt-0.5">
             ₹{currentPrice}/{billingPeriod === 'monthly' ? 'mo' : 'yr'}
           </p>

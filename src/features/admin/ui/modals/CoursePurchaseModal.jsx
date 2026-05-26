@@ -136,7 +136,7 @@ const CoursePurchaseModal = ({ course, isOpen, onClose, onPurchase, userRole = '
                 </li>
                 <li className="flex items-center gap-2 text-sm text-emerald-800">
                   <CheckCircle className="w-4 h-4 text-emerald-600" />
-                  Certificate of completion
+                  Certificate of Participation
                 </li>
                 <li className="flex items-center gap-2 text-sm text-emerald-800">
                   <CheckCircle className="w-4 h-4 text-emerald-600" />
@@ -161,7 +161,7 @@ const CoursePurchaseModal = ({ course, isOpen, onClose, onPurchase, userRole = '
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">{course.educator_name}</p>
-                    <p className="text-sm text-gray-500">Course Instructor</p>
+                    <p className="text-sm text-gray-500"> Instructor</p>
                   </div>
                 </div>
               </div>

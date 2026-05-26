@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { supabase } from '@/shared/api';
 import userApiService from './userApiService';
 import type { QualificationData, ImportError, UserRoleHistoryRecord } from '@/types/LearnerManagement';
@@ -279,7 +278,7 @@ class UserManagementService {
     newRole: string,
     reason?: string
   ): Promise<void> {
-    const { data: currentUser } = await getCurrentUser();
+    const currentUser = useAuthStore.getState().user;
     if (!currentUser.user) throw new Error('Not authenticated');
 
     const { error } = await supabase.rpc('change_user_role', {
@@ -388,7 +387,7 @@ class UserManagementService {
     status: 'verified' | 'rejected',
     reason?: string
   ): Promise<void> {
-    const { data: currentUser } = await getCurrentUser();
+    const currentUser = useAuthStore.getState().user;
     if (!currentUser.user) throw new Error('Not authenticated');
 
     const updateData: {
@@ -455,7 +454,7 @@ class UserManagementService {
    * Bulk import users from CSV
    */
   async bulkImportUsers(file: File): Promise<BulkImportResult> {
-    const { data: currentUser } = await getCurrentUser();
+    const currentUser = useAuthStore.getState().user;
     if (!currentUser.user) throw new Error('Not authenticated');
 
     // Upload CSV file

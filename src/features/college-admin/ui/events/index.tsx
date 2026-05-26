@@ -14,7 +14,7 @@ import { useEventAnalytics } from "./hooks/useEventAnalytics";
 import { useEvents } from "./hooks/useEvents";
 import { useRegistrations } from "./hooks/useRegistrations";
 import { CollegeEvent } from '@/features/learner-profile/model';
-import { authSessionService } from '@/features/auth';
+
 
 const tabs = [
   { id: "events", label: "Event Scheduling", icon: CalendarIcon },
@@ -50,7 +50,7 @@ const EventManagement: React.FC = () => {
   useEffect(() => {
     const fetchCollegeId = async () => {
       try {
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (user) {
           // First check organizations table for college admin
           const { data: org } = await supabase.from("organizations").select("id").eq("organization_type", "college").or(`admin_id.eq.${user.id},email.eq.${user.email}`).maybeSingle();

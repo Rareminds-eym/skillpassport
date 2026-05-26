@@ -9,14 +9,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-ai-recommendations-service');
 
-// Get API base URL from environment, fallback to current origin
-const getApiBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_API_BASE_URL;
-  if (envUrl && envUrl.trim() !== '') {
-    return envUrl;
-  }
-  return typeof window !== 'undefined' ? window.location.origin : '';
-};
+const ORIGIN = typeof window !== 'undefined' ? window.location.origin : '';
 
 export interface AIRecommendation {
   id: string;
@@ -75,8 +68,7 @@ export interface AIRecommendationsResponse {
  */
 export async function getLearnerAIRecommendations(): Promise<AIRecommendationsResponse> {
   try {
-    const apiBaseUrl = getApiBaseUrl();
-    const url = `${apiBaseUrl}/api/learners/ai-recommendations`;
+    const url = `${ORIGIN}/api/learners/ai-recommendations`;
     
     logger.info('Fetching AI recommendations from backend', { url });
 

@@ -15,7 +15,6 @@ import { supabase } from '@/shared/api/supabaseClient';
 import UserFormModal from "@/features/college-admin/ui/components/UserFormModal";
 import { ConfirmModal } from '@/shared/ui';
 import type { User } from '@/shared/types/college';
-import { authSessionService } from '@/features/auth';
 
 const UserManagement: React.FC = () => {
   const logger = getLogger('college-admin-user-management');
@@ -100,7 +99,7 @@ const UserManagement: React.FC = () => {
     const fetchDepartments = async () => {
       try {
         // Get college ID from current user
-        const { data: { user: currentUser } } = await authSessionService.getUser();
+        const { data: { user: currentUser } } = { data: { user: useAuthStore.getState().user } };
 
         if (!currentUser?.email) {
           logger.error('No authenticated user found');

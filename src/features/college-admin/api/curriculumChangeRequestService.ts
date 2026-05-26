@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 // ============================================================================
 // CURRICULUM CHANGE REQUEST SERVICE
 // ============================================================================
@@ -144,7 +143,8 @@ class CurriculumChangeRequestService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Check authentication before making the request
-      const { data: { user }, error: authError } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
+    const authError = null;
 
       if (authError || !user) {
         logger.error('Failed to verify authentication for outcome add', new Error('User not authenticated'));
