@@ -10,7 +10,7 @@
  * - If learner_type === "teacher", user should be treated as educator
  * - Otherwise, user is treated as regular learner
  * 
- * GET /api/course/learner-type?userId=<id>
+ * GET /api/ai-tutor/learner-type?userId=<id>
  * 
  * Query parameters:
  * - userId: string (optional) - User ID to fetch learner_type for
@@ -21,6 +21,10 @@
  * - learnerType: string | null - The learner_type value from database
  * - isTeacher: boolean - True if learner_type === "teacher"
  * - hasLearnerRecord: boolean - True if learner record exists
+ * 
+ * Used by:
+ * - Frontend: useLearnerType hook (src/shared/model/useLearnerType.ts)
+ * - Admin tools: For checking other users' learner types
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
