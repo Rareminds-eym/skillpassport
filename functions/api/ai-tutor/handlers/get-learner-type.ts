@@ -23,7 +23,7 @@
  * - hasLearnerRecord: boolean - True if learner record exists
  * 
  * Used by:
- * - Frontend: useLearnerType hook (src/shared/model/useLearnerType.ts)
+ * - Frontend: useLearnerType hook (src/features/ai-tutor/model/useLearnerType.ts)
  * - Admin tools: For checking other users' learner types
  */
 

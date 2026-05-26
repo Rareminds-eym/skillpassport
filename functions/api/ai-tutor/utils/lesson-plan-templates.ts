@@ -6,8 +6,7 @@
  */
 
 import type { LessonPlanConfig, LessonPlanTemplateType } from '../types/lesson-plan';
-import type { CourseContext } from '../../ai-tutor/utils/course-context';
-import { formatCourseContextForPrompt } from '../../ai-tutor/utils/course-context';
+import { type CourseContext, formatCourseContextForPrompt } from './course-context';
 
 // ==================== HELPER FUNCTIONS ====================
 
