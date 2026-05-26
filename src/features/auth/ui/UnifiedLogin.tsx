@@ -59,26 +59,22 @@ const UnifiedLogin = () => {
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
-    // Fire login_start once on first meaningful interaction
-    // Only track if role is selected to ensure accurate analytics data
-    if (!hasStartedLoginRef.current && (name === 'email' || name === 'password')) {
-      hasStartedLoginRef.current = true;
-      if (state.selectedRole) {
-        trackLogin.start(state.selectedRole);
-      }
-    }
-
     setState((prev) => ({ ...prev, [name]: value, error: '' }));
   };
 
   const handleRoleChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    // Reset ref when role changes to allow tracking new login attempt
-    hasStartedLoginRef.current = false;
+    const newRole = (e.target.value || null) as UserRole | null;
+    
+    // Fire login_start when user selects a role (captures true login intent)
+    // Works reliably even with browser autofill/password managers
+    if (!hasStartedLoginRef.current && newRole) {
+      hasStartedLoginRef.current = true;
+      trackLogin.start(newRole);
+    }
     
     setState((prev) => ({
       ...prev,
-      selectedRole: (e.target.value || null) as UserRole | null,
+      selectedRole: newRole,
       error: '',
     }));
   };
