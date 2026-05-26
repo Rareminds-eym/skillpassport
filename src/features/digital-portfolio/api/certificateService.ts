@@ -6,6 +6,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('certificate-service');
 
@@ -15,6 +16,16 @@ const generateCredentialId = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
   return `CERT-${timestamp}-${random}`;
+};
+
+// Helper function to load images - moved to module level to avoid closure overhead
+const loadImage = (src: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 };
 
 const generateCertificateImage = async (
@@ -59,15 +70,6 @@ const generateCertificateImage = async (
   });
 
   // Load and draw RareMinds logo at top left
-  const loadImage = (src: string): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = src;
-    });
-  };
-
   try {
     const logo = await loadImage('/RareMinds ISO Logo-01.png');
     // Position logo at top left with some padding from borders
@@ -206,8 +208,6 @@ const uploadToR2 = async (
   courseId: string,
   credentialId: string
 ): Promise<string> => {
-  const { ssoClient } = await import('@/shared/api/ssoClient');
-  
   const filename = `certificates/${learnerId}/${courseId}/${credentialId}.png`;
   
   logger.info('Starting R2 upload', { filename, blobSize: blob.size });
@@ -307,13 +307,12 @@ export const generateCourseCertificate = async (
       logger.info('Certificate uploaded to R2 successfully', { certificateUrl });
     } catch (err) {
       logger.error('Failed to upload certificate to R2 storage', err instanceof Error ? err : new Error('Unknown error'));
-      // If R2 upload fails, we cannot proceed because data URL is too large for database
-      // Return the data URL so user can still download it, but don't save to database
+      // If R2 upload fails, return error - data URL is too large for database
       return { 
-        success: true, 
-        certificateUrl: certificateDataUrl, 
-        credentialId,
-        warning: 'Certificate generated but not saved to database due to storage error'
+        success: false, 
+        error: 'Failed to upload certificate to storage. Please try again.',
+        certificateUrl: undefined,
+        credentialId
       };
     }
 

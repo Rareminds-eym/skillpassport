@@ -300,7 +300,14 @@ const ModernLearningCard = ({
           }
           const mime = mimeMatch[1];
           
-          const bstr = atob(arr[1]);
+          // Decode base64 with error handling
+          let bstr;
+          try {
+            bstr = atob(arr[1]);
+          } catch (decodeError) {
+            throw new Error('Invalid base64 encoding in data URL');
+          }
+          
           let n = bstr.length;
           const u8arr = new Uint8Array(n);
           while (n--) {
@@ -316,10 +323,14 @@ const ModernLearningCard = ({
             // Revoke immediately if window didn't open
             URL.revokeObjectURL(blobUrl);
           } else {
-            // Revoke after a reasonable delay to allow browser to load the blob
+            // Use window load event for more reliable cleanup
+            newWindow.addEventListener('load', () => {
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+            });
+            // Fallback timeout in case load event doesn't fire
             setTimeout(() => {
               URL.revokeObjectURL(blobUrl);
-            }, 5000); // Reduced from 60000ms
+            }, 5000);
           }
           
           return; // Exit early for data URLs

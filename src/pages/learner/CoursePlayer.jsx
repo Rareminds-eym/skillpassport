@@ -1317,6 +1317,7 @@ const CoursePlayer = () => {
 
         if (learnerError || !data) {
           logger.error('Error fetching learner record', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
+          toast.error('Failed to fetch learner information. Please try again.');
           return;
         }
         
@@ -1373,12 +1374,9 @@ const CoursePlayer = () => {
           
           // For webinars, download certificate immediately
           if (isWebinar) {
-            let downloadSucceeded = false;
             try {
               await downloadCertificate(certResult.certificateUrl, courseName);
               logger.info('Webinar certificate downloaded successfully');
-              downloadSucceeded = true;
-              // Show success toast and navigate to courses
               toast.success(` Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
               setTimeout(() => {
                 navigate('/learner/courses');
@@ -1389,20 +1387,15 @@ const CoursePlayer = () => {
                 duration: 4000,
                 position: 'top-right',
               });
-            } finally {
-              // Ensure navigation happens even if unexpected error occurs
-              if (!downloadSucceeded) {
-                // Navigate to my learning page if download failed
-                setTimeout(() => {
-                  navigate('/learner/my-learning', { 
-                    state: { 
-                      courseCompleted: true, 
-                      courseName,
-                      certificateUrl: certResult.certificateUrl 
-                    } 
-                  });
-                }, 1500);
-              }
+              setTimeout(() => {
+                navigate('/learner/my-learning', { 
+                  state: { 
+                    courseCompleted: true, 
+                    courseName,
+                    certificateUrl: certResult.certificateUrl 
+                  } 
+                });
+              }, 1500);
             }
           } else {
             // For courses, navigate to my learning page with success message

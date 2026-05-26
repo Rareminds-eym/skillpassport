@@ -38,6 +38,7 @@ import { enrollmentService as courseEnrollmentService } from '@/features/courses
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 import { getLogger } from '@/shared/config/logging';
+import toast from 'react-hot-toast';
 
 import { useUser } from '@/shared/model/authStore';
 
@@ -48,7 +49,7 @@ const Courses = () => {
   const user = useUser();
   const subscriptionContext = useSubscriptionContext();
   const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
+  const userPlan = subscription?.plan ?? PLAN_IDS.FREEMIUM;
   
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -402,7 +403,14 @@ const Courses = () => {
           }
           const mime = mimeMatch[1];
           
-          const bstr = atob(arr[1]);
+          // Decode base64 with error handling
+          let bstr;
+          try {
+            bstr = atob(arr[1]);
+          } catch (decodeError) {
+            throw new Error('Invalid base64 encoding in data URL');
+          }
+          
           let n = bstr.length;
           const u8arr = new Uint8Array(n);
           while (n--) {
@@ -414,20 +422,20 @@ const Courses = () => {
           const newWindow = window.open(blobUrl, '_blank');
           
           if (!newWindow) {
-            alert('Please allow popups for this site to view the certificate.');
+            toast.error('Please allow popups for this site to view the certificate.');
             // Revoke immediately if window didn't open
             URL.revokeObjectURL(blobUrl);
           } else {
             // Revoke after a reasonable delay to allow browser to load the blob
             setTimeout(() => {
               URL.revokeObjectURL(blobUrl);
-            }, 5000); // Reduced from 60000ms
+            }, 5000);
           }
           
           return; // Exit early for data URLs
         } catch (blobError) {
           logger.error('Error converting data URL to blob', blobError instanceof Error ? blobError : new Error(String(blobError)));
-          alert('Error displaying certificate. Please try downloading instead.');
+          toast.error('Error displaying certificate. Please try downloading instead.');
           return;
         }
       }
@@ -436,17 +444,18 @@ const Courses = () => {
       const viewUrl = getCertificateProxyUrl(certUrl, 'inline');
       
       if (!viewUrl || viewUrl.trim() === '') {
-        alert('Failed to generate certificate viewing URL. Please try downloading instead.');
+        toast.error('Failed to generate certificate viewing URL. Please try downloading instead.');
         return;
       }
       
       const newWindow = window.open(viewUrl, '_blank');
       
       if (!newWindow) {
-        alert('Please allow popups for this site to view the certificate.');
+        toast.error('Please allow popups for this site to view the certificate.');
       }
     } catch (error) {
-      alert('Error displaying certificate. Please try downloading instead.');
+      logger.error('Error opening certificate', error instanceof Error ? error : new Error(String(error)));
+      toast.error('Error opening certificate. Please try downloading instead.');
     }
   };
 
