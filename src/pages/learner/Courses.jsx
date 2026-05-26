@@ -88,7 +88,7 @@ const Courses = () => {
   const userEmailRef = useRef(user?.email);
   
   // Helper function to check if user has access to a course
-  const canAccessCourse = (course) => {
+  const canAccessCourse = useCallback((course) => {
     const coursePlanType = course.plan_type?.toLowerCase() || 'freemium';
     
     // If course is freemium, everyone can access
@@ -101,7 +101,7 @@ const Courses = () => {
     const coursePlanLevel = PLAN_HIERARCHY_LEVELS[coursePlanType] || 0;
     
     return userPlanLevel >= coursePlanLevel;
-  };
+  }, [userPlan]);
 
   // Handle window resize for responsive pagination
   useEffect(() => {
