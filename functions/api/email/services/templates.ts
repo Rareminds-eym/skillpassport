@@ -200,7 +200,7 @@ export function getCountdownSubject(countdownDay: number): string {
 // ==================== EVENT REGISTRATION TEMPLATES ====================
 
 export function generateUserConfirmationHtml(data: EventConfirmationTemplateData): string {
-  const { name, email, phone, amount, orderId, campaign, baseUrl = 'https://skillpassport.rareminds.in', receiptUrl } = data;
+  const { name, email, phone, amount, orderId, campaign, baseUrl = APP_URL, receiptUrl } = data;
   const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return `
