@@ -6,6 +6,7 @@
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('certificate-service');
 
@@ -17,7 +18,30 @@ const generateCredentialId = () => {
   return `CERT-${timestamp}-${random}`;
 };
 
-const generateCertificateImage = (learnerName, courseName, completionDate, credentialId) => {
+// Helper function to load images - moved to module level to avoid closure overhead
+const loadImage = (src: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+};
+
+const generateCertificateImage = async (
+  learnerName: string,
+  courseName: string,
+  completionDate: string,
+  credentialId: string,
+  learnerIdText: string | null,
+  courseType: 'course' | 'webinar' = 'course'
+): Promise<string> => {
+  // Determine text based on course type
+  const isWebinar = courseType === 'webinar';
+  const certificateSubtitle = isWebinar ? 'OF PARTICIPATION' : 'OF COMPLETION';
+  const achievementText = isWebinar ? 'has actively participated in the webinar session' : 'has successfully completed the course';
+  const dateLabel = isWebinar ? 'Conducted on' : 'Completed on';
+
   const canvas = document.createElement('canvas');
   canvas.width = 1200;
   canvas.height = 850;
@@ -45,6 +69,20 @@ const generateCertificateImage = (learnerName, courseName, completionDate, crede
     ctx.fillRect(x, y, 8, 40);
   });
 
+  // Load and draw RareMinds logo at top left
+  try {
+    const logo = await loadImage('/RareMinds ISO Logo-01.png');
+    // Position logo at top left with some padding from borders
+    const logoWidth = 120;
+    const logoHeight = (logo.height / logo.width) * logoWidth;
+    const logoX = 70; // 70px from left edge (inside the border)
+    const logoY = 70; // 70px from top edge (inside the border)
+    ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight);
+  } catch (error) {
+    logger.error('Failed to load RareMinds logo:', error instanceof Error ? error : new Error(String(error)));
+    // Continue without logo if it fails to load
+  }
+
   // Title
   ctx.textAlign = 'center';
   ctx.fillStyle = '#1e40af';
@@ -52,7 +90,7 @@ const generateCertificateImage = (learnerName, courseName, completionDate, crede
   ctx.fillText('CERTIFICATE', 600, 130);
   ctx.fillStyle = '#3b82f6';
   ctx.font = '24px Georgia, serif';
-  ctx.fillText('OF COMPLETION', 600, 170);
+  ctx.fillText(certificateSubtitle, 600, 170);
 
   // Decorative line
   ctx.strokeStyle = '#3b82f6';
@@ -79,9 +117,16 @@ const generateCertificateImage = (learnerName, courseName, completionDate, crede
   ctx.lineTo(600 + nameWidth / 2 + 20, 355);
   ctx.stroke();
 
+  // Display Learner ID if available
+  if (learnerIdText) {
+    ctx.fillStyle = '#64748b';
+    ctx.font = '14px Arial, sans-serif';
+    ctx.fillText(`Learner ID: ${learnerIdText}`, 600, 385);
+  }
+
   ctx.fillStyle = '#475569';
   ctx.font = '20px Arial, sans-serif';
-  ctx.fillText('has successfully completed the course', 600, 420);
+  ctx.fillText(achievementText, 600, 420);
 
   ctx.fillStyle = '#1e40af';
   ctx.font = ctx.measureText(courseName).width > 900 ? 'bold 28px Georgia, serif' : 'bold 36px Georgia, serif';
@@ -89,11 +134,39 @@ const generateCertificateImage = (learnerName, courseName, completionDate, crede
 
   ctx.fillStyle = '#475569';
   ctx.font = '18px Arial, sans-serif';
-  ctx.fillText(`Completed on ${completionDate}`, 600, 560);
+  ctx.fillText(`${dateLabel} ${completionDate}`, 600, 560);
 
   ctx.fillStyle = '#64748b';
   ctx.font = '14px monospace';
   ctx.fillText(`Credential ID: ${credentialId}`, 600, 600);
+
+  // Load and draw signature images (reuse loadImage function from above)
+  try {
+    // Load both signature images
+    const [instructorSig, adminSig] = await Promise.all([
+      loadImage('/assets/certificates/instructor.png'),
+      loadImage('/assets/certificates/admin.png')
+    ]);
+
+    // Signature dimensions and positioning
+    const signatureWidth = 100;
+    const signatureYPosition = 640;
+    
+    // Left signature line goes from x=200 to x=450 (center at 325)
+    const leftLineCenter = 325;
+    const instructorHeight = (instructorSig.height / instructorSig.width) * signatureWidth;
+    const instructorX = leftLineCenter - (signatureWidth / 2); // Center the signature
+    ctx.drawImage(instructorSig, instructorX, signatureYPosition, signatureWidth, instructorHeight);
+
+    // Right signature line goes from x=750 to x=1000 (center at 875)
+    const rightLineCenter = 875;
+    const adminHeight = (adminSig.height / adminSig.width) * signatureWidth;
+    const adminX = rightLineCenter - (signatureWidth / 2); // Center the signature
+    ctx.drawImage(adminSig, adminX, signatureYPosition, signatureWidth, adminHeight);
+  } catch (error) {
+    logger.error('Failed to load signature images:', error instanceof Error ? error : new Error(String(error)));
+    // Continue without signatures if images fail to load
+  }
 
   // Signature lines
   ctx.strokeStyle = '#94a3b8';
@@ -107,17 +180,18 @@ const generateCertificateImage = (learnerName, courseName, completionDate, crede
 
   ctx.fillStyle = '#64748b';
   ctx.font = '14px Arial, sans-serif';
-  ctx.fillText('Course Instructor', 325, 745);
+  ctx.fillText('Instructor', 325, 745);
   ctx.fillText('Platform Administrator', 875, 745);
 
+  // Platform name at bottom - centered and positioned above bottom border
   ctx.fillStyle = '#3b82f6';
   ctx.font = 'bold 16px Arial, sans-serif';
-  ctx.fillText('Skill Ecosystem Platform', 600, 800);
+  ctx.fillText('Skill Ecosystem Platform', 600, 785);
 
   return canvas.toDataURL('image/png', 1.0);
 };
 
-const dataURLtoBlob = (dataURL) => {
+const dataURLtoBlob = (dataURL: string): Blob => {
   const [header, data] = dataURL.split(',');
   const mime = header.match(/:(.*?);/)[1];
   const binary = atob(data);
@@ -128,77 +202,163 @@ const dataURLtoBlob = (dataURL) => {
   return new Blob([array], { type: mime });
 };
 
-const uploadToR2 = async (blob, learnerId, courseId, credentialId) => {
+const uploadToR2 = async (
+  blob: Blob,
+  learnerId: string,
+  courseId: string,
+  credentialId: string
+): Promise<string> => {
   const filename = `certificates/${learnerId}/${courseId}/${credentialId}.png`;
+  
+  logger.info('Starting R2 upload', { filename, blobSize: blob.size });
+  
   const formData = new FormData();
   formData.append('file', blob, `${credentialId}.png`);
   formData.append('filename', filename);
+  formData.append('context', 'certificate'); // Add context for file size validation
 
-  const response = await fetch(`${STORAGE_API_URL}/upload`, {
+  logger.info('Sending upload request to storage API');
+
+  const response = await ssoClient.fetch(`${STORAGE_API_URL}/upload`, {
     method: 'POST',
     body: formData,
   });
 
+  logger.info('Upload response received', { status: response.status, ok: response.ok });
+
   if (!response.ok) {
-    throw new Error('Upload failed');
+    const errorData = await response.json().catch(() => ({}));
+    logger.error('Upload failed', { status: response.status, errorData });
+    throw new Error(`Upload failed (${response.status}): ${errorData.error || response.statusText}`);
   }
 
-  const data = await response.json();
+  const responseData = await response.json();
+  logger.info('Upload successful', { responseData });
 
-  // Return proxy URL instead of direct R2 URL (R2 bucket is not public)
-  // This allows downloading through the storage-api worker which has R2 credentials
-  return `${STORAGE_API_URL}/course-certificate?key=${encodeURIComponent(filename)}`;
+  // Use the actual key returned from the upload response
+  // The upload handler generates its own unique key in format: uploads/{userId}/{timestamp}-{uuid}.{ext}
+  const actualKey = responseData.key;
+  
+  // Return proxy URL with the actual key from R2
+  const proxyUrl = `${STORAGE_API_URL}/course-certificate?key=${encodeURIComponent(actualKey)}`;
+  logger.info('Generated proxy URL', { proxyUrl, actualKey });
+  
+  return proxyUrl;
 };
 
-export const generateCourseCertificate = async (learnerId, learnerName, courseId, courseName, educatorName) => {
+interface CertificateResult {
+  success: boolean;
+  certificateUrl: string;
+  credentialId: string;
+  warning?: string;
+  error?: string;
+}
+
+export const generateCourseCertificate = async (
+  learnerId: string,
+  learnerName: string,
+  courseId: string,
+  courseName: string,
+  educatorName: string,
+  learnerIdText: string | null = null,
+  courseType: 'course' | 'webinar' = 'course',
+  issuedOnDate: string | null = null
+): Promise<CertificateResult> => {
   try {
     const credentialId = generateCredentialId();
-    const completionDate = new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    
+    // Determine certificate text based on course type
+    const isWebinar = courseType === 'webinar';
+    
+    // For webinars, use the issued_on date from course table; for courses, use current date
+    let completionDate;
+    if (isWebinar && issuedOnDate) {
+      // Format the issued_on date from the database
+      const dateObj = new Date(issuedOnDate);
+      completionDate = dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } else {
+      // For courses, use current date (completion date)
+      completionDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    
+    const certificateTitle = isWebinar 
+      ? `${courseName} - Webinar Participation` 
+      : `${courseName} - Course Completion`;
+    const certificateLevel = isWebinar ? 'Webinar Participation' : 'Course Completion';
+    const certificateDescription = isWebinar 
+      ? `Certificate of Participation for "${courseName}"` 
+      : `Certificate of Completion for "${courseName}"`;
 
-    const certificateDataUrl = generateCertificateImage(learnerName, courseName, completionDate, credentialId);
+    const certificateDataUrl = await generateCertificateImage(learnerName, courseName, completionDate, credentialId, learnerIdText, courseType);
     let certificateUrl = certificateDataUrl;
 
-    // Upload to R2
+    // Upload to R2 - this is critical, we need the R2 URL for database storage
     try {
       const blob = dataURLtoBlob(certificateDataUrl);
       certificateUrl = await uploadToR2(blob, learnerId, courseId, credentialId);
+      logger.info('Certificate uploaded to R2 successfully', { certificateUrl });
     } catch (err) {
       logger.error('Failed to upload certificate to R2 storage', err instanceof Error ? err : new Error('Unknown error'));
+      // If R2 upload fails, return error - data URL is too large for database
+      return { 
+        success: false, 
+        error: 'Failed to upload certificate to storage. Please try again.',
+        certificateUrl: undefined,
+        credentialId
+      };
     }
 
     // Save to database
-    await supabase.from('certificates').insert({
+    const { error: certificateError } = await supabase.from('certificates').insert({
       learner_id: learnerId,
-      title: `${courseName} - Course Completion`,
+      title: certificateTitle,
       issuer: educatorName || 'Skill Ecosystem Platform',
-      level: 'Course Completion',
+      level: certificateLevel,
       credential_id: credentialId,
       link: certificateUrl,
       document_url: certificateUrl,
       issued_on: new Date().toISOString().split('T')[0],
-      description: `Certificate of completion for "${courseName}"`,
+      description: certificateDescription,
       status: 'active',
       approval_status: 'approved',
       enabled: true
     });
 
+    if (certificateError) {
+      logger.error('Failed to insert certificate into database', certificateError);
+      throw new Error(`Database insert failed: ${certificateError.message}`);
+    }
+
+    logger.info('Certificate saved to database successfully', { credentialId, courseType, isWebinar });
+
     // Update enrollment
-    await supabase
+    const { error: enrollmentError } = await supabase
       .from('course_enrollments')
       .update({ certificate_url: certificateUrl })
       .eq('learner_id', learnerId)
       .eq('course_id', courseId);
+
+    if (enrollmentError) {
+      logger.error('Failed to update enrollment with certificate URL', enrollmentError);
+      // Don't throw here - certificate is already saved, just log the error
+    } else {
+      logger.info('Enrollment updated with certificate URL', { learnerId, courseId });
+    }
 
     // Embedding regeneration handled by database trigger on certificates table
 
     return { success: true, certificateUrl, credentialId };
   } catch (error) {
     logger.error('Failed to generate course certificate', error instanceof Error ? error : new Error('Unknown error'));
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
   }
 };
 
@@ -259,13 +419,15 @@ export const downloadCertificate = async (certificateUrl, courseName) => {
 /**
  * Get the viewable/downloadable URL for a certificate
  * Converts direct R2 URLs to proxy URLs that work without public bucket access
- * @param {string} certificateUrl - The certificate URL
+ * @param {string | null} certificateUrl - The certificate URL
  * @param {string} mode - 'inline' for viewing in browser, 'download' for downloading
  */
-export const getCertificateProxyUrl = (certificateUrl: string, mode: 'inline' | 'download' = 'inline'): string | null => {
+export const getCertificateProxyUrl = (certificateUrl: string | null, mode: 'inline' | 'download' = 'inline'): string | null => {
   const STORAGE_API_URL = getApiUrl('storage');
 
-  if (!certificateUrl) return null;
+  if (!certificateUrl) {
+    return null;
+  }
 
   // Data URLs work directly
   if (certificateUrl.startsWith('data:')) {
@@ -274,9 +436,28 @@ export const getCertificateProxyUrl = (certificateUrl: string, mode: 'inline' | 
 
   // Already a proxy URL - add/update mode parameter
   if (certificateUrl.includes('/course-certificate')) {
-    const url = new URL(certificateUrl);
-    url.searchParams.set('mode', mode);
-    return url.toString();
+    try {
+      // Determine if URL is absolute or relative
+      let url: URL;
+      
+      if (certificateUrl.startsWith('http://') || certificateUrl.startsWith('https://')) {
+        // Absolute URL
+        url = new URL(certificateUrl);
+      } else if (certificateUrl.startsWith('/')) {
+        // Relative URL starting with /
+        url = new URL(certificateUrl, window.location.origin);
+      } else {
+        // Relative URL without leading /
+        url = new URL('/' + certificateUrl, window.location.origin);
+      }
+      
+      url.searchParams.set('mode', mode);
+      return url.toString();
+    } catch (error) {
+      // If URL parsing fails, manually append mode parameter
+      const separator = certificateUrl.includes('?') ? '&' : '?';
+      return `${certificateUrl}${separator}mode=${mode}`;
+    }
   }
 
   // Convert R2 URL to proxy URL

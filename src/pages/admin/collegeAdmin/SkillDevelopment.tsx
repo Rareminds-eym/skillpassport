@@ -5479,10 +5479,10 @@ const SkillDevelopment: React.FC = () => {
                   <h4 className="text-sm font-medium text-gray-700 mb-3">Certificate Preview</h4>
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-dashed border-blue-300 rounded-lg p-8 text-center">
                     <Award className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">Certificate of Completion</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Certificate of Participation</h3>
                     <p className="text-gray-600 mb-4">This is to certify that</p>
                     <p className="text-2xl font-bold text-blue-600 mb-4">[Learner Name]</p>
-                    <p className="text-gray-600 mb-2">has successfully completed the course</p>
+                    <p className="text-gray-600 mb-2">has actively participated in the webinar session</p>
                     <p className="text-lg font-semibold text-gray-900 mb-4">[Course Name]</p>
                     <div className="flex justify-center gap-8 text-sm text-gray-600">
                       <div>

@@ -20,7 +20,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from '@/shared/model/authStore';
-import { useLearnerDataByEmail } from '@/entities/learner';
+import { useLearnerDataById } from '@/entities/learner';
 import { supabase } from "@/shared/api/supabaseClient";
 import { downloadCertificate, getCertificateProxyUrl } from "@/features/digital-portfolio";
 import { checkAssessmentStatus } from "@/features/assessment/api/externalAssessmentService";
@@ -43,17 +43,20 @@ const ModernLearningCard = ({
   const [assessmentScore, setAssessmentScore] = useState(null);
   const [checkingAssessment, setCheckingAssessment] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [certificateUrl, setCertificateUrl] = useState(item.certificateUrl || '');
+  const [certificateUrl, setCertificateUrl] = useState(item.certificateUrl || null);
   
   // Update certificate URL when item.certificateUrl changes
   useEffect(() => {
-    setCertificateUrl(item.certificateUrl || '');
+    // Only update if item.certificateUrl is a non-empty string
+    if (item.certificateUrl && item.certificateUrl.trim() !== '') {
+      setCertificateUrl(item.certificateUrl);
+    }
   }, [item.certificateUrl]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   
-  const userEmail = user?.email;
-  const { learnerData } = useLearnerDataByEmail(userEmail, false);
+  // Use useLearnerDataById with user.id (SSO ID)
+  const { learnerData } = useLearnerDataById(user?.id, false);
 
   // Check if this is a course enrollment (started from course player)
   const isCourseEnrollment = item.type === 'course_enrollment' || item.source === 'course_enrollment';
@@ -153,20 +156,35 @@ const ModernLearningCard = ({
   // Fetch certificate URL for completed internal courses if not already provided
   useEffect(() => {
     const fetchCertificateUrl = async () => {
-      // Only fetch if it's a completed internal course without a certificate URL
-      if (!isInternalCourse || !isCompleted || certificateUrl || !item.course_id || !learnerData?.id) {
+      // Skip if not an internal course or not completed
+      if (!isInternalCourse || !isCompleted) {
+        return;
+      }
+
+      // Skip if we already have a valid certificate URL
+      if (certificateUrl && certificateUrl.trim() !== '') {
+        return;
+      }
+
+      // Skip if missing required IDs
+      if (!item.course_id || !learnerData?.id) {
         return;
       }
       
       try {
-        const { data: enrollment } = await supabase
+        // Fetch certificate using learner's database ID
+        const { data: enrollment, error } = await supabase
           .from('course_enrollments')
           .select('certificate_url')
           .eq('learner_id', learnerData.id)
           .eq('course_id', item.course_id)
           .single();
 
-        if (enrollment?.certificate_url) {
+        if (error) {
+          return;
+        }
+
+        if (enrollment?.certificate_url && enrollment.certificate_url.trim() !== '') {
           setCertificateUrl(enrollment.certificate_url);
         }
       } catch (error) {
@@ -240,7 +258,10 @@ const ModernLearningCard = ({
   // Helper functions for list view (different styling)
   const handleDownloadCertificate = async (e) => {
     e?.stopPropagation();
-    if (!certificateUrl) return;
+    
+    if (!certificateUrl) {
+      return;
+    }
     
     setIsDownloading(true);
     try {
@@ -254,15 +275,99 @@ const ModernLearningCard = ({
 
   const handleViewCertificate = (e) => {
     e?.stopPropagation();
-    if (certificateUrl) {
+    
+    if (!certificateUrl || certificateUrl.trim() === '') {
+      alert('Certificate URL is not available. Please try again or contact support.');
+      return;
+    }
+
+    try {
+      // Special handling for data URLs (base64 encoded images)
+      // Must handle BEFORE calling getCertificateProxyUrl
+      if (certificateUrl.startsWith('data:')) {
+        try {
+          // Convert data URL to blob with proper validation
+          const arr = certificateUrl.split(',');
+          
+          // Validate data URL format
+          if (arr.length < 2) {
+            throw new Error('Invalid data URL: missing base64 content');
+          }
+          
+          const mimeMatch = arr[0].match(/:(.*?);/);
+          if (!mimeMatch || !mimeMatch[1]) {
+            throw new Error('Invalid data URL format: missing MIME type');
+          }
+          const mime = mimeMatch[1];
+          
+          // Decode base64 with error handling
+          let bstr;
+          try {
+            bstr = atob(arr[1]);
+          } catch (decodeError) {
+            throw new Error('Invalid base64 encoding in data URL');
+          }
+          
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          const blob = new Blob([u8arr], { type: mime });
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const newWindow = window.open(blobUrl, '_blank');
+          
+          if (!newWindow) {
+            alert('Please allow popups for this site to view the certificate.');
+            // Revoke immediately if window didn't open
+            URL.revokeObjectURL(blobUrl);
+          } else {
+            // Use window load event for more reliable cleanup
+            newWindow.addEventListener('load', () => {
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+            });
+            // Fallback timeout in case load event doesn't fire
+            setTimeout(() => {
+              URL.revokeObjectURL(blobUrl);
+            }, 5000);
+          }
+          
+          return; // Exit early for data URLs
+        } catch (blobError) {
+          console.error('Error converting data URL to blob:', blobError);
+          alert('Error displaying certificate. Please try downloading instead.');
+          return;
+        }
+      }
+      
+      // For non-data URLs
+      let finalUrl;
+      
       if (isExternalCourse) {
         // For external courses, open the certificate URL directly
-        window.open(certificateUrl, '_blank');
+        finalUrl = certificateUrl;
       } else {
         // For internal courses, use the proxy URL
         const viewUrl = getCertificateProxyUrl(certificateUrl, 'inline');
-        window.open(viewUrl, '_blank');
+        
+        if (!viewUrl || viewUrl.trim() === '') {
+          alert('Failed to generate certificate viewing URL. Please try downloading instead.');
+          return;
+        }
+        
+        finalUrl = viewUrl;
       }
+      
+      // Verify URL is valid before opening
+      if (!finalUrl || finalUrl === 'null' || finalUrl === 'undefined') {
+        alert('Invalid certificate URL. Please try downloading instead.');
+        return;
+      }
+      
+      window.open(finalUrl, '_blank');
+    } catch (error) {
+      alert('Error opening certificate: ' + error.message);
     }
   };
 
@@ -761,6 +866,7 @@ const ModernLearningCard = ({
                   {/* Dropdown Menu */}
                   {showDropdown && (
                     <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
+                      {/* View Certificate button */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -896,6 +1002,7 @@ const ModernLearningCard = ({
                 {/* Dropdown Menu */}
                 {showDropdown && (
                   <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
+                    {/* View Certificate button */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -950,9 +1057,18 @@ const ModernLearningCard = ({
 
         {/* Course Title & Provider */}
         <div className="mb-4 sm:mb-5">
-          <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-            {item.course || item.title}
-          </h3>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors flex-1">
+              {item.course || item.title}
+            </h3>
+            {/* Issued Date Badge - Only show if issued_on is available */}
+            {item.issued_on && (
+              <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-200">
+                <Calendar className="w-3 h-3" />
+                <span>{new Date(item.issued_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+            )}
+          </div>
           <p className="text-slate-600 text-sm line-clamp-1 flex items-center gap-1.5">
             <Users className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400" />
             {item.provider || item.organization}
