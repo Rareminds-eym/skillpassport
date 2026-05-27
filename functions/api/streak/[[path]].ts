@@ -11,7 +11,7 @@
  */
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
 import { withAuth } from '../lib/auth';
 import { getServiceClient } from '../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
