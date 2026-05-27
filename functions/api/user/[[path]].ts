@@ -33,6 +33,8 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import { withAuth } from '../../lib/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import {
   handleGetSchools,
   handleGetColleges,
@@ -194,22 +196,34 @@ export const onRequest: PagesFunction = async (context) => {
 
     // Authenticated endpoints
     if (path === '/create-learner' && request.method === 'POST') {
-      return await handleCreateLearner(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleCreateLearner(authContext.request, authContext.env);
+      })(context);
     }
     if (path === '/create-teacher' && request.method === 'POST') {
-      return await handleCreateTeacher(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleCreateTeacher(authContext.request, authContext.env);
+      })(context);
     }
     if (path === '/create-college-staff' && request.method === 'POST') {
-      return await handleCreateCollegeStaff(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleCreateCollegeStaff(authContext.request, authContext.env);
+      })(context);
     }
     if (path === '/update-learner-documents' && request.method === 'POST') {
-      return await handleUpdateLearnerDocuments(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleUpdateLearnerDocuments(authContext.request, authContext.env);
+      })(context);
     }
     if (path === '/create-event-user' && request.method === 'POST') {
-      return await handleCreateEventUser(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleCreateEventUser(authContext.request, authContext.env);
+      })(context);
     }
     if (path === '/send-interview-reminder' && request.method === 'POST') {
-      return await handleSendInterviewReminder(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleSendInterviewReminder(authContext.request, authContext.env);
+      })(context);
     }
     if (path === '/reset-password' && request.method === 'POST') {
       return await handleResetPassword(request, env);

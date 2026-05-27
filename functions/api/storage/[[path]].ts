@@ -22,8 +22,9 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
-import { authenticateUser, AuthResult } from '../lib/auth';
-import { createAuthenticationError } from './utils/error-handling';
+import { withAuth } from '../lib/auth';
+import { getServiceClient } from '../lib/supabase';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 // Import all handlers
 import { handleUpload } from './handlers/upload';
@@ -38,34 +39,55 @@ import { handleListFiles } from './handlers/list-files';
 import { handleGetAuthenticatedUrl } from './handlers/get-authenticated-url';
 import { handleMediaProxy } from './handlers/media-proxy';
 
-// Define public endpoints that don't require JWT authentication
-// Note: /media-proxy uses token-based auth in URL params, not JWT
-const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content', '/media-proxy'];
+function routeRequest(context: any, path: string): Response | Promise<Response> {
+  // Health check
+  if (!path || path === '/') {
+    if (context.request.method === 'GET') {
+      return jsonResponse({
+        status: 'ok',
+        service: 'storage-api',
+        endpoints: [
+          '/upload', '/delete', '/presigned', '/confirm', '/get-url', '/get-file-url',
+          '/document-access (LEGACY)', '/signed-url', '/signed-urls',
+          '/get-authenticated-url (SECURE)', '/media-proxy (SECURE)',
+          '/upload-payment-receipt', '/payment-receipt', '/course-certificate',
+          '/extract-content', '/files/:courseId/:lessonId',
+        ],
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
 
-/**
- * Check if the given path is a public endpoint
- */
-function isPublicEndpoint(path: string): boolean {
-  return PUBLIC_ENDPOINTS.includes(path);
-}
+  const filesMatch = path.match(/^\/files\/([^\/]+)\/([^\/]+)$/);
+  if (filesMatch) {
+    const [, courseId, lessonId] = filesMatch;
+    return handleListFiles({ ...context, params: { courseId, lessonId } });
+  }
 
-// Extended context type with authentication
-export interface AuthenticatedContext {
-  request: Request;
-  env: any;
-  params?: Record<string, string>;
-  waitUntil?: (promise: Promise<any>) => void;
-  next?: () => Promise<Response>;
-  data?: Record<string, any>;
-  user?: AuthResult['user'];
-  supabase?: AuthResult['supabase'];
-  supabaseAdmin?: AuthResult['supabaseAdmin'];
+  switch (path) {
+    case '/upload': return handleUpload(context);
+    case '/delete': return handleDelete(context);
+    case '/presigned': return handlePresigned(context);
+    case '/confirm': return handleConfirm(context);
+    case '/get-url': case '/get-file-url': return handleGetFileUrl(context);
+    case '/document-access': return handleDocumentAccess(context);
+    case '/signed-url': return handleSignedUrl(context);
+    case '/signed-urls': return handleSignedUrls(context);
+    case '/upload-payment-receipt': return handleUploadPaymentReceipt(context);
+    case '/payment-receipt/presigned': return handleGetPaymentReceiptPresigned(context);
+    case '/payment-receipt': return handleGetPaymentReceipt(context);
+    case '/course-certificate': return handleCourseCertificate(context);
+    case '/extract-content': return handleExtractContent(context);
+    case '/get-authenticated-url': return handleGetAuthenticatedUrl(context);
+    case '/media-proxy': return handleMediaProxy(context);
+    default:
+      return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/delete', '/presigned', '/confirm', '/get-url', '/get-file-url', '/document-access (LEGACY)', '/signed-url', '/signed-urls', '/get-authenticated-url (SECURE)', '/media-proxy (SECURE)', '/upload-payment-receipt', '/payment-receipt', '/payment-receipt/presigned', '/course-certificate', '/extract-content', '/files/:courseId/:lessonId'] }, 404);
+  }
 }
 
 export const onRequest: PagesFunction = async (context) => {
-  const { request, env } = context;
+  const { request } = context;
 
-  // Handle CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -73,150 +95,26 @@ export const onRequest: PagesFunction = async (context) => {
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/storage', '');
 
+  const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content', '/media-proxy'];
+  const isPublic = PUBLIC_ENDPOINTS.includes(path);
+
   try {
-    // Create authenticated context
-    let authenticatedContext: AuthenticatedContext = { ...context };
+    if (isPublic) {
+      return await routeRequest(context, path);
+    }
 
-    // Check if endpoint requires authentication
-    if (!isPublicEndpoint(path)) {
-      // Attempt authentication for protected endpoints
-      const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
-      
-      if (!authResult) {
-        // Authentication failed - return 401 with standardized error
-        return createAuthenticationError(path, 'missing_token');
-      }
-
-      // Attach user context to the request
-      authenticatedContext = {
+    return withAuth(async (authContext: AuthenticatedContext) => {
+      const storageContext = {
         ...context,
-        user: authResult.user,
-        supabase: authResult.supabase,
-        supabaseAdmin: authResult.supabaseAdmin,
+        data: authContext.data,
+        user: authContext.data.user,
+        supabase: getServiceClient(authContext.env),
+        supabaseAdmin: getServiceClient(authContext.env),
       };
-    }
-
-    // Health check
-    if (!path || path === '/') {
-      if (request.method === 'GET') {
-        return jsonResponse({
-          status: 'ok',
-          service: 'storage-api',
-          endpoints: [
-            '/upload',
-            '/delete',
-            '/presigned',
-            '/confirm',
-            '/get-url',
-            '/get-file-url',
-            '/document-access (LEGACY)',
-            '/signed-url',
-            '/signed-urls',
-            '/get-authenticated-url (SECURE)',
-            '/media-proxy (SECURE)',
-            '/upload-payment-receipt',
-            '/payment-receipt',
-            '/course-certificate',
-            '/extract-content',
-            '/files/:courseId/:lessonId',
-          ],
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }
-
-    // Check for /files/:courseId/:lessonId pattern
-    const filesMatch = path.match(/^\/files\/([^\/]+)\/([^\/]+)$/);
-    if (filesMatch) {
-      const [, courseId, lessonId] = filesMatch;
-      return handleListFiles({
-        ...authenticatedContext,
-        params: { courseId, lessonId },
-      } as any);
-    }
-
-    // Route to handlers based on path
-    switch (path) {
-      case '/upload':
-        return handleUpload(authenticatedContext as any);
-
-      case '/delete':
-        return handleDelete(authenticatedContext as any);
-
-      case '/presigned':
-        return handlePresigned(authenticatedContext as any);
-
-      case '/confirm':
-        return handleConfirm(authenticatedContext as any);
-
-      case '/get-url':
-      case '/get-file-url':
-        return handleGetFileUrl(authenticatedContext as any);
-
-      case '/document-access':
-        return handleDocumentAccess(authenticatedContext as any);
-
-      case '/signed-url':
-        return handleSignedUrl(authenticatedContext as any);
-
-      case '/signed-urls':
-        return handleSignedUrls(authenticatedContext as any);
-
-      case '/upload-payment-receipt':
-        return handleUploadPaymentReceipt(authenticatedContext as any);
-
-      case '/payment-receipt/presigned':
-        return handleGetPaymentReceiptPresigned(authenticatedContext as any);
-
-      case '/payment-receipt':
-        return handleGetPaymentReceipt(authenticatedContext as any);
-
-      case '/course-certificate':
-        return handleCourseCertificate(authenticatedContext as any);
-
-      case '/extract-content':
-        return handleExtractContent(authenticatedContext as any);
-
-      case '/get-authenticated-url':
-        return handleGetAuthenticatedUrl(context);
-
-      case '/media-proxy':
-        return handleMediaProxy(context);
-
-      default:
-        return jsonResponse(
-          {
-            error: 'Not found',
-            availableEndpoints: [
-              '/upload',
-              '/delete',
-              '/presigned',
-              '/confirm',
-              '/get-url',
-              '/get-file-url',
-              '/document-access (LEGACY)',
-              '/signed-url',
-              '/signed-urls',
-              '/get-authenticated-url (SECURE)',
-              '/media-proxy (SECURE)',
-              '/upload-payment-receipt',
-              '/payment-receipt',
-              '/payment-receipt/presigned',
-              '/course-certificate',
-              '/extract-content',
-              '/files/:courseId/:lessonId',
-            ],
-          },
-          404
-        );
-    }
+      return await routeRequest(storageContext, path);
+    })(context);
   } catch (error) {
     console.error('Storage API Error:', error);
-    return jsonResponse(
-      {
-        error: (error as Error).message || 'Internal server error',
-      },
-      500
-    );
+    return jsonResponse({ error: (error as Error).message || 'Internal server error' }, 500);
   }
 };

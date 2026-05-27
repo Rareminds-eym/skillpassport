@@ -18,6 +18,8 @@
 
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { withAuth } from '../../lib/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 import { generateAptitudeQuestions } from './handlers/career-aptitude';
 import { generateKnowledgeQuestions } from './handlers/career-knowledge';
@@ -31,11 +33,10 @@ import { generateAssessment } from './handlers/course-assessment';
 import { handleStreamingAptitude } from './handlers/streaming';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
-  const { request, env } = context;
+  let { request, env }: { request: Request; env: Record<string, string> } = context as any;
 
   // Validate critical environment variables
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
-    // console.error('❌ Missing Supabase environment variables');
     // Silent check - errors will be thrown by handlers if actually needed and missing
   }
 
@@ -67,6 +68,11 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         }
       });
     }
+
+    // All other endpoints require authentication
+    return withAuth(async (authContext: AuthenticatedContext) => {
+      env = authContext.env as Record<string, string>;
+      request = authContext.request;
 
     // Career Assessment Endpoints
     if (path === '/career-assessment/generate-aptitude' && request.method === 'POST') {
@@ -224,6 +230,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       },
       404
     );
+  })(context);
   } catch (error: any) {
     console.error('❌ Error in question-generation-api:', error);
     return jsonResponse({ error: error.message || 'Internal server error' }, 500);

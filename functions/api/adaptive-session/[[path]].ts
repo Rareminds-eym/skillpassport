@@ -19,6 +19,7 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib/response';
+import { withAuth } from '../../lib/auth';
 import { initializeHandler } from './handlers/initialize';
 import { nextQuestionHandler } from './handlers/next-question';
 import { submitAnswerHandler } from './handlers/submit-answer';
@@ -35,6 +36,8 @@ export const onRequest: PagesFunction = async (context) => {
   const method = request.method;
 
   try {
+    // All endpoints require authentication
+    return withAuth(async () => {
     // POST /initialize - Start new test session
     if (method === 'POST' && path === '/initialize') {
       return initializeHandler(context);
@@ -90,6 +93,7 @@ export const onRequest: PagesFunction = async (context) => {
       { error: 'Not found', path, method },
       404
     );
+  })(context);
   } catch (error) {
     console.error('Adaptive Session API Error:', error);
     return jsonResponse(

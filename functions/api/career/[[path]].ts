@@ -14,6 +14,8 @@
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders } from '../../../src/functions-lib/cors';
 import { jsonResponse } from '../../../src/functions-lib/response';
+import { withAuth } from '../../lib/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getAPIKeys } from '../shared/ai-config';
 import { handleCareerChat } from './handlers/chat';
 import { handleRecommendOpportunities } from './handlers/recommend';
@@ -29,7 +31,7 @@ export const getOpenRouterKey = (env: any): string | undefined => {
 };
 
 export const onRequest: PagesFunction = async (context) => {
-  const { request, env } = context;
+  let { request, env }: { request: Request; env: Record<string, string> } = context as any;
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
@@ -46,6 +48,22 @@ export const onRequest: PagesFunction = async (context) => {
   }
 
   try {
+    // Health check — public
+    if (path === '/health') {
+      return jsonResponse({
+        status: 'ok',
+        service: 'career-api',
+        version: '2.0-pages-function',
+        endpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume'],
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // All other endpoints require authentication
+    return withAuth(async (authContext: AuthenticatedContext) => {
+      env = authContext.env as Record<string, string>;
+      request = authContext.request;
+
     // Route requests
     if (path === '/chat' || path === '/career-ai-chat' || path === '/') {
       if (!getOpenRouterKey(env)) {
@@ -87,22 +105,11 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleGetActions(request, env as any);
     }
 
-    // Health check
-    if (path === '/health') {
-      return jsonResponse({
-        status: 'ok',
-        service: 'career-api',
-        version: '2.0-pages-function',
-        endpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume'],
-        timestamp: new Date().toISOString()
-      });
-    }
-
     return jsonResponse({ 
       error: 'Not found', 
       availableEndpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume'] 
     }, 404);
-
+  })(context);
   } catch (error) {
     console.error('[ERROR] career-api:', error);
     return jsonResponse({ error: (error as Error)?.message || 'Internal server error' }, 500);

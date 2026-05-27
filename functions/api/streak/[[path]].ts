@@ -12,7 +12,9 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
-import { authenticateUser } from '../lib/auth';
+import { withAuth } from '../lib/auth';
+import { getServiceClient } from '../lib/supabase';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ==================== GET LEARNER STREAK ====================
@@ -221,56 +223,58 @@ export const onRequest: PagesFunction = async (context) => {
       }
     }
 
-    // Authenticate user for all other endpoints
-    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!authResult) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
-    const { user, supabase } = authResult;
+    // All other endpoints require authentication
+    return withAuth(async (authContext: AuthenticatedContext) => {
+      const user = authContext.data.user;
+      const supabase = getServiceClient(authContext.env) as unknown as SupabaseClient;
 
-    // POST /reset-daily (admin only - could add role check here)
-    if (pathParts.length === 1 && pathParts[0] === 'reset-daily' && request.method === 'POST') {
-      return await handleResetDailyFlags(supabase);
-    }
-
-    // Routes with learnerId
-    if (pathParts.length >= 1) {
-      const learnerId = pathParts[0];
-
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(learnerId)) {
-        return jsonResponse({ error: 'Invalid learner ID format' }, 400);
+      // POST /reset-daily - require admin role
+      if (pathParts.length === 1 && pathParts[0] === 'reset-daily' && request.method === 'POST') {
+        if (!user.roles?.includes('admin')) {
+          return jsonResponse({ error: 'Forbidden: Admin access required' }, 403);
+        }
+        return await handleResetDailyFlags(supabase);
       }
 
-      // Security: Users can only access their own streak data
-      if (learnerId !== user.id) {
-        return jsonResponse({ error: 'Forbidden: Can only access your own streak data' }, 403);
+      // Routes with learnerId
+      if (pathParts.length >= 1) {
+        const learnerId = pathParts[0];
+
+        // Validate UUID format
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(learnerId)) {
+          return jsonResponse({ error: 'Invalid learner ID format' }, 400);
+        }
+
+        // Security: Users can only access their own streak data
+        if (learnerId !== user.sub) {
+          return jsonResponse({ error: 'Forbidden: Can only access your own streak data' }, 403);
+        }
+
+        // GET /:learnerId
+        if (pathParts.length === 1 && request.method === 'GET') {
+          return await handleGetStreak(supabase, learnerId);
+        }
+
+        // POST /:learnerId/complete
+        if (pathParts.length === 2 && pathParts[1] === 'complete' && request.method === 'POST') {
+          return await handleCompleteStreak(supabase, learnerId);
+        }
+
+        // GET /:learnerId/notifications
+        if (pathParts.length === 2 && pathParts[1] === 'notifications' && request.method === 'GET') {
+          const limit = parseInt(url.searchParams.get('limit') || '10');
+          return await handleGetNotifications(supabase, learnerId, limit);
+        }
+
+        // POST /:learnerId/process
+        if (pathParts.length === 2 && pathParts[1] === 'process' && request.method === 'POST') {
+          return await handleProcessStreak(supabase, learnerId);
+        }
       }
 
-      // GET /:learnerId
-      if (pathParts.length === 1 && request.method === 'GET') {
-        return await handleGetStreak(supabase, learnerId);
-      }
-
-      // POST /:learnerId/complete
-      if (pathParts.length === 2 && pathParts[1] === 'complete' && request.method === 'POST') {
-        return await handleCompleteStreak(supabase, learnerId);
-      }
-
-      // GET /:learnerId/notifications
-      if (pathParts.length === 2 && pathParts[1] === 'notifications' && request.method === 'GET') {
-        const limit = parseInt(url.searchParams.get('limit') || '10');
-        return await handleGetNotifications(supabase, learnerId, limit);
-      }
-
-      // POST /:learnerId/process
-      if (pathParts.length === 2 && pathParts[1] === 'process' && request.method === 'POST') {
-        return await handleProcessStreak(supabase, learnerId);
-      }
-    }
-
-    return jsonResponse({ error: 'Not found' }, 404);
+      return jsonResponse({ error: 'Not found' }, 404);
+    })(context);
   } catch (error) {
     console.error('Streak API Error:', error);
     return jsonResponse({ 

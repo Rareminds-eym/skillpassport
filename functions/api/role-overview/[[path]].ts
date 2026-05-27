@@ -18,12 +18,14 @@
 
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { withAuth } from '../../lib/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { callOpenRouterWithRetry, getAPIKeys, MODEL_PROFILES } from '../shared/ai-config';
 import { createClient } from '@supabase/supabase-js';
 import { handleCourseMatching } from './handlers/course-matching';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
-  const { request, env } = context;
+  let { request, env }: { request: Request; env: Record<string, string> } = context as any;
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
@@ -56,6 +58,11 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         ],
       });
     }
+
+    // All other endpoints require authentication
+    return withAuth(async (authContext: AuthenticatedContext) => {
+      env = authContext.env as Record<string, string>;
+      request = authContext.request;
 
     // Retrieve stored role overview from DB
     if (path === '/storage' && request.method === 'GET') {
@@ -415,6 +422,7 @@ CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic plac
       },
       404
     );
+  })(context);
   } catch (error: any) {
     console.error('❌ Error in role-overview-api:', error);
     return jsonResponse({ error: error.message || 'Internal server error' }, 500);

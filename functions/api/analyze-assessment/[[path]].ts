@@ -7,11 +7,13 @@
 
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { withAuth } from '../../lib/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { handleAnalyzeAssessment } from './handlers/analyze';
 import { handleGenerateProgramCareerPaths } from './handlers/program-career-paths';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
-  const { request, env } = context;
+  let { request, env }: { request: Request; env: Record<string, string> } = context as any;
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
@@ -43,6 +45,11 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       });
     }
 
+    // All other endpoints require authentication
+    return withAuth(async (authContext: AuthenticatedContext) => {
+      env = authContext.env as Record<string, string>;
+      request = authContext.request;
+
     // Main analyze endpoint
     if ((path === '' || path === '/' || path === '/analyze') && request.method === 'POST') {
       return await handleAnalyzeAssessment(request, env);
@@ -67,6 +74,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       },
       404
     );
+  })(context);
   } catch (error: any) {
     console.error('❌ Error in analyze-assessment-api:', error);
     return jsonResponse({ error: error.message || 'Internal server error' }, 500);

@@ -14,6 +14,8 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import { withAuth } from '../../lib/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { handleGenericEmail } from './handlers/generic';
 import { handleInvitationEmail } from './handlers/invitation';
 import { handleCountdownEmail } from './handlers/countdown';
@@ -36,7 +38,7 @@ export const onRequest: PagesFunction = async (context) => {
   const path = url.pathname.replace('/api/email', '');
 
   try {
-    // GET routes (PDF download and health check)
+    // GET routes (PDF download and health check) — public
     if (request.method === 'GET') {
       // Health check
       if (path === '' || path === '/') {
@@ -66,52 +68,57 @@ export const onRequest: PagesFunction = async (context) => {
       return jsonResponse({ success: false, error: 'Route not found' }, 404);
     }
 
-    // Only POST requests for email operations
+    // Only POST requests for email operations (authenticated)
     if (request.method !== 'POST') {
       return jsonResponse({ success: false, error: 'Method not allowed' }, 405);
     }
 
-    // Parse JSON body with proper error handling
-    let body;
-    try {
-      body = await request.json();
-    } catch (error) {
-      return jsonResponse({ 
-        success: false, 
-        error: 'Invalid JSON in request body' 
-      }, 400);
-    }
+    // All POST email operations require authentication
+    return withAuth(async (authContext: AuthenticatedContext) => {
+      const env = authContext.env as Record<string, string>;
 
-    // Routes that don't need Supabase
-    if (path === '/event-confirmation') {
-      return await handleEventConfirmation(body, env);
-    }
-    
-    if (path === '/event-otp') {
-      return await handleEventOTP(body, env);
-    }
+      // Parse JSON body with proper error handling
+      let body;
+      try {
+        body = await authContext.request.json();
+      } catch (error) {
+        return jsonResponse({ 
+          success: false, 
+          error: 'Invalid JSON in request body' 
+        }, 400);
+      }
 
-    // Routes that need Supabase - create client only when needed
-    const supabase = createSupabaseClient(env);
-    
-    // Route to appropriate handler
-    if (path === '/invitation') {
-      return await handleInvitationEmail(request, body, env, supabase);
-    }
-    
-    if (path === '/countdown') {
-      return await handleCountdownEmail(body, env, supabase);
-    }
-    
-    if (path === '/send-bulk-countdown') {
-      return await handleBulkCountdownEmail(body, env, supabase);
-    }
-    
-    if (path === '' || path === '/' || path === '/send') {
-      return await handleGenericEmail(body, env, supabase);
-    }
+      // Routes that don't need Supabase
+      if (path === '/event-confirmation') {
+        return await handleEventConfirmation(body, env);
+      }
+      
+      if (path === '/event-otp') {
+        return await handleEventOTP(body, env);
+      }
 
-    return jsonResponse({ success: false, error: 'Route not found' }, 404);
+      // Routes that need Supabase - create client only when needed
+      const supabase = createSupabaseClient(env);
+      
+      // Route to appropriate handler
+      if (path === '/invitation') {
+        return await handleInvitationEmail(authContext.request, body, env, supabase);
+      }
+      
+      if (path === '/countdown') {
+        return await handleCountdownEmail(body, env, supabase);
+      }
+      
+      if (path === '/send-bulk-countdown') {
+        return await handleBulkCountdownEmail(body, env, supabase);
+      }
+      
+      if (path === '' || path === '/' || path === '/send') {
+        return await handleGenericEmail(body, env, supabase);
+      }
+
+      return jsonResponse({ success: false, error: 'Route not found' }, 404);
+    })(context);
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
