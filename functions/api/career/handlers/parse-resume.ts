@@ -10,7 +10,7 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getOpenRouterKey } from '../[[path]]';
 import { getModelForUseCase, callOpenRouterWithRetry } from '../../shared/ai-config';

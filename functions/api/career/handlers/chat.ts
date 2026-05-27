@@ -12,7 +12,8 @@
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
 
-import { authenticateUser, sanitizeInput, generateConversationTitle } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
+import { sanitizeInput, generateConversationTitle } from '../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getModelForUseCase, API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
 import type { ChatRequest, StoredMessage, CareerIntent, Opportunity } from '../types';

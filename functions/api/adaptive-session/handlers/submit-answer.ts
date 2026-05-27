@@ -19,7 +19,7 @@ import type {
 import { DEFAULT_ADAPTIVE_TEST_CONFIG } from '../types';
 import { dbSessionToTestSession, dbResponseToResponse } from '../utils/converters';
 import { AdaptiveEngine } from '../utils/adaptive-engine';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 
 /**
  * Submits an answer for the current question

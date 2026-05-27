@@ -5,11 +5,6 @@
 
 import { supabase } from '@/shared/api';
 import type { Course, CourseEnrollment, CourseProgress, CourseFilters } from '../model/types';
-import { getCourse } from './queries';
-import { getCourseAnalytics } from './queries';
-import { getCourseModule } from './queries';
-import { getUserEnrollments } from './queries';
-import { getCourseEnrollments } from './queries';
 
 // ============================================================================
 // Course Queries
@@ -77,6 +72,15 @@ export const isUserEnrolled = async (
   courseId: string
 ): Promise<boolean> => {
   const { data, error } = await supabase
+    .from('course_enrollments')
+    .select('id')
+    .eq('userId', userId)
+    .eq('courseId', courseId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data !== null;
+};
 
 // ============================================================================
 // Course Progress Queries
@@ -123,29 +127,6 @@ export const getCourseAnalytics = async (courseId: string): Promise<any> => {
 
   if (error) throw error;
   return data;
-    .eq('courseId', courseId);
-
-  if (enrollError) throw enrollError;
-
-  const { data: progress, error: progressError } = await supabase
-    .from('course_progress')
-    .select('progressPercentage')
-    .eq('courseId', courseId);
-
-  if (progressError) throw progressError;
-
-  const enrollmentCount = enrollments?.length || 0;
-  const completedCount = enrollments?.filter(e => e.status === 'completed').length || 0;
-  const completionRate = enrollmentCount > 0 ? (completedCount / enrollmentCount) * 100 : 0;
-  
-  const totalProgress = progress?.reduce((sum, p) => sum + (p.progressPercentage || 0), 0) || 0;
-  const averageProgress = progress?.length ? totalProgress / progress.length : 0;
-
-  return {
-    enrollmentCount,
-    completionRate,
-    averageProgress,
-  };
 };
 
 // ============================================================================

@@ -9,7 +9,7 @@
  * Headers: Authorization: Bearer <jwt>
  */
 
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 import { checkCourseEnrollment, checkRateLimit } from '../utils/course-authorization';
 import { extractFileKey, generateMediaToken } from '../utils/token-crypto';
 

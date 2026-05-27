@@ -18,7 +18,7 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 
 export async function handleAnalyzeAssessment(request: Request, env: Record<string, string>): Promise<Response> {

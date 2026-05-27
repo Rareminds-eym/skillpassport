@@ -9,17 +9,22 @@ This directory contains shared utilities used across all Pages Functions APIs.
 
 **Actions Completed:**
 1. ✅ Moved `functions/api/career/utils/auth.ts` to `functions/api/shared/auth.ts`
-2. ✅ Updated all 5 career API handlers to use new import path:
-   - `chat.ts` - imports `authenticateUser`, `sanitizeInput`
-   - `recommend.ts` - imports `isValidUUID`
-   - `parse-resume.ts` - imports `authenticateUser`
-   - `analyze-assessment.ts` - imports `authenticateUser`
-   - `generate-embedding.ts` - imports `authenticateUser`, `isValidUUID`
+2. ✅ Updated all 5 career API handlers to use new import path
 3. ✅ Removed old duplicate `auth.ts` from `career/utils`
 4. ✅ Verified career API still works (0 TypeScript errors)
 5. ✅ Documented shared utility usage patterns
 
-**Test Results:** 8/8 tests passed (see `test-career-api-migration.cjs`)
+### Task 3: Auth Path Consolidation (May 2026)
+**Date:** May 27, 2026
+
+**Actions Completed:**
+1. ✅ Moved `authenticateUser`, `sanitizeInput`, `isValidUUID` to `functions/lib/auth.ts` and `functions/lib/validation.ts`
+2. ✅ Replaced `function-lib` Supabase pattern with `auth-core` `verifyJWT` (per-request init, no module-level singleton)
+3. ✅ Updated all 24 caller files with new import paths
+4. ✅ Deleted `functions/api/shared/auth.ts`
+5. ✅ Updated original README and import path docs
+
+**Test Results:** 0 TypeScript errors
 
 ---
 
@@ -54,19 +59,23 @@ const parsed = repairAndParseJSON(response);
 - Automatic fallback chain
 - Comprehensive error handling
 
-### 2. Authentication (`auth.ts`)
+### 2. Authentication (`lib/auth.ts`)
 
-Authentication and user utilities for secured endpoints.
+Authentication and user utilities for secured endpoints. Uses `@rareminds-eym/auth-core` for JWT verification.
 
 **Key Functions:**
-- `authenticateUser()` - JWT decode + Supabase fallback
-- `sanitizeInput()` - XSS prevention
-- `generateConversationTitle()` - Title generation
-- `isValidUUID()` - UUID validation
+- `authenticateUser()` - verifyJWT via auth-core (bridge for legacy callers)
+- `initAuthFromEnv()` - Per-request auth-core init with SSO_SERVICE binding support
+- `withAuth()` - Wraps auth-core's withAuth with email-verification enforcement
+- `sanitizeInput()` - XSS prevention (in `lib/validation.ts`)
+- `generateConversationTitle()` - Title generation (in `lib/validation.ts`)
+- `isValidUUID()` - UUID validation (in `lib/validation.ts`)
 
 **Usage Example:**
 ```typescript
-import { authenticateUser, sanitizeInput, isValidUUID } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
+import { sanitizeInput, isValidUUID } from '../../lib/validation';
+import { jsonResponse } from '../../../src/functions-lib/response';
 
 // Authenticate request
 const auth = await authenticateUser(request, env);
@@ -154,13 +163,15 @@ const data = repairAndParseJSON(jsonText);
 From any handler in `functions/api/{api-name}/handlers/`:
 ```typescript
 import { /* utilities */ } from '../../shared/ai-config';
-import { /* utilities */ } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
+import { sanitizeInput, isValidUUID } from '../../lib/validation';
 ```
 
 From any router in `functions/api/{api-name}/`:
 ```typescript
 import { /* utilities */ } from '../shared/ai-config';
-import { /* utilities */ } from '../shared/auth';
+import { authenticateUser } from '../lib/auth';
+import { sanitizeInput, isValidUUID } from '../lib/validation';
 ```
 
 ## Environment Variables

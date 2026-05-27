@@ -16,7 +16,7 @@ import type {
   Subtag,
   ConfidenceTag
 } from '../types';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 
 /**
  * Gets test results for a session

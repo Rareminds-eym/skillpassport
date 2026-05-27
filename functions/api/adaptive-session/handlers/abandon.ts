@@ -8,7 +8,7 @@
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 
 /**
  * Abandons a test session

@@ -31,7 +31,8 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser, isValidUUID } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
+import { isValidUUID } from '../../lib/validation';
 import { checkRateLimit } from '../../career/utils/rate-limit';
 import { createClient, SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
 import { callEmbeddingWorker } from '../services/embeddingWorkerClient';

@@ -25,7 +25,7 @@ import {
   classifyPath 
 } from '../utils/analytics';
 import { AdaptiveEngine } from '../utils/adaptive-engine';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 
 /**
  * Completes the test and calculates final results

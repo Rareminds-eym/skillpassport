@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Env } from '../../../../src/functions-lib/types';
 import type { InvitationEmailRequest } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 import { generateInvitationEmailHtml, getInvitationSubject } from '../services/templates';
 import { apiLogger } from '../../../lib/logger';
 import { sendEmail } from '../../../lib/email-service';

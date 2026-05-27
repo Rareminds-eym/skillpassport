@@ -3,8 +3,6 @@
  */
 
 import type {
-import { getTopRIASECCodes } from './utils';
-import { getTopAptitudes } from './utils';
   GradeLevel,
   AssessmentResults,
   RIASECScores,

@@ -5,8 +5,6 @@
 
 import { supabase } from '@/shared/api';
 import type { Course, CourseEnrollment, CourseModule } from '../model/types';
-import { deleteCourse } from './mutations';
-import { deleteCourseModule } from './mutations';
 
 // ============================================================================
 // Course Mutations
@@ -187,11 +185,3 @@ export const deleteCourseModule = async (moduleId: string): Promise<void> => {
     .eq('id', moduleId);
 
   if (error) throw error;
-      .from('course_modules')
-      .update({ order })
-      .eq('id', id)
-      .eq('courseId', courseId)
-  );
-
-  await Promise.all(updates);
-};

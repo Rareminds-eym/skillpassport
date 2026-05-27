@@ -12,7 +12,7 @@
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { createClient } from '@supabase/supabase-js';
-import { isValidUUID } from '../../shared/auth';
+import { isValidUUID } from '../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getOpenRouterKey } from '../[[path]]';
 import { API_CONFIG, AI_MODELS } from '../../shared/ai-config';

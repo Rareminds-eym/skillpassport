@@ -12,7 +12,7 @@
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { getOpenRouterKey } from '../[[path]]';
 import { getModelForUseCase, callOpenRouterWithRetry } from '../../shared/ai-config';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 
 export async function handleGenerateFieldKeywords(request: Request, env: Record<string, string>): Promise<Response> {

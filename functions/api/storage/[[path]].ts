@@ -22,7 +22,7 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
-import { authenticateUser, AuthResult } from '../shared/auth';
+import { authenticateUser, AuthResult } from '../lib/auth';
 import { createAuthenticationError } from './utils/error-handling';
 
 // Import all handlers

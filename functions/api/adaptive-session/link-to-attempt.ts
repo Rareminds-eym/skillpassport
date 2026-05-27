@@ -9,7 +9,7 @@
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib/response';
 import { createSupabaseAdminClient } from '../../../src/functions-lib/supabase';
-import { authenticateUser } from '../shared/auth';
+import { authenticateUser } from '../lib/auth';
 
 export const onRequestPost: PagesFunction = async (context) => {
   const { request, env } = context;

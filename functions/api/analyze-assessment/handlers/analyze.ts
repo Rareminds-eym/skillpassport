@@ -6,7 +6,7 @@
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { AssessmentData, AnalysisResult } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { getSystemMessage } from '../prompts';

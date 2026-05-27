@@ -10,7 +10,7 @@ import { jsonResponse } from '../../../../src/functions-lib/response';
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
-import { authenticateUser } from '../../shared/auth';
+import { authenticateUser } from '../../lib/auth';
 import { fetchDiagnosticQuestions, extractGradeNumber, learnerGradeToGradeLevel } from '../utils/question-bank';
 
 /**

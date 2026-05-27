@@ -12,7 +12,7 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
-import { authenticateUser } from '../shared/auth';
+import { authenticateUser } from '../lib/auth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ==================== GET LEARNER STREAK ====================
