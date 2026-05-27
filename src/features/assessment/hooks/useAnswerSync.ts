@@ -239,10 +239,17 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [syncPendingAnswers, attemptId]);
 
+  const getElapsedSecondsForSection = (sectionIndex: number): number => {
+    const startTime = sectionStartTimeRef.current[sectionIndex];
+    if (!startTime) return 0;
+    return Math.round((Date.now() - startTime) / 1000);
+  };
+
   return {
     isOnline,
     errorMessage,
     canProceedToNextQuestion,
     hasPendingAnswers: pendingAnswers.current.size > 0,
-  } as SyncStatus;
+    getElapsedSecondsForSection,
+  } as SyncStatus & { getElapsedSecondsForSection: (sectionIndex: number) => number };
 };

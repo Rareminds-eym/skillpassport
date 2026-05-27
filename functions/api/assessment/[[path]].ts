@@ -21,6 +21,7 @@ import { updateProgressHandler } from './handlers/update-progress';
 import { submitHandler } from './handlers/submit';
 import { abandonHandler } from './handlers/abandon';
 import { checkInProgressHandler } from './handlers/check-in-progress';
+import { analyzeHandler } from './handlers/analyze';
 
 /**
  * POST handler - Routes POST requests to appropriate handlers
@@ -40,6 +41,8 @@ export const onRequestPost = withAuth(async (context: any) => {
       return submitHandler(context);
     } else if (path === '/abandon') {
       return abandonHandler(context);
+    } else if (path === '/analyze') {
+      return analyzeHandler(context);
     } else {
       return apiNotFound(`Assessment endpoint not found: ${path}`, context.request);
     }

@@ -53,6 +53,14 @@ export interface AbandonAttemptOptions {
   attemptId: string;
 }
 
+/**
+ * Options for analyzing completed assessment
+ */
+export interface AnalyzeRequest {
+  attemptId: string;
+  gradeLevel?: string;
+}
+
 // ============================================================================
 // RESPONSE TYPES
 // ============================================================================
@@ -206,6 +214,65 @@ export interface AssessmentResponse {
   attempt_id: string;
   question_id: string;
   response_value: unknown;
+}
+
+/**
+ * RIASEC career interest scores
+ */
+export interface RIASECScores {
+  realistic: number;
+  investigative: number;
+  artistic: number;
+  social: number;
+  enterprising: number;
+  conventional: number;
+}
+
+/**
+ * Character strength score with dimension and ratings
+ */
+export interface StrengthScore {
+  dimension: string;
+  ratings: number[];
+  average: number;
+}
+
+/**
+ * Adaptive aptitude data from linked session
+ */
+export interface AdaptiveAptitudeData {
+  questionsAnswered: number;
+  difficulty: number;
+  aptitudeLevel: number | null;
+  confidenceTag: string | null;
+  tier: string | null;
+  totalQuestions: number | null;
+  totalCorrect: number | null;
+  overallAccuracy: string | null;
+  accuracyByDifficulty: Record<string, unknown> | null;
+  accuracyBySubtag: Record<string, unknown> | null;
+  pathClassification: string | null;
+  averageResponseTimeMs: number | null;
+}
+
+/**
+ * Assessment analysis result
+ */
+export interface AnalyzeResult {
+  success: boolean;
+  riasecScores: RIASECScores;
+  strengthScores: StrengthScore[];
+  learningPreferences: Record<string, unknown>;
+  adaptiveData: AdaptiveAptitudeData | null;
+  profileSnapshot: {
+    grade_level: string;
+    stream_id: string | null;
+    started_at: string;
+    completed_at: string;
+    riasec_profile: string[];
+    top_strengths: StrengthScore[];
+    reflections: Array<{ question: string; answer: string }>;
+  };
 }
 
 // ============================================================================

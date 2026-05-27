@@ -15,6 +15,7 @@ import {
   submitAssessment,
   checkInProgress,
   abandonAttempt,
+  analyzeAssessment,
   StartAssessmentResponse,
 } from '../api/assessmentApiService';
 import { normalizeStreamId } from '../api/careerAssessmentAIService';
@@ -28,6 +29,8 @@ import { useAdaptiveAptitude } from '../model';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { AssessmentCompleteScreen } from './screens/AssessmentCompleteScreen';
 import { SectionIntroScreen } from './screens/SectionIntroScreen';
+import { SectionCompleteScreen } from './screens/SectionCompleteScreen';
+import { AnalyzingScreen } from './screens/AnalyzingScreen';
 import { GradeSelectionScreen } from './GradeSelectionScreen';
 import { CategorySelectionScreen } from './CategorySelectionScreen';
 import { QuestionRenderer } from './questions/QuestionRenderer';
@@ -44,7 +47,7 @@ import AdaptiveAptitudeApiService from '../api/adaptiveAptitudeApiService';
 
 const logger = getLogger('AssessmentTestPage');
 
-type ScreenType = 'loading' | 'grade-selection' | 'category-selection' | 'section-intro' | 'assessment' | 'complete' | 'error' | 'resume-prompt';
+type ScreenType = 'loading' | 'grade-selection' | 'category-selection' | 'section-intro' | 'section-complete' | 'assessment' | 'analyzing' | 'complete' | 'error' | 'resume-prompt';
 
 const getIconPathFromName = (sectionName?: string | null): string => {
   if (!sectionName) return '/assets/Assessment Icons/Career Interests.png';
@@ -125,9 +128,9 @@ const AssessmentTestPage: React.FC = () => {
     learnerId: learnerId || '',
     gradeLevel: getAdaptiveGradeLevel(selectedGrade),
     onTestComplete: async () => {
-      // Always submit the assessment when adaptive test completes
-      // The adaptive test is always the last section
-      await handleSubmit();
+      // Show section-complete screen for adaptive test (it's the last section)
+      // User will click "Submit Assessment" to submit
+      setCurrentScreen('section-complete');
     },
     onError: (err) => {
       store.setError(err.message);
@@ -259,7 +262,9 @@ const AssessmentTestPage: React.FC = () => {
     setIsLoadingResume(true);
     // Set flag immediately to prevent startTest() from being called during resume
     const isAdaptiveInProgress = resumeData.isAdaptiveInProgress;
-    if (isAdaptiveInProgress) {
+    const isAdaptiveCompleted = resumeData.adaptiveSession?.status === 'completed';
+    // Suppress startTest() for both in-progress resume AND completed-adaptive resume
+    if (isAdaptiveInProgress || isAdaptiveCompleted) {
       setIsResumingAdaptive(true);
     }
 
@@ -283,7 +288,35 @@ const AssessmentTestPage: React.FC = () => {
           streamId
         );
 
-        // If resuming adaptive test, restore it properly
+        // If adaptive test is already completed — all sections done, go straight to submit
+        if (isAdaptiveCompleted) {
+          const adaptiveSection = sectionsToUse.find((s: any) => s.isAdaptive || s.name === 'adaptive_aptitude');
+          const adaptiveSectionIndex = adaptiveSection ? sectionsToUse.indexOf(adaptiveSection) : (sectionsToUse.length - 1);
+
+          store.setCurrentQuestion(adaptiveSectionIndex, 0);
+
+          // Restore all previous answers
+          if (answers && Object.keys(answers).length > 0) {
+            Object.entries(answers).forEach(([questionId, answer]) => {
+              store.saveAnswer(questionId, answer);
+            });
+          }
+
+          // Use saved adaptive section timing (in minutes → seconds), fallback to overall elapsed
+          const adaptiveSectionMinutes = resumeData.sectionTimings?.adaptive_aptitude || 0;
+          const restoredElapsed = adaptiveSectionMinutes > 0
+            ? adaptiveSectionMinutes * 60
+            : (resumeData.elapsedTime || 0);
+          // Set after tick so the section-change effect (which resets to 0) fires first
+          setTimeout(() => setElapsedTime(restoredElapsed), 0);
+
+          setShowSectionIntro(false);
+          setCurrentScreen('section-complete');
+          setIsResumingAdaptive(false);
+          return;
+        }
+
+        // If resuming adaptive test mid-way, restore it properly
         if (isAdaptiveInProgress && resumeData.adaptiveSession) {
           // Find the adaptive section
           const adaptiveSection = sectionsToUse.find((s: any) => s.isAdaptive || s.name === 'adaptive_aptitude');
@@ -402,8 +435,22 @@ const AssessmentTestPage: React.FC = () => {
       });
 
       if (result.success) {
-        store.setStatus('completed');
-        setCurrentScreen('complete');
+        // Show analyzing screen while backend processes
+        setCurrentScreen('analyzing');
+
+        // Step 1: Call analyze endpoint via service
+        const analyzeResult = await analyzeAssessment(store.attemptId, store.gradeLevel);
+
+        // Step 2: Check if analysis succeeded
+        if (analyzeResult.success) {
+          toast.success('Success');
+          store.setStatus('completed');
+          setCurrentScreen('complete');
+        } else {
+          // Analysis failed
+          store.setError(analyzeResult.error || 'Failed to analyze assessment');
+          setCurrentScreen('error');
+        }
       } else {
         store.setError(result.error || 'Failed to submit assessment');
         setCurrentScreen('error');
@@ -425,14 +472,19 @@ const AssessmentTestPage: React.FC = () => {
     if (isLastQuestion && store.currentSectionIndex === store.sections.length - 1) {
       handleSubmit();
     } else if (isLastQuestion) {
-      // Move to next section
-      store.nextSection();
-      setShowSectionIntro(true); // Show intro for next section
-      setCurrentScreen('section-intro');
+      // Show section complete screen
+      setCurrentScreen('section-complete');
     } else {
       store.nextQuestion();
     }
   }, [store, handleSubmit]);
+
+  // Handle section complete - move to next section and show its intro
+  const handleSectionComplete = useCallback((): void => {
+    store.nextSection();
+    setShowSectionIntro(true);
+    setCurrentScreen('section-intro');
+  }, [store]);
 
   // Use the sync hook at top level (not conditionally)
   const syncStatus = useAnswerSync(store.attemptId, showSectionIntro);
@@ -552,6 +604,29 @@ const AssessmentTestPage: React.FC = () => {
         gradeLevel={selectedGrade}
         onStreamSelect={handleStreamSelect}
         loading={store.loading}
+      />
+    );
+  }
+
+  // Show section completion screen after each section
+  if (currentScreen === 'section-complete' && store.sections.length > 0) {
+    const completedSection = store.sections[store.currentSectionIndex];
+    const nextSection = store.currentSectionIndex < store.sections.length - 1
+      ? store.sections[store.currentSectionIndex + 1]
+      : null;
+    const isLastSection = store.currentSectionIndex === store.sections.length - 1;
+
+    const handleContinue = isLastSection
+      ? handleSubmit  // Last section: submit assessment
+      : handleSectionComplete;  // Other sections: move to next section
+
+    return (
+      <SectionCompleteScreen
+        sectionTitle={completedSection.title}
+        nextSectionTitle={nextSection?.title}
+        elapsedTime={syncStatus.getElapsedSecondsForSection(store.currentSectionIndex)}
+        isLastSection={isLastSection}
+        onContinue={handleContinue}
       />
     );
   }
@@ -771,6 +846,10 @@ const AssessmentTestPage: React.FC = () => {
         )}
       </div>
     );
+  }
+
+  if (currentScreen === 'analyzing') {
+    return <AnalyzingScreen />;
   }
 
   if (currentScreen === 'complete' && store.attemptId) {

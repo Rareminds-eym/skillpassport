@@ -22,9 +22,6 @@ export const onRequestPost: PagesFunction = async (context) => {
       return jsonResponse({ error: 'Authentication required' }, 401);
     }
 
-    console.log('✅ [LinkToAttemptHandler] User authenticated:', auth.user.id);
-
-    // Parse request body
     const body = await request.json() as { attemptId: string; sessionId: string };
     const { attemptId, sessionId } = body;
 
@@ -34,11 +31,6 @@ export const onRequestPost: PagesFunction = async (context) => {
         400
       );
     }
-
-    console.log('🔗 [LinkToAttemptHandler] Linking session to attempt:', {
-      attemptId,
-      sessionId,
-    });
 
     // Use admin client to bypass RLS for foreign key constraint check
     const supabase = createSupabaseAdminClient(env);
@@ -59,7 +51,30 @@ export const onRequestPost: PagesFunction = async (context) => {
     }
 
     const learnerId = learnerData.id;
-    console.log('📋 [LinkToAttemptHandler] Found learner ID:', learnerId);
+
+    // Guard: if attempt already has a completed adaptive session, do not overwrite it
+    const { data: existingAttempt } = await supabase
+      .from('personal_assessment_attempts')
+      .select('adaptive_aptitude_session_id')
+      .eq('id', attemptId)
+      .single();
+
+    if (existingAttempt?.adaptive_aptitude_session_id) {
+      const { data: existingSession } = await supabase
+        .from('adaptive_aptitude_sessions')
+        .select('status')
+        .eq('id', existingAttempt.adaptive_aptitude_session_id)
+        .single();
+
+      if (existingSession?.status === 'completed') {
+        return jsonResponse({
+          success: true,
+          skipped: true,
+          reason: 'Attempt already linked to a completed adaptive session',
+          existingSessionId: existingAttempt.adaptive_aptitude_session_id,
+        });
+      }
+    }
 
     // Verify the session belongs to the authenticated user's learner record
     const { data: sessionData, error: sessionError } = await supabase
@@ -69,18 +84,13 @@ export const onRequestPost: PagesFunction = async (context) => {
       .single();
 
     if (sessionError || !sessionData) {
-      console.error('❌ [LinkToAttemptHandler] Session not found:', sessionError);
       return jsonResponse(
         { error: 'Session not found', message: sessionError?.message },
         404
       );
     }
 
-    // Verify session ownership (learner_id should match the learner record)
     if (sessionData.learner_id !== learnerId) {
-      console.error('❌ [LinkToAttemptHandler] Session ownership verification failed');
-      console.error('   Expected learner_id:', learnerId);
-      console.error('   Session learner_id:', sessionData.learner_id);
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },
         403
@@ -95,18 +105,13 @@ export const onRequestPost: PagesFunction = async (context) => {
       .single();
 
     if (attemptError || !attemptData) {
-      console.error('❌ [LinkToAttemptHandler] Attempt not found:', attemptError);
       return jsonResponse(
         { error: 'Attempt not found', message: attemptError?.message },
         404
       );
     }
 
-    // Verify attempt ownership
     if (attemptData.learner_id !== learnerId) {
-      console.error('❌ [LinkToAttemptHandler] Attempt ownership verification failed');
-      console.error('   Expected learner_id:', learnerId);
-      console.error('   Attempt learner_id:', attemptData.learner_id);
       return jsonResponse(
         { error: 'Unauthorized: You do not own this attempt' },
         403
@@ -125,14 +130,11 @@ export const onRequestPost: PagesFunction = async (context) => {
       .single();
 
     if (updateError) {
-      console.error('❌ [LinkToAttemptHandler] Failed to update attempt:', updateError);
       return jsonResponse(
         { error: 'Failed to link session to attempt', message: updateError.message },
         500
       );
     }
-
-    console.log('✅ [LinkToAttemptHandler] Successfully linked session to attempt');
 
     return jsonResponse({
       success: true,
@@ -140,7 +142,6 @@ export const onRequestPost: PagesFunction = async (context) => {
     });
 
   } catch (error) {
-    console.error('❌ [LinkToAttemptHandler] Error:', error);
     return jsonResponse(
       {
         error: 'Failed to link session to attempt',

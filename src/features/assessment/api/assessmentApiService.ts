@@ -329,3 +329,33 @@ export async function abandonAttempt(attemptId: string): Promise<{ success: bool
     };
   }
 }
+
+/**
+ * Analyze completed assessment
+ * Backend generates results and stores in database
+ */
+export async function analyzeAssessment(attemptId: string, gradeLevel: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await ssoClient.fetch(`${API_BASE}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attemptId, gradeLevel }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+      return {
+        success: false,
+        error: error.message || 'Failed to analyze assessment'
+      };
+    }
+
+    const data = await response.json();
+    return { success: data.success !== false };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err.message || 'Network error'
+    };
+  }
+}

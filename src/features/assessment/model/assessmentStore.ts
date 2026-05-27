@@ -52,6 +52,16 @@ export interface AssessmentState {
   adaptiveTestComplete: boolean;
   adaptiveResults: TestResults | null;
 
+  // Assessment Results Fields
+  resultId: string | null;
+  riasecScores: Record<string, number> | null;
+  strengthScores: any[] | null;
+  learningPreferences: Record<string, any> | null;
+  aptitudeScores: any | null;
+  profileSnapshot: any | null;
+  analysisRetryCount: number;
+  analysisMaxRetries: number;
+
   // Actions - Regular Assessment
   initializeAssessment: (sections: AssessmentSection[], attemptId: string, gradeLevel: string, streamId: string) => void;
   setCurrentQuestion: (sectionIdx: number, questionIdx: number) => void;
@@ -73,6 +83,19 @@ export interface AssessmentState {
   setAdaptiveTestComplete: (complete: boolean) => void;
   setAdaptiveResults: (results: TestResults) => void;
   resetAdaptive: () => void;
+
+  // Actions - Assessment Results
+  setResultData: (data: {
+    resultId: string;
+    riasecScores: Record<string, number>;
+    strengthScores: any[];
+    learningPreferences: Record<string, any>;
+    aptitudeScores: any;
+    profileSnapshot: any;
+  }) => void;
+  incrementAnalysisRetryCount: () => void;
+  resetAnalysisRetry: () => void;
+  resetResults: () => void;
 }
 
 const initialState = {
@@ -95,6 +118,14 @@ const initialState = {
   adaptiveAbilityEstimate: 0,
   adaptiveTestComplete: false,
   adaptiveResults: null,
+  resultId: null,
+  riasecScores: null,
+  strengthScores: null,
+  learningPreferences: null,
+  aptitudeScores: null,
+  profileSnapshot: null,
+  analysisRetryCount: 0,
+  analysisMaxRetries: 4,
 };
 
 export const useAssessmentStore = create<AssessmentState>()(
@@ -244,6 +275,43 @@ export const useAssessmentStore = create<AssessmentState>()(
           state.adaptiveResults = null;
         });
       },
+
+      setResultData: (data) => {
+        set((state) => {
+          state.resultId = data.resultId;
+          state.riasecScores = data.riasecScores;
+          state.strengthScores = data.strengthScores;
+          state.learningPreferences = data.learningPreferences;
+          state.aptitudeScores = data.aptitudeScores;
+          state.profileSnapshot = data.profileSnapshot;
+          state.loading = false;
+          state.error = null;
+        });
+      },
+
+      incrementAnalysisRetryCount: () => {
+        set((state) => {
+          state.analysisRetryCount += 1;
+        });
+      },
+
+      resetAnalysisRetry: () => {
+        set((state) => {
+          state.analysisRetryCount = 0;
+        });
+      },
+
+      resetResults: () => {
+        set((state) => {
+          state.resultId = null;
+          state.riasecScores = null;
+          state.strengthScores = null;
+          state.learningPreferences = null;
+          state.aptitudeScores = null;
+          state.profileSnapshot = null;
+          state.analysisRetryCount = 0;
+        });
+      },
     })),
     { name: 'assessmentStore' }
   )
@@ -277,3 +345,19 @@ export const useAdaptiveProgress = () =>
   }));
 export const useAdaptiveResults = () => useAssessmentStore((state) => state.adaptiveResults);
 export const useAdaptiveTestComplete = () => useAssessmentStore((state) => state.adaptiveTestComplete);
+
+// Convenience hooks - Assessment Results
+export const useAssessmentResults = () =>
+  useAssessmentStore((state) => ({
+    resultId: state.resultId,
+    riasecScores: state.riasecScores,
+    strengthScores: state.strengthScores,
+    learningPreferences: state.learningPreferences,
+    aptitudeScores: state.aptitudeScores,
+    profileSnapshot: state.profileSnapshot,
+  }));
+export const useAnalysisRetry = () =>
+  useAssessmentStore((state) => ({
+    retryCount: state.analysisRetryCount,
+    maxRetries: state.analysisMaxRetries,
+  }));

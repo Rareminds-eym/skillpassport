@@ -105,20 +105,22 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
         .maybeSingle();
 
       if (sessionData) {
-        // Check if adaptive session is still in progress
+        adaptiveSessionData = {
+          sessionId: sessionData.id,
+          currentQuestionIndex: sessionData.current_question_index || 0,
+          questionsAnswered: sessionData.questions_answered || 0,
+          status: sessionData.status,
+          phase: sessionData.current_phase,
+          difficulty: sessionData.current_difficulty,
+          currentPhaseQuestions: sessionData.current_phase_questions || [],
+          allResponses: sessionData.all_responses || []
+        };
+
         if (sessionData.status === 'in_progress') {
           isAdaptiveInProgress = true;
-          adaptiveSessionData = {
-            sessionId: sessionData.id,
-            currentQuestionIndex: sessionData.current_question_index || 0,
-            questionsAnswered: sessionData.questions_answered || 0,
-            status: sessionData.status,
-            phase: sessionData.current_phase,
-            difficulty: sessionData.current_difficulty,
-            currentPhaseQuestions: sessionData.current_phase_questions || [],
-            allResponses: sessionData.all_responses || []
-          };
         }
+        // 'completed' status is intentionally left as isAdaptiveInProgress=false
+        // Frontend uses adaptiveSessionData.status === 'completed' to detect this case
       }
     }
 
