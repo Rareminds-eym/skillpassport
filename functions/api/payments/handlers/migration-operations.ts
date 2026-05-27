@@ -1,6 +1,7 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { ssoFetch } from '../../../lib/sso-client';
 
 export async function handleMigrationOperations(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -16,7 +17,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name, base_features').eq('plan_code', planCode).single();
       if (planError) return new Response(JSON.stringify({ success: false, error: 'PLAN_NOT_FOUND' }), { status: 200 });
 
-      const addonsResp = await env.SSO_SERVICE.fetch(new Request('http://sso-worker/api/addon-catalog', { method: 'GET' }));
+      const addonsResp = await ssoFetch(env as any, new Request('http://sso-worker/api/addon-catalog', { method: 'GET' }));
       if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
       const { addons } = await addonsResp.json() as { addons: any[] };
 
@@ -34,7 +35,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const { data: subscription } = await supabase.from('subscription_cache').select('id, plan_id, status, created_at, plan_amount, plan_code, plan_name, features').eq('user_id', userId).eq('status', 'active').single();
       if (!subscription) return new Response(JSON.stringify({ success: false, error: 'NO_ACTIVE_SUBSCRIPTION' }), { status: 200 });
 
-      const addonsResp = await env.SSO_SERVICE.fetch(new Request('http://sso-worker/api/addon-catalog', { method: 'GET' }));
+      const addonsResp = await ssoFetch(env as any, new Request('http://sso-worker/api/addon-catalog', { method: 'GET' }));
       if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
       const { addons } = await addonsResp.json() as { addons: any[] };
 

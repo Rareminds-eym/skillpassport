@@ -8,6 +8,7 @@
 
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { ssoFetch } from '../../../lib/sso-client';
 export async function handleGetAddonByFeatureKey(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SSO_SERVICE: Fetcher };
   const url = new URL(context.request.url);
@@ -22,7 +23,7 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
 
   try {
     const ssoUrl = new URL(`http://sso-worker/api/addon-catalog/${encodeURIComponent(featureKey)}`);
-    const ssoResponse = await env.SSO_SERVICE.fetch(new Request(ssoUrl.toString(), {
+    const ssoResponse = await ssoFetch(env as any, new Request(ssoUrl.toString(), {
       method: 'GET',
     }));
 

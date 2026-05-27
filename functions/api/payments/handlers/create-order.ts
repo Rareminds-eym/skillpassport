@@ -66,6 +66,14 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
           full_name: (body.userName as string) || (user as any).name || 'Freemium User',
         });
       } catch (ssoError: any) {
+        // Handle missing SSO_SERVICE binding (local dev or misconfiguration)
+        if (ssoError.message?.includes('SSO_SERVICE binding is not configured')) {
+          logger.error('SSO_SERVICE binding not available:', ssoError.message);
+          return new Response(
+            JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Subscription service is temporarily unavailable. Please try again later.' } }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
         if (ssoError.message?.includes('23505') || ssoError.message?.includes('duplicate')) {
            return new Response(JSON.stringify({ error: { code: 'SUBSCRIPTION_EXISTS', message: 'User already has an active subscription' } }), { status: 409 });
         }
