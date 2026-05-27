@@ -5,6 +5,9 @@
  */
 
 import type { AssessmentSection, AssessmentQuestion, ResponseScale } from '../types';
+import { createLogger } from '../../../lib/logger';
+
+const logger = createLogger('QuestionLoader');
 
 /**
  * Loads sections and questions for a given grade level
@@ -12,13 +15,17 @@ import type { AssessmentSection, AssessmentQuestion, ResponseScale } from '../ty
  * @param supabase - Supabase client
  * @param gradeLevel - Grade level
  * @param streamId - Optional stream ID
+ * @param env - Environment variables (for Cloudflare Workers)
  * @returns Array of sections with questions
  */
 export async function loadSectionsWithQuestions(
   supabase: any,
   gradeLevel: string,
-  streamId?: string | null
+  streamId?: string | null,
+  env?: any
 ): Promise<AssessmentSection[]> {
+  logger.info('Loading sections', { gradeLevel, streamId, hasEnv: !!env });
+  
   const gradeSpecificGrades = ['middle', 'highschool', 'higher_secondary'];
   const useGeneralSections = ['after10', 'after12', 'college'].includes(gradeLevel);
 
@@ -36,13 +43,14 @@ export async function loadSectionsWithQuestions(
         .not('name', 'like', 'adaptive_aptitude%');
 
       if (gradeError) throw gradeError;
+      logger.info('Fetched grade-specific sections', { count: gradeSections?.length || 0, gradeLevel });
       return gradeSections || [];
     } else {
       let standardQuery = supabase
         .from('personal_assessment_sections')
         .select('*')
         .eq('is_active', true)
-        .in('name', ['riasec', 'bigfive', 'employability']);
+        .in('name', ['riasec', 'bigfive', 'values', 'employability']);
 
       if (useGeneralSections) {
         standardQuery = standardQuery.eq('grade_level', 'general');
@@ -50,6 +58,7 @@ export async function loadSectionsWithQuestions(
 
       const { data: standardSections, error: standardError } = await standardQuery;
       if (standardError) throw standardError;
+      logger.info('Fetched standard sections', { count: standardSections?.length || 0, sections: standardSections?.map((s: any) => s.name) });
       return standardSections || [];
     }
   })();
@@ -62,14 +71,22 @@ export async function loadSectionsWithQuestions(
     fetchAdaptivePromise
   ]);
 
+  logger.info('Fetched basic and adaptive sections', { 
+    basicCount: basicSections.length, 
+    adaptiveCount: adaptiveSections.length 
+  });
+
   allSections = [...basicSections, ...adaptiveSections];
 
   // === BATCH FETCH ALL QUESTIONS ===
   const sectionIds = allSections.map((s: any) => s.id);
 
   if (sectionIds.length === 0) {
+    logger.warn('No sections found', { gradeLevel, streamId });
     return [];
   }
+
+  logger.info('Fetching questions for sections', { sectionCount: sectionIds.length });
 
   const { data: allQuestions, error: questionsError } = await supabase
     .from('personal_assessment_questions')
@@ -79,6 +96,8 @@ export async function loadSectionsWithQuestions(
     .order('order_number', { ascending: true });
 
   if (questionsError) throw questionsError;
+
+  logger.info('Fetched questions', { questionCount: allQuestions?.length || 0 });
 
 
   // === BUILD SECTIONS WITH QUESTIONS ===
@@ -107,8 +126,20 @@ export async function loadSectionsWithQuestions(
     };
   });
 
+  logger.info('Built sections with questions', { 
+    sectionCount: sectionsWithQuestions.length,
+    sections: sectionsWithQuestions.map((s: any) => ({ name: s.name, questionCount: s.questions.length }))
+  });
+
   // === FETCH AI-GENERATED SECTIONS ===
-  const aiSections = await loadAISections(supabase, streamId, gradeLevel);
+  const aiSections = await loadAISections(supabase, streamId, gradeLevel, env);
+
+  logger.info('Final section count', { 
+    staticSections: sectionsWithQuestions.length,
+    aiSections: aiSections.length,
+    totalSections: sectionsWithQuestions.length + aiSections.length,
+    allSectionNames: [...sectionsWithQuestions.map((s: any) => s.name), ...aiSections.map((s: any) => s.name)]
+  });
 
   return [...sectionsWithQuestions, ...aiSections];
 }
@@ -173,11 +204,14 @@ async function loadAdaptiveSections(supabase: any, gradeLevel: string): Promise<
             instruction: section.instruction,
             questions: [] // Questions loaded dynamically by adaptive API
           });
+          logger.info('Loaded adaptive section', { gradeLevel, sectionName: section.name });
         }
+      } else {
+        logger.warn('No adaptive section found', { gradeLevel });
       }
     }
   } catch (error) {
-    console.error('[QuestionLoader] Error loading adaptive sections:', error);
+    logger.error('Error loading adaptive sections', { error, gradeLevel });
   }
 
   return sections;
@@ -185,15 +219,24 @@ async function loadAdaptiveSections(supabase: any, gradeLevel: string): Promise<
 
 /**
  * Load AI-generated sections for stream
+ * Generates questions on-the-fly if they don't exist in the database
  */
-async function loadAISections(supabase: any, streamId?: string | null, gradeLevel?: string): Promise<AssessmentSection[]> {
+async function loadAISections(supabase: any, streamId?: string | null, gradeLevel?: string, env?: any): Promise<AssessmentSection[]> {
   const sections: AssessmentSection[] = [];
 
-  if (!streamId || gradeLevel !== 'college') return sections;
+  // AI questions are used for after10, after12, higher_secondary, and college
+  const usesAIQuestions = gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'higher_secondary' || gradeLevel === 'college';
+  
+  logger.info('Loading AI sections', { streamId, gradeLevel, usesAIQuestions });
+  
+  if (!streamId || !usesAIQuestions) {
+    logger.info('Skipping AI sections', { hasStreamId: !!streamId, usesAIQuestions });
+    return sections;
+  }
 
   try {
     // === FETCH APTITUDE QUESTIONS ===
-    const { data: aptitudeData, error: aptitudeError } = await supabase
+    let { data: aptitudeData, error: aptitudeError } = await supabase
       .from('career_assessment_ai_questions')
       .select('*')
       .eq('stream_id', streamId)
@@ -201,18 +244,27 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
       .eq('is_active', true)
       .maybeSingle();
 
+    // If aptitude questions don't exist, generate them on-the-fly
+    if (!aptitudeData && !aptitudeError) {
+      logger.info('No aptitude questions found, generating', { streamId });
+      aptitudeData = await generateAptitudeQuestionsOnTheFly(supabase, streamId, gradeLevel, env);
+    }
+
     if (!aptitudeError && aptitudeData) {
       const questions = Array.isArray(aptitudeData.questions) ? aptitudeData.questions : [];
+      logger.info('Loaded aptitude questions', { streamId, questionCount: questions.length });
 
       sections.push({
         id: `aptitude-${streamId}`,
         name: 'aptitude',
-        title: 'Aptitude Assessment',
-        description: `Assess your aptitude in ${streamId}`,
+        title: 'Stream Based Aptitude',
+        description: `Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.`,
         icon: 'trending-up',
-        color: 'purple',
-        instruction: 'Answer the following aptitude questions based on your understanding.',
+        color: 'amber',
+        instruction: 'Choose the correct answer. You have 1 minute per question.',
         responseScale: [],
+        isTimed: true,
+        timeLimitSeconds: 15 * 60, // 15 minutes fallback
         questions: questions.map((q: any, idx: number) => ({
           id: `${q.id || idx}`,
           text: q.question,
@@ -223,10 +275,12 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
           metadata: q
         }))
       });
+    } else if (aptitudeError) {
+      logger.error('Error fetching aptitude questions', { error: aptitudeError, streamId });
     }
 
     // === FETCH KNOWLEDGE QUESTIONS ===
-    const { data: knowledgeData, error: knowledgeError } = await supabase
+    let { data: knowledgeData, error: knowledgeError } = await supabase
       .from('career_assessment_ai_questions')
       .select('*')
       .eq('stream_id', streamId)
@@ -234,18 +288,27 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
       .eq('is_active', true)
       .maybeSingle();
 
+    // If knowledge questions don't exist, generate them on-the-fly
+    if (!knowledgeData && !knowledgeError) {
+      logger.info('No knowledge questions found, generating', { streamId });
+      knowledgeData = await generateKnowledgeQuestionsOnTheFly(supabase, streamId, gradeLevel, env);
+    }
+
     if (!knowledgeError && knowledgeData) {
       const questions = Array.isArray(knowledgeData.questions) ? knowledgeData.questions : [];
+      logger.info('Loaded knowledge questions', { streamId, questionCount: questions.length });
 
       sections.push({
         id: `knowledge-${streamId}`,
         name: 'knowledge',
-        title: 'Knowledge Assessment',
-        description: `Test your knowledge in ${streamId}`,
+        title: 'Stream Knowledge',
+        description: `Test your understanding of core concepts in your field.`,
         icon: 'book',
-        color: 'indigo',
-        instruction: 'Answer the following knowledge-based questions.',
+        color: 'blue',
+        instruction: 'Choose the best answer for each question. You have 1 minute per question.',
         responseScale: [],
+        isTimed: true,
+        timeLimitSeconds: 30 * 60, // 30 minutes
         questions: questions.map((q: any, idx: number) => ({
           id: `${q.id || idx}`,
           text: q.question,
@@ -256,12 +319,159 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
           metadata: q
         }))
       });
+    } else if (knowledgeError) {
+      logger.error('Error fetching knowledge questions', { error: knowledgeError, streamId });
     }
   } catch (error) {
-    console.error('[QuestionLoader] Error loading AI sections:', error);
+    logger.error('Error loading AI sections', { error, streamId, gradeLevel });
   }
 
+  logger.info('AI sections loaded', { count: sections.length, sectionNames: sections.map(s => s.name) });
   return sections;
+}
+
+/**
+ * Generate aptitude questions on-the-fly and save to database
+ */
+async function generateAptitudeQuestionsOnTheFly(supabase: any, streamId: string, gradeLevel?: string, env?: any): Promise<any | null> {
+  try {
+    logger.info('Generating aptitude questions', { streamId, gradeLevel });
+    
+    // Get the question generation API URL from environment
+    const apiUrl = env?.QUESTION_GENERATION_API_URL;
+    if (!apiUrl) {
+      logger.error('QUESTION_GENERATION_API_URL not configured');
+      return null;
+    }
+    
+    // Call the question generation API
+    const response = await fetch(`${apiUrl}/career-assessment/generate-aptitude`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        streamId,
+        questionCount: 50,
+        gradeLevel
+      })
+    });
+
+    if (!response.ok) {
+      logger.error('API error generating aptitude questions', { 
+        status: response.status, 
+        statusText: response.statusText,
+        streamId 
+      });
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (!data.questions || data.questions.length === 0) {
+      logger.error('No questions returned from API', { streamId });
+      return null;
+    }
+
+    // Save to database for future use
+    const { data: savedData, error: saveError } = await supabase
+      .from('career_assessment_ai_questions')
+      .insert({
+        stream_id: streamId,
+        question_type: 'aptitude',
+        questions: data.questions,
+        is_active: true,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      logger.error('Error saving aptitude questions', { error: saveError, streamId });
+      // Return the generated questions even if save fails
+      return { questions: data.questions };
+    }
+
+    logger.info('Successfully generated and saved aptitude questions', { 
+      streamId, 
+      questionCount: data.questions.length 
+    });
+    return savedData;
+  } catch (error) {
+    logger.error('Error generating aptitude questions', { error, streamId });
+    return null;
+  }
+}
+
+/**
+ * Generate knowledge questions on-the-fly and save to database
+ */
+async function generateKnowledgeQuestionsOnTheFly(supabase: any, streamId: string, gradeLevel?: string, env?: any): Promise<any | null> {
+  try {
+    logger.info('Generating knowledge questions', { streamId, gradeLevel });
+    
+    // Get the question generation API URL from environment
+    const apiUrl = env?.QUESTION_GENERATION_API_URL;
+    if (!apiUrl) {
+      logger.error('QUESTION_GENERATION_API_URL not configured');
+      return null;
+    }
+    
+    // Call the question generation API
+    const response = await fetch(`${apiUrl}/career-assessment/generate-knowledge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        streamId,
+        streamName: streamId, // Use streamId as name for college programs
+        questionCount: 20,
+        gradeLevel,
+        isCollegeLearner: gradeLevel === 'college' || gradeLevel === 'higher_secondary'
+      })
+    });
+
+    if (!response.ok) {
+      logger.error('API error generating knowledge questions', { 
+        status: response.status, 
+        statusText: response.statusText,
+        streamId 
+      });
+      return null;
+    }
+
+    const data = await response.json();
+    
+    if (!data.questions || data.questions.length === 0) {
+      logger.error('No questions returned from API', { streamId });
+      return null;
+    }
+
+    // Save to database for future use
+    const { data: savedData, error: saveError } = await supabase
+      .from('career_assessment_ai_questions')
+      .insert({
+        stream_id: streamId,
+        question_type: 'knowledge',
+        questions: data.questions,
+        is_active: true,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      logger.error('Error saving knowledge questions', { error: saveError, streamId });
+      // Return the generated questions even if save fails
+      return { questions: data.questions };
+    }
+
+    logger.info('Successfully generated and saved knowledge questions', { 
+      streamId, 
+      questionCount: data.questions.length 
+    });
+    return savedData;
+  } catch (error) {
+    logger.error('Error generating knowledge questions', { error, streamId });
+    return null;
+  }
 }
 
 /**

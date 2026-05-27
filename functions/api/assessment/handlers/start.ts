@@ -11,6 +11,9 @@ import type { StartAssessmentOptions, StartAssessmentResult } from '../types';
 import { validateStartAssessmentRequest, validateLearnerData, validateAttemptData } from '../utils/validation';
 import { dbAttemptToAssessmentAttempt } from '../utils/converters';
 import { loadSectionsWithQuestions } from '../utils/question-loader';
+import { createLogger } from '../../../lib/logger';
+
+const logger = createLogger('StartHandler');
 
 export async function startHandler(context: AuthenticatedContext) {
   const user = context.data.user;
@@ -26,6 +29,14 @@ export async function startHandler(context: AuthenticatedContext) {
     }
 
     const { gradeLevel, streamId } = body;
+    
+    logger.info('Starting assessment', { 
+      userId: user.sub, 
+      gradeLevel, 
+      streamId,
+      hasEnv: !!env,
+      hasQuestionGenUrl: !!env?.QUESTION_GENERATION_API_URL
+    });
 
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
@@ -103,8 +114,13 @@ export async function startHandler(context: AuthenticatedContext) {
 
     let sections;
     try {
-      sections = await loadSectionsWithQuestions(supabase, gradeLevel, streamId);
+      sections = await loadSectionsWithQuestions(supabase, gradeLevel, streamId, env);
+      logger.info('Sections loaded successfully', { 
+        sectionCount: sections?.length || 0,
+        sectionNames: sections?.map((s: any) => s.name) || []
+      });
     } catch (loadError) {
+      logger.error('Failed to load sections', { error: loadError, gradeLevel, streamId });
       return Response.json(
         { error: 'Failed to load assessment sections', message: loadError instanceof Error ? loadError.message : 'Unknown error' },
         { status: 500 }
@@ -112,6 +128,7 @@ export async function startHandler(context: AuthenticatedContext) {
     }
 
     if (!sections || sections.length === 0) {
+      logger.warn('No sections available', { gradeLevel, streamId });
       return Response.json({ error: 'No assessment sections available for this grade level' }, { status: 404 });
     }
 
@@ -127,8 +144,16 @@ export async function startHandler(context: AuthenticatedContext) {
       sections
     };
 
+    logger.info('Assessment started successfully', { 
+      attemptId: attempt.id, 
+      sectionCount: sections.length,
+      gradeLevel,
+      streamId
+    });
+
     return Response.json(result, { status: 201 });
   } catch (error) {
+    logger.error('Failed to start assessment', { error });
     return Response.json(
       {
         error: 'Failed to start assessment',

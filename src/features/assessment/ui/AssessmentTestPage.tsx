@@ -17,6 +17,7 @@ import {
   abandonAttempt,
   StartAssessmentResponse,
 } from '../api/assessmentApiService';
+import { normalizeStreamId } from '../api/careerAssessmentAIService';
 
 // Hooks
 import { useLearnerGrade } from '../model/useLearnerGrade';
@@ -36,9 +37,12 @@ import ResumePromptScreen from './ResumePromptScreen';
 
 // Config
 import type { GradeLevel as AdaptiveGradeLevel } from '@/shared/types/adaptiveAptitude';
+import { getLogger } from '@/shared/config/logging';
 
 // Adaptive Aptitude Service
 import AdaptiveAptitudeApiService from '../api/adaptiveAptitudeApiService';
+
+const logger = getLogger('AssessmentTestPage');
 
 type ScreenType = 'loading' | 'grade-selection' | 'category-selection' | 'section-intro' | 'assessment' | 'complete' | 'error' | 'resume-prompt';
 
@@ -234,13 +238,19 @@ const AssessmentTestPage: React.FC = () => {
       // These grade levels will start assessment with the appropriate stream
       handleStreamSelect(gradeLevel === 'middle' ? 'middle_school' : 'high_school');
     } else if (gradeLevel === 'college') {
-      // College learners skip field selection and start assessment with college stream
-      handleStreamSelect('college-general');
+      // College learners skip field selection and start assessment with normalized program stream
+      // Use learnerProgram from useLearnerGrade hook (already extracted with priority)
+      const normalizedStream = learnerProgram ? normalizeStreamId(learnerProgram) : 'college';
+      logger.info('College learner starting assessment', { 
+        normalizedStream, 
+        originalProgram: learnerProgram 
+      });
+      handleStreamSelect(normalizedStream);
     } else {
       // Other grade levels (higher_secondary, after10, after12) need category selection
       setCurrentScreen('category-selection');
     }
-  }, [handleStreamSelect]);
+  }, [handleStreamSelect, learnerProgram]);
 
   // Handle resume assessment from resume prompt screen
   const handleResumeAssessment = useCallback(async (): Promise<void> => {
