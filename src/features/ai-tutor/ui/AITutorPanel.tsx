@@ -32,7 +32,8 @@ import { DEFAULT_LESSON_PLAN_CONFIG } from '../types';
 
 import { Link } from 'react-router-dom';
 
-import { useUser, useUserRole, useLearnerType } from '@/shared/model';
+import { useUser, useUserRole } from '@/shared/model';
+import { useLearnerType } from '@/features/ai-tutor/model';
 import { getLogger } from '@/shared/config';
 import { ssoClient } from '@/shared/api/ssoClient';
 
@@ -107,7 +108,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     try {
 
       // Fetch generation usage from API
-      const response = await fetch('/api/course/generation-usage', {
+      const response = await fetch('/api/ai-tutor/generation-usage', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

@@ -200,79 +200,328 @@ export function getCountdownSubject(countdownDay: number): string {
 // ==================== EVENT REGISTRATION TEMPLATES ====================
 
 export function generateUserConfirmationHtml(data: EventConfirmationTemplateData): string {
-  const { name, email, phone, amount, orderId, campaign, baseUrl = 'https://skillpassport.rareminds.in', receiptUrl } = data;
+  const { name, email, phone, amount, orderId, campaign, baseUrl = APP_URL, receiptUrl } = data;
+  const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return `
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Registration Confirmed</title></head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
-  <table style="width:100%;border-collapse:collapse;">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <title>Payment Confirmation — RareMinds</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    
+    img {
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+      -ms-interpolation-mode: bicubic;
+    }
+    
+    a {
+      text-decoration: none;
+    }
+    
+    @media only screen and (max-width: 600px) {
+      .email-wrapper {
+        padding: 16px !important;
+      }
+      .email-card {
+        padding: 32px 24px !important;
+      }
+      .amount-block {
+        padding: 20px !important;
+      }
+      .meta-row {
+        display: block !important;
+        width: 100% !important;
+      }
+      .meta-cell {
+        display: block !important;
+        width: 100% !important;
+        padding: 6px 0 !important;
+      }
+      .support-cell {
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important;
+        padding: 8px 0 !important;
+      }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#F4F4F0;font-family:'DM Sans',Arial,sans-serif;">
+  <!-- Preheader (hidden preview text) -->
+  <div style="display:none;font-size:1px;color:#F4F4F0;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Your RareMinds subscription is now active — ₹${amount} received. Order ID: ${orderId}
+  </div>
+  
+  <!-- Outer wrapper table -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4F4F0;min-width:100%;">
     <tr>
-      <td align="center" style="padding:48px 24px;">
-        <table style="width:100%;max-width:480px;background:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden;">
+      <td align="center" class="email-wrapper" style="padding:48px 16px;">
+        <!-- Main card table -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
+          <!-- ── LOGO HEADER ── -->
           <tr>
-            <td style="padding:48px 40px;text-align:center;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);">
-              <div style="width:80px;height:80px;background:rgba(255,255,255,0.2);border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
-                <img src="https://www.pngall.com/wp-content/uploads/13/Check-PNG-File.png" alt="Success" style="width:48px;height:48px;display:block;margin:0 auto;" />
-              </div>
-              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Registration Confirmed</h1>
-              <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Welcome to Skill Passport</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:40px;">
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hi ${name},</p>
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Subscription successful! Thank you for your payment. Your subscription is successfully activated.</p>
-              
-              <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:12px;overflow:hidden;">
+            <td align="center" style="padding-bottom:28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-table;">
                 <tr>
-                  <td style="padding:16px 20px;color:#6b7280;font-size:14px;border-bottom:1px solid #e5e7eb;">Order ID</td>
-                  <td style="padding:16px 20px;color:#111827;font-size:14px;text-align:right;border-bottom:1px solid #e5e7eb;font-family:monospace;">${orderId || 'N/A'}</td>
-                </tr>
-                <tr>
-                  <td style="padding:16px 20px;color:#6b7280;font-size:14px;">Amount Paid</td>
-                  <td style="padding:16px 20px;color:#1e40af;font-size:16px;text-align:right;font-weight:600;">₹${amount.toLocaleString()}</td>
+                  <td style="text-align:center;">
+                    <img src="${baseUrl}/RMLogo.webp" alt="RareMinds Logo" width="140" style="display:block;height:auto;">
+                  </td>
                 </tr>
               </table>
-              
-              ${receiptUrl ? `
-              <div style="margin-top:24px;padding:20px;background:#eff6ff;border-radius:12px;text-align:center;border:2px solid #3b82f6;">
-                <a href="${receiptUrl}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;margin-bottom:8px;">Download PDF Receipt</a>
-                <p style="margin:8px 0 0;color:#6b7280;font-size:12px;">Click the button above to download your payment receipt</p>
-              </div>
-              ` : ''}
-              
-              <div style="margin-top:32px;padding:28px;background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-radius:12px;text-align:center;border:1px solid #e2e8f0;">
-                <p style="margin:0 0 20px;color:#334155;font-size:15px;font-weight:600;">Need assistance? We're here to help!</p>
-                <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
-                  <tr>
-                    <td style="width:50%;padding-right:6px;">
-                      <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
-                        <tr>
-                          <td style="background:#1e40af;border-radius:8px;text-align:center;">
-                            <a href="mailto:marketing@rareminds.in" style="display:block;padding:14px 20px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:500;">✉️ Email Us</a>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                    <td style="width:50%;padding-left:6px;">
-                      <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
-                        <tr>
-                          <td style="background:#ffffff;border:2px solid #1e40af;border-radius:8px;text-align:center;">
-                            <a href="tel:+919562481100" style="display:block;padding:12px 20px;color:#1e40af;text-decoration:none;font-size:14px;font-weight:500;">📞 Call Us</a>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-              </div>
             </td>
           </tr>
+          
+          <!-- ── CARD ── -->
           <tr>
-            <td style="padding:24px 40px 40px;text-align:center;">
-              <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} Skill Passport by Rareminds</p>
+            <td class="email-card" style="background-color:#FFFFFF;border-radius:16px;padding:48px 44px;box-shadow:0 2px 24px rgba(0,0,0,0.07);">
+              <!-- Success badge -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom:28px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-table;">
+                      <tr>
+                        <td style="background-color:#EDFAF4;border-radius:100px;padding:8px 18px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                              <td style="padding-right:7px;vertical-align:middle;">
+                                <!-- Checkmark icon -->
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <circle cx="7" cy="7" r="7" fill="#1DB96A"/>
+                                  <path d="M4 7L6.2 9.5L10 5" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                              </td>
+                              <td style="font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:600;color:#1DB96A;letter-spacing:0.06em;text-transform:uppercase;vertical-align:middle;">
+                                Subscription Successful
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Heading -->
+                <tr>
+                  <td align="center" style="padding-bottom:12px;">
+                    <h1 style="margin:0;font-family:'DM Serif Display',Georgia,serif;font-size:30px;font-weight:400;color:#111111;line-height:1.25;letter-spacing:-0.01em;">
+                      Payment Confirmed
+                    </h1>
+                  </td>
+                </tr>
+                
+                <!-- Sub-message -->
+                <tr>
+                  <td align="center" style="padding-bottom:36px;">
+                    <p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:400;color:#666666;line-height:1.6;max-width:380px;">
+                      Thank you for your payment. Your subscription is successfully activated and ready to use.
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- ── AMOUNT BLOCK ── -->
+                <tr>
+                  <td class="amount-block" style="background-color:#F9F9F7;border-radius:12px;padding:28px;margin-bottom:28px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" style="padding-bottom:6px;">
+                          <span style="font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:500;color:#999999;letter-spacing:0.08em;text-transform:uppercase;">
+                            Amount Paid
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center">
+                          <span style="font-family:'DM Serif Display',Georgia,serif;font-size:52px;font-weight:400;color:#111111;line-height:1.1;letter-spacing:-0.02em;">
+                            ₹${amount.toLocaleString()}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td style="height:28px;"></td>
+                </tr>
+                
+                <!-- ── ORDER DETAILS ── -->
+                <tr>
+                  <td>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #EBEBEB;border-radius:10px;overflow:hidden;">
+                      <!-- Row: Recipient -->
+                      <tr style="border-bottom:1px solid #EBEBEB;">
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#999999;font-weight:500;width:40%;border-bottom:1px solid #EBEBEB;">
+                          Recipient
+                        </td>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#111111;font-weight:500;border-bottom:1px solid #EBEBEB;">
+                          ${email}
+                        </td>
+                      </tr>
+                      
+                      <!-- Row: Order ID -->
+                      <tr style="border-bottom:1px solid #EBEBEB;">
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#999999;font-weight:500;border-bottom:1px solid #EBEBEB;">
+                          Order ID
+                        </td>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#111111;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0.01em;border-bottom:1px solid #EBEBEB;">
+                          ${orderId || 'N/A'}
+                        </td>
+                      </tr>
+                      
+                      <!-- Row: Plan -->
+                      <tr style="border-bottom:1px solid #EBEBEB;">
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#999999;font-weight:500;border-bottom:1px solid #EBEBEB;">
+                          Plan
+                        </td>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#111111;font-weight:500;border-bottom:1px solid #EBEBEB;">
+                          Skill Passport Subscription
+                        </td>
+                      </tr>
+                      
+                      <!-- Row: Date -->
+                      <tr>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#999999;font-weight:500;">
+                          Date
+                        </td>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#111111;font-weight:500;">
+                          ${currentDate}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td style="height:28px;"></td>
+                </tr>
+                
+                ${receiptUrl ? `
+                <!-- ── CTA BUTTON ── -->
+                <tr>
+                  <td align="center">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-table;">
+                      <tr>
+                        <td style="border-radius:10px;background-color:#111111;">
+                          <a href="${receiptUrl}" style="display:inline-block;padding:15px 36px;font-family:'DM Sans',Arial,sans-serif;font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;letter-spacing:0.02em;border-radius:10px;">
+                            ↓&nbsp;&nbsp;Download PDF Receipt
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td style="height:8px;"></td>
+                </tr>
+                
+                <!-- Helper text under CTA -->
+                <tr>
+                  <td align="center" style="padding-bottom:4px;">
+                    <p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:12px;color:#BBBBBB;">
+                      Keep this receipt for your records
+                    </p>
+                  </td>
+                </tr>
+                ` : ''}
+              </table>
+            </td>
+          </tr>
+          
+          <!-- ── SUPPORT SECTION ── -->
+          <tr>
+            <td style="padding:32px 12px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <!-- Divider line -->
+                <tr>
+                  <td style="padding-bottom:24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="height:1px;background-color:#E5E5E0;font-size:0;line-height:0;">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td align="center" style="padding-bottom:16px;">
+                    <p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:14px;color:#888888;font-weight:400;">
+                      Need assistance? We're here to help!
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Support buttons row -->
+                <tr>
+                  <td align="center">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <!-- Email Us -->
+                        <td class="support-cell" style="padding:0 6px;">
+                          <a href="mailto:marketing@rareminds.in" style="display:inline-block;padding:10px 22px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:500;color:#111111;text-decoration:none;border:1.5px solid #DDDDD8;border-radius:8px;background-color:#FFFFFF;letter-spacing:0.01em;">
+                            ✉&nbsp; Email Us
+                          </a>
+                        </td>
+                        
+                        <!-- Call Us -->
+                        <td class="support-cell" style="padding:0 6px;">
+                          <a href="tel:+919562481100" style="display:inline-block;padding:10px 22px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:500;color:#111111;text-decoration:none;border:1.5px solid #DDDDD8;border-radius:8px;background-color:#FFFFFF;letter-spacing:0.01em;">
+                            ☎&nbsp; Call Us
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Footer note -->
+                <tr>
+                  <td align="center" style="padding-top:28px;padding-bottom:8px;">
+                    <p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:12px;color:#BBBBBB;line-height:1.7;">
+                      © ${new Date().getFullYear()} RareMinds. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
         </table>
@@ -280,9 +529,9 @@ export function generateUserConfirmationHtml(data: EventConfirmationTemplateData
     </tr>
   </table>
 </body>
-</html>`;
+</html>
+`;
 }
-
 export function generateAdminNotificationHtml(data: EventConfirmationTemplateData): string {
   const { name, email, phone, amount, orderId, campaign } = data;
 

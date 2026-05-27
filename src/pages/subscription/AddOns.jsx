@@ -175,6 +175,7 @@ function AddOns() {
           <AddOnMarketplace 
             role={getAddOnRole()}
             showBundles={true}
+            showHeader={false}
           />
         )}
       </div>

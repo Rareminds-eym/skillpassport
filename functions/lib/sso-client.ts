@@ -55,18 +55,39 @@ interface SsoTransactionData {
   metadata?: Record<string, unknown>;
 }
 
+// ─── Binding Guard ─────────────────────────────────────────────
+/**
+ * Get the typed SSO service binding from the environment.
+ * Throws a descriptive error if the binding is not configured.
+ *
+ * @param env - Pages Functions environment object
+ * @returns The SSO_SERVICE binding for RPC calls
+ * @throws Error if SSO_SERVICE binding is not configured
+ */
+function getSsoService(env: SsoClientEnv): Fetcher {
+  if (!env.SSO_SERVICE) {
+    throw new Error(
+      'SSO_SERVICE binding is not configured. ' +
+      'Add [[services]] to wrangler.toml or use --service SSO_SERVICE=sso-api in local dev.'
+    );
+  }
+  return env.SSO_SERVICE;
+}
+
+// ─── RPC Client Functions ──────────────────────────────────────
+
 export async function ssoCreateSubscription(
   env: SsoClientEnv,
   data: SsoSubscriptionData,
 ): Promise<Record<string, unknown>> {
-  return env.SSO_SERVICE.createSubscription(data);
+  return getSsoService(env).createSubscription(data);
 }
 
 export async function ssoCreateFreemiumSubscription(
   env: SsoClientEnv,
   data: { user_id: string; email: string; full_name?: string },
 ): Promise<Record<string, unknown>> {
-  return env.SSO_SERVICE.createFreemiumSubscription(data);
+  return getSsoService(env).createFreemiumSubscription(data);
 }
 
 export async function ssoUpdateSubscriptionStatus(
@@ -74,7 +95,7 @@ export async function ssoUpdateSubscriptionStatus(
   subscriptionId: string,
   data: { status: string; receipt_url?: string; cancellation_reason?: string; cancelled_by?: string },
 ): Promise<Record<string, unknown>> {
-  return env.SSO_SERVICE.updateSubscriptionStatus(subscriptionId, data);
+  return getSsoService(env).updateSubscriptionStatus(subscriptionId, data);
 }
 
 export async function ssoUpdateSubscriptionField(
@@ -82,28 +103,28 @@ export async function ssoUpdateSubscriptionField(
   subscriptionId: string,
   data: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  return env.SSO_SERVICE.updateSubscriptionField(subscriptionId, data);
+  return getSsoService(env).updateSubscriptionField(subscriptionId, data);
 }
 
 export async function ssoRecordTransaction(
   env: SsoClientEnv,
   data: SsoTransactionData,
 ): Promise<Record<string, unknown>> {
-  return env.SSO_SERVICE.recordTransaction(data);
+  return getSsoService(env).recordTransaction(data);
 }
 
 export async function ssoGetUserSubscription(
   env: SsoClientEnv,
   userId: string,
 ): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }> {
-  return env.SSO_SERVICE.getUserSubscription(userId);
+  return getSsoService(env).getUserSubscription(userId);
 }
 
 export async function ssoSyncSubscription(
   env: SsoClientEnv,
   userId: string,
 ): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }> {
-  return env.SSO_SERVICE.syncSubscription(userId);
+  return getSsoService(env).syncSubscription(userId);
 }
 
 export async function ssoGetUserTransactions(
@@ -111,11 +132,32 @@ export async function ssoGetUserTransactions(
   userId: string,
   subscriptionId?: string,
 ): Promise<Record<string, unknown>[]> {
-  return env.SSO_SERVICE.getUserTransactions(userId, subscriptionId);
+  return getSsoService(env).getUserTransactions(userId, subscriptionId);
 }
 
 export async function ssoSyncPlans(
   env: SsoClientEnv,
 ): Promise<{ plans: Record<string, unknown>[] }> {
-  return env.SSO_SERVICE.syncPlans();
+  return getSsoService(env).syncPlans();
+}
+
+export async function ssoRecordAddonPurchase(
+  env: SsoClientEnv,
+  data: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  return getSsoService(env).recordAddonPurchase(data);
+}
+
+export async function ssoRecordBundlePurchase(
+  env: SsoClientEnv,
+  data: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  return getSsoService(env).recordBundlePurchase(data);
+}
+
+export async function ssoFetch(
+  env: SsoClientEnv,
+  request: Request,
+): Promise<Response> {
+  return getSsoService(env).fetch(request);
 }

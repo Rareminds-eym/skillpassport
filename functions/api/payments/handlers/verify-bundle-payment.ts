@@ -16,7 +16,7 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
-import { ssoRecordTransaction } from '../../../lib/sso-client';
+import { ssoRecordTransaction, ssoRecordBundlePurchase } from '../../../lib/sso-client';
 
 export async function handleVerifyBundlePayment(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
@@ -74,12 +74,12 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
       );
     }
 
-    const priceAtPurchase = typeof body.amount === 'number' ? body.amount : 0;
+    const priceAtPurchase = typeof body.amount === 'number' ? body.amount / 100 : 0;
     const billingPeriod = body.billing_period as string;
 
     // Step 2: Record purchase in Auth DB via SSO Worker RPC
     try {
-      await env.SSO_SERVICE.recordBundlePurchase({
+      await ssoRecordBundlePurchase(env, {
         user_id: user.sub,
         bundle_id: body.bundle_id as string,
         billing_period: billingPeriod,
