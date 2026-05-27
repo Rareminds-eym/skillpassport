@@ -112,9 +112,9 @@ Before responding, verify you have EXACTLY ${questionCount} questions. Generate 
         
         // Validate options if MCQ
         if (q.type === 'mcq' && q.options) {
-            const optionValues = Array.isArray(q.options) 
-                ? q.options.map((v: any) => String(v).toLowerCase().trim())
-                : Object.values(q.options).map((v: any) => String(v).toLowerCase().trim());
+            const optionValues: string[] = Array.isArray(q.options) 
+                ? q.options.map((v: unknown) => String(v).toLowerCase().trim())
+                : Object.values(q.options).map((v: unknown) => String(v).toLowerCase().trim());
             
             const uniqueOptions = new Set(optionValues);
             

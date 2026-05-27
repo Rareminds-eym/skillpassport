@@ -13,7 +13,6 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { transcribeVideo } from '../utils/transcription';
@@ -58,9 +57,7 @@ interface VideoSummarizerRequestBody {
  */
 export const onRequestPost = async (context: AuthenticatedContext) => {
   try {
-    const { request, env, waitUntil, data } = context;
-    const user = data.user;
-    const userId = user.sub;
+    const { request, env, waitUntil } = context;
 
     // Parse request body
     let body: VideoSummarizerRequestBody;

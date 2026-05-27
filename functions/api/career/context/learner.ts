@@ -113,7 +113,7 @@ export async function buildlearnerContext(
       cgpa: learner?.currentCgpa || education?.[0]?.cgpa || '',
       yearOfPassing: education?.[0]?.year_of_passing || '',
       grade: learner?.grade || '',
-      gradeNumber, // Add grade number for context
+      gradeNumber: gradeNumber ?? undefined,
       bio: learner?.bio || '',
       technicalSkills,
       softSkills,

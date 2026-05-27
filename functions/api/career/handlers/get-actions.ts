@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../lib/auth';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 
 export interface CareerAction {
   id: string;
@@ -115,17 +115,12 @@ async function getlearnerGradeLevel(supabase: SupabaseClient, learnerId: string)
   }
 }
 
-export async function handleGetActions(request: Request, env: any): Promise<Response> {
+export async function handleGetActions(env: any, userId: string): Promise<Response> {
   try {
-    // Authenticate user using shared auth
-    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!authResult) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
-    const { user, supabase } = authResult;
+    const supabase = createSupabaseAdminClient(env);
 
     // Get learner's grade level
-    const gradeLevel = await getlearnerGradeLevel(supabase, user.id);
+    const gradeLevel = await getlearnerGradeLevel(supabase, userId);
     
     // Get appropriate actions
     const actions = GRADE_ACTIONS[gradeLevel] || GRADE_ACTIONS.college;

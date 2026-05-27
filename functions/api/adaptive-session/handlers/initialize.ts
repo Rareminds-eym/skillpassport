@@ -8,9 +8,9 @@
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { getContextUser } from '../../../lib/auth';
 import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
-import { authenticateUser } from '../../lib/auth';
 import { fetchDiagnosticQuestions, extractGradeNumber, learnerGradeToGradeLevel } from '../utils/question-bank';
 
 /**
@@ -28,14 +28,10 @@ export const initializeHandler: PagesFunction = async (context) => {
   const { request, env } = context;
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [InitializeHandler] Authentication required');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
+    const user = getContextUser(context);
+    const userId = user.id;
 
-    console.log('✅ [InitializeHandler] User authenticated:', auth.user.id);
+    console.log('✅ [InitializeHandler] User authenticated:', userId);
 
     // Parse request body
     const body = await request.json() as InitializeTestOptions;
@@ -58,11 +54,11 @@ export const initializeHandler: PagesFunction = async (context) => {
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
       .select('id, user_id, grade')
-      .eq('user_id', auth.user.id)
+      .eq('user_id', userId)
       .single();
 
     if (learnerError || !learnerData) {
-      console.error('❌ [InitializeHandler] Learner record not found for user:', auth.user.id, learnerError);
+      console.error('❌ [InitializeHandler] Learner record not found for user:', userId, learnerError);
       return jsonResponse(
         { error: 'Learner record not found', message: learnerError?.message },
         404

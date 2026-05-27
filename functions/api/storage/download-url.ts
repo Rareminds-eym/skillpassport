@@ -4,7 +4,7 @@
  * Generates a signed download URL for private files in Supabase Storage.
  * Requires SSO authentication. Validates path ownership.
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
@@ -16,7 +16,7 @@ interface DownloadUrlRequest {
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
 
   let body: DownloadUrlRequest;
@@ -35,7 +35,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     ['admin', 'owner', 'school_admin', 'college_admin', 'university_admin'].includes(r)
   );
 
-  if (!isAdmin && !body.path.startsWith(`${user.sub}/`)) {
+  if (!isAdmin && !body.path.startsWith(`${user.id}/`)) {
     return Response.json({ error: 'Forbidden: cannot access this path' }, { status: 403 });
   }
 

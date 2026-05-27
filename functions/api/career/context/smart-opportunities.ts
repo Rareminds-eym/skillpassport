@@ -115,8 +115,9 @@ JSON:`;
       throw new Error(`AI service error: ${response.status}`);
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '{}';
+    const data = (await response.json()) as Record<string, unknown>;
+    const message = ((data.choices as Record<string, unknown>[] | undefined)?.[0] as Record<string, unknown> | undefined)?.message as Record<string, unknown> | undefined;
+    const content = (message?.content as string) || '{}';
     
     // Extract JSON from response (handle markdown code blocks and extra text)
     let jsonMatch = content.match(/\{[\s\S]*\}/);

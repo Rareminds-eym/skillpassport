@@ -13,9 +13,7 @@ import {
     callOpenRouterWithRetry,
     repairAndParseJSON,
     generateUUID,
-    getAPIKeys,
-    API_CONFIG,
-    MODEL_PROFILES
+    getAPIKeys
 } from '../../shared/ai-config';
 import { STREAM_CONTEXTS } from '../stream-contexts';
 

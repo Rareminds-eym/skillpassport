@@ -19,7 +19,7 @@ import { withAuth } from '../../lib/auth';
 import { onRequestPost as handleAiVideoSummarizer } from './handlers/ai-video-summarizer';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
-  const { request, env } = context;
+  const { request } = context;
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {

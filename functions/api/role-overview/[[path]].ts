@@ -21,7 +21,7 @@ import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
 import { withAuth } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { callOpenRouterWithRetry, getAPIKeys, MODEL_PROFILES } from '../shared/ai-config';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseAdminClient } from '../../../src/functions-lib/supabase';
 import { handleCourseMatching } from './handlers/course-matching';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
@@ -80,7 +80,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         return jsonResponse({ error: 'Supabase not configured' }, 500);
       }
 
-      const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+      const supabase = createSupabaseAdminClient(env);
 
       // Query database for stored role overview
       const { data, error } = await supabase
@@ -146,7 +146,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         return jsonResponse({ error: 'Supabase not configured' }, 500);
       }
 
-      const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+      const supabase = createSupabaseAdminClient(env);
 
       // Get current gemini_results data
       const { data: currentData, error: fetchError } = await supabase

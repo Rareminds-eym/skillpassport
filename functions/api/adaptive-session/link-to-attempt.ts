@@ -9,20 +9,15 @@
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib/response';
 import { createSupabaseAdminClient } from '../../../src/functions-lib/supabase';
-import { authenticateUser } from '../lib/auth';
-
+import { getContextUser } from '../../lib/auth';
 export const onRequestPost: PagesFunction = async (context) => {
   const { request, env } = context;
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [LinkToAttemptHandler] Authentication required');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
+    const user = getContextUser(context);
+    const userId = user.id;
 
-    console.log('✅ [LinkToAttemptHandler] User authenticated:', auth.user.id);
+    console.log('✅ [LinkToAttemptHandler] User authenticated:', userId);
 
     // Parse request body
     const body = await request.json() as { attemptId: string; sessionId: string };
@@ -47,7 +42,7 @@ export const onRequestPost: PagesFunction = async (context) => {
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
       .select('id')
-      .eq('user_id', auth.user.id)
+      .eq('user_id', userId)
       .single();
 
     if (learnerError || !learnerData) {

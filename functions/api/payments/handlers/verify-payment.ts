@@ -11,8 +11,9 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { R2Client } from '../../storage/utils/r2-client';
@@ -30,7 +31,7 @@ import {
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
@@ -79,7 +80,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 2.5: Validate plan exists via plans_cache (local shadow of auth DB)
     const { data: validPlan, error: planError } = await supabase
       .from('plans_cache')
-      .select('id, plan_code, name, is_active, pricing_matrix')
+      .select('id, plan_code, name, is_active, pricing_matrix, base_features')
       .eq('id', plan.id)
       .eq('is_active', true)
       .maybeSingle();
@@ -117,7 +118,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const { data: existingCache } = await supabase
       .from('subscription_cache')
       .select('id, status, plan_id, plan_code')
-      .eq('user_id', user.sub)
+      .eq('user_id', user.id)
       .in('status', ['active', 'pending', 'grace_period'])
       .maybeSingle();
 
@@ -183,7 +184,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         // Record failed upgrade as an event in auth DB
         try {
           await ssoRecordTransaction(env, {
-            user_id: user.sub,
+            user_id: user.id,
             razorpay_order_id: body.razorpay_order_id as string,
             razorpay_payment_id: body.razorpay_payment_id as string,
             amount: planPrice,
@@ -216,11 +217,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       }
     } else {
       // New subscription — create in auth DB
-      console.log('[VerifyPayment] Creating new subscription for user:', user.sub);
+      console.log('[VerifyPayment] Creating new subscription for user:', user.id);
 
       try {
         subscription = await ssoCreateSubscription(env, {
-          user_id: user.sub,
+          user_id: user.id,
           plan_id: plan.id as string,
           plan_code: validPlan.plan_code,
           plan_type: plan.name as string,
@@ -257,7 +258,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     try {
       await ssoRecordTransaction(env, {
         subscription_id: subscription.id as string,
-        user_id: user.sub,
+        user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
         amount: planPrice,
@@ -272,9 +273,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 3.5: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.sub, body.email || (user as any).email);
+      await syncUserShadow(supabase, user.id, body.email || (user as any).email);
 
-      const syncData = await ssoSyncSubscription(env, user.sub);
+      const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
       }
@@ -296,7 +297,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       const { data: learner } = await supabase
         .from('learners')
         .select('name')
-        .eq('user_id', user.sub)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       let logoBytes: Uint8Array | undefined;
@@ -342,7 +343,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
       const pdfBytes = await generateReceiptPDF(receiptData);
 
-      const shortUserId = user.sub.substring(0, 8);
+      const shortUserId = user.id.substring(0, 8);
       const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
       const timestamp = Date.now();
       receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;

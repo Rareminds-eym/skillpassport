@@ -7,15 +7,16 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('payments:create-event-order');
 
 export async function handleCreateEventOrder(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv;
 
   try {
@@ -58,7 +59,7 @@ export async function handleCreateEventOrder(context: AuthenticatedContext): Pro
         user_phone: (body.userPhone as string) || '',
         campaign: (body.campaign as string) || '',
         origin: (body.origin as string) || '',
-        user_id: user.sub,
+        user_id: user.id,
         type: 'event',
       },
     });

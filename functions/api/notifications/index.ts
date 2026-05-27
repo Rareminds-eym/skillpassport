@@ -5,7 +5,7 @@
  * All endpoints require SSO authentication via withAuth.
  * Data is scoped to the authenticated user's org.
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
@@ -13,7 +13,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
  * GET /api/notifications — List notifications for the current user
  */
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -25,7 +25,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   let query = supabase
     .from('notifications')
     .select('*', { count: 'exact' })
-    .eq('user_id', user.sub)
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -47,7 +47,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
  * Body: { action: 'mark-read' | 'mark-all-read' | 'delete', ids?: string[] }
  */
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -70,7 +70,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
-        .eq('user_id', user.sub)
+        .eq('user_id', user.id)
         .in('id', body.ids);
 
       if (error) return Response.json({ error: error.message }, { status: 500 });
@@ -81,7 +81,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
-        .eq('user_id', user.sub)
+        .eq('user_id', user.id)
         .eq('is_read', false);
 
       if (error) return Response.json({ error: error.message }, { status: 500 });
@@ -95,7 +95,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { error } = await supabase
         .from('notifications')
         .delete()
-        .eq('user_id', user.sub)
+        .eq('user_id', user.id)
         .in('id', body.ids);
 
       if (error) return Response.json({ error: error.message }, { status: 500 });

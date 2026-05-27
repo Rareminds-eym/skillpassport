@@ -33,7 +33,7 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import {
   handleGetSchools,
@@ -202,12 +202,14 @@ export const onRequest: PagesFunction = async (context) => {
     }
     if (path === '/create-teacher' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
-        return await handleCreateTeacher(authContext.request, authContext.env);
+        const user = getContextUser(authContext);
+        return await handleCreateTeacher(authContext.request, authContext.env, { id: user.id, email: user.email || '' });
       })(context);
     }
     if (path === '/create-college-staff' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
-        return await handleCreateCollegeStaff(authContext.request, authContext.env);
+        const user = getContextUser(authContext);
+        return await handleCreateCollegeStaff(authContext.request, authContext.env, { id: user.id, email: user.email || '' });
       })(context);
     }
     if (path === '/update-learner-documents' && request.method === 'POST') {

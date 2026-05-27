@@ -24,7 +24,7 @@
  *   Box border  #E2E8F0  → rgb(226, 232, 240)
  */
 
-import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

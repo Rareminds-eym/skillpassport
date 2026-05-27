@@ -72,36 +72,36 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
     // Get Learner Type (authenticated)
     if (path === '/learner-type' && request.method === 'GET') {
-      return withAuth(handleGetLearnerType)(context);
+      return withAuth(handleGetLearnerType as any)(context);
     }
 
     // Get Generation Usage (authenticated)
     if (path === '/generation-usage' && request.method === 'GET') {
-      return withAuth(handleGetGenerationUsage)(context);
+      return withAuth(handleGetGenerationUsage as any)(context);
     }
 
     // AI Tutor Suggestions (authenticated)
     if (path === '/suggestions' && request.method === 'POST') {
-      return withAuth(handleAiTutorSuggestions)(context);
+      return withAuth(handleAiTutorSuggestions as any)(context);
     }
 
     // AI Tutor Chat (authenticated)
     if (path === '/chat' && request.method === 'POST') {
-      return withAuth(handleAiTutorChat)(context);
+      return withAuth(handleAiTutorChat as any)(context);
     }
 
     // AI Tutor Feedback (authenticated)
     if (path === '/feedback' && request.method === 'POST') {
-      return withAuth(handleAiTutorFeedback)(context);
+      return withAuth(handleAiTutorFeedback as any)(context);
     }
 
     // AI Tutor Progress (authenticated)
     if (path === '/progress' && request.method === 'GET') {
-      return withAuth(handleAiTutorProgressGet)(context);
+      return withAuth(handleAiTutorProgressGet as any)(context);
     }
 
     if (path === '/progress' && request.method === 'POST') {
-      return withAuth(handleAiTutorProgressPost)(context);
+      return withAuth(handleAiTutorProgressPost as any)(context);
     }
 
     // 404 for unknown routes

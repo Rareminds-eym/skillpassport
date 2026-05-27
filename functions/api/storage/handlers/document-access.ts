@@ -10,12 +10,7 @@
 
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
-import {
-  extractUserIdFromPath,
-  validatePaymentReceiptOwnership,
-  validateUploadOwnership,
-  type OwnershipValidationResult,
-} from '../utils/ownership';
+
 import {
   createAuthenticationError,
   createAuthorizationError,
@@ -61,7 +56,7 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
     }
 
     // Check if document is public
-    const isPublic = checkIfPublicDocument(fileKey);
+    const isPublic = fileKey.startsWith('public/') || fileKey.startsWith('uploads/public/');
 
     if (!isPublic) {
       // Private document - require authentication
@@ -69,14 +64,14 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
         return createAuthenticationError('/document-access', 'missing_token');
       }
 
-      // Validate ownership
-      const ownership = validateDocumentOwnership(fileKey, authenticatedContext.user.id);
-      if (!ownership.isOwner) {
+      // Validate ownership (check if file key contains user ID)
+      const isOwner = fileKey.includes(authenticatedContext.user.id);
+      if (!isOwner) {
         return createAuthorizationError(
           authenticatedContext.user.id,
           fileKey,
           'ownership_mismatch',
-          ownership.reason || 'You do not have permission to access this document'
+          'You do not have permission to access this document'
         );
       }
     }

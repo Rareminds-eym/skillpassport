@@ -7,7 +7,8 @@
 
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { getContextUser } from '../../../lib/auth';
 import type { 
   TestResults, 
   DifficultyLevel, 
@@ -16,8 +17,6 @@ import type {
   Subtag,
   ConfidenceTag
 } from '../types';
-import { authenticateUser } from '../../lib/auth';
-
 /**
  * Gets test results for a session
  * 
@@ -37,14 +36,10 @@ export const getResultsHandler: PagesFunction = async (context) => {
   }
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [GetResultsHandler] Authentication required');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
+    const user = getContextUser(context);
+    const userId = user.id;
 
-    console.log('✅ [GetResultsHandler] User authenticated:', auth.user.id);
+    console.log('✅ [GetResultsHandler] User authenticated:', userId);
     console.log('📊 [GetResultsHandler] getTestResults called:', { sessionId });
 
     const supabase = createSupabaseAdminClient(env);
@@ -75,10 +70,10 @@ export const getResultsHandler: PagesFunction = async (context) => {
       );
     }
 
-    if (learnerData.user_id !== auth.user.id) {
+    if (learnerData.user_id !== userId) {
       console.error('❌ [GetResultsHandler] Session ownership verification failed', {
         learnerUserId: learnerData.user_id,
-        authUserId: auth.user.id
+        authUserId: userId
       });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },
@@ -148,17 +143,13 @@ export const getlearnerResultsHandler: PagesFunction = async (context) => {
   }
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [GetLearnerResultsHandler] Authentication required');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
+    const user = getContextUser(context);
+    const userId = user.id;
 
-    console.log('✅ [GetLearnerResultsHandler] User authenticated:', auth.user.id);
+    console.log('✅ [GetLearnerResultsHandler] User authenticated:', userId);
 
     // Verify learner ID matches authenticated user
-    if (learnerId !== auth.user.id) {
+    if (learnerId !== userId) {
       console.error('❌ [GetLearnerResultsHandler] Learner ID verification failed');
       return jsonResponse(
         { error: 'Unauthorized: You can only access your own results' },

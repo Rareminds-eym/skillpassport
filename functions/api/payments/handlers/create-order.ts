@@ -7,7 +7,7 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
@@ -22,8 +22,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 });
 
 export async function handleCreateOrder(context: AuthenticatedContext): Promise<Response> {
-  const startTime = Date.now();
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
@@ -55,13 +54,13 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       const supabase = getServiceClient(env);
 
       // Ensure user exists in shadow table
-      await syncUserShadow(supabase, user.sub, (body.userEmail as string) || user.email);
+      await syncUserShadow(supabase, user.id, (body.userEmail as string) || user.email);
 
       // Create subscription in auth DB via SSO worker RPC
       let subscription: Record<string, unknown>;
       try {
         subscription = await ssoCreateFreemiumSubscription(env, {
-          user_id: user.sub,
+          user_id: user.id,
           email: (body.userEmail as string) || user.email,
           full_name: (body.userName as string) || (user as any).name || 'Freemium User',
         });
@@ -82,7 +81,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
 
       // Sync shadow table
       try {
-        const syncData = await ssoSyncSubscription(env, user.sub);
+        const syncData = await ssoSyncSubscription(env, user.id);
         if (syncData.subscription) {
           await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
         }
@@ -127,7 +126,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       if (dbPlan) {
         const yearlyPrice = dbPlan.pricing_matrix?.all?.yearly;
         if (typeof yearlyPrice !== 'number') {
-          logger.warn('Plan has no yearly price:', body.planId, dbPlan.pricing_matrix);
+          logger.warn('Plan has no yearly price', { planId: body.planId, pricingMatrix: dbPlan.pricing_matrix });
           return new Response(
             JSON.stringify({
               error: { code: 'INVALID_PLAN', message: 'Selected plan has no valid pricing' },
@@ -137,7 +136,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         }
         const expectedPaise = Math.round(yearlyPrice * 100);
         if (body.amount !== expectedPaise) {
-          logger.warn('Price mismatch — client sent', body.amount, 'expected', expectedPaise, 'for plan', body.planId);
+          logger.warn('Price mismatch', { clientAmount: body.amount, expected: expectedPaise, planId: body.planId });
           return new Response(
             JSON.stringify({
               error: { code: 'PRICE_MISMATCH', message: 'Plan price does not match. Please refresh and try again.' },
@@ -146,7 +145,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
           );
         }
       } else {
-        logger.warn('Plan not found in plans_cache:', body.planId);
+        logger.warn('Plan not found in plans_cache', { planId: body.planId });
       }
     }
 
@@ -158,7 +157,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       receipt: (body.receipt as string) || undefined,
       notes: {
         ...(body.notes as Record<string, string> || {}),
-        user_id: user.sub,
+        user_id: user.id,
         user_email: user.email || '',
         org_id: user.org_id || '',
       },

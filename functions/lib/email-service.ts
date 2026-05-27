@@ -66,12 +66,12 @@ export async function sendEmail(
       };
     }
 
-    const result = await response.json();
-    apiLogger.info('Email sent successfully', { result });
+    const body = (await response.json()) as Record<string, unknown>;
+    apiLogger.info('Email sent successfully', { body });
     
     return {
       success: true,
-      messageId: result.messageId || result.id,
+      messageId: String(body.messageId || body.id || ''),
     };
   } catch (error) {
     apiLogger.error('Failed to send email', error as Error);

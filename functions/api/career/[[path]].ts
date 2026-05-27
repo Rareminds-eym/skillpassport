@@ -14,7 +14,7 @@
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders } from '../../../src/functions-lib/cors';
 import { jsonResponse } from '../../../src/functions-lib/response';
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getAPIKeys } from '../shared/ai-config';
 import { handleCareerChat } from './handlers/chat';
@@ -38,8 +38,7 @@ export const onRequest: PagesFunction = async (context) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const url = new URL(request.url);
-  const pathSegments = context.params.path as string[] | undefined;
+  const pathSegments = context.params.path as unknown as string[] | undefined;
   const path = '/' + (Array.isArray(pathSegments) ? pathSegments.join('/') : '');
 
   // Validate environment
@@ -63,13 +62,15 @@ export const onRequest: PagesFunction = async (context) => {
     return withAuth(async (authContext: AuthenticatedContext) => {
       env = authContext.env as Record<string, string>;
       request = authContext.request;
+      const user = getContextUser(authContext);
+      const userId = user.id;
 
     // Route requests
     if (path === '/chat' || path === '/career-ai-chat' || path === '/') {
       if (!getOpenRouterKey(env)) {
         return jsonResponse({ error: 'AI service not configured' }, 500);
       }
-      return await handleCareerChat(request, env as any);
+      return await handleCareerChat(request, env as any, userId);
     }
 
     if (path === '/recommend-opportunities' || path === '/recommend') {
@@ -80,29 +81,29 @@ export const onRequest: PagesFunction = async (context) => {
       if (!getOpenRouterKey(env)) {
         return jsonResponse({ error: 'AI service not configured' }, 500);
       }
-      return await handleAnalyzeAssessment(request, env as any);
+      return await handleAnalyzeAssessment(request, env as any, userId);
     }
 
     if (path === '/generate-embedding') {
-      return await handleGenerateEmbedding(request, env as any);
+      return await handleGenerateEmbedding(request, env as any, userId);
     }
 
     if (path === '/generate-field-keywords') {
       if (!getOpenRouterKey(env)) {
         return jsonResponse({ error: 'AI service not configured', useFallback: true }, 500);
       }
-      return await handleGenerateFieldKeywords(request, env as any);
+      return await handleGenerateFieldKeywords(request, env as any, userId);
     }
 
     if (path === '/parse-resume') {
       if (!getOpenRouterKey(env)) {
         return jsonResponse({ error: 'AI service not configured' }, 500);
       }
-      return await handleParseResume(request, env as any);
+      return await handleParseResume(request, env as any, userId);
     }
 
     if (path === '/get-actions' || path === '/actions') {
-      return await handleGetActions(request, env as any);
+      return await handleGetActions(env as any, userId);
     }
 
     return jsonResponse({ 

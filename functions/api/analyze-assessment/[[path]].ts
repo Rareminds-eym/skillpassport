@@ -7,7 +7,7 @@
 
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { handleAnalyzeAssessment } from './handlers/analyze';
 import { handleGenerateProgramCareerPaths } from './handlers/program-career-paths';
@@ -49,15 +49,16 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     return withAuth(async (authContext: AuthenticatedContext) => {
       env = authContext.env as Record<string, string>;
       request = authContext.request;
+      const userId = getContextUser(authContext).id;
 
     // Main analyze endpoint
     if ((path === '' || path === '/' || path === '/analyze') && request.method === 'POST') {
-      return await handleAnalyzeAssessment(request, env);
+      return await handleAnalyzeAssessment(request, env as unknown as PagesEnv, userId);
     }
 
     // Program career paths endpoint
     if (path === '/generate-program-career-paths' && request.method === 'POST') {
-      return await handleGenerateProgramCareerPaths(request, env);
+      return await handleGenerateProgramCareerPaths(request, env as unknown as PagesEnv);
     }
 
     // 404 for unknown routes

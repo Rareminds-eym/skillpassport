@@ -7,14 +7,12 @@
 
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import type { 
   TestSession, 
   Question,
   GradeLevel,
-  TestPhase,
-  DifficultyLevel,
-  Subtag
+  DifficultyLevel
 } from '../types';
 import { ALL_SUBTAGS } from '../types';
 import { dbSessionToTestSession, dbResponseToResponse } from '../utils/converters';
@@ -109,7 +107,7 @@ export const resumeHandler: PagesFunction = async (context) => {
       console.log('✅ [ResumeHandler] Test is completed');
       
       // Fetch results if available
-      const { data: resultsData } = await supabase
+      await supabase
         .from('adaptive_aptitude_results')
         .select('*')
         .eq('session_id', sessionId)
@@ -139,7 +137,7 @@ export const resumeHandler: PagesFunction = async (context) => {
       console.log('🔄 [ResumeHandler] Adaptive core with no questions - fetching first question...');
       
       // Extract specific grade from learner_course if available
-      const specificGrade = extractGradeNumber(sessionData.learner_course as string | null);
+      const specificGrade = extractGradeNumber(sessionData.learner_course ?? '');
       console.log('🎯 [ResumeHandler] Using specific grade:', specificGrade || 'fallback to range');
       
       // Get all previously answered question IDs

@@ -9,7 +9,6 @@
  */
 
 import { R2Client } from '../utils/r2-client';
-import { jsonResponse } from '../../../../src/functions-lib';
 import type { AuthenticatedContext } from '../[[path]]';
 import {
   createAuthenticationError,
@@ -84,7 +83,7 @@ export const handlePresigned: PagesFunction = async (context) => {
     const fileKey = `courses/${courseId}/lessons/${lessonId}/${user.id}/${timestamp}-${randomString}${extension}`;
 
     // Generate presigned URL with proper parameters
-    const presignedData = await r2Client.generatePresignedUrl(fileKey, contentType, 3600);
+    const presignedData = await r2Client.generatePresignedUrl(fileKey, contentType);
 
     return new Response(
       JSON.stringify({

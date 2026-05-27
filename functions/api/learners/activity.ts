@@ -4,7 +4,7 @@
  * Handles education, training, experience, and skills data for learners.
  * All endpoints require SSO authentication.
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
@@ -13,13 +13,13 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
  * Query params: type (education|training|experience|skills), learner_id
  */
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
   const url = new URL(context.request.url);
   const type = url.searchParams.get('type');
-  const learnerId = url.searchParams.get('learner_id') || user.sub;
+  const learnerId = url.searchParams.get('learner_id') || user.id;
 
   if (!type) {
     return Response.json({ error: 'type query param is required (education|training|experience|skills)' }, { status: 400 });
@@ -52,7 +52,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
  * Body: { type, ...record }
  */
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -79,7 +79,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   // Set learner_id from JWT if not provided
   if (!record.learner_id) {
-    record.learner_id = user.sub;
+    record.learner_id = user.id;
   }
 
   if (record.id) {

@@ -7,7 +7,8 @@
 
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { getContextUser } from '../../../lib/auth';
 import type { 
   SubmitAnswerOptions, 
   AnswerResult, 
@@ -19,8 +20,6 @@ import type {
 import { DEFAULT_ADAPTIVE_TEST_CONFIG } from '../types';
 import { dbSessionToTestSession, dbResponseToResponse } from '../utils/converters';
 import { AdaptiveEngine } from '../utils/adaptive-engine';
-import { authenticateUser } from '../../lib/auth';
-
 /**
  * Submits an answer for the current question
  * 
@@ -34,14 +33,10 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
   const { request, env } = context;
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [SubmitAnswerHandler] Authentication required');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
+    const user = getContextUser(context);
+    const userId = user.id;
 
-    console.log('✅ [SubmitAnswerHandler] User authenticated:', auth.user.id);
+    console.log('✅ [SubmitAnswerHandler] User authenticated:', userId);
 
     // Parse request body
     const body = await request.json() as SubmitAnswerOptions;
@@ -101,10 +96,10 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       );
     }
 
-    if (learnerData.user_id !== auth.user.id) {
+    if (learnerData.user_id !== userId) {
       console.error('❌ [SubmitAnswerHandler] Session ownership verification failed', {
         learnerUserId: learnerData.user_id,
-        authUserId: auth.user.id
+        authUserId: userId
       });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },

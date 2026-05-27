@@ -22,7 +22,9 @@ import { handleCountdownEmail } from './handlers/countdown';
 import { handleBulkCountdownEmail } from './handlers/bulk-countdown';
 import { handleEventConfirmation, handleEventOTP } from './handlers/event-registration';
 import { handlePDFReceipt } from './handlers/pdf-receipt';
+import type { PagesEnv } from '../../../src/functions-lib/types';
 import { apiLogger } from '../../lib/logger';
+import type { EventConfirmationRequest, EventOTPRequest, CountdownEmailRequest, BulkCountdownEmailRequest, GenericEmailRequest, InvitationEmailRequest } from './types';
 
 // ==================== MAIN HANDLER ====================
 
@@ -88,13 +90,15 @@ export const onRequest: PagesFunction = async (context) => {
         }, 400);
       }
 
+      const envTyped = env as unknown as PagesEnv;
+
       // Routes that don't need Supabase
       if (path === '/event-confirmation') {
-        return await handleEventConfirmation(body, env);
+        return await handleEventConfirmation(body as EventConfirmationRequest, envTyped);
       }
       
       if (path === '/event-otp') {
-        return await handleEventOTP(body, env);
+        return await handleEventOTP(body as EventOTPRequest, envTyped);
       }
 
       // Routes that need Supabase - create client only when needed
@@ -102,19 +106,19 @@ export const onRequest: PagesFunction = async (context) => {
       
       // Route to appropriate handler
       if (path === '/invitation') {
-        return await handleInvitationEmail(authContext.request, body, env, supabase);
+        return await handleInvitationEmail(body as InvitationEmailRequest, envTyped);
       }
       
       if (path === '/countdown') {
-        return await handleCountdownEmail(body, env, supabase);
+        return await handleCountdownEmail(body as CountdownEmailRequest, envTyped, supabase);
       }
       
       if (path === '/send-bulk-countdown') {
-        return await handleBulkCountdownEmail(body, env, supabase);
+        return await handleBulkCountdownEmail(body as BulkCountdownEmailRequest, envTyped, supabase);
       }
       
       if (path === '' || path === '/' || path === '/send') {
-        return await handleGenericEmail(body, env, supabase);
+        return await handleGenericEmail(body as GenericEmailRequest, envTyped, supabase);
       }
 
       return jsonResponse({ success: false, error: 'Route not found' }, 404);

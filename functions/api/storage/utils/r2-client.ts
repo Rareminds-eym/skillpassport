@@ -169,8 +169,7 @@ export class R2Client {
    */
   async generatePresignedUrl(
     key: string,
-    contentType: string,
-    expiresIn: number = 3600
+    contentType: string
   ): Promise<{ url: string; headers: Record<string, string> }> {
     const uploadUrl = `${this.endpoint}/${this.bucketName}/${key}`;
 

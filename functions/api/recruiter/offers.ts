@@ -1,12 +1,12 @@
 /**
  * Recruiter - Offers API
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -17,7 +17,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const { data, error, count } = await supabase
     .from('offers')
     .select('*', { count: 'exact' })
-    .eq('recruiter_id', user.sub)
+    .eq('recruiter_id', user.id)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -26,7 +26,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 });
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -37,7 +37,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  body.recruiter_id = user.sub;
+  body.recruiter_id = user.id;
   body.org_id = user.org_id;
 
   const { data, error } = await supabase

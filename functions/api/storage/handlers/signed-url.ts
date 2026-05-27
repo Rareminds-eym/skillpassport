@@ -25,7 +25,7 @@ interface SignedUrlsRequestBody {
  * Generate signed URL for single document
  * Returns a proxy URL through /document-access endpoint
  */
-export const handleSignedUrl: PagesFunction = async ({ request, env }) => {
+export const handleSignedUrl: PagesFunction = async ({ request }) => {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -37,11 +37,11 @@ export const handleSignedUrl: PagesFunction = async ({ request, env }) => {
     const body = (await request.json()) as SignedUrlRequestBody;
     const { url: fileUrl, fileKey: providedKey, expiresIn = 3600 } = body;
 
-    let fileKey = providedKey;
+    let fileKey = providedKey ?? undefined;
 
     // Extract file key from URL if not provided directly
     if (!fileKey && fileUrl) {
-      fileKey = R2Client.extractKeyFromUrl(fileUrl);
+      fileKey = R2Client.extractKeyFromUrl(fileUrl) ?? undefined;
     }
 
     if (!fileKey) {
@@ -85,7 +85,7 @@ export const handleSignedUrl: PagesFunction = async ({ request, env }) => {
  * Batch generate signed URLs for multiple documents
  * Returns proxy URLs through /document-access endpoint
  */
-export const handleSignedUrls: PagesFunction = async ({ request, env }) => {
+export const handleSignedUrls: PagesFunction = async ({ request }) => {
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,

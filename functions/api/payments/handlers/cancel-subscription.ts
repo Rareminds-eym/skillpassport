@@ -9,7 +9,7 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { ssoUpdateSubscriptionStatus, ssoSyncSubscription } from '../../../lib/sso-client';
@@ -33,7 +33,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
 export async function handleCancelSubscription(context: AuthenticatedContext, subscriptionId: string): Promise<Response> {
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
-  const user = context.data.user;
+  const user = getContextUser(context);
 
   try {
     // Verify ownership: subscription must belong to the authenticated user
@@ -43,7 +43,7 @@ export async function handleCancelSubscription(context: AuthenticatedContext, su
       .from('subscription_cache')
       .select('id')
       .eq('id', subscriptionId)
-      .eq('user_id', user.sub)
+      .eq('user_id', user.id)
       .maybeSingle();
 
     if (!sub) {
@@ -55,17 +55,17 @@ export async function handleCancelSubscription(context: AuthenticatedContext, su
 
     // Call payment-worker via RPC — worker validates ID format and calls Razorpay
     const worker = getPaymentWorker(env);
-    const razorpayResult = await worker.cancelSubscription(subscriptionId);
+    await worker.cancelSubscription(subscriptionId);
 
     // Write status change through SSO worker (auth DB is source of truth)
     const ssoResult = await ssoUpdateSubscriptionStatus(env, subscriptionId, {
       status: 'cancelled',
-      cancelled_by: user.sub,
+      cancelled_by: user.id,
     });
 
     // Sync shadow table (non-blocking on failure)
     try {
-      const syncResult = await ssoSyncSubscription(env, user.sub);
+      const syncResult = await ssoSyncSubscription(env, user.id);
       if (syncResult.subscription) {
         await syncSubscriptionCache(supabase, syncResult.subscription, syncResult.plan);
       }

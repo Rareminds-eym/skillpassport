@@ -5,7 +5,7 @@
 
 import { PagesEnv } from '../../../../src/functions-lib/types';
 import { GradeLevel, DifficultyLevel, Subtag, QuestionGenerationResult, Question } from '../adaptive-types';
-import { reorderToPreventConsecutiveSubtags, generateQuestionId } from '../adaptive-utils';
+import { reorderToPreventConsecutiveSubtags } from '../adaptive-utils';
 import { ALL_SUBTAGS } from '../adaptive-constants';
 import { createClient } from '@supabase/supabase-js';
 
@@ -180,9 +180,7 @@ async function generateQuestionsFromBank(
 export async function generateDiagnosticScreenerQuestions(
     env: PagesEnv,
     gradeLevel: GradeLevel,
-    excludeQuestionIds: string[] = [],
-    excludeQuestionTexts: string[] = [],
-    learnerCourse?: string | null
+    excludeQuestionIds: string[] = []
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Diagnostic] Starting generation for ${gradeLevel}`);
     
@@ -206,15 +204,9 @@ export async function generateDiagnosticScreenerQuestions(
         return {
             questions: reordered,
             fromCache: false,
-            metadata: {
-                phase: 'diagnostic_screener',
-                difficulty,
-                subtags,
-                gradeLevel,
-                totalQuestions: reordered.length,
-                generatedAt: new Date().toISOString()
-            }
-        };
+            generatedCount: reordered.length,
+            cachedCount: 0,
+        } as QuestionGenerationResult;
     } catch (error) {
         console.error(`❌ [Diagnostic] Error:`, error);
         throw error;
@@ -225,9 +217,7 @@ export async function generateAdaptiveCoreQuestions(
     env: PagesEnv,
     gradeLevel: GradeLevel,
     difficulty: DifficultyLevel,
-    excludeQuestionIds: string[] = [],
-    excludeQuestionTexts: string[] = [],
-    learnerCourse?: string | null
+    excludeQuestionIds: string[] = []
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Adaptive-Core] Starting generation`);
     
@@ -250,15 +240,9 @@ export async function generateAdaptiveCoreQuestions(
         return {
             questions: reordered,
             fromCache: false,
-            metadata: {
-                phase: 'adaptive_core',
-                difficulty,
-                subtags,
-                gradeLevel,
-                totalQuestions: reordered.length,
-                generatedAt: new Date().toISOString()
-            }
-        };
+            generatedCount: reordered.length,
+            cachedCount: 0,
+        } as QuestionGenerationResult;
     } catch (error) {
         console.error(`❌ [Adaptive-Core] Error:`, error);
         throw error;
@@ -269,9 +253,7 @@ export async function generateStabilityConfirmationQuestions(
     env: PagesEnv,
     gradeLevel: GradeLevel,
     difficulty: DifficultyLevel,
-    excludeQuestionIds: string[] = [],
-    excludeQuestionTexts: string[] = [],
-    learnerCourse?: string | null
+    excludeQuestionIds: string[] = []
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Stability] Starting generation`);
     
@@ -294,15 +276,9 @@ export async function generateStabilityConfirmationQuestions(
         return {
             questions: reordered,
             fromCache: false,
-            metadata: {
-                phase: 'stability_confirmation',
-                difficulty,
-                subtags,
-                gradeLevel,
-                totalQuestions: reordered.length,
-                generatedAt: new Date().toISOString()
-            }
-        };
+            generatedCount: reordered.length,
+            cachedCount: 0,
+        } as QuestionGenerationResult;
     } catch (error) {
         console.error(`❌ [Stability] Error:`, error);
         throw error;
@@ -315,9 +291,7 @@ export async function generateSingleQuestion(
     phase: string,
     difficulty: DifficultyLevel,
     subtag: Subtag,
-    excludeQuestionIds: string[] = [],
-    excludeQuestionTexts: string[] = [],
-    learnerCourse?: string | null
+    excludeQuestionIds: string[] = []
 ): Promise<Question> {
     console.log(`🎯 [Single-Question] Generating for ${subtag} in phase ${phase}`);
 

@@ -6,7 +6,7 @@
  * Queries Supabase for available addons. Bypasses RLS. Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { ssoFetch } from '../../../lib/sso-client';
 export async function handleGetAvailableAddons(context: AuthenticatedContext): Promise<Response> {

@@ -244,7 +244,6 @@ The categories above were selected because they align with your ${riasecCode} pr
 export function extractCareerCategories(
   riasecCode: string,
   aptitudeLevel: number,
-  interests: string[],
   stream?: string
 ): string[] {
   const categories: string[] = [];

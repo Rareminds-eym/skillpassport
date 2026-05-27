@@ -9,11 +9,15 @@
  * Headers: Authorization: Bearer <jwt>
  */
 
-import { authenticateUser } from '../../lib/auth';
 import { checkCourseEnrollment, checkRateLimit } from '../utils/course-authorization';
 import { extractFileKey, generateMediaToken } from '../utils/token-crypto';
 
-type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
+interface StorageHandlerContext {
+  request: Request;
+  env: any;
+  user?: { id: string };
+  supabase?: any;
+}
 
 interface RequestBody {
   fileUrl?: string;
@@ -27,7 +31,8 @@ interface RequestBody {
 /**
  * Generate authenticated URL with session cookie for media access
  */
-export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env }) => {
+export const handleGetAuthenticatedUrl = async (context: StorageHandlerContext) => {
+  const { request, env } = context;
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -36,22 +41,12 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
   }
 
   try {
-    // Authenticate user
-    const authResult = await authenticateUser(request, env);
-    if (!authResult) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized - Please log in' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    const { user, supabase } = authResult;
+    const user = context.user!;
+    const supabase = context.supabase;
+    const userId = user.id;
 
     // Rate limiting
-    const rateLimit = checkRateLimit(user.id, 100, 3600);
+    const rateLimit = checkRateLimit(userId, 100, 3600);
     if (!rateLimit.allowed) {
       return new Response(
         JSON.stringify({
@@ -100,7 +95,7 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
     }
 
     // Check course enrollment
-    const authCheck = await checkCourseEnrollment(supabase, user.id, courseId);
+    const authCheck = await checkCourseEnrollment(supabase, userId, courseId);
     if (!authCheck.authorized) {
       return new Response(
         JSON.stringify({ error: authCheck.error || 'Access denied' }),
@@ -127,7 +122,7 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
     const userAgent = request.headers.get('User-Agent') || '';
     
     const token = await generateMediaToken(
-      user.id,
+      userId,
       courseId,
       fileKey,
       signingSecret,

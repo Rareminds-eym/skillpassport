@@ -89,7 +89,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           return jsonResponse({ error: 'Stream ID is required' }, 400);
         }
 
-        const result = await generateAptitudeQuestions(env, streamId, questionsPerCategory, learnerId, attemptId, gradeLevel);
+        const result = await generateAptitudeQuestions(env as unknown as PagesEnv, streamId, questionsPerCategory, learnerId, attemptId, gradeLevel);
         console.log(`✅ Aptitude generation complete: ${result?.length || 0} questions`);
         // Wrap in {questions: [...]} format for frontend compatibility
         return jsonResponse({ questions: result });
@@ -101,7 +101,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
     if (path === '/career-assessment/generate-aptitude/stream' && request.method === 'POST') {
       try {
-        return await handleStreamingAptitude(request, env);
+        return await handleStreamingAptitude(request, env as unknown as PagesEnv);
       } catch (error: any) {
         console.error('❌ Streaming aptitude error:', error);
         return jsonResponse({ error: error.message || 'Failed to stream aptitude questions' }, 500);
@@ -131,7 +131,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           return jsonResponse({ error: 'Topics are required for learners below 11th grade' }, 400);
         }
 
-        const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, learnerId, attemptId, gradeLevel, isCollegeLearner);
+        const result = await generateKnowledgeQuestions(env as unknown as PagesEnv, streamId, streamName, topics, questionCount, learnerId, attemptId, gradeLevel, isCollegeLearner);
         console.log(`✅ Knowledge generation complete: ${result?.length || 0} questions`);
         // Wrap in {questions: [...]} format for frontend compatibility
         return jsonResponse({ questions: result });
@@ -152,7 +152,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           return jsonResponse({ error: 'Course name and level are required' }, 400);
         }
 
-        const result = await generateAssessment(env, courseName, level, questionCount);
+        const result = await generateAssessment(env as unknown as PagesEnv, courseName, level, questionCount);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Course assessment generation error:', error);
@@ -163,8 +163,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/diagnostic' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, excludeQuestionIds, excludeQuestionTexts, learnerCourse } = body;
-        const result = await generateDiagnosticScreenerQuestions(env, gradeLevel, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
+        const { gradeLevel, excludeQuestionIds } = body;
+        const result = await generateDiagnosticScreenerQuestions(env as unknown as PagesEnv, gradeLevel, excludeQuestionIds);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Diagnostic generation error:', error);
@@ -175,8 +175,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/adaptive' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, startingDifficulty, excludeQuestionIds, excludeQuestionTexts, learnerCourse } = body;
-        const result = await generateAdaptiveCoreQuestions(env, gradeLevel, startingDifficulty, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
+        const { gradeLevel, startingDifficulty, excludeQuestionIds } = body;
+        const result = await generateAdaptiveCoreQuestions(env as unknown as PagesEnv, gradeLevel, startingDifficulty, excludeQuestionIds);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Adaptive generation error:', error);
@@ -187,8 +187,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/stability' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, provisionalBand, excludeQuestionIds, excludeQuestionTexts, learnerCourse } = body;
-        const result = await generateStabilityConfirmationQuestions(env, gradeLevel, provisionalBand, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
+        const { gradeLevel, provisionalBand, excludeQuestionIds } = body;
+        const result = await generateStabilityConfirmationQuestions(env as unknown as PagesEnv, gradeLevel, provisionalBand, excludeQuestionIds);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Stability generation error:', error);
@@ -199,9 +199,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/single' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, learnerCourse } = body;
+        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds } = body;
         console.log('🎯 [Router] /generate/single called with:', { gradeLevel, phase, difficulty, subtag, excludeCount: excludeQuestionIds?.length || 0 });
-        const result = await generateSingleQuestion(env, gradeLevel, phase || 'adaptive_core', difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
+        const result = await generateSingleQuestion(env as unknown as PagesEnv, gradeLevel, phase || 'adaptive_core', difficulty, subtag, excludeQuestionIds);
         console.log('✅ [Router] Single question generated:', { questionId: result.id, difficulty: result.difficulty });
         // Wrap in array format expected by next-question handler
         return jsonResponse({ questions: [result] });

@@ -49,7 +49,7 @@ export async function sendEmail(env: Env, emailData: EmailData): Promise<EmailRe
   console.log(`Sending email to: ${recipients.join(', ')}`);
   console.log(`From: ${fromAddress.name} <${fromAddress.email}>`);
 
-  await WorkerMailer.send(smtpConfig, {
+  await WorkerMailer.send(smtpConfig as any, {
     from: fromAddress,
     to: recipients,
     subject: subject,
@@ -68,7 +68,7 @@ export async function sendEmail(env: Env, emailData: EmailData): Promise<EmailRe
 export async function sendEmailWithErrorHandling(env: Env, emailData: EmailData): Promise<EmailResult> {
   try {
     const result = await sendEmail(env, emailData);
-    return { success: true, ...result };
+    return { ...result, success: true };
   } catch (error: any) {
     const errorType = classifyEmailError(error);
     

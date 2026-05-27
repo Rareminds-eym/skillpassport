@@ -6,7 +6,7 @@
  * Fetches the user's subscription history. Bypasses RLS. Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
@@ -14,7 +14,8 @@ import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
 export async function handleGetUserSubscriptions(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
-  const userId = context.data.user.sub;
+  const user = getContextUser(context);
+  const userId = user.id;
   const url = new URL(context.request.url);
   const includeAll = url.searchParams.get('includeAll') === 'true';
 

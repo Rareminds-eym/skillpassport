@@ -3,26 +3,17 @@
  * POST /api/email/invitation
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Env } from '../../../../src/functions-lib/types';
 import type { InvitationEmailRequest } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { authenticateUser } from '../../lib/auth';
 import { generateInvitationEmailHtml, getInvitationSubject } from '../services/templates';
 import { apiLogger } from '../../../lib/logger';
 import { sendEmail } from '../../../lib/email-service';
 
 export async function handleInvitationEmail(
-  request: Request,
   body: InvitationEmailRequest,
-  env: Env,
-  supabase: SupabaseClient
+  env: Env
 ): Promise<Response> {
- const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-  if (!auth) {
-    return jsonResponse({ error: 'Authentication required' }, 401);
-  }
-
   const { to, organizationName, memberType, invitationToken, expiresAt, customMessage } = body;
 
   if (!to || !organizationName || !memberType || !invitationToken || !expiresAt) {

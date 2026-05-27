@@ -11,7 +11,7 @@ import { validateFileKey } from '../utils/course-authorization';
 import { validateMediaToken } from '../utils/token-crypto';
 import { R2Client } from '../utils/r2-client';
 import { validateDeviceFingerprint, validateReferer } from '../utils/fingerprint-validator';
-import { generateDeviceMismatchPage, generateTokenExpiredPage, generateUnauthorizedPage } from '../utils/error-pages';
+import { generateDeviceMismatchPage } from '../utils/error-pages';
 
 type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
 
@@ -64,7 +64,7 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
       );
     }
 
-    const { userId, courseId, lessonId, fileKey, fingerprint, userAgent: tokenUserAgent, sessionId: tokenSessionId } = validation.payload;
+    const { courseId, lessonId, fileKey, fingerprint, userAgent: tokenUserAgent } = validation.payload;
 
     // Fingerprint and User-Agent validation
     const requestFingerprint = url.searchParams.get('fp');

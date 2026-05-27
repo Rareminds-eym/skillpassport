@@ -28,7 +28,7 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getServiceClient } from '../../../lib/auth';
+import { getContextUser, getServiceClient } from '../../../lib/auth';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 import { getLogger } from '../../../../src/shared/config/logging';
@@ -44,8 +44,8 @@ type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
 
 export const onRequestGet = async (context: TypedContext) => {
   try {
-    const { request, env, data } = context;
-    const authenticatedUser = data.user;
+    const { request, env } = context;
+    const authenticatedUser = getContextUser(context);
     // strict: no-any verified
     const supabase = getServiceClient(env);
 
@@ -54,7 +54,7 @@ export const onRequestGet = async (context: TypedContext) => {
     const requestedUserId = url.searchParams.get('userId');
     
     // Use requested userId or fall back to authenticated user
-    const userId = requestedUserId || authenticatedUser.sub;
+    const userId = requestedUserId || authenticatedUser.id;
 
     if (!userId) {
       return jsonResponse({ error: 'Missing userId parameter' }, 400);
@@ -66,7 +66,7 @@ export const onRequestGet = async (context: TypedContext) => {
       ['admin', 'school_admin', 'college_admin', 'university_admin', 'owner'].includes(role)
     );
 
-    if (requestedUserId && requestedUserId !== authenticatedUser.sub && !isAdmin) {
+    if (requestedUserId && requestedUserId !== authenticatedUser.id && !isAdmin) {
       return jsonResponse({ 
         error: 'Forbidden: You can only fetch your own learner type' 
       }, 403);

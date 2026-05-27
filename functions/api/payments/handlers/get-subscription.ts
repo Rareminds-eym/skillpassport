@@ -7,12 +7,13 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 
 export async function handleGetSubscription(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
@@ -21,7 +22,7 @@ export async function handleGetSubscription(context: AuthenticatedContext): Prom
     const { data, error } = await supabase
       .from('subscription_cache')
       .select('*')
-      .eq('user_id', user.sub)
+      .eq('user_id', user.id)
       .in('status', ['active', 'paused'])
       .order('created_at', { ascending: false })
       .limit(1)

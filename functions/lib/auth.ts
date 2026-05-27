@@ -73,7 +73,7 @@ function ensureAuthInitialized(env: Record<string, unknown>): void {
  * protected endpoints (returns 403 with EMAIL_NOT_VERIFIED error code).
  */
 export function withAuth(handler: (context: AuthenticatedContext) => Promise<Response>) {
-  return async (context: AuthenticatedContext) => {
+  return async (context: any) => {
     const env = context.env as Record<string, string | Fetcher>;
     ensureAuthInitialized(env);
     
@@ -200,6 +200,32 @@ export async function authenticateUser(
     console.warn('Authentication failed:', message);
     return null;
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// Context-based auth helper: extract user from withAuth context.
+//
+// For PagesFunction handlers inside `withAuth`, the context is
+// modified by withAuthCore to include `data.user`. This helper
+// provides a typed, safe way to access it — keeping lib/auth.ts
+// as the holistic auth gateway for all handlers.
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Extract the authenticated user from a PagesFunction context
+ * that has been wrapped with `withAuth`.
+ *
+ * Throws if `context.data.user` is not set (handler is not behind `withAuth`).
+ */
+export function getContextUser(context: { data?: { user?: SSOAuthUser } }): AuthUser {
+  const user = context.data?.user;
+  if (!user) {
+    throw new Error(
+      'getContextUser: context.data.user is not set. ' +
+      'Ensure this handler is wrapped with `withAuth`.'
+    );
+  }
+  return { ...user, id: user.sub };
 }
 
 export { requireRole, requireProduct, getServiceClient };

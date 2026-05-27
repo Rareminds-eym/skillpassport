@@ -7,15 +7,13 @@
 
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { getContextUser } from '../../../lib/auth';
 import type { 
   TestResults, 
   DifficultyLevel, 
   Tier, 
-  GradeLevel,
-  Response,
-  Subtag,
-  ConfidenceTag
+  GradeLevel
 } from '../types';
 import { dbResponseToResponse } from '../utils/converters';
 import { validateSessionNoDuplicates } from '../utils/validation';
@@ -25,8 +23,6 @@ import {
   classifyPath 
 } from '../utils/analytics';
 import { AdaptiveEngine } from '../utils/adaptive-engine';
-import { authenticateUser } from '../../lib/auth';
-
 /**
  * Completes the test and calculates final results
  * 
@@ -48,14 +44,10 @@ export const completeHandler: PagesFunction = async (context) => {
   }
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [CompleteHandler] Authentication required');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
+    const user = getContextUser(context);
+    const userId = user.id;
 
-    console.log('✅ [CompleteHandler] User authenticated:', auth.user.id);
+    console.log('✅ [CompleteHandler] User authenticated:', userId);
     console.log('🏁 [CompleteHandler] completeTest called:', { sessionId });
 
     const supabase = createSupabaseAdminClient(env);
@@ -98,10 +90,10 @@ export const completeHandler: PagesFunction = async (context) => {
       );
     }
 
-    if (learnerData.user_id !== auth.user.id) {
+    if (learnerData.user_id !== userId) {
       console.error('❌ [CompleteHandler] Session ownership verification failed', {
         learnerUserId: learnerData.user_id,
-        authUserId: auth.user.id
+        authUserId: userId
       });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },

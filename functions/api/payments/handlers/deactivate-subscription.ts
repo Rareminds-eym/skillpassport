@@ -9,14 +9,15 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoUpdateSubscriptionStatus, ssoSyncSubscription } from '../../../lib/sso-client';
 import { syncSubscriptionCache } from '../../../lib/sync-shadow';
 
 export async function handleDeactivateSubscription(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string; SSO_SERVICE: Fetcher };
 
   try {
@@ -52,7 +53,7 @@ export async function handleDeactivateSubscription(context: AuthenticatedContext
       .from('subscription_cache')
       .select('*')
       .eq('id', subscriptionId)
-      .eq('user_id', user.sub)
+      .eq('user_id', user.id)
       .maybeSingle();
 
     if (fetchError) {
@@ -78,12 +79,12 @@ export async function handleDeactivateSubscription(context: AuthenticatedContext
     const ssoResult = await ssoUpdateSubscriptionStatus(env, subscriptionId, {
       status: 'cancelled',
       cancellation_reason: cancellationReason,
-      cancelled_by: user.sub,
+      cancelled_by: user.id,
     });
 
     // Sync shadow table (non-blocking on failure)
     try {
-      const syncResult = await ssoSyncSubscription(env, user.sub);
+      const syncResult = await ssoSyncSubscription(env, user.id);
       if (syncResult.subscription) {
         await syncSubscriptionCache(supabase, syncResult.subscription, syncResult.plan);
       }

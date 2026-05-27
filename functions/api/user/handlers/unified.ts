@@ -105,7 +105,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
         // Repair missing role record
         console.log(`[Signup] Repairing missing ${checkRole} record for existing user ${userId}`);
         try {
-          await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
+          await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, body);
         } catch (repairError) {
           console.error('Failed to repair missing role record:', repairError);
           throw repairError;
@@ -201,7 +201,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
 
       // 2. Create role-specific record
       try {
-        await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
+        await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, body);
       } catch (roleError) {
         // Rollback: delete the users row if role-specific record fails
         await supabaseAdmin.from('users').delete().eq('id', userId);
@@ -257,8 +257,6 @@ async function createRoleSpecificRecord(
   userId: string,
   email: string,
   fullName: string,
-  firstName: string,
-  lastName: string,
   body: UnifiedSignupRequest
 ): Promise<void> {
   const { role, phone, dateOfBirth } = body;

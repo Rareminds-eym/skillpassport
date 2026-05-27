@@ -4,9 +4,8 @@
  */
 
 import type { PagesEnv } from '../../../../src/functions-lib/types';
-import type { AssessmentData, AnalysisResult } from '../types';
+import type { AssessmentData, AnalysisResult, GradeLevel } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../lib/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { getSystemMessage } from '../prompts';
@@ -82,7 +81,7 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
   Object.values(riasecAnswers).forEach((question: any) => {
     const answer = question.answer;
     const mapping = question.categoryMapping;
-    const riasecType = question.riasecType; // Direct RIASEC type from question
+    const riasecType = question.riasecType as keyof typeof scores | undefined;
     let questionAnswered = false;
     
     // Handle numeric rating answers (1-5 scale) - for college/after12/after10
@@ -108,7 +107,7 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
     // Handle array answers (multiselect) - for middle/high school
     else if (Array.isArray(answer) && answer.length > 0 && mapping) {
       answer.forEach((option: string) => {
-        const mappedType = mapping[option];
+        const mappedType = mapping[option] as keyof typeof scores | undefined;
         if (mappedType && scores.hasOwnProperty(mappedType)) {
           scores[mappedType] += 2;
           questionAnswered = true;
@@ -120,7 +119,7 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
     }
     // Handle single string answer with mapping
     else if (typeof answer === 'string' && answer.length > 0 && mapping) {
-      const mappedType = mapping[answer];
+      const mappedType = mapping[answer] as keyof typeof scores | undefined;
       if (mappedType && scores.hasOwnProperty(mappedType)) {
         scores[mappedType] += 2;
         questionAnswered = true;
@@ -558,7 +557,7 @@ async function analyzeAssessment(
   env: PagesEnv,
   assessmentData: AssessmentData
 ): Promise<any> {
-  const gradeLevel = assessmentData.gradeLevel || 'after12';
+  const gradeLevel: string = assessmentData.gradeLevel || 'after12';
   
   console.log(`[ASSESSMENT] === STARTING AI ANALYSIS ===`);
   console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
@@ -584,7 +583,6 @@ async function analyzeAssessment(
     const categories = extractCareerCategories(
       precalculatedRiasec.code,
       aptitudeLevel,
-      [],
       assessmentData.stream // Pass stream for psychology detection
     );
     
@@ -640,7 +638,7 @@ async function analyzeAssessment(
   console.log('[ASSESSMENT] 🎯 Career recommendations will be based on AI-calculated RIASEC');
   console.log('[ASSESSMENT] 📏 Prompt length:', basePrompt.length, 'characters');
   
-  const systemMessage = getSystemMessage(gradeLevel);
+  const systemMessage = getSystemMessage(gradeLevel as GradeLevel);
   console.log('[ASSESSMENT] 📏 System message length:', systemMessage.length, 'characters');
 
   console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
@@ -715,8 +713,6 @@ async function analyzeAssessment(
         console.log('[ASSESSMENT] 🔍 Adaptive results structure:', JSON.stringify(adaptiveResults, null, 2));
         
         // Handle both camelCase (from frontend) and snake_case (from database)
-        const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
-        const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
         const overallAccuracy = (adaptiveResults as any).overallAccuracy || (adaptiveResults as any).overall_accuracy || 0;
         const accuracyBySubtag = (adaptiveResults as any).accuracyBySubtag || (adaptiveResults as any).accuracy_by_subtag || {};
         const aptitudeLevel = (adaptiveResults as any).aptitudeLevel || (adaptiveResults as any).aptitude_level || 1;
@@ -903,7 +899,8 @@ async function analyzeAssessment(
  */
 export async function handleAnalyzeAssessment(
   request: Request,
-  env: PagesEnv
+  env: PagesEnv,
+  learnerId: string
 ): Promise<Response> {
   console.log('[ASSESSMENT-API] === REQUEST RECEIVED ===');
   console.log('[ASSESSMENT-API] Method:', request.method);
@@ -915,29 +912,7 @@ export async function handleAnalyzeAssessment(
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  // Check for development mode
-  const isDevelopment = 
-    env.VITE_SUPABASE_URL?.includes('localhost') || 
-    request.headers.get('X-Dev-Mode') === 'true';
-
-  console.log('[ASSESSMENT-API] Development mode:', isDevelopment);
-
-  let learnerId: string;
-
-  // Authentication
-  if (isDevelopment) {
-    learnerId = 'test-learner-' + Date.now();
-    console.log('[ASSESSMENT-API] [DEV MODE] Bypassing authentication, using test learner ID:', learnerId);
-  } else {
-    console.log('[ASSESSMENT-API] Authenticating user...');
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('[ASSESSMENT-API] ❌ Authentication failed');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
-    learnerId = auth.user.id;
-    console.log('[ASSESSMENT-API] ✅ Authenticated learner:', learnerId);
-  }
+  console.log('[ASSESSMENT-API] ✅ Authenticated learner:', learnerId);
 
   // Rate limiting
   console.log('[ASSESSMENT-API] Checking rate limit for learner:', learnerId);
@@ -1175,7 +1150,7 @@ export async function handleAnalyzeAssessment(
           console.log('[ASSESSMENT] ✅ Code corrected to:', correctCode);
           
           // Also correct the scores if they don't match
-          const scoresMatch = Object.keys(precalculatedRiasec.scores).every(
+          const scoresMatch = (Object.keys(precalculatedRiasec.scores) as Array<keyof typeof precalculatedRiasec.scores>).every(
             key => results.riasec.scores[key] === precalculatedRiasec.scores[key]
           );
           if (!scoresMatch) {

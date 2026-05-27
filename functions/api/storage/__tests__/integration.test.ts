@@ -29,7 +29,6 @@ const testUsers = {
 
 describe('Storage API Integration Tests', () => {
   let supabase: any;
-  let uploadedFileUrl: string;
   let uploadedFileKey: string;
 
   beforeAll(async () => {
@@ -37,7 +36,7 @@ describe('Storage API Integration Tests', () => {
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // Sign in test users and get tokens
-    for (const [key, user] of Object.entries(testUsers)) {
+    for (const [, user] of Object.entries(testUsers)) {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: user.password
@@ -98,7 +97,7 @@ describe('Storage API Integration Tests', () => {
       });
 
       expect(response.status).toBe(401);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.error).toContain('Authentication required');
     });
 
@@ -137,14 +136,13 @@ describe('Storage API Integration Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.success).toBe(true);
       expect(data.url).toBeDefined();
       expect(data.key).toContain(testUsers.user1.id);
 
       // Store for later tests
-      uploadedFileUrl = data.url;
-      uploadedFileKey = data.key;
+      uploadedFileKey = data.key as string;
     });
 
     it('should include user ID in uploaded file path', async () => {
@@ -166,7 +164,7 @@ describe('Storage API Integration Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.key).toMatch(new RegExp(`uploads/${testUsers.user1.id}/`));
     });
   });
@@ -180,7 +178,7 @@ describe('Storage API Integration Tests', () => {
       });
 
       expect(response.status).toBe(401);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.error).toContain('Authentication required');
     });
 
@@ -222,7 +220,7 @@ describe('Storage API Integration Tests', () => {
       });
 
       expect(response.status).toBe(403);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.error).toContain('Access denied');
     });
 
@@ -337,7 +335,7 @@ describe('Storage API Integration Tests', () => {
       });
 
       if (response.status === 200) {
-        const data = await response.json();
+        const data = await response.json() as Record<string, unknown>;
         expect(data.key).toContain(testUsers.user1.id);
       }
     });
@@ -372,9 +370,9 @@ describe('Storage API Integration Tests', () => {
       });
 
       expect(response.status).toBe(401);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.error).toBeDefined();
-      expect(data.error.toLowerCase()).toContain('authentication');
+      expect((data.error as string).toLowerCase()).toContain('authentication');
     });
 
     it('should return clear error message for authorization failure', async () => {
@@ -395,9 +393,9 @@ describe('Storage API Integration Tests', () => {
       });
 
       expect(response.status).toBe(403);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.error).toBeDefined();
-      expect(data.error.toLowerCase()).toMatch(/access denied|forbidden|permission/);
+      expect((data.error as string).toLowerCase()).toMatch(/access denied|forbidden|permission/);
     });
 
     it('should handle expired tokens appropriately', async () => {
@@ -437,7 +435,7 @@ describe('Storage API Integration Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
       expect(data.success).toBe(true);
     });
   });

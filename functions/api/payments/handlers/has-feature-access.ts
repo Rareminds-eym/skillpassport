@@ -7,12 +7,13 @@
  * Bypasses RLS. Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 
 export async function handleHasFeatureAccess(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
   const url = new URL(context.request.url);
   const featureKey = url.searchParams.get('featureKey');
@@ -26,7 +27,7 @@ export async function handleHasFeatureAccess(context: AuthenticatedContext): Pro
 
   try {
     const supabase = getServiceClient(env);
-    const userId = user.sub;
+    const userId = user.id;
 
     // First, check if user has a subscription plan that includes this feature
     const { data: subscription, error: subError } = await supabase

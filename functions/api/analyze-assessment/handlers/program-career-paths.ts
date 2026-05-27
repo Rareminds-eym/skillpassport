@@ -4,7 +4,6 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../lib/auth';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
 
@@ -160,12 +159,6 @@ export async function handleGenerateProgramCareerPaths(
   env: PagesEnv
 ): Promise<Response> {
   try {
-    // Authenticate user
-    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!authResult) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
-
     // Parse request body
     const body = await request.json() as GenerateCareerPathsRequest;
 

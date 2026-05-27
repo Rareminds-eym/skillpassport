@@ -23,7 +23,7 @@ export const handleExampleUpload: PagesFunction = async (context) => {
 
     // Example: Parse multipart form data
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as unknown as File;
     const filename = formData.get('filename') as string;
 
     if (!file || !filename) {
@@ -87,8 +87,7 @@ export const handleExamplePresigned: PagesFunction = async (context) => {
     // Generate presigned URL
     const { url, headers } = await r2.generatePresignedUrl(
       fileKey,
-      contentType,
-      3600 // 1 hour expiration
+      contentType
     );
 
     return jsonResponse({

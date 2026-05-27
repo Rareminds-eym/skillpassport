@@ -8,10 +8,8 @@
 
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../lib/auth';
 import {
   calculateAge,
-  capitalizeFirstLetter,
   deleteAuthUser,
   generatePassword,
   splitName,
@@ -22,10 +20,7 @@ import {
  * Handle admin creating a learner
  */
 export async function handleCreateLearner(request: Request, env: any): Promise<Response> {
-  const auth = await authenticateUser(request, env);
-  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const { user, supabaseAdmin } = auth;
+  const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
     learner: {
@@ -241,11 +236,8 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
 /**
  * Handle admin creating a teacher
  */
-export async function handleCreateTeacher(request: Request, env: any): Promise<Response> {
-  const auth = await authenticateUser(request, env);
-  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const { user, supabaseAdmin } = auth;
+export async function handleCreateTeacher(request: Request, env: any, user: { id: string; email: string }): Promise<Response> {
+  const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
     teacher: {
@@ -448,10 +440,7 @@ export async function handleCreateTeacher(request: Request, env: any): Promise<R
  * Handle updating learner documents
  */
 export async function handleUpdateLearnerDocuments(request: Request, env: any): Promise<Response> {
-  const auth = await authenticateUser(request, env);
-  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const { supabaseAdmin } = auth;
+  const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
     learnerId: string;
@@ -526,11 +515,8 @@ export async function handleUpdateLearnerDocuments(request: Request, env: any): 
  * Handle college admin creating a staff member
  * Supports roles: College Admin, HoD, Faculty, Lecturer, Exam Cell, Finance Admin, Placement Officer
  */
-export async function handleCreateCollegeStaff(request: Request, env: any): Promise<Response> {
-  const auth = await authenticateUser(request, env);
-  if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-  const { user, supabaseAdmin } = auth;
+export async function handleCreateCollegeStaff(request: Request, env: any, user: { id: string; email: string }): Promise<Response> {
+  const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
     staff: {

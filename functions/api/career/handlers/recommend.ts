@@ -11,11 +11,11 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createClient } from '@supabase/supabase-js';
-import { isValidUUID } from '../../lib/validation';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { isValidUUID } from '../../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';
-import { getOpenRouterKey } from '../[[path]]';
-import { API_CONFIG, AI_MODELS } from '../../shared/ai-config';
+
 import { buildlearnerTextFromDatabase } from '../../embedding/services/textBuilder';
 import { callEmbeddingWorker } from '../../embedding/services/embeddingWorkerClient';
 import { updateEmbedding } from '../../embedding/services/databaseUpdater';
@@ -95,7 +95,7 @@ export async function handleRecommendOpportunities(request: Request, env: Record
   }
 
   const safeLimit = Math.min(Math.max(1, limit), RECOMMEND_CONFIG.MAX_RECOMMENDATIONS);
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = createSupabaseAdminClient(env);
 
   // ==================== CACHE CHECK ====================
   if (!forceRefresh) {

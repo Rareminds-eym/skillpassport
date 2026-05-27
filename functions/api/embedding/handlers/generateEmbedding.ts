@@ -31,10 +31,10 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../lib/auth';
-import { isValidUUID } from '../../lib/validation';
+import { isValidUUID } from '../../../lib/validation';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { createClient, SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
 import { callEmbeddingWorker } from '../services/embeddingWorkerClient';
 import {
   buildlearnerTextFromDatabase,
@@ -218,7 +218,7 @@ async function verifyEntityOwnership(
     }
     
     // Cast data once to a record for ownership verification
-    const record = data as Record<string, unknown>;
+    const record = data as unknown as Record<string, unknown>;
     const ownershipField = config.ownershipField;
     
     // Check 2: Verify ownershipField exists in the fetched data
@@ -353,19 +353,12 @@ async function fetchAndBuildText(
  */
 export async function handleGenerateEmbedding(
   request: Request,
-  env: Record<string, string>
+  env: Record<string, string>,
+  learnerId: string
 ): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
-
-  const auth = await authenticateUser(request, env);
-  if (!auth) {
-    return jsonResponse({ error: 'Authentication required' }, 401);
-  }
-
-  const { user } = auth;
-  const learnerId = user.id;
 
   if (!await checkRateLimit(learnerId, env)) {
     return jsonResponse({ error: 'Rate limit exceeded' }, 429);
@@ -443,14 +436,11 @@ export async function handleGenerateEmbedding(
 
   try {
     // Create Supabase client for database operations
-    const supabase = createClient(
-      env.SUPABASE_URL || env.VITE_SUPABASE_URL,
-      env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabase = createSupabaseAdminClient(env);
 
     // SECURITY: Validate authorization ATOMICALLY with data fetch
     // This prevents TOCTOU race conditions where data could be modified between check and use
-    const userSupabase = auth.supabase;
+    const userSupabase = supabase;
     const config = ENTITY_CONFIGS[table];
     
     if (!config) {

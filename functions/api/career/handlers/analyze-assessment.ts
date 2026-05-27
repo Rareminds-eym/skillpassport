@@ -18,21 +18,12 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../lib/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 
-export async function handleAnalyzeAssessment(request: Request, env: Record<string, string>): Promise<Response> {
+export async function handleAnalyzeAssessment(request: Request, env: Record<string, string>, learnerId: string): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
-
-  const auth = await authenticateUser(request, env);
-  if (!auth) {
-    return jsonResponse({ error: 'Authentication required' }, 401);
-  }
-
-  const { user } = auth;
-  const learnerId = user.id;
 
   if (!await checkRateLimit(learnerId, env)) {
     return jsonResponse({ error: 'Rate limit exceeded' }, 429);

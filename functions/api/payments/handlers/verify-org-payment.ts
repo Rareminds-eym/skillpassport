@@ -10,8 +10,9 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import {
@@ -22,7 +23,7 @@ import {
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 
 export async function handleVerifyOrgPayment(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
@@ -98,7 +99,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     let subscription: Record<string, unknown>;
     try {
       subscription = await ssoCreateSubscription(env, {
-        user_id: user.sub,
+        user_id: user.id,
         plan_id: (body.plan_id as string) || '',
         plan_code: (body.plan_code as string) || body.plan_name as string,
         plan_type: body.plan_name as string,
@@ -115,7 +116,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         seat_count: seatCount,
         is_organization_subscription: true,
         is_bulk_purchase: true,
-        purchased_by: user.sub,
+        purchased_by: user.id,
       });
     } catch (createError: any) {
       console.error('[VerifyOrgPayment] Subscription creation failed:', createError.message);
@@ -138,7 +139,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     try {
       await ssoRecordTransaction(env, {
         subscription_id: subscription.id as string,
-        user_id: user.sub,
+        user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
         amount: planAmount / 100,
@@ -156,9 +157,9 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     // Step 4: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.sub, (user as any).email);
+      await syncUserShadow(supabase, user.id, (user as any).email);
 
-      const syncData = await ssoSyncSubscription(env, user.sub);
+      const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
       }

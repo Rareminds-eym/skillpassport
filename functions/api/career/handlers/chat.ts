@@ -11,15 +11,14 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-
-import { authenticateUser } from '../../lib/auth';
-import { sanitizeInput, generateConversationTitle } from '../../lib/validation';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { sanitizeInput, generateConversationTitle } from '../../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';
-import { getModelForUseCase, API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
+import { API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
 import type { ChatRequest, StoredMessage, CareerIntent, Opportunity } from '../types';
 
 // AI modules
-import { runGuardrails, getBlockedResponse, validateResponse } from '../ai/guardrails';
+import { validateResponse } from '../ai/guardrails';
 import { detectIntent } from '../ai/intent-detection';
 import { compressContext, buildMemoryContext } from '../ai/memory';
 import { getConversationPhase, getPhaseParameters } from '../ai/conversation-phase';
@@ -30,25 +29,18 @@ import { buildlearnerContext } from '../context/learner';
 import { buildAssessmentContext } from '../context/assessment';
 import { buildCareerProgressContext } from '../context/progress';
 import { buildCourseContext } from '../context/courses';
-import { fetchOpportunities } from '../context/opportunities';
 import { fetchSmartOpportunities } from '../context/smart-opportunities';
 
 
-export async function handleCareerChat(request: Request, env: Record<string, string>): Promise<Response> {
+export async function handleCareerChat(request: Request, env: Record<string, string>, userId: string): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
   const startTime = Date.now();
-
-  // Authentication
-  const auth = await authenticateUser(request, env);
-  if (!auth) {
-    return jsonResponse({ error: 'Authentication required. Please log in again.' }, 401);
-  }
-
-  const { user, supabase, supabaseAdmin } = auth;
-  const learnerId = user.id;
+  const learnerId = userId;
+  const supabase = createSupabaseAdminClient(env);
+  const supabaseAdmin = supabase;
 
   // Rate limiting
   if (!await checkRateLimit(learnerId, env)) {
@@ -206,7 +198,6 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     const modelsToTry = [chatProfile.primary, ...chatProfile.fallbacks];
 
     let response: Response | null = null;
-    let usedModel: string = '';
 
     for (let i = 0; i < modelsToTry.length; i++) {
       const model = modelsToTry[i];
@@ -235,7 +226,6 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
       if (attemptResponse.ok) {
         response = attemptResponse;
-        usedModel = model;
         if (isRetry) {
           console.log(`✅ [Chat] Fallback succeeded with ${model}`);
         } else {

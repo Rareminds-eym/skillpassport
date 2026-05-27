@@ -166,7 +166,7 @@ function extractPaymentIdFromKey(fileKey: string): string | null {
  * Get payment receipt file
  */
 export const handleGetPaymentReceipt: PagesFunction = async (context) => {
-  const { request, env, user, supabaseAdmin } = context as any;
+  const { request, env, user } = context as any;
 
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
@@ -279,7 +279,7 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
  * Allows temporary access without JWT authentication
  */
 export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) => {
-  const { request, env, user, supabaseAdmin } = context as any;
+  const { request, env, user } = context as any;
 
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Method not allowed' }, 405);

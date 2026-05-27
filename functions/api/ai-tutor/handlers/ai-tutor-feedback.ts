@@ -8,8 +8,7 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
-import { getServiceClient } from '../../../lib/auth';
+import { getContextUser, getServiceClient } from '../../../lib/auth';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 
 interface FeedbackRequestBody {
@@ -36,9 +35,9 @@ interface FeedbackRequestBody {
  */
 export const onRequestPost = async (context: AuthenticatedContext) => {
   try {
-    const { request, env, data } = context;
-    const user = data.user;
-    const learnerId = user.sub;
+    const { request, env } = context;
+    const user = getContextUser(context);
+    const learnerId = user.id;
     const supabase = getServiceClient(env as any);
 
     // Parse request body

@@ -6,7 +6,7 @@
  * Queries Supabase for an addon by feature key. Bypasses RLS. Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { ssoFetch } from '../../../lib/sso-client';
 export async function handleGetAddonByFeatureKey(context: AuthenticatedContext): Promise<Response> {

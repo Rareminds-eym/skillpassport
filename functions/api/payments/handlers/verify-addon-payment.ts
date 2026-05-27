@@ -12,14 +12,15 @@
  * 2. Pages Function creates addon purchase record in DB (worker has no DB access)
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoRecordTransaction, ssoRecordAddonPurchase } from '../../../lib/sso-client';
 
 export async function handleVerifyAddonPayment(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
@@ -81,7 +82,7 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
     // Step 2: Record purchase in Auth DB via SSO Worker RPC
     try {
       await ssoRecordAddonPurchase(env, {
-        user_id: user.sub,
+        user_id: user.id,
         feature_key: body.feature_key as string,
         billing_period: billingPeriod,
         price_at_purchase: priceAtPurchase,
@@ -100,7 +101,7 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
     else endDate.setMonth(endDate.getMonth() + 1);
 
     const { data: entitlement, error: entError } = await supabase.from('user_entitlements').insert({
-      user_id: user.sub,
+      user_id: user.id,
       feature_key: body.feature_key as string,
       status: 'active',
       billing_period: billingPeriod,
@@ -117,7 +118,7 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
     // Record transaction in auth DB (non-blocking)
     try {
       await ssoRecordTransaction(env, {
-        user_id: user.sub,
+        user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
         amount: priceAtPurchase,

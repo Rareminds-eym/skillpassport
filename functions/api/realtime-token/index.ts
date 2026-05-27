@@ -8,13 +8,13 @@
  * without needing the Supabase anon key or a Supabase Auth session.
  */
 import { SignJWT } from 'jose';
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 const REALTIME_TOKEN_TTL = 300; // 5 minutes in seconds
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
 
   const jwtSecret = env.SUPABASE_JWT_SECRET;
@@ -26,7 +26,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   // Mint a Supabase-compatible JWT for realtime subscriptions
   const token = await new SignJWT({
-    sub: user.sub,
+    sub: user.id,
     role: 'authenticated',
     aud: 'authenticated',
     // Include org_id so RLS policies can filter by org

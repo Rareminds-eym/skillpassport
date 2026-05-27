@@ -8,7 +8,7 @@
  */
 
 import type { PagesFunction } from '@cloudflare/workers-types';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceClient } from '../../../lib/supabase';
 
 export const onRequestPost: PagesFunction = async (context) => {
   return handleUpdateRegistrationPaymentStatus(context);
@@ -50,7 +50,7 @@ export async function handleUpdateRegistrationPaymentStatus(context: any): Promi
     }
 
     // Create Supabase client
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = getServiceClient(env);
 
     // Get current record to append to payment_history
     const { data: currentRecord, error: fetchError } = await supabase

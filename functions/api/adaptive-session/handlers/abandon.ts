@@ -7,9 +7,8 @@
 
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { authenticateUser } from '../../lib/auth';
-
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { getContextUser } from '../../../lib/auth';
 /**
  * Abandons a test session
  * 
@@ -30,14 +29,10 @@ export const abandonHandler: PagesFunction = async (context) => {
   }
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [AbandonHandler] Authentication required');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
+    const user = getContextUser(context);
+    const userId = user.id;
 
-    console.log('✅ [AbandonHandler] User authenticated:', auth.user.id);
+    console.log('✅ [AbandonHandler] User authenticated:', userId);
     console.log('🚫 [AbandonHandler] abandonSession called:', { sessionId });
 
     const supabase = createSupabaseAdminClient(env);
@@ -72,10 +67,10 @@ export const abandonHandler: PagesFunction = async (context) => {
       );
     }
 
-    if (learnerData.user_id !== auth.user.id) {
+    if (learnerData.user_id !== userId) {
       console.error('❌ [AbandonHandler] Session ownership verification failed', {
         learnerUserId: learnerData.user_id,
-        authUserId: auth.user.id
+        authUserId: userId
       });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },

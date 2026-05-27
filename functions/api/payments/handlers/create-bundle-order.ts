@@ -9,8 +9,9 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { createLogger } from '../../../lib/logger';
@@ -18,7 +19,7 @@ import { createLogger } from '../../../lib/logger';
 const logger = createLogger('payments:create-bundle-order');
 
 export async function handleCreateBundleOrder(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv;
 
   try {
@@ -83,7 +84,7 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
       notes: {
         bundle_id: body.bundle_id as string,
         bundle_name: bundle.name,
-        user_id: user.sub,
+        user_id: user.id,
         type: 'bundle',
       },
     });

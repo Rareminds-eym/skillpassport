@@ -55,6 +55,20 @@ interface SsoTransactionData {
   metadata?: Record<string, unknown>;
 }
 
+type SsoFetcher = Fetcher & {
+  createSubscription(data: unknown): Promise<Record<string, unknown>>;
+  createFreemiumSubscription(data: unknown): Promise<Record<string, unknown>>;
+  updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
+  updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
+  recordTransaction(data: unknown): Promise<Record<string, unknown>>;
+  getUserSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
+  syncSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
+  getUserTransactions(userId: string, subscriptionId?: string): Promise<Record<string, unknown>[]>;
+  syncPlans(): Promise<{ plans: Record<string, unknown>[] }>;
+  recordAddonPurchase(data: unknown): Promise<Record<string, unknown>>;
+  recordBundlePurchase(data: unknown): Promise<Record<string, unknown>>;
+};
+
 // ─── Binding Guard ─────────────────────────────────────────────
 /**
  * Get the typed SSO service binding from the environment.
@@ -64,14 +78,14 @@ interface SsoTransactionData {
  * @returns The SSO_SERVICE binding for RPC calls
  * @throws Error if SSO_SERVICE binding is not configured
  */
-function getSsoService(env: SsoClientEnv): Fetcher {
+function getSsoService(env: SsoClientEnv): SsoFetcher {
   if (!env.SSO_SERVICE) {
     throw new Error(
       'SSO_SERVICE binding is not configured. ' +
       'Add [[services]] to wrangler.toml or use --service SSO_SERVICE=sso-api in local dev.'
     );
   }
-  return env.SSO_SERVICE;
+  return env.SSO_SERVICE as SsoFetcher;
 }
 
 // ─── RPC Client Functions ──────────────────────────────────────

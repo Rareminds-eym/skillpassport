@@ -29,7 +29,7 @@
  * - GET  /api/payments/health
  */
 
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 // Dedicated handlers — all routes use RPC or Supabase-direct (no proxy)
@@ -137,7 +137,8 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
 
   // Generate request ID for correlation
   const requestId = crypto.randomUUID();
-  console.log(`[Payments:${requestId}] ${method} ${path} user=${context.data.user?.sub}`);
+  const user = getContextUser(context);
+  console.log(`[Payments:${requestId}] ${method} ${path} user=${user.id}`);
 
   // --- POST routes ---
 

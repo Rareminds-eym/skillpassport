@@ -12,7 +12,7 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import type { PagesEnv } from '../../../../src/functions-lib/types';
-import { getServiceClient } from '../../../lib/auth';
+import { getContextUser, getServiceClient } from '../../../lib/auth';
 import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
 import type { WorksheetConfig } from '../types/worksheet';
 import type { LessonPlanConfig } from '../types/lesson-plan';
@@ -80,14 +80,14 @@ interface AiTutorChatRequest {
  * Handle AI tutor chat with streaming responses
  */
 export const handleAiTutorChat = async (context: TypedContext) => {
-  const { request, env, data } = context;
-  const user = data.user;
+  const { request, env } = context;
+  const user = getContextUser(context);
 
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
-  const learnerId = user.sub;
+  const learnerId = user.id;
   const supabase = getServiceClient(env);
 
   // Parse request body
@@ -271,7 +271,6 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             });
 
             if (!outlineResponse.ok) {
-              const errorText = await outlineResponse.text();
               logger.error('Outline generation error', new Error(`HTTP ${outlineResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate outline' })}\n\n`));
               controller.close();
@@ -321,7 +320,6 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             });
 
             if (!finalResponse.ok) {
-              const errorText = await finalResponse.text();
               logger.error('Lesson plan generation error', new Error(`HTTP ${finalResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate lesson plan' })}\n\n`));
               controller.close();
@@ -388,7 +386,6 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             });
 
             if (!response.ok) {
-              const errorText = await response.text();
               logger.error('OpenRouter error', new Error(`HTTP ${response.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'AI service error' })}\n\n`));
               controller.close();

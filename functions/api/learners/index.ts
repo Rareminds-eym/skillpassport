@@ -4,7 +4,7 @@
  * CRUD operations for learner records.
  * All endpoints require SSO authentication. Data scoped by org_id.
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
@@ -12,7 +12,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
  * GET /api/learners — List learners (for admins) or get own profile (for learners)
  */
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -40,7 +40,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     const { data, error } = await supabase
       .from('learners')
       .select('*')
-      .eq('user_id', user.sub)
+      .eq('user_id', user.id)
       .single();
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
@@ -66,7 +66,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
  * POST /api/learners — Create or update learner record
  */
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -95,7 +95,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   // Create new
-  body.user_id = body.user_id || user.sub;
+  body.user_id = body.user_id || user.id;
   const { data, error } = await supabase
     .from('learners')
     .insert(body)

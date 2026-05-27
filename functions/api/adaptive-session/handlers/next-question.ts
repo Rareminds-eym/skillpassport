@@ -7,7 +7,7 @@
 
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import type { NextQuestionResult, TestPhase, DifficultyLevel, GradeLevel, Question } from '../types';
 import { DEFAULT_ADAPTIVE_TEST_CONFIG, ALL_SUBTAGS } from '../types';
 import { validateExclusionListComplete, validateQuestionNotDuplicate } from '../utils/validation';
@@ -87,7 +87,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
     const learnerCourse = sessionData.learner_course as string | null;
     
     // Extract specific grade from learner_course if available
-    const specificGrade = extractGradeNumber(learnerCourse);
+    const specificGrade = extractGradeNumber(learnerCourse ?? '');
     console.log('🎯 [NextQuestionHandler] Using specific grade:', specificGrade || 'fallback to range');
 
     // Calculate total questions answered across all phases
@@ -270,10 +270,8 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
       .eq('session_id', sessionId);
 
     const answeredQuestionIds = (allResponses || []).map(r => r.question_id);
-    const answeredQuestionTexts = (allResponses || []).map(r => r.question_text).filter(Boolean);
 
     const existingQuestionIds = [...answeredQuestionIds, ...currentPhaseQuestions.map(q => q.id)];
-    const existingQuestionTexts = [...answeredQuestionTexts, ...currentPhaseQuestions.map(q => q.text)];
 
     console.log('🔒 [NextQuestionHandler] Building exclusion list for phase transition');
 

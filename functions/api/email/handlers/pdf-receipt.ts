@@ -12,7 +12,7 @@ import { getPreRegistrationByOrderId } from '../services/database';
 
 export async function handlePDFReceipt(
   orderId: string,
-  env: Env,
+  _env: Env,
   supabase: SupabaseClient
 ): Promise<Response> {
   if (!orderId) {
@@ -36,8 +36,7 @@ export async function handlePDFReceipt(
     }
 
     // Generate PDF
-    const baseUrl = env.APP_URL || 'https://skillpassport.rareminds.in';
-    const pdfBytes = await generatePDF(data, orderId, baseUrl);
+    const pdfBytes = await generatePDF(data, orderId);
 
     // Return PDF as downloadable file
     return new Response(pdfBytes, {
@@ -68,7 +67,7 @@ function drawRow(page: any, label: string, value: string, y: number, labelFont: 
   page.drawText(value || '—', { x: x + gap, y, size: 11, font: valueFont, color: valueColor });
 }
 
-async function generatePDF(data: PreRegistration, orderId: string, baseUrl: string): Promise<Uint8Array> {
+async function generatePDF(data: PreRegistration, orderId: string): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]); // A4
   const { width, height } = page.getSize();

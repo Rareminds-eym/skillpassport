@@ -12,8 +12,8 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
-import { withAuth } from '../lib/auth';
-import { getServiceClient } from '../lib/supabase';
+import { withAuth, getContextUser } from '../../lib/auth';
+import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -197,7 +197,7 @@ async function handleResetDailyFlags(supabase: SupabaseClient): Promise<Response
 // ==================== MAIN HANDLER ====================
 
 export const onRequest: PagesFunction = async (context) => {
-  const { request, env } = context;
+  const { request } = context;
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
@@ -225,8 +225,8 @@ export const onRequest: PagesFunction = async (context) => {
 
     // All other endpoints require authentication
     return withAuth(async (authContext: AuthenticatedContext) => {
-      const user = authContext.data.user;
-      const supabase = getServiceClient(authContext.env) as unknown as SupabaseClient;
+      const user = getContextUser(authContext);
+      const supabase = getServiceClient(authContext.env as unknown as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string }) as unknown as SupabaseClient;
 
       // POST /reset-daily - require admin role
       if (pathParts.length === 1 && pathParts[0] === 'reset-daily' && request.method === 'POST') {
@@ -247,7 +247,19 @@ export const onRequest: PagesFunction = async (context) => {
         }
 
         // Security: Users can only access their own streak data
-        if (learnerId !== user.sub) {
+        // learnerId comes from the URL (learners.id), user.sub from the JWT (auth.users.id).
+        // Look up the learner's user_id to verify ownership.
+        const { data: learner } = await supabase
+          .from('learners')
+          .select('user_id')
+          .eq('id', learnerId)
+          .maybeSingle();
+
+        if (!learner) {
+          return jsonResponse({ error: 'Learner not found' }, 404);
+        }
+
+        if (learner.user_id !== user.id) {
           return jsonResponse({ error: 'Forbidden: Can only access your own streak data' }, 403);
         }
 

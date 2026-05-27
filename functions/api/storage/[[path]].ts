@@ -22,8 +22,8 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
-import { withAuth } from '../lib/auth';
-import { getServiceClient } from '../lib/supabase';
+import { withAuth, getContextUser } from '../../lib/auth';
+import { getServiceClient } from '../../lib/supabase';
 import type { AuthUser } from '@rareminds-eym/auth-core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -119,13 +119,13 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     return withAuth(async (authContext) => {
-      const user = authContext.data.user;
+      const user = getContextUser(authContext);
       const storageContext: AuthenticatedContext = {
         ...context,
         data: authContext.data,
-        user: { ...user, id: user.sub },
-        supabase: getServiceClient(authContext.env),
-        supabaseAdmin: getServiceClient(authContext.env),
+        user,
+        supabase: getServiceClient(authContext.env as unknown as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string }),
+        supabaseAdmin: getServiceClient(authContext.env as unknown as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string }),
       };
       return await routeRequest(storageContext, path);
     })(context);

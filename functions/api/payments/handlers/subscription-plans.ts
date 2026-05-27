@@ -8,7 +8,7 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 
@@ -147,15 +147,17 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
             const detailedFeatures = featuresByPlan[plan.id as string];
             if (detailedFeatures) {
               (plan as Record<string, unknown>).detailedFeatures = detailedFeatures;
-              // Override features with detailed ones if available
-              (plan as Record<string, unknown>).features = detailedFeatures.map((f: Record<string, unknown>) => ({
-                name: f.feature_name,
-                feature_key: f.feature_key,
-                value: f.feature_value,
-                category: f.category,
-                is_included: f.is_included,
-                is_addon: f.is_addon,
-              }));
+              (plan as Record<string, unknown>).features = detailedFeatures.map((f: unknown) => {
+                const feat = f as Record<string, unknown>;
+                return {
+                  name: feat.feature_name,
+                  feature_key: feat.feature_key,
+                  value: feat.feature_value,
+                  category: feat.category,
+                  is_included: feat.is_included,
+                  is_addon: feat.is_addon,
+                };
+              });
             }
           }
         }

@@ -265,7 +265,7 @@ export const handleUpload: PagesFunction = async (context) => {
     const { user } = authenticatedContext;
     // Parse multipart form data
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as unknown as File;
     const filename = formData.get('filename') as string;
     const uploadContext = (formData.get('context') as string) || 'default';
 

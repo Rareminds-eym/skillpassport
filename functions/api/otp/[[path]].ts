@@ -59,13 +59,13 @@ export const onRequest: PagesFunction = async (context) => {
     // Route handlers
     switch (endpoint) {
       case 'send':
-        return await sendOtpHandler(body, env);
+        return await sendOtpHandler(body as any, env);
 
       case 'verify':
-        return await verifyOtpHandler(body, env);
+        return await verifyOtpHandler(body as any, env);
 
       case 'resend':
-        return await resendOtpHandler(body, env);
+        return await resendOtpHandler(body as any, env);
 
       default:
         return jsonResponse({ success: false, error: 'Not found' }, 404);

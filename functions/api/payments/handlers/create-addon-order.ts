@@ -9,8 +9,9 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
 import { ssoFetch } from '../../../lib/sso-client';
@@ -18,7 +19,7 @@ import { ssoFetch } from '../../../lib/sso-client';
 const logger = createLogger('payments:create-addon-order');
 
 export async function handleCreateAddonOrder(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
@@ -80,7 +81,7 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
       notes: {
         addon_id: addon.id,
         addon_name: addon.feature_name,
-        user_id: user.sub,
+        user_id: user.id,
         user_email: (body.user_email as string) || user.email || '',
         type: 'addon',
       },

@@ -34,6 +34,12 @@ export interface PagesEnv {
   EMAIL_API_URL?: string;
   EMAIL_API_KEY?: string;
   ADMIN_EMAIL?: string;
+  FROM_EMAIL?: string;
+  FROM_NAME?: string;
+  SMTP_HOST?: string;
+  SMTP_PORT?: string;
+  SMTP_USER?: string;
+  SMTP_PASS?: string;
 
   // App configuration
   APP_URL?: string;
