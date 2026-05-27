@@ -24,7 +24,22 @@ import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
 import { withAuth } from '../lib/auth';
 import { getServiceClient } from '../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { AuthUser } from '@rareminds-eym/auth-core';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// Backward-compatible type for storage handlers that import from ../[[path]]
+// Provides user.id alias (maps to AuthUser.sub) for compatibility
+export interface AuthenticatedContext {
+  request: Request;
+  env: any;
+  params?: Record<string, string>;
+  waitUntil?: (promise: Promise<any>) => void;
+  next?: () => Promise<Response>;
+  data?: Record<string, any>;
+  user?: AuthUser & { id: string };
+  supabase?: SupabaseClient;
+  supabaseAdmin?: SupabaseClient;
+}
 
 // Import all handlers
 import { handleUpload } from './handlers/upload';
@@ -103,11 +118,12 @@ export const onRequest: PagesFunction = async (context) => {
       return await routeRequest(context, path);
     }
 
-    return withAuth(async (authContext: AuthenticatedContext) => {
-      const storageContext = {
+    return withAuth(async (authContext) => {
+      const user = authContext.data.user;
+      const storageContext: AuthenticatedContext = {
         ...context,
         data: authContext.data,
-        user: authContext.data.user,
+        user: { ...user, id: user.sub },
         supabase: getServiceClient(authContext.env),
         supabaseAdmin: getServiceClient(authContext.env),
       };
