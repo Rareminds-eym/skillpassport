@@ -14,6 +14,7 @@ import { analyzeAssessmentWithGemini } from '../api/geminiAssessmentService';
 import * as assessmentService from '../api/assessmentService';
 import { supabase } from '@/shared/api/supabaseClient';
 import type { GradeLevel } from '../model/types';
+import { useAssessmentStore } from './assessmentStore';
 
 // Import static question banks for fallback
 // @ts-ignore - JS exports
@@ -722,9 +723,9 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         
         let adaptiveResults = null;
 
-        // Get session ID from assessment store (set when adaptive test completes)
-        const { useAdaptiveSessionId } = await import('@/features/assessment/model/assessmentStore');
-        const storeSessionId = useAdaptiveSessionId();
+        // Get session ID directly from the store state (not using the hook)
+        // We can't use hooks inside async functions, so we access the store directly
+        const storeSessionId = useAssessmentStore.getState().adaptiveSessionId;
 
         console.log('🔍 [Preparing] Looking for adaptive session ID...');
         console.log('🔍 [Preparing] From store:', storeSessionId);

@@ -10,6 +10,7 @@ import { validateAssessmentResults } from '../lib/assessmentValidation';
 import { validateAptitudeScores } from '@/features/assessment';
 import { validateRiasecScores } from '@/features/assessment';
 import { normalizeAssessmentResults } from '@/features/assessment';
+import transformAssessmentResults from '@/features/assessment/api/assessmentResultTransformer';
 import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 import {
     riasecQuestions,
@@ -2282,10 +2283,21 @@ export const useAssessmentResults = () => {
             // Basic interest exploration (mapped to RIASEC codes)
             if (!riasec || !riasec.topThree || riasec.topThree.length === 0) missingFields.push('Interest Explorer');
 
-            // NOTE: Middle and High school assessments are simplified - no adaptive aptitude test required
-            // Adaptive aptitude is only for after10 (Grade 11) and higher when learners need deeper assessment
-            // High school (Grade 9-10) covers: Interests (RIASEC) + Basic personality + Career tracks
-            // After10+ covers: All of above + Aptitude testing + Work values + Employability + Knowledge
+            // For high school, after10, and higher secondary, check adaptive aptitude results
+            // Aptitude Sampling is just a self-assessment, real aptitude comes from adaptive test
+            if ((gradeLevel === 'highschool' || gradeLevel === 'after10' || gradeLevel === 'higher_secondary')) {
+                // Check if adaptive aptitude results exist
+                const hasAdaptiveResults = results.adaptiveAptitudeResults ||
+                    results.adaptive_aptitude_results ||
+                    results.adaptive_aptitude_session_id ||
+                    (results.gemini_results && results.gemini_results.adaptiveAptitudeResults) ||
+                    (results.aptitude && results.aptitude.adaptiveTest) ||
+                    (results.aptitude && results.aptitude.adaptiveLevel);
+
+                if (!hasAdaptiveResults) {
+                    missingFields.push('Adaptive Aptitude Test');
+                }
+            }
 
             return missingFields;
         }

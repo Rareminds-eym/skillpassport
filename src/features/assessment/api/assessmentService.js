@@ -361,8 +361,7 @@ export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId)
       timestamp: new Date().toISOString()
     });
 
-    // Get auth token
-    const user = useAuthStore.getState().user;
+    // Get auth token from ssoClient (no need to access useAuthStore here)
     const token = ssoClient.getAccessToken();
 
     if (!token) {
