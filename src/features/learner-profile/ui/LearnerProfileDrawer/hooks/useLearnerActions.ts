@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { Learner } from '@/features/learner-profile/model';
 import toast from 'react-hot-toast';
 import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('learner-actions');
 
@@ -151,19 +152,19 @@ export const useLearnerActions = (learner: Learner | null) => {
         };
       }
 
-      const { error } = await supabase.from('learners').update(updateData).eq('id', learner.id);
-
-      if (error) {
-        throw error;
-      }
+      const user = useAuthStore.getState().user;
+      await apiPost('/learners/actions', {
+        action,
+        learnerId: learner.id,
+        reason,
+        promotedBy: user?.id,
+      });
 
       toast.success(`Learner ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
-
-      // Refresh the page or update local state
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error updating learner status', error as Error);
-      toast.error(`Failed to ${action} learner: ${(error as any)?.message || 'Please try again.'}`);
+      toast.error(`Failed to ${action} learner: ${error?.message || 'Please try again.'}`);
     } finally {
       setActionLoading(false);
     }
@@ -325,19 +326,17 @@ export const useLearnerActions = (learner: Learner | null) => {
         updateData.grade = getTotalSemesters().toString();
       }
 
-      const { error } = await supabase.from('learners').update(updateData).eq('id', learner.id);
-
-      if (error) {
-        throw error;
-      }
-
+      await apiPost('/learners/actions', {
+        action: 'graduate',
+        learnerId: learner.id,
+        currentSemester: getCurrentSemester(),
+        totalSemesters: getTotalSemesters(),
+      });
       toast.success('Learner marked as graduated successfully!');
-
-      // Refresh the page or update local state
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error marking learner as graduated', error as Error);
-      toast.error(`Failed to mark learner as graduated: ${(error as any)?.message || 'Please try again.'}`);
+      toast.error(`Failed to mark learner as graduated: ${error?.message || 'Please try again.'}`);
     } finally {
       setActionLoading(false);
     }

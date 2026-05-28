@@ -18,7 +18,7 @@ import {
     X
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Platform icon components
 const PlatformIcon = ({ platformId, className = "w-8 h-8" }) => {
@@ -268,102 +268,46 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
     setLoading(true);
 
     try {
-      // Check for duplicate certificate
-      if (formData.certificate_url || formData.certificate_id) {
-        let existingCert = null;
-
-        // Check by URL first (URL is globally unique)
-        if (formData.certificate_url) {
-          const { data } = await supabase
-            .from('certificates')
-            .select('id, title')
-            .eq('learner_id', learnerId)
-            .eq('link', formData.certificate_url)
-            .maybeSingle();
-          existingCert = data;
-        }
-
-        // Check by credential_id + platform combination (credential ID is unique per platform)
-        if (!existingCert && formData.certificate_id && selectedPlatform?.id) {
-          const { data } = await supabase
-            .from('certificates')
-            .select('id, title')
-            .eq('learner_id', learnerId)
-            .eq('credential_id', formData.certificate_id)
-            .eq('platform', selectedPlatform.id)
-            .maybeSingle();
-          existingCert = data;
-        }
-
-        if (existingCert) {
-          setError(`This certificate has already been added: "${existingCert.title}"`);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const { data: training, error: trainingError } = await supabase
-        .from('trainings')
-        .insert({
-          learner_id: learnerId,
+      const response: any = await apiPost('/learners/trainings', {
+        learnerId,
+        training: {
           title: formData.title,
+          course: formData.title,
           organization: formData.organization || selectedPlatform?.name,
-          start_date: null,
-          end_date: formData.completion_date || null,
-          status: 'completed',
-          completed_modules: 0,
-          total_modules: 0,
-          hours_spent: 0,
           description: formData.description,
-          approval_status: 'approved',
-          source: 'external_course'
-        })
-        .select()
-        .single();
-
-      if (trainingError) throw trainingError;
-
-      if (formData.certificate_url || formData.certificate_id) {
-        await supabase.from('certificates').insert({
-          learner_id: learnerId,
-          training_id: training.id,
+          endDate: formData.completion_date || null,
+          status: 'completed',
+          progress: 100,
+          hours_spent: 0,
+          source: 'external_course',
+        },
+        certificate: (formData.certificate_url || formData.certificate_id) ? {
           title: formData.title,
-          issuer: formData.organization || selectedPlatform?.name,
-          issued_on: formData.completion_date || new Date().toISOString().split('T')[0],
           link: formData.certificate_url,
           credential_id: formData.certificate_id,
+          platform: selectedPlatform?.id || null,
+          issuer: formData.organization || selectedPlatform?.name,
+          issued_on: formData.completion_date || new Date().toISOString().split('T')[0],
           level: formData.difficulty || null,
           description: formData.description || null,
-          approval_status: 'approved',
-          enabled: true,
-          platform: selectedPlatform?.id || null,
           instructor: formData.instructor || null,
-          category: formData.category || null
-        });
-      }
-
-      if (skills.length > 0) {
-        await supabase.from('skills').insert(
-          skills.map(skill => ({
-            learner_id: learnerId,
-            training_id: training.id,
-            name: skill.name,
-            type: skill.type,
-            level: skill.level,
-            description: skill.description || null,
-            approval_status: 'pending',
-            enabled: true
-          }))
-        );
-      }
+          category: formData.category || null,
+        } : null,
+        skills: skills.map(skill => ({
+          name: skill.name,
+          type: skill.type,
+          level: skill.level,
+          description: skill.description || null,
+        })),
+      });
 
       // Embedding regeneration handled by database triggers on trainings/certificates/skills tables
 
       onSuccess?.();
       onClose();
       resetForm();
-    } catch (err) {
-      setError(err.message || 'Failed to add learning course');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to add learning course');
     } finally {
       setLoading(false);
     }

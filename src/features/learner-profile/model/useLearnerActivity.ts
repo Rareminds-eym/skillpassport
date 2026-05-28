@@ -1,22 +1,8 @@
-/**
- * Consolidated Learner Activity Hook
- * 
- * Consolidates:
- * - useLearnerLearning
- * - useLearnerAchievements
- * - useLearnerRecentUpdates
- * - useLearnerRecentUpdatesById
- * 
- * Returns: learning, achievements, updates
- */
-
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-activity');
-// TODO: Uncomment when functions are added to learnerProfileService
-// import { getlearnerRecentUpdatesByEmail, formatRecentUpdate } from '@/features/learner-profile/api';
 
 export interface UselearnerActivityOptions {
   learnerId?: string | null;
@@ -83,12 +69,12 @@ export interface RecentUpdate {
   metadata?: any;
 }
 
-export const useLearnerActivity = ({ 
-  learnerId, 
-  email, 
+export const useLearnerActivity = ({
+  learnerId,
+  email,
   enabled = true,
   limit = 10,
-  since = null
+  since = null,
 }: UselearnerActivityOptions) => {
   const [learning, setLearning] = useState<LearningItem[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -97,7 +83,6 @@ export const useLearnerActivity = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all activity data
   const fetchActivityData = useCallback(async () => {
     if ((!learnerId && !email) || !enabled) {
       setLoading(false);
@@ -107,34 +92,10 @@ export const useLearnerActivity = ({
     try {
       setLoading(true);
       setError(null);
-
-      let actualLearnerId = learnerId;
-      let actualEmail = email;
-
-      // Get learner ID if only email is provided
-      if (!actualLearnerId && actualEmail) {
-        const { data: learnerData } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('email', actualEmail)
-          .maybeSingle();
-        actualLearnerId = learnerData?.id;
-      }
-
-      // Get email if only learner ID is provided
-      if (!actualEmail && actualLearnerId) {
-        const { data: learnerData } = await supabase
-          .from('learners')
-          .select('email')
-          .eq('id', actualLearnerId)
-          .maybeSingle();
-        actualEmail = learnerData?.email;
-      }
-
       await Promise.all([
-        fetchLearning(actualLearnerId),
-        fetchAchievements(actualLearnerId, actualEmail),
-        fetchRecentUpdates(actualEmail)
+        fetchLearning(learnerId),
+        fetchAchievements(learnerId),
+        fetchRecentUpdates(email),
       ]);
     } catch (err: any) {
       logger.error('Error fetching activity data', err as Error);
@@ -144,41 +105,13 @@ export const useLearnerActivity = ({
     }
   }, [learnerId, email, enabled, limit, since]);
 
-  // Fetch learning progress
   const fetchLearning = async (sid: string | null | undefined) => {
     if (!sid) return;
-
     try {
-      const { data: trainings, error: fetchError } = await supabase
-        .from('trainings')
-        .select('*')
-        .eq('learner_id', sid)
-        .eq('enabled', true)
-        .in('approval_status', ['verified', 'approved'])
-        .order('created_at', { ascending: false });
+      const response: any = await apiGet(`/learners/trainings?learner_id=${sid}`);
+      const trainings = response?.data?.trainings ?? response?.trainings ?? [];
 
-      if (fetchError) throw fetchError;
-
-      const result: LearningItem[] = [];
-
-      for (const item of (trainings || [])) {
-        const trainingId = item.id;
-
-        // Fetch related skills
-        const { data: skillRows } = await supabase
-          .from('skills')
-          .select('name')
-          .eq('training_id', trainingId)
-          .eq('enabled', true);
-
-        // Fetch related certificate
-        const { data: certificateRows } = await supabase
-          .from('certificates')
-          .select('link')
-          .eq('training_id', trainingId)
-          .eq('enabled', true)
-          .limit(1);
-          
+      const result: LearningItem[] = trainings.map((item: any) => {
         let progressValue = 0;
         const statusLower = (item.status || '').toLowerCase();
         if (statusLower === 'completed') {
@@ -187,9 +120,9 @@ export const useLearnerActivity = ({
           progressValue = Math.round((item.completed_modules / item.total_modules) * 100);
         }
 
-        result.push({
+        return {
           id: item.id,
-          course: item.title,
+          course: item.title || item.course,
           provider: item.organization,
           duration: item.duration,
           description: item.description,
@@ -198,8 +131,8 @@ export const useLearnerActivity = ({
           total_modules: item.total_modules,
           completed_modules: item.completed_modules,
           hours_spent: item.hours_spent,
-          skills: skillRows?.map(s => s.name) || [],
-          certificateUrl: certificateRows?.[0]?.link || null,
+          skills: (item.skills || []).map((s: any) => s.name),
+          certificateUrl: (item.certificates || [])[0]?.link || null,
           progress: progressValue,
           status: item.status,
           approval_status: item.approval_status,
@@ -208,9 +141,9 @@ export const useLearnerActivity = ({
           enabled: item.enabled !== false,
           source: item.source,
           createdAt: item.created_at,
-          updatedAt: item.updated_at
-        });
-      }
+          updatedAt: item.updated_at,
+        };
+      });
 
       setLearning(result);
     } catch (err) {
@@ -218,116 +151,88 @@ export const useLearnerActivity = ({
     }
   };
 
-  // Fetch achievements
-  const fetchAchievements = async (sid: string | null | undefined, emailAddr: string | null | undefined) => {
-    if (!sid && !emailAddr) return;
-
+  const fetchAchievements = async (sid: string | null | undefined) => {
+    if (!sid) return;
     try {
-      let actualLearnerId = sid;
-      if (!actualLearnerId && emailAddr) {
-        const { data: learnerData } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('email', emailAddr)
-          .maybeSingle();
-        actualLearnerId = learnerData?.id;
-      }
+      const params = sid ? `?learner_id=${sid}` : '';
+      const response: any = await apiGet(`/learners/dashboard${params}`);
+      const data = response?.data ?? response ?? {};
 
-      if (!actualLearnerId) return;
-
-      // Fetch from separate tables in parallel
-      const [educationRes, trainingRes, experienceRes, techSkillsRes, softSkillsRes] = await Promise.all([
-        supabase.from('education').select('*').eq('learner_id', actualLearnerId),
-        supabase.from('trainings').select('*').eq('learner_id', actualLearnerId),
-        supabase.from('experience').select('*').eq('learner_id', actualLearnerId),
-        supabase.from('skills').select('*').eq('learner_id', actualLearnerId).eq('type', 'technical'),
-        supabase.from('skills').select('*').eq('learner_id', actualLearnerId).eq('type', 'soft'),
-      ]);
+      const education = data.education || [];
+      const trainings = data.training || [];
+      const experience = data.experience || [];
+      const techSkills = data.skills?.technical || [];
+      const softSkills = data.skills?.soft || [];
 
       const allAchievements: Achievement[] = [];
 
-      // Add education achievements
-      if (educationRes.data) {
-        educationRes.data.forEach(edu => {
+      education.forEach((edu: any) => {
+        allAchievements.push({
+          id: `edu-${edu.id}`,
+          type: 'education',
+          title: edu.degree || 'Degree',
+          subtitle: edu.university || edu.institution,
+          description: `${edu.level || 'Education'} - ${edu.cgpa ? `Grade: ${edu.cgpa}` : ''}`,
+          date: edu.year_of_passing || edu.created_at,
+          status: edu.status,
+          verified: false,
+          source: 'education_table',
+        });
+      });
+
+      trainings.forEach((training: any) => {
+        allAchievements.push({
+          id: `training-${training.id}`,
+          type: 'training',
+          title: training.course,
+          subtitle: 'Training Completed',
+          description: `Progress: ${training.progress}%`,
+          date: training.end_date || training.updated_at,
+          status: training.status,
+          progress: training.progress,
+          certificateUrl: training.certificate_url,
+          verified: training.progress === 100,
+          source: 'training_table',
+        });
+      });
+
+      experience.forEach((exp: any) => {
+        allAchievements.push({
+          id: `exp-${exp.id}`,
+          type: 'experience',
+          title: exp.role,
+          subtitle: exp.organization,
+          description: exp.description || 'Work experience',
+          date: exp.end_date || exp.start_date || exp.created_at,
+          verified: exp.verified,
+          source: 'experience_table',
+        });
+      });
+
+      techSkills.forEach((skill: any) => {
+        if (skill.level >= 4) {
           allAchievements.push({
-            id: `edu-${edu.id}`,
-            type: 'education',
-            title: edu.degree || 'Degree',
-            subtitle: edu.university || edu.institution,
-            description: `${edu.level || 'Education'} - ${edu.cgpa ? `Grade: ${edu.cgpa}` : ''}`,
-            date: edu.year_of_passing || edu.created_at,
-            status: edu.status,
-            verified: false,
-            source: 'education_table'
+            id: `skill-${skill.id}`,
+            type: 'skill',
+            title: `${skill.name} Proficiency`,
+            subtitle: skill.category,
+            description: `Achieved ${getSkillLevelText(skill.level)} level`,
+            date: skill.updated_at || skill.created_at,
+            verified: skill.verified,
+            source: 'skills_table',
           });
-        });
-      }
+        }
+      });
 
-      // Add training achievements
-      if (trainingRes.data) {
-        trainingRes.data.forEach(training => {
-          allAchievements.push({
-            id: `training-${training.id}`,
-            type: 'training',
-            title: training.course,
-            subtitle: 'Training Completed',
-            description: `Progress: ${training.progress}%`,
-            date: training.end_date || training.updated_at,
-            status: training.status,
-            progress: training.progress,
-            certificateUrl: training.certificate_url,
-            verified: training.progress === 100,
-            source: 'training_table'
-          });
-        });
-      }
-
-      // Add experience achievements
-      if (experienceRes.data) {
-        experienceRes.data.forEach(exp => {
-          allAchievements.push({
-            id: `exp-${exp.id}`,
-            type: 'experience',
-            title: exp.role,
-            subtitle: exp.organization,
-            description: exp.description || 'Work experience',
-            date: exp.end_date || exp.start_date || exp.created_at,
-            verified: exp.verified,
-            source: 'experience_table'
-          });
-        });
-      }
-
-      // Add skill achievements (milestone-based)
-      if (techSkillsRes.data) {
-        techSkillsRes.data.forEach(skill => {
-          if (skill.level >= 4) {
-            allAchievements.push({
-              id: `skill-${skill.id}`,
-              type: 'skill',
-              title: `${skill.name} Proficiency`,
-              subtitle: skill.category,
-              description: `Achieved ${getSkillLevelText(skill.level)} level`,
-              date: skill.updated_at || skill.created_at,
-              verified: skill.verified,
-              source: 'skills_table'
-            });
-          }
-        });
-      }
-
-      // Sort by date (most recent first)
       allAchievements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
       setAchievements(allAchievements);
 
-      // Generate badges
       const generatedBadges = generateBadges({
-        techSkills: techSkillsRes.data || [],
-        softSkills: softSkillsRes.data || [],
-        education: educationRes.data || [],
-        training: trainingRes.data || [],
-        experience: experienceRes.data || []
+        techSkills,
+        softSkills,
+        education,
+        training: trainings,
+        experience,
       });
       setBadges(generatedBadges);
     } catch (err) {
@@ -335,15 +240,15 @@ export const useLearnerActivity = ({
     }
   };
 
-  // Fetch recent updates
   const fetchRecentUpdates = async (emailAddr: string | null | undefined) => {
     if (!emailAddr) return;
-
     try {
+      const { getlearnerRecentUpdatesByEmail, formatRecentUpdate } = await import(
+        '@/features/learner-profile/api/learnerProfileService'
+      );
       const result = await getlearnerRecentUpdatesByEmail(emailAddr, since, limit);
-
       if (result.success) {
-        const formattedUpdates = result.data.map(update => formatRecentUpdate(update));
+        const formattedUpdates = result.data.map((update: any) => formatRecentUpdate(update));
         setUpdates(formattedUpdates);
       }
     } catch (err) {
@@ -351,34 +256,28 @@ export const useLearnerActivity = ({
     }
   };
 
-  // Refresh all activity data
   const refresh = useCallback(() => {
     fetchActivityData();
   }, [fetchActivityData]);
 
-  // Load data on mount
   useEffect(() => {
     fetchActivityData();
   }, [fetchActivityData]);
 
   return {
-    // Data
     learning,
     achievements,
     badges,
     updates,
     loading,
     error,
-    
-    // Refresh functions
     refresh,
     refreshLearning: () => fetchLearning(learnerId),
-    refreshAchievements: () => fetchAchievements(learnerId, email),
-    refreshUpdates: () => fetchRecentUpdates(email)
+    refreshAchievements: () => fetchAchievements(learnerId),
+    refreshUpdates: () => fetchRecentUpdates(email),
   };
 };
 
-// Helper function to get skill level text
 const getSkillLevelText = (level: number): string => {
   if (level >= 5) return 'Expert';
   if (level >= 4) return 'Advanced';
@@ -387,12 +286,10 @@ const getSkillLevelText = (level: number): string => {
   return 'Novice';
 };
 
-// Badge generation logic
 const generateBadges = ({ techSkills, softSkills, education, training, experience }: any): Badge[] => {
   const badges: Badge[] = [];
-
   const expertSkills = techSkills.filter((s: any) => s.level >= 5);
-  
+
   if (expertSkills.length >= 3) {
     badges.push({
       id: 'badge-expert-trilogy',
@@ -401,20 +298,20 @@ const generateBadges = ({ techSkills, softSkills, education, training, experienc
       icon: '🏆',
       color: 'gold',
       rarity: 'legendary',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
-  const hasFrontend = techSkills.some((s: any) => 
-    ['React', 'Vue', 'Angular', 'JavaScript', 'HTML', 'CSS'].some(tech => 
+  const hasFrontend = techSkills.some((s: any) =>
+    ['React', 'Vue', 'Angular', 'JavaScript', 'HTML', 'CSS'].some(tech =>
       s.name.toLowerCase().includes(tech.toLowerCase())) && s.level >= 3
   );
-  const hasBackend = techSkills.some((s: any) => 
-    ['Node', 'Python', 'Java', 'PHP', 'Ruby', 'Django', 'Flask', 'Express'].some(tech => 
+  const hasBackend = techSkills.some((s: any) =>
+    ['Node', 'Python', 'Java', 'PHP', 'Ruby', 'Django', 'Flask', 'Express'].some(tech =>
       s.name.toLowerCase().includes(tech.toLowerCase())) && s.level >= 3
   );
-  const hasDatabase = techSkills.some((s: any) => 
-    ['SQL', 'MongoDB', 'PostgreSQL', 'MySQL', 'Database'].some(tech => 
+  const hasDatabase = techSkills.some((s: any) =>
+    ['SQL', 'MongoDB', 'PostgreSQL', 'MySQL', 'Database'].some(tech =>
       s.name.toLowerCase().includes(tech.toLowerCase())) && s.level >= 3
   );
 
@@ -426,7 +323,7 @@ const generateBadges = ({ techSkills, softSkills, education, training, experienc
       icon: '💻',
       color: 'blue',
       rarity: 'epic',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
@@ -439,7 +336,7 @@ const generateBadges = ({ techSkills, softSkills, education, training, experienc
       icon: '📖',
       color: 'teal',
       rarity: 'rare',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
@@ -451,7 +348,7 @@ const generateBadges = ({ techSkills, softSkills, education, training, experienc
       icon: '💼',
       color: 'amber',
       rarity: 'epic',
-      earnedDate: new Date().toISOString()
+      earnedDate: new Date().toISOString(),
     });
   }
 
