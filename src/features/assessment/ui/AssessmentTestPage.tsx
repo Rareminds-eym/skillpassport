@@ -24,6 +24,7 @@ import { normalizeStreamId } from '../api/careerAssessmentAIService';
 import { useLearnerGrade } from '../model/useLearnerGrade';
 import { useAnswerSync } from '../hooks/useAnswerSync';
 import { useAdaptiveAptitude } from '../model';
+import { useAIQuestions } from '../model/useAIQuestions';
 
 // Components
 import { LoadingScreen } from './screens/LoadingScreen';
@@ -89,7 +90,8 @@ const AssessmentTestPage: React.FC = () => {
   const [selectedStream, setSelectedStream] = useState<string | null>(null);
   const [showSectionIntro, setShowSectionIntro] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [adaptiveTimer, setAdaptiveTimer] = useState(90); // 90 seconds per question
+  const [adaptiveTimer, setAdaptiveTimer] = useState(60); // 60 seconds per question (1:00)
+  const [adaptiveElapsedTime, setAdaptiveElapsedTime] = useState(0); // Track total elapsed time for adaptive section
   const [resumeData, setResumeData] = useState<any>(null);
   const [isLoadingResume, setIsLoadingResume] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -136,6 +138,128 @@ const AssessmentTestPage: React.FC = () => {
       store.setError(err.message);
     },
   });
+
+  // Initialize AI questions hook for aptitude and knowledge sections
+  // Use store.streamId as the primary source since it's set during initializeAssessment
+  // Also use store.gradeLevel as it's more reliable than selectedGrade
+  const effectiveStream = store.streamId || selectedStream;
+  const effectiveGrade = store.gradeLevel || selectedGrade;
+  
+  logger.info('[AI Questions Hook Init]', {
+    effectiveStream,
+    effectiveGrade,
+    storeStreamId: store.streamId,
+    storeGradeLevel: store.gradeLevel,
+    selectedStream,
+    selectedGrade,
+    learnerId,
+    attemptId: store.attemptId,
+    learnerProgram
+  });
+  
+  const aiQuestionsHook = useAIQuestions({
+    gradeLevel: effectiveGrade as any,
+    learnerStream: effectiveStream,
+    learnerId: learnerId,
+    attemptId: store.attemptId,
+    learnerProgram: learnerProgram
+  });
+
+  // Log AI questions hook state for debugging
+  useEffect(() => {
+    logger.info('[AI Questions Hook State]', {
+      loading: aiQuestionsHook.loading,
+      error: aiQuestionsHook.error,
+      hasAptitude: !!aiQuestionsHook.aiQuestions.aptitude,
+      hasKnowledge: !!aiQuestionsHook.aiQuestions.knowledge,
+      aptitudeCount: aiQuestionsHook.aiQuestions.aptitude?.length || 0,
+      knowledgeCount: aiQuestionsHook.aiQuestions.knowledge?.length || 0,
+      progress: aiQuestionsHook.progress,
+      selectedGrade,
+      selectedStream,
+      effectiveStream,
+      storeStreamId: store.streamId,
+      learnerId,
+      attemptId: store.attemptId,
+      learnerProgram
+    });
+  }, [aiQuestionsHook.loading, aiQuestionsHook.error, aiQuestionsHook.aiQuestions, aiQuestionsHook.progress, selectedGrade, selectedStream, effectiveStream, store.streamId, learnerId, store.attemptId, learnerProgram]);
+
+  // Effect to populate AI sections when questions are loaded
+  useEffect(() => {
+    if (!aiQuestionsHook.loading && !aiQuestionsHook.error && store.sections.length > 0) {
+      const { aptitude, knowledge } = aiQuestionsHook.aiQuestions;
+      
+      logger.info('[AI Questions Effect] Checking for questions to populate', {
+        hasAptitude: !!aptitude,
+        hasKnowledge: !!knowledge,
+        aptitudeLength: aptitude?.length || 0,
+        knowledgeLength: knowledge?.length || 0,
+        sectionsCount: store.sections.length
+      });
+      
+      let sectionsUpdated = false;
+      const updatedSections = [...store.sections];
+      
+      // Find and populate aptitude section
+      if (aptitude && aptitude.length > 0) {
+        const aptitudeIndex = store.sections.findIndex(s => s.name === 'aptitude' || s.id === 'aptitude' || (typeof s.id === 'string' && s.id.startsWith('aptitude-')));
+        if (aptitudeIndex !== -1 && store.sections[aptitudeIndex].questions.length === 0) {
+          logger.info('[AI Questions] Populating aptitude section', { questionCount: aptitude.length, sectionIndex: aptitudeIndex });
+          
+          // Update the section with AI questions
+          updatedSections[aptitudeIndex] = {
+            ...updatedSections[aptitudeIndex],
+            questions: aptitude.map((q: any, index: number) => ({
+              id: q.id || `aptitude-${index}`,
+              text: q.text || q.question,
+              type: 'mcq',
+              options: q.options || [],
+              correct: q.correct || q.correct_answer,
+              order: index
+            }))
+          };
+          
+          sectionsUpdated = true;
+          logger.info('[AI Questions] Aptitude section populated successfully');
+        }
+      }
+      
+      // Find and populate knowledge section
+      if (knowledge && knowledge.length > 0) {
+        const knowledgeIndex = store.sections.findIndex(s => s.name === 'knowledge' || s.id === 'knowledge' || (typeof s.id === 'string' && s.id.startsWith('knowledge-')));
+        if (knowledgeIndex !== -1 && store.sections[knowledgeIndex].questions.length === 0) {
+          logger.info('[AI Questions] Populating knowledge section', { questionCount: knowledge.length, sectionIndex: knowledgeIndex });
+          
+          // Update the section with AI questions
+          updatedSections[knowledgeIndex] = {
+            ...updatedSections[knowledgeIndex],
+            questions: knowledge.map((q: any, index: number) => ({
+              id: q.id || `knowledge-${index}`,
+              text: q.text || q.question,
+              type: 'mcq',
+              options: q.options || [],
+              correct: q.correct || q.correct_answer,
+              order: index
+            }))
+          };
+          
+          sectionsUpdated = true;
+          logger.info('[AI Questions] Knowledge section populated successfully');
+        }
+      }
+      
+      // Update store only if sections were modified
+      if (sectionsUpdated) {
+        store.setSections(updatedSections);
+        logger.info('[AI Questions] Sections updated in store');
+      }
+    } else if (aiQuestionsHook.error) {
+      logger.error('[AI Questions Effect] Error loading AI questions', { error: aiQuestionsHook.error });
+    } else if (aiQuestionsHook.loading) {
+      logger.info('[AI Questions Effect] Still loading AI questions...');
+    }
+  }, [aiQuestionsHook.loading, aiQuestionsHook.aiQuestions, aiQuestionsHook.error, store.sections, store]);
 
   // Initialize assessment on mount
   useEffect((): void => {
@@ -217,6 +341,9 @@ const AssessmentTestPage: React.FC = () => {
           setShowSectionIntro(true); // Show section intro before questions
           setCurrentScreen('section-intro');
           setResumeData(null); // Clear any old resume data
+          // Reset timers for fresh start
+          setElapsedTime(0);
+          setAdaptiveElapsedTime(0);
         } else {
           store.setError(result.error || 'Failed to start assessment');
           setCurrentScreen('error');
@@ -287,6 +414,10 @@ const AssessmentTestPage: React.FC = () => {
           gradeLevel,
           streamId
         );
+
+        // Set selectedGrade and selectedStream to trigger AI questions loading
+        setSelectedGrade(gradeLevel);
+        setSelectedStream(streamId);
 
         // If adaptive test is already completed — all sections done, go straight to submit
         if (isAdaptiveCompleted) {
@@ -375,9 +506,27 @@ const AssessmentTestPage: React.FC = () => {
             setElapsedTime(elapsedTime);
           }
 
-          // Skip intro and go directly to assessment
-          setShowSectionIntro(false);
-          setCurrentScreen('assessment');
+          // Check if resuming to an AI section (aptitude or knowledge)
+          const currentSection = sectionsToUse[currentSectionIndex || 0];
+          const isAISection = currentSection && (
+            currentSection.name === 'aptitude' || 
+            currentSection.name === 'knowledge' ||
+            (typeof currentSection.id === 'string' && (currentSection.id.startsWith('aptitude-') || currentSection.id.startsWith('knowledge-')))
+          );
+          
+          if (isAISection && currentSection.questions.length === 0) {
+            // Resuming to an AI section with no questions - show section intro and wait for questions to load
+            logger.info('[Resume] Resuming to AI section, showing intro while questions load', { 
+              sectionName: currentSection.name,
+              sectionId: currentSection.id 
+            });
+            setShowSectionIntro(true);
+            setCurrentScreen('section-intro');
+          } else {
+            // Skip intro and go directly to assessment
+            setShowSectionIntro(false);
+            setCurrentScreen('assessment');
+          }
         }
       } else {
         store.setError('Failed to load assessment');
@@ -406,6 +555,8 @@ const AssessmentTestPage: React.FC = () => {
       setSelectedGrade(null);
       setSelectedStream(null);
       setElapsedTime(0);
+      setAdaptiveElapsedTime(0); // Also reset adaptive elapsed time
+      setAdaptiveTimer(60); // Reset adaptive timer to 60 seconds
       setShowSectionIntro(true);
       setCurrentScreen('grade-selection');
     } catch (error) {
@@ -506,11 +657,22 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [store.currentSectionIndex, learnerId, selectedGrade, adaptiveHook.sessionId, store.adaptiveSessionId, isResumingAdaptive]);
 
-  // Timer for non-timed sections
+  // Unified timer for all non-adaptive sections (counts up)
+  // This timer runs for both timed and non-timed sections
+  // Timer ONLY runs during active assessment, NOT on intro or complete screens
   useEffect(() => {
+    if (store.sections.length === 0) return;
+    
     const currentSection = store.sections[store.currentSectionIndex];
-    const isTimed = currentSection?.isTimed || false;
-    const shouldRunTimer = !isTimed && currentScreen === 'assessment' && !showSectionIntro;
+    const isAdaptive = isAdaptiveSection(currentSection);
+    
+    // Run timer ONLY when:
+    // 1. Not adaptive section
+    // 2. Currently on assessment screen (not intro, not complete, not analyzing)
+    // 3. Not showing section intro
+    const shouldRunTimer = !isAdaptive 
+      && currentScreen === 'assessment' 
+      && !showSectionIntro;
 
     if (shouldRunTimer) {
       const timer = setInterval(() => {
@@ -521,11 +683,21 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [store.currentSectionIndex, currentScreen, showSectionIntro, store.sections]);
 
-  // Adaptive timer countdown (90 seconds per question)
+  // Adaptive timer countdown (60 seconds per question)
+  // Timer ONLY runs during active assessment, NOT on complete screens
   useEffect(() => {
     const currentSection = store.sections[store.currentSectionIndex];
     const isAdaptive = isAdaptiveSection(currentSection);
-    const shouldRunTimer = isAdaptive && currentScreen === 'assessment' && !showSectionIntro && adaptiveHook.currentQuestion;
+    
+    // Run timer ONLY when:
+    // 1. Is adaptive section
+    // 2. Currently on assessment screen (not complete)
+    // 3. Not showing section intro
+    // 4. Has current question
+    const shouldRunTimer = isAdaptive 
+      && currentScreen === 'assessment' 
+      && !showSectionIntro 
+      && adaptiveHook.currentQuestion;
 
     if (shouldRunTimer) {
       const timer = setInterval(() => {
@@ -537,10 +709,30 @@ const AssessmentTestPage: React.FC = () => {
               adaptiveHook.submitAnswer(currentAnswer);
               setSelectedAnswer(null);
             }
-            return 90; // Reset for next question
+            return 60; // Reset to 60 seconds for next question
           }
           return prev - 1;
         });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections, selectedAnswer, adaptiveHook]);
+
+  // Adaptive elapsed time tracker (counts up for total time spent)
+  useEffect(() => {
+    const currentSection = store.sections[store.currentSectionIndex];
+    const isAdaptive = isAdaptiveSection(currentSection);
+    
+    // Track elapsed time for adaptive section
+    const shouldRunTimer = isAdaptive 
+      && currentScreen === 'assessment' 
+      && !showSectionIntro 
+      && adaptiveHook.currentQuestion;
+
+    if (shouldRunTimer) {
+      const timer = setInterval(() => {
+        setAdaptiveElapsedTime(prev => prev + 1);
       }, 1000);
 
       return () => clearInterval(timer);
@@ -551,7 +743,7 @@ const AssessmentTestPage: React.FC = () => {
   useEffect(() => {
     const currentSection = store.sections[store.currentSectionIndex];
     if (isAdaptiveSection(currentSection) && adaptiveHook.currentQuestion) {
-      setAdaptiveTimer(90); // Reset to 90 seconds for new question
+      setAdaptiveTimer(60); // Reset to 60 seconds for new question
     }
   }, [adaptiveHook.questionsAnswered, store.currentSectionIndex, adaptiveHook.currentQuestion, store.sections]);
 
@@ -560,6 +752,7 @@ const AssessmentTestPage: React.FC = () => {
   useEffect(() => {
     if (previousSectionIndexRef.current !== null && previousSectionIndexRef.current !== store.currentSectionIndex) {
       setElapsedTime(0);
+      setAdaptiveElapsedTime(0); // Also reset adaptive elapsed time
     }
     previousSectionIndexRef.current = store.currentSectionIndex;
   }, [store.currentSectionIndex]);
@@ -641,6 +834,12 @@ const AssessmentTestPage: React.FC = () => {
     const adaptiveDescription = isAdaptiveIntro ? "A smart test that adjusts to your skill level. It gets easier or harder based on how you're doing!" : undefined;
 
     const sectionIconPath = getIconPathFromName(currentSection.name as string | null);
+    
+    // Check if this is an AI section (aptitude or knowledge) and if questions are being loaded
+    const isAISection = currentSection.id === 'aptitude' || currentSection.id === 'knowledge' || currentSection.name === 'aptitude' || currentSection.name === 'knowledge';
+    const isLoadingAI = isAISection && aiQuestionsHook.loading;
+    const hasAIError = isAISection && aiQuestionsHook.error;
+    const hasNoQuestions = currentSection.questions?.length === 0;
 
     return (
       <SectionIntroScreen
@@ -655,10 +854,24 @@ const AssessmentTestPage: React.FC = () => {
         isAptitude={currentSection.isAptitude}
         isAdaptive={isAdaptiveIntro}
         isTimed={currentSection.isTimed}
-        showAIPoweredBadge={currentSection.id === 'aptitude' || currentSection.id === 'knowledge'}
-        isLoading={store.loading}
+        showAIPoweredBadge={isAISection}
+        isLoading={store.loading || isLoadingAI}
         gradeLevel={currentGradeLevel}
+        aiProgress={isLoadingAI ? aiQuestionsHook.progress : undefined}
+        aiError={hasAIError ? aiQuestionsHook.error : undefined}
+        onRetryAI={hasAIError ? aiQuestionsHook.reload : undefined}
         onStart={() => {
+          // Don't allow starting if AI questions are still loading or if there are no questions
+          if (isLoadingAI || (isAISection && hasNoQuestions && !hasAIError)) {
+            toast.error('Please wait for questions to load');
+            return;
+          }
+          
+          if (hasAIError) {
+            toast.error('Please retry loading questions');
+            return;
+          }
+          
           setShowSectionIntro(false);
           setCurrentScreen('assessment');
         }}
@@ -723,7 +936,7 @@ const AssessmentTestPage: React.FC = () => {
                 totalSections={store.sections.length}
                 currentQuestionIndex={adaptiveHook.questionsAnswered}
                 totalQuestions={ADAPTIVE_TOTAL_QUESTIONS}
-                elapsedTime={elapsedTime}
+                elapsedTime={adaptiveElapsedTime}
                 perQuestionTimer={adaptiveTimer}
                 showPerQuestionTimer={true}
                 showNoWrongAnswers={true}

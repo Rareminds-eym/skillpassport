@@ -64,6 +64,7 @@ export interface AssessmentState {
 
   // Actions - Regular Assessment
   initializeAssessment: (sections: AssessmentSection[], attemptId: string, gradeLevel: string, streamId: string) => void;
+  setSections: (sections: AssessmentSection[]) => void;
   setCurrentQuestion: (sectionIdx: number, questionIdx: number) => void;
   saveAnswer: (questionId: string, answer: any) => void;
   nextQuestion: () => void;
@@ -148,6 +149,12 @@ export const useAssessmentStore = create<AssessmentState>()(
         set((state) => {
           state.currentSectionIndex = sectionIdx;
           state.currentQuestionIndex = questionIdx;
+        });
+      },
+
+      setSections: (sections) => {
+        set((state) => {
+          state.sections = sections;
         });
       },
 
