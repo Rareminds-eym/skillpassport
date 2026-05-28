@@ -721,11 +721,18 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
         
         let adaptiveResults = null;
-        
-        // CRITICAL: Get session ID from answers (stored when adaptive test completes)
-        console.log('🔍 [Preparing] Looking for adaptive session ID in answers...');
-        const sessionIdFromAnswers = answers['adaptive_aptitude_session_id'];
-        console.log('🔍 [Preparing] Session ID from answers:', sessionIdFromAnswers);
+
+        // Get session ID from assessment store (set when adaptive test completes)
+        const { useAdaptiveSessionId } = await import('@/features/assessment/model/assessmentStore');
+        const storeSessionId = useAdaptiveSessionId();
+
+        console.log('🔍 [Preparing] Looking for adaptive session ID...');
+        console.log('🔍 [Preparing] From store:', storeSessionId);
+        console.log('🔍 [Preparing] From answers:', answers['adaptive_aptitude_session_id']);
+
+        // Use session ID from store (primary) or answers (fallback)
+        const sessionIdFromAnswers = storeSessionId || answers['adaptive_aptitude_session_id'];
+        console.log('🔍 [Preparing] Final session ID:', sessionIdFromAnswers);
         
         // If we have a session ID in answers, ensure it's saved to the attempt table
         if (sessionIdFromAnswers && attemptId) {
@@ -759,11 +766,13 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           console.log('✅ [Preparing] Latest attempt data:', latestAttempt);
         }
         
-        // Use session ID from answers (most reliable)
-        const sessionId = sessionIdFromAnswers;
+        // Use session ID from answers, fallback to attempt's saved session ID
+        // (for high school/simplified assessments that might have adaptive linked from elsewhere)
+        const sessionId = sessionIdFromAnswers || latestAttempt?.adaptive_aptitude_session_id;
         const attemptGradeLevel = latestAttempt?.grade_level || gradeLevel;
-        
-        console.log('� [Preparing] Final session ID to use:', sessionId);
+
+        console.log('🔗 [Preparing] Final session ID to use:', sessionId);
+        console.log('🔗 [Preparing] From answers:', sessionIdFromAnswers, '| From attempt:', latestAttempt?.adaptive_aptitude_session_id);
         
         // Check if this grade level uses adaptive aptitude
         const usesAdaptiveAptitude = ['middle', 'highschool', 'after10', 'after12', 'college', 'higher_secondary'].includes(attemptGradeLevel || '');
@@ -814,7 +823,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             console.error('❌ [Preparing] Error fetching adaptive results:', adaptiveErr);
           }
         } else if (!sessionId && usesAdaptiveAptitude) {
-          console.warn('⚠️ [Preparing] No adaptive session ID found - adaptive test may have been skipped');
+          console.info('ℹ️ [Preparing] No adaptive session ID in current answers - backend will auto-link completed session if available');
         } else {
           console.log('ℹ️ [Preparing] Grade level does not use adaptive aptitude test');
         }
@@ -866,7 +875,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             gradeLevel || 'after12',
             null,
             finalLearnerContext,
-            adaptiveResults
+            adaptiveResults,
+            sections
           );
 
           const aiDuration = ((Date.now() - aiStartTime) / 1000).toFixed(1);

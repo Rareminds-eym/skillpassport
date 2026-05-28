@@ -45,34 +45,51 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
       );
     }
 
-    // Verify the attempt exists and belongs to the user
-    const { data: attempt, error: attemptError } = await supabase
-      .from('personal_assessment_attempts')
-      .select('id, learner_id')
-      .eq('id', attemptId)
-      .maybeSingle();
-
-    if (attemptError || !attempt) {
-      return Response.json({ error: 'Assessment attempt not found' }, { status: 404 });
-    }
-
-    // Verify the learner belongs to the authenticated user
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('user_id')
-      .eq('id', learnerId)
-      .maybeSingle();
-
-    if (learner?.user_id !== user.sub) {
-      return Response.json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
-    if (attempt.learner_id !== learnerId) {
-      return Response.json({ error: 'Learner ID mismatch' }, { status: 400 });
-    }
+    console.log('[save-results] Auth user:', user.sub);
+    console.log('[save-results] Attempt ID:', attemptId);
+    console.log('[save-results] Learner ID:', learnerId);
 
     // Determine if this is a simplified assessment (middle/high school)
     const isSimplifiedAssessment = gradeLevel === 'middle' || gradeLevel === 'highschool';
+
+    // Auto-link adaptive aptitude session if not provided
+    let resolvedSessionId = adaptiveAptitudeSessionId;
+    if (!resolvedSessionId) {
+      // Try to find by learner_id first
+      let { data: completedSession } = await supabase
+        .from('adaptive_aptitude_sessions')
+        .select('id, learner_id')
+        .eq('learner_id', learnerId)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // If not found by learner_id, try a broader search
+      if (!completedSession) {
+        console.log('[save-results] No adaptive session found for learner_id:', learnerId);
+        console.log('[save-results] Searching all completed sessions...');
+
+        const { data: allSessions } = await supabase
+          .from('adaptive_aptitude_sessions')
+          .select('id, learner_id, status')
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        console.log('[save-results] Recent sessions found:', allSessions?.length || 0);
+        if (allSessions?.length) {
+          console.log('[save-results] Sample sessions:', allSessions.map(s => ({ id: s.id, learner_id: s.learner_id })));
+        }
+      }
+
+      if (completedSession) {
+        resolvedSessionId = completedSession.id;
+        console.log('[save-results] Auto-linked adaptive session:', resolvedSessionId);
+      } else {
+        console.log('[save-results] No completed adaptive session found for learner');
+      }
+    }
 
     // Extract RIASEC scores with backup handling
     const riasecScoresRaw = geminiResults?.riasec?.scores || null;
@@ -143,7 +160,7 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
       gemini_results: geminiResults,
       
       // Adaptive aptitude session link
-      adaptive_aptitude_session_id: adaptiveAptitudeSessionId,
+      adaptive_aptitude_session_id: resolvedSessionId,
       
       // Timestamps
       created_at: new Date().toISOString(),
@@ -155,7 +172,7 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
       learnerId,
       streamId,
       gradeLevel,
-      adaptiveAptitudeSessionId
+      adaptiveAptitudeSessionId: resolvedSessionId
     });
 
     // STEP 1: Save results using service role (bypasses RLS)

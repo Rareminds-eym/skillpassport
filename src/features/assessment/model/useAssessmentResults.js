@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
 import * as assessmentService from '../api/assessmentService';
 import { saveRecommendations } from '@/features/courses';
@@ -9,7 +10,6 @@ import { validateAssessmentResults } from '../lib/assessmentValidation';
 import { validateAptitudeScores } from '@/features/assessment';
 import { validateRiasecScores } from '@/features/assessment';
 import { normalizeAssessmentResults } from '@/features/assessment';
-import { transformAssessmentResults } from '@/features/assessment';
 import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 import {
     riasecQuestions,
@@ -260,7 +260,7 @@ export const useAssessmentResults = () => {
     const [monthsInGrade, setMonthsInGrade] = useState(null);
     const [validationWarnings, setValidationWarnings] = useState([]);
 
-    // ✅ NEW: Wrapper for setResults that applies transformation
+    // ✅ Wrapper for setResults - use database data as-is
     const setResults = useCallback((resultsData) => {
         if (!resultsData) {
             setResultsInternal(null);
@@ -270,67 +270,14 @@ export const useAssessmentResults = () => {
         console.log('🔍 setResults called with data:', {
             hasData: !!resultsData,
             keys: Object.keys(resultsData || {}),
-            _transformed: resultsData._transformed,
             hasGeminiResults: !!resultsData.gemini_results,
-            hasGeminiAnalysis: !!resultsData.gemini_analysis,
-            hasRiasec: !!resultsData.riasec,
             hasRiasecScores: !!resultsData.riasec_scores,
-            // ✅ ADD MORE DEBUG INFO
-            geminiResultsType: resultsData.gemini_results ? typeof resultsData.gemini_results : 'undefined',
-            geminiResultsKeys: resultsData.gemini_results && typeof resultsData.gemini_results === 'object' ? Object.keys(resultsData.gemini_results) : null,
-            riasecScoresValue: resultsData.riasec_scores,
-            sampleData: resultsData.gemini_results?.riasec || resultsData.riasec || 'none'
+            hasAptitudeScores: !!resultsData.aptitude_scores
         });
 
-        // Check if data is already transformed
-        if (resultsData._transformed) {
-            console.log('✅ Results already transformed, using as-is');
-            setResultsInternal(resultsData);
-            return;
-        }
-
-        // Check if this looks like database format
-        // Data can be in gemini_analysis/gemini_results field OR in individual columns
-        const isDatabaseFormat = resultsData.gemini_analysis ||
-            resultsData.gemini_results ||
-            resultsData.aptitude_scores ||
-            resultsData.riasec_scores ||
-            resultsData.top_interests ||
-            resultsData.career_recommendations;
-
-        if (isDatabaseFormat) {
-            console.log('🔄 Transforming database results to PDF format...');
-            console.log('   Input data structure:', {
-                hasGeminiAnalysis: !!resultsData.gemini_analysis,
-                hasAptitudeScores: !!resultsData.aptitude_scores,
-                hasRiasecScores: !!resultsData.riasec_scores,
-                hasCareerRecommendations: !!resultsData.career_recommendations
-            });
-            try {
-                const transformed = transformAssessmentResults(resultsData);
-                console.log('✅ Transformation complete:', {
-                    hasAptitude: !!transformed.aptitude,
-                    hasCareerFit: !!transformed.careerFit,
-                    hasSkillGap: !!transformed.skillGap,
-                    hasLearningStyles: !!transformed.learningStyles,
-                    riasecScores: transformed.riasec?.scores
-                });
-                setResultsInternal(transformed);
-            } catch (error) {
-                console.error('❌ Transformation failed, using original:', error);
-                console.error('   Error details:', error.message, error.stack);
-                setResultsInternal(resultsData);
-            }
-        } else {
-            // Already in correct format (from Gemini API)
-            console.log('✅ Results already in correct format (no transformation needed)');
-            console.log('   Data structure:', {
-                hasRiasec: !!resultsData.riasec,
-                hasAptitude: !!resultsData.aptitude,
-                hasCareerFit: !!resultsData.careerFit
-            });
-            setResultsInternal(resultsData);
-        }
+        // Use data directly from database - it's already in the correct format
+        console.log('✅ Using results directly from database');
+        setResultsInternal(resultsData);
     }, []);
 
     // Helper function to apply validation to results
@@ -1002,11 +949,13 @@ export const useAssessmentResults = () => {
             try {
                 // STEP 1: Try to find result by attempt_id first (most direct path)
                 console.log('🔍 STEP 1: Looking for result by attempt_id:', attemptId);
-                const { data: directResult, error: directError } = await supabase
-                    .from('personal_assessment_results')
-                    .select('*')
-                    .eq('attempt_id', attemptId)
-                    .maybeSingle();
+
+                // Use backend endpoint to fetch result (avoids RLS issues)
+                const response = await ssoClient.fetch(`/api/assessment/result?attemptId=${attemptId}`);
+                const responseData = await response.json();
+
+                const directResult = response.ok ? responseData.data : null;
+                const directError = !response.ok ? { message: responseData.error } : null;
 
                 console.log('   Direct result lookup:', {
                     found: !!directResult,
@@ -2333,21 +2282,10 @@ export const useAssessmentResults = () => {
             // Basic interest exploration (mapped to RIASEC codes)
             if (!riasec || !riasec.topThree || riasec.topThree.length === 0) missingFields.push('Interest Explorer');
 
-            // For high school, after10, and higher secondary, check adaptive aptitude results
-            // Aptitude Sampling is just a self-assessment, real aptitude comes from adaptive test
-            if ((gradeLevel === 'highschool' || gradeLevel === 'after10' || gradeLevel === 'higher_secondary')) {
-                // Check if adaptive aptitude results exist
-                const hasAdaptiveResults = results.adaptiveAptitudeResults ||
-                    results.adaptive_aptitude_results ||
-                    results.adaptive_aptitude_session_id ||
-                    (results.gemini_results && results.gemini_results.adaptiveAptitudeResults) ||
-                    (results.aptitude && results.aptitude.adaptiveTest) ||
-                    (results.aptitude && results.aptitude.adaptiveLevel);
-
-                if (!hasAdaptiveResults) {
-                    missingFields.push('Adaptive Aptitude Test');
-                }
-            }
+            // NOTE: Middle and High school assessments are simplified - no adaptive aptitude test required
+            // Adaptive aptitude is only for after10 (Grade 11) and higher when learners need deeper assessment
+            // High school (Grade 9-10) covers: Interests (RIASEC) + Basic personality + Career tracks
+            // After10+ covers: All of above + Aptitude testing + Work values + Employability + Knowledge
 
             return missingFields;
         }

@@ -24,6 +24,7 @@ import { abandonHandler } from './handlers/abandon';
 import { checkInProgressHandler } from './handlers/check-in-progress';
 import { analyzeHandler } from './handlers/analyze';
 import { saveResultsHandler } from './handlers/save-results';
+import { getResultHandler } from './handlers/get-result';
 
 /**
  * POST handler - Routes POST requests to appropriate handlers
@@ -81,6 +82,8 @@ export const onRequestGet = withAuth(async (context: any) => {
   try {
     if (path === '/check-in-progress') {
       return checkInProgressHandler(context);
+    } else if (path === '/result') {
+      return getResultHandler(context);
     } else {
       return apiNotFound(`Assessment endpoint not found: ${path}`, context.request);
     }

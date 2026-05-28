@@ -17,6 +17,8 @@ import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { AnalyzeRequest } from '../types';
 import { analyzeMiddleSchool } from '../services/analysis-middle-school';
+import { analyzeHighSchool } from '../services/analysis-highschool';
+import { analyzeComprehensive } from '../services/analysis-comprehensive';
 import { analyzeCollege } from '../services/analysis-college';
 
 export async function analyzeHandler(context: AuthenticatedContext) {
@@ -104,28 +106,16 @@ export async function analyzeHandler(context: AuthenticatedContext) {
         return analyzeMiddleSchool(context, supabase, attemptId, learnerId);
 
       case 'highschool':
-        return Response.json(
-          { error: 'High school analysis not yet implemented' },
-          { status: 501 }
-        );
+        return analyzeHighSchool(context, supabase, attemptId, learnerId);
 
       case 'higher_secondary':
-        return Response.json(
-          { error: 'Higher secondary analysis not yet implemented' },
-          { status: 501 }
-        );
+        return analyzeComprehensive(context, supabase, attemptId, learnerId, gradeLevel);
 
       case 'after10':
-        return Response.json(
-          { error: 'Post-10th analysis not yet implemented' },
-          { status: 501 }
-        );
+        return analyzeComprehensive(context, supabase, attemptId, learnerId, gradeLevel);
 
       case 'after12':
-        return Response.json(
-          { error: 'Post-12th analysis not yet implemented' },
-          { status: 501 }
-        );
+        return analyzeComprehensive(context, supabase, attemptId, learnerId, gradeLevel);
 
       case 'college':
         return analyzeCollege(context, supabase, attemptId, learnerId);

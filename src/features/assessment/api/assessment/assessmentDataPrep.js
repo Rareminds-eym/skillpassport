@@ -179,14 +179,14 @@ export const getSectionPrefix = (baseSection, gradeLevel) => {
   // Default case: return base section without modification
   return baseSection;
 };
-export const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null, learnerContext = {}, adaptiveResults = null) => {
-  const { 
-    riasecQuestions, 
-    aptitudeQuestions, 
-    bigFiveQuestions, 
-    workValuesQuestions, 
-    employabilityQuestions, 
-    streamKnowledgeQuestions 
+export const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null, learnerContext = {}, adaptiveResults = null, allSections = null) => {
+  const {
+    riasecQuestions,
+    aptitudeQuestions,
+    bigFiveQuestions,
+    workValuesQuestions,
+    employabilityQuestions,
+    streamKnowledgeQuestions
   } = questionBanks;
 
   // Extract adaptive results if not provided
@@ -204,27 +204,42 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
   const knowledgeAnswers = {};
   const aptitudeAnswers = { verbal: [], numerical: [], abstract: [], spatial: [], clerical: [] };
 
+  // Define section prefixes for backward compatibility with other extractions
   const riasecPrefix = getSectionPrefix('riasec', gradeLevel);
   const bigFivePrefix = getSectionPrefix('bigfive', gradeLevel);
   const aptitudePrefix = getSectionPrefix('aptitude', gradeLevel);
   const knowledgePrefix = getSectionPrefix('knowledge', gradeLevel);
 
-  // Extract RIASEC answers
-  Object.entries(answers).forEach(([key, value]) => {
-    if (key.startsWith(`${riasecPrefix}_`)) {
-      const questionId = key.replace(`${riasecPrefix}_`, '');
-      const question = riasecQuestions?.find(q => q.id === questionId);
-      
-      if (question) {
-        riasecAnswers[questionId] = {
-          questionId,
-          question: question.text,
-          answer: value,
-          riasecType: question.type,
-          categoryMapping: question.categoryMapping,
-          questionType: question.categoryMapping ? 'multiselect' : 'rating'
-        };
+  // Extract RIASEC answers - match by categoryMapping presence
+  // When allSections is provided (from assessment form), use it for question metadata
+  let allQuestions = [];
+  if (allSections && Array.isArray(allSections)) {
+    // Build flattened question list from all sections
+    allSections.forEach(section => {
+      if (section.questions && Array.isArray(section.questions)) {
+        allQuestions.push(...section.questions);
       }
+    });
+  }
+
+  // Extract RIASEC answers - match against questions with categoryMapping
+  Object.entries(answers).forEach(([questionId, value]) => {
+    // Skip non-question keys (like resultId, adaptive fields, etc)
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) return;
+
+    // Find question metadata from allQuestions first, fallback to riasecQuestions
+    const question = allQuestions.find(q => q.id === questionId) ||
+                     riasecQuestions?.find(q => q.id === questionId);
+
+    // Only include if question has categoryMapping (indicates RIASEC question)
+    if (question && question.categoryMapping) {
+      riasecAnswers[questionId] = {
+        questionId,
+        question: question.text,
+        answer: value,
+        categoryMapping: question.categoryMapping,
+        questionType: question.type || 'multiselect'
+      };
     }
   });
 
