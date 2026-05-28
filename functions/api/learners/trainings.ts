@@ -58,8 +58,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
     const trainingIds = (trainings || []).map(t => t.id);
 
-    let skillMap: Record<string, any[]> = {};
-    let certMap: Record<string, any[]> = {};
+    const skillMap: Record<string, any[]> = {};
+    const certMap: Record<string, any[]> = {};
 
     if (trainingIds.length > 0) {
       const [skillsResult, certsResult] = await Promise.all([
@@ -109,6 +109,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const { learnerId, training, certificate, skills } = body;
   if (!learnerId) {
     return apiError(400, 'VALIDATION_ERROR', 'learnerId is required', context.request, { startTime });
+  }
+
+  const isAdmin = user.roles?.some((r: string) =>
+    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
+  );
+  if (!isAdmin) {
+    const { data: ownLearner } = await supabase
+      .from('learners')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (ownLearner?.id !== learnerId) {
+      return apiError(403, 'FORBIDDEN', 'You can only add training for yourself', context.request, { startTime });
+    }
   }
 
   try {

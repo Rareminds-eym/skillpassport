@@ -203,28 +203,6 @@ export const useLearnerActions = (learner: Learner | null) => {
 
     setActionLoading(true);
     try {
-      const graduationDate = new Date().toISOString();
-      const updateData: any = {
-        updated_at: graduationDate,
-        metadata: {
-          ...learner.metadata,
-          graduation_date: graduationDate,
-          graduated_by: 'current_admin', // Replace with actual admin ID
-          final_semester: getCurrentSemester(),
-          final_cgpa: learner.currentCgpa || learner.profile?.education?.[0]?.cgpa
-        }
-      };
-
-      // Set expected graduation date if not already set
-      if (!learner.expectedGraduationDate) {
-        updateData.expectedGraduationDate = graduationDate.split('T')[0];
-      }
-
-      // For school learners, mark as completed grade 12
-      if (learner.school_id) {
-        updateData.grade = getTotalSemesters().toString();
-      }
-
       await apiPost('/learners/actions', {
         action: 'graduate',
         learnerId: learner.id,
