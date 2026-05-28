@@ -118,35 +118,30 @@
 
 ---
 
-## Phase 5 — Observability & Monitoring (no decisions needed)
+## Phase 5 — Observability & Monitoring ✅ COMPLETED
 
-- [ ] `T-043` — Add `preview_id` to KV namespace in `sso-worker/wrangler.toml`
-- [ ] `T-044` — Add `preview_id` to KV namespace in `payment-worker/wrangler.toml`
-- [ ] `T-045` — Add structured logging to all RPC methods in `payment-worker/src/entrypoint.ts`
-- [ ] `T-046` — Add `X-Request-ID` to 500 error responses in `sso-worker/src/index.ts:262`
-- [ ] `T-047` — Configure explicit log/trace sampling rates in `payment-worker/wrangler.toml`
-- [ ] `T-048` — Replace console.log/error with structured log() in email-worker:
-  - `src/routes/otp.ts` (6 occurrences)
-  - `src/providers/MessageCentralService.ts` (9 occurrences)
-  - `src/middleware/otpRateLimit.ts` (2 occurrences)
-  - `src/index.ts:274` (catch handler)
+- [x] `T-043/T-044` — PREVIEW_KV placeholders added (both wrangler.toml files). **Removed 2026-05-28 as not needed — user confirmed.**
+- [x] `T-045` — Structured JSON logging added to all 5 RPC methods in `payment-worker/src/entrypoint.ts`
+- [x] `T-046` — `X-Request-ID` header set on 500 error responses in `sso-worker/src/index.ts`
+- [x] `T-047` — Explicit log/trace sampling rates configured in `payment-worker/wrangler.toml` (`logs.head_sampling_rate = 1`, `traces.head_sampling_rate = 0.01`)
+- [x] `T-048` — 18 `console.log/error` calls replaced with structured `log()` across 4 email-worker files
 
 ---
 
-## Phase 6 — SSO Worker Reliability (no decisions needed)
+## Phase 6 — SSO Worker Reliability ✅ COMPLETED
 
-- [ ] `T-049` — Add KV rate limiting: `/auth/invite*` (10/min)
-- [ ] `T-050` — Add KV rate limiting: `/auth/switch-org` (30/min)
-- [ ] `T-051` — Add KV rate limiting: `/auth/change-password`, `/auth/admin-reset-password` (5/min each)
-- [ ] `T-052` — Add KV rate limiting: `/auth/delete-account` (3/min)
-- [ ] `T-053` — Add KV rate limiting: `/api/events/webhook` (60/min)
-- [ ] `T-054` — Fix signup rollback: queue cleanup or log for manual review on failure
-- [ ] `T-055` — Fix month-end date arithmetic: add `addMonths` utility with rollover
-- [ ] `T-056` — Validate addon exists in `recordAddonPurchase`
-- [ ] `T-057` — Replace in-memory Map rate limiting with KV-backed
-- [ ] `T-058` — Add token `typ` validation in JWT verify
-- [ ] `T-059` — Fix "Lifetime" billing period fallthrough
-- [ ] `T-060` — Fix CORS expose header for `X-Access-Token` (never set)
+- [x] `T-049` — KV rate limiting: `/auth/invite*` (10/min) — added `endpointRateLimit()` to `createInvite`, `acceptInvite`, `cancelInvite`, `resendInvite` via `src/lib/rate-limit.ts`
+- [x] `T-050` — KV rate limiting: `/auth/switch-org` (30/min) — rate limit at top of `switchOrg()`
+- [x] `T-051` — KV rate limiting: `/auth/change-password`, `/auth/admin-reset-password` (5/min each) — per-handler rate limit
+- [x] `T-052` — KV rate limiting: `/auth/delete-account` (3/min) — rate limit at top of `deleteAccount()`
+- [x] `T-053` — KV rate limiting: `/api/events/webhook` (60/min) — IP-based rate limit in `processWebhookEvent()`
+- [x] `T-054` — Signup rollback: enhanced logging with structured JSON including `user_id`, `org_id`, `slug`, full error context
+- [x] `T-055` — Month-end date arithmetic: created `addMonths()` in `src/lib/date.ts` with day-overflow clamping. Replaced all 6 `setMonth()` call sites (index.ts, subscriptions.ts, addon-catalog.ts)
+- [x] `T-056` — Validate addon exists: added `if (!addon) throw new Error(...)` in RPC `recordAddonPurchase`
+- [x] `T-057` — KV-backed rate limiting: covered by T-049–T-053 generic `endpointRateLimit()` function (in-memory Map was already removed in T-031)
+- [x] `T-058` — JWT `typ` validation: added `protectedHeader.typ !== "JWT"` guard in `verifyAccessToken()`
+- [x] `T-059` — "Lifetime" billing period fallthrough: extracted `billingCycle` variable in both `createSubscription` call sites so the default applies consistently to `auto_renew` and `subscription_end_date`
+- [x] `T-060` — CORS expose header for `X-Access-Token`: added `res.headers.set("X-Access-Token", accessToken)` to `setAuthCookies()` in `cookies.ts`
 
 ---
 
@@ -179,14 +174,13 @@
 
 | Phase | Tasks | Blocked On | Est. Time |
 |-------|-------|------------|-----------|
-| **0** — Commit done fixes | ~20 commits across 3 repos | Nothing | 15 min |
-| **0.5** — Fix `\$` bugs ✅ | 4 (T-100–T-103) | None — **DONE** | 5 min |
+| **0** — Commit done fixes ✅ | ~20 commits across 3 repos | **DONE** | 15 min |
+| **0.5** — Fix `\$` bugs ✅ | 4 (T-100–T-103) | **DONE** | 5 min |
 | **2** — Auth gaps ✅ | 12 tasks (T-018–T-029) + large beyond-scope standardization | **DONE** | 6h |
 | **3** — SSO consolidation ✅ | 4 (T-030–T-033) | **DONE** | 1h |
-| **4** — Response & CORS ✅ | 8 (T-034–T-041) | **DONE** | 60+ files migrated |
-| **4** — Response/CORS 🟡 | 1 done (T-042) / 8 pending (T-034–T-041) | Nothing | 3h |
-| **5** — Observability | 6 (T-043–T-048) | Nothing | 2h |
-| **6** — SSO reliability | 12 (T-049–T-060) | Nothing | 3h |
+| **4** — Response & CORS ✅ | 8 (T-034–T-041, T-042) | **DONE** | 60+ files migrated |
+| **5** — Observability ✅ | 6 (T-043–T-048, T-043/T-044 removed per user) | **DONE** | 2h |
+| **6** — SSO reliability ✅ | 12 (T-049–T-060) | **DONE** | 3h |
 | **7** — Payment reliability | 7 (T-061–T-067) | Nothing | 2h |
 | **8** — FSD Architecture | 8 (T-068–T-075) | User buy-in | 2-3 sprints |
-| **Total** | **~108 tasks (41+ done, 55 remaining)** | None blocking | ~11h + 2-3 sprints |
+| **Total** | **~108 tasks (68 done, 15 remaining)** | None blocking | ~9h + 2-3 sprints |
