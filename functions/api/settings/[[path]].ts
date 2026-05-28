@@ -1,4 +1,4 @@
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError } from '../../lib/response';
@@ -121,6 +121,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(env as any);
   const url = new URL(context.request.url);
   const subPath = getSubPath(url);
+  const user = getContextUser(context);
+
+  const isAdmin = user.roles?.some((r: string) =>
+    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
+  );
+  if (!isAdmin) {
+    return apiError(403, 'FORBIDDEN', 'Only admins can modify settings', context.request);
+  }
 
   let body: any;
   try {
