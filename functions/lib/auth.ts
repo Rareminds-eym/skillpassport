@@ -65,10 +65,57 @@ function ensureAuthInitialized(env: Record<string, unknown>): void {
   }
 }
 
+async function verifyEmailOrBlock(
+  user: SSOAuthUser,
+  env: Record<string, string | Fetcher>,
+  request: Request
+): Promise<Response | null> {
+  if (user.is_email_verified) return null;
+
+  let isVerifiedInDb = false;
+  try {
+    const supabase = getServiceClient(env as any);
+    const { data: dbUser, error } = await supabase
+      .from('users')
+      .select('is_email_verified')
+      .eq('id', user.sub)
+      .single();
+
+    if (!error && dbUser && dbUser.is_email_verified) {
+      isVerifiedInDb = true;
+      user.is_email_verified = true;
+    }
+  } catch (e) {
+    console.warn('[auth] DB verification check failed:', e);
+  }
+
+  if (isVerifiedInDb) return null;
+
+  const pathname = new URL(request.url).pathname;
+  console.warn('[auth] Blocked unverified user:', {
+    userId: user.sub, email: user.email, path: pathname,
+  });
+
+  return new Response(
+    JSON.stringify({
+      error: 'Email verification required',
+      code: 'EMAIL_NOT_VERIFIED',
+      message: 'Please verify your email address to access this feature',
+    }),
+    {
+      status: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Error-Code': 'EMAIL_NOT_VERIFIED',
+      },
+    }
+  );
+}
+
 /**
  * Wrapped withAuth that initializes auth-core once per isolate
  * before running the auth-core middleware.
- * 
+ *
  * Also enforces email verification - blocks unverified users from accessing
  * protected endpoints (returns 403 with EMAIL_NOT_VERIFIED error code).
  */
@@ -76,59 +123,11 @@ export function withAuth(handler: (context: AuthenticatedContext) => Promise<Res
   return async (context: any) => {
     const env = context.env as Record<string, string | Fetcher>;
     ensureAuthInitialized(env);
-    
+
     return withAuthCore(async (authContext) => {
-      const user = authContext.data.user;
+      const blocked = await verifyEmailOrBlock(authContext.data.user, env, context.request);
+      if (blocked) return blocked;
 
-      // Check email verification
-      if (!user.is_email_verified) {
-        let isVerifiedInDb = false;
-
-        try {
-          // SECONDARY CHECK: JWT is stale or user just verified.
-          // Perform a lightweight check against the database to verify status.
-          const supabase = getServiceClient(env as any);
-          const { data: dbUser, error } = await supabase
-            .from('users')
-            .select('is_email_verified')
-            .eq('id', user.sub)
-            .single();
-
-          if (!error && dbUser && dbUser.is_email_verified) {
-            // Token is stale but user is verified! Allow request.
-            isVerifiedInDb = true;
-            user.is_email_verified = true;
-          }
-        } catch (e) {
-          console.warn('[auth] DB verification check failed:', e);
-        }
-
-        if (!isVerifiedInDb) {
-          const pathname = new URL(context.request.url).pathname;
-          
-          console.warn('[auth] Blocked unverified user:', {
-            userId: user.sub,
-            email: user.email,
-            path: pathname,
-          });
-          
-          return new Response(
-            JSON.stringify({
-              error: 'Email verification required',
-              code: 'EMAIL_NOT_VERIFIED',
-              message: 'Please verify your email address to access this feature',
-            }),
-            {
-              status: 403,
-              headers: { 
-                'Content-Type': 'application/json',
-                'X-Error-Code': 'EMAIL_NOT_VERIFIED',
-              },
-            }
-          );
-        }
-      }
-      
       return handler(authContext);
     })(context);
   };

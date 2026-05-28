@@ -17,7 +17,7 @@ The `R2Client` class provides a clean interface for interacting with Cloudflare 
 
 ```typescript
 import { R2Client } from './utils/r2-client';
-import type { PagesEnv } from '../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 export const onRequest: PagesFunction = async (context) => {
   const { env } = context;

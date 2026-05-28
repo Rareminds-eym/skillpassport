@@ -37,7 +37,7 @@ export const onRequest: PagesFunction = async (context) => {
 
   try {
     // All endpoints require authentication
-    return withAuth(async () => {
+    return withAuth(async (authContext) => {
     // POST /initialize - Start new test session
     if (method === 'POST' && path === '/initialize') {
       return initializeHandler(context);

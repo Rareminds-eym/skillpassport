@@ -59,24 +59,6 @@ export async function handleResumeSubscription(context: AuthenticatedContext): P
       return apiError(400, 'VALIDATION_ERROR', 'Only paused subscriptions can be resumed', context.request);
     }
 
-    if (!existing) {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'NOT_FOUND', message: 'Subscription not found or does not belong to user' },
-        }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (existing.status !== 'paused') {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'Only paused subscriptions can be resumed' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Write status change through SSO worker (auth DB is source of truth)
     const ssoResult = await ssoUpdateSubscriptionStatus(env, subscriptionId, {
       status: 'active',

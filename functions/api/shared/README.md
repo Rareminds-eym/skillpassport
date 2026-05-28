@@ -75,12 +75,12 @@ Authentication and user utilities for secured endpoints. Uses `@rareminds-eym/au
 ```typescript
 import { authenticateUser } from '../../lib/auth';
 import { sanitizeInput, isValidUUID } from '../../lib/validation';
-import { jsonResponse } from '../../../src/functions-lib/response';
+import { apiError } from '../../lib/response';
 
 // Authenticate request
 const auth = await authenticateUser(request, env);
 if (!auth) {
-  return jsonResponse({ error: 'Unauthorized' }, 401);
+  return apiError(401, 'UNAUTHORIZED', 'Unauthorized');
 }
 
 // Use authenticated user
@@ -91,7 +91,7 @@ const cleanInput = sanitizeInput(userMessage);
 
 // Validate UUID
 if (!isValidUUID(conversationId)) {
-  return jsonResponse({ error: 'Invalid ID' }, 400);
+  return apiError(400, 'INVALID_ID', 'Invalid ID');
 }
 ```
 
@@ -114,14 +114,14 @@ const response = await callOpenRouterWithRetry(openRouter, [
 ### Pattern 2: Authenticated Endpoint
 
 ```typescript
-import { authenticateUser } from '../../shared/auth';
-import { jsonResponse } from '../../../src/functions-lib/response';
+import { authenticateUser } from '../../lib/auth';
+import { apiError } from '../../lib/response';
 
 export async function handleProtectedEndpoint(request: Request, env: any) {
   // Authenticate
   const auth = await authenticateUser(request, env);
   if (!auth) {
-    return jsonResponse({ error: 'Unauthorized' }, 401);
+    return apiError(401, 'UNAUTHORIZED', 'Unauthorized');
   }
 
   // Use authenticated user
@@ -147,7 +147,7 @@ const data = repairAndParseJSON(jsonText);
 - Rewrite AI calling logic - use `callOpenRouterWithRetry`
 - Rewrite JSON parsing - use `repairAndParseJSON`
 - Rewrite authentication - use `authenticateUser`
-- Create new Supabase client patterns - use `createSupabaseClient` from functions-lib
+- Create new Supabase client patterns - use `createSupabaseClient` from `lib`
 - Hardcode model names - use MODEL_PROFILES from ai-config
 - Implement custom retry logic - it's already in ai-config
 
