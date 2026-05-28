@@ -89,7 +89,6 @@ export function getTopAptitudes(scores: AptitudeScores, count: number = 3): stri
     .sort(([_, a], [__, b]) => (b?.percentage || 0) - (a?.percentage || 0));
   
   return entries.slice(0, count).map(([key]) => key);
-  return Math.round(sum / validScores.length);
 }
 
 // ============================================================================
