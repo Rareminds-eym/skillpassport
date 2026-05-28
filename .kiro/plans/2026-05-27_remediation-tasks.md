@@ -89,7 +89,7 @@
 ## Phase 3 — SSO Worker Consolidation ✅ COMPLETED
 
 - [x] `T-030` — Removed `export` keyword from 14 dead HTTP handlers in `subscriptions.ts` (12) and `addon-catalog.ts` (2). Kept RPC methods as canonical. ✅ USER DECISION
-- [x] `T-031` — Removed `rateLimit()` function and `ROUTE_LIMITS` config, kept `checkAccountLockout`/`recordFailedLogin`/`clearFailedLogins`. ✅ USER DECISION
+- [x] `T-031` — Removed `rateLimit()` function and `ROUTE_LIMITS` config, kept `checkAccountLockout`/`recordFailedLogin`/`clearFailedLogins` (moved to `src/lib/rate-limit.ts`). ✅ USER DECISION. **2026-05-28: Actually cleaned up — stale file fully removed.**
 - [x] `T-032` — Fix JWT test claims in `sso-worker/src/__tests__/preservation-property.test.ts:90-91` — imported `JWT_ISSUER`/`JWT_AUDIENCE` from constants instead of hardcoded URLs. All 6 tests pass. ✅
 - [x] `T-033` — Fix 7 README discrepancies in `sso-worker/README.md`:
   - Env table: `APP_URL` → `ALLOWED_APP_URLS`, added `EMAIL_SERVICE` binding + `EMAIL_API_KEY` secret
