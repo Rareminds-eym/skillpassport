@@ -240,20 +240,9 @@ export const useLearnerActivity = ({
     }
   };
 
-  const fetchRecentUpdates = async (emailAddr: string | null | undefined) => {
-    if (!emailAddr) return;
-    try {
-      const { getlearnerRecentUpdatesByEmail, formatRecentUpdate } = await import(
-        '@/features/learner-profile/api/learnerProfileService'
-      );
-      const result = await getlearnerRecentUpdatesByEmail(emailAddr, since, limit);
-      if (result.success) {
-        const formattedUpdates = result.data.map((update: any) => formatRecentUpdate(update));
-        setUpdates(formattedUpdates);
-      }
-    } catch (err) {
-      logger.error('Error fetching recent updates', err as Error);
-    }
+  const fetchRecentUpdates = async (_emailAddr: string | null | undefined) => {
+    // TODO: Implement when getlearnerRecentUpdatesByEmail is available
+    // Previously tried dynamic import from learnerProfileService which doesn't exist yet
   };
 
   const refresh = useCallback(() => {

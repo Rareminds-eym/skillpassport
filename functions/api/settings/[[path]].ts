@@ -137,13 +137,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiError(400, 'VALIDATION_ERROR', 'roleType is required', context.request);
       }
 
-      const [deletePermError, deleteScopeError] = await Promise.all([
+      const [deletePermResult, deleteScopeResult] = await Promise.all([
         supabase.from('college_role_module_permissions').delete().eq('role_type', roleType),
         supabase.from('college_role_scope_rules').delete().eq('role_type', roleType),
       ]);
 
-      if (deletePermError.error) throw deletePermError.error;
-      if (deleteScopeError.error) throw deleteScopeError.error;
+      if (deletePermResult.error) throw deletePermResult.error;
+      if (deleteScopeResult.error) throw deleteScopeResult.error;
 
       const { data: modules } = await supabase.from('college_setting_modules').select('id, module_name').eq('is_active', true);
       const { data: permissions } = await supabase.from('college_setting_permissions').select('id, permission_name');

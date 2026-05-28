@@ -137,7 +137,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       completed_modules: training?.completed_modules ?? 0,
       hours_spent: training?.hours_spent ?? 0,
       source: training?.source || 'manual',
-      approval_status: 'pending',
+      approval_status: training?.source === 'external_course' ? 'approved' : 'pending',
       enabled: true,
     };
 
