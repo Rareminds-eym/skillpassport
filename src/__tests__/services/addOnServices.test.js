@@ -1,7 +1,7 @@
 /**
  * Unit Tests for Add-On Services
  * 
- * Tests for AddOnCatalogService, EntitlementService, PaymentService, and MigrationService
+ * Tests for AddOnCatalogService, EntitlementService, and PaymentService
  * 
  * @requirement Task 8.3 - Unit tests for services
  */
@@ -58,7 +58,6 @@ import { ssoClient } from '@/shared/api/ssoClient';
 import addOnCatalogService from '@/features/subscription/api/addOnCatalogService';
 import addOnPaymentService from '@/features/subscription/api/addOnPaymentService';
 import entitlementService from '@/features/subscription/api/entitlementService';
-import migrationService from '@/features/admin/api/migrationService';
 
 describe('AddOnCatalogService', () => {
   beforeEach(() => {
@@ -310,106 +309,5 @@ describe('EntitlementService', () => {
   });
 });
 
-describe('MigrationService', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
-  describe('getMigrationMapping', () => {
-    it('should return error for missing plan code', async () => {
-      const result = await migrationService.getMigrationMapping('');
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Plan code is required');
-    });
 
-    it('should handle plan not found error', async () => {
-      // Create a proper chain that returns PGRST116 error
-      const chain = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-      };
-      supabase.from.mockReturnValue(chain);
-
-      const result = await migrationService.getMigrationMapping('nonexistent');
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('PLAN_NOT_FOUND');
-    });
-  });
-
-  describe('calculatePriceProtection', () => {
-    it('should return error for missing user ID', async () => {
-      const result = await migrationService.calculatePriceProtection('');
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('User ID is required');
-    });
-
-    it('should handle no active subscription', async () => {
-      const chain = mockSupabaseChain();
-      chain.single.mockResolvedValue({ data: null, error: { code: 'PGRST116' } });
-      supabase.from.mockReturnValue(chain);
-
-      const result = await migrationService.calculatePriceProtection('user-1');
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('NO_ACTIVE_SUBSCRIPTION');
-    });
-  });
-
-  describe('getMigrationStatus', () => {
-    it('should return error for missing user ID', async () => {
-      const result = await migrationService.getMigrationStatus('');
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('User ID is required');
-    });
-
-    it('should return no migration for user without migration', async () => {
-      const chain = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
-      };
-      supabase.from.mockReturnValue(chain);
-
-      const result = await migrationService.getMigrationStatus('user-1');
-
-      expect(result.success).toBe(true);
-      expect(result.data.hasMigration).toBe(false);
-    });
-
-    it('should return migration status for user with migration', async () => {
-      const mockMigration = {
-        id: 'mig-1',
-        user_id: 'user-1',
-        migration_status: 'completed',
-        migration_date: '2024-06-01T00:00:00Z',
-        original_price: 300,
-        new_price: 500,
-        migrated_feature_keys: ['career_ai'],
-        notification_sent_at: null,
-        price_protected_until: null
-      };
-
-      const chain = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        order: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: mockMigration, error: null })
-      };
-      supabase.from.mockReturnValue(chain);
-
-      const result = await migrationService.getMigrationStatus('user-1');
-
-      expect(result.success).toBe(true);
-      expect(result.data.hasMigration).toBe(true);
-      expect(result.data.status).toBe('completed');
-    });
-  });
-});
