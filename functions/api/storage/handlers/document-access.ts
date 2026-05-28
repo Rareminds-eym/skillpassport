@@ -8,7 +8,7 @@
  * GET /document-access?url={fileUrl}&mode={inline|download}
  */
 
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError } from '../../../lib/response';
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
 

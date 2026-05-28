@@ -136,7 +136,7 @@ export const handleExampleDelete: PagesFunction = async (context) => {
  * Example handler showing file listing
  */
 export const handleExampleList: PagesFunction = async (context) => {
-  const { env } = context;
+  const { request, env } = context;
 
   try {
     const r2 = new R2Client(env);

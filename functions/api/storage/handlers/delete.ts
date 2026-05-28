@@ -81,7 +81,7 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
 
   // Require authentication
   if (!user) {
-    return createAuthenticationError('/delete', 'missing_token', undefined, request);
+    return createAuthenticationError('/delete', 'missing_token');
   }
 
   try {
@@ -128,8 +128,7 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
         user.id,
         fileKey,
         reason,
-        ownership.reason || 'You do not have permission to delete this file',
-        request
+        ownership.reason || 'You do not have permission to delete this file'
       );
     }
 

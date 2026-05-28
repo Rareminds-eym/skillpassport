@@ -9,7 +9,7 @@
  * Headers: Authorization: Bearer <jwt>
  */
 
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError } from '../../../lib/response';
 import { checkCourseEnrollment, checkRateLimit } from '../utils/course-authorization';
 import { extractFileKey, generateMediaToken } from '../utils/token-crypto';
 

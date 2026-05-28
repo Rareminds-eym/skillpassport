@@ -10,7 +10,7 @@
  * - Enhanced system prompt with few-shot examples and chain-of-thought
  */
 
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError } from '../../../lib/response';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { sanitizeInput, generateConversationTitle } from '../../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';

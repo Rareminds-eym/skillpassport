@@ -160,7 +160,7 @@
  */
 
 import type { PagesFunction } from '../../../lib/types';
-import { apiSuccess, apiError } from '../../../lib/response';;
+import { apiSuccess, apiError } from '../../../lib/response';
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
 import {
@@ -174,7 +174,6 @@ import {
   validateSVGContent,
 } from '../utils/file-validator';
 import { validateFileSizeBackend } from '../utils/file-size-validator';
-import { getFileSizeLimit } from '../config/fileSizeLimits';
 
 /**
  * Allowed file types (MIME types)
@@ -285,7 +284,6 @@ export const handleUpload: PagesFunction = async (context) => {
       filename
     });
     if (!sizeValidation.valid) {
-      const config = getFileSizeLimit(uploadContext);
       return apiError(sizeValidation.statusCode || 400, 'VALIDATION_ERROR', sizeValidation.error || 'File size exceeds limit', request);
     }
 

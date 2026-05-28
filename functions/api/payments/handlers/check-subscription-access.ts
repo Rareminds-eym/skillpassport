@@ -12,7 +12,7 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiSuccess } from '../../../lib/response';
 
 export async function handleCheckSubscriptionAccess(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);

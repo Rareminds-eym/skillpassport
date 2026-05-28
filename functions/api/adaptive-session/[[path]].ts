@@ -18,7 +18,7 @@
  */
 
 import type { PagesFunction } from '../../lib/types';
-import { apiSuccess, apiError } from '../../lib/response';
+import { apiError } from '../../lib/response';
 import { withAuth } from '../../lib/auth';
 import { initializeHandler } from './handlers/initialize';
 import { nextQuestionHandler } from './handlers/next-question';
@@ -37,7 +37,7 @@ export const onRequest: PagesFunction = async (context) => {
 
   try {
     // All endpoints require authentication
-    return withAuth(async (authContext) => {
+    return withAuth(async () => {
     // POST /initialize - Start new test session
     if (method === 'POST' && path === '/initialize') {
       return initializeHandler(context);

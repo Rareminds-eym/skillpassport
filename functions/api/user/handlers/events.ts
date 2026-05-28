@@ -143,7 +143,7 @@ export async function handleSendInterviewReminder(request: Request, env: any): P
   );
 
   if (!result.success) {
-    return apiError(500, 'INTERNAL_ERROR', result.error, request);
+    return apiError(500, 'INTERNAL_ERROR', result.error ?? 'Unknown error', request);
   }
 
   // Log reminder in database

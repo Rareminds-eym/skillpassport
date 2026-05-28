@@ -36,8 +36,8 @@ interface UpdateProgressRequestBody {
  * - progress: array of progress records
  */
 export const onRequestGet = async (context: AuthenticatedContext) => {
+  const { request, env } = context;
   try {
-    const { request, env } = context;
     const user = getContextUser(context);
     const learnerId = user.id;
     const supabase = getServiceClient(env as any);
@@ -108,8 +108,8 @@ export const onRequestGet = async (context: AuthenticatedContext) => {
  * - progress: object with updated progress record
  */
 export const onRequestPost = async (context: AuthenticatedContext) => {
+  const { request, env } = context;
   try {
-    const { request, env } = context;
     const user = getContextUser(context);
     const learnerId = user.id;
     const supabase = getServiceClient(env as any);

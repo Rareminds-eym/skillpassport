@@ -7,7 +7,7 @@
  * GET /api/storage/media-proxy?token={authToken}
  */
 
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError } from '../../../lib/response';
 import { validateFileKey } from '../utils/course-authorization';
 import { validateMediaToken } from '../utils/token-crypto';
 import { R2Client } from '../utils/r2-client';

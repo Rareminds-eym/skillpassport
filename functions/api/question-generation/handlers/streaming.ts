@@ -7,7 +7,7 @@
 
 import { createSupabaseClient } from '../../../lib/supabase';
 import { PagesEnv } from '../../../lib/types';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError } from '../../../lib/response';
 import { SCHOOL_SUBJECT_PROMPT, APTITUDE_PROMPT } from '../prompts';
 import {
     callOpenRouterWithRetry,

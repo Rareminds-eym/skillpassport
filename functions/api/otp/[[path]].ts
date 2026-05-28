@@ -9,7 +9,7 @@
  */
 
 import type { PagesFunction } from '../../lib/types';
-import { corsHeaders, getCorsHeaders } from '../../lib/cors';;
+import { getCorsHeaders } from '../../lib/cors';;
 import { apiSuccess, apiError } from '../../lib/response';
 import { sendOtpHandler } from './handlers/send';
 import { verifyOtpHandler } from './handlers/verify';

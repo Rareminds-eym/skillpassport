@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Env } from '../../../lib/types';
 import type { PreRegistration } from '../types';
 import { corsHeaders } from '../../../lib/cors';;
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError } from '../../../lib/response';
 import { getPreRegistrationByOrderId } from '../services/database';
 
 export async function handlePDFReceipt(

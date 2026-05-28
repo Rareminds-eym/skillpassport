@@ -11,7 +11,7 @@
  */
 
 import type { PagesFunction } from '../../lib/types';
-import { corsHeaders, getCorsHeaders } from '../../lib/cors';
+import { getCorsHeaders } from '../../lib/cors';
 import { apiSuccess, apiError } from '../../lib/response';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
@@ -43,7 +43,7 @@ async function handleGetStreak(supabase: SupabaseClient, learnerId: string): Pro
         },
       }, undefined);
     }
-    return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error.message}`, undefined);
+return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error instanceof Error ? error.message : String(error)}`, undefined);
   }
 
   return apiSuccess({
@@ -164,7 +164,7 @@ async function handleProcessStreak(supabase: SupabaseClient, learnerId: string):
       }, undefined);
     }
   } catch (error) {
-return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error.message}`, undefined);
+return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error instanceof Error ? error.message : String(error)}`, undefined);
   }
 }
 

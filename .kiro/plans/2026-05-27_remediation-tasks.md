@@ -1,7 +1,7 @@
 # Remediation Task Breakdown — REVISED
 
-**Date**: 2026-05-27 (revised after auth standardization)  
-**Status**: Updated by engineering AI to reflect actual completion  
+**Date**: 2026-05-28 (reconciled — all phases 0-7 verified committed)  
+**Status**: ✅ All 7 remediation phases complete. Phase 8 (FSD Architecture) awaiting user decision.  
 
 ---
 
@@ -13,33 +13,33 @@
 
 ---
 
-## Phase 0 — Commit Already-Done Fixes (3 repos)
+## Phase 0 — Commit Already-Done Fixes (3 repos) ✅ DONE
 
-> These fixes were applied in a previous session but are UNCOMMITTED.
+> All fixes committed across all 3 repos.
 
-### skillpassport (branch: fix/missmatches)
-- [ ] `T-000` — Commit `functions/package.json` + `functions/package-lock.json` (jose@6.2.3, auth-core@1.0.2)
-- [ ] `T-000` — Commit same files `functions/package.json` + `functions/package-lock.json` (supabase-js pinned `^2.57.4` → `2.57.4`)
-- [ ] `T-000` — Commit `tsconfig.functions.json` + `tsconfig.json` (new functions tsconfig)
-- [ ] `T-000` — Commit `src/entities/assessment/model/utils.ts` (syntax fix)
-- [ ] `T-000` — Commit `src/entities/project/model/utils.ts` (backslash fix)
-- [ ] `T-000` — Commit `src/entities/course/api/queries.ts` (self-import fix)
-- [ ] `T-000` — Commit `src/entities/course/api/mutations.ts` (self-import fix)
-- [ ] `T-000` — Commit `.kiro/plans/2026-05-27_skillpassport-problems-analysis.md` (analysis doc)
-- [ ] `T-000` — Commit `.kiro/summaries/2026-05-27_handler-auth-cleanup_summary.md` (summary doc)
+### skillpassport (branch: fix/missmatches) ✅
+- [x] `T-000` — Commit `functions/package.json` + `functions/package-lock.json` (jose@6.2.3, auth-core@1.0.2)
+- [x] `T-000` — Commit same files (supabase-js pinned `^2.57.4` → `2.57.4`)
+- [x] `T-000` — Commit `tsconfig.functions.json` + `tsconfig.json`
+- [x] `T-000` — Commit `src/entities/assessment/model/utils.ts` (syntax fix)
+- [x] `T-000` — Commit `src/entities/project/model/utils.ts` (backslash fix)
+- [x] `T-000` — Commit `src/entities/course/api/queries.ts` (self-import fix)
+- [x] `T-000` — Commit `src/entities/course/api/mutations.ts` (self-import fix)
+- [x] `T-000` — Commit `.kiro/plans/2026-05-27_skillpassport-problems-analysis.md`
+- [x] `T-000` — Commit `.kiro/summaries/2026-05-27_handler-auth-cleanup_summary.md`
 
-### email-worker (branch: main)
-- [ ] `T-000` — Commit `src/index.ts` (await on authenticateRequest)
-- [ ] `T-000` — Commit `src/routes/otp.ts` (body size validation)
-- [ ] `T-000` — Commit `src/routes/send.ts` (idempotency key check)
-- [ ] `T-000` — Commit `src/types.ts` (EmailConfig rateLimit type)
+### email-worker (branch: fix/missmatches) ✅
+- [x] `T-000` — Commit `src/index.ts` (await on authenticateRequest)
+- [x] `T-000` — Commit `src/routes/otp.ts` (body size validation)
+- [x] `T-000` — Commit `src/routes/send.ts` (idempotency key check)
+- [x] `T-000` — Commit `src/types.ts` (EmailConfig rateLimit type)
 
-### payment-worker (branch: main)
-- [ ] `T-000` — Commit `src/constants.ts` (RAZORPAY_API_TIMEOUT_MS)
-- [ ] `T-000` — Commit `src/entrypoint.ts`
-- [ ] `T-000` — Commit `src/routes/orders.ts` (idempotency from header)
-- [ ] `T-000` — Commit `src/routes/payments.ts` (webhook replay protection)
-- [ ] `T-000` — Commit `src/utils/fetch.ts` (readJsonWithTimeout)
+### payment-worker (branch: fix/missmatches) ✅
+- [x] `T-000` — Commit `src/constants.ts` (RAZORPAY_API_TIMEOUT_MS)
+- [x] `T-000` — Commit `src/entrypoint.ts`
+- [x] `T-000` — Commit `src/routes/orders.ts` (idempotency from header)
+- [x] `T-000` — Commit `src/routes/payments.ts` (webhook replay protection)
+- [x] `T-000` — Commit `src/utils/fetch.ts` (readJsonWithTimeout)
 
 ---
 
@@ -145,15 +145,17 @@
 
 ---
 
-## Phase 7 — Payment Worker Reliability (no decisions needed)
+## Phase 7 — Payment Worker Reliability (no decisions needed) ✅ DONE
 
-- [ ] `T-061` — Add `key_id: string` to `RazorpayOrder` return type
-- [ ] `T-062` — Replace in-memory Map rate limiting with KV-backed
-- [ ] `T-063` — Update `@cloudflare/workers-types` `^4.20231218.0` → `^4.20260520.1`
-- [ ] `T-064` — Fix auth middleware: add `typeof` check instead of `as string`
-- [ ] `T-065` — Fix architecture docs (webhook bypasses JWT)
-- [ ] `T-066` — Fix non-Error throw handling in catch blocks
-- [ ] `T-067` — Configure observability sampling in wrangler.toml
+**Committed**: `27cd67e` on `payment-worker` branch `fix/missmatches`
+
+- [x] `T-061` — Add `key_id: string` to `RazorpayOrder` return type
+- [x] `T-062` — Replace in-memory Map rate limiting with KV-backed
+- [x] `T-063` — Update `@cloudflare/workers-types` `^4.20231218.0` → `^4.20260528.1`
+- [x] `T-064` — Fix auth middleware: add `typeof` check instead of `as string`
+- [x] `T-065` — Fix architecture docs (webhook bypasses JWT)
+- [x] `T-066` — Fix non-Error throw handling in catch blocks
+- [x] `T-067` — Configure observability sampling in wrangler.toml
 
 ---
 
@@ -174,13 +176,13 @@
 
 | Phase | Tasks | Blocked On | Est. Time |
 |-------|-------|------------|-----------|
-| **0** — Commit done fixes ✅ | ~20 commits across 3 repos | **DONE** | 15 min |
-| **0.5** — Fix `\$` bugs ✅ | 4 (T-100–T-103) | **DONE** | 5 min |
-| **2** — Auth gaps ✅ | 12 tasks (T-018–T-029) + large beyond-scope standardization | **DONE** | 6h |
-| **3** — SSO consolidation ✅ | 4 (T-030–T-033) | **DONE** | 1h |
-| **4** — Response & CORS ✅ | 8 (T-034–T-041, T-042) | **DONE** | 60+ files migrated |
-| **5** — Observability ✅ | 6 (T-043–T-048, T-043/T-044 removed per user) | **DONE** | 2h |
-| **6** — SSO reliability ✅ | 12 (T-049–T-060) | **DONE** | 3h |
-| **7** — Payment reliability | 7 (T-061–T-067) | Nothing | 2h |
-| **8** — FSD Architecture | 8 (T-068–T-075) | User buy-in | 2-3 sprints |
-| **Total** | **~108 tasks (68 done, 15 remaining)** | None blocking | ~9h + 2-3 sprints |
+| **0** — Commit done fixes ✅ | ~20 commits across 3 repos | ✅ DONE | 15 min |
+| **0.5** — Fix `\$` bugs ✅ | 4 (T-100–T-103) | ✅ DONE | 5 min |
+| **2** — Auth gaps ✅ | 12 tasks (T-018–T-029) + large beyond-scope standardization | ✅ DONE | 6h |
+| **3** — SSO consolidation ✅ | 4 (T-030–T-033) | ✅ DONE | 1h |
+| **4** — Response & CORS ✅ | 8 (T-034–T-041, T-042) | ✅ DONE | 60+ files migrated |
+| **5** — Observability ✅ | 6 (T-043–T-048, T-043/T-044 removed per user) | ✅ DONE | 2h |
+| **6** — SSO reliability ✅ | 12 (T-049–T-060) | ✅ DONE | 3h |
+| **7** — Payment reliability ✅ | 7 (T-061–T-067) | ✅ DONE | 2h |
+| **8** — FSD Architecture ⏳ | 8 (T-068–T-075) | User buy-in | 2-3 sprints |
+| **Total** | **~108 tasks (90 done, 8 remaining in Phase 8)** | Phase 8 needs user decision | ~9h + 2-3 sprints |

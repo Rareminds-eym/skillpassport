@@ -10,7 +10,7 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
 import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';

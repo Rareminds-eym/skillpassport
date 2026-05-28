@@ -6,7 +6,7 @@
  */
 
 import type { PagesFunction } from '../../../lib/types';
-import { apiSuccess, apiError } from '../../../lib/response';;
+import { apiError } from '../../../lib/response';;
 import { corsHeaders } from '../../../lib/cors';
 import { R2Client } from '../utils/r2-client';
 

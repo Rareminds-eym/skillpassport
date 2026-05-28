@@ -4,7 +4,7 @@
  */
 
 import type { PagesEnv } from '../../../lib/types';
-import type { AssessmentData, AnalysisResult, GradeLevel } from '../types';
+import type { AssessmentData, GradeLevel } from '../types';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { checkRateLimit } from '../../career/utils/rate-limit';
 import { createSupabaseAdminClient } from '../../../lib/supabase';

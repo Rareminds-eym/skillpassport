@@ -56,8 +56,8 @@ interface VideoSummarizerRequestBody {
  * - Full video summary data
  */
 export const onRequestPost = async (context: AuthenticatedContext) => {
+  const { request, env, waitUntil } = context;
   try {
-    const { request, env, waitUntil } = context;
 
     // Parse request body
     let body: VideoSummarizerRequestBody;

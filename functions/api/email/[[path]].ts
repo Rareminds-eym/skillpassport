@@ -13,7 +13,7 @@
  */
 
 import type { PagesFunction } from '../../lib/types';
-import { corsHeaders, getCorsHeaders } from '../../lib/cors';
+import { getCorsHeaders } from '../../lib/cors';
 import { createSupabaseClient } from '../../lib/supabase';;
 import { apiSuccess, apiError } from '../../lib/response';
 import { withAuth } from '../../lib/auth';

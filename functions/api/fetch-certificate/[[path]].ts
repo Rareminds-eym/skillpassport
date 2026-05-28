@@ -8,7 +8,7 @@
 
 import type { PagesFunction } from '../../lib/types';
 import { apiSuccess, apiError } from '../../lib/response';
-import { corsHeaders, getCorsHeaders } from '../../lib/cors';;
+import { getCorsHeaders } from '../../lib/cors';;
 
 const ALLOWED_DOMAINS = [
   'udemy.com',

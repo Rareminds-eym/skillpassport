@@ -43,8 +43,8 @@ interface RequiredEnv {
 type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
 
 export const onRequestGet = async (context: TypedContext) => {
+  const { request, env } = context;
   try {
-    const { request, env } = context;
     const authenticatedUser = getContextUser(context);
     // strict: no-any verified
     const supabase = getServiceClient(env);

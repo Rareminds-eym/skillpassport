@@ -29,6 +29,7 @@ const RECOMMEND_CONFIG = {
 // ==================== FALLBACK HANDLER ====================
 
 async function getPopularFallback(
+  request: Request,
   supabase: SupabaseClient,
   learnerId: string,
   limit: number,
@@ -141,7 +142,7 @@ export async function handleRecommendOpportunities(request: Request, env: Record
 
   if (learnerError || !learner) {
     console.error('Learner not found:', { learnerId, error: learnerError });
-    return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'no_profile');
+    return await getPopularFallback(request, supabase, learnerId, safeLimit, startTime, 'no_profile');
   }
 
   // Check if learner has embedding - auto-generate if missing
@@ -166,7 +167,7 @@ export async function handleRecommendOpportunities(request: Request, env: Record
       learnerEmbedding = embedding;
     } catch (error) {
       console.error(`[AUTO-EMBED] Failed for learner ${learnerId}:`, error);
-      return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'embedding_generation_failed');
+      return await getPopularFallback(request, supabase, learnerId, safeLimit, startTime, 'embedding_generation_failed');
     }
   } else {
     console.log(`[RECOMMEND] Learner ${learnerId} - using existing embedding`);
@@ -217,11 +218,11 @@ export async function handleRecommendOpportunities(request: Request, env: Record
 
   if (matchError) {
     console.error('Match error:', matchError);
-    return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'match_error');
+    return await getPopularFallback(request, supabase, learnerId, safeLimit, startTime, 'match_error');
   }
 
   if (!recommendations || recommendations.length === 0) {
-    return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'no_matches');
+    return await getPopularFallback(request, supabase, learnerId, safeLimit, startTime, 'no_matches');
   }
 
   // ==================== RESPONSE ENRICHMENT ====================

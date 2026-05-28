@@ -32,7 +32,7 @@
  */
 
 import type { PagesFunction } from '../../lib/types';
-import { corsHeaders, getCorsHeaders } from '../../lib/cors';
+import { getCorsHeaders } from '../../lib/cors';
 import { apiSuccess, apiError } from '../../lib/response';
 import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
