@@ -1,37 +1,34 @@
-/**
- * Notifications API
- *
- * CRUD operations for user notifications.
- * All endpoints require SSO authentication via withAuth.
- * Data is scoped to the authenticated user's org.
- */
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError } from '../../lib/response';
 
-/**
- * GET /api/notifications — List notifications for the current user
- */
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
   const url = new URL(context.request.url);
-  const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+  const limit = parseInt(url.searchParams.get('limit') || '20', 10);
   const offset = parseInt(url.searchParams.get('offset') || '0', 10);
   const unreadOnly = url.searchParams.get('unread') === 'true';
+  const before = url.searchParams.get('before');
 
   let query = supabase
     .from('notifications')
     .select('*', { count: 'exact' })
-    .eq('user_id', user.id)
+    .eq('recipient_id', user.id)
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .limit(limit);
+
+  if (before) {
+    query = query.lt('created_at', before);
+  } else {
+    query = query.range(offset, offset + limit - 1);
+  }
 
   if (unreadOnly) {
-    query = query.eq('is_read', false);
+    query = query.eq('read', false);
   }
 
   const { data, error, count } = await query;
@@ -43,10 +40,6 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   return apiSuccess({ notifications: data, total: count }, context.request);
 });
 
-/**
- * POST /api/notifications — Mark as read or delete
- * Body: { action: 'mark-read' | 'mark-all-read' | 'delete', ids?: string[] }
- */
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
@@ -70,8 +63,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
       const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true, read_at: new Date().toISOString() })
-        .eq('user_id', user.id)
+        .update({ read: true, read_at: new Date().toISOString() })
+        .eq('recipient_id', user.id)
         .in('id', body.ids);
 
       if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
@@ -81,9 +74,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'mark-all-read': {
       const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true, read_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
+        .update({ read: true, read_at: new Date().toISOString() })
+        .eq('recipient_id', user.id)
+        .eq('read', false);
 
       if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
       return apiSuccess(null, context.request);
@@ -96,7 +89,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { error } = await supabase
         .from('notifications')
         .delete()
-        .eq('user_id', user.id)
+        .eq('recipient_id', user.id)
         .in('id', body.ids);
 
       if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);

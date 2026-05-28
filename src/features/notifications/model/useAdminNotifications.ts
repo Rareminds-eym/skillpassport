@@ -1,30 +1,24 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 
 export type AdminNotificationType =
-  // Training notifications
   | "training_submitted"
   | "training_approved"
   | "training_rejected"
-  // Experience notifications
   | "experience_submitted"
   | "experience_approved"
   | "experience_rejected"
-  // Project notifications
   | "project_submitted"
   | "project_approved"
   | "project_rejected"
-  // Assessment notifications
   | "assessment_completed"
   | "assessment_submitted"
-  // Learner notifications
   | "learner_enrolled"
   | "learner_achievement"
   | "assignment_submitted"
   | "class_activity_pending"
   | "attendance_reminder"
-  // System notifications
   | "system_alert"
   | "approval_required"
   | "verification_required"
@@ -40,12 +34,10 @@ export type AdminNotification = {
   created_at: string;
 };
 
-// ✅ Validate UUID format
 function isUUID(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
-// ✅ Resolve admin user ID and get school/college context
 async function resolveAdminContext(identifier: string): Promise<{
   userId: string | null;
   schoolId: string | null;
@@ -53,21 +45,19 @@ async function resolveAdminContext(identifier: string): Promise<{
   adminType: string | null;
 }> {
   if (!identifier) return { userId: null, schoolId: null, collegeId: null, adminType: null };
-  
+
   let userId = identifier;
   if (!isUUID(identifier)) {
-    // Try to resolve email to user ID
     const { data: userData } = await supabase
       .from("users")
       .select("id")
       .ilike("email", identifier)
       .maybeSingle();
-    
+
     if (!userData?.id) return { userId: null, schoolId: null, collegeId: null, adminType: null };
     userId = userData.id;
   }
 
-  // Check if user is a school admin
   const { data: schoolAdmin } = await supabase
     .from("school_educators")
     .select("school_id, role")
@@ -84,7 +74,6 @@ async function resolveAdminContext(identifier: string): Promise<{
     };
   }
 
-  // Check if user is a college admin
   const { data: collegeAdmin } = await supabase
     .from("users")
     .select("id, organizationId")
@@ -101,7 +90,6 @@ async function resolveAdminContext(identifier: string): Promise<{
     };
   }
 
-  // Check if user is a university admin
   const { data: universityAdmin } = await supabase
     .from("users")
     .select("id")
@@ -161,7 +149,6 @@ export function useAdminNotifications(
   const channelRef = useRef<any | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ Step 1: Resolve admin context
   useEffect(() => {
     const resolve = async () => {
       if (!userIdentifier) {
@@ -176,35 +163,25 @@ export function useAdminNotifications(
     resolve();
   }, [userIdentifier]);
 
-  // ✅ Step 2: Fetch notifications
   const fetchNotifications = async (reset = true) => {
-    if (!adminContext.userId) {
-      return;
-    }
+    if (!adminContext.userId) return;
     try {
       setLoading(true);
       setError(null);
 
-      let query = supabase
-        .from("notifications")
-        .select("*")
-        .eq("recipient_id", adminContext.userId)
-        .order("created_at", { ascending: false })
-        .limit(PAGE_SIZE);
-
+      let path = `/notifications?limit=${PAGE_SIZE}`;
       if (!reset && lastCursorRef.current) {
-        query = query.lt("created_at", lastCursorRef.current);
+        path += `&before=${encodeURIComponent(lastCursorRef.current)}`;
       }
 
-      const { data, error } = await query;
+      const response: any = await apiGet(path);
+      const data: AdminNotification[] = response?.data?.notifications ?? response?.notifications ?? [];
 
-      if (error) throw error;
+      if (reset) setItems(data);
+      else setItems((prev) => [...prev, ...data]);
 
-      if (reset) setItems(data || []);
-      else setItems((prev) => [...prev, ...(data || [])]);
-
-      setHasMore((data?.length ?? 0) === PAGE_SIZE);
-      if (data && data.length > 0) {
+      setHasMore(data.length === PAGE_SIZE);
+      if (data.length > 0) {
         lastCursorRef.current = data[data.length - 1].created_at;
       }
     } catch (err: any) {
@@ -214,7 +191,6 @@ export function useAdminNotifications(
     }
   };
 
-  // ✅ Step 3: Setup realtime updates
   useEffect(() => {
     if (!adminContext.userId) return;
     let isSubscribed = true;
@@ -292,27 +268,22 @@ export function useAdminNotifications(
     };
   }, [adminContext.userId]);
 
-  // ✅ Auto refresh when admin context changes
   useEffect(() => {
     if (adminContext.userId) fetchNotifications(true);
   }, [adminContext.userId]);
 
-  // ✅ Actions
   const markRead = async (id: string) => {
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    await apiPost('/notifications', { action: 'mark-read', ids: [id] });
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllRead = async () => {
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("recipient_id", adminContext.userId);
+    await apiPost('/notifications', { action: 'mark-all-read' });
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   const remove = async (id: string) => {
-    await supabase.from("notifications").delete().eq("id", id);
+    await apiPost('/notifications', { action: 'delete', ids: [id] });
     setItems((prev) => prev.filter((n) => n.id !== id));
   };
 

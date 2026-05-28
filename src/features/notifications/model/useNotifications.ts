@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 
 export type NotificationType =
-  // Opportunity notifications
   | "new_opportunity"
   | "opportunity_closed"
   | "offer_accepted"
@@ -11,33 +10,26 @@ export type NotificationType =
   | "offer_created"
   | "offer_withdrawn"
   | "offer_expiring"
-  // Interview notifications
   | "interview_scheduled"
   | "interview_rescheduled"
   | "interview_completed"
   | "interview_reminder"
-  // Pipeline notifications
   | "pipeline_stage_changed"
   | "candidate_shortlisted"
   | "candidate_rejected"
   | "new_application"
-  // Educator notifications
   | "learner_verification_required"
   | "assignment_submitted"
   | "class_activity_pending"
   | "learner_achievement"
   | "new_learner_enrolled"
   | "attendance_reminder"
-  // Course notifications
   | "course_added"
   | "course_updated"
-  // Message notifications
   | "new_message"
   | "message_reply"
-  // Admin notifications
   | "approval_required"
   | "system_alert"
-  // General
   | "system_maintenance"
   | string;
 
@@ -51,17 +43,14 @@ export type Notification = {
   created_at: string;
 };
 
-// ✅ Validate UUID format
 function isUUID(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
-// ✅ Resolve user ID from email or UUID
 async function resolveUserId(identifier: string): Promise<string | null> {
   if (!identifier) return null;
   if (isUUID(identifier)) return identifier;
 
-  // Try learners first - need to get user_id (which references users table)
   const { data: learnerData } = await supabase
     .from("learners")
     .select("user_id")
@@ -70,7 +59,6 @@ async function resolveUserId(identifier: string): Promise<string | null> {
 
   if (learnerData?.user_id) return learnerData.user_id;
 
-  // Try educators
   const { data: educatorData } = await supabase
     .from("school_educators")
     .select("user_id")
@@ -79,7 +67,6 @@ async function resolveUserId(identifier: string): Promise<string | null> {
 
   if (educatorData?.user_id) return educatorData.user_id;
 
-  // Try recruiters
   const { data: recruiterData } = await supabase
     .from("recruiters")
     .select("user_id")
@@ -88,7 +75,6 @@ async function resolveUserId(identifier: string): Promise<string | null> {
 
   if (recruiterData?.user_id) return recruiterData.user_id;
 
-  // Try users (admins)
   const { data: userData } = await supabase
     .from("users")
     .select("id")
@@ -127,7 +113,6 @@ export function useNotifications(
   const channelRef = useRef<any | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ Step 1: Resolve user ID from email
   useEffect(() => {
     const resolve = async () => {
       if (!userIdentifier) {
@@ -142,35 +127,25 @@ export function useNotifications(
     resolve();
   }, [userIdentifier]);
 
-  // ✅ Step 2: Fetch notifications
   const fetchNotifications = async (reset = true) => {
-    if (!userId) {
-      return;
-    }
+    if (!userId) return;
     try {
       setLoading(true);
       setError(null);
 
-      let query = supabase
-        .from("notifications")
-        .select("*")
-        .eq("recipient_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(PAGE_SIZE);
-
+      let path = `/notifications?limit=${PAGE_SIZE}`;
       if (!reset && lastCursorRef.current) {
-        query = query.lt("created_at", lastCursorRef.current);
+        path += `&before=${encodeURIComponent(lastCursorRef.current)}`;
       }
 
-      const { data, error } = await query;
+      const response: any = await apiGet(path);
+      const data: Notification[] = response?.data?.notifications ?? response?.notifications ?? [];
 
-      if (error) throw error;
+      if (reset) setItems(data);
+      else setItems((prev) => [...prev, ...data]);
 
-      if (reset) setItems(data || []);
-      else setItems((prev) => [...prev, ...(data || [])]);
-
-      setHasMore((data?.length ?? 0) === PAGE_SIZE);
-      if (data && data.length > 0) {
+      setHasMore(data.length === PAGE_SIZE);
+      if (data.length > 0) {
         lastCursorRef.current = data[data.length - 1].created_at;
       }
     } catch (err: any) {
@@ -180,7 +155,6 @@ export function useNotifications(
     }
   };
 
-  // ✅ Step 3: Setup realtime updates
   useEffect(() => {
     if (!userId) return;
     let isSubscribed = true;
@@ -258,27 +232,22 @@ export function useNotifications(
     };
   }, [userId]);
 
-  // ✅ Auto refresh when userId changes
   useEffect(() => {
     if (userId) fetchNotifications(true);
   }, [userId]);
 
-  // ✅ Actions
   const markRead = async (id: string) => {
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    await apiPost('/notifications', { action: 'mark-read', ids: [id] });
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllRead = async () => {
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("recipient_id", userId);
+    await apiPost('/notifications', { action: 'mark-all-read' });
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   const remove = async (id: string) => {
-    await supabase.from("notifications").delete().eq("id", id);
+    await apiPost('/notifications', { action: 'delete', ids: [id] });
     setItems((prev) => prev.filter((n) => n.id !== id));
   };
 
