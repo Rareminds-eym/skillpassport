@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import * as assessmentService from '../api/assessmentService';
 import { saveRecommendations } from '@/features/courses';
 import { analyzeAssessmentWithGemini, addCourseRecommendations } from '..';
@@ -1579,6 +1580,16 @@ export const useAssessmentResults = () => {
             const user = useAuthStore.getState().user;
             if (user) {
                 const latestResult = await assessmentService.getLatestResult(user.id);
+                console.log('🔍 Latest result from database:', {
+                    hasResult: !!latestResult,
+                    hasGeminiResults: !!latestResult?.gemini_results,
+                    geminiResultsType: typeof latestResult?.gemini_results,
+                    geminiResultsKeys: latestResult?.gemini_results ? Object.keys(latestResult.gemini_results) : null,
+                    riasecData: latestResult?.gemini_results?.riasec,
+                    careerFitData: latestResult?.gemini_results?.careerFit,
+                    attemptId: latestResult?.attempt_id
+                });
+
                 if (latestResult?.gemini_results && typeof latestResult.gemini_results === 'object' && Object.keys(latestResult.gemini_results).length > 0) {
                     const geminiResults = latestResult.gemini_results;
 
@@ -1590,16 +1601,32 @@ export const useAssessmentResults = () => {
                         (geminiResults.riasec.code && geminiResults.riasec.code.length > 0)
                     );
 
-                    if (!hasValidRiasec) {
-                        console.log('⚠️ Latest result has gemini_results but RIASEC data is missing/invalid');
+                    // Also check if career fit data exists (main requirement for showing tracks)
+                    const hasCareerFit = geminiResults.careerFit && 
+                        geminiResults.careerFit.clusters && 
+                        Array.isArray(geminiResults.careerFit.clusters) &&
+                        geminiResults.careerFit.clusters.length > 0;
+
+                    console.log('🔍 Validation check:', {
+                        hasValidRiasec,
+                        hasCareerFit,
+                        riasecScores: geminiResults.riasec?.scores,
+                        riasecCode: geminiResults.riasec?.code,
+                        careerFitClusters: geminiResults.careerFit?.clusters?.length
+                    });
+
+                    // If we have career fit data, that's enough to show results (RIASEC is secondary)
+                    if (!hasValidRiasec && !hasCareerFit) {
+                        console.log('⚠️ Latest result has gemini_results but both RIASEC and CareerFit data are missing/invalid');
                         console.log('   RIASEC data:', geminiResults.riasec);
+                        console.log('   CareerFit data:', geminiResults.careerFit);
                         console.log('   Available gemini_results keys:', Object.keys(geminiResults));
                         console.log('   Redirecting to assessment test...');
 
                         navigate('/learner/assessment/test');
                         return;
                     } else {
-                        console.log('Loaded results from database');
+                        console.log('✅ Valid results found - loading assessment results page');
                         // Apply validation to correct RIASEC topThree and detect aptitude patterns
                         const validatedResults = await applyValidation(geminiResults);
 

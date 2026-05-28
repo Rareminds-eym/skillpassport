@@ -56,7 +56,6 @@ export const callOpenRouterAssessment = async (assessmentData) => {
 
   // Get auth token (via SSO, not Supabase auth which is disabled)
   updateProgress('sending', 'Authenticating...');
-  const user = useAuthStore.getState().user;
   const token = ssoClient.getAccessToken();
 
   if (!token) {
@@ -190,14 +189,26 @@ export const analyzeAssessmentWithOpenRouter = async (
   gradeLevel = 'after12', 
   preCalculatedScores = null, 
   learnerId = null, 
-  learnerContext = {}, 
+  learnerContext = null, 
   adaptiveResults = null
 ) => {
+  // Ensure learnerContext is never null
+  if (!learnerContext || typeof learnerContext !== 'object') {
+    logger.warn('⚠️ learnerContext is null or invalid, using fallback', { learnerContext });
+    learnerContext = {
+      rawGrade: gradeLevel || 'Learner',
+      programName: null,
+      programCode: null,
+      degreeLevel: null
+    };
+  }
+  
   logger.info('=== analyzeAssessmentWithGemini START ===', {
     gradeLevel,
     stream,
     learnerId: learnerId || 'Not provided',
     hasAdaptiveResults: !!adaptiveResults,
+    learnerContext: learnerContext,
     hasPreCalculatedScores: !!preCalculatedScores,
     questionBanks: {
       riasec: questionBanks.riasecQuestions?.length || 0,

@@ -667,16 +667,52 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         console.log('📊 [Stage 1/6] Preparing your responses...');
         window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
 
-        // Build learner context using the helper function
-        const finalLearnerContext = await buildlearnerContext(
-          userId!,
-          learnerStream,
-          gradeLevel,
-          selectedCategory || null,
-          learnerProgram || null
-        );
-
-        await storelearnerContext(attemptId, finalLearnerContext);
+        // Try to fetch existing learner context from the attempt first
+        let finalLearnerContext: LearnerContext | null = null;
+        
+        try {
+          const { data: attemptData } = await supabase
+            .from('personal_assessment_attempts')
+            .select('learner_context')
+            .eq('id', attemptId)
+            .single();
+          
+          if (attemptData?.learner_context) {
+            console.log('✅ Using existing learner context from attempt:', attemptData.learner_context);
+            finalLearnerContext = attemptData.learner_context as LearnerContext;
+          }
+        } catch (fetchErr) {
+          console.warn('⚠️ Could not fetch existing learner context:', fetchErr);
+        }
+        
+        // If no existing context, build a new one
+        if (!finalLearnerContext) {
+          console.log('🔨 Building new learner context...');
+          finalLearnerContext = await buildlearnerContext(
+            userId!,
+            learnerStream,
+            gradeLevel,
+            selectedCategory || null,
+            learnerProgram || null
+          );
+          
+          // Save the newly built context
+          await storelearnerContext(attemptId, finalLearnerContext);
+        }
+        
+        // Final safety check - ensure we have a valid context
+        if (!finalLearnerContext || !finalLearnerContext.rawGrade) {
+          console.error('❌ Failed to build learner context, using emergency fallback');
+          finalLearnerContext = {
+            rawGrade: learnerProgram || gradeLevel || 'Learner',
+            selectedStream: learnerStream,
+            selectedCategory: selectedCategory || null,
+            learnerType: gradeLevel === 'college' ? 'college' : 'general',
+            programName: learnerProgram || undefined,
+          };
+        }
+        
+        console.log('✅ Final learner context:', finalLearnerContext);
 
         // ============================================================================
         // STEP 4: Fetch adaptive aptitude results

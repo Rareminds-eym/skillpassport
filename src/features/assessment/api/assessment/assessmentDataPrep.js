@@ -331,11 +331,16 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
     totalAptitudeQuestions: aptitudeQuestions?.length || 50,
     sectionTimings: timingData,
     adaptiveAptitudeResults: adaptiveResults,
-    learnerContext: {
+    learnerContext: learnerContext ? {
       rawGrade: learnerContext.rawGrade || null,
       programName: learnerContext.programName || null,
       programCode: learnerContext.programCode || null,
       degreeLevel: learnerContext.degreeLevel || null
+    } : {
+      rawGrade: null,
+      programName: null,
+      programCode: null,
+      degreeLevel: null
     }
   };
 };

@@ -110,6 +110,130 @@ export async function startHandler(context: AuthenticatedContext) {
       }
 
       attempt = newAttempt;
+      
+      // Build and save learner context immediately
+      try {
+        logger.info('Building learner context', { learnerId, gradeLevel, streamId });
+        
+        // Fetch learner details
+        const { data: learnerDetails } = await supabase
+          .from('learners')
+          .select(`
+            grade,
+            branch_field,
+            course_name,
+            program_id,
+            learner_type,
+            programs (
+              name,
+              code,
+              degree_level
+            )
+          `)
+          .eq('id', learnerId)
+          .maybeSingle();
+        
+        let learnerContext: any = {};
+        
+        if (learnerDetails) {
+          // Extract program information
+          const programName = (learnerDetails.programs as any)?.name || 
+                            (learnerDetails.programs as any)?.code || 
+                            learnerDetails.course_name || 
+                            learnerDetails.branch_field;
+          const programCode = (learnerDetails.programs as any)?.code || streamId;
+          const programDegreeLevel = (learnerDetails.programs as any)?.degree_level;
+          
+          // Determine degree level
+          let degreeLevel: string | null = programDegreeLevel;
+          if (!degreeLevel && programName) {
+            const programLower = programName.toLowerCase();
+            if (programLower.includes('bachelor') || programLower.includes('b.tech') || programLower.includes('btech') || 
+                programLower.includes('bca') || programLower.includes('b.sc') || programLower.includes('b.com') || programLower.includes('bba')) {
+              degreeLevel = 'undergraduate';
+            } else if (programLower.includes('master') || programLower.includes('m.tech') || programLower.includes('mtech') || 
+                       programLower.includes('mca') || programLower.includes('mba') || programLower.includes('m.sc')) {
+              degreeLevel = 'postgraduate';
+            } else if (programLower.includes('diploma')) {
+              degreeLevel = 'diploma';
+            }
+          }
+          
+          // Build enhanced grade
+          let rawGrade = learnerDetails.grade || 'Learner';
+          if (gradeLevel === 'college' && programName) {
+            if (degreeLevel === 'undergraduate') {
+              rawGrade = `UG - ${programName}`;
+            } else if (degreeLevel === 'postgraduate') {
+              rawGrade = `PG - ${programName}`;
+            } else {
+              rawGrade = programName;
+            }
+          } else if (gradeLevel === 'middle') {
+            rawGrade = 'Grade 6-8';
+          } else if (gradeLevel === 'highschool') {
+            rawGrade = 'Grade 9-10';
+          } else if (gradeLevel === 'higher_secondary') {
+            rawGrade = 'Grade 11-12';
+          } else if (gradeLevel === 'after10') {
+            rawGrade = 'After 10th';
+          } else if (gradeLevel === 'after12') {
+            rawGrade = 'After 12th';
+          }
+          
+          // Determine learner type
+          let learnerType = 'general';
+          if (programName || degreeLevel || (learnerDetails as any).program_id) {
+            learnerType = 'college';
+          } else if ((learnerDetails as any).learner_type === 'school' || (learnerDetails as any).school_id) {
+            learnerType = 'school';
+          }
+          
+          learnerContext = {
+            rawGrade,
+            grade: learnerDetails.grade,
+            programName: programName || undefined,
+            programCode: programCode || undefined,
+            degreeLevel,
+            selectedStream: streamId,
+            selectedCategory: null,
+            learnerType
+          };
+        } else {
+          // Fallback context
+          let rawGrade = 'Learner';
+          if (gradeLevel === 'middle') rawGrade = 'Grade 6-8';
+          else if (gradeLevel === 'highschool') rawGrade = 'Grade 9-10';
+          else if (gradeLevel === 'higher_secondary') rawGrade = 'Grade 11-12';
+          else if (gradeLevel === 'after10') rawGrade = 'After 10th';
+          else if (gradeLevel === 'after12') rawGrade = 'After 12th';
+          else if (gradeLevel === 'college') rawGrade = 'College';
+          
+          learnerContext = {
+            rawGrade,
+            selectedStream: streamId,
+            selectedCategory: null,
+            learnerType: gradeLevel === 'college' ? 'college' : 'general'
+          };
+        }
+        
+        logger.info('Learner context built', { learnerContext });
+        
+        // Save learner context to attempt
+        const { error: contextError } = await supabase
+          .from('personal_assessment_attempts')
+          .update({ learner_context: learnerContext })
+          .eq('id', attempt.id);
+        
+        if (contextError) {
+          logger.error('Failed to save learner context', { error: contextError });
+        } else {
+          logger.info('Learner context saved successfully');
+        }
+      } catch (contextErr) {
+        logger.error('Error building learner context', { error: contextErr });
+        // Non-fatal - continue
+      }
     }
 
     let sections;

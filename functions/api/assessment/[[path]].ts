@@ -9,6 +9,7 @@
  * - POST /api/assessment/save-response - Save answer to question
  * - POST /api/assessment/update-progress - Update position and timings
  * - POST /api/assessment/submit - Submit completed assessment
+ * - POST /api/assessment/save-results - Save AI-analyzed results (bypasses RLS)
  * - POST /api/assessment/abandon - Abandon in-progress assessment
  * - GET /api/assessment/check-in-progress - Check for in-progress assessments
  */
@@ -22,6 +23,7 @@ import { submitHandler } from './handlers/submit';
 import { abandonHandler } from './handlers/abandon';
 import { checkInProgressHandler } from './handlers/check-in-progress';
 import { analyzeHandler } from './handlers/analyze';
+import { saveResultsHandler } from './handlers/save-results';
 
 /**
  * POST handler - Routes POST requests to appropriate handlers
@@ -45,6 +47,9 @@ export const onRequestPost = withAuth(async (context: any) => {
     } else if (path === '/submit') {
       console.log('[ASSESSMENT-ROUTER] Routing to submitHandler');
       return submitHandler(context);
+    } else if (path === '/save-results') {
+      console.log('[ASSESSMENT-ROUTER] Routing to saveResultsHandler');
+      return saveResultsHandler(context);
     } else if (path === '/abandon') {
       console.log('[ASSESSMENT-ROUTER] Routing to abandonHandler');
       return abandonHandler(context);
