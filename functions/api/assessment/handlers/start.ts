@@ -12,6 +12,8 @@ import { validateStartAssessmentRequest, validateLearnerData, validateAttemptDat
 import { dbAttemptToAssessmentAttempt } from '../utils/converters';
 import { loadSectionsWithQuestions } from '../utils/question-loader';
 import { createLogger } from '../../../lib/logger';
+import { normalizeStreamId } from '../utils/streamNormalizer';
+import { ensureStreamExists } from '../utils/ensureStreamExists';
 
 const logger = createLogger('StartHandler');
 
@@ -33,14 +35,26 @@ export async function startHandler(context: AuthenticatedContext) {
     logger.info('Starting assessment', { 
       userId: user.sub, 
       gradeLevel, 
-      streamId,
+      originalStreamId: streamId,
       hasEnv: !!env,
       hasQuestionGenUrl: !!env?.QUESTION_GENERATION_API_URL
     });
 
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
-      .select('id')
+      .select(`
+        id,
+        grade,
+        branch_field,
+        course_name,
+        program_id,
+        learner_type,
+        programs (
+          name,
+          code,
+          degree_level
+        )
+      `)
       .or(`user_id.eq.${user.sub},id.eq.${user.sub}`)
       .maybeSingle();
 
@@ -54,6 +68,49 @@ export async function startHandler(context: AuthenticatedContext) {
     }
 
     const learnerId = learnerData!.id;
+    
+    // **CRITICAL: Get the actual program name from learner profile for normalization**
+    // This ensures postgraduate programs like "Master of Technology in Computer Science" 
+    // are correctly normalized to "mtech_cse" instead of "btech_cse"
+    const actualProgramName = (learnerData.programs as any)?.name || 
+                              (learnerData.programs as any)?.code || 
+                              learnerData.course_name || 
+                              learnerData.branch_field ||
+                              streamId; // Fallback to frontend streamId if no program in profile
+    
+    logger.info('Program information', {
+      actualProgramName,
+      programFromDB: (learnerData.programs as any)?.name,
+      courseName: learnerData.course_name,
+      branchField: learnerData.branch_field,
+      frontendStreamId: streamId
+    });
+    
+    // Normalize using the ACTUAL program name from database, not the frontend streamId
+    const normalizedStreamId = actualProgramName ? normalizeStreamId(actualProgramName) : null;
+    
+    logger.info('Stream ID normalization', { 
+      originalStreamId: streamId,
+      actualProgramName,
+      normalizedStreamId
+    });
+    
+    // **CRITICAL: Ensure the normalized stream ID exists in the database**
+    // This prevents foreign key constraint violations by auto-creating missing streams
+    if (normalizedStreamId) {
+      const streamExists = await ensureStreamExists(supabase, normalizedStreamId);
+      if (!streamExists) {
+        logger.error('Failed to ensure stream exists', { normalizedStreamId });
+        return Response.json(
+          { 
+            error: 'Failed to initialize assessment stream', 
+            message: 'Could not create or verify stream record in database' 
+          }, 
+          { status: 500 }
+        );
+      }
+      logger.info('Stream verified/created successfully', { normalizedStreamId });
+    }
 
     // **CRITICAL: Check for existing in-progress attempt BEFORE creating new one**
     const { data: existingAttempts, error: existingError } = await supabase
@@ -70,7 +127,7 @@ export async function startHandler(context: AuthenticatedContext) {
     if (existingAttempts && existingAttempts.length > 0) {
       const existingAttempt = existingAttempts[0];
       const sameGrade = existingAttempt.grade_level === gradeLevel;
-      const sameStream = existingAttempt.stream_id === streamId || (streamId === null && existingAttempt.stream_id === null);
+      const sameStream = existingAttempt.stream_id === normalizedStreamId || (normalizedStreamId === null && existingAttempt.stream_id === null);
 
       if (sameGrade && sameStream) {
         attempt = existingAttempt;
@@ -94,7 +151,7 @@ export async function startHandler(context: AuthenticatedContext) {
         .insert({
           learner_id: learnerId,
           grade_level: gradeLevel,
-          stream_id: streamId || null,
+          stream_id: normalizedStreamId || null,
           status: 'in_progress',
           all_responses: {},
           timer_remaining: null,
@@ -113,36 +170,19 @@ export async function startHandler(context: AuthenticatedContext) {
       
       // Build and save learner context immediately
       try {
-        logger.info('Building learner context', { learnerId, gradeLevel, streamId });
+        logger.info('Building learner context', { learnerId, gradeLevel, normalizedStreamId });
         
-        // Fetch learner details
-        const { data: learnerDetails } = await supabase
-          .from('learners')
-          .select(`
-            grade,
-            branch_field,
-            course_name,
-            program_id,
-            learner_type,
-            programs (
-              name,
-              code,
-              degree_level
-            )
-          `)
-          .eq('id', learnerId)
-          .maybeSingle();
-        
+        // We already have learnerData from above, no need to fetch again
         let learnerContext: any = {};
         
-        if (learnerDetails) {
-          // Extract program information
-          const programName = (learnerDetails.programs as any)?.name || 
-                            (learnerDetails.programs as any)?.code || 
-                            learnerDetails.course_name || 
-                            learnerDetails.branch_field;
-          const programCode = (learnerDetails.programs as any)?.code || streamId;
-          const programDegreeLevel = (learnerDetails.programs as any)?.degree_level;
+        if (learnerData) {
+          // Extract program information (already fetched above)
+          const programName = (learnerData.programs as any)?.name || 
+                            (learnerData.programs as any)?.code || 
+                            learnerData.course_name || 
+                            learnerData.branch_field;
+          const programCode = (learnerData.programs as any)?.code || normalizedStreamId;
+          const programDegreeLevel = (learnerData.programs as any)?.degree_level;
           
           // Determine degree level
           let degreeLevel: string | null = programDegreeLevel;
@@ -160,7 +200,7 @@ export async function startHandler(context: AuthenticatedContext) {
           }
           
           // Build enhanced grade
-          let rawGrade = learnerDetails.grade || 'Learner';
+          let rawGrade = learnerData.grade || 'Learner';
           if (gradeLevel === 'college' && programName) {
             if (degreeLevel === 'undergraduate') {
               rawGrade = `UG - ${programName}`;
@@ -183,9 +223,9 @@ export async function startHandler(context: AuthenticatedContext) {
           
           // Determine learner type
           let learnerType = 'general';
-          if (programName || degreeLevel || (learnerDetails as any).program_id) {
+          if (programName || degreeLevel || (learnerData as any).program_id) {
             learnerType = 'college';
-          } else if ((learnerDetails as any).learner_type === 'school' || (learnerDetails as any).school_id) {
+          } else if ((learnerData as any).learner_type === 'school' || (learnerData as any).school_id) {
             learnerType = 'school';
           }
           
@@ -195,7 +235,7 @@ export async function startHandler(context: AuthenticatedContext) {
             programName: programName || undefined,
             programCode: programCode || undefined,
             degreeLevel,
-            selectedStream: streamId,
+            selectedStream: normalizedStreamId,
             selectedCategory: null,
             learnerType
           };
@@ -211,7 +251,7 @@ export async function startHandler(context: AuthenticatedContext) {
           
           learnerContext = {
             rawGrade,
-            selectedStream: streamId,
+            selectedStream: normalizedStreamId,
             selectedCategory: null,
             learnerType: gradeLevel === 'college' ? 'college' : 'general'
           };
@@ -238,13 +278,13 @@ export async function startHandler(context: AuthenticatedContext) {
 
     let sections;
     try {
-      sections = await loadSectionsWithQuestions(supabase, gradeLevel, streamId, env);
+      sections = await loadSectionsWithQuestions(supabase, gradeLevel, normalizedStreamId, env);
       logger.info('Sections loaded successfully', { 
         sectionCount: sections?.length || 0,
         sectionNames: sections?.map((s: any) => s.name) || []
       });
     } catch (loadError) {
-      logger.error('Failed to load sections', { error: loadError, gradeLevel, streamId });
+      logger.error('Failed to load sections', { error: loadError, gradeLevel, normalizedStreamId });
       return Response.json(
         { error: 'Failed to load assessment sections', message: loadError instanceof Error ? loadError.message : 'Unknown error' },
         { status: 500 }
@@ -272,7 +312,8 @@ export async function startHandler(context: AuthenticatedContext) {
       attemptId: attempt.id, 
       sectionCount: sections.length,
       gradeLevel,
-      streamId
+      originalStreamId: streamId,
+      normalizedStreamId
     });
 
     return Response.json(result, { status: 201 });
