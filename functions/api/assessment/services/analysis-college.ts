@@ -34,6 +34,8 @@ export async function analyzeCollege(
   learnerId: string
 ) {
   try {
+    console.log('[ANALYZE-COLLEGE] Starting analysis:', { attemptId, learnerId });
+    
     // Step 1: Fetch attempt with all_responses
     const { data: attempt, error: attemptError } = await supabase
       .from('personal_assessment_attempts')
@@ -42,8 +44,11 @@ export async function analyzeCollege(
       .eq('learner_id', learnerId)
       .single();
 
+    console.log('[ANALYZE-COLLEGE] Attempt query result:', { attempt, attemptError });
+
     if (attemptError || !attempt) {
-      return Response.json({ error: 'Attempt not found' }, { status: 404 });
+      console.error('[ANALYZE-COLLEGE] Attempt not found:', attemptError);
+      return Response.json({ error: 'Attempt not found', details: attemptError?.message }, { status: 404 });
     }
 
     const allResponses = attempt.all_responses || {};
@@ -126,6 +131,79 @@ export async function analyzeCollege(
     // Step 8: Process knowledge scores (stream knowledge)
     let knowledgeCorrect = 0;
     let knowledgeTotal = 0;
+    
+    // Step 8b: Fetch AI-generated knowledge questions for this attempt
+    // These are stored separately in career_assessment_ai_questions table
+    console.log('[ANALYZE-COLLEGE] Fetching AI knowledge questions for learner:', learnerId);
+    const { data: aiKnowledgeQuestions, error: aiKnowledgeError } = await supabase
+      .from('career_assessment_ai_questions')
+      .select('id, questions, question_type, stream_id')
+      .eq('learner_id', learnerId)
+      .eq('question_type', 'knowledge')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    console.log('[ANALYZE-COLLEGE] AI knowledge query result:', { 
+      found: !!aiKnowledgeQuestions, 
+      error: aiKnowledgeError,
+      learnerId 
+    });
+    
+    // Create a map of AI knowledge questions for lookup
+    const aiKnowledgeMap = new Map();
+    if (aiKnowledgeQuestions && aiKnowledgeQuestions.questions) {
+      const questionsArray = Array.isArray(aiKnowledgeQuestions.questions) 
+        ? aiKnowledgeQuestions.questions 
+        : JSON.parse(aiKnowledgeQuestions.questions);
+      
+      questionsArray.forEach((q: any, index: number) => {
+        // AI questions use keys like "knowledge_1", "knowledge_2", etc.
+        const key = `knowledge_${index + 1}`;
+        aiKnowledgeMap.set(key, {
+          question: q.question || q.text,
+          correctAnswer: q.correct_answer || q.correct,
+          options: q.options
+        });
+      });
+    }
+    
+    // Step 8c: Fetch AI-generated aptitude questions for this attempt
+    console.log('[ANALYZE-COLLEGE] Fetching AI aptitude questions for learner:', learnerId);
+    const { data: aiAptitudeQuestions, error: aiAptitudeError } = await supabase
+      .from('career_assessment_ai_questions')
+      .select('id, questions, question_type, stream_id')
+      .eq('learner_id', learnerId)
+      .eq('question_type', 'aptitude')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    console.log('[ANALYZE-COLLEGE] AI aptitude query result:', { 
+      found: !!aiAptitudeQuestions, 
+      error: aiAptitudeError,
+      learnerId 
+    });
+    
+    // Create a map of AI aptitude questions for lookup
+    const aiAptitudeMap = new Map();
+    if (aiAptitudeQuestions && aiAptitudeQuestions.questions) {
+      const questionsArray = Array.isArray(aiAptitudeQuestions.questions) 
+        ? aiAptitudeQuestions.questions 
+        : JSON.parse(aiAptitudeQuestions.questions);
+      
+      questionsArray.forEach((q: any, index: number) => {
+        // AI questions use keys like "aptitude_1", "aptitude_2", etc.
+        const key = `aptitude_${index + 1}`;
+        aiAptitudeMap.set(key, {
+          question: q.question || q.text,
+          correctAnswer: q.correct_answer || q.correct,
+          options: q.options
+        });
+      });
+    }
 
     // Process all responses
     for (const [uuid, answer] of Object.entries(allResponses)) {
@@ -195,6 +273,26 @@ export async function analyzeCollege(
         knowledgeTotal++;
         if (answer === question.correct_answer) {
           knowledgeCorrect++;
+        }
+      }
+    }
+    
+    // Step 8d: Process AI-generated knowledge answers from all_responses
+    // These use keys like "knowledge_1", "knowledge_2", etc.
+    for (const [key, answer] of Object.entries(allResponses)) {
+      if (key.startsWith('knowledge_') && aiKnowledgeMap.has(key)) {
+        const aiQuestion = aiKnowledgeMap.get(key);
+        knowledgeTotal++;
+        if (answer === aiQuestion.correctAnswer) {
+          knowledgeCorrect++;
+        }
+      }
+      
+      if (key.startsWith('aptitude_') && aiAptitudeMap.has(key)) {
+        const aiQuestion = aiAptitudeMap.get(key);
+        aptitudeTotal++;
+        if (answer === aiQuestion.correctAnswer) {
+          aptitudeCorrect++;
         }
       }
     }
@@ -368,6 +466,77 @@ export async function analyzeCollege(
       }
     }
 
+    console.log('[ANALYZE-COLLEGE] ✅ Scores calculated and stored successfully');
+    console.log('[ANALYZE-COLLEGE] 🤖 Now triggering AI analysis for career suggestions...');
+
+    // Step 18: Trigger AI analysis to generate career suggestions
+    // This calls the /api/analyze-assessment endpoint which uses AI to generate
+    // career fit clusters, skill gaps, roadmaps, etc.
+    try {
+      const url = new URL(context.request.url);
+      const analyzeAssessmentUrl = `${url.protocol}//${url.host}/api/analyze-assessment/analyze`;
+      
+      console.log('[ANALYZE-COLLEGE] Calling AI analysis at:', analyzeAssessmentUrl);
+      
+      // Prepare assessment data for AI analysis
+      // We need to fetch the full attempt data with all responses
+      const { data: fullAttempt } = await supabase
+        .from('personal_assessment_attempts')
+        .select('*')
+        .eq('id', attemptId)
+        .single();
+      
+      if (!fullAttempt) {
+        console.error('[ANALYZE-COLLEGE] Could not fetch full attempt for AI analysis');
+        // Non-fatal - scores are already saved
+      } else {
+        // Call the AI analysis endpoint
+        const aiResponse = await fetch(analyzeAssessmentUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': context.request.headers.get('Authorization') || '',
+          },
+          body: JSON.stringify({
+            assessmentData: {
+              attemptId: attemptId,
+              learnerId: learnerId,
+              gradeLevel: attempt.grade_level,
+              stream: attempt.stream_id,
+              // The AI endpoint will fetch the rest of the data from the database
+            }
+          })
+        });
+        
+        if (aiResponse.ok) {
+          const aiResults = await aiResponse.json();
+          console.log('[ANALYZE-COLLEGE] ✅ AI analysis completed successfully');
+          
+          // Update the results with AI-generated data
+          const { error: aiUpdateError } = await supabase
+            .from('personal_assessment_results')
+            .update({
+              career_fit: aiResults.careerFit,
+              skill_gap: aiResults.skillGap,
+              roadmap: aiResults.roadmap,
+              gemini_results: aiResults,
+            })
+            .eq('attempt_id', attemptId);
+          
+          if (aiUpdateError) {
+            console.error('[ANALYZE-COLLEGE] Failed to update AI results:', aiUpdateError);
+          }
+        } else {
+          const errorText = await aiResponse.text();
+          console.error('[ANALYZE-COLLEGE] AI analysis failed:', aiResponse.status, errorText);
+          // Non-fatal - scores are already saved
+        }
+      }
+    } catch (aiError) {
+      console.error('[ANALYZE-COLLEGE] Error during AI analysis:', aiError);
+      // Non-fatal - scores are already saved, user can still see basic results
+    }
+
     return Response.json(
       {
         success: true,
@@ -386,10 +555,15 @@ export async function analyzeCollege(
       { status: 200 }
     );
   } catch (error) {
+    console.error('[ANALYZE-COLLEGE] Error during analysis:', error);
+    console.error('[ANALYZE-COLLEGE] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('[ANALYZE-COLLEGE] Error message:', error instanceof Error ? error.message : String(error));
+    
     return Response.json(
       {
         error: 'College analysis failed',
         message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 }
     );

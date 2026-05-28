@@ -383,35 +383,35 @@ const buildlearnerContext = async (
   selectedCategory: string | null,
   learnerProgram?: string | null
 ): Promise<LearnerContext> => {
+  console.log('[LEARNER-CONTEXT] Building context with:', { userId, learnerStream, gradeLevel, selectedCategory, learnerProgram });
+  
   try {
-    // Fetch both learner record and user metadata
-    const [learnerResult, userResult] = await Promise.all([
-      supabase
-        .from('learners')
-        .select(`
-          grade,
-          branch_field,
-          course_name,
-          program_id,
-          learner_type,
-          school_id,
-          college_id,
-          programs (
-            name,
-            code,
-            degree_level
-          )
-        `)
-        .eq('user_id', userId)
-        .maybeSingle(),
-      getCurrentUser()
-    ]);
+    // Fetch learner record
+    console.log('[LEARNER-CONTEXT] Fetching learner record for user_id:', userId);
+    const { data: learner, error: learnerError } = await supabase
+      .from('learners')
+      .select(`
+        grade,
+        branch_field,
+        course_name,
+        program_id,
+        learner_type,
+        school_id,
+        college_id,
+        programs (
+          name,
+          code,
+          degree_level
+        )
+      `)
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    const { data: learner, error: learnerError } = learnerResult;
-    const userMetadata = userResult.data?.user?.user_metadata;
+    console.log('[LEARNER-CONTEXT] Learner query result:', { learner, learnerError });
 
     if (learnerError || !learner) {
       console.warn('⚠️ Could not fetch learner record:', learnerError?.message);
+      console.warn('⚠️ Falling back to fallback context');
       return buildFallbackContext(learnerStream, gradeLevel, selectedCategory, learnerProgram);
     }
 
@@ -437,7 +437,7 @@ const buildlearnerContext = async (
       (learner as any).school_id,
       (learner as any).college_id,
       (learner as any).learner_type,
-      userMetadata?.role
+      null // userMetadata not available
     );
 
     // Build enhanced grade
@@ -474,15 +474,37 @@ const buildFallbackContext = (
   selectedCategory: string | null,
   learnerProgram?: string | null
 ): LearnerContext => {
+  console.log('[LEARNER-CONTEXT] Building fallback context with:', { learnerStream, gradeLevel, selectedCategory, learnerProgram });
+  
   const category = selectedCategory || deriveCategory(learnerStream);
-  const enhancedGrade = buildEnhancedGrade(null, learnerProgram ?? null, learnerStream, gradeLevel);
+  
+  // For college learners, try to build a better grade string
+  let enhancedGrade = 'Learner';
+  let degreeLevel: string | null = null;
+  
+  if (gradeLevel === 'college' && learnerProgram) {
+    // Extract degree level from program name
+    const programLower = learnerProgram.toLowerCase();
+    if (programLower.includes('bachelor') || programLower.includes('b.tech') || programLower.includes('btech')) {
+      degreeLevel = 'undergraduate';
+      enhancedGrade = `UG - ${learnerProgram}`;
+    } else if (programLower.includes('master') || programLower.includes('m.tech') || programLower.includes('mtech')) {
+      degreeLevel = 'postgraduate';
+      enhancedGrade = `PG - ${learnerProgram}`;
+    } else {
+      enhancedGrade = learnerProgram;
+    }
+  } else {
+    enhancedGrade = buildEnhancedGrade(null, learnerProgram ?? null, learnerStream, gradeLevel);
+  }
 
   const context: LearnerContext = {
     rawGrade: enhancedGrade,
     selectedStream: learnerStream,
     selectedCategory: category,
-    learnerType: 'general',
+    learnerType: gradeLevel === 'college' ? 'college' : 'general',
     programName: learnerProgram ?? undefined,
+    degreeLevel: degreeLevel,
   };
 
   console.log('✅ [LEARNER-CONTEXT] Built fallback context:', JSON.stringify(context, null, 2));
@@ -593,152 +615,6 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         finalTimings[lastSection.id] = timeSpent;
       }
 
-      // ✅ CRITICAL FIX: Fetch learner context for all learners to get their actual grade
-      // This ensures career recommendations are age-appropriate
-      let learnerContext: any = {};
-
-      if (userId) {
-        try {
-
-          const { data: learner, error: learnerError } = await supabase
-            .from('learners')
-            .select(`
-              grade,
-              branch_field,
-              course_name,
-              program_id,
-              programs (
-                name,
-                code,
-                degree_level
-              )
-            `)
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          if (!learnerError && learner) {
-            // Extract degree level from grade or program
-            const extractDegreeLevel = (grade: string | null, programDegreeLevel: string | null): string | null => {
-              if (programDegreeLevel) return programDegreeLevel;
-              if (!grade) return null;
-              const gradeStr = grade.toLowerCase();
-              if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') ||
-                gradeStr.includes('m.tech') || gradeStr.includes('mtech') ||
-                gradeStr.includes('mca') || gradeStr.includes('mba') ||
-                gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
-                return 'postgraduate';
-              }
-              if (gradeStr.includes('ug') || gradeStr.includes('undergraduate') ||
-                gradeStr.includes('b.tech') || gradeStr.includes('btech') ||
-                gradeStr.includes('bca') || gradeStr.includes('b.sc') ||
-                gradeStr.includes('b.com') || gradeStr.includes('ba ') ||
-                gradeStr.includes('bba')) {
-                return 'undergraduate';
-              }
-              if (gradeStr.includes('diploma')) {
-                return 'diploma';
-              }
-              return null;
-            };
-
-            // Priority: program.name > program.code > course_name > branch_field
-            const programName = (learner.programs as any)?.name ||
-              (learner.programs as any)?.code ||
-              learner.course_name ||
-              learner.branch_field;
-            const programCode = (learner.programs as any)?.code || null;
-            const degreeLevel = extractDegreeLevel(
-              learner.grade,
-              (learner.programs as any)?.degree_level
-            );
-
-            // ✅ FIX: For higher_secondary, include the selected stream in rawGrade
-            // This ensures AI knows if learner is in Arts/Science/Commerce
-            let enhancedGrade = learner.grade;
-            let derivedCategory = selectedCategory || deriveCategory(learnerStream);
-            
-            if (gradeLevel === 'higher_secondary' && learnerStream) {
-              // Map stream ID to readable name
-              const streamMap: Record<string, string> = {
-                'science': 'Science',
-                'commerce': 'Commerce',
-                'arts': 'Arts'
-              };
-              const streamName = streamMap[learnerStream] || learnerStream;
-              
-              // Parse the grade to get specific grade number (11 or 12)
-              let specificGrade = learner.grade;
-              if (learner.grade) {
-                const gradeStr = String(learner.grade).toLowerCase();
-                console.log(`🔍 Parsing learner.grade: "${learner.grade}" (lowercase: "${gradeStr}")`);
-                
-                // CRITICAL: Check for 12 FIRST, then 11 (to avoid "11" matching in "11/12")
-                if (gradeStr.includes('12') || gradeStr.includes('xii') || gradeStr.includes('twelve')) {
-                  specificGrade = 'Grade 12';
-                  console.log(`✅ Detected Grade 12 from: "${learner.grade}"`);
-                } else if (gradeStr.includes('11') || gradeStr.includes('xi') || gradeStr.includes('eleven')) {
-                  specificGrade = 'Grade 11';
-                  console.log(`✅ Detected Grade 11 from: "${learner.grade}"`);
-                } else {
-                  console.warn(`⚠️ Could not parse grade from: "${learner.grade}", keeping as-is`);
-                }
-              }
-              
-              enhancedGrade = `${specificGrade} - ${streamName}`;
-              console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}" (from learner.grade: "${learner.grade}")`);
-            }
-
-            learnerContext = {
-              rawGrade: enhancedGrade,
-              grade: learner.grade, // Keep original grade too
-              programName: programName,
-              programCode: programCode,
-              degreeLevel: degreeLevel,
-              selectedStream: learnerStream, // Include the selected stream
-              selectedCategory: derivedCategory // Include the category (arts/science/commerce)
-            };
-
-
-          } else {
-            console.warn('⚠️ Could not fetch learner context:', learnerError?.message);
-          }
-        } catch (learnerFetchErr) {
-          console.error('❌ Error fetching learner context:', learnerFetchErr);
-        }
-      }
-
-      // ✅ FIX: If no learner record but we have a stream selection, still include it
-      if (Object.keys(learnerContext).length === 0 && learnerStream && gradeLevel === 'higher_secondary') {
-        const streamMap: Record<string, string> = {
-          'science': 'Science',
-          'commerce': 'Commerce',
-          'arts': 'Arts'
-        };
-        const streamName = streamMap[learnerStream] || learnerStream;
-        const derivedCategory = selectedCategory || deriveCategory(learnerStream);
-        
-        // Try to determine specific grade from answers if available
-        // Check if there's a grade selection answer in the assessment
-        const gradeAnswer = answers['grade_selection'] || answers['learner_grade'];
-        let specificGrade = 'Grade 11'; // Default to Grade 11 if unknown
-        
-        if (gradeAnswer) {
-          // Parse grade from answer
-          const gradeStr = String(gradeAnswer).toLowerCase();
-          if (gradeStr.includes('12') || gradeStr.includes('xii') || gradeStr.includes('twelve')) {
-            specificGrade = 'Grade 12';
-          }
-          // If it includes '11', keep default Grade 11
-        }
-        
-        learnerContext = {
-          rawGrade: `${specificGrade} - ${streamName}`,
-          selectedStream: learnerStream,
-          selectedCategory: derivedCategory
-        };
-        console.log(`✅ Created fallback learner context: "${specificGrade} - ${streamName}"`);
-      }
-
       try {
         if (!userId) {
           throw new Error('User ID is required for assessment submission');
@@ -791,7 +667,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         console.log('📊 [Stage 1/6] Preparing your responses...');
         window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
 
-        const learnerContext = await buildlearnerContext(
+        // Build learner context using the helper function
+        const finalLearnerContext = await buildlearnerContext(
           userId!,
           learnerStream,
           gradeLevel,
@@ -799,7 +676,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           learnerProgram || null
         );
 
-        await storelearnerContext(attemptId, learnerContext);
+        await storelearnerContext(attemptId, finalLearnerContext);
 
         // ============================================================================
         // STEP 4: Fetch adaptive aptitude results
@@ -935,7 +812,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             stream: learnerStream,
             gradeLevel: gradeLevel || 'after12',
             hasAdaptiveResults: !!adaptiveResults,
-            learnerContext: learnerContext,
+            learnerContext: finalLearnerContext,
           });
 
           geminiResults = await analyzeAssessmentWithGemini(
@@ -952,7 +829,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             finalTimings,
             gradeLevel || 'after12',
             null,
-            learnerContext,
+            finalLearnerContext,
             adaptiveResults
           );
 

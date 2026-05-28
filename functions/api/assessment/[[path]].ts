@@ -30,23 +30,33 @@ export const onRequestPost = withAuth(async (context: any) => {
   const url = new URL(context.request.url);
   const path = url.pathname.replace('/api/assessment', '');
 
+  console.log('[ASSESSMENT-ROUTER] POST request received:', { path, fullUrl: url.pathname });
+
   try {
     if (path === '/start') {
+      console.log('[ASSESSMENT-ROUTER] Routing to startHandler');
       return startHandler(context);
     } else if (path === '/save-response') {
+      console.log('[ASSESSMENT-ROUTER] Routing to saveResponseHandler');
       return saveResponseHandler(context);
     } else if (path === '/update-progress') {
+      console.log('[ASSESSMENT-ROUTER] Routing to updateProgressHandler');
       return updateProgressHandler(context);
     } else if (path === '/submit') {
+      console.log('[ASSESSMENT-ROUTER] Routing to submitHandler');
       return submitHandler(context);
     } else if (path === '/abandon') {
+      console.log('[ASSESSMENT-ROUTER] Routing to abandonHandler');
       return abandonHandler(context);
     } else if (path === '/analyze') {
+      console.log('[ASSESSMENT-ROUTER] Routing to analyzeHandler');
       return analyzeHandler(context);
     } else {
+      console.log('[ASSESSMENT-ROUTER] Path not found:', path);
       return apiNotFound(`Assessment endpoint not found: ${path}`, context.request);
     }
   } catch (error) {
+    console.error('[ASSESSMENT-ROUTER] Error in router:', error);
     return apiError(
       500,
       'INTERNAL_SERVER_ERROR',

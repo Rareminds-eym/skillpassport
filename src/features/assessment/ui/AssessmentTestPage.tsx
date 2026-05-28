@@ -12,12 +12,12 @@ import { useAssessmentStore } from '../model/assessmentStore';
 import {
   startAssessment,
   saveResponse,
-  submitAssessment,
   checkInProgress,
   abandonAttempt,
   analyzeAssessment,
   StartAssessmentResponse,
 } from '../api/assessmentApiService';
+import { useAssessmentSubmission } from '../model'; // Import the submission hook
 import { normalizeStreamId } from '../api/careerAssessmentAIService';
 
 // Hooks
@@ -337,6 +337,84 @@ const AssessmentTestPage: React.FC = () => {
         });
 
         if (result.success && result.attemptId) {
+          // Build and save learner context immediately after creating the attempt
+          try {
+            logger.info('[Assessment Start] Building learner context', { 
+              attemptId: result.attemptId, 
+              userId: user?.id,
+              learnerProgram,
+              streamId,
+              selectedGrade
+            });
+            
+            // Use the already imported supabase client
+            const { supabase } = await import('@/shared/api/supabaseClient');
+            
+            // Determine degree level
+            let degreeLevel: string | null = null;
+            if (learnerProgram) {
+              const programLower = learnerProgram.toLowerCase();
+              if (programLower.includes('bachelor') || programLower.includes('b.tech') || programLower.includes('btech') || programLower.includes('bca') || programLower.includes('b.sc') || programLower.includes('b.com') || programLower.includes('bba')) {
+                degreeLevel = 'undergraduate';
+              } else if (programLower.includes('master') || programLower.includes('m.tech') || programLower.includes('mtech') || programLower.includes('mca') || programLower.includes('mba') || programLower.includes('m.sc')) {
+                degreeLevel = 'postgraduate';
+              } else if (programLower.includes('diploma')) {
+                degreeLevel = 'diploma';
+              }
+            }
+            
+            // Build enhanced grade
+            let rawGrade = 'Learner';
+            if (selectedGrade === 'college' && learnerProgram) {
+              if (degreeLevel === 'undergraduate') {
+                rawGrade = `UG - ${learnerProgram}`;
+              } else if (degreeLevel === 'postgraduate') {
+                rawGrade = `PG - ${learnerProgram}`;
+              } else {
+                rawGrade = learnerProgram;
+              }
+            } else if (selectedGrade === 'middle') {
+              rawGrade = 'Grade 6-8';
+            } else if (selectedGrade === 'highschool') {
+              rawGrade = 'Grade 9-10';
+            } else if (selectedGrade === 'higher_secondary') {
+              rawGrade = 'Grade 11-12';
+            } else if (selectedGrade === 'after10') {
+              rawGrade = 'After 10th';
+            } else if (selectedGrade === 'after12') {
+              rawGrade = 'After 12th';
+            }
+            
+            // Build learner context
+            const learnerContext = {
+              rawGrade,
+              selectedStream: streamId,
+              selectedCategory: null,
+              learnerType: selectedGrade === 'college' ? 'college' : (selectedGrade === 'middle' || selectedGrade === 'highschool' || selectedGrade === 'higher_secondary' ? 'school' : 'general'),
+              programName: learnerProgram || undefined,
+              programCode: streamId || undefined,
+              degreeLevel,
+            };
+            
+            logger.info('[Assessment Start] Learner context built', { learnerContext });
+            
+            // Save to database
+            const { data: updateData, error: contextError } = await supabase
+              .from('personal_assessment_attempts')
+              .update({ learner_context: learnerContext })
+              .eq('id', result.attemptId)
+              .select();
+            
+            if (contextError) {
+              logger.error('[Assessment Start] Failed to save learner context', { error: contextError, attemptId: result.attemptId });
+            } else {
+              logger.info('[Assessment Start] Learner context saved successfully', { updateData });
+            }
+          } catch (contextErr) {
+            logger.error('[Assessment Start] Error building learner context', { error: contextErr });
+            // Non-fatal - continue with assessment
+          }
+          
           store.initializeAssessment(result.sections, result.attemptId, selectedGrade, streamId);
           setShowSectionIntro(true); // Show section intro before questions
           setCurrentScreen('section-intro');
@@ -572,48 +650,46 @@ const AssessmentTestPage: React.FC = () => {
     // useAnswerSync hook handles backend sync - no direct save needed
   }, [store]);
 
+  // Use the old submission hook that properly handles AI-generated questions
+  const { submit: submitAssessmentWithAI, isSubmitting } = useAssessmentSubmission();
+
   // Handle submit assessment
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!store.attemptId) return;
 
     store.setStatus('submitting');
     store.setLoading(true);
+    setCurrentScreen('analyzing');
 
     try {
-      const result = await submitAssessment({
-        attemptId: store.attemptId,
+      // Use the old flow that properly fetches AI-generated questions
+      // and calls analyzeAssessmentWithGemini
+      await submitAssessmentWithAI({
         answers: store.answers,
+        sections: store.sections,
+        learnerStream: store.streamId || null,
+        gradeLevel: store.gradeLevel,
+        sectionTimings: {}, // TODO: Track section timings
+        currentAttempt: { id: store.attemptId },
+        userId: user?.id || null,
+        timeRemaining: null,
+        elapsedTime: 0,
+        selectedCategory: undefined,
+        learnerProgram: learnerProgram || undefined, // Pass the learner program from the hook
       });
 
-      if (result.success) {
-        // Show analyzing screen while backend processes
-        setCurrentScreen('analyzing');
-
-        // Step 1: Call analyze endpoint via service
-        const analyzeResult = await analyzeAssessment(store.attemptId, store.gradeLevel);
-
-        // Step 2: Check if analysis succeeded
-        if (analyzeResult.success) {
-          toast.success('Success');
-          store.setStatus('completed');
-          setCurrentScreen('complete');
-        } else {
-          // Analysis failed
-          store.setError(analyzeResult.error || 'Failed to analyze assessment');
-          setCurrentScreen('error');
-        }
-      } else {
-        store.setError(result.error || 'Failed to submit assessment');
-        setCurrentScreen('error');
-      }
+      toast.success('Success');
+      store.setStatus('completed');
+      setCurrentScreen('complete');
     } catch (err: unknown) {
       const error = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[AssessmentTestPage] Submit error:', error);
       store.setError(error);
       setCurrentScreen('error');
     } finally {
       store.setLoading(false);
     }
-  }, [store]);
+  }, [store, submitAssessmentWithAI, user, learnerProgram]);
 
   // Handle next question
   const handleNextQuestion = useCallback((): void => {
