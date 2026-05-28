@@ -5,9 +5,9 @@
  * Manages session resumption and discovery
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import type { 
   TestSession, 
   Question,
@@ -42,7 +42,7 @@ export const resumeHandler: PagesFunction = async (context) => {
   const sessionId = pathParts[pathParts.length - 1];
 
   if (!sessionId) {
-    return jsonResponse({ error: 'Session ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Session ID is required', request);
   }
 
   try {
@@ -59,19 +59,13 @@ export const resumeHandler: PagesFunction = async (context) => {
 
     if (sessionError || !sessionData) {
       console.error('❌ [ResumeHandler] Failed to fetch session:', sessionError);
-      return jsonResponse(
-        { error: 'Session not found', message: sessionError?.message },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Session not found', request);
     }
 
     // Check if session is abandoned
     if (sessionData.status === 'abandoned') {
       console.error('❌ [ResumeHandler] Cannot resume abandoned session');
-      return jsonResponse(
-        { error: 'Cannot resume an abandoned session' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Cannot resume an abandoned session', request);
     }
 
     console.log('📊 [ResumeHandler] Session status:', sessionData.status);
@@ -119,7 +113,7 @@ export const resumeHandler: PagesFunction = async (context) => {
         isTestComplete: true,
       };
 
-      return jsonResponse(result);
+      return apiSuccess(result, request);
     }
 
     // Get current question
@@ -186,17 +180,11 @@ export const resumeHandler: PagesFunction = async (context) => {
       isTestComplete: false,
     };
 
-    return jsonResponse(result);
+    return apiSuccess(result, request);
 
   } catch (error) {
     console.error('❌ [ResumeHandler] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to resume test',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to resume test', request);
   }
 };
 
@@ -215,7 +203,7 @@ export const findInProgressHandler: PagesFunction = async (context) => {
   const learnerId = pathParts[pathParts.length - 1];
 
   if (!learnerId) {
-    return jsonResponse({ error: 'Learner ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Learner ID is required', request);
   }
 
   // Get optional gradeLevel query parameter
@@ -245,7 +233,7 @@ export const findInProgressHandler: PagesFunction = async (context) => {
 
     if (error || !data) {
       console.log('📭 [FindInProgressHandler] No in-progress session found');
-      return jsonResponse({ session: null }, 200);
+      return apiSuccess({ session: null }, request);
     }
 
     console.log('✅ [FindInProgressHandler] Found in-progress session:', data.id);
@@ -262,16 +250,10 @@ export const findInProgressHandler: PagesFunction = async (context) => {
 
     const session = dbSessionToTestSession(data, responses, currentPhaseQuestions);
 
-    return jsonResponse({ session });
+    return apiSuccess({ session }, request);
 
   } catch (error) {
     console.error('❌ [FindInProgressHandler] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to find in-progress session',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to find in-progress session', request);
   }
 };

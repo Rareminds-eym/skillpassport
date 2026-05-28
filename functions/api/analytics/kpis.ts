@@ -4,6 +4,7 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiError } from '../../lib/response';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -21,6 +22,6 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     .order('date', { ascending: false })
     .limit(30);
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ kpis: data });
+  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  return apiSuccess({ kpis: data }, context.request);
 });

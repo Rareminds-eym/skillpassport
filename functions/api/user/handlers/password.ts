@@ -3,8 +3,8 @@
  * Handles OTP-based password reset flow
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { sendPasswordResetEmail } from '../utils/email';
 
 /**
@@ -25,7 +25,7 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
   // ==================== SEND OTP ====================
   if (action === 'send') {
     if (!email) {
-      return jsonResponse({ error: 'Email is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Email is required', request);
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -46,7 +46,7 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
         .maybeSingle();
 
       if (!learner) {
-        return jsonResponse({ error: 'No account found with this email address' }, 404);
+        return apiError(404, 'NOT_FOUND', 'No account found with this email address', request);
       }
     }
 
@@ -71,22 +71,22 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
 
     if (dbError) {
       console.error('Failed to store reset token:', dbError);
-      return jsonResponse({ error: 'Failed to create reset token' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to create reset token', request);
     }
 
     // Send email
     const emailSent = await sendPasswordResetEmail(env, normalizedEmail, token);
     if (!emailSent) {
-      return jsonResponse({ error: 'Failed to send email' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to send email', request);
     }
 
-    return jsonResponse({ success: true, message: 'OTP sent successfully' });
+    return apiSuccess({ message: 'OTP sent successfully' }, request);
   }
 
   // ==================== VERIFY OTP ONLY ====================
   if (action === 'verify-otp') {
     if (!email || !otp) {
-      return jsonResponse({ error: 'Email and OTP are required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Email and OTP are required', request);
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -102,23 +102,23 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
       .limit(1);
 
     if (!tokens || tokens.length === 0) {
-      return jsonResponse({ error: 'Invalid or expired OTP' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid or expired OTP', request);
     }
 
-    return jsonResponse({ success: true, message: 'OTP verified successfully' });
+    return apiSuccess({ message: 'OTP verified successfully' }, request);
   }
 
   // ==================== RESET PASSWORD ====================
   if (action === 'reset-password') {
     if (!email || !otp || !newPassword) {
-      return jsonResponse({ error: 'Email, OTP, and new password are required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Email, OTP, and new password are required', request);
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
     // Validate password strength
     if (newPassword.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters long' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters long', request);
     }
 
     // Verify OTP again
@@ -132,7 +132,7 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
       .limit(1);
 
     if (!tokens || tokens.length === 0) {
-      return jsonResponse({ error: 'Invalid or expired OTP' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid or expired OTP', request);
     }
 
     // Find user in database - users.id IS the auth user ID
@@ -157,7 +157,7 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
 
     if (!authUserId) {
       console.error('User not found in database for email:', normalizedEmail);
-      return jsonResponse({ error: 'User account not found' }, 404);
+      return apiError(404, 'NOT_FOUND', 'User account not found', request);
     }
 
     // Update password using the auth user ID from database
@@ -167,7 +167,7 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
 
     if (updateError) {
       console.error('Failed to update password:', updateError);
-      return jsonResponse({ error: 'Failed to update password' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to update password', request);
     }
 
     // Delete used token
@@ -176,8 +176,8 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
       .delete()
       .eq('email', normalizedEmail);
 
-    return jsonResponse({ success: true, message: 'Password updated successfully' });
+    return apiSuccess({ message: 'Password updated successfully' }, request);
   }
 
-  return jsonResponse({ error: 'Invalid action' }, 400);
+  return apiError(400, 'VALIDATION_ERROR', 'Invalid action', request);
 }

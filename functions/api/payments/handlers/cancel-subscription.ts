@@ -14,6 +14,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { ssoUpdateSubscriptionStatus, ssoSyncSubscription } from '../../../lib/sso-client';
 import { syncSubscriptionCache } from '../../../lib/sync-shadow';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const url = new URL(context.request.url);
@@ -22,10 +23,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const subscriptionId = match ? match[1] : null;
 
   if (!subscriptionId) {
-    return new Response(
-      JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Subscription ID is required' } }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'Subscription ID is required', context.request);
   }
 
   return handleCancelSubscription(context, subscriptionId);
@@ -47,10 +45,7 @@ export async function handleCancelSubscription(context: AuthenticatedContext, su
       .maybeSingle();
 
     if (!sub) {
-      return new Response(
-        JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Subscription not found or access denied' } }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(404, 'NOT_FOUND', 'Subscription not found or access denied', context.request);
     }
 
     // Call payment-worker via RPC — worker validates ID format and calls Razorpay
@@ -73,12 +68,9 @@ export async function handleCancelSubscription(context: AuthenticatedContext, su
       console.error('[CancelSubscription] Shadow sync failed (non-blocking):', syncError);
     }
 
-    return new Response(JSON.stringify({ success: true, subscription: ssoResult }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ subscription: ssoResult }, context.request);
   } catch (error) {
     console.error('[CancelSubscription] Error:', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

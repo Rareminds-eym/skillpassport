@@ -6,8 +6,8 @@
  * - Update learner documents
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 import {
   calculateAge,
   deleteAuthUser,
@@ -43,15 +43,15 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
   const { learner, userEmail, schoolId: requestSchoolId, collegeId: requestCollegeId } = body;
 
   if (!learner || !learner.name || !learner.email || !learner.contactNumber) {
-    return jsonResponse({ error: 'Missing required fields: name, email, and contactNumber' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: name, email, and contactNumber', request);
   }
 
   if (!userEmail) {
-    return jsonResponse({ error: 'No user email provided' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'No user email provided', request);
   }
 
   if (!validateEmail(learner.email)) {
-    return jsonResponse({ error: 'Invalid email format' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
   }
 
   // Get current user data
@@ -112,7 +112,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
   }
 
   if (!schoolId && !collegeId) {
-    return jsonResponse({ error: 'School/College ID not found' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'School/College ID not found', request);
   }
 
   // Check if email already exists
@@ -121,7 +121,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     (u: any) => u.email === learner.email.toLowerCase()
   );
   if (emailExists) {
-    return jsonResponse({ error: `Learner with email ${learner.email} already exists` }, 400);
+    return apiError(400, 'VALIDATION_ERROR', `Learner with email ${learner.email} already exists`, request);
   }
 
   const { data: existingLearner } = await supabaseAdmin
@@ -130,7 +130,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     .eq('email', learner.email.toLowerCase())
     .maybeSingle();
   if (existingLearner) {
-    return jsonResponse({ error: `Learner with email ${learner.email} already exists` }, 400);
+    return apiError(400, 'VALIDATION_ERROR', `Learner with email ${learner.email} already exists`, request);
   }
 
   const learnerPassword = generatePassword();
@@ -151,7 +151,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
   });
 
   if (authError || !authUser.user) {
-    return jsonResponse({ error: `Failed to create auth account: ${authError?.message}` }, 500);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
   }
 
   try {
@@ -212,8 +212,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
       throw new Error(`Failed to create learner profile: ${learnerError.message}`);
     }
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: `Learner ${learner.name} created successfully`,
       data: {
         authUserId: authUser.user.id,
@@ -225,11 +224,11 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
         schoolId,
         collegeId,
       },
-    });
+    }, request);
   } catch (error) {
     // Rollback auth user
     await deleteAuthUser(supabaseAdmin, authUser.user.id);
-    return jsonResponse({ error: (error as Error).message }, 400);
+    return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }
 
@@ -272,11 +271,11 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
   console.log('📥 Received teacher data in API:', JSON.stringify(teacher, null, 2));
 
   if (!teacher || !teacher.first_name || !teacher.last_name || !teacher.email) {
-    return jsonResponse({ error: 'Missing required fields: first_name, last_name, and email' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: first_name, last_name, and email', request);
   }
 
   if (!validateEmail(teacher.email)) {
-    return jsonResponse({ error: 'Invalid email format' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
   }
 
   // Get school ID
@@ -309,7 +308,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
   }
 
   if (!schoolId) {
-    return jsonResponse({ error: 'School ID not found' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'School ID not found', request);
   }
 
   // Check if email exists
@@ -318,7 +317,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     (u: any) => u.email === teacher.email.toLowerCase()
   );
   if (emailExists) {
-    return jsonResponse({ error: `User with email ${teacher.email} already exists` }, 400);
+    return apiError(400, 'VALIDATION_ERROR', `User with email ${teacher.email} already exists`, request);
   }
 
   const { data: existingTeacher } = await supabaseAdmin
@@ -327,7 +326,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     .eq('email', teacher.email.toLowerCase())
     .maybeSingle();
   if (existingTeacher) {
-    return jsonResponse({ error: `Teacher with email ${teacher.email} already exists` }, 400);
+    return apiError(400, 'VALIDATION_ERROR', `Teacher with email ${teacher.email} already exists`, request);
   }
 
   const teacherPassword = generatePassword();
@@ -347,7 +346,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
   });
 
   if (authError || !authUser.user) {
-    return jsonResponse({ error: `Failed to create auth account: ${authError?.message}` }, 500);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
   }
 
   try {
@@ -418,8 +417,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
 
     console.log('✅ Teacher record created successfully:', teacherRecord);
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: `Teacher ${teacher.first_name} ${teacher.last_name} created successfully`,
       data: {
         authUserId: authUser.user.id,
@@ -429,10 +427,10 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
         password: teacherPassword,
         role: teacher.role,
       },
-    });
+    }, request);
   } catch (error) {
     await deleteAuthUser(supabaseAdmin, authUser.user.id);
-    return jsonResponse({ error: (error as Error).message }, 400);
+    return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }
 
@@ -455,11 +453,11 @@ export async function handleUpdateLearnerDocuments(request: Request, env: any): 
   const { learnerId, documents } = body;
 
   if (!learnerId) {
-    return jsonResponse({ error: 'Missing required field: learnerId' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required field: learnerId', request);
   }
 
   if (!documents || !Array.isArray(documents)) {
-    return jsonResponse({ error: 'Missing or invalid documents array' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing or invalid documents array', request);
   }
 
   try {
@@ -471,7 +469,7 @@ export async function handleUpdateLearnerDocuments(request: Request, env: any): 
       .single();
 
     if (fetchError || !existingLearner) {
-      return jsonResponse({ error: 'Learner not found' }, 404);
+      return apiError(404, 'NOT_FOUND', 'Learner not found', request);
     }
 
     // Format documents for storage
@@ -494,20 +492,19 @@ export async function handleUpdateLearnerDocuments(request: Request, env: any): 
       .eq('id', learnerId);
 
     if (updateError) {
-      return jsonResponse({ error: `Failed to update learner documents: ${updateError.message}` }, 500);
+      return apiError(500, 'INTERNAL_ERROR', `Failed to update learner documents: ${updateError.message}`, request);
     }
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: `Successfully updated documents for learner ${learnerId}`,
       data: {
         learnerId,
         documentsCount: formattedDocuments.length,
         totalDocuments: updatedDocuments.length
       }
-    });
+    }, request);
   } catch (error) {
-    return jsonResponse({ error: (error as Error).message }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message, request);
   }
 }
 
@@ -536,15 +533,15 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
   const { staff, collegeId: requestCollegeId } = body;
 
   if (!staff || !staff.name || !staff.email) {
-    return jsonResponse({ error: 'Missing required fields: name and email' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: name and email', request);
   }
 
   if (!staff.roles || staff.roles.length === 0) {
-    return jsonResponse({ error: 'At least one role must be selected' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'At least one role must be selected', request);
   }
 
   if (!validateEmail(staff.email)) {
-    return jsonResponse({ error: 'Invalid email format' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
   }
 
   // Get college ID from request or current user context
@@ -617,7 +614,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
   }
 
   if (!collegeId) {
-    return jsonResponse({ error: 'College ID not found. Please ensure you are logged in as a college admin.' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'College ID not found. Please ensure you are logged in as a college admin.', request);
   }
 
   // Check if email already exists in auth
@@ -626,7 +623,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
     (u: any) => u.email?.toLowerCase() === staff.email.toLowerCase()
   );
   if (emailExists) {
-    return jsonResponse({ error: `User with email ${staff.email} already exists` }, 400);
+    return apiError(400, 'VALIDATION_ERROR', `User with email ${staff.email} already exists`, request);
   }
 
   // Check if email exists in college_lecturers
@@ -637,7 +634,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
     .maybeSingle();
 
   if (existingLecturer) {
-    return jsonResponse({ error: `Staff member with email ${staff.email} already exists` }, 400);
+    return apiError(400, 'VALIDATION_ERROR', `Staff member with email ${staff.email} already exists`, request);
   }
 
   const staffPassword = generatePassword();
@@ -673,7 +670,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
   });
 
   if (authError || !authUser.user) {
-    return jsonResponse({ error: `Failed to create auth account: ${authError?.message}` }, 500);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
   }
 
   try {
@@ -729,8 +726,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
       throw new Error(`Failed to create staff profile: ${staffError.message}`);
     }
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: `Staff member ${staff.name} created successfully`,
       data: {
         authUserId: authUser.user.id,
@@ -741,10 +737,10 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
         password: staffPassword,
         collegeId,
       },
-    });
+    }, request);
   } catch (error) {
     // Rollback auth user
     await deleteAuthUser(supabaseAdmin, authUser.user.id);
-    return jsonResponse({ error: (error as Error).message }, 400);
+    return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }

@@ -5,12 +5,12 @@
  * Migrated from: cloudflare-workers/role-overview-api/src/handlers/roleOverviewHandler.ts
  * Changes:
  * - Uses callOpenRouterWithRetry from shared/ai-config
- * - Uses shared utilities (jsonResponse, PagesFunction)
+ * - Uses shared utilities (apiSuccess, apiError, PagesFunction)
  * - Simplified fallback chain (OpenRouter with model fallback → Static fallback)
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
 import { buildRoleOverviewPrompt, SYSTEM_PROMPT } from '../prompts/role-overview';
 import { parseRoleOverviewResponse } from '../utils/parser';
@@ -81,27 +81,18 @@ export const handleRoleOverview: PagesFunction = async (context) => {
   try {
     body = await request.json() as RoleOverviewRequest;
   } catch {
-    return jsonResponse({
-      success: false,
-      error: 'Invalid JSON body',
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', request);
   }
 
   const { roleName, clusterTitle } = body;
 
   // Validate required fields
   if (!roleName || typeof roleName !== 'string' || roleName.trim() === '') {
-    return jsonResponse({
-      success: false,
-      error: 'roleName is required',
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'roleName is required', request);
   }
 
   if (!clusterTitle || typeof clusterTitle !== 'string') {
-    return jsonResponse({
-      success: false,
-      error: 'clusterTitle is required',
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'clusterTitle is required', request);
   }
 
   const cleanRoleName = roleName.trim();
@@ -115,11 +106,10 @@ export const handleRoleOverview: PagesFunction = async (context) => {
   if (!openRouter) {
     console.warn('[RoleOverview] No OpenRouter API key, using static fallback');
     const fallbackData = getFallbackRoleOverview(cleanRoleName);
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       data: fallbackData,
       source: 'fallback',
-    });
+    }, request);
   }
 
   // Try OpenRouter with model fallback
@@ -138,11 +128,10 @@ export const handleRoleOverview: PagesFunction = async (context) => {
     const data = parseRoleOverviewResponse(response, cleanRoleName);
     
     console.log(`[RoleOverview] Success via OpenRouter for: ${cleanRoleName}`);
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       data,
       source: 'openrouter',
-    });
+    }, request);
   } catch (error: any) {
     console.error(`[RoleOverview] OpenRouter failed:`, error.message);
 
@@ -150,10 +139,9 @@ export const handleRoleOverview: PagesFunction = async (context) => {
     console.log(`[RoleOverview] Using static fallback for: ${cleanRoleName}`);
     const fallbackData = getFallbackRoleOverview(cleanRoleName);
     
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       data: fallbackData,
       source: 'fallback',
-    });
+    }, request);
   }
 };

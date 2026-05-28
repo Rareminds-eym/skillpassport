@@ -18,6 +18,7 @@ import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoRecordTransaction, ssoRecordBundlePurchase } from '../../../lib/sso-client';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleVerifyBundlePayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
@@ -29,33 +30,17 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     // Validate required fields for Razorpay verification
     if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required',
-          },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required', context.request);
     }
 
     // Validate bundle details
     if (!body.bundle_id) {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'bundle_id is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'bundle_id is required', context.request);
     }
 
     // Step 1: Call payment-worker via RPC to verify HMAC signature
@@ -67,12 +52,7 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
     );
 
     if (!body.billing_period || typeof body.billing_period !== 'string') {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'billing_period is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
     const priceAtPurchase = typeof body.amount === 'number' ? body.amount / 100 : 0;
@@ -130,21 +110,9 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
       console.error('[VerifyBundlePayment] Transaction recording in auth DB failed:', txError);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      ...verifyResult,
-      purchase_created: true,
-      purchase: entitlement ? {
-        id: entitlement.id,
-        bundle_id: entitlement.bundle_id,
-        status: entitlement.status,
-      } : null,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ ...verifyResult, purchase_created: true, purchase: entitlement ? { id: entitlement.id, bundle_id: entitlement.bundle_id, status: entitlement.status } : null }, context.request);
   } catch (error) {
     console.error('[VerifyBundlePayment] Error:', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

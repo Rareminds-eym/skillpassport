@@ -5,8 +5,9 @@
  * Migrated from cloudflare-workers/analyze-assessment-api
  */
 
-import { jsonResponse } from '../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { apiSuccess, apiError } from '../../lib/response';
+import { handleCorsPreflightRequest } from '../../lib/cors';
+import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { handleAnalyzeAssessment } from './handlers/analyze';
@@ -17,13 +18,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      },
-    });
+    return handleCorsPreflightRequest(request);
   }
 
   const url = new URL(request.url);
@@ -32,7 +27,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   try {
     // Health check
     if (path === '/health' && request.method === 'GET') {
-      return jsonResponse({
+      return apiSuccess({
         status: 'ok',
         service: 'analyze-assessment-api',
         timestamp: new Date().toISOString(),
@@ -42,7 +37,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           hasOpenRouter: !!(env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY),
           hasClaude: !!(env.CLAUDE_API_KEY || env.VITE_CLAUDE_API_KEY)
         }
-      });
+      }, request);
     }
 
     // All other endpoints require authentication
@@ -62,22 +57,10 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
 
     // 404 for unknown routes
-    return jsonResponse(
-      {
-        error: 'Not found',
-        message: 'Use POST /analyze-assessment to analyze assessment data',
-        availableEndpoints: [
-          'POST /analyze-assessment - Analyze learner assessment',
-          'POST /analyze-assessment/analyze - Analyze learner assessment (alias)',
-          'POST /analyze-assessment/generate-program-career-paths - Generate career paths for program',
-          'GET /analyze-assessment/health - Health check'
-        ],
-      },
-      404
-    );
+    return apiError(404, 'NOT_FOUND', 'Unknown endpoint', request);
   })(context);
   } catch (error: any) {
     console.error('❌ Error in analyze-assessment-api:', error);
-    return jsonResponse({ error: error.message || 'Internal server error' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', error.message || 'Internal server error', request);
   }
 };

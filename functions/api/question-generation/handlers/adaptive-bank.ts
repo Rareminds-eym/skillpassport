@@ -3,7 +3,7 @@
  * Replaces AI generation with pre-loaded questions from database
  */
 
-import { PagesEnv } from '../../../../src/functions-lib/types';
+import { PagesEnv } from '../../../lib/types';
 import { GradeLevel, DifficultyLevel, Subtag, QuestionGenerationResult, Question } from '../adaptive-types';
 import { reorderToPreventConsecutiveSubtags } from '../adaptive-utils';
 import { ALL_SUBTAGS } from '../adaptive-constants';

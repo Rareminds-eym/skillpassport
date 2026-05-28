@@ -31,8 +31,9 @@
  * - POST /reset-password - Reset password
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, getCorsHeaders } from '../../lib/cors';
+import { apiSuccess, apiError } from '../../lib/response';
 import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import {
@@ -83,7 +84,14 @@ export const onRequest: PagesFunction = async (context) => {
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    const origin = request.headers.get('Origin') || '';
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...getCorsHeaders(origin),
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
 
   const url = new URL(request.url);
@@ -92,11 +100,10 @@ export const onRequest: PagesFunction = async (context) => {
   try {
     // Health check
     if (!path || path === '/' || path === '/health') {
-      return jsonResponse({
+      return apiSuccess({
         status: 'ok',
         service: 'user-api',
         version: API_VERSION,
-
         endpoints: {
           signup: {
             unified: ['/signup'],
@@ -116,7 +123,7 @@ export const onRequest: PagesFunction = async (context) => {
           ],
         },
         timestamp: new Date().toISOString(),
-      });
+      }, request);
     }
 
     // Route to handlers
@@ -231,15 +238,9 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleResetPassword(request, env);
     }
 
-    return jsonResponse({
-      error: 'Not found',
-      path,
-      availableEndpoints: 'See /health for full endpoint list'
-    }, 404);
+    return apiError(404, 'NOT_FOUND', 'Not found', request);
   } catch (error) {
     console.error('User API Error:', error);
-    return jsonResponse({
-      error: (error as Error).message || 'Internal server error'
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Internal server error', request);
   }
 };

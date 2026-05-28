@@ -20,8 +20,9 @@
  * - GET /files/:courseId/:lessonId - List files in lesson
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { apiSuccess, apiError } from '../../lib/response';
+import { handleCorsPreflightRequest } from '../../lib/cors';;
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthUser } from '@rareminds-eym/auth-core';
@@ -58,7 +59,7 @@ function routeRequest(context: any, path: string): Response | Promise<Response> 
   // Health check
   if (!path || path === '/') {
     if (context.request.method === 'GET') {
-      return jsonResponse({
+      return apiSuccess({
         status: 'ok',
         service: 'storage-api',
         endpoints: [
@@ -69,7 +70,7 @@ function routeRequest(context: any, path: string): Response | Promise<Response> 
           '/extract-content', '/files/:courseId/:lessonId',
         ],
         timestamp: new Date().toISOString(),
-      });
+      }, context.request);
     }
   }
 
@@ -96,7 +97,7 @@ function routeRequest(context: any, path: string): Response | Promise<Response> 
     case '/get-authenticated-url': return handleGetAuthenticatedUrl(context);
     case '/media-proxy': return handleMediaProxy(context);
     default:
-      return jsonResponse({ error: 'Not found', availableEndpoints: ['/upload', '/delete', '/presigned', '/confirm', '/get-url', '/get-file-url', '/document-access (LEGACY)', '/signed-url', '/signed-urls', '/get-authenticated-url (SECURE)', '/media-proxy (SECURE)', '/upload-payment-receipt', '/payment-receipt', '/payment-receipt/presigned', '/course-certificate', '/extract-content', '/files/:courseId/:lessonId'] }, 404);
+      return apiError(404, 'NOT_FOUND', 'Not found', context.request);
   }
 }
 
@@ -104,7 +105,7 @@ export const onRequest: PagesFunction = async (context) => {
   const { request } = context;
 
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightRequest(request);
   }
 
   const url = new URL(request.url);
@@ -131,6 +132,6 @@ export const onRequest: PagesFunction = async (context) => {
     })(context);
   } catch (error) {
     console.error('Storage API Error:', error);
-    return jsonResponse({ error: (error as Error).message || 'Internal server error' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Internal server error', request);
   }
 };

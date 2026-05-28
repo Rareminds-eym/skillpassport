@@ -4,6 +4,7 @@
 import { withAuth } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiError } from '../../lib/response';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -25,6 +26,6 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   if (status) query = query.eq('status', status);
 
   const { data, error, count } = await query;
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ opportunities: data, total: count });
+  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  return apiSuccess({ opportunities: data, total: count }, context.request);
 });

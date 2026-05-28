@@ -159,8 +159,8 @@
  * @see {@link validateSVGContent} for SVG XSS protection logic
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';;
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
 import {
@@ -271,11 +271,11 @@ export const handleUpload: PagesFunction = async (context) => {
 
     // Validate required fields
     if (!file) {
-      return jsonResponse({ error: 'File is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'File is required', request);
     }
 
     if (!filename) {
-      return jsonResponse({ error: 'Filename is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Filename is required', request);
     }
 
     // Validate file size using centralized configuration
@@ -286,17 +286,13 @@ export const handleUpload: PagesFunction = async (context) => {
     });
     if (!sizeValidation.valid) {
       const config = getFileSizeLimit(uploadContext);
-      return jsonResponse({ 
-        error: sizeValidation.error,
-        maxSize: config.displaySize,
-        context: uploadContext
-      }, sizeValidation.statusCode || 400);
+      return apiError(sizeValidation.statusCode || 400, 'VALIDATION_ERROR', sizeValidation.error || 'File size exceeds limit', request);
     }
 
     // Validate file type
     const typeValidation = validateFileType(file.type);
     if (!typeValidation.valid) {
-      return jsonResponse({ error: typeValidation.error }, 400);
+      return apiError(400, 'VALIDATION_ERROR', typeValidation.error || 'Invalid file type', request);
     }
 
     // Layer 3: File extension validation
@@ -311,7 +307,7 @@ export const handleUpload: PagesFunction = async (context) => {
         error: extensionValidation.error,
         timestamp: new Date().toISOString()
       });
-      return jsonResponse({ error: extensionValidation.error }, 400);
+      return apiError(400, 'VALIDATION_ERROR', extensionValidation.error || 'Invalid file extension', request);
     }
 
     // Convert file to ArrayBuffer for content validation
@@ -331,10 +327,7 @@ export const handleUpload: PagesFunction = async (context) => {
         reason: dangerousFileCheck.reason,
         timestamp: new Date().toISOString()
       });
-      return jsonResponse({ 
-        error: 'File upload rejected',
-        reason: dangerousFileCheck.reason 
-      }, 403);
+      return apiError(403, 'FORBIDDEN', 'File upload rejected: ' + (dangerousFileCheck.reason || 'Dangerous file detected'), request);
     }
 
     // Layer 5: Magic number validation
@@ -350,7 +343,7 @@ export const handleUpload: PagesFunction = async (context) => {
         error: signatureValidation.error,
         timestamp: new Date().toISOString()
       });
-      return jsonResponse({ error: signatureValidation.error }, 400);
+      return apiError(400, 'VALIDATION_ERROR', signatureValidation.error || 'File signature mismatch', request);
     }
 
     // Layer 6: SVG content validation (only for SVG files)
@@ -368,10 +361,7 @@ export const handleUpload: PagesFunction = async (context) => {
           threats: svgValidation.threats,
           timestamp: new Date().toISOString()
         });
-        return jsonResponse({ 
-          error: svgValidation.error,
-          threats: svgValidation.threats 
-        }, 400);
+        return apiError(400, 'VALIDATION_ERROR', svgValidation.error || 'Malicious SVG detected', request);
       }
     }
 
@@ -400,18 +390,9 @@ export const handleUpload: PagesFunction = async (context) => {
 
     console.log('✅ File uploaded successfully:', { fileKey, filename, size: file.size, type: contentType });
 
-    return jsonResponse({
-      success: true,
-      url: fileUrl,
-      filename,
-      key: fileKey,
-      size: file.size,
-      type: contentType,
-    });
+    return apiSuccess({ url: fileUrl, filename, key: fileKey, size: file.size, type: contentType }, request);
   } catch (error) {
     logErrorSafely('Upload', error);
-    return jsonResponse({
-      error: (error as Error).message || 'Upload failed',
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Upload failed', request);
   }
 };

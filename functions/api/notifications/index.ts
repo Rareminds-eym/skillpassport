@@ -8,6 +8,7 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiError } from '../../lib/response';
 
 /**
  * GET /api/notifications — List notifications for the current user
@@ -36,10 +37,10 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const { data, error, count } = await query;
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
   }
 
-  return Response.json({ notifications: data, total: count });
+  return apiSuccess({ notifications: data, total: count }, context.request);
 });
 
 /**
@@ -55,17 +56,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   try {
     body = await context.request.json() as any;
   } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
   if (!body.action) {
-    return Response.json({ error: 'action is required' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'action is required', context.request);
   }
 
   switch (body.action) {
     case 'mark-read': {
       if (!body.ids || body.ids.length === 0) {
-        return Response.json({ error: 'ids are required for mark-read' }, { status: 400 });
+        return apiError(400, 'VALIDATION_ERROR', 'ids are required for mark-read', context.request);
       }
       const { error } = await supabase
         .from('notifications')
@@ -73,8 +74,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .eq('user_id', user.id)
         .in('id', body.ids);
 
-      if (error) return Response.json({ error: error.message }, { status: 500 });
-      return Response.json({ success: true });
+      if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+      return apiSuccess(null, context.request);
     }
 
     case 'mark-all-read': {
@@ -84,13 +85,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .eq('user_id', user.id)
         .eq('is_read', false);
 
-      if (error) return Response.json({ error: error.message }, { status: 500 });
-      return Response.json({ success: true });
+      if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+      return apiSuccess(null, context.request);
     }
 
     case 'delete': {
       if (!body.ids || body.ids.length === 0) {
-        return Response.json({ error: 'ids are required for delete' }, { status: 400 });
+        return apiError(400, 'VALIDATION_ERROR', 'ids are required for delete', context.request);
       }
       const { error } = await supabase
         .from('notifications')
@@ -98,11 +99,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .eq('user_id', user.id)
         .in('id', body.ids);
 
-      if (error) return Response.json({ error: error.message }, { status: 500 });
-      return Response.json({ success: true });
+      if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+      return apiSuccess(null, context.request);
     }
 
     default:
-      return Response.json({ error: `Unknown action: ${body.action}` }, { status: 400 });
+      return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${body.action}`, context.request);
   }
 });

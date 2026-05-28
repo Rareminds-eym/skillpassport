@@ -5,8 +5,8 @@
  * - GET /files/:courseId/:lessonId - List all files in a lesson
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';;
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
 import { checkCourseEnrollment } from '../utils/course-authorization';
@@ -26,12 +26,12 @@ export const handleListFiles: PagesFunction = async (context: AuthenticatedConte
   const { request, env, params, user, supabase } = context;
 
   if (request.method !== 'GET') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   // Add null checks for authentication
   if (!user || !supabase) {
-    return jsonResponse({ error: 'Authentication required' }, 401);
+    return apiError(401, 'UNAUTHORIZED', 'Authentication required', request);
   }
 
   try {
@@ -41,15 +41,13 @@ export const handleListFiles: PagesFunction = async (context: AuthenticatedConte
 
     // Validate parameters
     if (!courseId || !lessonId) {
-      return jsonResponse({ error: 'courseId and lessonId are required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'courseId and lessonId are required', request);
     }
 
     // Check course enrollment
     const authCheck = await checkCourseEnrollment(supabase, user.id, courseId);
     if (!authCheck.authorized) {
-      return jsonResponse({ 
-        error: authCheck.error || 'Access denied: Not enrolled in this course' 
-      }, 403);
+      return apiError(403, 'FORBIDDEN', authCheck.error || 'Access denied: Not enrolled in this course', request);
     }
 
     console.log(`[ListFiles] Listing files for course: ${courseId}, lesson: ${lessonId}`);
@@ -73,18 +71,9 @@ export const handleListFiles: PagesFunction = async (context: AuthenticatedConte
       lastModified: obj.lastModified.toISOString(),
     }));
 
-    return jsonResponse({
-      success: true,
-      data: files,
-    });
+    return apiSuccess({ data: files }, request);
   } catch (error) {
     console.error('[ListFiles] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to list files',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to list files', request);
   }
 };

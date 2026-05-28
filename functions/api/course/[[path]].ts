@@ -13,8 +13,9 @@
  * Note: AI tutor endpoints have been moved to /api/ai-tutor
  */
 
-import { jsonResponse } from '../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { apiSuccess, apiError } from '../../lib/response';
+import { handleCorsPreflightRequest } from '../../lib/cors';
+import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { withAuth } from '../../lib/auth';
 import { onRequestPost as handleAiVideoSummarizer } from './handlers/ai-video-summarizer';
 
@@ -23,13 +24,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      },
-    });
+    return handleCorsPreflightRequest(request);
   }
 
   const url = new URL(request.url);
@@ -38,7 +33,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   try {
     // Health check
     if ((path === '' || path === '/' || path === '/health') && request.method === 'GET') {
-      return jsonResponse({
+      return apiSuccess({
         status: 'ok',
         service: 'course-api',
         version: '1.0.0',
@@ -48,7 +43,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           'POST /ai-video-summarizer - Video transcription and summary',
         ],
         note: 'AI tutor endpoints have been moved to /api/ai-tutor',
-      });
+      }, request);
     }
 
     // AI Video Summarizer (authenticated)
@@ -57,21 +52,10 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
 
     // 404 for unknown routes
-    return jsonResponse(
-      {
-        error: 'Not found',
-        message: 'Unknown endpoint',
-        availableEndpoints: [
-          'GET /health - Health check',
-          'POST /ai-video-summarizer - Video transcription and summary',
-        ],
-        note: 'AI tutor endpoints have been moved to /api/ai-tutor',
-      },
-      404
-    );
+    return apiError(404, 'NOT_FOUND', 'Unknown endpoint', request);
   } catch (error: unknown) {
     console.error('❌ Error in course-api:', error);
     const message = error instanceof Error ? error.message : 'Internal server error';
-    return jsonResponse({ error: message }, 500);
+    return apiError(500, 'INTERNAL_ERROR', message, request);
   }
 };

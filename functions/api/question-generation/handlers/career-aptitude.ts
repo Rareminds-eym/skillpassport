@@ -1,6 +1,6 @@
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { PagesEnv } from '../../../lib/types';
 import { SCHOOL_SUBJECT_PROMPT, APTITUDE_PROMPT } from '../prompts';
 import {
     callOpenRouterWithRetry,

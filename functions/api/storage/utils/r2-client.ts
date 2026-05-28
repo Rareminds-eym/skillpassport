@@ -11,7 +11,7 @@
  */
 
 import { AwsClient } from 'aws4fetch';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 /**
  * R2 object metadata returned from list operations

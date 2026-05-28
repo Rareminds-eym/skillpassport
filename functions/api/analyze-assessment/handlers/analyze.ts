@@ -3,11 +3,11 @@
  * Main handler for /analyze-assessment endpoint
  */
 
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import type { AssessmentData, AnalysisResult, GradeLevel } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { getSystemMessage } from '../prompts';
 import { buildHighSchoolPrompt } from '../prompts/high-school';
 import { buildMiddleSchoolPrompt } from '../prompts/middle-school';
@@ -909,7 +909,7 @@ export async function handleAnalyzeAssessment(
   // Only allow POST
   if (request.method !== 'POST') {
     console.error('[ASSESSMENT-API] ❌ Method not allowed:', request.method);
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   console.log('[ASSESSMENT-API] ✅ Authenticated learner:', learnerId);
@@ -918,9 +918,7 @@ export async function handleAnalyzeAssessment(
   console.log('[ASSESSMENT-API] Checking rate limit for learner:', learnerId);
   if (!checkRateLimit(learnerId)) {
     console.error('[ASSESSMENT-API] ❌ Rate limit exceeded for learner:', learnerId);
-    return jsonResponse({ 
-      error: 'Rate limit exceeded. Please try again in a minute.' 
-    }, 429);
+    return apiError(429, 'ERROR', 'Rate limit exceeded. Please try again in a minute.', request);
   }
   console.log('[ASSESSMENT-API] ✅ Rate limit check passed');
 
@@ -932,14 +930,14 @@ export async function handleAnalyzeAssessment(
     console.log('[ASSESSMENT-API] ✅ Request body parsed successfully');
   } catch (error) {
     console.error('[ASSESSMENT-API] ❌ Failed to parse request body:', error);
-    return jsonResponse({ error: 'Invalid JSON in request body' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', request);
   }
 
   const { assessmentData } = body;
 
   if (!assessmentData) {
     console.error('[ASSESSMENT-API] ❌ assessmentData is missing from request body');
-    return jsonResponse({ error: 'assessmentData is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'assessmentData is required', request);
   }
 
   console.log('[ASSESSMENT-API] === ASSESSMENT DATA RECEIVED ===');
@@ -1246,13 +1244,8 @@ export async function handleAnalyzeAssessment(
       console.log('[ASSESSMENT] ✅ Adaptive test data populated:', Object.keys(results.aptitude.adaptiveTest).length, 'subtags');
     }
     
-    const response: AnalysisResult = {
-      success: true,
-      data: results
-    };
-
     console.log('[ASSESSMENT-API] === RETURNING SUCCESS RESPONSE ===');
-    return jsonResponse(response);
+    return apiSuccess(results, request);
 
   } catch (error) {
     console.error('[ASSESSMENT-API] === AI ANALYSIS FAILED ===');
@@ -1260,13 +1253,7 @@ export async function handleAnalyzeAssessment(
     console.error('[ASSESSMENT-API] ❌ Error message:', (error as Error).message);
     console.error('[ASSESSMENT-API] ❌ Error stack:', (error as Error).stack);
     
-    const response: AnalysisResult = {
-      success: false,
-      error: 'Assessment analysis failed',
-      details: (error as Error).message
-    };
-
     console.log('[ASSESSMENT-API] === RETURNING ERROR RESPONSE ===');
-    return jsonResponse(response, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Assessment analysis failed', request);
   }
 }

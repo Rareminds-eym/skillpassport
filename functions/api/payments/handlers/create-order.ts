@@ -14,6 +14,7 @@ import { createLogger } from '../../../lib/logger';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoCreateFreemiumSubscription, ssoSyncSubscription } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-order');
 
@@ -31,18 +32,12 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     // Validate required fields
     if (body.amount === undefined || typeof body.amount !== 'number') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'amount is required and must be a number' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'amount is required and must be a number', context.request);
     }
 
 
@@ -68,13 +63,10 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         // Handle missing SSO_SERVICE binding (local dev or misconfiguration)
         if (ssoError.message?.includes('SSO_SERVICE binding is not configured')) {
           logger.error('SSO_SERVICE binding not available:', ssoError.message);
-          return new Response(
-            JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Subscription service is temporarily unavailable. Please try again later.' } }),
-            { status: 503, headers: { 'Content-Type': 'application/json' } }
-          );
+          return apiError(503, 'ERROR', 'Subscription service is temporarily unavailable. Please try again later.', context.request);
         }
         if (ssoError.message?.includes('23505') || ssoError.message?.includes('duplicate')) {
-           return new Response(JSON.stringify({ error: { code: 'SUBSCRIPTION_EXISTS', message: 'User already has an active subscription' } }), { status: 409 });
+           return apiError(409, 'CONFLICT', 'User already has an active subscription', context.request);
         }
         throw ssoError;
       }
@@ -90,8 +82,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       }
 
       // Return simulated success response structure expected by frontend for freemium
-      return new Response(JSON.stringify({ 
-        success: true,
+      return apiSuccess({
         isFreemium: true,
         data: {
           id: subscription.id,
@@ -104,10 +95,7 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
           endDate: subscription.subscription_end_date,
           autoRenew: subscription.auto_renew,
         }
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      }, context.request);
     }
 
    
@@ -127,22 +115,12 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         const yearlyPrice = dbPlan.pricing_matrix?.all?.yearly;
         if (typeof yearlyPrice !== 'number') {
           logger.warn('Plan has no yearly price', { planId: body.planId, pricingMatrix: dbPlan.pricing_matrix });
-          return new Response(
-            JSON.stringify({
-              error: { code: 'INVALID_PLAN', message: 'Selected plan has no valid pricing' },
-            }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } }
-          );
+          return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing', context.request);
         }
         const expectedPaise = Math.round(yearlyPrice * 100);
         if (body.amount !== expectedPaise) {
           logger.warn('Price mismatch', { clientAmount: body.amount, expected: expectedPaise, planId: body.planId });
-          return new Response(
-            JSON.stringify({
-              error: { code: 'PRICE_MISMATCH', message: 'Plan price does not match. Please refresh and try again.' },
-            }),
-            { status: 400, headers: { 'Content-Type': 'application/json' } }
-          );
+          return apiError(400, 'VALIDATION_ERROR', 'Plan price does not match. Please refresh and try again.', context.request);
         }
       } else {
         logger.warn('Plan not found in plans_cache', { planId: body.planId });
@@ -166,23 +144,14 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     // Validate that payment worker returned key_id
     if (!order.key_id) {
       logger.error('Payment worker did not return key_id');
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Payment worker configuration error', context.request);
     }
 
     // Return order with key_id from payment worker
     // The payment worker injects key_id to ensure it matches the key used to create the order
-    return new Response(JSON.stringify({
-      ...order,
-      razorpay_key_id: order.key_id, // Expose as razorpay_key_id for frontend
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ ...order, razorpay_key_id: order.key_id }, context.request);
   } catch (error) {
     logger.error('Error creating order', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

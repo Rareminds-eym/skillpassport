@@ -10,6 +10,7 @@
 import { SignJWT } from 'jose';
 import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiError } from '../../lib/response';
 
 const REALTIME_TOKEN_TTL = 300; // 5 minutes in seconds
 
@@ -19,7 +20,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   const jwtSecret = env.SUPABASE_JWT_SECRET;
   if (!jwtSecret) {
-    return Response.json({ error: 'Server misconfiguration: SUPABASE_JWT_SECRET not set' }, { status: 500 });
+    return apiError(500, 'INTERNAL_ERROR', 'Server misconfiguration: SUPABASE_JWT_SECRET not set', context.request);
   }
 
   const secret = new TextEncoder().encode(jwtSecret);
@@ -37,8 +38,5 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     .setExpirationTime(`${REALTIME_TOKEN_TTL}s`)
     .sign(secret);
 
-  return Response.json({
-    token,
-    expires_in: REALTIME_TOKEN_TTL,
-  });
+  return apiSuccess({ token, expires_in: REALTIME_TOKEN_TTL }, context.request);
 });

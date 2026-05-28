@@ -4,10 +4,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import type { CountdownEmailRequest } from '../types';
 import { EMAIL_STATUS } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
 import { apiLogger } from '../../../lib/logger';
 import { sendEmail } from '../../../lib/email-service';
@@ -25,10 +25,7 @@ export async function handleCountdownEmail(
   const { to, fullName, countdownDay, launchDate } = body;
 
   if (!to || !fullName || !countdownDay || !launchDate) {
-    return jsonResponse({
-      success: false,
-      error: 'Missing required fields: to, fullName, countdownDay, launchDate'
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: to, fullName, countdownDay, launchDate');
   }
 
   let trackingId: string | null = null;
@@ -81,8 +78,7 @@ export async function handleCountdownEmail(
       });
     }
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: 'Countdown email sent successfully',
       data: result
     });
@@ -114,9 +110,6 @@ export async function handleCountdownEmail(
       }
     }
 
-    return jsonResponse({
-      success: false,
-      error: errorMessage
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', errorMessage);
   }
 }

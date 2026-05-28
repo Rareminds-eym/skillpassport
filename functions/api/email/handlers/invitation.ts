@@ -3,9 +3,9 @@
  * POST /api/email/invitation
  */
 
-import type { Env } from '../../../../src/functions-lib/types';
+import type { Env } from '../../../lib/types';
 import type { InvitationEmailRequest } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { generateInvitationEmailHtml, getInvitationSubject } from '../services/templates';
 import { apiLogger } from '../../../lib/logger';
 import { sendEmail } from '../../../lib/email-service';
@@ -17,10 +17,7 @@ export async function handleInvitationEmail(
   const { to, organizationName, memberType, invitationToken, expiresAt, customMessage } = body;
 
   if (!to || !organizationName || !memberType || !invitationToken || !expiresAt) {
-    return jsonResponse({
-      success: false,
-      error: 'Missing required fields: to, organizationName, memberType, invitationToken, expiresAt'
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: to, organizationName, memberType, invitationToken, expiresAt');
   }
 
   try {
@@ -46,17 +43,13 @@ export async function handleInvitationEmail(
       throw new Error(result.error || 'Email sending failed');
     }
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: 'Invitation email sent successfully',
       data: { messageId: result.messageId }
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to send invitation email';
     apiLogger.error('Error sending invitation email', error as Error);
-    return jsonResponse({
-      success: false,
-      error: errorMessage
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', errorMessage);
   }
 }

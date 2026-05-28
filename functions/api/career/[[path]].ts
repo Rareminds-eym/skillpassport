@@ -11,9 +11,9 @@
  * - /api/career/parse-resume - Parse resume text
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders } from '../../../src/functions-lib/cors';
-import { jsonResponse } from '../../../src/functions-lib/response';
+import type { PagesFunction } from '../../lib/types';
+import { apiSuccess, apiError } from '../../lib/response';
+import { handleCorsPreflightRequest } from '../../lib/cors';
 import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getAPIKeys } from '../shared/ai-config';
@@ -35,7 +35,7 @@ export const onRequest: PagesFunction = async (context) => {
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return handleCorsPreflightRequest(request);
   }
 
   const pathSegments = context.params.path as unknown as string[] | undefined;
@@ -43,13 +43,13 @@ export const onRequest: PagesFunction = async (context) => {
 
   // Validate environment
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
-    return jsonResponse({ error: 'Server configuration error' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Server configuration error', request);
   }
 
   try {
     // Health check — public
     if (path === '/health') {
-      return jsonResponse({
+      return apiSuccess({
         status: 'ok',
         service: 'career-api',
         version: '2.0-pages-function',
@@ -68,7 +68,7 @@ export const onRequest: PagesFunction = async (context) => {
     // Route requests
     if (path === '/chat' || path === '/career-ai-chat' || path === '/') {
       if (!getOpenRouterKey(env)) {
-        return jsonResponse({ error: 'AI service not configured' }, 500);
+        return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
       }
       return await handleCareerChat(request, env as any, userId);
     }
@@ -79,7 +79,7 @@ export const onRequest: PagesFunction = async (context) => {
 
     if (path === '/analyze-assessment') {
       if (!getOpenRouterKey(env)) {
-        return jsonResponse({ error: 'AI service not configured' }, 500);
+        return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
       }
       return await handleAnalyzeAssessment(request, env as any, userId);
     }
@@ -90,29 +90,26 @@ export const onRequest: PagesFunction = async (context) => {
 
     if (path === '/generate-field-keywords') {
       if (!getOpenRouterKey(env)) {
-        return jsonResponse({ error: 'AI service not configured', useFallback: true }, 500);
+        return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
       }
       return await handleGenerateFieldKeywords(request, env as any, userId);
     }
 
     if (path === '/parse-resume') {
       if (!getOpenRouterKey(env)) {
-        return jsonResponse({ error: 'AI service not configured' }, 500);
+        return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
       }
       return await handleParseResume(request, env as any, userId);
     }
 
     if (path === '/get-actions' || path === '/actions') {
-      return await handleGetActions(env as any, userId);
+      return await handleGetActions(env as any, userId, request);
     }
 
-    return jsonResponse({ 
-      error: 'Not found', 
-      availableEndpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume'] 
-    }, 404);
+    return apiError(404, 'NOT_FOUND', 'Not found', request);
   })(context);
   } catch (error) {
     console.error('[ERROR] career-api:', error);
-    return jsonResponse({ error: (error as Error)?.message || 'Internal server error' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error)?.message || 'Internal server error', request);
   }
 };

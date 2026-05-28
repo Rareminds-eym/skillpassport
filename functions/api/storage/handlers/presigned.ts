@@ -8,6 +8,7 @@
  * - POST /get-file-url - Alias for get-url
  */
 
+import { apiSuccess, apiError } from '../../../lib/response';
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
 import {
@@ -49,10 +50,7 @@ export const handlePresigned: PagesFunction = async (context) => {
   }
 
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
@@ -61,16 +59,7 @@ export const handlePresigned: PagesFunction = async (context) => {
 
     // Validate required fields
     if (!filename || !contentType || !courseId || !lessonId) {
-      return new Response(
-        JSON.stringify({
-          error: 'Missing required fields',
-          required: ['filename', 'contentType', 'courseId', 'lessonId'],
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', request);
     }
 
     // Initialize R2 client
@@ -85,32 +74,14 @@ export const handlePresigned: PagesFunction = async (context) => {
     // Generate presigned URL with proper parameters
     const presignedData = await r2Client.generatePresignedUrl(fileKey, contentType);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          uploadUrl: presignedData.url,
-          fileKey,
-          headers: presignedData.headers,
-        },
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiSuccess({
+      uploadUrl: presignedData.url,
+      fileKey,
+      headers: presignedData.headers,
+    }, request);
   } catch (error) {
     logErrorSafely('Presigned', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to generate presigned URL',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };
 
@@ -126,10 +97,7 @@ export const handleConfirm: PagesFunction = async (context) => {
   }
 
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
@@ -138,13 +106,7 @@ export const handleConfirm: PagesFunction = async (context) => {
 
     // Validate required fields
     if (!fileKey) {
-      return new Response(
-        JSON.stringify({ error: 'Missing fileKey' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing fileKey', request);
     }
 
     // Validate that fileKey contains authenticated user's ID
@@ -163,34 +125,16 @@ export const handleConfirm: PagesFunction = async (context) => {
     // Generate public URL
     const fileUrl = r2Client.getPublicUrl(fileKey);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          key: fileKey,
-          url: fileUrl,
-          name: fileName,
-          size: fileSize,
-          type: fileType,
-        },
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiSuccess({
+      key: fileKey,
+      url: fileUrl,
+      name: fileName,
+      size: fileSize,
+      type: fileType,
+    }, request);
   } catch (error) {
     logErrorSafely('Confirm', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to confirm upload',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };
 
@@ -202,10 +146,7 @@ export const handleGetUrl: PagesFunction = async (context) => {
   const { request, env } = context;
 
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
@@ -214,13 +155,7 @@ export const handleGetUrl: PagesFunction = async (context) => {
 
     // Validate required fields
     if (!fileKey) {
-      return new Response(
-        JSON.stringify({ error: 'fileKey is required' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'fileKey is required', request);
     }
 
     // Initialize R2 client
@@ -229,28 +164,10 @@ export const handleGetUrl: PagesFunction = async (context) => {
     // Generate presigned URL for GET request (7 days expiry for course content)
     const presignedUrl = await r2Client.generatePresignedGetUrl(fileKey, 604800); // 7 days in seconds
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        url: presignedUrl,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiSuccess({ url: presignedUrl }, request);
   } catch (error) {
     logErrorSafely('GetUrl', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to get URL',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };
 

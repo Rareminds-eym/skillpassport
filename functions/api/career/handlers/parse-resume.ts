@@ -9,31 +9,31 @@
  * Source: cloudflare-workers/career-api/src/index.ts (handleParseResume)
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getOpenRouterKey } from '../[[path]]';
 import { getModelForUseCase, callOpenRouterWithRetry } from '../../shared/ai-config';
 
 export async function handleParseResume(request: Request, env: Record<string, string>, learnerId: string): Promise<Response> {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   if (!await checkRateLimit(learnerId, env)) {
-    return jsonResponse({ error: 'Rate limit exceeded' }, 429);
+    return apiError(429, 'ERROR', 'Rate limit exceeded', request);
   }
 
   let body;
   try {
     body = await request.json() as { resumeText: string };
   } catch {
-    return jsonResponse({ error: 'Invalid JSON' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
   }
 
   const { resumeText } = body;
 
   if (!resumeText || typeof resumeText !== 'string' || resumeText.length < 50) {
-    return jsonResponse({ error: 'Valid resume text is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Valid resume text is required', request);
   }
 
   const prompt = `Extract information from this resume and return ONLY a valid JSON object.
@@ -70,7 +70,7 @@ ${resumeText.slice(0, 15000)}
   try {
     const openRouterKey = getOpenRouterKey(env);
     if (!openRouterKey) {
-      return jsonResponse({ error: 'OpenRouter API key not configured' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'OpenRouter API key not configured', request);
     }
 
     // Use centralized AI call with retry logic
@@ -95,7 +95,7 @@ ${resumeText.slice(0, 15000)}
     );
 
     if (!content) {
-      return jsonResponse({ error: 'Empty response from AI' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Empty response from AI', request);
     }
 
     // Clean up response (remove markdown code blocks if present)
@@ -106,13 +106,13 @@ ${resumeText.slice(0, 15000)}
       parsedData = JSON.parse(jsonStr);
     } catch (e) {
       console.error('JSON Parse Error:', e);
-      return jsonResponse({ error: 'Failed to parse AI response' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to parse AI response', request);
     }
 
-    return jsonResponse({ success: true, data: parsedData });
+    return apiSuccess({ data: parsedData }, request);
 
   } catch (error) {
     console.error('Resume parsing error:', error);
-    return jsonResponse({ error: (error as Error).message }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message, request);
   }
 }

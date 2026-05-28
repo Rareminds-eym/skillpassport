@@ -86,25 +86,34 @@
 
 ---
 
-## Phase 3 — SSO Worker Consolidation 🟡 PARTIALLY DONE (decisions implemented)
+## Phase 3 — SSO Worker Consolidation ✅ COMPLETED
 
 - [x] `T-030` — Removed `export` keyword from 14 dead HTTP handlers in `subscriptions.ts` (12) and `addon-catalog.ts` (2). Kept RPC methods as canonical. ✅ USER DECISION
 - [x] `T-031` — Removed `rateLimit()` function and `ROUTE_LIMITS` config, kept `checkAccountLockout`/`recordFailedLogin`/`clearFailedLogins`. ✅ USER DECISION
-- [ ] `T-032` — Fix JWT test claims in `sso-worker/src/__tests__/preservation-property.test.ts:90-91`
-- [ ] `T-033` — Fix 7 README discrepancies in `sso-worker/README.md`
+- [x] `T-032` — Fix JWT test claims in `sso-worker/src/__tests__/preservation-property.test.ts:90-91` — imported `JWT_ISSUER`/`JWT_AUDIENCE` from constants instead of hardcoded URLs. All 6 tests pass. ✅
+- [x] `T-033` — Fix 7 README discrepancies in `sso-worker/README.md`:
+  - Env table: `APP_URL` → `ALLOWED_APP_URLS`, added `EMAIL_SERVICE` binding + `EMAIL_API_KEY` secret
+  - Setup section: `APP_URL` → `ALLOWED_APP_URLS` + `EMAIL_API_KEY`
+  - Route file listing: 13 → 18 files (added addon-catalog, change-password, delete-account, signup-member, subscriptions)
+  - Email delivery: "stub → logs to console" → "uses EMAIL_SERVICE service binding"
+  - Signup idempotency: "allows re-signup by cleanup" → "returns 409 for all existing users"
+  - Signup-member idempotency: same fix
+  - Known limitations: email delivery stub → EMAIL_SERVICE binding description
 
 ---
 
-## Phase 4 — Response & CORS Standardization 🟡 PARTIALLY DONE
+## Phase 4 — Response & CORS Standardization ✅ COMPLETED
 
-- [ ] `T-034` — Remove wildcard `'*'` from `src/functions-lib/cors.ts:44`
-- [ ] `T-035` — Ensure all route groups use whitelist CORS from `functions/lib/response.ts`
-- [ ] `T-036` — Add production domain to CORS whitelist if missing
-- [ ] `T-037` — Migrate all `[[path]].ts`: `jsonResponse()` → `apiSuccess()`/`apiError()`
-- [ ] `T-038` — Migrate all `Response.json()` in routes → `apiSuccess()`
-- [ ] `T-039` — Migrate all `new Response(JSON.stringify(...))` → `apiSuccess()`/`apiError()`
-- [ ] `T-040` — [PENDING] Align `src/functions-lib/cors.ts` whitelist with `functions/lib/cors.ts`
-- [ ] `T-041` — [PENDING] Add `apiSuccess`/`apiError` to `src/functions-lib/response.ts`
+- [x] `T-034` — Removed wildcard `'*'` from `src/functions-lib/cors.ts` — `corsHeaders` now uses `getCorsHeaders(null)` (whitelist fallback)
+- [x] `T-035` — All route groups now use CORS via `apiSuccess`/`apiError` which call `getCorsHeaders(origin)` for origin-aware CORS
+- [x] `T-036` — Added `https://sso-auth.skillpassport.pages.dev` + `https://skillpassport.pages.dev` to whitelist in both `src/functions-lib/cors.ts` and `functions/lib/response.ts`
+- [x] `T-037` — Migrated all `[[path]].ts` routers: `jsonResponse()` → `apiSuccess()`/`apiError()`
+- [x] `T-038` — Migrated all `Response.json()` in routes → `apiSuccess()`/`apiError()` (~25 files)
+- [x] `T-039` — Migrated all `new Response(JSON.stringify(...))` → `apiSuccess()`/`apiError()` (~20 payment/storage files)
+- [x] `T-040` — Aligned `src/functions-lib/cors.ts` whitelist with `functions/lib/cors.ts` (both now have 7 origins)
+- [x] `T-041` — Added `apiSuccess<T>(data, request?, status?)` + `apiError(status, code, message, request?)` to `src/functions-lib/response.ts`
+
+**Changes**: `corsHeaders` now uses whitelist (not `'*'`). `handleCorsPreflightRequest(request?)` and `addCorsHeaders(response, request?)` accept optional Request for origin detection. All 60+ route/handler files migrated. TypeScript compiles clean.
 - [x] `T-042` — Consolidated `functions/api/shared/auth.ts` into `functions/lib/auth.ts`. Created `functions/lib/validation.ts`. Deleted legacy file. Fixed `_authInitialized` module-level singleton bug. Updated README. ✅
 
 ---
@@ -173,7 +182,8 @@
 | **0** — Commit done fixes | ~20 commits across 3 repos | Nothing | 15 min |
 | **0.5** — Fix `\$` bugs ✅ | 4 (T-100–T-103) | None — **DONE** | 5 min |
 | **2** — Auth gaps ✅ | 12 tasks (T-018–T-029) + large beyond-scope standardization | **DONE** | 6h |
-| **3** — SSO consolidation 🟡 | 2 done (T-030, T-031) / 2 pending (T-032, T-033) | T-032, T-033 | 1h |
+| **3** — SSO consolidation ✅ | 4 (T-030–T-033) | **DONE** | 1h |
+| **4** — Response & CORS ✅ | 8 (T-034–T-041) | **DONE** | 60+ files migrated |
 | **4** — Response/CORS 🟡 | 1 done (T-042) / 8 pending (T-034–T-041) | Nothing | 3h |
 | **5** — Observability | 6 (T-043–T-048) | Nothing | 2h |
 | **6** — SSO reliability | 12 (T-049–T-060) | Nothing | 3h |

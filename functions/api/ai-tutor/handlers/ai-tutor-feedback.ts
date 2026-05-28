@@ -9,7 +9,7 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 interface FeedbackRequestBody {
   conversationId?: string;
@@ -45,25 +45,19 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
     try {
       body = await request.json() as FeedbackRequestBody;
     } catch (error) {
-      return jsonResponse({ error: 'Invalid JSON in request body' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', request);
     }
 
     const { conversationId, messageIndex, rating, feedbackText } = body;
 
     // Validate required fields
     if (!conversationId || messageIndex === undefined || rating === undefined) {
-      return jsonResponse(
-        { error: 'Missing required fields: conversationId, messageIndex, rating' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: conversationId, messageIndex, rating', request);
     }
 
     // Validate rating value
     if (rating !== 1 && rating !== -1) {
-      return jsonResponse(
-        { error: 'Invalid rating. Must be 1 (thumbs up) or -1 (thumbs down)' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid rating. Must be 1 (thumbs up) or -1 (thumbs down)', request);
     }
 
     // Verify conversation ownership
@@ -75,10 +69,7 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
       .maybeSingle();
 
     if (convError || !conversation) {
-      return jsonResponse(
-        { error: 'Conversation not found or access denied' },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Conversation not found or access denied', request);
     }
 
     // Check for existing feedback
@@ -101,13 +92,10 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
 
       if (updateError) {
         console.error('Failed to update feedback:', updateError);
-        return jsonResponse({ error: 'Failed to update feedback' }, 500);
+        return apiError(500, 'INTERNAL_ERROR', 'Failed to update feedback', request);
       }
 
-      return jsonResponse(
-        { success: true, message: 'Feedback updated' },
-        200
-      );
+      return apiSuccess({ message: 'Feedback updated' }, request);
     }
 
     // Insert new feedback
@@ -122,18 +110,12 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
 
     if (insertError) {
       console.error('Failed to submit feedback:', insertError);
-      return jsonResponse({ error: 'Failed to submit feedback' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to submit feedback', request);
     }
 
-    return jsonResponse(
-      { success: true, message: 'Feedback submitted' },
-      200
-    );
+    return apiSuccess({ message: 'Feedback submitted' }, request);
   } catch (error) {
     console.error('AI tutor feedback error:', error);
-    return jsonResponse(
-      { error: 'Internal server error' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 };

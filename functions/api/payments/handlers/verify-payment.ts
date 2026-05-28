@@ -18,7 +18,7 @@ import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../li
 import { getServiceClient } from '../../../lib/supabase';
 import { R2Client } from '../../storage/utils/r2-client';
 import { generateReceiptPDF, fetchImageBytes, type ReceiptData } from '../../storage/utils/pdf-generator';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
 import type { EventConfirmationTemplateData } from '../../email/types';
 import { sendEmailSafe } from '../../../lib/email-service';
@@ -29,6 +29,7 @@ import {
   ssoSyncSubscription,
 } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
@@ -39,22 +40,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required',
-          },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required', context.request);
     }
 
     // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
@@ -69,10 +59,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const plan = body.plan as Record<string, unknown> | undefined;
     if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
       console.warn('[VerifyPayment] Signature verified but no plan data provided');
-      return new Response(JSON.stringify({ success: true, ...verifyResult }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiSuccess(verifyResult, context.request);
     }
 
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
@@ -87,24 +74,14 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     if (planError || !validPlan) {
       console.error('[VerifyPayment] Invalid or inactive plan:', plan.id, planError);
-      return new Response(JSON.stringify({
-        error: {
-          code: 'INVALID_PLAN',
-          message: 'Selected plan is not valid or inactive',
-        },
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError(400, 'VALIDATION_ERROR', 'Selected plan is not valid or inactive', context.request);
     }
 
     // Authoritative price from DB — never trust client-supplied price
     const yearlyPrice = validPlan.pricing_matrix?.all?.yearly;
     if (typeof yearlyPrice !== 'number') {
       console.error('[VerifyPayment] Plan has no yearly price:', plan.id, validPlan.pricing_matrix);
-      return new Response(JSON.stringify({
-        error: { code: 'INVALID_PLAN', message: 'Selected plan has no valid pricing' },
-      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing', context.request);
     }
     const planPrice = yearlyPrice;
 
@@ -141,9 +118,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         const currentPrice = currentPlan.pricing_matrix?.all?.yearly;
         if (typeof currentPrice !== 'number' || typeof planPrice !== 'number') {
           console.warn('[VerifyPayment] Cannot compare plan pricing:', { currentPrice, planPrice });
-          return new Response(JSON.stringify({
-            error: { code: 'UPGRADE_FAILED', message: 'Cannot determine plan pricing. Please contact support.' },
-          }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+          return apiError(400, 'VALIDATION_ERROR', 'Cannot determine plan pricing. Please contact support.', context.request);
         }
 
         if (planPrice <= currentPrice) {
@@ -152,15 +127,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             currentPrice,
             newPrice: planPrice,
           });
-          return new Response(JSON.stringify({
-            error: {
-              code: 'INVALID_UPGRADE',
-              message: 'Cannot downgrade or lateral move. Please contact support for plan changes.',
-            },
-          }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return apiError(400, 'VALIDATION_ERROR', 'Cannot downgrade or lateral move. Please contact support for plan changes.', context.request);
         }
       }
 
@@ -201,8 +168,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           console.error('[VerifyPayment] Failed to log upgrade failure:', logError);
         }
 
-        return new Response(JSON.stringify({
-          success: true,
+        return apiSuccess({
           payment_verified: true,
           subscription_upgraded: false,
           ...verifyResult,
@@ -210,10 +176,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             code: 'UPGRADE_FAILED',
             message: 'Payment verified but upgrade failed. Support will contact you within 24 hours.',
           },
-        }), {
-          status: 207,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        }, context.request, 207);
       }
     } else {
       // New subscription — create in auth DB
@@ -237,8 +200,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       } catch (createError: any) {
         console.error('[VerifyPayment] Subscription creation failed:', createError.message);
 
-        return new Response(JSON.stringify({
-          success: true,
+        return apiSuccess({
           payment_verified: true,
           subscription_created: false,
           ...verifyResult,
@@ -247,10 +209,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             message: 'Payment verified but subscription creation failed. Please contact support.',
             details: createError.message,
           },
-        }), {
-          status: 207,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        }, context.request, 207);
       }
     }
 
@@ -375,8 +334,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       console.error('[VerifyPayment] Email failed (non-critical):', emailErr);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
+    return apiSuccess({
       ...verifyResult,
       subscription_created: true,
       receipt_url: receiptUrl,
@@ -389,13 +347,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         start_date: subscription.subscription_start_date,
         end_date: subscription.subscription_end_date,
       },
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    }, context.request);
   } catch (error) {
     console.error('[VerifyPayment] Error:', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }
 

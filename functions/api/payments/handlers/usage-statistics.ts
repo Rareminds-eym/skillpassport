@@ -1,6 +1,7 @@
 import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleGetUsageStatistics(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -23,19 +24,9 @@ export async function handleGetUsageStatistics(context: AuthenticatedContext): P
       reports: { used: reportsRes.count || 0, label: 'Reports Generated' }
     };
 
-    return new Response(
-      JSON.stringify({ success: true, data, error: null }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess(data, context.request, 200);
   } catch (error) {
     console.error('[GetUsageStatistics] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        data: null,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

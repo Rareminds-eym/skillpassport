@@ -10,8 +10,8 @@
  * - Enhanced system prompt with few-shot examples and chain-of-thought
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { sanitizeInput, generateConversationTitle } from '../../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';
 import { API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
@@ -34,7 +34,7 @@ import { fetchSmartOpportunities } from '../context/smart-opportunities';
 
 export async function handleCareerChat(request: Request, env: Record<string, string>, userId: string): Promise<Response> {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   const startTime = Date.now();
@@ -44,7 +44,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
   // Rate limiting
   if (!await checkRateLimit(learnerId, env)) {
-    return jsonResponse({ error: 'Too many requests. Please wait a moment.' }, 429);
+    return apiError(429, 'ERROR', 'Too many requests. Please wait a moment.', request);
   }
 
   // Parse request
@@ -52,7 +52,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
   try {
     body = await request.json() as ChatRequest;
   } catch {
-    return jsonResponse({ error: 'Invalid JSON' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
   }
 
   const { conversationId, message, selectedChips = [] } = body;
@@ -60,21 +60,21 @@ export async function handleCareerChat(request: Request, env: Record<string, str
   // SECURITY: Validate request size
   const contentLength = request.headers.get('content-length');
   if (contentLength && parseInt(contentLength) > 1048576) { // 1MB limit
-    return jsonResponse({ error: 'Request too large' }, 413);
+    return apiError(413, 'ERROR', 'Request too large', request);
   }
 
   if (!message || typeof message !== 'string') {
-    return jsonResponse({ error: 'Message is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Message is required', request);
   }
 
   // SECURITY: Strict message length validation
   if (message.length > 10000) {
-    return jsonResponse({ error: 'Message too long. Maximum 10,000 characters.' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Message too long. Maximum 10,000 characters.', request);
   }
 
   const sanitizedMessage = sanitizeInput(message, 10000);
   if (!sanitizedMessage) {
-    return jsonResponse({ error: 'Invalid message' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid message', request);
   }
 
   // Use sanitizedMessage as processedMessage
@@ -83,7 +83,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
   // Get OpenRouter API key using shared utility
   const { openRouter: openRouterKey } = getAPIKeys(env);
   if (!openRouterKey) {
-    return jsonResponse({ error: 'AI service not configured' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
   }
 
   try {
@@ -101,9 +101,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
       // Security: Explicit validation - if conversationId provided but not found, deny access
       if (fetchError || !conv) {
-        return jsonResponse({ 
-          error: 'Conversation not found or access denied' 
-        }, 403);
+        return apiError(403, 'FORBIDDEN', 'Conversation not found or access denied', request);
       }
 
       existingConversation = conv;
@@ -127,7 +125,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     ]);
 
     if (!learnerProfile) {
-      return jsonResponse({ error: 'Unable to load learner profile' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Unable to load learner profile', request);
     }
 
     console.log(`[CONTEXT] Profile: ${learnerProfile.name}, Skills: ${learnerProfile.technicalSkills.length}`);
@@ -239,10 +237,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     }
 
     if (!response) {
-      return jsonResponse({
-        error: 'AI service temporarily unavailable',
-        details: 'All models are currently rate-limited. Please try again in a moment.'
-      }, 503);
+      return apiError(503, 'ERROR', 'AI service temporarily unavailable. All models are currently rate-limited. Please try again in a moment.', request);
     }
 
     // ==================== STREAM RESPONSE ====================
@@ -392,6 +387,6 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
   } catch (error) {
     console.error('Career chat error:', error);
-    return jsonResponse({ error: 'Internal server error' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 }

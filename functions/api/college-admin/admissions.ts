@@ -4,6 +4,7 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiError } from '../../lib/response';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -27,8 +28,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   }
 
   const { data, error, count } = await query;
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ admissions: data, total: count });
+  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  return apiSuccess({ admissions: data, total: count }, context.request);
 });
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
@@ -40,7 +41,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   try {
     body = await context.request.json() as any;
   } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
   body.org_id = user.org_id;
@@ -51,6 +52,6 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     .select()
     .single();
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ admission: data });
+  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  return apiSuccess({ admission: data }, context.request);
 });

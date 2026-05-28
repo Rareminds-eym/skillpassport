@@ -8,8 +8,9 @@
  * - POST /resend - Resend OTP
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, getCorsHeaders } from '../../lib/cors';;
+import { apiSuccess, apiError } from '../../lib/response';
 import { sendOtpHandler } from './handlers/send';
 import { verifyOtpHandler } from './handlers/verify';
 import { resendOtpHandler } from './handlers/resend';
@@ -21,7 +22,14 @@ export const onRequest: PagesFunction = async (context) => {
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    const origin = request.headers.get('Origin') || '';
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...getCorsHeaders(origin),
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
 
   const url = new URL(request.url);
@@ -31,18 +39,18 @@ export const onRequest: PagesFunction = async (context) => {
     // Health check
     if (path === '/api/otp' || path === '/api/otp/') {
       if (request.method === 'GET') {
-        return jsonResponse({
+        return apiSuccess({
           status: 'ok',
           service: 'otp-api',
           endpoints: ['/send', '/verify', '/resend'],
           timestamp: new Date().toISOString()
-        });
+        }, context.request);
       }
     }
 
     // Only POST requests for OTP operations
     if (request.method !== 'POST') {
-      return jsonResponse({ success: false, error: 'Method not allowed' }, 405);
+      return apiError(405, 'ERROR', 'Method not allowed', context.request);
     }
 
     const body = await request.json().catch(() => ({}));
@@ -51,7 +59,7 @@ export const onRequest: PagesFunction = async (context) => {
     const pathParts = path.replace('/api/otp', '').split('/').filter(Boolean);
 
     if (pathParts.length === 0) {
-      return jsonResponse({ success: false, error: 'Endpoint required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Endpoint required', context.request);
     }
 
     const endpoint = pathParts[0];
@@ -68,13 +76,10 @@ export const onRequest: PagesFunction = async (context) => {
         return await resendOtpHandler(body as any, env);
 
       default:
-        return jsonResponse({ success: false, error: 'Not found' }, 404);
+        return apiError(404, 'NOT_FOUND', 'Not found', context.request);
     }
   } catch (error: any) {
     console.error('OTP API Error:', error);
-    return jsonResponse(
-      { success: false, error: error.message || 'Internal server error' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error.message || 'Internal server error', context.request);
   }
 };

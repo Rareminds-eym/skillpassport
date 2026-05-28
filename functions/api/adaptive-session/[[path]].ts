@@ -17,8 +17,8 @@
  * - POST /link-to-attempt - Link adaptive session to assessment attempt
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { jsonResponse } from '../../../src/functions-lib/response';
+import type { PagesFunction } from '../../lib/types';
+import { apiSuccess, apiError } from '../../lib/response';
 import { withAuth } from '../../lib/auth';
 import { initializeHandler } from './handlers/initialize';
 import { nextQuestionHandler } from './handlers/next-question';
@@ -89,16 +89,10 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     // 404 for unknown routes
-    return jsonResponse(
-      { error: 'Not found', path, method },
-      404
-    );
+    return apiError(404, 'NOT_FOUND', 'Not found', request);
   })(context);
   } catch (error) {
     console.error('Adaptive Session API Error:', error);
-    return jsonResponse(
-      { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };

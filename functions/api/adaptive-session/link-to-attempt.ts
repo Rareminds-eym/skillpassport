@@ -6,9 +6,9 @@
  * Uses admin client to bypass RLS for foreign key constraint
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { jsonResponse } from '../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../lib/types';
+import { apiSuccess, apiError } from '../../lib/response';
+import { createSupabaseAdminClient } from '../../lib/supabase';
 import { getContextUser } from '../../lib/auth';
 export const onRequestPost: PagesFunction = async (context) => {
   const { request, env } = context;
@@ -24,10 +24,7 @@ export const onRequestPost: PagesFunction = async (context) => {
     const { attemptId, sessionId } = body;
 
     if (!attemptId || !sessionId) {
-      return jsonResponse(
-        { error: 'Missing required fields: attemptId and sessionId' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: attemptId and sessionId', request);
     }
 
     console.log('🔗 [LinkToAttemptHandler] Linking session to attempt:', {
@@ -47,10 +44,7 @@ export const onRequestPost: PagesFunction = async (context) => {
 
     if (learnerError || !learnerData) {
       console.error('❌ [LinkToAttemptHandler] Learner record not found:', learnerError);
-      return jsonResponse(
-        { error: 'Learner record not found', message: learnerError?.message },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Learner record not found', request);
     }
 
     const learnerId = learnerData.id;
@@ -65,10 +59,7 @@ export const onRequestPost: PagesFunction = async (context) => {
 
     if (sessionError || !sessionData) {
       console.error('❌ [LinkToAttemptHandler] Session not found:', sessionError);
-      return jsonResponse(
-        { error: 'Session not found', message: sessionError?.message },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Session not found', request);
     }
 
     // Verify session ownership (learner_id should match the learner record)
@@ -76,10 +67,7 @@ export const onRequestPost: PagesFunction = async (context) => {
       console.error('❌ [LinkToAttemptHandler] Session ownership verification failed');
       console.error('   Expected learner_id:', learnerId);
       console.error('   Session learner_id:', sessionData.learner_id);
-      return jsonResponse(
-        { error: 'Unauthorized: You do not own this session' },
-        403
-      );
+      return apiError(403, 'FORBIDDEN', 'Unauthorized: You do not own this session', request);
     }
 
     // Verify the attempt belongs to the authenticated user's learner record
@@ -91,10 +79,7 @@ export const onRequestPost: PagesFunction = async (context) => {
 
     if (attemptError || !attemptData) {
       console.error('❌ [LinkToAttemptHandler] Attempt not found:', attemptError);
-      return jsonResponse(
-        { error: 'Attempt not found', message: attemptError?.message },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Attempt not found', request);
     }
 
     // Verify attempt ownership
@@ -102,10 +87,7 @@ export const onRequestPost: PagesFunction = async (context) => {
       console.error('❌ [LinkToAttemptHandler] Attempt ownership verification failed');
       console.error('   Expected learner_id:', learnerId);
       console.error('   Attempt learner_id:', attemptData.learner_id);
-      return jsonResponse(
-        { error: 'Unauthorized: You do not own this attempt' },
-        403
-      );
+      return apiError(403, 'FORBIDDEN', 'Unauthorized: You do not own this attempt', request);
     }
 
     // Update the attempt with the session ID (using admin client bypasses RLS)
@@ -121,27 +103,15 @@ export const onRequestPost: PagesFunction = async (context) => {
 
     if (updateError) {
       console.error('❌ [LinkToAttemptHandler] Failed to update attempt:', updateError);
-      return jsonResponse(
-        { error: 'Failed to link session to attempt', message: updateError.message },
-        500
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to link session to attempt', request);
     }
 
     console.log('✅ [LinkToAttemptHandler] Successfully linked session to attempt');
 
-    return jsonResponse({
-      success: true,
-      attempt: updatedAttempt,
-    });
+    return apiSuccess({ attempt: updatedAttempt }, request);
 
   } catch (error) {
     console.error('❌ [LinkToAttemptHandler] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to link session to attempt',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to link session to attempt', request);
   }
 };

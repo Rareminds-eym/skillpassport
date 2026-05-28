@@ -12,6 +12,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-event-order');
 
@@ -25,25 +26,16 @@ export async function handleCreateEventOrder(context: AuthenticatedContext): Pro
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     // Validate required fields
     if (!body.amount || typeof body.amount !== 'number') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'amount is required and must be a number' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'amount is required and must be a number', context.request);
     }
 
     if (!body.registrationId || typeof body.registrationId !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'registrationId is required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'registrationId is required', context.request);
     }
 
     // Call payment-worker via Service Binding RPC
@@ -67,23 +59,13 @@ export async function handleCreateEventOrder(context: AuthenticatedContext): Pro
     // Validate that payment worker returned key_id
     if (!order.key_id) {
       logger.error('Payment worker did not return key_id');
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Payment worker configuration error', context.request);
     }
 
     // Return order with key_id from payment worker and registrationId
-    return new Response(JSON.stringify({
-      ...order,
-      razorpay_key_id: order.key_id,
-      registrationId: body.registrationId,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ ...order, razorpay_key_id: order.key_id, registrationId: body.registrationId }, context.request);
   } catch (error) {
     logger.error('Error creating event order', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

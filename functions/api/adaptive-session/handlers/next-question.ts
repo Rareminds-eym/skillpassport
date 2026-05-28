@@ -5,9 +5,9 @@
  * Returns the next question for the current session
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import type { NextQuestionResult, TestPhase, DifficultyLevel, GradeLevel, Question } from '../types';
 import { DEFAULT_ADAPTIVE_TEST_CONFIG, ALL_SUBTAGS } from '../types';
 import { validateExclusionListComplete, validateQuestionNotDuplicate } from '../utils/validation';
@@ -30,7 +30,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
   const sessionId = pathParts[pathParts.length - 1];
 
   if (!sessionId) {
-    return jsonResponse({ error: 'Session ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Session ID is required', request);
   }
 
   try {
@@ -47,10 +47,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
 
     if (sessionError || !sessionData) {
       console.error('❌ [NextQuestionHandler] Failed to fetch session:', sessionError);
-      return jsonResponse(
-        { error: 'Session not found', message: sessionError?.message },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Session not found', request);
     }
 
     console.log('📊 [NextQuestionHandler] Session data:', {
@@ -76,7 +73,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           totalQuestionsInPhase: (sessionData.current_phase_questions as Question[]).length,
         },
       };
-      return jsonResponse(result);
+      return apiSuccess(result, request);
     }
 
     const currentPhaseQuestions = sessionData.current_phase_questions as Question[];
@@ -109,7 +106,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           totalQuestionsInPhase: currentPhaseQuestions.length,
         },
       };
-      return jsonResponse(result);
+      return apiSuccess(result, request);
     }
 
     // For adaptive_core phase, generate questions dynamically
@@ -175,13 +172,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
 
       if (!newQuestion) {
         console.error('❌ [NextQuestionHandler] No question available in database');
-        return jsonResponse(
-          {
-            error: 'No questions available',
-            message: 'Question bank exhausted for current difficulty and subtag'
-          },
-          500
-        );
+        return apiError(500, 'INTERNAL_ERROR', 'No questions available', request);
       }
 
       // Validate question is not a duplicate
@@ -217,7 +208,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           totalQuestionsInPhase: updatedPhaseQuestions.length,
         },
       };
-      return jsonResponse(result);
+      return apiSuccess(result, request);
     }
 
     // For diagnostic_screener and stability_confirmation, use pre-generated questions
@@ -235,7 +226,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           totalQuestionsInPhase: currentPhaseQuestions.length,
         },
       };
-      return jsonResponse(result);
+      return apiSuccess(result, request);
     }
 
     // Need to transition to next phase or complete test
@@ -257,7 +248,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           totalQuestionsInPhase: currentPhaseQuestions.length,
         },
       };
-      return jsonResponse(result);
+      return apiSuccess(result, request);
     }
 
     // Generate questions for next phase
@@ -342,7 +333,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
               totalQuestionsInPhase: currentPhaseQuestions.length,
             },
           };
-          return jsonResponse(result);
+          return apiSuccess(result, request);
         }
         
         if (newQuestions.length < 6) {
@@ -364,7 +355,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
             totalQuestionsInPhase: currentPhaseQuestions.length,
           },
         };
-        return jsonResponse(result);
+        return apiSuccess(result, request);
       }
     }
 
@@ -434,16 +425,10 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
       },
     };
 
-    return jsonResponse(result);
+    return apiSuccess(result, request);
 
   } catch (error) {
     console.error('❌ [NextQuestionHandler] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to get next question',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to get next question', request);
   }
 };

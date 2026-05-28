@@ -6,9 +6,9 @@
  * - GET /payment-receipt - Get payment receipt file
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
-import { corsHeaders } from '../../../../src/functions-lib/cors';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';;
+import { corsHeaders } from '../../../lib/cors';
 import { R2Client } from '../utils/r2-client';
 import {
   createAuthenticationError,
@@ -29,7 +29,7 @@ interface UploadReceiptRequestBody {
  */
 export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }) => {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   console.log('[UploadPaymentReceipt] ========== START ==========');
@@ -40,7 +40,7 @@ export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }
       body = (await request.json()) as UploadReceiptRequestBody;
     } catch (parseError) {
       console.error('[UploadPaymentReceipt] Failed to parse request body:', parseError);
-      return jsonResponse({ error: 'Invalid JSON body' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', request);
     }
 
     const { pdfBase64, paymentId, userId, userName, filename } = body;
@@ -56,7 +56,7 @@ export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }
     // Validate required fields
     if (!pdfBase64 || !paymentId || !userId) {
       console.error('[UploadPaymentReceipt] Missing required fields');
-      return jsonResponse({ error: 'pdfBase64, paymentId, and userId are required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'pdfBase64, paymentId, and userId are required', request);
     }
 
     // Decode base64 to binary
@@ -70,7 +70,7 @@ export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }
       console.log(`[UploadPaymentReceipt] Decoded base64 to ${bytes.length} bytes`);
     } catch (decodeError) {
       console.error('[UploadPaymentReceipt] Failed to decode base64:', decodeError);
-      return jsonResponse({ error: 'Invalid base64 data' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid base64 data', request);
     }
 
     // Generate unique filename with hybrid folder structure: {name}_{short_id}/
@@ -116,21 +116,10 @@ export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }
     console.log('[UploadPaymentReceipt] File URL:', fileUrl);
     console.log('[UploadPaymentReceipt] File Key:', fileKey);
 
-    return jsonResponse({
-      success: true,
-      url: fileUrl,
-      fileKey,
-      filename: finalFilename,
-    });
+    return apiSuccess({ url: fileUrl, fileKey, filename: finalFilename }, request);
   } catch (error) {
     console.error('[UploadPaymentReceipt] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to upload payment receipt',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to upload payment receipt', request);
   }
 };
 
@@ -169,7 +158,7 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
   const { request, env, user } = context as any;
 
   if (request.method !== 'GET') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   // Require authentication
@@ -197,7 +186,7 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
     }
 
     if (!fileKey) {
-      return jsonResponse({ error: 'File key or URL is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
     }
 
     // Extract payment ID from file key
@@ -205,7 +194,7 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
     
     if (!paymentId) {
       console.error('[GetPaymentReceipt] Could not extract payment ID from key:', fileKey);
-      return jsonResponse({ error: 'Invalid payment receipt file key' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid payment receipt file key', request);
     }
 
     console.log('[GetPaymentReceipt] Extracted payment ID:', paymentId);
@@ -235,10 +224,7 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
     const response = await r2Client.getObject(fileKey);
 
     if (!response.ok) {
-      return jsonResponse(
-        { error: 'Receipt not found or access denied', status: response.status },
-        response.status
-      );
+      return apiError(response.status, 'NOT_FOUND', 'Receipt not found or access denied', request);
     }
 
     // Get file content
@@ -264,13 +250,7 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
     });
   } catch (error) {
     logErrorSafely('GetPaymentReceipt', error);
-    return jsonResponse(
-      {
-        error: 'Failed to get payment receipt',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to get payment receipt', request);
   }
 };
 
@@ -282,7 +262,7 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
   const { request, env, user } = context as any;
 
   if (request.method !== 'GET') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   // Require authentication to generate presigned URL
@@ -310,7 +290,7 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
     }
 
     if (!fileKey) {
-      return jsonResponse({ error: 'File key or URL is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
     }
 
     // Extract payment ID from file key
@@ -318,7 +298,7 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
 
     if (!paymentId) {
       console.error('[GetPaymentReceiptPresigned] Could not extract payment ID from key:', fileKey);
-      return jsonResponse({ error: 'Invalid payment receipt file key' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid payment receipt file key', request);
     }
 
     console.log('[GetPaymentReceiptPresigned] Extracted payment ID:', paymentId);
@@ -351,20 +331,9 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
 
     console.log('[GetPaymentReceiptPresigned] Generated presigned URL for:', fileKey);
 
-    return jsonResponse({
-      success: true,
-      presignedUrl,
-      fileKey,
-      expiresIn: Math.min(expiresIn, 604800),
-    });
+    return apiSuccess({ presignedUrl, fileKey, expiresIn: Math.min(expiresIn, 604800) }, request);
   } catch (error) {
     logErrorSafely('GetPaymentReceiptPresigned', error);
-    return jsonResponse(
-      {
-        error: 'Failed to generate presigned URL',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to generate presigned URL', request);
   }
 };

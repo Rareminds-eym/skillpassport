@@ -11,7 +11,8 @@ import type { PagesFunction } from '@cloudflare/workers-types';
 import { withAuth } from '../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../lib/supabase';
-import { apiSuccess, apiError, handleCorsOptions } from '../lib/response';
+import { handleCorsPreflightRequest } from '../lib/cors';
+import { apiSuccess, apiError } from '../lib/response';
 
 interface ErrorLogRequest {
     timestamp: string;
@@ -25,12 +26,12 @@ interface ErrorLogRequest {
 export const onRequest: PagesFunction = async (context) => {
     // Handle CORS preflight
     if (context.request.method === 'OPTIONS') {
-        return handleCorsOptions(context.request);
+        return handleCorsPreflightRequest(context.request);
     }
 
     // Only accept POST requests
     if (context.request.method !== 'POST') {
-        return new Response('Method not allowed', { status: 405 });
+        return apiError(405, 'ERROR', 'Method not allowed', context.request);
     }
 
     return withAuth(async (authContext: AuthenticatedContext) => {
@@ -77,7 +78,7 @@ export const onRequest: PagesFunction = async (context) => {
                 });
             }
 
-            return apiSuccess({ success: true, message: 'Error logged successfully', duration: Date.now() - startTime }, request);
+            return apiSuccess({ message: 'Error logged successfully', duration: Date.now() - startTime }, request);
         } catch (error) {
             console.error('[LogError] Unexpected error:', error);
             return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);

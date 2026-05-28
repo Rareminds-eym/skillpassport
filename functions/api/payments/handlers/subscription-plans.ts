@@ -11,6 +11,7 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 /**
  * Transform a raw subscription_plans row into the shape the frontend PlanCard expects.
@@ -108,15 +109,7 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
 
     if (error) {
       console.error('[SubscriptionPlans] Supabase error:', error);
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'Failed to fetch subscription plans',
-          },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch subscription plans', context.request);
     }
 
     // Transform raw DB rows into the shape the frontend expects
@@ -167,20 +160,9 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
       }
     }
 
-    return new Response(
-      JSON.stringify({ success: true, plans }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ plans }, context.request, 200);
   } catch (error) {
     console.error('[SubscriptionPlans] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to fetch subscription plans',
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to fetch subscription plans', context.request);
   }
 }

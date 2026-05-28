@@ -15,6 +15,7 @@ import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { createLogger } from '../../../lib/logger';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-bundle-order');
 
@@ -27,24 +28,15 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     if (!body.bundle_id || typeof body.bundle_id !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'bundle_id is required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'bundle_id is required', context.request);
     }
 
     if (!body.billing_period || typeof body.billing_period !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'billing_period is required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
     const supabase = getServiceClient(env);
@@ -58,10 +50,7 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
 
     if (lookupError || !bundle) {
       logger.error('Bundle not found', { bundle_id: body.bundle_id, error: lookupError });
-      return new Response(
-        JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Bundle not found or inactive' } }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(404, 'NOT_FOUND', 'Bundle not found or inactive', context.request);
     }
 
     // DB stores prices in rupees (3558.40 = ₹3,558.40); Razorpay expects paise
@@ -71,10 +60,7 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
 
     if (typeof amount !== 'number' || amount <= 0) {
       logger.error('Invalid bundle price', { bundle_id: body.bundle_id, amount });
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Bundle price is invalid' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Bundle price is invalid', context.request);
     }
 
     const worker = getPaymentWorker(env);
@@ -91,21 +77,12 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
 
     if (!order.key_id) {
       logger.error('Payment worker did not return key_id');
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Payment worker configuration error', context.request);
     }
 
-    return new Response(JSON.stringify({
-      ...order,
-      razorpay_key_id: order.key_id,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ ...order, razorpay_key_id: order.key_id }, context.request);
   } catch (error) {
     logger.error('Error creating bundle order', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

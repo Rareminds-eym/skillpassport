@@ -5,9 +5,9 @@
  * Creates a new adaptive aptitude test session
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { getContextUser } from '../../../lib/auth';
 import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
@@ -39,10 +39,7 @@ export const initializeHandler: PagesFunction = async (context) => {
     // Note: learnerId from body is ignored - we look it up from auth.user.id
 
     if (!gradeLevel) {
-      return jsonResponse(
-        { error: 'Missing required field: gradeLevel' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required field: gradeLevel', request);
     }
 
     console.log('📋 [InitializeHandler] Request:', { gradeLevel, learnerCourse });
@@ -59,10 +56,7 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     if (learnerError || !learnerData) {
       console.error('❌ [InitializeHandler] Learner record not found for user:', userId, learnerError);
-      return jsonResponse(
-        { error: 'Learner record not found', message: learnerError?.message },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Learner record not found', request);
     }
 
     const learnerId = learnerData.id;
@@ -87,10 +81,7 @@ export const initializeHandler: PagesFunction = async (context) => {
     // Validate gradeLevel
     const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary', 'after10', 'after12', 'undergraduate', 'postgraduate'];
     if (!validGradeLevels.includes(gradeLevel)) {
-      return jsonResponse(
-        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary, after10, after12, undergraduate, postgraduate' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary, after10, after12, undergraduate, postgraduate', request);
     }
 
     console.log('🚀 [InitializeHandler] initializeTest called:', { learnerId, gradeLevel: actualGradeLevel });
@@ -154,16 +145,10 @@ export const initializeHandler: PagesFunction = async (context) => {
       firstQuestion: diagnosticQuestions[0],
     };
 
-    return jsonResponse(result, 201);
+    return apiSuccess(result, request, 201);
 
   } catch (error) {
     console.error('❌ [InitializeHandler] Error:', error);
-    return jsonResponse(
-      { 
-        error: 'Failed to initialize test',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to initialize test', request);
   }
 };

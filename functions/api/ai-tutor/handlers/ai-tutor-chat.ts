@@ -10,8 +10,8 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
 import { getAPIKeys, API_CONFIG, AI_MODELS } from '../../shared/ai-config';
 import type { WorksheetConfig } from '../types/worksheet';
@@ -84,7 +84,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
   const user = getContextUser(context);
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   const learnerId = user.id;
@@ -95,23 +95,23 @@ export const handleAiTutorChat = async (context: TypedContext) => {
   try {
     body = await request.json();
   } catch {
-    return jsonResponse({ error: 'Invalid JSON body' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', request);
   }
 
   if (!body || typeof body !== 'object') {
-    return jsonResponse({ error: 'Invalid request body' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid request body', request);
   }
 
   const { conversationId, courseId, lessonId, message, worksheetConfig, lessonPlanConfig } = body;
 
   if (!courseId || !message) {
-    return jsonResponse({ error: 'Missing required fields: courseId and message' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: courseId and message', request);
   }
 
   // Check if AI is configured
   const { openRouter: openRouterKey } = getAPIKeys(env);
   if (!openRouterKey) {
-    return jsonResponse({ error: 'AI service not configured' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'AI service not configured', request);
   }
 
   try {
@@ -170,10 +170,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       
       if (limitReached) {
         logger.warn('Blocked: teacher learner reached generation limit');
-        return jsonResponse({
-          error: 'You have reached your 2-generation limit for worksheet and lesson plan generation.',
-          code: 'TEACHER_GENERATION_LIMIT_REACHED',
-        }, 403);
+        return apiError(403, 'FORBIDDEN', 'You have reached your 2-generation limit for worksheet and lesson plan generation.', request);
       }
     }
 
@@ -183,11 +180,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       // Educators MUST provide either worksheetConfig or lessonPlanConfig
       if (!worksheetConfig && !lessonPlanConfig) {
         logger.warn('Blocked: Educator attempted to use chat without worksheet/lesson plan config');
-        return jsonResponse({ 
-          error: 'Chat functionality is not available for educators. Please use the worksheet or lesson plan generation feature.',
-          code: 'EDUCATOR_CHAT_BLOCKED',
-          userRole: userRole
-        }, 403);
+        return apiError(403, 'FORBIDDEN', 'Chat functionality is not available for educators. Please use the worksheet or lesson plan generation feature.', request);
       }
       logger.info('Educator request validated', { 
         hasWorksheetConfig: !!worksheetConfig, 
@@ -573,6 +566,6 @@ export const handleAiTutorChat = async (context: TypedContext) => {
   } catch (error: unknown) {
     logger.error('AI Tutor Chat error', error instanceof Error ? error : new Error(String(error)));
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return jsonResponse({ error: errorMessage }, 500);
+    return apiError(500, 'INTERNAL_ERROR', errorMessage, request);
   }
 };

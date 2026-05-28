@@ -7,6 +7,7 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiError } from '../../lib/response';
 
 /**
  * GET /api/learners — List learners (for admins) or get own profile (for learners)
@@ -27,8 +28,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       .eq('id', learnerId)
       .single();
 
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ learner: data });
+    if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+    return apiSuccess({ learner: data }, context.request);
   }
 
   // If user is a learner, return their own profile
@@ -43,8 +44,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       .eq('user_id', user.id)
       .single();
 
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ learner: data });
+    if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+    return apiSuccess({ learner: data }, context.request);
   }
 
   // Admin: list learners in their org
@@ -58,8 +59,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     .range(offset, offset + limit - 1)
     .order('created_at', { ascending: false });
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ learners: data, total: count });
+  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  return apiSuccess({ learners: data, total: count }, context.request);
 });
 
 /**
@@ -74,7 +75,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   try {
     body = await context.request.json() as any;
   } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
   // Ensure org_id is set from the JWT (prevent cross-org writes)
@@ -90,8 +91,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       .select()
       .single();
 
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ learner: data });
+    if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+    return apiSuccess({ learner: data }, context.request);
   }
 
   // Create new
@@ -102,6 +103,6 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     .select()
     .single();
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ learner: data }, { status: 201 });
+  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  return apiSuccess({ learner: data }, context.request, 201);
 });

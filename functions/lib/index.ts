@@ -6,3 +6,4 @@
 export * from './cors';
 export * from './response';
 export * from './supabase';
+export * from './types';

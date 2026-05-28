@@ -9,6 +9,7 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { ssoFetch } from '../../../lib/sso-client';
+import { apiSuccess, apiError } from '../../../lib/response';
 export async function handleGetAvailableAddons(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SSO_SERVICE: Fetcher };
   const url = new URL(context.request.url);
@@ -27,10 +28,7 @@ export async function handleGetAvailableAddons(context: AuthenticatedContext): P
     if (!ssoResponse.ok) {
       const errText = await ssoResponse.text();
       console.error('[GetAvailableAddons] SSO Worker error:', ssoResponse.status, errText);
-      return new Response(
-        JSON.stringify({ success: false, data: null, error: `SSO Worker error: ${ssoResponse.status}` }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(200, 'ERROR', `SSO Worker error: ${ssoResponse.status}`, context.request);
     }
 
     const { addons } = await ssoResponse.json() as { addons: any[] };
@@ -52,19 +50,9 @@ export async function handleGetAvailableAddons(context: AuthenticatedContext): P
       icon_url: addon.icon,
     }));
 
-    return new Response(
-      JSON.stringify({ success: true, data: resultData, error: null }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess(resultData, context.request, 200);
   } catch (error) {
     console.error('[GetAvailableAddons] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        data: null,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

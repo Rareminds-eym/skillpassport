@@ -12,7 +12,7 @@ const mockIn = vi.fn();
 const mockUpdate = vi.fn();
 const mockFrom = vi.fn();
 
-vi.mock('../../../../../src/functions-lib/supabase', () => ({
+vi.mock('../../../../../lib/supabase', () => ({
   createSupabaseClient: vi.fn(() => ({
     from: mockFrom,
   })),

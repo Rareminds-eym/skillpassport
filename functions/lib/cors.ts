@@ -10,9 +10,9 @@
  * Add your production and development domains here
  */
 const ALLOWED_ORIGINS = [
-  'http://localhost:5173', // Vite dev server
-  'http://localhost:3000', // Alternative dev port
-  'http://localhost:8788', // Pages dev server
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:8788',
   'https://sso-auth.skillpassport.pages.dev',
   'https://skillpassport.pages.dev',
   'https://skillpassport.rareminds.in',
@@ -24,10 +24,9 @@ const ALLOWED_ORIGINS = [
  * Falls back to first allowed origin if origin is not in whitelist
  */
 export function getCorsHeaders(origin: string | null): Record<string, string> {
-  // Check if origin is in whitelist
   const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin)
     ? origin
-    : ALLOWED_ORIGINS[0]; // Fallback to first allowed origin
+    : ALLOWED_ORIGINS[0];
 
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
@@ -38,34 +37,32 @@ export function getCorsHeaders(origin: string | null): Record<string, string> {
 }
 
 /**
- * @deprecated Use getCorsHeaders(origin) instead. This wildcard export is kept
- * only for backward compatibility during migration.
+ * CORS headers using whitelist (fallback origin)
  */
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-};
+export const corsHeaders: Record<string, string> = getCorsHeaders(null);
 
 /**
  * Handle CORS preflight requests
  */
-export function handleCorsPreflightRequest(): Response {
+export function handleCorsPreflightRequest(request?: Request): Response {
+  const origin = request?.headers?.get('Origin') ?? null;
   return new Response(null, {
     status: 204,
-    headers: corsHeaders,
+    headers: new Headers(getCorsHeaders(origin)),
   });
 }
 
 /**
  * Add CORS headers to a response
  */
-export function addCorsHeaders(response: Response): Response {
+export function addCorsHeaders(response: Response, request?: Request): Response {
+  const origin = request?.headers?.get('Origin') ?? null;
+  const cors = getCorsHeaders(origin);
   const newHeaders = new Headers(response.headers);
-  Object.entries(corsHeaders).forEach(([key, value]) => {
+  Object.entries(cors).forEach(([key, value]) => {
     newHeaders.set(key, value);
   });
-  
+
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

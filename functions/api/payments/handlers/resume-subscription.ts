@@ -15,6 +15,7 @@ import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoUpdateSubscriptionStatus, ssoSyncSubscription } from '../../../lib/sso-client';
 import { syncSubscriptionCache } from '../../../lib/sync-shadow';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleResumeSubscription(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
@@ -26,23 +27,13 @@ export async function handleResumeSubscription(context: AuthenticatedContext): P
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     const subscriptionId = body.subscription_id as string;
 
     if (!subscriptionId) {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'subscription_id is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'subscription_id is required', context.request);
     }
 
     const supabase = getServiceClient(env);
@@ -57,12 +48,15 @@ export async function handleResumeSubscription(context: AuthenticatedContext): P
 
     if (fetchError) {
       console.error('[ResumeSubscription] Fetch error:', fetchError);
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INTERNAL_ERROR', message: 'Failed to verify subscription ownership' },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to verify subscription ownership', context.request);
+    }
+
+    if (!existing) {
+      return apiError(404, 'NOT_FOUND', 'Subscription not found or does not belong to user', context.request);
+    }
+
+    if (existing.status !== 'paused') {
+      return apiError(400, 'VALIDATION_ERROR', 'Only paused subscriptions can be resumed', context.request);
     }
 
     if (!existing) {
@@ -98,20 +92,9 @@ export async function handleResumeSubscription(context: AuthenticatedContext): P
       console.error('[ResumeSubscription] Shadow sync failed (non-blocking):', syncError);
     }
 
-    return new Response(
-      JSON.stringify({ success: true, subscription: ssoResult }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ subscription: ssoResult }, context.request, 200);
   } catch (error) {
     console.error('[ResumeSubscription] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to resume subscription',
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to resume subscription', context.request);
   }
 }

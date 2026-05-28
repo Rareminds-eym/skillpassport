@@ -7,6 +7,7 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiError } from '../../lib/response';
 
 /**
  * GET /api/learners/activity — Get learner activity data
@@ -22,7 +23,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const learnerId = url.searchParams.get('learner_id') || user.id;
 
   if (!type) {
-    return Response.json({ error: 'type query param is required (education|training|experience|skills)' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'type query param is required (education|training|experience|skills)', context.request);
   }
 
   const tableMap: Record<string, string> = {
@@ -34,7 +35,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   const table = tableMap[type];
   if (!table) {
-    return Response.json({ error: `Invalid type: ${type}` }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', `Invalid type: ${type}`, context.request);
   }
 
   const { data, error } = await supabase
@@ -43,8 +44,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     .eq('learner_id', learnerId)
     .order('created_at', { ascending: false });
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ data });
+  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  return apiSuccess({ data }, context.request);
 });
 
 /**
@@ -60,7 +61,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   try {
     body = await context.request.json() as any;
   } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
   const { type, ...record } = body;
@@ -74,7 +75,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   const table = tableMap[type];
   if (!table) {
-    return Response.json({ error: `Invalid type: ${type}` }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', `Invalid type: ${type}`, context.request);
   }
 
   // Set learner_id from JWT if not provided
@@ -91,8 +92,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       .select()
       .single();
 
-    if (error) return Response.json({ error: error.message }, { status: 500 });
-    return Response.json({ data });
+    if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+    return apiSuccess({ data }, context.request);
   }
 
   // Create
@@ -102,6 +103,6 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     .select()
     .single();
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ data }, { status: 201 });
+  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  return apiSuccess({ data }, context.request, 201);
 });

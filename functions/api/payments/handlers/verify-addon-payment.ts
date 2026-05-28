@@ -18,6 +18,7 @@ import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoRecordTransaction, ssoRecordAddonPurchase } from '../../../lib/sso-client';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleVerifyAddonPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
@@ -29,33 +30,17 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     // Validate required fields for Razorpay verification
     if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required',
-          },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required', context.request);
     }
 
     // Validate addon details
     if (!body.feature_key) {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'feature_key is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'feature_key is required', context.request);
     }
 
     // Step 1: Call payment-worker via RPC to verify HMAC signature
@@ -67,12 +52,7 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
     );
 
     if (!body.billing_period || typeof body.billing_period !== 'string') {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'billing_period is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
     // body.amount is in paise (from Razorpay API); DB columns expect rupees
@@ -131,21 +111,9 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       console.error('[VerifyAddonPayment] Transaction recording in auth DB failed:', txError);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      ...verifyResult,
-      purchase_created: true,
-      purchase: entitlement ? {
-        id: entitlement.id,
-        feature_key: entitlement.feature_key,
-        status: entitlement.status,
-      } : null,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ ...verifyResult, purchase_created: true, purchase: entitlement ? { id: entitlement.id, feature_key: entitlement.feature_key, status: entitlement.status } : null }, context.request);
   } catch (error) {
     console.error('[VerifyAddonPayment] Error:', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

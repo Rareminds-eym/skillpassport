@@ -5,9 +5,9 @@
  * Completes test and calculates final results
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { getContextUser } from '../../../lib/auth';
 import type { 
   TestResults, 
@@ -40,7 +40,7 @@ export const completeHandler: PagesFunction = async (context) => {
   const sessionId = pathParts[pathParts.length - 1];
 
   if (!sessionId) {
-    return jsonResponse({ error: 'Session ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Session ID is required', request);
   }
 
   try {
@@ -69,10 +69,7 @@ export const completeHandler: PagesFunction = async (context) => {
 
     if (sessionError || !sessionData) {
       console.error('❌ [CompleteHandler] Failed to fetch session:', sessionError);
-      return jsonResponse(
-        { error: 'Session not found', message: sessionError?.message },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Session not found', request);
     }
 
     // Verify session ownership by checking if the learner's user_id matches the authenticated user
@@ -84,10 +81,7 @@ export const completeHandler: PagesFunction = async (context) => {
 
     if (learnerError || !learnerData) {
       console.error('❌ [CompleteHandler] Failed to fetch learner:', learnerError);
-      return jsonResponse(
-        { error: 'Learner not found' },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Learner not found', request);
     }
 
     if (learnerData.user_id !== userId) {
@@ -95,10 +89,7 @@ export const completeHandler: PagesFunction = async (context) => {
         learnerUserId: learnerData.user_id,
         authUserId: userId
       });
-      return jsonResponse(
-        { error: 'Unauthorized: You do not own this session' },
-        403
-      );
+      return apiError(403, 'FORBIDDEN', 'Unauthorized: You do not own this session', request);
     }
 
     // Fetch all responses
@@ -257,16 +248,10 @@ export const completeHandler: PagesFunction = async (context) => {
       completedAt,
     };
 
-    return jsonResponse(result);
+    return apiSuccess(result, request);
 
   } catch (error) {
     console.error('❌ [CompleteHandler] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to complete test',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to complete test', request);
   }
 };

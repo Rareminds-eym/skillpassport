@@ -11,17 +11,19 @@ import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 import {
   corsHeaders,
+  getCorsHeaders,
   handleCorsPreflightRequest,
   addCorsHeaders,
-  jsonResponse,
-  errorResponse,
-  successResponse,
-  streamResponse,
+  apiSuccess,
+  apiError,
+  apiDbError,
+  apiValidationError,
+  apiMethodNotAllowed,
+  apiNotFound,
   createSupabaseClient,
   createSupabaseAdminClient,
-  getAuthToken,
   PagesEnv,
-} from '@/functions-lib';
+} from '../../../functions/lib';
 
 describe('Property 3: Shared Module Consistency', () => {
   /**
@@ -33,39 +35,57 @@ describe('Property 3: Shared Module Consistency', () => {
     fc.assert(
       fc.property(
         fc.record({
-          data: fc.anything(),
-          // Only use status codes that allow bodies (exclude 1xx, 204, 205, 304)
+          data: fc.oneof(fc.constant(null), fc.string(), fc.integer(), fc.boolean()),
           status: fc.oneof(
             fc.integer({ min: 200, max: 203 }),
             fc.integer({ min: 206, max: 299 }),
             fc.integer({ min: 400, max: 599 })
           ),
           message: fc.string(),
+          code: fc.constant('TEST_ERROR'),
         }),
-        ({ data, status, message }) => {
-          // Test jsonResponse
-          const jsonResp = jsonResponse(data, status);
-          expect(jsonResp.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
-          expect(jsonResp.headers.get('Access-Control-Allow-Headers')).toBe(corsHeaders['Access-Control-Allow-Headers']);
-          expect(jsonResp.headers.get('Access-Control-Allow-Methods')).toBe(corsHeaders['Access-Control-Allow-Methods']);
+        ({ data, status, message, code }) => {
+          // Test apiSuccess (uses default 200 if no status explicitly set)
+          const successResp = apiSuccess(data);
+          expect(successResp.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
+          expect(successResp.headers.get('Access-Control-Allow-Headers')).toBe(corsHeaders['Access-Control-Allow-Headers']);
+          expect(successResp.headers.get('Access-Control-Allow-Methods')).toBe(corsHeaders['Access-Control-Allow-Methods']);
 
-          // Test errorResponse
-          const errResp = errorResponse(message, status);
+          // Test apiError
+          const errResp = apiError(status, code, message);
           expect(errResp.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
           expect(errResp.headers.get('Access-Control-Allow-Headers')).toBe(corsHeaders['Access-Control-Allow-Headers']);
           expect(errResp.headers.get('Access-Control-Allow-Methods')).toBe(corsHeaders['Access-Control-Allow-Methods']);
 
-          // Test successResponse
-          const successResp = successResponse(data, status);
-          expect(successResp.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
-          expect(successResp.headers.get('Access-Control-Allow-Headers')).toBe(corsHeaders['Access-Control-Allow-Headers']);
-          expect(successResp.headers.get('Access-Control-Allow-Methods')).toBe(corsHeaders['Access-Control-Allow-Methods']);
+          // Test apiDbError (maps to a safe response)
+          const dbErrResp = apiDbError({ code: 'PGRST116' });
+          expect(dbErrResp.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
+          expect(dbErrResp.headers.get('Access-Control-Allow-Headers')).toBe(corsHeaders['Access-Control-Allow-Headers']);
+          expect(dbErrResp.headers.get('Access-Control-Allow-Methods')).toBe(corsHeaders['Access-Control-Allow-Methods']);
+
+          // Test apiValidationError
+          const validationResp = apiValidationError([{ path: 'field', message }]);
+          expect(validationResp.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
+          expect(validationResp.headers.get('Access-Control-Allow-Headers')).toBe(corsHeaders['Access-Control-Allow-Headers']);
+          expect(validationResp.headers.get('Access-Control-Allow-Methods')).toBe(corsHeaders['Access-Control-Allow-Methods']);
 
           // Test handleCorsPreflightRequest
           const preflightResp = handleCorsPreflightRequest();
           expect(preflightResp.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
           expect(preflightResp.headers.get('Access-Control-Allow-Headers')).toBe(corsHeaders['Access-Control-Allow-Headers']);
           expect(preflightResp.headers.get('Access-Control-Allow-Methods')).toBe(corsHeaders['Access-Control-Allow-Methods']);
+
+          // Test apiMethodNotAllowed
+          const methodResp = apiMethodNotAllowed();
+          expect(methodResp.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
+          expect(methodResp.headers.get('Access-Control-Allow-Headers')).toBe(corsHeaders['Access-Control-Allow-Headers']);
+          expect(methodResp.headers.get('Access-Control-Allow-Methods')).toBe(corsHeaders['Access-Control-Allow-Methods']);
+
+          // Test apiNotFound
+          const notFoundResp = apiNotFound(message);
+          expect(notFoundResp.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
+          expect(notFoundResp.headers.get('Access-Control-Allow-Headers')).toBe(corsHeaders['Access-Control-Allow-Headers']);
+          expect(notFoundResp.headers.get('Access-Control-Allow-Methods')).toBe(corsHeaders['Access-Control-Allow-Methods']);
         }
       ),
       { numRuns: 100 }
@@ -74,7 +94,7 @@ describe('Property 3: Shared Module Consistency', () => {
 
   /**
    * Property: JSON responses should always be valid JSON
-   * For any data input, jsonResponse should produce parseable JSON
+   * For any data input, apiSuccess should produce parseable JSON
    */
   it('should always produce valid JSON responses', async () => {
     fc.assert(
@@ -88,28 +108,21 @@ describe('Property 3: Shared Module Consistency', () => {
             fc.dictionary(fc.string(), fc.string()),
             fc.constant(null),
           ),
-          // Only use status codes that allow bodies
-          status: fc.oneof(
-            fc.integer({ min: 200, max: 203 }),
-            fc.integer({ min: 206, max: 299 }),
-            fc.integer({ min: 400, max: 599 })
-          ),
         }),
-        async ({ data, status }) => {
-          const response = jsonResponse(data, status);
+        async ({ data }) => {
+          // Test apiSuccess JSON output
+          const response = apiSuccess(data);
           const text = await response.text();
           
-          // Should be parseable JSON
           expect(() => JSON.parse(text)).not.toThrow();
           
-          // Parsed data should match original
           const parsed = JSON.parse(text);
-          expect(parsed).toEqual(data);
-          
-          // Status should match
-          expect(response.status).toBe(status);
-          
-          // Content-Type should be JSON
+          expect(parsed.success).toBe(true);
+          expect(parsed.data).toEqual(data);
+          expect(parsed.error).toBeNull();
+          expect(parsed.meta).toHaveProperty('requestId');
+          expect(parsed.meta).toHaveProperty('timestamp');
+          expect(response.status).toBe(200);
           expect(response.headers.get('Content-Type')).toBe('application/json');
         }
       ),
@@ -119,26 +132,28 @@ describe('Property 3: Shared Module Consistency', () => {
 
   /**
    * Property: Error responses should always have error field
-   * For any error message, errorResponse should include an error field
+   * For any error code and message, apiError should follow the { success, data, error, meta } envelope
    */
   it('should always include error field in error responses', async () => {
     fc.assert(
       fc.asyncProperty(
         fc.record({
+          code: fc.string({ minLength: 1 }),
           message: fc.string({ minLength: 1 }),
           status: fc.integer({ min: 400, max: 599 }),
         }),
-        async ({ message, status }) => {
-          const response = errorResponse(message, status);
+        async ({ code, message, status }) => {
+          const response = apiError(status, code, message);
           const data = await response.json();
           
-          // Should have error field
           expect(data).toHaveProperty('error');
-          expect(data.error).toBe(message);
-          
-          // Status should be in error range
-          expect(response.status).toBeGreaterThanOrEqual(400);
-          expect(response.status).toBeLessThan(600);
+          expect(data.error).toHaveProperty('code', code);
+          expect(data.error).toHaveProperty('message', message);
+          expect(data.success).toBe(false);
+          expect(data.data).toBeNull();
+          expect(data.meta).toHaveProperty('requestId');
+          expect(data.meta).toHaveProperty('timestamp');
+          expect(response.status).toBe(status);
         }
       ),
       { numRuns: 100 }
@@ -147,35 +162,30 @@ describe('Property 3: Shared Module Consistency', () => {
 
   /**
    * Property: Success responses should always have success: true
-   * For any data input, successResponse should include success: true
+   * For any data input, apiSuccess should include success: true
    */
   it('should always include success: true in success responses', async () => {
     fc.assert(
       fc.asyncProperty(
         fc.record({
           data: fc.dictionary(fc.string(), fc.jsonValue()),
-          // Only use status codes that can have a body (200, 201, 202, 203)
-          status: fc.constantFrom(200, 201, 202, 203),
         }),
-        async ({ data, status }) => {
-          const response = successResponse(data, status);
+        async ({ data }) => {
+          const response = apiSuccess(data);
           const responseData = await response.json();
           
-          // Should have success: true
-          expect(responseData).toHaveProperty('success');
           expect(responseData.success).toBe(true);
+          expect(responseData.error).toBeNull();
+          expect(responseData.meta).toHaveProperty('requestId');
+          expect(responseData.meta).toHaveProperty('timestamp');
           
-          // Should include all data fields (after JSON serialization)
           Object.keys(data).forEach(key => {
-            expect(responseData).toHaveProperty(key);
-            // Use JSON.parse(JSON.stringify()) to normalize undefined to null
+            expect(responseData.data).toHaveProperty(key);
             const expectedValue = JSON.parse(JSON.stringify(data[key]));
-            expect(responseData[key]).toEqual(expectedValue);
+            expect(responseData.data[key]).toEqual(expectedValue);
           });
           
-          // Status should be in success range
-          expect(response.status).toBeGreaterThanOrEqual(200);
-          expect(response.status).toBeLessThan(300);
+          expect(response.status).toBe(200);
         }
       ),
       { numRuns: 100 }
@@ -191,7 +201,6 @@ describe('Property 3: Shared Module Consistency', () => {
       fc.asyncProperty(
         fc.record({
           body: fc.string(),
-          // Only use status codes that allow bodies
           status: fc.oneof(
             fc.integer({ min: 200, max: 203 }),
             fc.integer({ min: 206, max: 299 }),
@@ -205,13 +214,8 @@ describe('Property 3: Shared Module Consistency', () => {
           const corsResponse = addCorsHeaders(originalResponse);
           const corsText = await corsResponse.text();
           
-          // Body should be unchanged
           expect(corsText).toBe(originalText);
-          
-          // Status should be unchanged
           expect(corsResponse.status).toBe(status);
-          
-          // CORS headers should be present
           expect(corsResponse.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
         }
       ),
@@ -220,41 +224,68 @@ describe('Property 3: Shared Module Consistency', () => {
   });
 
   /**
-   * Property: Auth token extraction should handle various header formats
-   * For any valid Bearer token format, getAuthToken should extract the token
+   * Property: Validation errors should include detail array
+   * For any validation issues, the response should have proper structure
    */
-  it('should correctly extract auth tokens from various header formats', () => {
+  it('should include detail array in validation error responses', async () => {
     fc.assert(
-      fc.property(
-        // Generate tokens with no whitespace at all (typical JWT format)
-        fc.string({ minLength: 10, maxLength: 100 })
-          .filter(s => s.trim().length > 0 && !/\s/.test(s)),
-        (token) => {
-          // Valid Bearer token format
-          const validRequest = new Request('https://example.com', {
-            headers: { authorization: `Bearer ${token}` },
-          });
-          expect(getAuthToken(validRequest)).toBe(token);
+      fc.asyncProperty(
+        fc.array(
+          fc.record({
+            path: fc.string({ minLength: 1 }),
+            message: fc.string({ minLength: 1 }),
+          }),
+          { minLength: 1, maxLength: 5 }
+        ),
+        async (issues) => {
+          const response = apiValidationError(issues);
+          const data = await response.json();
           
-          // Case insensitive Bearer
-          const caseRequest = new Request('https://example.com', {
-            headers: { authorization: `bearer ${token}` },
-          });
-          expect(getAuthToken(caseRequest)).toBe(token);
-          
-          // No authorization header
-          const noAuthRequest = new Request('https://example.com');
-          expect(getAuthToken(noAuthRequest)).toBeNull();
-          
-          // Invalid format (no Bearer prefix)
-          const invalidRequest = new Request('https://example.com', {
-            headers: { authorization: token },
-          });
-          expect(getAuthToken(invalidRequest)).toBeNull();
+          expect(data.success).toBe(false);
+          expect(data.error).toHaveProperty('code', 'VALIDATION_ERROR');
+          expect(data.error).toHaveProperty('message', 'Request validation failed');
+          expect(data.error).toHaveProperty('details');
+          expect(data.error.details).toEqual(issues);
+          expect(response.status).toBe(400);
         }
       ),
       { numRuns: 100 }
     );
+  });
+
+  /**
+   * Property: Convenience error builders should return correct status codes
+   */
+  it('should return correct status codes for convenience error builders', () => {
+    expect(apiMethodNotAllowed().status).toBe(405);
+    expect(apiNotFound().status).toBe(404);
+    expect(apiNotFound('Custom message').status).toBe(404);
+  });
+
+  /**
+   * Property: apiDbError should map known error codes safely
+   */
+  it('should safely map database errors without leaking internals', async () => {
+    const knownErrors = [
+      { code: 'PGRST116', expectedStatus: 404, expectedCode: 'NOT_FOUND' },
+      { code: '42501', expectedStatus: 403, expectedCode: 'PERMISSION_DENIED' },
+      { code: '23505', expectedStatus: 409, expectedCode: 'DUPLICATE' },
+      { code: '23503', expectedStatus: 400, expectedCode: 'REFERENCE_ERROR' },
+      { code: 'UNKNOWN_CODE', expectedStatus: 500, expectedCode: 'INTERNAL_ERROR' },
+      { code: null, expectedStatus: 500, expectedCode: 'UNKNOWN' },
+    ];
+
+    for (const { code, expectedStatus, expectedCode } of knownErrors) {
+      const response = apiDbError(code ? { code } : null);
+      const data = await response.json();
+      
+      expect(response.status).toBe(expectedStatus);
+      expect(data.error.code).toBe(expectedCode);
+      expect(data.error).not.toHaveProperty('details');
+      expect(data.error).not.toHaveProperty('stack');
+      expect(data.error).not.toHaveProperty('message');
+      expect(data.success).toBe(false);
+    }
   });
 
   /**
@@ -276,14 +307,12 @@ describe('Property 3: Shared Module Consistency', () => {
             SUPABASE_SERVICE_ROLE_KEY: hasServiceKey ? 'test-service-key' : undefined,
           };
 
-          // Regular client requires URL and anon key
           if (hasUrl && hasAnonKey) {
             expect(() => createSupabaseClient(env as PagesEnv)).not.toThrow();
           } else {
             expect(() => createSupabaseClient(env as PagesEnv)).toThrow();
           }
 
-          // Admin client requires URL and service key
           if (hasUrl && hasServiceKey) {
             expect(() => createSupabaseAdminClient(env as PagesEnv)).not.toThrow();
           } else {
@@ -296,30 +325,25 @@ describe('Property 3: Shared Module Consistency', () => {
   });
 
   /**
-   * Property: Stream responses should have correct headers
-   * For any readable stream, streamResponse should set proper streaming headers
+   * Property: getCorsHeaders should always return consistent set of headers
    */
-  it('should set correct headers for streaming responses', () => {
+  it('should return consistent CORS headers for any origin', () => {
     fc.assert(
       fc.property(
-        fc.string(),
-        (content) => {
-          const stream = new ReadableStream({
-            start(controller) {
-              controller.enqueue(new TextEncoder().encode(content));
-              controller.close();
-            },
-          });
-
-          const response = streamResponse(stream);
-
-          // Should have streaming headers
-          expect(response.headers.get('Content-Type')).toBe('text/event-stream');
-          expect(response.headers.get('Cache-Control')).toBe('no-cache');
-          expect(response.headers.get('Connection')).toBe('keep-alive');
-
-          // Should have CORS headers
-          expect(response.headers.get('Access-Control-Allow-Origin')).toBe(corsHeaders['Access-Control-Allow-Origin']);
+        fc.oneof(fc.constant(null), fc.constant('https://example.com'), fc.constant('*')),
+        (origin) => {
+          const headers = getCorsHeaders(origin);
+          
+          expect(headers).toHaveProperty('Access-Control-Allow-Origin');
+          expect(headers).toHaveProperty('Access-Control-Allow-Headers');
+          expect(headers).toHaveProperty('Access-Control-Allow-Methods');
+          expect(Object.keys(headers).length).toBe(3);
+          
+          if (origin === null) {
+            expect(headers['Access-Control-Allow-Origin']).toBe('*');
+          } else {
+            expect(headers['Access-Control-Allow-Origin']).toBe(origin);
+          }
         }
       ),
       { numRuns: 100 }

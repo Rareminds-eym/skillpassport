@@ -11,6 +11,7 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleGetSubscription(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
@@ -30,31 +31,12 @@ export async function handleGetSubscription(context: AuthenticatedContext): Prom
 
     if (error) {
       console.error('[GetSubscription] Supabase error:', error);
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'Failed to fetch subscription',
-          },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch subscription', context.request);
     }
 
-    return new Response(
-      JSON.stringify({ success: true, subscription: data }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ subscription: data }, context.request, 200);
   } catch (error) {
     console.error('[GetSubscription] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to get subscription',
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to get subscription', context.request);
   }
 }

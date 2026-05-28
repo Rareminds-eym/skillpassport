@@ -16,8 +16,8 @@
  * - key: string (the deleted file key)
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';;
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
 import {
@@ -81,7 +81,7 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
 
   // Require authentication
   if (!user) {
-    return createAuthenticationError('/delete', 'missing_token');
+    return createAuthenticationError('/delete', 'missing_token', undefined, request);
   }
 
   try {
@@ -91,9 +91,7 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
 
     // Validate that at least one parameter is provided
     if (!url && !key) {
-      return jsonResponse({ 
-        error: 'Either url or key is required' 
-      }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Either url or key is required', request);
     }
 
     // Determine the file key
@@ -104,17 +102,13 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
       fileKey = R2Client.extractKeyFromUrl(url) || undefined;
       
       if (!fileKey) {
-        return jsonResponse({ 
-          error: 'Could not extract file key from URL. Please provide a valid R2 URL or file key.' 
-        }, 400);
+        return apiError(400, 'VALIDATION_ERROR', 'Could not extract file key from URL. Please provide a valid R2 URL or file key.', request);
       }
     }
 
     // At this point, fileKey should be defined
     if (!fileKey) {
-      return jsonResponse({ 
-        error: 'Could not determine file key' 
-      }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Could not determine file key', request);
     }
 
     console.log('🗑️  Deleting file:', { originalUrl: url, fileKey, userId: user.id });
@@ -134,7 +128,8 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
         user.id,
         fileKey,
         reason,
-        ownership.reason || 'You do not have permission to delete this file'
+        ownership.reason || 'You do not have permission to delete this file',
+        request
       );
     }
 
@@ -146,15 +141,12 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
 
     console.log('✅ File deleted successfully from R2:', fileKey);
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: 'File deleted successfully',
       key: fileKey,
-    });
+    }, request);
   } catch (error) {
     logErrorSafely('Delete', error);
-    return jsonResponse({
-      error: (error as Error).message || 'Delete failed',
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Delete failed', request);
   }
 };

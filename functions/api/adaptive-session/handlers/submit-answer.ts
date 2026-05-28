@@ -5,9 +5,9 @@
  * Records answer, updates difficulty, checks stop conditions
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { getContextUser } from '../../../lib/auth';
 import type { 
   SubmitAnswerOptions, 
@@ -43,18 +43,12 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     const { sessionId, questionId, selectedAnswer, responseTimeMs } = body;
 
     if (!sessionId || !questionId || !selectedAnswer || responseTimeMs === undefined) {
-      return jsonResponse(
-        { error: 'Missing required fields: sessionId, questionId, selectedAnswer, responseTimeMs' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: sessionId, questionId, selectedAnswer, responseTimeMs', request);
     }
 
     // Validate selectedAnswer
     if (!['A', 'B', 'C', 'D'].includes(selectedAnswer)) {
-      return jsonResponse(
-        { error: 'Invalid selectedAnswer. Must be one of: A, B, C, D' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid selectedAnswer. Must be one of: A, B, C, D', request);
     }
 
     console.log('📝 [SubmitAnswerHandler] submitAnswer called:', {
@@ -75,10 +69,7 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
 
     if (sessionError || !sessionData) {
       console.error('❌ [SubmitAnswerHandler] Failed to fetch session:', sessionError);
-      return jsonResponse(
-        { error: 'Session not found', message: sessionError?.message },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Session not found', request);
     }
 
     // Verify session ownership by checking if the learner's user_id matches the authenticated user
@@ -90,10 +81,7 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
 
     if (learnerError || !learnerData) {
       console.error('❌ [SubmitAnswerHandler] Failed to fetch learner:', learnerError);
-      return jsonResponse(
-        { error: 'Learner not found' },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Learner not found', request);
     }
 
     if (learnerData.user_id !== userId) {
@@ -101,10 +89,7 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
         learnerUserId: learnerData.user_id,
         authUserId: userId
       });
-      return jsonResponse(
-        { error: 'Unauthorized: You do not own this session' },
-        403
-      );
+      return apiError(403, 'FORBIDDEN', 'Unauthorized: You do not own this session', request);
     }
 
     console.log('📊 [SubmitAnswerHandler] Session state before update:', {
@@ -123,10 +108,7 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     const currentQuestion = currentPhaseQuestions.find(q => q.id === questionId);
 
     if (!currentQuestion) {
-      return jsonResponse(
-        { error: 'Question not found in current phase', questionId },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Question not found in current phase', request);
     }
 
     // Check if answer is correct
@@ -382,16 +364,10 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       updatedSession,
     };
 
-    return jsonResponse(result);
+    return apiSuccess(result, request);
 
   } catch (error) {
     console.error('❌ [SubmitAnswerHandler] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to submit answer',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to submit answer', request);
   }
 };

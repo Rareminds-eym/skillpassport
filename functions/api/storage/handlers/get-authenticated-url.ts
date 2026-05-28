@@ -9,6 +9,7 @@
  * Headers: Authorization: Bearer <jwt>
  */
 
+import { apiSuccess, apiError } from '../../../lib/response';
 import { checkCourseEnrollment, checkRateLimit } from '../utils/course-authorization';
 import { extractFileKey, generateMediaToken } from '../utils/token-crypto';
 
@@ -34,10 +35,7 @@ interface RequestBody {
 export const handleGetAuthenticatedUrl = async (context: StorageHandlerContext) => {
   const { request, env } = context;
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
@@ -69,13 +67,7 @@ export const handleGetAuthenticatedUrl = async (context: StorageHandlerContext) 
     const { fileUrl, fileKey: providedKey, courseId, lessonId, fingerprint, sessionId } = body;
 
     if (!courseId) {
-      return new Response(
-        JSON.stringify({ error: 'Course ID is required' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Course ID is required', request);
     }
 
     let fileKey: string | undefined = providedKey;
@@ -85,38 +77,20 @@ export const handleGetAuthenticatedUrl = async (context: StorageHandlerContext) 
     }
 
     if (!fileKey) {
-      return new Response(
-        JSON.stringify({ error: 'File key or URL is required' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
     }
 
     // Check course enrollment
     const authCheck = await checkCourseEnrollment(supabase, userId, courseId);
     if (!authCheck.authorized) {
-      return new Response(
-        JSON.stringify({ error: authCheck.error || 'Access denied' }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(403, 'FORBIDDEN', authCheck.error || 'Access denied', request);
     }
 
     // Generate authenticated token with fingerprint
     const signingSecret = env.SIGNING_SECRET;
     if (!signingSecret) {
       console.error('[GetAuthUrl] SIGNING_SECRET not configured');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Server configuration error', request);
     }
 
     const userAgent = request.headers.get('User-Agent') || '';
@@ -154,15 +128,6 @@ export const handleGetAuthenticatedUrl = async (context: StorageHandlerContext) 
     );
   } catch (error) {
     console.error('[GetAuthUrl] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to generate authenticated URL',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };

@@ -5,9 +5,10 @@
 
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { Env } from '../../../lib/types';
 import type { PreRegistration } from '../types';
-import { jsonResponse, corsHeaders } from '../../../../src/functions-lib';
+import { corsHeaders } from '../../../lib/cors';;
+import { apiSuccess, apiError } from '../../../lib/response';
 import { getPreRegistrationByOrderId } from '../services/database';
 
 export async function handlePDFReceipt(
@@ -16,11 +17,11 @@ export async function handlePDFReceipt(
   supabase: SupabaseClient
 ): Promise<Response> {
   if (!orderId) {
-    return jsonResponse({ success: false, error: 'Order ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Order ID is required');
   }
 
   if (!supabase) {
-    return jsonResponse({ success: false, error: 'Database connection failed' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Database connection failed');
   }
 
   try {
@@ -28,11 +29,11 @@ export async function handlePDFReceipt(
 
     if (fetchError) {
       console.error('Supabase error:', fetchError);
-      return jsonResponse({ success: false, error: 'Failed to fetch receipt data' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch receipt data');
     }
 
     if (!data) {
-      return jsonResponse({ success: false, error: 'Receipt not found' }, 404);
+      return apiError(404, 'NOT_FOUND', 'Receipt not found');
     }
 
     // Generate PDF
@@ -51,7 +52,7 @@ export async function handlePDFReceipt(
 
   } catch (error: any) {
     console.error('Error generating PDF receipt:', error);
-    return jsonResponse({ success: false, error: 'Failed to generate PDF receipt' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to generate PDF receipt');
   }
 }
 

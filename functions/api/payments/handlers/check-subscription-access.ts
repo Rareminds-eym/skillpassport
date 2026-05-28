@@ -12,6 +12,7 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleCheckSubscriptionAccess(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
@@ -32,30 +33,12 @@ export async function handleCheckSubscriptionAccess(context: AuthenticatedContex
 
     if (error) {
       console.error('[CheckSubscriptionAccess] Supabase error:', error);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          hasAccess: false,
-          accessReason: 'error',
-          subscription: null,
-          showWarning: false,
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiSuccess({ hasAccess: false, accessReason: 'error', subscription: null, showWarning: false }, context.request, 200);
     }
 
     // No subscription found
     if (!subscription) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          hasAccess: false,
-          accessReason: 'no_subscription',
-          subscription: null,
-          showWarning: false,
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiSuccess({ hasAccess: false, accessReason: 'no_subscription', subscription: null, showWarning: false }, context.request, 200);
     }
 
     const now = new Date();
@@ -65,16 +48,7 @@ export async function handleCheckSubscriptionAccess(context: AuthenticatedContex
 
     // No end date set — treat as active
     if (!endDate) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          hasAccess: true,
-          accessReason: 'active_subscription',
-          subscription,
-          showWarning: false,
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiSuccess({ hasAccess: true, accessReason: 'active_subscription', subscription, showWarning: false }, context.request, 200);
     }
 
     // If the auth DB has already marked this as grace_period, honour it directly
@@ -84,19 +58,15 @@ export async function handleCheckSubscriptionAccess(context: AuthenticatedContex
         ? Math.ceil((now.getTime() - endDate.getTime()) / msPerDay)
         : 0;
       const gracePeriodDays = 7;
-      return new Response(
-        JSON.stringify({
-          success: true,
-          hasAccess: true,
-          accessReason: 'grace_period',
-          subscription,
-          showWarning: true,
-          warningType: 'grace_period',
-          warningMessage: `Your subscription is in a grace period. ${gracePeriodDays - daysSinceExpiry} day(s) remaining. Please renew to maintain access.`,
-          daysUntilExpiry: -(daysSinceExpiry),
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiSuccess({
+        hasAccess: true,
+        accessReason: 'grace_period',
+        subscription,
+        showWarning: true,
+        warningType: 'grace_period',
+        warningMessage: `Your subscription is in a grace period. ${gracePeriodDays - daysSinceExpiry} day(s) remaining. Please renew to maintain access.`,
+        daysUntilExpiry: -(daysSinceExpiry),
+      }, context.request, 200);
     }
 
     const msPerDay = 1000 * 60 * 60 * 24;
@@ -106,32 +76,24 @@ export async function handleCheckSubscriptionAccess(context: AuthenticatedContex
     if (endDate > now) {
       // Warn if expiring within 7 days
       if (daysUntilExpiry <= 7) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            hasAccess: true,
-            accessReason: 'active_subscription',
-            subscription,
-            showWarning: true,
-            warningType: 'expiring_soon',
-            warningMessage: `Your subscription expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}. Please renew to maintain access.`,
-            daysUntilExpiry,
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
+        return apiSuccess({
           hasAccess: true,
           accessReason: 'active_subscription',
           subscription,
-          showWarning: false,
+          showWarning: true,
+          warningType: 'expiring_soon',
+          warningMessage: `Your subscription expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}. Please renew to maintain access.`,
           daysUntilExpiry,
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+        }, context.request, 200);
+      }
+
+      return apiSuccess({
+        hasAccess: true,
+        accessReason: 'active_subscription',
+        subscription,
+        showWarning: false,
+        daysUntilExpiry,
+      }, context.request, 200);
     }
 
     // Subscription has expired — check grace period (7 days)
@@ -139,43 +101,21 @@ export async function handleCheckSubscriptionAccess(context: AuthenticatedContex
     const gracePeriodDays = 7;
 
     if (daysSinceExpiry <= gracePeriodDays) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          hasAccess: true,
-          accessReason: 'grace_period',
-          subscription,
-          showWarning: true,
-          warningType: 'grace_period',
-          warningMessage: `Your subscription expired ${daysSinceExpiry} day${daysSinceExpiry === 1 ? '' : 's'} ago. You have ${gracePeriodDays - daysSinceExpiry} day${(gracePeriodDays - daysSinceExpiry) === 1 ? '' : 's'} of grace period remaining. Please renew to maintain access.`,
-          daysUntilExpiry: -(daysSinceExpiry),
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiSuccess({
+        hasAccess: true,
+        accessReason: 'grace_period',
+        subscription,
+        showWarning: true,
+        warningType: 'grace_period',
+        warningMessage: `Your subscription expired ${daysSinceExpiry} day${daysSinceExpiry === 1 ? '' : 's'} ago. You have ${gracePeriodDays - daysSinceExpiry} day${(gracePeriodDays - daysSinceExpiry) === 1 ? '' : 's'} of grace period remaining. Please renew to maintain access.`,
+        daysUntilExpiry: -(daysSinceExpiry),
+      }, context.request, 200);
     }
 
     // Expired beyond grace period
-    return new Response(
-      JSON.stringify({
-        success: true,
-        hasAccess: false,
-        accessReason: 'expired',
-        subscription,
-        showWarning: false,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ hasAccess: false, accessReason: 'expired', subscription, showWarning: false }, context.request, 200);
   } catch (error) {
     console.error('[CheckSubscriptionAccess] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        hasAccess: false,
-        accessReason: 'error',
-        subscription: null,
-        showWarning: false,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ hasAccess: false, accessReason: 'error', subscription: null, showWarning: false }, context.request, 200);
   }
 }

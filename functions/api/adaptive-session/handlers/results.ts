@@ -5,9 +5,9 @@
  * Retrieves test results from database
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { getContextUser } from '../../../lib/auth';
 import type { 
   TestResults, 
@@ -32,7 +32,7 @@ export const getResultsHandler: PagesFunction = async (context) => {
   const sessionId = pathParts[pathParts.length - 1];
 
   if (!sessionId) {
-    return jsonResponse({ error: 'Session ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Session ID is required', request);
   }
 
   try {
@@ -52,7 +52,7 @@ export const getResultsHandler: PagesFunction = async (context) => {
 
     if (error || !data) {
       console.log('❌ [GetResultsHandler] Results not found:', error?.message);
-      return jsonResponse({ results: null }, 200);
+      return apiSuccess({ results: null }, request);
     }
 
     // Verify session ownership by checking if the learner's user_id matches the authenticated user
@@ -64,10 +64,7 @@ export const getResultsHandler: PagesFunction = async (context) => {
 
     if (learnerError || !learnerData) {
       console.error('❌ [GetResultsHandler] Failed to fetch learner:', learnerError);
-      return jsonResponse(
-        { error: 'Learner not found' },
-        404
-      );
+      return apiError(404, 'NOT_FOUND', 'Learner not found', request);
     }
 
     if (learnerData.user_id !== userId) {
@@ -75,10 +72,7 @@ export const getResultsHandler: PagesFunction = async (context) => {
         learnerUserId: learnerData.user_id,
         authUserId: userId
       });
-      return jsonResponse(
-        { error: 'Unauthorized: You do not own this session' },
-        403
-      );
+      return apiError(403, 'FORBIDDEN', 'Unauthorized: You do not own this session', request);
     }
 
     console.log('✅ [GetResultsHandler] Results found:', data.id);
@@ -103,23 +97,11 @@ export const getResultsHandler: PagesFunction = async (context) => {
     };
 
     // Add caching headers for completed results
-    return new Response(JSON.stringify(results), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-      },
-    });
+    return apiSuccess(results, request);
 
   } catch (error) {
     console.error('❌ [GetResultsHandler] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to get results',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to get results', request);
   }
 };
 
@@ -139,7 +121,7 @@ export const getlearnerResultsHandler: PagesFunction = async (context) => {
   const learnerId = pathParts[pathParts.length - 1];
 
   if (!learnerId) {
-    return jsonResponse({ error: 'Learner ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Learner ID is required', request);
   }
 
   try {
@@ -151,10 +133,7 @@ export const getlearnerResultsHandler: PagesFunction = async (context) => {
     // Verify learner ID matches authenticated user
     if (learnerId !== userId) {
       console.error('❌ [GetLearnerResultsHandler] Learner ID verification failed');
-      return jsonResponse(
-        { error: 'Unauthorized: You can only access your own results' },
-        403
-      );
+      return apiError(403, 'FORBIDDEN', 'Unauthorized: You can only access your own results', request);
     }
 
     console.log('📊 [GetLearnerResultsHandler] getlearnerTestResults called:', { learnerId });
@@ -174,7 +153,7 @@ export const getlearnerResultsHandler: PagesFunction = async (context) => {
 
     if (!data || data.length === 0) {
       console.log('📭 [GetLearnerResultsHandler] No results found for learner');
-      return jsonResponse({ results: [] }, 200);
+      return apiSuccess({ results: [] }, request);
     }
 
     console.log('✅ [GetLearnerResultsHandler] Found results:', data.length);
@@ -198,16 +177,10 @@ export const getlearnerResultsHandler: PagesFunction = async (context) => {
       completedAt: record.completed_at,
     }));
 
-    return jsonResponse({ results });
+    return apiSuccess({ results }, request);
 
   } catch (error) {
     console.error('❌ [GetLearnerResultsHandler] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to get learner results',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to get learner results', request);
   }
 };

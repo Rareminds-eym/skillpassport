@@ -53,9 +53,6 @@ export interface PagesEnv {
   OPENROUTER_API_KEY?: string;
   GEMINI_API_KEY?: string;
 
-
- 
-
   // R2 Storage configuration
   CLOUDFLARE_ACCOUNT_ID?: string;
   CLOUDFLARE_R2_ACCESS_KEY_ID?: string;

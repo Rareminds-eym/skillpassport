@@ -7,9 +7,9 @@
  * Uses unified 'organizations' table with organization_type='university'
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import type { UniversityAdminSignupRequest, UniversityEducatorSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
 import {
@@ -33,20 +33,20 @@ export async function handleUniversityAdminSignup(request: Request, env: PagesEn
     const requiredFields = ['email', 'password', 'universityName', 'universityCode', 'state', 'chancellorName'];
     for (const field of requiredFields) {
       if (!body[field as keyof UniversityAdminSignupRequest]) {
-        return jsonResponse({ error: `Missing required field: ${field}` }, 400);
+        return apiError(400, 'VALIDATION_ERROR', `Missing required field: ${field}`, request);
       }
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters', request);
     }
 
     if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An account with this email already exists', request);
     }
 
     // Check if university code is unique in organizations table
@@ -58,7 +58,7 @@ export async function handleUniversityAdminSignup(request: Request, env: PagesEn
       .maybeSingle();
 
     if (existingUniversity) {
-      return jsonResponse({ error: 'University code already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'University code already exists', request);
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -74,7 +74,7 @@ export async function handleUniversityAdminSignup(request: Request, env: PagesEn
 
     if (authError || !authUser.user) {
       console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', authError?.message || 'Failed to create account', request);
     }
 
     const userId = authUser.user.id;
@@ -146,8 +146,7 @@ export async function handleUniversityAdminSignup(request: Request, env: PagesEn
         `<strong>University:</strong> ${body.universityName}`
       );
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'University account created successfully! Please check your email for login details.',
         data: {
           userId,
@@ -157,7 +156,7 @@ export async function handleUniversityAdminSignup(request: Request, env: PagesEn
           email: body.email,
           role: 'university_admin',
         },
-      });
+      }, request);
     } catch (error) {
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
@@ -165,10 +164,7 @@ export async function handleUniversityAdminSignup(request: Request, env: PagesEn
     }
   } catch (error) {
     console.error('University admin signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create university account' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create university account', request);
   }
 }
 
@@ -183,22 +179,19 @@ export async function handleUniversityEducatorSignup(request: Request, env: Page
     const body = (await request.json()) as UniversityEducatorSignupRequest;
 
     if (!body.email || !body.password || !body.firstName || !body.lastName || !body.universityId) {
-      return jsonResponse(
-        { error: 'Missing required fields: email, password, firstName, lastName, universityId' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: email, password, firstName, lastName, universityId', request);
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters', request);
     }
 
     if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An account with this email already exists', request);
     }
 
     // Verify university exists in organizations table
@@ -210,7 +203,7 @@ export async function handleUniversityEducatorSignup(request: Request, env: Page
       .single();
 
     if (universityError || !university) {
-      return jsonResponse({ error: 'Invalid university selected' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid university selected', request);
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -229,7 +222,7 @@ export async function handleUniversityEducatorSignup(request: Request, env: Page
 
     if (authError || !authUser.user) {
       console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', authError?.message || 'Failed to create account', request);
     }
 
     const userId = authUser.user.id;
@@ -292,8 +285,7 @@ export async function handleUniversityEducatorSignup(request: Request, env: Page
         `<strong>University:</strong> ${university.name}`
       );
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'University educator account created successfully!',
         data: {
           userId,
@@ -304,7 +296,7 @@ export async function handleUniversityEducatorSignup(request: Request, env: Page
           universityName: university.name,
           role: 'university_educator',
         },
-      });
+      }, request);
     } catch (error) {
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
@@ -312,9 +304,6 @@ export async function handleUniversityEducatorSignup(request: Request, env: Page
     }
   } catch (error) {
     console.error('University educator signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create university educator account' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create university educator account', request);
   }
 }

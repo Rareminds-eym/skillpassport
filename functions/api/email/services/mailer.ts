@@ -3,7 +3,7 @@
  */
 
 import { WorkerMailer } from 'worker-mailer';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { Env } from '../../../lib/types';
 import type { EmailData, EmailResult, SmtpConfig, FromAddress } from '../types';
 
 export function buildSmtpConfig(env: Env): SmtpConfig {

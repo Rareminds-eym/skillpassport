@@ -5,7 +5,7 @@
  * Ensures consistent error messages and proper security logging without exposing sensitive data.
  */
 
-import { jsonResponse } from '../../../../src/functions-lib';
+import { apiError } from '../../../lib/response';;
 
 /**
  * Standard error messages
@@ -90,14 +90,7 @@ export function createAuthenticationError(
   message?: string
 ): Response {
   logAuthenticationFailure(endpoint, reason);
-  
-  return jsonResponse(
-    {
-      error: ERROR_MESSAGES.AUTHENTICATION_REQUIRED,
-      message: message || ERROR_MESSAGES.AUTHENTICATION_REQUIRED_DETAIL,
-    },
-    401
-  );
+  return apiError(401, 'UNAUTHORIZED', message || ERROR_MESSAGES.AUTHENTICATION_REQUIRED_DETAIL);
 }
 
 /**
@@ -116,14 +109,7 @@ export function createAuthorizationError(
   customMessage?: string
 ): Response {
   logAuthorizationFailure(userId, fileKey, reason);
-  
-  return jsonResponse(
-    {
-      error: ERROR_MESSAGES.ACCESS_DENIED,
-      message: customMessage || ERROR_MESSAGES.INSUFFICIENT_PERMISSIONS,
-    },
-    403
-  );
+  return apiError(403, 'FORBIDDEN', customMessage || ERROR_MESSAGES.INSUFFICIENT_PERMISSIONS);
 }
 
 /**

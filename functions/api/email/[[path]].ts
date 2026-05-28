@@ -12,8 +12,10 @@
  * - GET /api/email/download-receipt/:orderId - Download PDF receipt
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, getCorsHeaders } from '../../lib/cors';
+import { createSupabaseClient } from '../../lib/supabase';;
+import { apiSuccess, apiError } from '../../lib/response';
 import { withAuth } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { handleGenericEmail } from './handlers/generic';
@@ -22,7 +24,7 @@ import { handleCountdownEmail } from './handlers/countdown';
 import { handleBulkCountdownEmail } from './handlers/bulk-countdown';
 import { handleEventConfirmation, handleEventOTP } from './handlers/event-registration';
 import { handlePDFReceipt } from './handlers/pdf-receipt';
-import type { PagesEnv } from '../../../src/functions-lib/types';
+import type { PagesEnv } from '../../lib/types';
 import { apiLogger } from '../../lib/logger';
 import type { EventConfirmationRequest, EventOTPRequest, CountdownEmailRequest, BulkCountdownEmailRequest, GenericEmailRequest, InvitationEmailRequest } from './types';
 
@@ -33,7 +35,14 @@ export const onRequest: PagesFunction = async (context) => {
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    const origin = request.headers.get('Origin') || '';
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...getCorsHeaders(origin),
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
 
   const url = new URL(request.url);
@@ -44,7 +53,7 @@ export const onRequest: PagesFunction = async (context) => {
     if (request.method === 'GET') {
       // Health check
       if (path === '' || path === '/') {
-        return jsonResponse({
+        return apiSuccess({
           status: 'ok',
           service: 'email-api',
           endpoints: [
@@ -57,7 +66,7 @@ export const onRequest: PagesFunction = async (context) => {
             '/download-receipt/:orderId'
           ],
           timestamp: new Date().toISOString()
-        });
+        }, request);
       }
 
       const pdfMatch = path.match(/^\/download-receipt\/(.+)$/);
@@ -67,12 +76,12 @@ export const onRequest: PagesFunction = async (context) => {
         return await handlePDFReceipt(orderId, env, supabase);
       }
       
-      return jsonResponse({ success: false, error: 'Route not found' }, 404);
+      return apiError(404, 'NOT_FOUND', 'Route not found', request);
     }
 
     // Only POST requests for email operations (authenticated)
     if (request.method !== 'POST') {
-      return jsonResponse({ success: false, error: 'Method not allowed' }, 405);
+      return apiError(405, 'ERROR', 'Method not allowed', request);
     }
 
     // All POST email operations require authentication
@@ -84,10 +93,7 @@ export const onRequest: PagesFunction = async (context) => {
       try {
         body = await authContext.request.json();
       } catch (error) {
-        return jsonResponse({ 
-          success: false, 
-          error: 'Invalid JSON in request body' 
-        }, 400);
+        return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', authContext.request);
       }
 
       const envTyped = env as unknown as PagesEnv;
@@ -121,15 +127,12 @@ export const onRequest: PagesFunction = async (context) => {
         return await handleGenericEmail(body as GenericEmailRequest, envTyped, supabase);
       }
 
-      return jsonResponse({ success: false, error: 'Route not found' }, 404);
+      return apiError(404, 'NOT_FOUND', 'Route not found', authContext.request);
     })(context);
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     apiLogger.error('Email API Error', error as Error);
-    return jsonResponse(
-      { success: false, error: errorMessage },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', errorMessage, request);
   }
 };

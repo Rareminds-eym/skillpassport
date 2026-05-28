@@ -8,8 +8,8 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import { getGenerationUsage } from '../utils/generation-limit';
 import { getLogger } from '../../../../src/shared/config/logging';
 
@@ -44,7 +44,7 @@ export const onRequestGet = async (context: TypedContext) => {
     const userId = requestedUserId || authenticatedUser.id;
 
     if (!userId) {
-      return jsonResponse({ error: 'Missing userId parameter' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Missing userId parameter', request);
     }
 
     // Security check: Only allow users to fetch their own generation usage unless admin
@@ -55,9 +55,7 @@ export const onRequestGet = async (context: TypedContext) => {
       );
 
     if (requestedUserId && requestedUserId !== authenticatedUser.id && !isAdmin) {
-      return jsonResponse({ 
-        error: 'Forbidden: You can only fetch your own generation usage' 
-      }, 403);
+      return apiError(403, 'FORBIDDEN', 'Forbidden: You can only fetch your own generation usage', request);
     }
 
     // Check if user is a teacher-learner
@@ -69,40 +67,32 @@ export const onRequestGet = async (context: TypedContext) => {
 
     if (learnerError) {
       logger.error('Failed to fetch learner_type', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
-      return jsonResponse({ 
-        error: 'Failed to fetch learner type',
-      }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch learner type', request);
     }
 
     const isTeacher = learner?.learner_type === 'teacher';
 
     // If not a teacher-learner, return unlimited usage
     if (!isTeacher) {
-      return jsonResponse({
+      return apiSuccess({
         userId,
         limit: null,
         used: 0,
         remaining: null,
         isTeacher: false,
-      });
+      }, request);
     }
 
     // Get generation usage using centralized utility
     const usage = await getGenerationUsage(supabase, userId);
 
-    return jsonResponse({
+    return apiSuccess({
       userId,
       ...usage,
       isTeacher: true,
-    });
+    }, request);
   } catch (error: unknown) {
     logger.error('Get generation usage error', error instanceof Error ? error : new Error(String(error)));
-    return jsonResponse(
-      { 
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 };

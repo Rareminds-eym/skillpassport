@@ -12,6 +12,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-org-order');
 
@@ -25,39 +26,24 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     // Validate required fields
     if (!body.amount || typeof body.amount !== 'number') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'amount is required and must be a number' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'amount is required and must be a number', context.request);
     }
 
     if (!body.org_id || typeof body.org_id !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'org_id is required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'org_id is required', context.request);
     }
 
     if (!body.plan_name || typeof body.plan_name !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'plan_name is required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'plan_name is required', context.request);
     }
 
     if (!body.seat_count || typeof body.seat_count !== 'number') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'seat_count is required and must be a number' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'seat_count is required and must be a number', context.request);
     }
 
     // Call payment-worker via Service Binding RPC
@@ -77,22 +63,13 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
     // Validate that payment worker returned key_id
     if (!order.key_id) {
       logger.error('Payment worker did not return key_id');
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Payment worker configuration error', context.request);
     }
 
     // Return order with key_id from payment worker
-    return new Response(JSON.stringify({
-      ...order,
-      razorpay_key_id: order.key_id,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ ...order, razorpay_key_id: order.key_id }, context.request);
   } catch (error) {
     logger.error('Error creating org order', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }
