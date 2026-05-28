@@ -9,6 +9,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(env as any);
   const startTime = Date.now();
 
+  const isAdmin = user.roles?.some((r: string) =>
+    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
+  );
+  if (!isAdmin) {
+    return apiError(403, 'FORBIDDEN', 'Only admins can perform learner actions', context.request, { startTime });
+  }
+
   let body: any;
   try {
     body = await context.request.json();

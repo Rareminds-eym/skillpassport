@@ -16,6 +16,22 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     const url = new URL(context.request.url);
     let learnerId = url.searchParams.get('learner_id') || null;
 
+    if (learnerId) {
+      const isAdmin = user.roles?.some((r: string) =>
+        ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
+      );
+      if (!isAdmin) {
+        const { data: ownLearner } = await supabase
+          .from('learners')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (ownLearner?.id !== learnerId) {
+          return apiError(403, 'FORBIDDEN', 'You can only view your own trainings', context.request, { startTime });
+        }
+      }
+    }
+
     if (!learnerId) {
       const { data: learnerByUser } = await supabase
         .from('learners')

@@ -20,10 +20,29 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     const userEmail = user.email;
     logger.info('Fetching learner profile', { userId, userEmail, targetLearnerId });
 
+    const isAdmin = user.roles?.some((r: string) =>
+      ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
+    );
+
+    if (targetEmail && !isAdmin && userEmail !== targetEmail) {
+      logger.warn('Email mismatch - blocked', { userEmail, targetEmail });
+      return apiError(403, 'FORBIDDEN', 'You can only view your own dashboard', context.request, { startTime });
+    }
+
     let learnerData: any;
     let learnerId: string;
 
     if (targetLearnerId) {
+      if (!isAdmin) {
+        const { data: ownLearner } = await supabase
+          .from('learners')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (ownLearner?.id !== targetLearnerId) {
+          return apiError(403, 'FORBIDDEN', 'You can only view your own dashboard', context.request, { startTime });
+        }
+      }
       const { data, error } = await supabase
         .from('learners')
         .select('*')
