@@ -14,7 +14,19 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   try {
     const url = new URL(context.request.url);
-    const learnerId = url.searchParams.get('learner_id') || user.id;
+    let learnerId = url.searchParams.get('learner_id') || null;
+
+    if (!learnerId) {
+      const { data: learnerByUser } = await supabase
+        .from('learners')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!learnerByUser) {
+        return apiError(404, 'NOT_FOUND', 'No learner found', context.request, { startTime });
+      }
+      learnerId = learnerByUser.id;
+    }
 
     const { data: trainings, error: trainError } = await supabase
       .from('trainings')
@@ -84,6 +96,32 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   try {
+    if (certificate && (certificate.link || certificate.credential_id)) {
+      if (certificate.link) {
+        const { data: existingByUrl } = await supabase
+          .from('certificates')
+          .select('id, title')
+          .eq('learner_id', learnerId)
+          .eq('link', certificate.link)
+          .maybeSingle();
+        if (existingByUrl) {
+          return apiError(400, 'VALIDATION_ERROR', `Duplicate certificate: "${existingByUrl.title}" already exists with this URL`, context.request, { startTime });
+        }
+      }
+      if (!certificate.link && certificate.credential_id && certificate.platform) {
+        const { data: existingByCred } = await supabase
+          .from('certificates')
+          .select('id, title')
+          .eq('learner_id', learnerId)
+          .eq('credential_id', certificate.credential_id)
+          .eq('platform', certificate.platform)
+          .maybeSingle();
+        if (existingByCred) {
+          return apiError(400, 'VALIDATION_ERROR', `Duplicate certificate: "${existingByCred.title}" already exists with this credential`, context.request, { startTime });
+        }
+      }
+    }
+
     const trainingRecord = {
       learner_id: learnerId,
       title: training?.title || training?.course || 'Untitled Course',

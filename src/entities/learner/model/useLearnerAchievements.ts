@@ -20,19 +20,10 @@ export const useLearnerAchievements = (learnerId, email) => {
       setLoading(true);
       setError(null);
 
-      let actualLearnerId = learnerId;
-      if (!actualLearnerId && email) {
-        try {
-          const response: any = await apiGet(`/learners/dashboard?learner_id=${encodeURIComponent(email)}`);
-          actualLearnerId = response?.data?.profile?.id;
-        } catch {
-          throw new Error('Learner ID not found');
-        }
-        if (!actualLearnerId) throw new Error('Learner ID not found');
-      }
+      const lookupParam = learnerId ? `learner_id=${learnerId}` : email ? `email=${encodeURIComponent(email)}` : '';
+      if (!lookupParam) return;
 
-      const params = actualLearnerId ? `?learner_id=${actualLearnerId}` : '';
-      const response: any = await apiGet(`/learners/dashboard${params}`);
+      const response: any = await apiGet(`/learners/dashboard?${lookupParam}`);
       const data = response?.data ?? response ?? {};
 
       const education = data.education || [];

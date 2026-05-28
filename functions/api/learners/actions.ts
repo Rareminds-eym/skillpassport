@@ -25,22 +25,22 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     switch (action) {
       case 'approve':
       case 'reject': {
+        const { data: learnerRecord } = await supabase.from('learners').select('enrollmentDate, metadata').eq('id', learnerId).single();
         const updateData: any = {
           approval_status: action === 'approve' ? 'approved' : 'rejected',
           updated_at: new Date().toISOString(),
         };
 
-        if (action === 'approve') {
-          const { data: existing } = await supabase.from('learners').select('enrollmentDate').eq('id', learnerId).single();
-          if (!existing?.enrollmentDate) {
-            updateData.enrollmentDate = new Date().toISOString().split('T')[0];
-          }
+        if (action === 'approve' && !learnerRecord?.enrollmentDate) {
+          updateData.enrollmentDate = new Date().toISOString().split('T')[0];
         }
 
         if (body.reason) {
-          updateData.metadata = body.reason
-            ? { approval_reason: body.reason, approval_date: new Date().toISOString() }
-            : undefined;
+          updateData.metadata = {
+            ...(learnerRecord?.metadata || {}),
+            approval_reason: body.reason,
+            approval_date: new Date().toISOString(),
+          };
         }
 
         const { error } = await supabase.from('learners').update(updateData).eq('id', learnerId);
@@ -115,7 +115,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           metadata: {
             ...(learner.metadata || {}),
             graduation_date: graduationDate,
+            graduated_by: body.graduatedBy || user.id || 'current_admin',
             final_semester: body.currentSemester || learner.semester || 1,
+            final_cgpa: body.finalCgpa || learner.currentCgpa || (learner.profile?.education?.[0]?.cgpa) || null,
           },
         };
 

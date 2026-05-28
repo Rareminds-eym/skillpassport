@@ -15,6 +15,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   try {
     const url = new URL(context.request.url);
     const targetLearnerId = url.searchParams.get('learner_id');
+    const targetEmail = url.searchParams.get('email');
     const userId = user.id;
     const userEmail = user.email;
     logger.info('Fetching learner profile', { userId, userEmail, targetLearnerId });
@@ -33,6 +34,20 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       }
       if (!data) {
         return apiError(404, 'NOT_FOUND', `No learner found with id "${targetLearnerId}"`, context.request, { startTime });
+      }
+      learnerData = data;
+      learnerId = data.id;
+    } else if (targetEmail) {
+      const { data, error } = await supabase
+        .from('learners')
+        .select('*')
+        .eq('email', targetEmail)
+        .maybeSingle();
+      if (error) {
+        return apiError(500, 'DATABASE_ERROR', 'Failed to fetch learner data', context.request, { startTime });
+      }
+      if (!data) {
+        return apiError(404, 'NOT_FOUND', `No learner found with email "${targetEmail}"`, context.request, { startTime });
       }
       learnerData = data;
       learnerId = data.id;

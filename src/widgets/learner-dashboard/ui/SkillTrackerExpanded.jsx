@@ -30,19 +30,10 @@ const SkillTrackerExpanded = ({ learnerId, email }) => {
     try {
       setLoading(true);
 
-      let actualLearnerId = learnerId;
-      if (!actualLearnerId && email) {
-        try {
-          const lookup: any = await apiGet(`/learners/dashboard?learner_id=${encodeURIComponent(email)}`);
-          actualLearnerId = lookup?.data?.profile?.id;
-        } catch {
-          return;
-        }
-        if (!actualLearnerId) return;
-      }
+      const lookupParam = learnerId ? `learner_id=${learnerId}` : email ? `email=${encodeURIComponent(email)}` : '';
+      if (!lookupParam) return;
 
-      const params = actualLearnerId ? `?learner_id=${actualLearnerId}` : '';
-      const response: any = await apiGet(`/learners/dashboard${params}`);
+      const response: any = await apiGet(`/learners/dashboard?${lookupParam}`);
       const data = response?.data ?? response ?? {};
 
       setTechSkills(data.skills?.technical || []);
