@@ -157,9 +157,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         learner_id: learnerId,
         training_id: trainingId,
         title: certificate.title || trainingRecord.title,
+        issuer: certificate.issuer || null,
         link: certificate.link || certificate.url || '',
         platform: certificate.platform || '',
         credential_id: certificate.credentialId || certificate.credential_id || null,
+        issued_on: certificate.issued_on || certificate.issuedOn || null,
+        level: certificate.level || null,
+        description: certificate.description || null,
+        instructor: certificate.instructor || null,
+        category: certificate.category || null,
+        approval_status: 'approved',
         enabled: true,
       });
       if (certError) errors.push(`certificate: ${certError.message}`);
@@ -173,6 +180,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         type: s.type || 'technical',
         level: s.level ?? 1,
         description: s.description || '',
+        approval_status: 'pending',
         enabled: true,
       }));
       const { error: skillError } = await supabase.from('skills').insert(skillRecords);
@@ -185,6 +193,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       warnings: errors.length > 0 ? errors : undefined,
     }, context.request, { startTime });
   } catch (err) {
+    console.error('[Trainings POST] Error:', err);
     return apiError(500, 'INTERNAL_ERROR', err instanceof Error ? err.message : 'Unknown error', context.request, { startTime });
   }
 });

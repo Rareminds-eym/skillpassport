@@ -139,6 +139,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
     }
   } catch (error) {
+    console.error('[Actions] Error:', error);
     return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request, { startTime });
   }
 });
