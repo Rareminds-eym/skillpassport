@@ -6,8 +6,9 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../types';
+import type { RIASECScores, StrengthScore, AdaptiveAptitudeData, CareerFitData } from '../types';
 import { getTopCategories, getTopStrengths } from '../lib/analysis-helpers';
+import { generateCareerTracksForStudent } from './career-track-generator';
 
 async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
   const { data: session } = await supabase
@@ -310,6 +311,47 @@ export async function analyzeMiddleSchool(
       }
     }
 
+    // Step 11: Generate career tracks during analyze phase
+    let careerFitData: CareerFitData | null = null;
+
+    try {
+      console.log('[analyzeMiddleSchool] Step 11 - Starting career track generation');
+      const studentAssessmentData = {
+        attempt_id: attemptId,
+        learner_id: learnerId,
+        grade_level: attempt.grade_level,
+        riasec_scores: riasecScores,
+        riasec_code: riasecCode,
+        strength_scores: strengthScores,
+        aptitude_scores: adaptiveData,
+        aptitude_overall: aptitudeOverall,
+        learning_preferences: learningPreferences,
+        accuracy_by_subtag: adaptiveData?.accuracyBySubtag as Record<string, number> | undefined,
+      };
+
+      careerFitData = await generateCareerTracksForStudent(supabase, studentAssessmentData, context.env as Record<string, string>);
+      console.log('[analyzeMiddleSchool] Step 11 - Career tracks generated successfully');
+
+      // Store career fit data with analysis results
+      const { error: careerFitUpdateError } = await supabase
+        .from('personal_assessment_results')
+        .update({
+          result: {
+            success: true,
+            grade_level: attempt.grade_level,
+            careerFit: careerFitData,
+            generation_timestamp: new Date().toISOString(),
+          },
+        })
+        .eq('attempt_id', attemptId);
+
+      if (careerFitUpdateError) {
+        console.error('[analyzeMiddleSchool] Failed to update career fit:', careerFitUpdateError);
+      }
+    } catch (trackError) {
+      console.error('[analyzeMiddleSchool] Career track generation failed:', trackError instanceof Error ? trackError.message : trackError);
+    }
+
     return Response.json(
       {
         success: true,
@@ -321,6 +363,7 @@ export async function analyzeMiddleSchool(
         aptitudeOverall,
         adaptiveSessionId: resolvedSessionId,
         profileSnapshot,
+        careerFit: careerFitData,
       },
       { status: 200 }
     );

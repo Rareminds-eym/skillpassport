@@ -286,3 +286,120 @@ export interface ValidationResult {
   isValid: boolean;
   message?: string;
 }
+
+// ============================================================================
+// CAREER TRACK GENERATION (RAG)
+// ============================================================================
+
+/**
+ * Career evidence for a cluster (RIASEC, aptitude, personality factors)
+ */
+export interface CareerEvidence {
+  interest: string;
+  aptitude: string;
+  personality: string;
+}
+
+/**
+ * Career roles at different levels
+ */
+export interface CareerRoles {
+  entry: string[];
+  mid: string[];
+}
+
+/**
+ * Single career cluster in exploration track
+ */
+export interface CareerCluster {
+  title: string;
+  matchScore: number;
+  fit: 'High' | 'Medium' | 'Explore';
+  derivation: string;
+  description: string;
+  examples: string[];
+  whatYoullDo: string;
+  whyItFits: string;
+  evidence: CareerEvidence;
+  roles: CareerRoles;
+  domains: string[];
+  futureOutlook: string;
+}
+
+/**
+ * Exploration activity option
+ */
+export interface ExplorationOption {
+  name: string;
+  whyThisRole: string;
+}
+
+/**
+ * Exploration activities grouped by fit level
+ */
+export interface SpecificOptions {
+  highFit: ExplorationOption[];
+  mediumFit: ExplorationOption[];
+  exploreLater: ExplorationOption[];
+}
+
+/**
+ * Career fit data with clusters and exploration options
+ */
+export interface CareerFitData {
+  clusters: CareerCluster[];
+  specificOptions: SpecificOptions;
+}
+
+/**
+ * Career fit response for track generation
+ */
+export interface CareerFitResponse {
+  success: boolean;
+  grade_level: string;
+  careerFit: CareerFitData;
+  generation_timestamp: string;
+}
+
+/**
+ * Student assessment data for track generation context
+ */
+export interface StudentAssessmentData {
+  attempt_id: string;
+  learner_id: string;
+  grade_level: string;
+  riasec_scores: Record<string, number>;
+  riasec_code: string;
+  strength_scores: Array<{ dimension: string; average: number; ratings: number[] }>;
+  aptitude_scores?: Record<string, unknown>;
+  aptitude_overall?: number;
+  learning_preferences?: Record<string, unknown>;
+  accuracy_by_subtag?: Record<string, number>;
+}
+
+/**
+ * Occupation match from semantic search
+ */
+export interface OccupationMatch {
+  id: string;
+  title: string;
+  primary_riasec: string;
+  description: string;
+  similarity?: number;
+}
+
+/**
+ * Common configuration for track generation
+ */
+export interface CommonConfig {
+  occupationCount: number;
+  models: string[];
+  temperature: number;
+}
+
+/**
+ * Grade-level specific configuration
+ */
+export interface GradeLevelConfig extends CommonConfig {
+  systemPrompt: string;
+}

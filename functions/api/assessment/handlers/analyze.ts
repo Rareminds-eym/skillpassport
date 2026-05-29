@@ -17,7 +17,6 @@ import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { AnalyzeRequest } from '../types';
 import { analyzeMiddleSchool } from '../services/analysis-middle-school';
-import { analyzeCollege } from '../services/analysis-college';
 
 export async function analyzeHandler(context: AuthenticatedContext) {
   const user = context.data.user;
@@ -103,7 +102,10 @@ export async function analyzeHandler(context: AuthenticatedContext) {
         );
 
       case 'college':
-        return analyzeCollege(context, supabase, attemptId, learnerId);
+        return Response.json(
+          { error: 'College analysis not yet implemented' },
+          { status: 501 }
+        );
 
       default:
         return Response.json(
