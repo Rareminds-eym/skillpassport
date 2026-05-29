@@ -341,6 +341,75 @@ const STREAM_METADATA: Record<string, StreamMetadata> = {
   },
   
   // ============================================================================
+  // After 10th Streams (Grades 11-12 / Higher Secondary)
+  // These streams are used for both 'after10' and 'higher_secondary' grade levels
+  // The grade_level in the database should match the learner's actual grade_level
+  // ============================================================================
+  'science_pcmb': {
+    label: 'Science (PCMB)',
+    description: 'Physics, Chemistry, Maths, Biology - Medical & Engineering',
+    name: 'Science (PCMB)',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 10,
+  },
+  'science_pcms': {
+    label: 'Science (PCMS)',
+    description: 'Physics, Chemistry, Maths, Computer Science - Engineering/IT',
+    name: 'Science (PCMS)',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 11,
+  },
+  'science_pcm': {
+    label: 'Science (PCM)',
+    description: 'Physics, Chemistry, Maths - Engineering',
+    name: 'Science (PCM)',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 12,
+  },
+  'science_pcb': {
+    label: 'Science (PCB)',
+    description: 'Physics, Chemistry, Biology - Medical',
+    name: 'Science (PCB)',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 13,
+  },
+  'commerce_maths': {
+    label: 'Commerce with Maths',
+    description: 'For CA, Finance, Economics, Statistics',
+    name: 'Commerce with Maths',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 14,
+  },
+  'commerce_general': {
+    label: 'Commerce without Maths',
+    description: 'For Business, Accounting, Management',
+    name: 'Commerce without Maths',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 15,
+  },
+  'arts_psychology': {
+    label: 'Arts with Psychology',
+    description: 'Psychology, Sociology, English - For Counseling, HR, Social Work',
+    name: 'Arts with Psychology',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 16,
+  },
+  'arts_economics': {
+    label: 'Arts with Economics',
+    description: 'Economics, Political Science, English - For Civil Services, Policy',
+    name: 'Arts with Economics',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 17,
+  },
+  'arts': {
+    label: 'Arts/Humanities General',
+    description: 'English, History, Geography - For Journalism, Law, Teaching',
+    name: 'Arts/Humanities General',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 18,
+  },
+  
+  // ============================================================================
   // Generic/Fallback
   // ============================================================================
   'college': {
