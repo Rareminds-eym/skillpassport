@@ -78,6 +78,13 @@ const isAdaptiveSection = (section: any): boolean => {
   return section?.isAdaptive || section?.name === 'adaptive_aptitude';
 };
 
+const isAISection = (section: any): boolean =>
+  !isAdaptiveSection(section) && (
+    section?.name === 'aptitude' ||
+    section?.name === 'knowledge' ||
+    (typeof section?.id === 'string' && (section.id.startsWith('aptitude-') || section.id.startsWith('knowledge-')))
+  );
+
 const ADAPTIVE_TOTAL_QUESTIONS = 50;
 
 const AssessmentTestPage: React.FC = () => {
@@ -96,6 +103,7 @@ const AssessmentTestPage: React.FC = () => {
   const [isLoadingResume, setIsLoadingResume] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isResumingAdaptive, setIsResumingAdaptive] = useState(false);
+  const [aiSectionTimer, setAiSectionTimer] = useState(59);
 
   // Ref to track pending AI section resume position
   // When resuming to an AI section, questions aren't loaded yet so we store the target position here
@@ -853,6 +861,28 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [adaptiveHook.questionsAnswered, store.currentSectionIndex, adaptiveHook.currentQuestion, store.sections]);
 
+  // AI section per-question countdown (59 → 0, loops back to 59)
+  useEffect(() => {
+    if (store.sections.length === 0) return;
+    const currentSection = store.sections[store.currentSectionIndex];
+    if (!isAISection(currentSection) || currentScreen !== 'assessment' || showSectionIntro) return;
+
+    const timer = setInterval(() => {
+      setAiSectionTimer(prev => (prev <= 1 ? 59 : prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [store.currentSectionIndex, store.currentQuestionIndex, currentScreen, showSectionIntro, store.sections]);
+
+  // Reset AI section timer to 59 when question changes
+  useEffect(() => {
+    if (store.sections.length === 0) return;
+    const currentSection = store.sections[store.currentSectionIndex];
+    if (isAISection(currentSection)) {
+      setAiSectionTimer(59);
+    }
+  }, [store.currentQuestionIndex, store.currentSectionIndex, store.sections]);
+
   // Reset elapsed time when section changes
   const previousSectionIndexRef = useRef<number | null>(null);
   useEffect(() => {
@@ -1104,6 +1134,7 @@ const AssessmentTestPage: React.FC = () => {
     })();
 
     const isLastQuestion = store.currentQuestionIndex === currentSection.questions.length - 1 && store.currentSectionIndex === store.sections.length - 1;
+    const isCurrentAISection = isAISection(currentSection);
 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -1141,6 +1172,8 @@ const AssessmentTestPage: React.FC = () => {
                 isAnswered={isCurrentAnswered}
                 isLastQuestion={isLastQuestion}
                 canGoPrevious={store.currentQuestionIndex > 0}
+                perQuestionTimer={isCurrentAISection ? aiSectionTimer : null}
+                showPerQuestionTimer={isCurrentAISection}
                 onNext={() => {
                   // Block only if offline
                   if (!syncStatus.isOnline) {
