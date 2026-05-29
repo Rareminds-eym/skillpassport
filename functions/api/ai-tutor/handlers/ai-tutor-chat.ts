@@ -26,9 +26,9 @@ import {
 } from '../utils/conversation-phases';
 import { buildLessonPlanPrompt } from '../utils/lesson-plan-templates';
 import { hasReachedLimit, incrementGenerationCount } from '../utils/generation-limit';
-import { getLogger } from '../../../../src/shared/config/logging';
+import { createLogger } from '../../../lib/logger';
 
-const logger = getLogger('ai-tutor-chat');
+const logger = createLogger('ai-tutor-chat');
 
 // ==================== TYPES ====================
 

@@ -31,9 +31,9 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
 import { apiSuccess, apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
-import { getLogger } from '../../../../src/shared/config/logging';
+import { createLogger } from '../../../lib/logger';
 
-const logger = getLogger('get-learner-type');
+const logger = createLogger('get-learner-type');
 
 interface RequiredEnv {
   SUPABASE_URL: string;

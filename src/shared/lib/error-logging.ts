@@ -88,7 +88,7 @@ function sendToMonitoringService(error: ErrorLog): void {
 function sendToBackend(error: ErrorLog): void {
   try {
     // Use keepalive to ensure log is sent even if page unloads
-    fetch('/api/log-error', {
+    ssoClient.fetch('/api/log-error', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(error),

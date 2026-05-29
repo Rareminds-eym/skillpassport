@@ -23,6 +23,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { OTPInput } from '@/shared/ui';
 import { paymentsApiService } from '@/features/subscription';
 import { ShinyButton } from '@/shared/ui';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { sendOtp, verifyOtp } from '@/features/auth/api/otpService';
 
 const REGISTRATION_FEE_STUDENT = 499;
@@ -68,7 +69,7 @@ const validateForm = (form, emailVerified, phoneVerified, consentGiven) => {
 };
 
 const sendOTPEmail = async (email, otp, name) => {
-  const response = await fetch('/api/email/event-otp', {
+  const response = await ssoClient.fetch('/api/email/event-otp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, otp, name }),
@@ -86,7 +87,7 @@ const sendConfirmationEmail = async (details) => {
   const { name, email, phone, amount, orderId, campaign } = details;
 
   try {
-    const response = await fetch('/api/email/event-confirmation', {
+    const response = await ssoClient.fetch('/api/email/event-confirmation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, phone, amount, orderId, campaign }),

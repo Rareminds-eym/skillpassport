@@ -33,7 +33,7 @@ const SkillTrackerExpanded = ({ learnerId, email }) => {
       const lookupParam = learnerId ? `learner_id=${learnerId}` : email ? `email=${encodeURIComponent(email)}` : '';
       if (!lookupParam) return;
 
-      const response: any = await apiGet(`/learners/dashboard?${lookupParam}`);
+      const response = await apiGet(`/learners/dashboard?${lookupParam}`);
       const data = response?.data ?? response ?? {};
 
       setTechSkills(data.skills?.technical || []);

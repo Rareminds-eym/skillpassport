@@ -5,7 +5,7 @@ import { AlertCircle, Building2, CheckCircle2, Eye, EyeOff, Gift, Globe, Languag
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { capitalizeFirstLetter } from '@/features/subscription';
-import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 // Languages list
 const LANGUAGES = [
@@ -380,7 +380,7 @@ const SignupAdmin = () => {
       const { getApiUrl } = await import('@/shared/api/apiUtils');
       const USER_API_URL = getApiUrl('user');
 
-      const response = await fetch(`${USER_API_URL}/signup/recruiter-admin`, {
+      const response = await ssoClient.fetch(`${USER_API_URL}/signup/recruiter-admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -27,7 +27,7 @@ export const getUserUsageStatistics = async () => {
       data: result.data,
       error: null
     };
-  } catch (error: any) {
+  } catch (error) {
     logger.error('Error fetching usage statistics', error);
     return {
       success: false,

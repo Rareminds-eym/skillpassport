@@ -27,6 +27,7 @@ import { enrollmentService } from '@/features/courses';
 import { courseProgressService as progressService } from '@/features/courses';
 import { fileService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api/authenticatedMediaService';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -456,7 +457,7 @@ const CoursePlayer = () => {
       try {
         const { getApiUrl } = await import('@/shared/api/apiUtils');
         const STREAK_API_URL = getApiUrl('streak');
-        const response = await fetch(`${STREAK_API_URL}/${user.id}/complete`, {
+        const response = await ssoClient.fetch(`${STREAK_API_URL}/${user.id}/complete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

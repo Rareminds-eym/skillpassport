@@ -1,13 +1,12 @@
 import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
+import { getApiUrl } from '@/shared/api/apiUtils';
 /**
  * File Upload Service for Cloudflare R2 Storage
  * Handles document uploads for faculty onboarding
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
-
-const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
+const STORAGE_API_URL = getApiUrl('storage');
 
 /**
  * Get authentication token from current session

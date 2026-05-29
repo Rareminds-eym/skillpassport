@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { apiPost } from '@/shared/api/apiClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 // Platform icon components
 const PlatformIcon = ({ platformId, className = "w-8 h-8" }) => {
@@ -221,7 +222,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
       const { getApiUrl } = await import('@/shared/api/apiUtils');
       const workerUrl = getApiUrl('fetch-certificate');
 
-      const response = await fetch(workerUrl, {
+      const response = await ssoClient.fetch(workerUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ url: certificateUrl })
@@ -268,7 +269,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
     setLoading(true);
 
     try {
-      const response: any = await apiPost('/learners/trainings', {
+      const response = await apiPost('/learners/trainings', {
         learnerId,
         training: {
           title: formData.title,
@@ -306,7 +307,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, learnerId, onS
       onSuccess?.();
       onClose();
       resetForm();
-    } catch (err: any) {
+    } catch (err) {
       setError(err?.message || 'Failed to add learning course');
     } finally {
       setLoading(false);

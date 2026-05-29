@@ -30,7 +30,7 @@ import {
   SkillAnalytics,
   Announcement
 } from '@/features/educator-copilot';
-import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 // import './Dashboard.css';
 
@@ -62,7 +62,7 @@ const Dashboard = () => {
           logger.info('Token auto-refreshed by Supabase');
         }
 
-        if (user) {
+        if (session?.user) {
           logger.info('Auth state change - user authenticated');
           setIsAuthenticated(true);
           setError(null);
@@ -75,7 +75,7 @@ const Dashboard = () => {
         }
       });
       
-      authSubscription = subscription || null;
+      authSubscription = unsubscribe;
     };
 
     setupAuthListener();

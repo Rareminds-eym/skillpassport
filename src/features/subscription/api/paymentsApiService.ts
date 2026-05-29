@@ -123,9 +123,9 @@ export async function createEventOrder({ amount, currency = 'INR', registrationI
  * @returns {Promise<Object>} Order details from Razorpay + auto-generated registrationId
  */
 export async function createRegistrationOrder({ amount, currency = 'INR', planName, userEmail, userName, userPhone, campaign, origin }) {
-  const response = await fetch(`${getBaseUrl()}/create-registration-order`, {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/create-registration-order`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, // No auth token needed
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ amount, currency, planName, userEmail, userName, userPhone, campaign, origin }),
   });
 
@@ -175,9 +175,9 @@ export async function updateEventPaymentStatus({ registrationId, orderId, paymen
  * @returns {Promise<Object>} Update result
  */
 export async function updateRegistrationPaymentStatus({ registrationId, orderId, paymentId, status, error }) {
-  const response = await fetch(`${getBaseUrl()}/update-registration-payment-status`, {
+  const response = await ssoClient.fetch(`${getBaseUrl()}/update-registration-payment-status`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, // No auth token needed
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ registrationId, orderId, paymentId, status, error }),
   });
 
@@ -353,7 +353,7 @@ export async function resumeSubscription(subscriptionId) {
  */
 export async function checkHealth() {
   try {
-    const response = await fetch(`${getBaseUrl()}/health`);
+    const response = await ssoClient.fetch(`${getBaseUrl()}/health`);
     return response.json();
   } catch (error) {
     return { status: 'error', error: error.message };

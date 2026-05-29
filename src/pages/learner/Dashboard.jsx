@@ -82,6 +82,7 @@ import {
   useLearnerAIRecommendations
 } from "@/features/learner-profile";
 import { useLearnerMessageNotifications, useLearnerUnreadCount, useLearnerDataByEmail } from '@/entities/learner';
+import { apiPost } from '@/shared/api/apiClient';
 import { useLearnerAchievements } from '@/entities/learner';
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
 import { supabase } from '@/shared/api/supabaseClient';
@@ -1618,23 +1619,11 @@ const LearnerDashboard = () => {
     }
 
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skillId);
-
-      if (error) {
-        logger.error('🔧 Dashboard - Database error', error);
-        throw error;
-      }
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId,
+        enabled: newState,
+      });
 
       // Refresh technical skills to get updated data
       if (refreshTechnicalSkills) {
@@ -1675,20 +1664,11 @@ const LearnerDashboard = () => {
     }
 
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skillId);
-
-      if (error) throw error;
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId,
+        enabled: newState,
+      });
 
       // Refresh soft skills to get updated data
       if (refreshSoftSkills) {
@@ -1701,7 +1681,7 @@ const LearnerDashboard = () => {
         duration: 3000,
       });
     } catch (error) {
-      logger.error('Error toggling soft skill visibility', error);
+      logger.error('🔧 Dashboard - Error toggling soft skill visibility', error);
       toast({
         title: "Error",
         description: "Failed to update visibility. Please try again.",

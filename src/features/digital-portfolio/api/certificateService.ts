@@ -392,7 +392,7 @@ export const downloadCertificate = async (certificateUrl, courseName) => {
       downloadUrl = `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}`;
     }
 
-    const response = await fetch(downloadUrl);
+    const response = await ssoClient.fetch(downloadUrl);
 
     if (!response.ok) {
       throw new Error(`Download failed: ${response.status}`);

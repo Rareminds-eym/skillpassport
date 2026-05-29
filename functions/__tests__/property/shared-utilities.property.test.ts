@@ -23,7 +23,7 @@ import {
   createSupabaseClient,
   createSupabaseAdminClient,
   PagesEnv,
-} from '../../../functions/lib';
+} from '../../lib';
 
 describe('Property 3: Shared Module Consistency', () => {
   /**

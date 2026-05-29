@@ -26,6 +26,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       .from('learners')
       .select('*')
       .eq('id', learnerId)
+      .eq('org_id', user.org_id)
       .single();
 
     if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
@@ -34,7 +35,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   // If user is a learner, return their own profile
   const isLearner = user.roles.some((r: string) =>
-    ['learner', 'learner', 'learner'].includes(r)
+    ['learner'].includes(r)
   );
 
   if (isLearner) {

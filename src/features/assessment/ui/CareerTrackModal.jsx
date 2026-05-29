@@ -5,6 +5,7 @@ import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download,
 import { useRoleOverview } from '@/entities/user';
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
 import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 import jsPDF from 'jspdf';
 
 /**
@@ -257,7 +258,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
             console.log(`[CareerTrackModal] Storing ${aiMatchedCourses.length} matched courses for: ${roleName}`);
 
             try {
-                const response = await fetch('/api/role-overview/storage', {
+                const response = await ssoClient.fetch('/api/role-overview/storage', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

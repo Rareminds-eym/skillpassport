@@ -11,9 +11,9 @@ import { getContextUser, getServiceClient } from '../../../lib/auth';
 import { apiSuccess, apiError } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
 import { getGenerationUsage } from '../utils/generation-limit';
-import { getLogger } from '../../../../src/shared/config/logging';
+import { createLogger } from '../../../lib/logger';
 
-const logger = getLogger('get-generation-usage');
+const logger = createLogger('get-generation-usage');
 
 const ADMIN_ROLES = new Set([
   'admin',
