@@ -1335,7 +1335,8 @@ export const getInProgressAttempt = async (learnerIdOrUserId) => {
    * An attempt is considered "started" if it has:
    * - At least one response in personal_assessment_responses table, OR
    * - At least one answer in all_responses JSONB column, OR
-   * - An adaptive aptitude session with progress
+   * - An adaptive aptitude session with progress, OR
+   * - User has reached an AI section (aptitude/knowledge) even without answers
    */
   const hasProgress = (attempt) => {
     if (!attempt) return false;
@@ -1361,6 +1362,35 @@ export const getInProgressAttempt = async (learnerIdOrUserId) => {
     // Check for adaptive aptitude session progress
     if (attempt.adaptive_aptitude_session_id) {
       return true;
+    }
+
+    // NEW: Check if user has reached AI sections (Stream Based Aptitude or Stream Knowledge)
+    // These sections load questions asynchronously, so user might navigate away before answering
+    // We consider reaching these sections as "meaningful progress" to enable resume
+    if (attempt.current_section_index !== null && attempt.current_section_index !== undefined) {
+      const sectionIndex = attempt.current_section_index;
+      
+      // For grade levels that use AI sections (after10, after12, higher_secondary, college)
+      const usesAISections = ['after10', 'after12', 'higher_secondary', 'college'].includes(attempt.grade_level);
+      
+      if (usesAISections && sectionIndex >= 0) {
+        // AI sections are typically the last 2-3 sections in the assessment
+        // For college: sections are usually [riasec, bigfive, values, employability, adaptive_aptitude, aptitude, knowledge]
+        // For after10/after12: sections are usually [riasec, bigfive, values, employability, aptitude, knowledge]
+        
+        // If user has progressed beyond the first section, consider it meaningful progress
+        // This covers cases where user reaches AI sections but hasn't answered yet
+        if (sectionIndex > 0) {
+          console.log('✅ User has reached section', sectionIndex, 'in', attempt.grade_level, 'assessment - considering as progress');
+          return true;
+        }
+        
+        // Even if at section 0, if they have any position tracking, it's progress
+        if (attempt.current_question_index > 0) {
+          console.log('✅ User has answered questions in section 0 - considering as progress');
+          return true;
+        }
+      }
     }
 
     return false;

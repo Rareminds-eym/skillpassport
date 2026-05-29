@@ -57,7 +57,9 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
     const learnerId = learnerData.id;
 
     // Step 2: Get in-progress assessment attempt
-    const { data: attempts, error: attemptError } = await supabase
+    let attempts: any[] | null = null;
+    
+    const { data: initialAttempts, error: attemptError } = await supabase
       .from('personal_assessment_attempts')
       .select(
         `id,
@@ -70,15 +72,66 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
          stream_id,
          section_timings,
          started_at,
-         adaptive_aptitude_session_id`
+         adaptive_aptitude_session_id,
+         status`
       )
       .eq('learner_id', learnerId)
       .eq('status', 'in_progress')
       .order('started_at', { ascending: false })
       .limit(1);
 
+    attempts = initialAttempts;
+
     if (attemptError || !attempts || attempts.length === 0) {
-      return Response.json(createEmptyResponse());
+      // If no in-progress attempts found, check if there are any recent attempts that might have been incorrectly abandoned
+      // This is specifically for AI sections where users might navigate away before answering questions
+      const { data: recentAttempts, error: recentError } = await supabase
+        .from('personal_assessment_attempts')
+        .select(
+          `id,
+           all_responses,
+           current_section_index,
+           current_question_index,
+           timer_remaining,
+           elapsed_time,
+           grade_level,
+           stream_id,
+           section_timings,
+           started_at,
+           adaptive_aptitude_session_id,
+           status`
+        )
+        .eq('learner_id', learnerId)
+        .in('status', ['abandoned', 'in_progress'])
+        .order('started_at', { ascending: false })
+        .limit(1);
+
+      if (recentError || !recentAttempts || recentAttempts.length === 0) {
+        return Response.json(createEmptyResponse());
+      }
+
+      const recentAttempt = recentAttempts[0];
+
+      // Check if this attempt should be considered resumable (AI sections logic)
+      const usesAISections = ['after10', 'after12', 'higher_secondary', 'college'].includes(recentAttempt.grade_level);
+      const hasReachedAISection = recentAttempt.current_section_index > 0;
+      const isRecentAttempt = new Date(recentAttempt.started_at).getTime() > Date.now() - (24 * 60 * 60 * 1000); // Within 24 hours
+
+      if (usesAISections && hasReachedAISection && isRecentAttempt) {
+        console.log('[checkInProgress] Restoring abandoned attempt as in_progress:', recentAttempt.id);
+        
+        // Restore this attempt as in_progress
+        await supabase
+          .from('personal_assessment_attempts')
+          .update({ status: 'in_progress' })
+          .eq('id', recentAttempt.id);
+        
+        // Use this attempt for the rest of the function
+        attempts = [{ ...recentAttempt, status: 'in_progress' }];
+      } else {
+        console.log('[checkInProgress] Recent attempt not suitable for restoration');
+        return Response.json(createEmptyResponse());
+      }
     }
 
     const attempt = attempts[0];
