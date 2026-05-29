@@ -300,19 +300,12 @@ const AssessmentTestPage: React.FC = () => {
         const inProgressResponse = await checkInProgress();
 
         if (inProgressResponse.success && inProgressResponse.hasInProgress) {
-          // Show resume prompt with available data (will fetch sections on Resume click)
           setResumeData(inProgressResponse);
           setCurrentScreen('resume-prompt');
         } else {
-          // No in-progress assessment, show grade selection
-          if (learnerId) {
-            setCurrentScreen('grade-selection');
-          } else {
-            setCurrentScreen('grade-selection');
-          }
+          setCurrentScreen('grade-selection');
         }
       } catch (err: unknown) {
-        const error = err instanceof Error ? err : new Error('Unknown error');
         setCurrentScreen('grade-selection');
       }
     };
@@ -425,11 +418,8 @@ const AssessmentTestPage: React.FC = () => {
       const streamId = resumeData.streamId || resumeData.stream_id;
       const { currentSectionIndex, currentQuestionIndex, answers, elapsedTime, attemptId, sections } = resumeData;
 
-      // Use pre-fetched sections from resumeData if available
-      const sectionsToUse = sections || (await startAssessment({
-        gradeLevel,
-        streamId
-      })).sections;
+      // sections are loaded by checkInProgress and stored in resumeData
+      const sectionsToUse = sections;
 
       if (sectionsToUse) {
         // Initialize store with sections
@@ -448,6 +438,12 @@ const AssessmentTestPage: React.FC = () => {
         if (isAdaptiveCompleted) {
           const adaptiveSection = sectionsToUse.find((s: any) => s.isAdaptive || s.name === 'adaptive_aptitude');
           const adaptiveSectionIndex = adaptiveSection ? sectionsToUse.indexOf(adaptiveSection) : (sectionsToUse.length - 1);
+
+          // Set position FIRST before restoring answers — same pattern as regular resume flow.
+          // useAnswerSync's detect-answers effect fires when saveAnswer runs and captures
+          // store.currentQuestionIndex into pendingQuestionIndexRef. If setCurrentQuestion
+          // hasn't run yet, it captures 0 and syncs questionIndex: 0 to the backend → Q1 on resume.
+          store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
 
           // Restore all previous answers
           if (answers && Object.keys(answers).length > 0) {
@@ -593,7 +589,7 @@ const AssessmentTestPage: React.FC = () => {
           if (isAISection && currentSection.questions.length === 0) {
             // Resuming to an AI section with no questions yet - store the target position
             // The AI questions effect will restore position once questions are loaded
-            logger.info('[Resume] Resuming to AI section - storing pending position for restore after questions load', { 
+            logger.info('[Resume] Resuming to AI section - storing pending position for restore after questions load', {
               sectionName: currentSection.name,
               sectionIndex: currentSectionIndex || 0,
               questionIndex: currentQuestionIndex || 0

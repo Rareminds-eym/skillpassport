@@ -117,6 +117,7 @@ export interface CheckInProgressResult {
   timerRemaining: number | null;
   elapsedTime: number;
   started_at: string | null;
+  sections?: AssessmentSection[] | null;
   // Adaptive test resume fields
   adaptiveSession?: AdaptiveSessionInfo | null;
   isAdaptiveInProgress?: boolean;
