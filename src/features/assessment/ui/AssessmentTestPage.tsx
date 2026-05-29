@@ -931,7 +931,11 @@ const AssessmentTestPage: React.FC = () => {
     return (
       <CategorySelectionScreen
         gradeLevel={selectedGrade}
-        onStreamSelect={handleStreamSelect}
+        onCategorySelect={handleStreamSelect}
+        onBack={() => {
+          setSelectedGrade(null);
+          setCurrentScreen('grade-selection');
+        }}
         loading={store.loading}
       />
     );
