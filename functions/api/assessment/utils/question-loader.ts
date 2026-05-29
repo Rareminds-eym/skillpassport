@@ -35,6 +35,8 @@ export async function loadSectionsWithQuestions(
   // === FETCH SECTIONS IN PARALLEL ===
   const fetchSectionsPromise = (async () => {
     if (gradeSpecificGrades.includes(gradeLevel)) {
+      // For grade-specific levels (middle, highschool, higher_secondary):
+      // Fetch their specific sections from database
       const { data: gradeSections, error: gradeError } = await supabase
         .from('personal_assessment_sections')
         .select('*')
@@ -44,6 +46,36 @@ export async function loadSectionsWithQuestions(
 
       if (gradeError) throw gradeError;
       logger.info('Fetched grade-specific sections', { count: gradeSections?.length || 0, gradeLevel });
+      
+      // CRITICAL FIX: For higher_secondary, also fetch standard sections (riasec, bigfive, values, employability)
+      // if they don't exist in grade-specific sections
+      if (gradeLevel === 'higher_secondary') {
+        const existingSectionNames = (gradeSections || []).map((s: any) => s.name);
+        const standardSectionNames = ['riasec', 'bigfive', 'values', 'employability'];
+        const missingSections = standardSectionNames.filter(name => !existingSectionNames.includes(name));
+        
+        if (missingSections.length > 0) {
+          logger.info('Fetching missing standard sections for higher_secondary', { missingSections });
+          
+          const { data: standardSections, error: standardError } = await supabase
+            .from('personal_assessment_sections')
+            .select('*')
+            .eq('is_active', true)
+            .eq('grade_level', 'general')
+            .in('name', missingSections);
+          
+          if (standardError) {
+            logger.error('Error fetching standard sections', { error: standardError });
+          } else if (standardSections && standardSections.length > 0) {
+            logger.info('Adding standard sections to higher_secondary', { 
+              count: standardSections.length,
+              sections: standardSections.map((s: any) => s.name)
+            });
+            return [...(gradeSections || []), ...standardSections];
+          }
+        }
+      }
+      
       return gradeSections || [];
     } else {
       // For after10, after12, college: fetch standard sections (riasec, bigfive, values, employability)
@@ -265,18 +297,25 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
     hasEnv: !!env
   });
   
-  if (!streamId || !usesAIQuestions) {
-    logger.warn('[loadAISections] Skipping AI sections - missing requirements', { 
-      hasStreamId: !!streamId, 
+  // CRITICAL FIX: For higher_secondary, we MUST have streamId to load AI sections
+  // If streamId is missing, log error but don't fail silently
+  if (!streamId && usesAIQuestions) {
+    logger.error('[loadAISections] CRITICAL: Missing streamId for grade level that requires AI questions', { 
+      gradeLevel,
       usesAIQuestions,
-      reason: !streamId ? 'No streamId provided' : 'Grade level does not use AI questions'
+      message: 'AI sections (aptitude & knowledge) will NOT be loaded without streamId'
     });
+    return sections;
+  }
+  
+  if (!usesAIQuestions) {
+    logger.info('[loadAISections] Grade level does not use AI questions', { gradeLevel });
     return sections;
   }
 
   try {
     // === ALWAYS ADD APTITUDE SECTION (questions generated on-demand) ===
-    logger.info('[loadAISections] Adding Stream Based Aptitude section placeholder', { streamId });
+    logger.info('[loadAISections] Adding Stream Based Aptitude section placeholder', { streamId, gradeLevel });
     
     sections.push({
       id: `aptitude-${streamId}`,
@@ -295,7 +334,7 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
     });
 
     // === ALWAYS ADD KNOWLEDGE SECTION (questions generated on-demand) ===
-    logger.info('[loadAISections] Adding Stream Knowledge section placeholder', { streamId });
+    logger.info('[loadAISections] Adding Stream Knowledge section placeholder', { streamId, gradeLevel });
     
     sections.push({
       id: `knowledge-${streamId}`,
