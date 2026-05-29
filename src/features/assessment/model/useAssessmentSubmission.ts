@@ -24,6 +24,7 @@ import {
   workValuesQuestions,
   employabilityQuestions,
   streamKnowledgeQuestions,
+  calculateRIASEC, // ✅ Import RIASEC calculation function
 } from '@/features/assessment';
 
 // ============================================================================
@@ -779,50 +780,17 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         const usesAdaptiveAptitude = ['middle', 'highschool', 'after10', 'after12', 'college', 'higher_secondary'].includes(attemptGradeLevel || '');
         
         if (sessionId && usesAdaptiveAptitude) {
-          console.log('� [Preparing] Fetching adaptive aptitude results...');
-          console.log('🔍 [Preparing] Session ID:', sessionId);
-          console.log('🔍 [Preparing] Grade level:', attemptGradeLevel);
+          console.log('📋 [Preparing] Adaptive session ID found:', sessionId);
+          console.log('📋 [Preparing] Grade level:', attemptGradeLevel);
+          console.log('ℹ️ [Preparing] Backend will fetch and validate adaptive results using service role');
           
-          try {
-            const { data: adaptiveData, error: adaptiveError } = await supabase
-              .from('adaptive_aptitude_results')
-              .select('*')
-              .eq('session_id', sessionId)
-              .maybeSingle();
-            
-            if (!adaptiveError && adaptiveData) {
-              adaptiveResults = adaptiveData;
-              console.log('✅ [Preparing] Adaptive results fetched:', {
-                level: adaptiveData.aptitude_level,
-                accuracy: adaptiveData.overall_accuracy,
-                totalQuestions: adaptiveData.total_questions,
-                totalCorrect: adaptiveData.total_correct,
-                accuracyBySubtag: adaptiveData.accuracy_by_subtag
-              });
-            } else {
-              console.warn('⚠️ [Preparing] No adaptive results found - test may not have been completed');
-              console.warn('⚠️ [Preparing] Error:', adaptiveError?.message);
-              console.warn('⚠️ [Preparing] Session ID:', sessionId);
-              
-              // Check if the session exists
-              const { data: sessionData } = await supabase
-                .from('adaptive_aptitude_sessions')
-                .select('status, total_questions_answered')
-                .eq('id', sessionId)
-                .maybeSingle();
-              
-              if (sessionData) {
-                console.warn('⚠️ [Preparing] Session exists but no results:', {
-                  status: sessionData.status,
-                  questionsAnswered: sessionData.total_questions_answered
-                });
-              } else {
-                console.warn('⚠️ [Preparing] Session does not exist in database');
-              }
-            }
-          } catch (adaptiveErr) {
-            console.error('❌ [Preparing] Error fetching adaptive results:', adaptiveErr);
-          }
+          // NOTE: We do NOT query adaptive_aptitude_results or adaptive_aptitude_sessions here because:
+          // 1. Frontend uses authenticated client which may not have RLS access
+          // 2. Backend save-results handler uses service role and will fetch/validate the results
+          // 3. This prevents 400 Bad Request errors from RLS policies
+          
+          // Just pass the session ID to the backend - it will handle everything
+          adaptiveResults = null; // Backend will fetch this
         } else if (!sessionId && usesAdaptiveAptitude) {
           console.info('ℹ️ [Preparing] No adaptive session ID in current answers - backend will auto-link completed session if available');
         } else {
@@ -832,7 +800,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         // Log prepared answers
         console.log('📦 [Preparing] Prepared answers:', {
           totalAnswers: Object.keys(answers).length,
-          hasAdaptiveResults: !!adaptiveResults
+          adaptiveSessionId: sessionId || 'none'
         });
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -861,6 +829,35 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             learnerContext: finalLearnerContext,
           });
 
+          // ============================================================================
+          // PRE-CALCULATE RIASEC SCORES (Critical for all learners, especially college)
+          // ============================================================================
+          console.log('📊 [Pre-calculation] Calculating RIASEC scores from answers...');
+          
+          let preCalculatedScores = null;
+          try {
+            const riasecResult = calculateRIASEC(answers as Record<string, number>);
+            console.log('✅ [Pre-calculation] RIASEC scores calculated:', {
+              scores: riasecResult.scores,
+              topThree: riasecResult.topThree,
+              code: riasecResult.code
+            });
+            
+            // Only use pre-calculated scores if they're not all 0
+            const hasValidScores = Object.values(riasecResult.scores).some(score => score > 0);
+            if (hasValidScores) {
+              preCalculatedScores = {
+                riasec: riasecResult
+              };
+              console.log('✅ [Pre-calculation] Using pre-calculated RIASEC scores');
+            } else {
+              console.warn('⚠️ [Pre-calculation] RIASEC scores are all 0, will let Gemini calculate');
+            }
+          } catch (calcError) {
+            console.error('❌ [Pre-calculation] Failed to calculate RIASEC:', calcError);
+            console.warn('⚠️ [Pre-calculation] Will let Gemini calculate scores from answers');
+          }
+
           geminiResults = await analyzeAssessmentWithGemini(
             answers,
             learnerStream,
@@ -874,7 +871,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             },
             finalTimings,
             gradeLevel || 'after12',
-            null,
+            preCalculatedScores, // Pass pre-calculated scores
             finalLearnerContext,
             adaptiveResults,
             sections

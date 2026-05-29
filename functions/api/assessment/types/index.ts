@@ -193,6 +193,7 @@ export interface AssessmentQuestion {
   options?: unknown;
   maxSelections?: number;
   categoryMapping?: unknown;
+  riasecType?: 'R' | 'I' | 'A' | 'S' | 'E' | 'C';
   metadata?: unknown;
   correctAnswer?: string;
   explanation?: string;

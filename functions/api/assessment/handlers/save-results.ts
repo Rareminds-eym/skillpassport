@@ -48,13 +48,38 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
     console.log('[save-results] Auth user:', user.sub);
     console.log('[save-results] Attempt ID:', attemptId);
     console.log('[save-results] Learner ID:', learnerId);
+    console.log('[save-results] Adaptive Session ID from request:', adaptiveAptitudeSessionId);
 
     // Determine if this is a simplified assessment (middle/high school)
     const isSimplifiedAssessment = gradeLevel === 'middle' || gradeLevel === 'highschool';
 
-    // Auto-link adaptive aptitude session if not provided
+    // STEP 1: Get adaptive session ID from multiple sources (in priority order)
     let resolvedSessionId = adaptiveAptitudeSessionId;
+    
+    // If not provided in request, fetch from attempts table
     if (!resolvedSessionId) {
+      console.log('[save-results] No session ID in request, fetching from attempts table...');
+      
+      const { data: attemptData, error: attemptError } = await supabase
+        .from('personal_assessment_attempts')
+        .select('adaptive_aptitude_session_id')
+        .eq('id', attemptId)
+        .maybeSingle();
+      
+      if (attemptError) {
+        console.error('[save-results] Error fetching attempt:', attemptError);
+      } else if (attemptData?.adaptive_aptitude_session_id) {
+        resolvedSessionId = attemptData.adaptive_aptitude_session_id;
+        console.log('[save-results] Session ID fetched from attempts table:', resolvedSessionId);
+      } else {
+        console.log('[save-results] No session ID in attempts table');
+      }
+    }
+
+    // STEP 2: If still not found, try to auto-link by learner_id
+    if (!resolvedSessionId) {
+      console.log('[save-results] Attempting auto-link by learner_id...');
+      
       // Try to find by learner_id first
       let { data: completedSession } = await supabase
         .from('adaptive_aptitude_sessions')
@@ -90,23 +115,93 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
         console.log('[save-results] No completed adaptive session found for learner');
       }
     }
+    
+    // CRITICAL: Validate that adaptive results exist before using the session ID
+    // The foreign key constraint requires that adaptive_aptitude_results.session_id exists
+    let validatedSessionId = null;
+    
+    if (resolvedSessionId) {
+      console.log('[save-results] Validating adaptive results exist for session:', resolvedSessionId);
+      
+      const { data: adaptiveResults, error: adaptiveError } = await supabase
+        .from('adaptive_aptitude_results')
+        .select('session_id')
+        .eq('session_id', resolvedSessionId)
+        .maybeSingle();
+      
+      if (adaptiveError) {
+        console.error('[save-results] Error checking adaptive results:', adaptiveError);
+        console.error('[save-results] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
+      } else if (adaptiveResults) {
+        console.log('[save-results] Adaptive results exist - safe to save session ID');
+        validatedSessionId = resolvedSessionId;
+      } else {
+        console.warn('[save-results] Adaptive session exists but NO results found in adaptive_aptitude_results table');
+        console.warn('[save-results] This means the adaptive test was started but not completed');
+        console.warn('[save-results] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
+      }
+    } else {
+      console.log('[save-results] No adaptive session ID - learner did not take adaptive test');
+    }
+    
+    console.log('[save-results] Final validated session ID:', validatedSessionId);
 
     // Extract RIASEC scores with backup handling
     const riasecScoresRaw = geminiResults?.riasec?.scores || null;
     let riasecScores = riasecScoresRaw;
+    let riasecCode = geminiResults?.riasec?.code || null;
     
     // If RIASEC scores are all zeros, try backup fields
     if (riasecScoresRaw && Object.values(riasecScoresRaw).every((v: any) => v === 0)) {
       console.log('[save-results] RIASEC scores are all zeros, checking backup fields...');
       
+      // Priority 1: Check preserved scores
       if (geminiResults?.riasec?._preservedScores && !Object.values(geminiResults.riasec._preservedScores).every((v: any) => v === 0)) {
+        console.log('[save-results] Using _preservedScores');
         riasecScores = geminiResults.riasec._preservedScores;
-      } else if (geminiResults?.riasec?._scoreBackup && !Object.values(geminiResults.riasec._scoreBackup).every((v: any) => v === 0)) {
+        // Recalculate code from preserved scores
+        const sorted = Object.entries(riasecScores)
+          .sort(([, a]: any, [, b]: any) => b - a)
+          .slice(0, 3)
+          .map(([type]) => type);
+        riasecCode = sorted.join('');
+      } 
+      // Priority 2: Check score backup
+      else if (geminiResults?.riasec?._scoreBackup && !Object.values(geminiResults.riasec._scoreBackup).every((v: any) => v === 0)) {
+        console.log('[save-results] Using _scoreBackup');
         riasecScores = geminiResults.riasec._scoreBackup;
-      } else if (geminiResults?.riasec?._originalScores && !Object.values(geminiResults.riasec._originalScores).every((v: any) => v === 0)) {
+        const sorted = Object.entries(riasecScores)
+          .sort(([, a]: any, [, b]: any) => b - a)
+          .slice(0, 3)
+          .map(([type]) => type);
+        riasecCode = sorted.join('');
+      } 
+      // Priority 3: Check original scores
+      else if (geminiResults?.riasec?._originalScores && !Object.values(geminiResults.riasec._originalScores).every((v: any) => v === 0)) {
+        console.log('[save-results] Using _originalScores');
         riasecScores = geminiResults.riasec._originalScores;
+        const sorted = Object.entries(riasecScores)
+          .sort(([, a]: any, [, b]: any) => b - a)
+          .slice(0, 3)
+          .map(([type]) => type);
+        riasecCode = sorted.join('');
+      }
+      // Priority 4: Check if pre-calculated scores were passed in geminiResults
+      else if (geminiResults?.preCalculatedRiasec?.scores && !Object.values(geminiResults.preCalculatedRiasec.scores).every((v: any) => v === 0)) {
+        console.log('[save-results] Using preCalculatedRiasec from geminiResults');
+        riasecScores = geminiResults.preCalculatedRiasec.scores;
+        riasecCode = geminiResults.preCalculatedRiasec.code || null;
+      }
+      else {
+        console.warn('[save-results] All backup RIASEC scores are also zeros or missing');
       }
     }
+    
+    console.log('[save-results] Final RIASEC scores to save:', {
+      scores: riasecScores,
+      code: riasecCode,
+      allZeros: riasecScores ? Object.values(riasecScores).every((v: any) => v === 0) : true
+    });
 
     // Prepare data to insert - matching exact database schema
     const dataToInsert = {
@@ -118,7 +213,7 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
       
       // RIASEC
       riasec_scores: riasecScores,
-      riasec_code: geminiResults?.riasec?.code || null,
+      riasec_code: riasecCode,
       
       // Aptitude (available for all grade levels)
       aptitude_scores: geminiResults?.aptitude?.scores || null,
@@ -159,8 +254,8 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
       // Full AI results
       gemini_results: geminiResults,
       
-      // Adaptive aptitude session link
-      adaptive_aptitude_session_id: resolvedSessionId,
+      // Adaptive aptitude session link (only if validated to exist in adaptive_aptitude_results)
+      adaptive_aptitude_session_id: validatedSessionId,
       
       // Timestamps
       created_at: new Date().toISOString(),
@@ -172,7 +267,7 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
       learnerId,
       streamId,
       gradeLevel,
-      adaptiveAptitudeSessionId: resolvedSessionId
+      adaptiveAptitudeSessionId: validatedSessionId
     });
 
     // STEP 1: Save results using service role (bypasses RLS)

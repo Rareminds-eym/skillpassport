@@ -316,6 +316,31 @@ const STREAM_METADATA: Record<string, StreamMetadata> = {
   },
   
   // ============================================================================
+  // School Learners (Grades 6-12)
+  // ============================================================================
+  'middle_school': {
+    label: 'Middle School',
+    description: 'Grades 6-8 (Middle School)',
+    name: 'Middle School',
+    gradeLevel: 'middle',
+    displayOrder: 1,
+  },
+  'high_school': {
+    label: 'High School',
+    description: 'Grades 9-10 (High School)',
+    name: 'High School',
+    gradeLevel: 'highschool',
+    displayOrder: 2,
+  },
+  'higher_secondary': {
+    label: 'Higher Secondary',
+    description: 'Grades 11-12 (Higher Secondary)',
+    name: 'Higher Secondary',
+    gradeLevel: 'higher_secondary',
+    displayOrder: 3,
+  },
+  
+  // ============================================================================
   // Generic/Fallback
   // ============================================================================
   'college': {

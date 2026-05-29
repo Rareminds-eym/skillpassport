@@ -42,18 +42,59 @@ export interface SkillLevel {
 }
 
 export const calculateRIASEC = (answers: Record<string, number>): RIASECResult => {
+  console.log('[calculateRIASEC] === STARTING RIASEC CALCULATION ===');
+  console.log('[calculateRIASEC] Total answers received:', Object.keys(answers).length);
+  
   const scores: Record<RIASECType, number[]> = { R: [], I: [], A: [], S: [], E: [], C: [] };
+  let processedCount = 0;
+
+  // Log first 5 answers to debug format
+  const sampleAnswers = Object.entries(answers).slice(0, 5);
+  console.log('[calculateRIASEC] Sample answers:', sampleAnswers.map(([k, v]) => `${k}=${v}`).join(', '));
 
   Object.entries(answers).forEach(([key, value]) => {
+    // Handle both formats:
+    // 1. With prefix: "riasec_r1", "riasec_i1", etc.
+    // 2. Without prefix: "r1", "i1", etc. (direct question IDs)
+    
+    let questionId = key;
+    
+    // Remove "riasec_" prefix if present
     if (key.startsWith('riasec_')) {
-      const questionId = key.split('_')[1];
-      const type = questionId.charAt(0).toUpperCase() as RIASECType;
-      if (scores[type]) {
+      questionId = key.replace('riasec_', '');
+    }
+    
+    // Extract RIASEC type from question ID (first character, uppercase)
+    const firstChar = questionId.charAt(0).toUpperCase();
+    
+    // Check if it's a valid RIASEC type
+    if (['R', 'I', 'A', 'S', 'E', 'C'].includes(firstChar)) {
+      const type = firstChar as RIASECType;
+      
+      // Validate value is a number
+      if (typeof value === 'number' && !isNaN(value)) {
         scores[type].push(value);
+        processedCount++;
+        
+        // Log first few processed items
+        if (processedCount <= 5) {
+          console.log(`[calculateRIASEC] Processed: ${key} -> type=${type}, value=${value}`);
+        }
       }
     }
   });
 
+  console.log('[calculateRIASEC] Processed questions:', processedCount);
+  console.log('[calculateRIASEC] Questions per type:', {
+    R: scores.R.length,
+    I: scores.I.length,
+    A: scores.A.length,
+    S: scores.S.length,
+    E: scores.E.length,
+    C: scores.C.length
+  });
+
+  // Calculate averages
   const averages: Record<RIASECType, number> = {} as Record<RIASECType, number>;
   (Object.keys(scores) as RIASECType[]).forEach(type => {
     averages[type] = scores[type].length > 0
@@ -61,15 +102,27 @@ export const calculateRIASEC = (answers: Record<string, number>): RIASECResult =
       : 0;
   });
 
+  console.log('[calculateRIASEC] Average scores:', averages);
+
+  // Sort by score (descending) and get top 3
   const sorted = (Object.entries(averages) as [RIASECType, number][])
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3);
 
-  return {
+  const result = {
     scores: averages,
     topThree: sorted.map(([type]) => type),
     code: sorted.map(([type]) => type).join('')
   };
+
+  console.log('[calculateRIASEC] Final result:', {
+    scores: result.scores,
+    topThree: result.topThree,
+    code: result.code
+  });
+  console.log('[calculateRIASEC] === RIASEC CALCULATION COMPLETE ===');
+
+  return result;
 };
 
 export const calculateBigFive = (answers: Record<string, number>): BigFiveResult => {

@@ -606,36 +606,11 @@ export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel
   const adaptiveAptitudeSessionId = attemptData?.adaptive_aptitude_session_id || null;
   console.log('📊 [completeAttempt] Adaptive Session ID from attempt:', adaptiveAptitudeSessionId);
   
-  // CRITICAL FIX: Verify that adaptive results exist before using the session ID
-  // The foreign key constraint requires that adaptive_aptitude_results.session_id exists
-  let validatedAdaptiveSessionId = null;
-  
-  if (adaptiveAptitudeSessionId) {
-    console.log('🔍 [completeAttempt] Verifying adaptive results exist for session:', adaptiveAptitudeSessionId);
-    
-    const { data: adaptiveResults, error: adaptiveError } = await supabase
-      .from('adaptive_aptitude_results')
-      .select('session_id')
-      .eq('session_id', adaptiveAptitudeSessionId)
-      .maybeSingle();
-    
-    if (adaptiveError) {
-      console.error('❌ [completeAttempt] Error checking adaptive results:', adaptiveError);
-      console.error('❌ [completeAttempt] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
-    } else if (adaptiveResults) {
-      console.log('✅ [completeAttempt] Adaptive results exist - safe to save session ID');
-      validatedAdaptiveSessionId = adaptiveAptitudeSessionId;
-    } else {
-      console.warn('⚠️ [completeAttempt] Adaptive session ID exists in attempt, but NO results found in adaptive_aptitude_results table');
-      console.warn('⚠️ [completeAttempt] This means the adaptive test was started but not completed');
-      console.warn('⚠️ [completeAttempt] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
-    }
-  } else {
-    console.log('ℹ️ [completeAttempt] No adaptive session ID - learner did not take adaptive test');
-  }
-  
-  console.log('📊 [completeAttempt] Validated Adaptive Session ID:', validatedAdaptiveSessionId);
-  console.log('📊 [completeAttempt] Will be included in dataToInsert:', !!validatedAdaptiveSessionId);
+  // NOTE: We no longer validate adaptive results here because:
+  // 1. Frontend uses authenticated client which may not have RLS access to adaptive_aptitude_results
+  // 2. Backend save-results handler uses service role and will validate/auto-link the session
+  // 3. This prevents 400 Bad Request errors from RLS policies
+  console.log('ℹ️ [completeAttempt] Adaptive session validation will be handled by backend');
 
   // Debug: Log the actual data being extracted
   console.log('🔍 Extracting data from geminiResults:');
@@ -854,7 +829,7 @@ export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel
     grade_level: gradeLevel,
     stream_id: streamId,
     status: 'completed',
-    adaptive_aptitude_session_id: validatedAdaptiveSessionId, // Only save if verified to exist
+    adaptive_aptitude_session_id: adaptiveAptitudeSessionId, // Backend will validate and auto-link if needed
     riasec_scores: riasecScores,
     riasec_code: riasecCode,
     aptitude_scores: aptitudeScores,
@@ -908,7 +883,7 @@ export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel
   console.log('Attempt ID:', attemptId);
   console.log('Learner ID:', learnerId);
   console.log('Stream ID:', streamId);
-  console.log('🔑 CRITICAL: adaptive_aptitude_session_id being saved:', validatedAdaptiveSessionId);
+  console.log('🔑 CRITICAL: adaptive_aptitude_session_id being saved:', adaptiveAptitudeSessionId);
 
   try {
     const { getApiUrl } = await import('@/shared/api/apiUtils');
@@ -920,7 +895,7 @@ export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel
       streamId,
       gradeLevel,
       geminiResults,
-      adaptiveAptitudeSessionId: validatedAdaptiveSessionId,
+      adaptiveAptitudeSessionId: adaptiveAptitudeSessionId,
       sectionTimings
     };
 
@@ -969,7 +944,7 @@ export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel
     console.error('   - Attempt ID:', attemptId);
     console.error('   - Learner ID:', learnerId);
     console.error('   - Stream ID:', streamId);
-    console.error('   - Adaptive Session ID:', validatedAdaptiveSessionId);
+    console.error('   - Adaptive Session ID:', adaptiveAptitudeSessionId);
     console.error('   - Grade Level:', gradeLevel);
     console.error('❌ === END SAVE RESULTS API CALL FAILED ===');
 

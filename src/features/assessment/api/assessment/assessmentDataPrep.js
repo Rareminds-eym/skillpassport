@@ -233,10 +233,15 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
 
     // Only include if question has categoryMapping (indicates RIASEC question)
     if (question && question.categoryMapping) {
+      const mappingType = question.categoryMapping?.type;
+      const riasecType = question.riasecType ||
+        (['R', 'I', 'A', 'S', 'E', 'C'].includes(mappingType) ? mappingType : undefined);
+
       riasecAnswers[questionId] = {
         questionId,
         question: question.text,
         answer: value,
+        riasecType,
         categoryMapping: question.categoryMapping,
         questionType: question.type || 'multiselect'
       };
@@ -331,6 +336,12 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
   timingData.totalFormatted = formatTimeForPrompt(timingData.totalTime);
 
   logger.info('=== ASSESSMENT DATA PREPARED ===');
+  logger.info('Pre-calculated scores:', {
+    hasRiasec: !!preCalculatedScores?.riasec,
+    hasAptitude: !!preCalculatedScores?.aptitude,
+    riasecScores: preCalculatedScores?.riasec?.scores,
+    riasecCode: preCalculatedScores?.riasec?.code
+  });
 
   return {
     stream,
@@ -338,6 +349,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
     riasecAnswers,
     aptitudeAnswers,
     aptitudeScores: preCalculatedScores?.aptitude || {},
+    riasecScores: preCalculatedScores?.riasec || null, // ✅ CRITICAL: Include pre-calculated RIASEC scores
     bigFiveAnswers,
     workValuesAnswers,
     employabilityAnswers,

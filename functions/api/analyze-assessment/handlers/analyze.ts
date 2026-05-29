@@ -74,6 +74,7 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
       answer: question.answer,
       answerType: typeof question.answer,
       riasecType: question.riasecType,
+      mappingType: question.categoryMapping?.type,
       hasCategoryMapping: !!question.categoryMapping
     });
   });
@@ -82,7 +83,9 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
   Object.values(riasecAnswers).forEach((question: any) => {
     const answer = question.answer;
     const mapping = question.categoryMapping;
-    const riasecType = question.riasecType; // Direct RIASEC type from question
+    const mappedType = mapping?.type;
+    const riasecType = question.riasecType ||
+      (typeof mappedType === 'string' && scores.hasOwnProperty(mappedType) ? mappedType : null);
     let questionAnswered = false;
     
     // Handle numeric rating answers (1-5 scale) - for college/after12/after10
@@ -996,7 +999,8 @@ export async function handleAnalyzeAssessment(
   console.log('[ASSESSMENT-API] Total Aptitude Questions:', assessmentData.totalAptitudeQuestions);
 
   // Pre-calculate RIASEC scores for validation
-  console.log('[ASSESSMENT-API] 🧮 Pre-calculating RIASEC scores...');
+  console.log('[ASSESSMENT-API] 🧮 Checking for RIASEC scores...');
+  console.log('[ASSESSMENT-API] Has riasecScores (pre-calculated from frontend):', !!assessmentData.riasecScores);
   console.log('[ASSESSMENT-API] Has riasecAnswers:', !!assessmentData.riasecAnswers);
   console.log('[ASSESSMENT-API] riasecAnswers keys:', assessmentData.riasecAnswers ? Object.keys(assessmentData.riasecAnswers).length : 0);
   
@@ -1009,7 +1013,38 @@ export async function handleAnalyzeAssessment(
   let precalculatedRiasec = emptyRiasec;
   let canValidateRiasec = false;
   
-  if (assessmentData.riasecAnswers && Object.keys(assessmentData.riasecAnswers).length > 0) {
+  // PRIORITY 1: Use pre-calculated scores from frontend if available
+  if (assessmentData.riasecScores && assessmentData.riasecScores.scores) {
+    console.log('[ASSESSMENT-API] ✅ Using pre-calculated RIASEC scores from frontend');
+    
+    // Convert frontend format to backend format
+    const scores = assessmentData.riasecScores.scores;
+    const code = assessmentData.riasecScores.code || '';
+    
+    // Calculate percentages if not provided
+    let percentages = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+    const maxScore = 5; // Frontend uses 1-5 scale, max average is 5
+    
+    Object.keys(scores).forEach((key) => {
+      percentages[key as keyof typeof percentages] = Math.round((scores[key as keyof typeof scores] / maxScore) * 100);
+    });
+    
+    precalculatedRiasec = {
+      scores,
+      percentages,
+      code,
+      maxScore: maxScore * Object.keys(scores).length // Total possible score
+    };
+    
+    canValidateRiasec = true;
+    console.log('[ASSESSMENT-API] ✅ Frontend RIASEC code:', code);
+    console.log('[ASSESSMENT-API] ✅ Frontend RIASEC scores:', scores);
+    console.log('[ASSESSMENT-API] ✅ RIASEC validation enabled (from frontend)');
+  }
+  // PRIORITY 2: Calculate from riasecAnswers if frontend didn't provide pre-calculated scores
+  else if (assessmentData.riasecAnswers && Object.keys(assessmentData.riasecAnswers).length > 0) {
+    console.log('[ASSESSMENT-API] ⚠️ No pre-calculated scores from frontend, calculating from answers...');
+    
     // Check if we have valid data for RIASEC calculation
     // College/after12/after10: questions have riasecType (R, I, A, S, E, C)
     // Middle/high school: questions have categoryMapping
@@ -1023,16 +1058,16 @@ export async function handleAnalyzeAssessment(
     if (hasValidMapping || hasRiasecType) {
       precalculatedRiasec = calculateRiasecScores(assessmentData.riasecAnswers);
       canValidateRiasec = true;
-      console.log('[ASSESSMENT-API] ✅ Pre-calculated RIASEC:', precalculatedRiasec.code);
+      console.log('[ASSESSMENT-API] ✅ Backend-calculated RIASEC:', precalculatedRiasec.code);
       console.log('[ASSESSMENT-API] ✅ RIASEC scores:', precalculatedRiasec.scores);
-      console.log('[ASSESSMENT-API] ✅ RIASEC validation enabled');
+      console.log('[ASSESSMENT-API] ✅ RIASEC validation enabled (from backend calculation)');
     } else {
       console.warn('[ASSESSMENT-API] ⚠️ riasecAnswers missing both categoryMapping and riasecType - cannot pre-calculate');
       console.warn('[ASSESSMENT-API] ⚠️ RIASEC validation DISABLED - will trust AI output');
       canValidateRiasec = false;
     }
   } else {
-    console.warn('[ASSESSMENT-API] ⚠️ No riasecAnswers provided - RIASEC validation DISABLED');
+    console.warn('[ASSESSMENT-API] ⚠️ No riasecScores or riasecAnswers provided - RIASEC validation DISABLED');
     canValidateRiasec = false;
   }
 
@@ -1269,6 +1304,20 @@ export async function handleAnalyzeAssessment(
       }
       
       console.log('[ASSESSMENT] ✅ Adaptive test data populated:', Object.keys(results.aptitude.adaptiveTest).length, 'subtags');
+    }
+    
+    // ============================================================================
+    // ADD PRE-CALCULATED RIASEC TO RESPONSE
+    // Include pre-calculated scores for frontend to use as fallback
+    // ============================================================================
+    if (canValidateRiasec && precalculatedRiasec.code) {
+      results.preCalculatedRiasec = {
+        scores: { ...precalculatedRiasec.scores },
+        percentages: { ...precalculatedRiasec.percentages },
+        code: precalculatedRiasec.code,
+        maxScore: precalculatedRiasec.maxScore
+      };
+      console.log('[ASSESSMENT] ✅ Added preCalculatedRiasec to response for frontend fallback');
     }
     
     const response: AnalysisResult = {

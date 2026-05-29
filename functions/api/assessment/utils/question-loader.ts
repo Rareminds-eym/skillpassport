@@ -378,14 +378,28 @@ function getDefaultResponseScale(): ResponseScale[] {
 function mapQuestions(questions: any[]): AssessmentQuestion[] {
   return questions.map((q: any) => {
     let maxSelections: number | undefined;
+    let categoryMapping = q.category_mapping;
+    let metadata = q.metadata;
+
     if (q.metadata) {
       try {
-        const metadata = typeof q.metadata === 'string' ? JSON.parse(q.metadata) : q.metadata;
+        metadata = typeof q.metadata === 'string' ? JSON.parse(q.metadata) : q.metadata;
         maxSelections = metadata.max_selections || metadata.maxSelections;
       } catch (e) {
         // Continue without maxSelections
       }
     }
+
+    if (typeof categoryMapping === 'string') {
+      try {
+        categoryMapping = JSON.parse(categoryMapping);
+      } catch (e) {
+        categoryMapping = null;
+      }
+    }
+
+    const mappingType = categoryMapping?.type;
+    const riasecType = ['R', 'I', 'A', 'S', 'E', 'C'].includes(mappingType) ? mappingType : undefined;
 
     return {
       id: q.id,
@@ -394,8 +408,9 @@ function mapQuestions(questions: any[]): AssessmentQuestion[] {
       order: q.order_number,
       options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : [],
       maxSelections,
-      categoryMapping: q.category_mapping,
-      metadata: q.metadata
+      categoryMapping,
+      riasecType,
+      metadata
     };
   });
 }

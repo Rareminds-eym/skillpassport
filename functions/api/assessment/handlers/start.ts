@@ -69,31 +69,49 @@ export async function startHandler(context: AuthenticatedContext) {
 
     const learnerId = learnerData!.id;
     
-    // **CRITICAL: Get the actual program name from learner profile for normalization**
-    // This ensures postgraduate programs like "Master of Technology in Computer Science" 
-    // are correctly normalized to "mtech_cse" instead of "btech_cse"
-    const actualProgramName = (learnerData.programs as any)?.name || 
-                              (learnerData.programs as any)?.code || 
-                              learnerData.course_name || 
-                              learnerData.branch_field ||
-                              streamId; // Fallback to frontend streamId if no program in profile
+    // **CRITICAL: Determine stream ID based on grade level**
+    // For school learners (middle, highschool, higher_secondary), use grade-level-based stream IDs
+    // For college learners, normalize the program name
+    let normalizedStreamId: string | null = null;
     
-    logger.info('Program information', {
-      actualProgramName,
-      programFromDB: (learnerData.programs as any)?.name,
-      courseName: learnerData.course_name,
-      branchField: learnerData.branch_field,
-      frontendStreamId: streamId
-    });
-    
-    // Normalize using the ACTUAL program name from database, not the frontend streamId
-    const normalizedStreamId = actualProgramName ? normalizeStreamId(actualProgramName) : null;
-    
-    logger.info('Stream ID normalization', { 
-      originalStreamId: streamId,
-      actualProgramName,
-      normalizedStreamId
-    });
+    if (gradeLevel === 'middle') {
+      // Grades 6-8: Use "middle_school" as stream ID
+      normalizedStreamId = 'middle_school';
+      logger.info('Using middle school stream ID', { gradeLevel, normalizedStreamId });
+    } else if (gradeLevel === 'highschool') {
+      // Grades 9-10: Use "high_school" as stream ID
+      normalizedStreamId = 'high_school';
+      logger.info('Using high school stream ID', { gradeLevel, normalizedStreamId });
+    } else if (gradeLevel === 'higher_secondary') {
+      // Grades 11-12: Use "higher_secondary" as stream ID
+      normalizedStreamId = 'higher_secondary';
+      logger.info('Using higher secondary stream ID', { gradeLevel, normalizedStreamId });
+    } else {
+      // For higher_secondary, after10, after12, college: Use program-based normalization
+      const actualProgramName = (learnerData.programs as any)?.name || 
+                                (learnerData.programs as any)?.code || 
+                                learnerData.course_name || 
+                                learnerData.branch_field ||
+                                streamId; // Fallback to frontend streamId if no program in profile
+      
+      logger.info('Program information', {
+        gradeLevel,
+        actualProgramName,
+        programFromDB: (learnerData.programs as any)?.name,
+        courseName: learnerData.course_name,
+        branchField: learnerData.branch_field,
+        frontendStreamId: streamId
+      });
+      
+      // Normalize using the ACTUAL program name from database, not the frontend streamId
+      normalizedStreamId = actualProgramName ? normalizeStreamId(actualProgramName) : streamId;
+      
+      logger.info('Stream ID normalization', { 
+        originalStreamId: streamId,
+        actualProgramName,
+        normalizedStreamId
+      });
+    }
     
     // **CRITICAL: Ensure the normalized stream ID exists in the database**
     // This prevents foreign key constraint violations by auto-creating missing streams
