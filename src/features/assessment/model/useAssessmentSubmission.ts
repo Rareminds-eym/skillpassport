@@ -24,7 +24,6 @@ import {
   workValuesQuestions,
   employabilityQuestions,
   streamKnowledgeQuestions,
-  calculateRIASEC, // ✅ Import RIASEC calculation function
 } from '@/features/assessment';
 
 // ============================================================================
@@ -830,33 +829,11 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           });
 
           // ============================================================================
-          // PRE-CALCULATE RIASEC SCORES (Critical for all learners, especially college)
+          // SKIP FRONTEND PRE-CALCULATION - Let backend handle all score calculations
+          // Backend has access to full question metadata (categoryMapping, riasecType, etc.)
+          // and can calculate scores more accurately
           // ============================================================================
-          console.log('📊 [Pre-calculation] Calculating RIASEC scores from answers...');
-          
-          let preCalculatedScores = null;
-          try {
-            const riasecResult = calculateRIASEC(answers as Record<string, number>);
-            console.log('✅ [Pre-calculation] RIASEC scores calculated:', {
-              scores: riasecResult.scores,
-              topThree: riasecResult.topThree,
-              code: riasecResult.code
-            });
-            
-            // Only use pre-calculated scores if they're not all 0
-            const hasValidScores = Object.values(riasecResult.scores).some(score => score > 0);
-            if (hasValidScores) {
-              preCalculatedScores = {
-                riasec: riasecResult
-              };
-              console.log('✅ [Pre-calculation] Using pre-calculated RIASEC scores');
-            } else {
-              console.warn('⚠️ [Pre-calculation] RIASEC scores are all 0, will let Gemini calculate');
-            }
-          } catch (calcError) {
-            console.error('❌ [Pre-calculation] Failed to calculate RIASEC:', calcError);
-            console.warn('⚠️ [Pre-calculation] Will let Gemini calculate scores from answers');
-          }
+          console.log('📊 [Pre-calculation] Skipping frontend calculation - backend will handle all scores');
 
           geminiResults = await analyzeAssessmentWithGemini(
             answers,
@@ -871,7 +848,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             },
             finalTimings,
             gradeLevel || 'after12',
-            preCalculatedScores, // Pass pre-calculated scores
+            null, // No pre-calculated scores - let backend calculate
+            learnerRecordId, // Pass learner ID for course recommendations
             finalLearnerContext,
             adaptiveResults,
             sections

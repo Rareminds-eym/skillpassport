@@ -299,6 +299,52 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
 
   logger.info('Knowledge answers extracted:', { count: Object.keys(knowledgeAnswers).length });
 
+  // Extract Aptitude answers (AI-generated questions from career_assessment_ai_questions table)
+  // These questions are generated dynamically and stored with keys like "aptitude_q1", "aptitude_q2", etc.
+  Object.entries(answers).forEach(([key, value]) => {
+    if (key.startsWith('aptitude_')) {
+      const questionId = key.replace('aptitude_', '');
+      
+      // Try to find question in aptitudeQuestions bank (if provided)
+      const question = aptitudeQuestions?.find(q => q.id === questionId || q.id === key);
+      
+      if (question) {
+        const isCorrect = value === (question.correct_answer || question.correctAnswer || question.correct);
+        const subtype = question.subtype || question.category || 'general';
+        
+        // Store in structured format for backend processing
+        if (!aptitudeAnswers[subtype]) {
+          aptitudeAnswers[subtype] = [];
+        }
+        
+        aptitudeAnswers[subtype].push({
+          questionId: key,
+          question: question.text || question.question,
+          learnerAnswer: value,
+          correctAnswer: question.correct_answer || question.correctAnswer || question.correct,
+          isCorrect,
+          subtype
+        });
+      } else {
+        // If question not found in bank, still store the answer
+        // Backend will match it with questions from database
+        logger.warn(`Aptitude question ${key} not found in question bank`);
+        if (!aptitudeAnswers.general) {
+          aptitudeAnswers.general = [];
+        }
+        aptitudeAnswers.general.push({
+          questionId: key,
+          learnerAnswer: value
+        });
+      }
+    }
+  });
+
+  logger.info('Aptitude answers extracted:', { 
+    count: Object.values(aptitudeAnswers).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0),
+    subtypes: Object.keys(aptitudeAnswers).filter(k => Array.isArray(aptitudeAnswers[k]) && aptitudeAnswers[k].length > 0)
+  });
+
   // Calculate timing metrics
   const timingData = {
     riasec: {
@@ -335,21 +381,71 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
   };
   timingData.totalFormatted = formatTimeForPrompt(timingData.totalTime);
 
+  // Calculate aptitude scores from extracted answers
+  let calculatedAptitudeScores = {
+    verbal: { correct: 0, total: 0, percentage: 0 },
+    numerical: { correct: 0, total: 0, percentage: 0 },
+    abstract: { correct: 0, total: 0, percentage: 0 },
+    spatial: { correct: 0, total: 0, percentage: 0 },
+    clerical: { correct: 0, total: 0, percentage: 0 }
+  };
+
+  if (aptitudeQuestions && aptitudeQuestions.length > 0) {
+    logger.info('Calculating aptitude scores from answers...');
+    
+    // Convert aptitudeAnswers to flat array format for scoring
+    const flatAptitudeAnswers = [];
+    Object.values(aptitudeAnswers).forEach(categoryAnswers => {
+      if (Array.isArray(categoryAnswers)) {
+        categoryAnswers.forEach(ans => {
+          flatAptitudeAnswers.push({
+            question_id: ans.questionId.replace('aptitude_', ''),
+            selected_answer: ans.learnerAnswer,
+            correct_answer: ans.correctAnswer,
+            is_correct: ans.isCorrect
+          });
+        });
+      }
+    });
+
+    // Calculate scores by category
+    flatAptitudeAnswers.forEach(answer => {
+      const question = aptitudeQuestions.find(q => q.id === answer.question_id || `aptitude_${q.id}` === answer.question_id);
+      if (question) {
+        const category = (question.subtype || question.category || 'verbal').toLowerCase();
+        const mappedCategory = category.includes('numerical') || category.includes('math') ? 'numerical' :
+                              category.includes('verbal') || category.includes('english') ? 'verbal' :
+                              category.includes('abstract') || category.includes('logical') ? 'abstract' :
+                              category.includes('spatial') ? 'spatial' :
+                              category.includes('clerical') ? 'clerical' : 'verbal';
+        
+        if (calculatedAptitudeScores[mappedCategory]) {
+          calculatedAptitudeScores[mappedCategory].total++;
+          if (answer.is_correct) {
+            calculatedAptitudeScores[mappedCategory].correct++;
+          }
+        }
+      }
+    });
+
+    // Calculate percentages
+    Object.keys(calculatedAptitudeScores).forEach(category => {
+      const scores = calculatedAptitudeScores[category];
+      scores.percentage = scores.total > 0 ? Math.round((scores.correct / scores.total) * 100) : 0;
+    });
+
+    logger.info('Aptitude scores calculated:', calculatedAptitudeScores);
+  }
+
   logger.info('=== ASSESSMENT DATA PREPARED ===');
-  logger.info('Pre-calculated scores:', {
-    hasRiasec: !!preCalculatedScores?.riasec,
-    hasAptitude: !!preCalculatedScores?.aptitude,
-    riasecScores: preCalculatedScores?.riasec?.scores,
-    riasecCode: preCalculatedScores?.riasec?.code
-  });
+  logger.info('Backend will calculate all scores from raw answers');
 
   return {
     stream,
     gradeLevel,
     riasecAnswers,
     aptitudeAnswers,
-    aptitudeScores: preCalculatedScores?.aptitude || {},
-    riasecScores: preCalculatedScores?.riasec || null, // ✅ CRITICAL: Include pre-calculated RIASEC scores
+    aptitudeScores: calculatedAptitudeScores, // ✅ Include calculated aptitude scores
     bigFiveAnswers,
     workValuesAnswers,
     employabilityAnswers,

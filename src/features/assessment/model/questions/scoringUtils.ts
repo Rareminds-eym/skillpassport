@@ -41,45 +41,59 @@ export interface SkillLevel {
   color: 'green' | 'blue' | 'orange';
 }
 
-export const calculateRIASEC = (answers: Record<string, number>): RIASECResult => {
+export const calculateRIASEC = (answers: Record<string, any>): RIASECResult => {
   console.log('[calculateRIASEC] === STARTING RIASEC CALCULATION ===');
   console.log('[calculateRIASEC] Total answers received:', Object.keys(answers).length);
   
   const scores: Record<RIASECType, number[]> = { R: [], I: [], A: [], S: [], E: [], C: [] };
   let processedCount = 0;
 
-  // Log first 5 answers to debug format
-  const sampleAnswers = Object.entries(answers).slice(0, 5);
-  console.log('[calculateRIASEC] Sample answers:', sampleAnswers.map(([k, v]) => `${k}=${v}`).join(', '));
+  // Log first 10 answers to debug format
+  const sampleAnswers = Object.entries(answers).slice(0, 10);
+  console.log('[calculateRIASEC] Sample answers:', sampleAnswers.map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(', '));
 
   Object.entries(answers).forEach(([key, value]) => {
+    // Skip non-answer keys (metadata, etc.)
+    if (key === 'adaptive_aptitude_session_id' || key === 'adaptive_aptitude_results' || key === 'resultId') {
+      return;
+    }
+    
     // Handle both formats:
-    // 1. With prefix: "riasec_r1", "riasec_i1", etc.
-    // 2. Without prefix: "r1", "i1", etc. (direct question IDs)
+    // 1. Rating format (college): "r1", "i1", "a1" with numeric value
+    // 2. Prefixed format: "riasec_r1", "riasec_i1"
+    // 3. Section-prefixed: "middle_interest_explorer_ms1", "hs_interest_explorer_hs1"
     
     let questionId = key;
     
-    // Remove "riasec_" prefix if present
+    // Remove common prefixes
     if (key.startsWith('riasec_')) {
       questionId = key.replace('riasec_', '');
+    } else if (key.startsWith('middle_interest_explorer_')) {
+      questionId = key.replace('middle_interest_explorer_', '');
+    } else if (key.startsWith('hs_interest_explorer_')) {
+      questionId = key.replace('hs_interest_explorer_', '');
     }
     
     // Extract RIASEC type from question ID (first character, uppercase)
     const firstChar = questionId.charAt(0).toUpperCase();
     
-    // Check if it's a valid RIASEC type
+    // Check if it's a valid RIASEC type (R, I, A, S, E, C)
     if (['R', 'I', 'A', 'S', 'E', 'C'].includes(firstChar)) {
-      const type = firstChar as RIASECType;
-      
-      // Validate value is a number
-      if (typeof value === 'number' && !isNaN(value)) {
+      // Format 1: Numeric rating (1-5 scale) - college/after12/higher_secondary
+      if (typeof value === 'number' && !isNaN(value) && value >= 1 && value <= 5) {
+        const type = firstChar as RIASECType;
         scores[type].push(value);
         processedCount++;
         
         // Log first few processed items
-        if (processedCount <= 5) {
-          console.log(`[calculateRIASEC] Processed: ${key} -> type=${type}, value=${value}`);
+        if (processedCount <= 10) {
+          console.log(`[calculateRIASEC] Processed rating: ${key} -> type=${type}, value=${value}`);
         }
+      }
+      // Format 2: Multiselect (array) - middle/high school
+      // Note: We can't process these without categoryMapping, backend handles this
+      else if (Array.isArray(value)) {
+        console.log(`[calculateRIASEC] Skipping multiselect ${key} - requires backend processing with categoryMapping`);
       }
     }
   });
@@ -104,6 +118,17 @@ export const calculateRIASEC = (answers: Record<string, number>): RIASECResult =
 
   console.log('[calculateRIASEC] Average scores:', averages);
 
+  // Check if we have incomplete data (some types have 0 questions)
+  const typesWithData = Object.entries(scores).filter(([, arr]) => arr.length > 0).length;
+  const typesWithoutData = 6 - typesWithData;
+  
+  if (typesWithoutData > 0) {
+    console.warn(`[calculateRIASEC] ⚠️ WARNING: ${typesWithoutData} RIASEC types have NO answers!`);
+    console.warn(`[calculateRIASEC] Types with data:`, Object.entries(scores).filter(([, arr]) => arr.length > 0).map(([type]) => type).join(', '));
+    console.warn(`[calculateRIASEC] Types WITHOUT data:`, Object.entries(scores).filter(([, arr]) => arr.length === 0).map(([type]) => type).join(', '));
+    console.warn(`[calculateRIASEC] This suggests the assessment form only showed some RIASEC questions, not all 48.`);
+  }
+
   // Sort by score (descending) and get top 3
   const sorted = (Object.entries(averages) as [RIASECType, number][])
     .sort(([, a], [, b]) => b - a)
@@ -118,7 +143,8 @@ export const calculateRIASEC = (answers: Record<string, number>): RIASECResult =
   console.log('[calculateRIASEC] Final result:', {
     scores: result.scores,
     topThree: result.topThree,
-    code: result.code
+    code: result.code,
+    warning: typesWithoutData > 0 ? `${typesWithoutData} types have no data` : 'All types have data'
   });
   console.log('[calculateRIASEC] === RIASEC CALCULATION COMPLETE ===');
 
