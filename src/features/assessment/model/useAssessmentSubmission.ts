@@ -577,6 +577,57 @@ const fetchAdaptiveResults = async (sessionId: string): Promise<any | null> => {
   }
 };
 
+/**
+ * Computes the Stream Knowledge score from the knowledge section's questions and
+ * the learner's answers.
+ *
+ * WHY: For college/comprehensive assessments the AI does not reliably score the
+ * stream-knowledge MCQs, and the DB trigger is skipped for adaptive rows. The
+ * knowledge questions carry a `correct` field and the learner's answers are stored
+ * by question id, so we score them deterministically here and inject the result
+ * into geminiResults.knowledge before saving.
+ *
+ * @param sections - Built assessment sections (knowledge section carries `correct`)
+ * @param answers - Learner answers keyed by question id
+ * @returns knowledge details (score 0-100, counts) or null when no knowledge section/questions
+ */
+const computeKnowledgeScore = (
+  sections: any[],
+  answers: Record<string, any>
+): { score: number; correctCount: number; totalQuestions: number } | null => {
+  const knowledgeSection = sections?.find(
+    (s) =>
+      s?.name === 'knowledge' ||
+      s?.id === 'knowledge' ||
+      (typeof s?.id === 'string' && s.id.startsWith('knowledge'))
+  );
+
+  const questions = knowledgeSection?.questions ?? [];
+  if (!questions.length) return null;
+
+  let correctCount = 0;
+  let totalQuestions = 0;
+
+  for (const q of questions) {
+    const correct = q?.correct ?? q?.correct_answer ?? q?.correctAnswer;
+    if (correct == null) continue;
+
+    totalQuestions++;
+    const given = answers[String(q.id)];
+    if (given != null && String(given).trim() === String(correct).trim()) {
+      correctCount++;
+    }
+  }
+
+  if (totalQuestions === 0) return null;
+
+  return {
+    score: Math.round((correctCount / totalQuestions) * 100),
+    correctCount,
+    totalQuestions,
+  };
+};
+
 // ============================================================================
 // MAIN HOOK
 // ============================================================================
@@ -854,6 +905,21 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             adaptiveResults,
             sections
           );
+
+          // Deterministically score Stream Knowledge from the section's correct answers.
+          // The AI/DB-trigger paths leave this at 0 for adaptive (college) results, so we
+          // override geminiResults.knowledge with the real computed score before saving.
+          const knowledgeResult = computeKnowledgeScore(sections, answers);
+          if (knowledgeResult && geminiResults) {
+            const existingKnowledge = geminiResults.knowledge || {};
+            geminiResults.knowledge = {
+              ...existingKnowledge,
+              score: knowledgeResult.score,
+              correctCount: knowledgeResult.correctCount,
+              totalQuestions: knowledgeResult.totalQuestions,
+            };
+            console.log('📚 [Knowledge] Computed stream knowledge score:', knowledgeResult);
+          }
 
           const aiDuration = ((Date.now() - aiStartTime) / 1000).toFixed(1);
           console.log(`✅ [AI Analysis] Completed successfully in ${aiDuration}s`);

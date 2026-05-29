@@ -19,6 +19,67 @@ interface SaveResultsRequest {
   sectionTimings?: Record<string, number>;
 }
 
+/**
+ * Maps adaptive aptitude subtags to the 5 standard aptitude categories used by the
+ * result UI/PDF (verbal, numerical, abstract, spatial, clerical).
+ *
+ * WHY: College aptitude is measured by the adaptive test, whose subtags differ from the
+ * legacy category questions. Without this mapping, aptitude_scores would store all zeros.
+ */
+const ADAPTIVE_SUBTAG_TO_CATEGORY: Record<string, string> = {
+  verbal_reasoning: 'verbal',
+  numerical_reasoning: 'numerical',
+  data_interpretation: 'numerical',
+  logical_reasoning: 'abstract',
+  pattern_recognition: 'abstract',
+  spatial_reasoning: 'spatial',
+};
+
+/**
+ * Builds category-based aptitude scores and an overall percentage from a completed
+ * adaptive aptitude result row, in the shape expected by the assessment result transformer.
+ *
+ * @param adaptiveRow - Row from adaptive_aptitude_results (overall_accuracy, accuracy_by_subtag)
+ * @returns scores keyed by category plus an overall percentage (or null when no data)
+ */
+function buildAptitudeFromAdaptive(adaptiveRow: any): {
+  scores: Record<string, { total: number; correct: number; percentage: number }>;
+  overall: number | null;
+} {
+  const categories = ['verbal', 'numerical', 'abstract', 'spatial', 'clerical'] as const;
+  const scores: Record<string, { total: number; correct: number; percentage: number }> = {};
+  for (const category of categories) {
+    scores[category] = { total: 0, correct: 0, percentage: 0 };
+  }
+
+  const bySubtag = adaptiveRow?.accuracy_by_subtag ?? {};
+  for (const [subtag, stats] of Object.entries(bySubtag)) {
+    const category = ADAPTIVE_SUBTAG_TO_CATEGORY[subtag];
+    if (!category || !stats || typeof stats !== 'object') continue;
+    const s = stats as { correct?: number; total?: number };
+    scores[category].correct += s.correct ?? 0;
+    scores[category].total += s.total ?? 0;
+  }
+
+  for (const category of categories) {
+    scores[category].percentage = scores[category].total > 0
+      ? Math.round((scores[category].correct / scores[category].total) * 100)
+      : 0;
+  }
+
+  // Prefer the test's authoritative overall accuracy; fall back to aggregate of categories.
+  let overall: number | null = null;
+  if (adaptiveRow?.overall_accuracy != null) {
+    overall = Math.round(parseFloat(String(adaptiveRow.overall_accuracy)));
+  } else {
+    const totalCorrect = categories.reduce((sum, c) => sum + scores[c].correct, 0);
+    const totalQuestions = categories.reduce((sum, c) => sum + scores[c].total, 0);
+    overall = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : null;
+  }
+
+  return { scores, overall };
+}
+
 export async function saveResultsHandler(context: AuthenticatedContext) {
   const user = context.data.user;
   const env = context.env as Record<string, string>;
@@ -119,22 +180,24 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
     // CRITICAL: Validate that adaptive results exist before using the session ID
     // The foreign key constraint requires that adaptive_aptitude_results.session_id exists
     let validatedSessionId = null;
-    
+    let adaptiveResultRow: any = null;
+
     if (resolvedSessionId) {
       console.log('[save-results] Validating adaptive results exist for session:', resolvedSessionId);
-      
+
       const { data: adaptiveResults, error: adaptiveError } = await supabase
         .from('adaptive_aptitude_results')
-        .select('session_id')
+        .select('session_id, overall_accuracy, accuracy_by_subtag, aptitude_level, confidence_tag, tier')
         .eq('session_id', resolvedSessionId)
         .maybeSingle();
-      
+
       if (adaptiveError) {
         console.error('[save-results] Error checking adaptive results:', adaptiveError);
         console.error('[save-results] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
       } else if (adaptiveResults) {
         console.log('[save-results] Adaptive results exist - safe to save session ID');
         validatedSessionId = resolvedSessionId;
+        adaptiveResultRow = adaptiveResults;
       } else {
         console.warn('[save-results] Adaptive session exists but NO results found in adaptive_aptitude_results table');
         console.warn('[save-results] This means the adaptive test was started but not completed');
@@ -145,6 +208,23 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
     }
     
     console.log('[save-results] Final validated session ID:', validatedSessionId);
+
+    // Derive aptitude from the adaptive aptitude test when the learner completed one.
+    // College/comprehensive aptitude is measured adaptively (stored in adaptive_aptitude_results),
+    // NOT via the legacy category questions — so geminiResults.aptitude.scores is all zeros here.
+    let aptitudeScores = geminiResults?.aptitude?.scores ?? null;
+    let aptitudeOverall = geminiResults?.aptitude?.overallScore ?? null;
+
+    if (adaptiveResultRow) {
+      const derived = buildAptitudeFromAdaptive(adaptiveResultRow);
+      aptitudeScores = derived.scores;
+      aptitudeOverall = derived.overall;
+      console.log('[save-results] Using adaptive aptitude results for aptitude_scores/overall:', {
+        overall: aptitudeOverall,
+        aptitudeLevel: adaptiveResultRow.aptitude_level,
+        tier: adaptiveResultRow.tier,
+      });
+    }
 
     // Extract RIASEC scores with backup handling
     const riasecScoresRaw = geminiResults?.riasec?.scores || null;
@@ -216,8 +296,9 @@ export async function saveResultsHandler(context: AuthenticatedContext) {
       riasec_code: riasecCode,
       
       // Aptitude (available for all grade levels)
-      aptitude_scores: geminiResults?.aptitude?.scores || null,
-      aptitude_overall: geminiResults?.aptitude?.overallScore ?? null,
+      // Sourced from the adaptive aptitude test when present; otherwise the AI's category scores.
+      aptitude_scores: aptitudeScores,
+      aptitude_overall: aptitudeOverall,
       
       // Big Five (note: column is 'bigfive_scores' not 'big_five_scores')
       bigfive_scores: geminiResults?.bigFive || null,

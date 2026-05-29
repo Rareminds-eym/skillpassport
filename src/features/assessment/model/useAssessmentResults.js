@@ -1131,6 +1131,25 @@ export const useAssessmentResults = () => {
                             if (adaptiveAptitudeResults) {
                                 normalizedResults.adaptive_aptitude_results = adaptiveAptitudeResults;
                             }
+
+                            // ✅ Cognitive Abilities (Aptitude) must reflect the corrected DB columns
+                            // (adaptive-derived), NOT the stale gemini_results.aptitude zeros. The
+                            // gemini_results blob keeps the AI's original empty category scores, so
+                            // override scores + overallScore from the authoritative aptitude columns.
+                            if (directResult.aptitude_scores) {
+                                normalizedResults.aptitude = {
+                                    ...(normalizedResults.aptitude || {}),
+                                    scores: directResult.aptitude_scores,
+                                    overallScore:
+                                        directResult.aptitude_overall != null
+                                            ? Number(directResult.aptitude_overall)
+                                            : (normalizedResults.aptitude?.overallScore ?? 0),
+                                };
+                                console.log('✅ [Aptitude] Report aptitude sourced from DB columns:', {
+                                    overallScore: normalizedResults.aptitude.overallScore,
+                                    scores: directResult.aptitude_scores,
+                                });
+                            }
                             
                             // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
                             // These fields are needed to show what's actually stored in the database

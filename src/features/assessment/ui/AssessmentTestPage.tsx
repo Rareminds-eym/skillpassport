@@ -44,7 +44,7 @@ import type { GradeLevel as AdaptiveGradeLevel } from '@/shared/types/adaptiveAp
 import { getLogger } from '@/shared/config/logging';
 
 // Adaptive Aptitude Service
-import AdaptiveAptitudeApiService from '../api/adaptiveAptitudeApiService';
+import AdaptiveAptitudeApiService, { linkSessionToAttempt } from '../api/adaptiveAptitudeApiService';
 
 const logger = getLogger('AssessmentTestPage');
 
@@ -146,9 +146,41 @@ const AssessmentTestPage: React.FC = () => {
   const adaptiveHook = useAdaptiveAptitude({
     learnerId: learnerId || '',
     gradeLevel: getAdaptiveGradeLevel(selectedGrade),
-    onTestComplete: async () => {
-      // Show section-complete screen for adaptive test (it's the last section)
-      // User will click "Submit Assessment" to submit
+    onTestComplete: async (results) => {
+      // WHY: The adaptive session ID is the only link the backend (save-results)
+      // uses to derive aptitude_scores/aptitude_overall via the adaptive results.
+      // It must survive a page reload/resume between finishing the adaptive section
+      // and submitting the (later) aptitude/knowledge sections. We therefore persist
+      // it in TWO durable places, not just non-persisted Zustand state:
+      //   1) answers map  -> saved to attempts.all_responses (survives reload)
+      //   2) attempts.adaptive_aptitude_session_id -> via linkSessionToAttempt (DB)
+      // This restores the backup-link guarantee that was previously missing; without
+      // it a failed startTest link silently caused aptitude to be saved as 0/null.
+      const sessionId = results?.sessionId;
+      if (sessionId) {
+        store.saveAnswer('adaptive_aptitude_session_id', sessionId);
+
+        if (store.attemptId) {
+          try {
+            await linkSessionToAttempt(store.attemptId, sessionId);
+            logger.info('[onTestComplete] Adaptive session linked to attempt (backup link)', {
+              attemptId: store.attemptId,
+              sessionId,
+            });
+          } catch (err) {
+            // Non-blocking: store + answers fallback still allow submit-time recovery.
+            logger.warn('[onTestComplete] Backup session link failed (non-blocking)', {
+              error: err instanceof Error ? err.message : String(err),
+              attemptId: store.attemptId,
+              sessionId,
+            });
+          }
+        }
+      } else {
+        logger.warn('[onTestComplete] Completed adaptive test returned no sessionId');
+      }
+
+      // Show section-complete screen; user clicks "Submit Assessment" to submit.
       setCurrentScreen('section-complete');
     },
     onError: (err) => {
