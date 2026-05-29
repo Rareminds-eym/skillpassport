@@ -253,15 +253,10 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, le
   if (learnerId) {
     const saved = await getSavedQuestionsForLearner(learnerId, streamId, 'aptitude');
     if (saved && saved.length > 0) {
-      // Validate that saved questions have the expected count
-      if (saved.length === questionCount) {
-        console.log(`✅ Using saved aptitude questions for learner: ${saved.length}/${questionCount}`);
-        return saved;
-      } else {
-        console.warn(`⚠️ Saved questions count mismatch: ${saved.length}/${questionCount} - regenerating`);
-        // Clear invalid cached questions
-        await clearSavedQuestionsForLearner(learnerId, streamId, 'aptitude');
-      }
+      // For resume functionality, always use saved questions regardless of count
+      // This ensures consistency when resuming assessments
+      console.log(`✅ RESUME: Using saved aptitude questions for learner: ${saved.length} questions`);
+      return saved;
     }
   }
 

@@ -41,6 +41,9 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const previousAnswersRef = useRef<Record<string, any>>({});
   const sectionStartTimeRef = useRef<Record<number, number>>({});
+  // Track the section/question index that pending answers belong to
+  const pendingSectionIndexRef = useRef(store.currentSectionIndex);
+  const pendingQuestionIndexRef = useRef(store.currentQuestionIndex);
 
   // ===== BUILD SECTION TIMINGS =====
   const buildSectionTimings = (currentSectionIndex: number): Record<string, number> => {
@@ -82,14 +85,16 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
         const answers = Object.fromEntries(pendingAnswers.current);
-        const sectionTimings = buildSectionTimings(store.currentSectionIndex);
-
+        // Use the captured section/question index (set when answers were added, not current navigation state)
+        const syncSectionIndex = pendingSectionIndexRef.current;
+        const syncQuestionIndex = pendingQuestionIndexRef.current;
+        const sectionTimings = buildSectionTimings(syncSectionIndex);
 
         // Call backend API
         const response = await updateProgress({
           attemptId,
-          sectionIndex: store.currentSectionIndex,
-          questionIndex: store.currentQuestionIndex,
+          sectionIndex: syncSectionIndex,
+          questionIndex: syncQuestionIndex,
           sectionTimings,
           answers,
         });
@@ -136,7 +141,7 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
 
     isSyncing.current = false;
     return false;
-  }, [attemptId, isOnline, store.currentSectionIndex, store.currentQuestionIndex]);
+  }, [attemptId, isOnline]);
 
   // ===== TRACK SECTION ENTRY TIME (after intro dismissed) =====
   useEffect(() => {
@@ -149,17 +154,25 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
   // ===== DETECT ANSWER CHANGES =====
   useEffect(() => {
     const currentAnswers = store.answers;
-    
+    let hasNewAnswers = false;
+
     // Find new or changed answers
     Object.entries(currentAnswers).forEach(([questionId, answer]) => {
       if (previousAnswersRef.current[questionId] !== answer) {
         pendingAnswers.current.set(questionId, answer);
+        hasNewAnswers = true;
         // Reset canProceed when new answer is detected
         setCanProceedToNextQuestion(false);
       }
     });
 
     previousAnswersRef.current = { ...currentAnswers };
+
+    // Capture current position when new answers arrive (before any section navigation)
+    if (hasNewAnswers) {
+      pendingSectionIndexRef.current = store.currentSectionIndex;
+      pendingQuestionIndexRef.current = store.currentQuestionIndex;
+    }
 
     // If answers changed, trigger sync
     if (pendingAnswers.current.size > 0) {
@@ -171,7 +184,8 @@ export const useAnswerSync = (attemptId: string | null, showSectionIntro: boolea
         syncPendingAnswers();
       }, 2000);
     }
-  }, [store.answers, syncPendingAnswers]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.answers]);
 
   // ===== NETWORK MONITORING =====
   useEffect(() => {
