@@ -361,7 +361,8 @@ export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId)
       timestamp: new Date().toISOString()
     });
 
-    // Get auth token from ssoClient (no need to access useAuthStore here)
+    // Get auth token
+    const user = useAuthStore.getState().user;
     const token = ssoClient.getAccessToken();
 
     if (!token) {
@@ -606,11 +607,36 @@ export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel
   const adaptiveAptitudeSessionId = attemptData?.adaptive_aptitude_session_id || null;
   console.log('📊 [completeAttempt] Adaptive Session ID from attempt:', adaptiveAptitudeSessionId);
   
-  // NOTE: We no longer validate adaptive results here because:
-  // 1. Frontend uses authenticated client which may not have RLS access to adaptive_aptitude_results
-  // 2. Backend save-results handler uses service role and will validate/auto-link the session
-  // 3. This prevents 400 Bad Request errors from RLS policies
-  console.log('ℹ️ [completeAttempt] Adaptive session validation will be handled by backend');
+  // CRITICAL FIX: Verify that adaptive results exist before using the session ID
+  // The foreign key constraint requires that adaptive_aptitude_results.session_id exists
+  let validatedAdaptiveSessionId = null;
+  
+  if (adaptiveAptitudeSessionId) {
+    console.log('🔍 [completeAttempt] Verifying adaptive results exist for session:', adaptiveAptitudeSessionId);
+    
+    const { data: adaptiveResults, error: adaptiveError } = await supabase
+      .from('adaptive_aptitude_results')
+      .select('session_id')
+      .eq('session_id', adaptiveAptitudeSessionId)
+      .maybeSingle();
+    
+    if (adaptiveError) {
+      console.error('❌ [completeAttempt] Error checking adaptive results:', adaptiveError);
+      console.error('❌ [completeAttempt] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
+    } else if (adaptiveResults) {
+      console.log('✅ [completeAttempt] Adaptive results exist - safe to save session ID');
+      validatedAdaptiveSessionId = adaptiveAptitudeSessionId;
+    } else {
+      console.warn('⚠️ [completeAttempt] Adaptive session ID exists in attempt, but NO results found in adaptive_aptitude_results table');
+      console.warn('⚠️ [completeAttempt] This means the adaptive test was started but not completed');
+      console.warn('⚠️ [completeAttempt] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
+    }
+  } else {
+    console.log('ℹ️ [completeAttempt] No adaptive session ID - learner did not take adaptive test');
+  }
+  
+  console.log('📊 [completeAttempt] Validated Adaptive Session ID:', validatedAdaptiveSessionId);
+  console.log('📊 [completeAttempt] Will be included in dataToInsert:', !!validatedAdaptiveSessionId);
 
   // Debug: Log the actual data being extracted
   console.log('🔍 Extracting data from geminiResults:');
@@ -829,7 +855,7 @@ export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel
     grade_level: gradeLevel,
     stream_id: streamId,
     status: 'completed',
-    adaptive_aptitude_session_id: adaptiveAptitudeSessionId, // Backend will validate and auto-link if needed
+    adaptive_aptitude_session_id: validatedAdaptiveSessionId, // Only save if verified to exist
     riasec_scores: riasecScores,
     riasec_code: riasecCode,
     aptitude_scores: aptitudeScores,
@@ -877,83 +903,102 @@ export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel
   console.log('🔍 geminiResults.careerFit (first cluster):', JSON.stringify(geminiResults.careerFit?.clusters?.[0], null, 2));
   console.log('🔍 === END GEMINI_RESULTS STRUCTURE ===');
 
-  // STEP 1: Save results via backend API (uses service role to bypass RLS)
+  // STEP 1: Save results FIRST (before marking attempt as completed)
   // This ensures if insert fails, the attempt stays "in_progress" and can be retried
-  console.log('=== STEP 1: Saving results via backend API ===');
+  console.log('=== STEP 1: Inserting into personal_assessment_results ===');
   console.log('Attempt ID:', attemptId);
   console.log('Learner ID:', learnerId);
   console.log('Stream ID:', streamId);
   console.log('🔑 CRITICAL: adaptive_aptitude_session_id being saved:', adaptiveAptitudeSessionId);
 
-  try {
-    const { getApiUrl } = await import('@/shared/api/apiUtils');
-    const API_URL = getApiUrl('assessment/save-results');
+  const { data: results, error: resultsError } = await supabase
+    .from('personal_assessment_results')
+    .upsert(dataToInsert, {
+      onConflict: 'attempt_id',
+      ignoreDuplicates: false
+    })
+    .select()
+    .single();
 
-    const requestBody = {
-      attemptId,
-      learnerId,
-      streamId,
-      gradeLevel,
-      geminiResults,
-      adaptiveAptitudeSessionId: adaptiveAptitudeSessionId,
-      sectionTimings
-    };
-
-    console.log('📡 Calling backend API to save results...');
-    
-    const response = await ssoClient.fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ === BACKEND API CALL FAILED ===');
-      console.error('❌ Status:', response.status, response.statusText);
-      console.error('❌ Error response:', errorText);
-      
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch {
-        errorData = { error: errorText };
-      }
-      
-      throw new Error(errorData.error || errorData.message || `Failed to save results: ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log('✅✅✅ Results saved successfully via backend!');
-    console.log('✅ Result ID:', result.data?.resultId);
-    console.log('✅ Attempt ID:', result.data?.attemptId);
-    
-    // Return the result data
-    return result.data;
-
-  } catch (error) {
+  if (resultsError) {
     // ============================================================================
-    // ENHANCED ERROR LOGGING: Log API call failure details
+    // ENHANCED ERROR LOGGING: Log database update failure details (Requirement 4.3, 4.5)
     // ============================================================================
-    console.error('❌ === SAVE RESULTS API CALL FAILED ===');
-    console.error('❌ Error Message:', error.message);
-    console.error('❌ Error Stack:', error.stack);
+    console.error('❌ === DATABASE UPDATE FAILED ===');
+    console.error('❌ Error Type:', resultsError.code || 'Unknown');
+    console.error('❌ Error Message:', resultsError.message);
+    console.error('❌ Error Details:', resultsError.details);
+    console.error('❌ Error Hint:', resultsError.hint);
+    console.error('❌ Full Error Object:', JSON.stringify(resultsError, null, 2));
     console.error('❌ Context:');
     console.error('   - Attempt ID:', attemptId);
     console.error('   - Learner ID:', learnerId);
     console.error('   - Stream ID:', streamId);
     console.error('   - Adaptive Session ID:', adaptiveAptitudeSessionId);
     console.error('   - Grade Level:', gradeLevel);
-    console.error('❌ === END SAVE RESULTS API CALL FAILED ===');
+
+    // Check if it's an RLS error
+    if (resultsError.code === '42501' || resultsError.message?.includes('policy')) {
+      console.error('🔒 === RLS POLICY VIOLATION DETECTED ===');
+      console.error('🔒 This is a Row Level Security (RLS) policy error');
+      console.error('🔒 The learner_id in the upsert must match auth.uid()');
+      console.error('🔒 RLS Details:');
+      console.error('   - Expected auth.uid() to match learner_id:', learnerId);
+      console.error('   - Check if user is authenticated correctly');
+      console.error('   - Check if RLS policies on personal_assessment_results table are correct');
+      console.error('🔒 === END RLS POLICY VIOLATION ===');
+    }
+    
+    console.error('❌ === END DATABASE UPDATE FAILED ===');
 
     // Don't mark attempt as completed if results failed to save
-    throw error;
+    throw resultsError;
   }
 
-  // STEP 2: Create notification for assessment completion (optional, non-critical)
-  console.log('=== STEP 2: Creating assessment completion notification ===');
+  console.log('✅✅✅ Results saved successfully!');
+  console.log('✅ Result ID:', results.id);
+  console.log('✅ VERIFY: adaptive_aptitude_session_id in saved result:', results.adaptive_aptitude_session_id);
+  console.log('✅ VERIFY: adaptive_aptitude_session_id matches what we sent?', results.adaptive_aptitude_session_id === adaptiveAptitudeSessionId);
+  
+  if (!results.adaptive_aptitude_session_id && adaptiveAptitudeSessionId) {
+    console.error('❌❌❌ CRITICAL: adaptive_aptitude_session_id was NOT saved to database!');
+    console.error('❌ We sent:', adaptiveAptitudeSessionId);
+    console.error('❌ Database has:', results.adaptive_aptitude_session_id);
+  } else if (results.adaptive_aptitude_session_id) {
+    console.log('✅✅✅ SUCCESS: adaptive_aptitude_session_id WAS saved to database!');
+    console.log('✅ Session ID:', results.adaptive_aptitude_session_id);
+  } else {
+    console.warn('⚠️ No adaptive_aptitude_session_id (this is OK for non-adaptive assessments)');
+  }
+
+  // STEP 2: Only mark attempt as completed AFTER results are saved successfully
+  console.log('=== STEP 2: Marking attempt as completed ===');
+  
+  // Note: adaptive_aptitude_session_id is already set during the assessment
+  if (adaptiveAptitudeSessionId) {
+    console.log('📊 Adaptive aptitude session already linked:', adaptiveAptitudeSessionId);
+  }
+  
+  const { error: attemptError } = await supabase
+    .from('personal_assessment_attempts')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      section_timings: sectionTimings
+      // adaptive_aptitude_session_id is already set, no need to update it
+    })
+    .eq('id', attemptId);
+
+  if (attemptError) {
+    console.error('⚠️ Warning: Results saved but failed to update attempt status:', attemptError);
+    // Results are saved, so we don't throw here - the data is safe
+    // The attempt status can be fixed manually if needed
+  } else {
+    console.log('✅ Attempt marked as completed');
+  }
+
+  // STEP 3: Create notification for assessment completion
+  console.log('=== STEP 3: Creating assessment completion notification ===');
   try {
     // Fetch user_id from learners table (learnerId is the learner record ID, not user_id)
     const { data: learnerData, error: learnerError } = await supabase
@@ -989,8 +1034,7 @@ export const completeAttempt = async (attemptId, learnerId, streamId, gradeLevel
     // Don't throw - notification is not critical
   }
 
-  // Return success (backend already saved results and marked attempt as completed)
-  return { success: true, attemptId, learnerId };
+  return results;
 };
 
 /**
@@ -1038,12 +1082,8 @@ export const getLatestResult = async (learnerIdOrUserId) => {
     return null;
   }
 
-  // Use authenticated client (ssoClient) instead of anonymous supabase client
-  // This bypasses RLS issues when data was saved by backend with service role
-  const client = ssoClient;
-
   // Try direct lookup first (assuming it's learner.id)
-  let { data, error } = await client
+  let { data, error } = await supabase
     .from('personal_assessment_results')
     .select('*')
     .eq('learner_id', learnerIdOrUserId)
@@ -1066,7 +1106,7 @@ export const getLatestResult = async (learnerIdOrUserId) => {
       try {
         console.log('📊 Fetching adaptive aptitude results for session:', data.adaptive_aptitude_session_id);
         
-        const { data: adaptiveResults } = await client
+        const { data: adaptiveResults } = await supabase
           .from('adaptive_aptitude_results')
           .select('*')
           .eq('session_id', data.adaptive_aptitude_session_id)
@@ -1092,7 +1132,7 @@ export const getLatestResult = async (learnerIdOrUserId) => {
   // If not found, try looking up by user_id (in case we were passed auth.uid())
   try {
     // Get learner.id from user_id
-    const { data: learner, error: learnerError } = await client
+    const { data: learner, error: learnerError } = await supabase
       .from('learners')
       .select('id')
       .eq('user_id', learnerIdOrUserId)
@@ -1109,7 +1149,7 @@ export const getLatestResult = async (learnerIdOrUserId) => {
     }
 
     // Now try again with the correct learner.id
-    const { data: resultData, error: resultError } = await client
+    const { data: resultData, error: resultError } = await supabase
       .from('personal_assessment_results')
       .select('*')
       .eq('learner_id', learner.id)
@@ -1131,7 +1171,7 @@ export const getLatestResult = async (learnerIdOrUserId) => {
         try {
           console.log('📊 Fetching adaptive aptitude results for session:', resultData.adaptive_aptitude_session_id);
           
-          const { data: adaptiveResults } = await client
+          const { data: adaptiveResults } = await supabase
             .from('adaptive_aptitude_results')
             .select('*')
             .eq('session_id', resultData.adaptive_aptitude_session_id)

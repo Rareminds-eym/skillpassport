@@ -660,7 +660,7 @@ export const ADAPTIVE_AI_MODELS = [
   'openai/gpt-3.5-turbo',                  // Reliable and affordable
   'openai/gpt-4o-mini',                    // Backup OpenAI model
   // Free Models - Fallback choices
-  'google/gemini-2.0-flash-001',           // Gemini 2.0 Flash stable
+  'google/gemini-2.0-flash-exp:free',      // FREE - Latest Gemini
   'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
   'google/gemini-2.0-flash-001',           // Gemini Flash (paid)
   // Higher quality paid models (if needed)

@@ -63,12 +63,9 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, learne
       console.log(`🎓 College learner - using course "${learnerCourse}" for knowledge questions instead of stream`);
     }
     
-    // RESUME LOGIC: Check for saved questions first whenever learnerId is known.
-    // Cache is keyed by (learner_id, stream_id, question_type) — attemptId is not
-    // part of the lookup. Gating on attemptId caused cache misses on cold mounts
-    // where store.attemptId is not yet set, leading to unnecessary re-generation.
-    if (learnerId) {
-      console.log('🔄 Checking for saved questions first');
+    // RESUME LOGIC: Check for saved questions first if this is a resume (attemptId exists)
+    if (learnerId && attemptId) {
+      console.log('🔄 Resume detected - checking for saved questions first');
       
       try {
         // Check for saved aptitude questions

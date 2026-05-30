@@ -79,7 +79,6 @@ export interface CheckInProgressResponse {
   timerRemaining?: number | null;
   elapsedTime?: number;
   started_at?: string;
-  sections?: any[];
   // Adaptive test resume fields
   adaptiveSession?: AdaptiveSessionInfo | null;
   isAdaptiveInProgress?: boolean;
@@ -286,7 +285,6 @@ export async function checkInProgress(): Promise<CheckInProgressResponse> {
       timerRemaining: data.timerRemaining,
       elapsedTime: data.elapsedTime,
       started_at: data.started_at,
-      sections: data.sections,
       // Adaptive test resume fields
       adaptiveSession: data.adaptiveSession,
       isAdaptiveInProgress: data.isAdaptiveInProgress,
