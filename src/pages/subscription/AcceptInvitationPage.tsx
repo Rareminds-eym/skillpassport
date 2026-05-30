@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('invitation-acceptance');
 
@@ -31,6 +32,7 @@ export default function AcceptInvitationPage() {
   const [error, setError] = useState<string>('');
   const [isAccepting, setIsAccepting] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [userExists, setUserExists] = useState<boolean | null>(null);
 
   useEffect(() => {
     checkAuthAndLoadInvitation();
@@ -50,7 +52,7 @@ export default function AcceptInvitationPage() {
 
       // Load invitation details
       const inv = await memberInvitationService.getInvitationByToken(token);
-      
+
       if (!inv) {
         setPageState('invalid');
         setError('This invitation link is invalid or has already been used');
@@ -81,6 +83,9 @@ export default function AcceptInvitationPage() {
       setOrganizationName(orgName);
 
       if (!currentUser) {
+        // Check if user account exists for this email
+        const accountExists = await checkIfUserExists(inv.email);
+        setUserExists(accountExists);
         setPageState('not_logged_in');
       } else {
         setPageState('valid');
@@ -99,9 +104,28 @@ export default function AcceptInvitationPage() {
         .select('name')
         .eq('id', orgId)
         .single();
+
       return data?.name || 'Organization';
-    } catch {
+    } catch (error) {
+      logger.error('Failed to fetch organization name', error as Error);
       return 'Organization';
+    }
+  };
+
+  const checkIfUserExists = async (email: string): Promise<boolean> => {
+    try {
+      // Check if a user with this email exists in auth.users
+      const { data, error } = await supabase.rpc('check_user_exists', { user_email: email });
+
+      if (error) {
+        logger.warn('Failed to check if user exists, assuming they need to sign up', error);
+        return false;
+      }
+
+      return data === true;
+    } catch (error) {
+      logger.warn('Failed to check if user exists, assuming they need to sign up', error as Error);
+      return false;
     }
   };
 
@@ -117,8 +141,34 @@ export default function AcceptInvitationPage() {
 
     setIsAccepting(true);
     try {
-      const result = await memberInvitationService.acceptInvitation(token!, user.id);
-      
+      // Check if this is a recruitment invitation
+      const isRecruitmentInvitation = invitation.memberType.includes('company_admin') ||
+        invitation.memberType.includes('recruiter') ||
+        invitation.memberType.includes('viewer');
+
+      let result;
+      if (isRecruitmentInvitation) {
+        // Use recruitment-specific endpoint that creates SSO-Worker memberships
+        const response = await fetch('/api/recruitment/invitations/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: token!,
+            userId: user.id,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to accept invitation');
+        }
+
+        result = await response.json();
+      } else {
+        // Use standard school/college invitation flow
+        result = await memberInvitationService.acceptInvitation(token!, user.id);
+      }
+
       setPageState('accepted');
       toast.success(`Welcome to ${result.organizationName}!`);
 
@@ -140,7 +190,17 @@ export default function AcceptInvitationPage() {
     // Store the current URL to redirect back after login
     const returnUrl = window.location.pathname + window.location.search;
     sessionStorage.setItem('invitation_return_url', returnUrl);
-    navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+
+    if (invitation) {
+      sessionStorage.setItem('invitation_email', invitation.email);
+    }
+
+    navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}&email=${encodeURIComponent(invitation?.email || '')}`);
+  };
+
+  const handleSignupRedirect = () => {
+    // Redirect to simplified invitation signup page
+    navigate(`/invitation/signup?token=${token}&email=${encodeURIComponent(invitation?.email || '')}`);
   };
 
   const getDashboardPath = (memberType: string): string => {
@@ -150,7 +210,11 @@ export default function AcceptInvitationPage() {
     if (memberType.includes('educator')) {
       return '/educator/dashboard';
     }
-    return '/dashboard';
+    if (memberType.includes('recruiter') || memberType.includes('company_admin')) {
+      return '/recruitment/overview';
+    }
+    // Fallback to learner dashboard instead of non-existent /dashboard
+    return '/learner/dashboard';
   };
 
   const getMemberTypeDisplay = (memberType: string): string => {
@@ -311,35 +375,60 @@ export default function AcceptInvitationPage() {
               <div className="flex gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm text-amber-800 font-medium">Login Required</p>
+                  <p className="text-sm text-amber-800 font-medium">
+                    {userExists ? 'Login Required' : 'Account Required'}
+                  </p>
                   <p className="text-sm text-amber-700 mt-1">
-                    Please log in or create an account to accept this invitation.
+                    {userExists
+                      ? 'Please log in with your account to accept this invitation.'
+                      : 'Please create an account with the invited email to accept this invitation.'
+                    }
                   </p>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={handleLoginRedirect}
-              className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 font-medium"
-            >
-              <LogIn className="w-5 h-5" />
-              Login to Accept
-            </button>
+            {userExists ? (
+              <button
+                onClick={handleLoginRedirect}
+                className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 font-medium"
+              >
+                <LogIn className="w-5 h-5" />
+                Login to Accept
+              </button>
+            ) : (
+              <button
+                onClick={handleSignupRedirect}
+                className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 font-medium"
+              >
+                <UserPlus className="w-5 h-5" />
+                Create Account & Accept
+              </button>
+            )}
 
             <div className="mt-4 text-center">
               <p className="text-sm text-gray-500">
-                Don't have an account?{' '}
-                <button
-                  onClick={() => {
-                    const returnUrl = window.location.pathname + window.location.search;
-                    sessionStorage.setItem('invitation_return_url', returnUrl);
-                    navigate(`/signup?returnUrl=${encodeURIComponent(returnUrl)}`);
-                  }}
-                  className="font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Sign up
-                </button>
+                {userExists ? (
+                  <>
+                    Don't have an account?{' '}
+                    <button
+                      onClick={handleSignupRedirect}
+                      className="font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                      Sign up
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Already have an account?{' '}
+                    <button
+                      onClick={handleLoginRedirect}
+                      className="font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                      Login
+                    </button>
+                  </>
+                )}
               </p>
             </div>
           </div>

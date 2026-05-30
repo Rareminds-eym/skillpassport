@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowRight,
   Award,
+  Building2,
   CheckCircle,
   ChevronDown,
   Clock,
@@ -32,7 +33,7 @@ import { OtpInput } from '@/shared/ui';
 import { isLocalhost } from '@/shared/lib';
 import { trackSignup } from '@/shared/lib/analytics';
 
-type UserRole = 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
+type UserRole = 'learner' | 'recruiter' | 'recruitment_admin' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
 interface SignupState {
   firstName: string;
@@ -260,9 +261,11 @@ const UnifiedSignup = () => {
 
   // Get return URL from query params or session storage (for invitation flow)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
+  const invitationEmail = searchParams.get('email') || sessionStorage.getItem('invitation_email');
+  const invitationToken = sessionStorage.getItem('invitation_token');
 
   const [state, setState] = useState<SignupState>({
-    firstName: '', lastName: '', dateOfBirth: '', email: '', phone: '', countryCode: '+91',
+    firstName: '', lastName: '', dateOfBirth: '', email: invitationEmail || '', phone: '', countryCode: '+91',
     password: '', confirmPassword: '', selectedRole: null,
     country: 'IN', state: '', city: '', preferredLanguage: 'en', referralCode: '',
     agreeToTerms: false, otp: '', otpSent: false, otpVerified: false, verificationId: '',
@@ -294,13 +297,16 @@ const UnifiedSignup = () => {
 
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
-  const allRoles: UserRole[] = ['learner', 'school_educator', 'college_educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
+  const allRoles: UserRole[] = ['learner', 'recruiter', 'recruitment_admin', 'school_educator', 'college_educator', 'school_admin', 'college_admin', 'university_admin'];
+  // Note: 'recruitment_admin' role will redirect to company signup page
+  // 'recruiter' role is for invitation-based signups (no company creation)
 
   const getRoleDisplayName = (role: UserRole): string => {
     const names: Record<UserRole, string> = {
       learner: 'Learner',
+      recruiter: 'Recruiter (I have an invitation)',
+      recruitment_admin: 'Recruitment Admin',
       school_educator: 'School Educator', college_educator: 'College Educator',
-      recruiter: 'Recruiter',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
     };
     return names[role];
@@ -505,6 +511,26 @@ const UnifiedSignup = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    // If user selected Recruitment Admin, redirect to company signup with their details
+    if (state.selectedRole === 'recruitment_admin') {
+      navigate('/signup/company', {
+        state: {
+          firstName: state.firstName,
+          lastName: state.lastName,
+          email: state.email,
+          phone: state.phone,
+          countryCode: state.countryCode,
+          password: state.password,
+          country: state.country,
+          state: state.state,
+          city: state.city,
+          preferredLanguage: state.preferredLanguage,
+          dateOfBirth: state.dateOfBirth,
+        }
+      });
+      return;
+    }
+
     // Track signup_submit — form is valid, API call is about to start
     trackSignup.submit(
       state.selectedRole || undefined,
@@ -592,6 +618,7 @@ const UnifiedSignup = () => {
         school_educator: 'educator',
         college_educator: 'college-educator',
         recruiter: 'recruitment-recruiter',
+        recruitment_admin: 'recruitment-recruiter',
         school_admin: 'school',
         college_admin: 'college',
         university_admin: 'university-admin'
@@ -600,6 +627,55 @@ const UnifiedSignup = () => {
 
       // Track signup_success — profile created, about to redirect
       trackSignup.success(ssoUserId, state.email, state.selectedRole || 'unknown');
+
+      // Check for invitation token and auto-accept if present
+      // This is important for recruiter signups via invitation
+      if (invitationToken) {
+        try {
+          // Auto-accept the invitation
+          const invitationResponse = await fetch('/api/recruitment/invitations/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: invitationToken,
+              userId: ssoUserId,
+            }),
+          });
+
+          if (invitationResponse.ok) {
+            const invitationResult = await invitationResponse.json();
+            // Clear invitation data from session storage
+            sessionStorage.removeItem('invitation_token');
+            sessionStorage.removeItem('invitation_email');
+            sessionStorage.removeItem('invitation_return_url');
+
+            // Refresh user data to get updated roles after invitation acceptance
+            await ssoClient.getMe();
+
+            // Redirect to appropriate dashboard based on invitation role
+            const dashboardPath = invitationResult.memberType?.includes('recruiter') || invitationResult.memberType?.includes('company_admin')
+              ? '/recruitment/overview'
+              : '/learner/dashboard';
+
+            navigate(dashboardPath);
+            return; // Exit early, don't continue with normal flow
+          } else {
+            // If invitation acceptance fails, show error
+            const errorData = await invitationResponse.json();
+            console.error('Failed to accept invitation:', errorData);
+            throw new Error(errorData.error || 'Failed to accept invitation');
+          }
+        } catch (invitationError) {
+          console.error('Failed to auto-accept invitation:', invitationError);
+          // Show error to user instead of continuing
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: 'Failed to accept invitation. Please try logging in to accept the invitation.'
+          }));
+          return;
+        }
+      }
 
       // Check for return URL (invitation flow) - redirect there instead of subscription plans
       if (returnUrl) {
@@ -1093,7 +1169,7 @@ const UnifiedSignup = () => {
                     {state.roleDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
                         {allRoles.map(role => {
-                          const isAvailable = role === 'learner';
+                          const isAvailable = role === 'learner' || role === 'recruiter' || role === 'recruitment_admin'; // Learner, Recruiter (invitation), and Recruitment Admin available
                           return (
                             <button
                               key={role}
@@ -1180,7 +1256,11 @@ const UnifiedSignup = () => {
                 <div className="flex gap-4 pt-4">
                   <button type="button" onClick={handlePrevStep} disabled={state.loading} className="px-6 py-4 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all">Back</button>
                   <button type="submit" disabled={state.loading || !state.agreeToTerms} className="flex-1 py-4 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                    {state.loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Create Account</span>}
+                    {state.loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <span>{state.selectedRole === 'recruitment_admin' ? 'Create Company Account' : 'Create Account'}</span>
+                    )}
                   </button>
                 </div>
               </div>

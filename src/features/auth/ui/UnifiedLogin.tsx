@@ -43,9 +43,11 @@ const UnifiedLogin = () => {
 
   const returnUrl =
     searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
+  const invitationEmail = searchParams.get('email') || sessionStorage.getItem('invitation_email');
+  const invitationToken = sessionStorage.getItem('invitation_token');
 
   const [state, setState] = useState<LoginState>({
-    email: '',
+    email: invitationEmail || '',
     password: '',
     showPassword: false,
     loading: false,
@@ -105,33 +107,99 @@ const UnifiedLogin = () => {
       // Login via SSO — the store reads roles from the JWT
       await login(state.email, state.password);
 
+      const { useAuthStore } = await import('@/shared/model/authStore');
+
+      // Check for invitation token and auto-accept FIRST (before role check)
+      // This is important because the invitation acceptance assigns the role
+      if (invitationToken && returnUrl?.includes('/invitation/accept')) {
+        try {
+          const userId = useAuthStore.getState().user?.id;
+
+          if (userId) {
+            // Auto-accept the invitation - this will assign the role
+            const invitationResponse = await fetch('/api/recruitment/invitations/accept', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                token: invitationToken,
+                userId: userId,
+              }),
+            });
+
+            if (invitationResponse.ok) {
+              const invitationResult = await invitationResponse.json();
+
+              // Clear invitation data from session storage
+              sessionStorage.removeItem('invitation_token');
+              sessionStorage.removeItem('invitation_email');
+              sessionStorage.removeItem('invitation_return_url');
+
+              // Refresh user data to get updated roles
+              await useAuthStore.getState().refreshUser();
+
+              // Redirect to appropriate dashboard based on invitation role
+              const dashboardPath = invitationResult.memberType?.includes('recruiter') || invitationResult.memberType?.includes('company_admin')
+                ? '/recruitment/overview'
+                : '/learner/dashboard';
+
+              navigate(dashboardPath);
+              return; // Exit early - invitation flow complete
+            } else {
+              // If invitation acceptance fails, log error but don't block login
+              const errorData = await invitationResponse.json();
+              console.error('Failed to accept invitation:', errorData);
+              // Continue with normal login flow
+            }
+          }
+        } catch (invitationError) {
+          console.error('Failed to auto-accept invitation:', invitationError);
+          // Continue with normal flow if invitation acceptance fails
+        }
+      }
+
       // Verify the user actually has the selected role
       // (Reading directly from the store after login() completes)
-      const { useAuthStore } = await import('@/shared/model/authStore');
       const currentRoles = useAuthStore.getState().user?.roles ?? [];
 
       // Check if user has the selected role or a variant of it
       // For 'educator', accept 'educator', 'school_educator', or 'college_educator'
+      // For 'recruiter', accept 'recruiter' or 'owner' (org creators)
       let hasRole = currentRoles.includes(state.selectedRole);
       if (!hasRole && state.selectedRole === 'educator') {
         hasRole = currentRoles.some(role =>
           role === 'educator' || role === 'school_educator' || role === 'college_educator'
         );
       }
+      if (!hasRole && state.selectedRole === 'recruiter') {
+        hasRole = currentRoles.some(role =>
+          role === 'recruiter' || role === 'owner'
+        );
+      }
 
       if (!hasRole) {
-        // User doesn't have this role — log them out and show error
-        await useAuthStore.getState().logout();
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: `You do not have access to the ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role.`,
-        }));
+        // User doesn't have this role
+        // If they came from an invitation, show a more helpful error
+        if (invitationToken) {
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: `Failed to assign ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role. The invitation may have already been used or expired. Please contact support.`,
+          }));
+        } else {
+          // Normal case - user doesn't have this role, log them out
+          await useAuthStore.getState().logout();
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: `You do not have access to the ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role.`,
+          }));
+        }
         return;
       }
 
       // Update the primary role to match what the user selected
       // If they selected 'educator' but have a specific variant, use the variant
+      // If they selected 'recruiter' and have 'owner', map to 'recruiter'
       let actualRole = state.selectedRole;
       if (state.selectedRole === 'educator') {
         const educatorRole = currentRoles.find(role =>
@@ -141,6 +209,10 @@ const UnifiedLogin = () => {
           actualRole = educatorRole as UserRole;
         }
       }
+      if (state.selectedRole === 'recruiter' && currentRoles.includes('owner')) {
+        // User is an org owner, map to recruiter for app purposes
+        actualRole = 'recruiter';
+      }
       useAuthStore.setState({ role: actualRole });
 
       // Redirect to the intended destination
@@ -148,7 +220,7 @@ const UnifiedLogin = () => {
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
       } else {
-        redirectToRoleDashboard(state.selectedRole, navigate);
+        await redirectToRoleDashboard(state.selectedRole, navigate);
       }
     } catch (error) {
       setState((prev) => ({

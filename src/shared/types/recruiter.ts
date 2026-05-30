@@ -1,6 +1,7 @@
 // Candidate Types
 export interface Candidate {
   id: string
+  organization_id: string // NEW - Organization reference
   name: string
   email: string
   phone: string
@@ -32,11 +33,14 @@ export interface Candidate {
   projects?: any[]
   certificates?: any[]
   assessments?: any[]
+  assigned_to_uuid?: string // NEW - Assigned recruiter user
+  added_by_uuid?: string // NEW - Added by user
 }
 
 // Job/Requisition Types
 export interface Job {
   id: string
+  organization_id: string // NEW - Organization reference
   title: string
   department: string
   location: string
@@ -47,8 +51,11 @@ export interface Job {
   requirements: string[]
   posted: string
   status: 'open' | 'paused' | 'closed' | 'draft'
+  approval_status?: 'pending' | 'approved' | 'rejected' // NEW - Approval workflow
   applicants: number
   hired: number
+  created_by_uuid?: string // NEW - Creator user reference
+  assigned_to?: string // NEW - Assigned recruiter
 }
 
 // Pipeline/Stage Types
@@ -61,6 +68,7 @@ export interface PipelineStage {
 
 export interface Pipeline {
   id: string
+  organization_id: string // NEW - Organization reference
   jobId: string
   stages: PipelineStage[]
 }
@@ -227,11 +235,11 @@ export interface PipelineFilters {
 }
 
 // Pipeline Sort Types
-export type PipelineSortField = 
-  | 'candidate_name' 
-  | 'ai_score' 
-  | 'added_at' 
-  | 'updated_at' 
+export type PipelineSortField =
+  | 'candidate_name'
+  | 'ai_score'
+  | 'added_at'
+  | 'updated_at'
   | 'next_action_date'
   | 'stage_changed_at'
   | 'source'
@@ -303,15 +311,15 @@ export interface PipelinesProps {
 }
 
 // Utility Types
-export type TabKey = 
-  | 'overview' 
-  | 'requisitions' 
-  | 'talent_pool' 
-  | 'pipelines' 
-  | 'shortlists' 
-  | 'interviews' 
-  | 'offers_&_decisions' 
-  | 'analytics' 
+export type TabKey =
+  | 'overview'
+  | 'requisitions'
+  | 'talent_pool'
+  | 'pipelines'
+  | 'shortlists'
+  | 'interviews'
+  | 'offers_&_decisions'
+  | 'analytics'
   | 'settings'
 
 export type SortOption = 'name' | 'applied' | 'match' | 'status' | 'stage'

@@ -1,9 +1,9 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
-import { SubscriptionProtectedRoute } from "@/features/subscription";
+import OrganizationProtectedRoute from "@/features/recruitment/ui/OrganizationProtectedRoute";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 
-const RECRUITER_ROLES = ["recruiter"];
+const RECRUITER_ROLES = ["recruiter", "company_admin"];
 
 const RecruiterProfile = lazy(() => import("@/pages/recruiter/Profile"));
 const RecruiterSettings = lazy(() => import("@/pages/recruiter/Settings"));
@@ -28,22 +28,23 @@ const SubscriptionManage = lazy(() =>
 const AddOns = lazy(() =>
   import("@/pages/subscription/AddOns")
 );
+const RecruitmentSubscriptionPlans = lazy(() =>
+  import("@/pages/recruitment/RecruitmentSubscriptionPlans")
+);
+const AdminDashboard = lazy(() => import("@/pages/recruiter/AdminDashboard"));
 
 export const recruiterRoutes = (
   <Route
     key="recruiter-routes"
     path="/recruitment/*"
     element={
-      <SubscriptionProtectedRoute
-        allowedRoles={RECRUITER_ROLES}
-        requireSubscription={true}
-        subscriptionFallbackPath="/subscription/plans?type=recruiter"
-      >
+      <OrganizationProtectedRoute allowedRoles={RECRUITER_ROLES}>
         <RecruiterLayout />
-      </SubscriptionProtectedRoute>
+      </OrganizationProtectedRoute>
     }
   >
     <Route path="overview" element={<Overview />} />
+    <Route path="admin" element={<AdminDashboard />} />
     <Route path="projects" element={<ProjectHiringWithNav />} />
     <Route path="talent-pool" element={<TalentPool />} />
     <Route path="requisition" element={<Requisitions />} />
@@ -62,4 +63,13 @@ export const recruiterRoutes = (
     <Route path="subscription/add-ons" element={<AddOns />} />
     <Route path="*" element={<Navigate to="/recruitment/overview" replace />} />
   </Route>
+);
+
+// Standalone route for subscription plans (no sidebar)
+export const recruiterSubscriptionPlanRoute = (
+  <Route
+    key="recruiter-subscription-plan"
+    path="/recruitment/subscription/plans"
+    element={<RecruitmentSubscriptionPlans />}
+  />
 );

@@ -41,16 +41,20 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
   try {
     // Check for unverified learners
     // Note: Using .or() to handle null or false values
+    // Skip if verified column doesn't exist (returns 400)
     const { count: unverifiedCount, error } = await supabase
       .from('learners')
       .select('id', { count: 'exact', head: true })
       .or('verified.is.null,verified.eq.false');
 
+    // If column doesn't exist (400 error), skip this check
     if (error) {
-      throw error;
-    }
-
-    if (unverifiedCount && unverifiedCount > 0) {
+      if (error.code === 'PGRST116' || error.message.includes('column') || error.message.includes('verified')) {
+        logger.warn('Verified column not found in learners table, skipping unverified check');
+      } else {
+        throw error;
+      }
+    } else if (unverifiedCount && unverifiedCount > 0) {
       alerts.push({
         id: 'talent-pool-unverified',
         type: 'warning',
@@ -70,8 +74,8 @@ export const getTalentPoolAlerts = async (): Promise<Alert[]> => {
 
     if (incompleteProfiles) {
       const incomplete = incompleteProfiles.filter(learner => {
-        const profile = typeof learner.profile === 'string' 
-          ? JSON.parse(learner.profile) 
+        const profile = typeof learner.profile === 'string'
+          ? JSON.parse(learner.profile)
           : learner.profile;
         return !profile?.email || !profile?.contact_number || !profile?.education?.length;
       });
@@ -294,7 +298,7 @@ export const getOffersAlerts = async (): Promise<Alert[]> => {
         const offer = urgentOffers[0];
         const expiryDate = new Date(offer.expiry_date);
         const hoursUntilExpiry = Math.floor((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60));
-        
+
         alerts.push({
           id: 'offers-expiring',
           type: 'error',
@@ -424,7 +428,7 @@ export const getPipelineAlerts = async (): Promise<Alert[]> => {
       }, {} as Record<string, number>);
 
       const bottleneckStage = Object.entries(stageCounts).find(([_, count]) => count > 20);
-      
+
       if (bottleneckStage) {
         const [stage, count] = bottleneckStage;
         alerts.push({
@@ -452,7 +456,7 @@ export const getPipelineAlerts = async (): Promise<Alert[]> => {
  */
 export const getAllAlerts = async (): Promise<Alert[]> => {
   try {
-    
+
     const [
       talentPoolAlerts,
       shortlistAlerts,

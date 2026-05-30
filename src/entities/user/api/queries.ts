@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/shared/api';
+import { useAuthStore } from '@/shared/model/authStore';
 import type { User, UserProfile, UserProfileExtended, UserDocument, UserActivity } from '../model/types';
 
 // ============================================================================
@@ -54,10 +55,10 @@ export const getUsers = async (filters?: {
 
 export const getCurrentUser = async (): Promise<User | null> => {
   const user = useAuthStore.getState().user;
-    const error = null;
-  
+  const error = null;
+
   if (error || !user) return null;
-  
+
   return {
     id: user.id,
     email: user.email || '',

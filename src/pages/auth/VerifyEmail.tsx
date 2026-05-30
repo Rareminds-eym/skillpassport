@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertCircle, Loader2, Mail } from 'lucide-react';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
-import { useIsAuthenticated, useUser, useAuthStore } from '@/shared/model/authStore';
+import { useIsAuthenticated, useAuthStore } from '@/shared/model/authStore';
 
 type VerifyState = 'verifying' | 'success' | 'error' | 'no-token';
 
@@ -12,7 +12,6 @@ const VerifyEmail = () => {
   const navigate = useNavigate();
   const token = searchParams.get('token');
   const isAuthenticated = useIsAuthenticated();
-  const user = useUser();
 
   const [state, setState] = useState<VerifyState>(token ? 'verifying' : 'no-token');
   const [error, setError] = useState('');
@@ -25,10 +24,55 @@ const VerifyEmail = () => {
     (async () => {
       try {
         await ssoClient.verifyEmail({ token });
-        setState('success');
-        
+
         // Refresh session to get updated user data with is_email_verified = true
         await useAuthStore.getState().refreshSession();
+
+        // Wait for session to fully propagate to auth store
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Log user data after refresh for debugging
+        const refreshedUser = useAuthStore.getState().user;
+        console.log('[VerifyEmail] User data after refresh:', {
+          role: refreshedUser?.role,
+          roles: refreshedUser?.roles,
+          orgId: refreshedUser?.orgId,
+          isEmailVerified: refreshedUser?.isEmailVerified,
+          isAuthenticated: useAuthStore.getState().isAuthenticated,
+        });
+
+        // Set success state
+        setState('success');
+
+        // Auto-redirect after a short delay to show success message
+        setTimeout(() => {
+          const currentUser = useAuthStore.getState().user;
+          const userRole = currentUser?.role || useAuthStore.getState().role;
+
+          console.log('[VerifyEmail] Auto-redirecting after verification', {
+            userRole,
+            orgId: currentUser?.orgId,
+            roles: currentUser?.roles,
+            isAuthenticated: useAuthStore.getState().isAuthenticated
+          });
+
+          // Check if user is a recruiter (including company admins who have 'owner' role in SSO)
+          if (userRole === 'recruiter' || currentUser?.roles?.includes('owner')) {
+            console.log('[VerifyEmail] Redirecting to recruitment subscription plans', {
+              userRole,
+              roles: currentUser?.roles,
+              orgId: currentUser?.orgId
+            });
+            navigate('/recruitment/subscription/plans', { replace: true });
+          } else {
+            console.log('[VerifyEmail] Redirecting to regular subscription plans', {
+              userRole,
+              roles: currentUser?.roles
+            });
+            navigate('/subscription/plans', { replace: true });
+          }
+        }, 1500); // Show success message for 1.5 seconds before redirecting
+
       } catch (err) {
         if (err instanceof AuthFetchError) {
           if (err.status === 400) setError('This verification link has expired or already been used.');
@@ -39,7 +83,7 @@ const VerifyEmail = () => {
         setState('error');
       }
     })();
-  }, [token]);
+  }, [token, navigate]);
 
   const handleResend = async () => {
     setResending(true);
@@ -70,13 +114,11 @@ const VerifyEmail = () => {
           <div className="bg-white rounded-xl shadow-lg p-8">
             <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">✅ Email Verified!</h2>
-            <p className="text-gray-600 mb-6">Your email has been successfully verified. You can now access all features.</p>
-            <button
-              onClick={() => navigate('/subscription/plans')}
-              className="w-full py-3 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-            >
-              Continue
-            </button>
+            <p className="text-gray-600 mb-4">Your email has been successfully verified.</p>
+            <div className="flex items-center justify-center gap-2 text-blue-600">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm font-medium">Redirecting to subscription plans...</span>
+            </div>
           </div>
         )}
 
@@ -113,7 +155,7 @@ const VerifyEmail = () => {
             <p className="text-gray-600 mb-4">
               {isAuthenticated ? (
                 <>
-                  We've sent a verification email to <strong>{useUser()?.email}</strong>.
+                  We've sent a verification email to <strong>{useAuthStore.getState().user?.email}</strong>.
                   Please check your inbox and click the verification link.
                 </>
               ) : (

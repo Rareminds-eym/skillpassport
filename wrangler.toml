@@ -53,6 +53,12 @@ EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
 EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
 
+# Email Worker API Key (for local dev)
+INTERNAL_API_KEY = "dev-test1232312"
+
+# Frontend URL (for invitation links)
+FRONTEND_URL = "http://localhost:5173"
+
 
 
 # Cloudflare R2 Configuration (Pages Functions)
