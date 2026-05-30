@@ -465,8 +465,10 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
         created_at: new Date().toISOString()
     }));
 
-    if (learnerId && attemptId) {
-        // Use upsert to handle potential race conditions or re-generation
+    if (learnerId) {
+        // Use upsert to handle potential race conditions or re-generation.
+        // Save whenever learnerId is known — attemptId is nullable metadata only;
+        // the uniqueness constraint is (learner_id, stream_id, question_type).
         const { error } = await supabase
             .from('career_assessment_ai_questions')
             .upsert({
@@ -474,6 +476,7 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
                 question_type: 'aptitude',
                 questions: processedQuestions,
                 stream_id: streamId,
+                attempt_id: attemptId || null,
                 created_at: new Date().toISOString()
             }, {
                 onConflict: 'learner_id, stream_id, question_type',

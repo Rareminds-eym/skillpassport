@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import * as assessmentService from '../api/assessmentService';
 import { saveRecommendations } from '@/features/courses';
 import { analyzeAssessmentWithGemini, addCourseRecommendations } from '..';
@@ -8,7 +10,7 @@ import { validateAssessmentResults } from '../lib/assessmentValidation';
 import { validateAptitudeScores } from '@/features/assessment';
 import { validateRiasecScores } from '@/features/assessment';
 import { normalizeAssessmentResults } from '@/features/assessment';
-import { transformAssessmentResults } from '@/features/assessment';
+import transformAssessmentResults from '@/features/assessment/api/assessmentResultTransformer';
 import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 import {
     riasecQuestions,
@@ -259,7 +261,7 @@ export const useAssessmentResults = () => {
     const [monthsInGrade, setMonthsInGrade] = useState(null);
     const [validationWarnings, setValidationWarnings] = useState([]);
 
-    // ✅ NEW: Wrapper for setResults that applies transformation
+    // ✅ Wrapper for setResults - use database data as-is
     const setResults = useCallback((resultsData) => {
         if (!resultsData) {
             setResultsInternal(null);
@@ -269,67 +271,14 @@ export const useAssessmentResults = () => {
         console.log('🔍 setResults called with data:', {
             hasData: !!resultsData,
             keys: Object.keys(resultsData || {}),
-            _transformed: resultsData._transformed,
             hasGeminiResults: !!resultsData.gemini_results,
-            hasGeminiAnalysis: !!resultsData.gemini_analysis,
-            hasRiasec: !!resultsData.riasec,
             hasRiasecScores: !!resultsData.riasec_scores,
-            // ✅ ADD MORE DEBUG INFO
-            geminiResultsType: resultsData.gemini_results ? typeof resultsData.gemini_results : 'undefined',
-            geminiResultsKeys: resultsData.gemini_results && typeof resultsData.gemini_results === 'object' ? Object.keys(resultsData.gemini_results) : null,
-            riasecScoresValue: resultsData.riasec_scores,
-            sampleData: resultsData.gemini_results?.riasec || resultsData.riasec || 'none'
+            hasAptitudeScores: !!resultsData.aptitude_scores
         });
 
-        // Check if data is already transformed
-        if (resultsData._transformed) {
-            console.log('✅ Results already transformed, using as-is');
-            setResultsInternal(resultsData);
-            return;
-        }
-
-        // Check if this looks like database format
-        // Data can be in gemini_analysis/gemini_results field OR in individual columns
-        const isDatabaseFormat = resultsData.gemini_analysis ||
-            resultsData.gemini_results ||
-            resultsData.aptitude_scores ||
-            resultsData.riasec_scores ||
-            resultsData.top_interests ||
-            resultsData.career_recommendations;
-
-        if (isDatabaseFormat) {
-            console.log('🔄 Transforming database results to PDF format...');
-            console.log('   Input data structure:', {
-                hasGeminiAnalysis: !!resultsData.gemini_analysis,
-                hasAptitudeScores: !!resultsData.aptitude_scores,
-                hasRiasecScores: !!resultsData.riasec_scores,
-                hasCareerRecommendations: !!resultsData.career_recommendations
-            });
-            try {
-                const transformed = transformAssessmentResults(resultsData);
-                console.log('✅ Transformation complete:', {
-                    hasAptitude: !!transformed.aptitude,
-                    hasCareerFit: !!transformed.careerFit,
-                    hasSkillGap: !!transformed.skillGap,
-                    hasLearningStyles: !!transformed.learningStyles,
-                    riasecScores: transformed.riasec?.scores
-                });
-                setResultsInternal(transformed);
-            } catch (error) {
-                console.error('❌ Transformation failed, using original:', error);
-                console.error('   Error details:', error.message, error.stack);
-                setResultsInternal(resultsData);
-            }
-        } else {
-            // Already in correct format (from Gemini API)
-            console.log('✅ Results already in correct format (no transformation needed)');
-            console.log('   Data structure:', {
-                hasRiasec: !!resultsData.riasec,
-                hasAptitude: !!resultsData.aptitude,
-                hasCareerFit: !!resultsData.careerFit
-            });
-            setResultsInternal(resultsData);
-        }
+        // Use data directly from database - it's already in the correct format
+        console.log('✅ Using results directly from database');
+        setResultsInternal(resultsData);
     }, []);
 
     // Helper function to apply validation to results
@@ -1001,11 +950,13 @@ export const useAssessmentResults = () => {
             try {
                 // STEP 1: Try to find result by attempt_id first (most direct path)
                 console.log('🔍 STEP 1: Looking for result by attempt_id:', attemptId);
-                const { data: directResult, error: directError } = await supabase
-                    .from('personal_assessment_results')
-                    .select('*')
-                    .eq('attempt_id', attemptId)
-                    .maybeSingle();
+
+                // Use backend endpoint to fetch result (avoids RLS issues)
+                const response = await ssoClient.fetch(`/api/assessment/result?attemptId=${attemptId}`);
+                const responseData = await response.json();
+
+                const directResult = response.ok ? responseData.data : null;
+                const directError = !response.ok ? { message: responseData.error } : null;
 
                 console.log('   Direct result lookup:', {
                     found: !!directResult,
@@ -1179,6 +1130,25 @@ export const useAssessmentResults = () => {
                             normalizedResults.attempt_data = attemptData;
                             if (adaptiveAptitudeResults) {
                                 normalizedResults.adaptive_aptitude_results = adaptiveAptitudeResults;
+                            }
+
+                            // ✅ Cognitive Abilities (Aptitude) must reflect the corrected DB columns
+                            // (adaptive-derived), NOT the stale gemini_results.aptitude zeros. The
+                            // gemini_results blob keeps the AI's original empty category scores, so
+                            // override scores + overallScore from the authoritative aptitude columns.
+                            if (directResult.aptitude_scores) {
+                                normalizedResults.aptitude = {
+                                    ...(normalizedResults.aptitude || {}),
+                                    scores: directResult.aptitude_scores,
+                                    overallScore:
+                                        directResult.aptitude_overall != null
+                                            ? Number(directResult.aptitude_overall)
+                                            : (normalizedResults.aptitude?.overallScore ?? 0),
+                                };
+                                console.log('✅ [Aptitude] Report aptitude sourced from DB columns:', {
+                                    overallScore: normalizedResults.aptitude.overallScore,
+                                    scores: directResult.aptitude_scores,
+                                });
                             }
                             
                             // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
@@ -1579,6 +1549,16 @@ export const useAssessmentResults = () => {
             const user = useAuthStore.getState().user;
             if (user) {
                 const latestResult = await assessmentService.getLatestResult(user.id);
+                console.log('🔍 Latest result from database:', {
+                    hasResult: !!latestResult,
+                    hasGeminiResults: !!latestResult?.gemini_results,
+                    geminiResultsType: typeof latestResult?.gemini_results,
+                    geminiResultsKeys: latestResult?.gemini_results ? Object.keys(latestResult.gemini_results) : null,
+                    riasecData: latestResult?.gemini_results?.riasec,
+                    careerFitData: latestResult?.gemini_results?.careerFit,
+                    attemptId: latestResult?.attempt_id
+                });
+
                 if (latestResult?.gemini_results && typeof latestResult.gemini_results === 'object' && Object.keys(latestResult.gemini_results).length > 0) {
                     const geminiResults = latestResult.gemini_results;
 
@@ -1590,16 +1570,32 @@ export const useAssessmentResults = () => {
                         (geminiResults.riasec.code && geminiResults.riasec.code.length > 0)
                     );
 
-                    if (!hasValidRiasec) {
-                        console.log('⚠️ Latest result has gemini_results but RIASEC data is missing/invalid');
+                    // Also check if career fit data exists (main requirement for showing tracks)
+                    const hasCareerFit = geminiResults.careerFit && 
+                        geminiResults.careerFit.clusters && 
+                        Array.isArray(geminiResults.careerFit.clusters) &&
+                        geminiResults.careerFit.clusters.length > 0;
+
+                    console.log('🔍 Validation check:', {
+                        hasValidRiasec,
+                        hasCareerFit,
+                        riasecScores: geminiResults.riasec?.scores,
+                        riasecCode: geminiResults.riasec?.code,
+                        careerFitClusters: geminiResults.careerFit?.clusters?.length
+                    });
+
+                    // If we have career fit data, that's enough to show results (RIASEC is secondary)
+                    if (!hasValidRiasec && !hasCareerFit) {
+                        console.log('⚠️ Latest result has gemini_results but both RIASEC and CareerFit data are missing/invalid');
                         console.log('   RIASEC data:', geminiResults.riasec);
+                        console.log('   CareerFit data:', geminiResults.careerFit);
                         console.log('   Available gemini_results keys:', Object.keys(geminiResults));
                         console.log('   Redirecting to assessment test...');
 
                         navigate('/learner/assessment/test');
                         return;
                     } else {
-                        console.log('Loaded results from database');
+                        console.log('✅ Valid results found - loading assessment results page');
                         // Apply validation to correct RIASEC topThree and detect aptitude patterns
                         const validatedResults = await applyValidation(geminiResults);
 

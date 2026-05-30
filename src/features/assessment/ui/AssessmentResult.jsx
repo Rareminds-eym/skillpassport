@@ -1121,7 +1121,7 @@ const AssessmentResult = () => {
                 </div>
 
                 {/* Incomplete Data Warning Banner */}
-                {hasIncompleteData && (
+                {/* {hasIncompleteData && (
                     <div className="max-w-6xl mx-auto mb-6 print:hidden print-hidden">
                         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-4">
                             <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -1153,10 +1153,10 @@ const AssessmentResult = () => {
                             </div>
                         </div>
                     </div>
-                )}
+                )} */}
 
                 {/* Aptitude Data Quality Warning Banner */}
-                {results?._aptitudeWarning && !results._aptitudeWarning.isValid && (
+                {/* {results?._aptitudeWarning && !results._aptitudeWarning.isValid && (
                     <div className="max-w-6xl mx-auto mb-6 print:hidden print-hidden">
                         <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-start gap-4">
                             <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
@@ -1173,7 +1173,7 @@ const AssessmentResult = () => {
                             </div>
                         </div>
                     </div>
-                )}
+                )} */}
 
                 {/* Report Container */}
                 <div className="max-w-6xl mx-auto print:max-w-none print-container mt-4">

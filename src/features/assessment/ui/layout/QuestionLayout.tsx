@@ -219,13 +219,25 @@ export const QuestionLayout: React.FC<QuestionLayoutProps> = ({
         <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-r-2xl pointer-events-none z-0" />
 
         <div className="relative z-10 p-6 flex-1 flex flex-col">
-          {/* Question Counter Badge */}
-          <div className="mb-8">
+          {/* Question Counter Badge and Per-Question Timer */}
+          <div className="mb-8 flex items-center justify-between">
             <div className="inline-block bg-white/60 backdrop-blur-sm rounded-xl border border-blue-200/50 px-4 py-3">
               <p className="text-base font-semibold text-indigo-600">
                 QUESTION {currentQuestionIndex + 1} / {totalQuestions}
               </p>
             </div>
+            {showPerQuestionTimer && perQuestionTimer !== null && (
+              <div className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-semibold ${
+                perQuestionTimer <= 10
+                  ? 'bg-red-100 text-red-700 animate-pulse'
+                  : perQuestionTimer <= 30
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-indigo-100 text-indigo-700'
+              }`}>
+                <Clock className="w-3.5 h-3.5" />
+                <span>{formatTime(perQuestionTimer)}</span>
+              </div>
+            )}
           </div>
 
           {/* Question Content - Animated */}

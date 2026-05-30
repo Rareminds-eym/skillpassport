@@ -56,7 +56,6 @@ export const callOpenRouterAssessment = async (assessmentData) => {
 
   // Get auth token (via SSO, not Supabase auth which is disabled)
   updateProgress('sending', 'Authenticating...');
-  const user = useAuthStore.getState().user;
   const token = ssoClient.getAccessToken();
 
   if (!token) {
@@ -170,7 +169,7 @@ export const callOpenRouterAssessment = async (assessmentData) => {
 /**
  * Main assessment analysis function
  * Orchestrates the entire assessment analysis pipeline
- * 
+ *
  * @param {Object} answers - Raw assessment answers
  * @param {string} stream - Learner's stream/program
  * @param {Object} questionBanks - Question banks for all sections
@@ -180,24 +179,38 @@ export const callOpenRouterAssessment = async (assessmentData) => {
  * @param {string} learnerId - Learner ID for course recommendations
  * @param {Object} learnerContext - Additional learner context
  * @param {Object} adaptiveResults - Adaptive aptitude results
+ * @param {Array} allSections - Complete section data with question metadata
  * @returns {Promise<Object>} - AI-analyzed results with course recommendations
  */
 export const analyzeAssessmentWithOpenRouter = async (
-  answers, 
-  stream, 
-  questionBanks, 
-  sectionTimings = {}, 
-  gradeLevel = 'after12', 
-  preCalculatedScores = null, 
-  learnerId = null, 
-  learnerContext = {}, 
-  adaptiveResults = null
+  answers,
+  stream,
+  questionBanks,
+  sectionTimings = {},
+  gradeLevel = 'after12',
+  preCalculatedScores = null,
+  learnerId = null,
+  learnerContext = null,
+  adaptiveResults = null,
+  allSections = null
 ) => {
+  // Ensure learnerContext is never null
+  if (!learnerContext || typeof learnerContext !== 'object') {
+    logger.warn('⚠️ learnerContext is null or invalid, using fallback', { learnerContext });
+    learnerContext = {
+      rawGrade: gradeLevel || 'Learner',
+      programName: null,
+      programCode: null,
+      degreeLevel: null
+    };
+  }
+  
   logger.info('=== analyzeAssessmentWithGemini START ===', {
     gradeLevel,
     stream,
     learnerId: learnerId || 'Not provided',
     hasAdaptiveResults: !!adaptiveResults,
+    learnerContext: learnerContext,
     hasPreCalculatedScores: !!preCalculatedScores,
     questionBanks: {
       riasec: questionBanks.riasecQuestions?.length || 0,
@@ -214,14 +227,15 @@ export const analyzeAssessmentWithOpenRouter = async (
   try {
     // Prepare the assessment data (includes rule-based stream hint for after10 and learner context)
     const assessmentData = prepareAssessmentData(
-      answers, 
-      stream, 
-      questionBanks, 
-      sectionTimings, 
-      gradeLevel, 
-      preCalculatedScores, 
-      learnerContext, 
-      adaptiveResults
+      answers,
+      stream,
+      questionBanks,
+      sectionTimings,
+      gradeLevel,
+      preCalculatedScores,
+      learnerContext,
+      adaptiveResults,
+      allSections
     );
 
     // Call the Cloudflare Worker (handles prompt building and AI call)
