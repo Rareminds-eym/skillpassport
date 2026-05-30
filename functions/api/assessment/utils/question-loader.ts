@@ -238,6 +238,15 @@ async function loadAdaptiveSections(supabase: any, gradeLevel: string): Promise<
         .eq('grade_level', 'highschool')
         .eq('name', 'adaptive_aptitude_high')
         .maybeSingle();
+    } else if (gradeLevel === 'after10') {
+      // CRITICAL FIX: Add support for after10 adaptive aptitude
+      query = supabase
+        .from('personal_assessment_sections')
+        .select('*')
+        .eq('is_active', true)
+        .eq('grade_level', 'after10')
+        .eq('name', 'adaptive_aptitude_after10')
+        .maybeSingle();
     } else if (gradeLevel === 'higher_secondary') {
       query = supabase
         .from('personal_assessment_sections')
@@ -245,6 +254,15 @@ async function loadAdaptiveSections(supabase: any, gradeLevel: string): Promise<
         .eq('is_active', true)
         .eq('grade_level', 'higher_secondary')
         .eq('name', 'adaptive_aptitude_higher_secondary')
+        .maybeSingle();
+    } else if (gradeLevel === 'after12') {
+      // Add support for after12 adaptive aptitude if it exists
+      query = supabase
+        .from('personal_assessment_sections')
+        .select('*')
+        .eq('is_active', true)
+        .eq('grade_level', 'after12')
+        .eq('name', 'adaptive_aptitude_after12')
         .maybeSingle();
     }
 
@@ -259,14 +277,14 @@ async function loadAdaptiveSections(supabase: any, gradeLevel: string): Promise<
           sections.push({
             id: section.id,
             name: 'adaptive_aptitude',
-            title: 'Adaptive Aptitude Test',
+            title: section.title || 'Adaptive Aptitude Test',
             description: section.description,
             icon: section.icon,
             color: section.color,
             instruction: section.instruction,
             questions: [] // Questions loaded dynamically by adaptive API
           });
-          logger.info('Loaded adaptive section', { gradeLevel, sectionName: section.name });
+          logger.info('Loaded adaptive section', { gradeLevel, sectionName: section.name, sectionId: section.id });
         }
       } else {
         logger.warn('No adaptive section found', { gradeLevel });
