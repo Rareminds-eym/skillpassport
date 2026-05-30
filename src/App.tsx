@@ -1,5 +1,5 @@
 import { Toaster as HotToaster } from 'react-hot-toast';
-import { BrowserRouter, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { TourWrapper } from './app/providers/tour-wrapper';
@@ -22,7 +22,7 @@ import { ssoClient } from '@/shared/api/ssoClient';
  * Triggers subscription fetch when user changes.
  * Replaces SubscriptionStoreSync + SubscriptionPrefetch with a single useEffect.
  * 
- * IMPORTANT: Skips fetching for unverified users since backend blocks them.
+ * TEMPORARY: Email verification check disabled - fetch subscription for all authenticated users
  */
 function SubscriptionInitializer() {
   const user = useUser();
@@ -34,8 +34,9 @@ function SubscriptionInitializer() {
   useEffect(() => {
     let cancelled = false;
 
-    // Skip subscription fetch for unverified users (backend will block them)
-    if (user?.id && user.isEmailVerified) {
+    // TEMPORARY: Skip email verification check - fetch subscription for all authenticated users
+    // Original: if (user?.id && user.isEmailVerified)
+    if (user?.id) {
       const uid = user.id;
       fetchSubscription(uid)
         .then(() => {
@@ -53,7 +54,7 @@ function SubscriptionInitializer() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, user?.isEmailVerified, fetchSubscription, fetchUserEntitlements, clearAccessCache]);
+  }, [user?.id, fetchSubscription, fetchUserEntitlements, clearAccessCache]);
 
   return null;
 }
@@ -61,43 +62,44 @@ function SubscriptionInitializer() {
 /**
  * EmailVerificationGuard
  * 
- * Redirects unverified users to /verify-email page.
- * Blocks ALL features except the verify-email page until email is verified.
+ * TEMPORARY: Email verification disabled - users can access all features without verification
+ * TODO: Re-enable email verification when ready
  */
 function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
-  const location = useLocation();
-  const user = useUser();
-  const isAuthenticated = useIsAuthenticated();
-  const authLoading = useAuthLoading();
+  // TEMPORARY: Skip email verification check entirely
+  // const location = useLocation();
+  // const user = useUser();
+  // const isAuthenticated = useIsAuthenticated();
+  // const authLoading = useAuthLoading();
 
-  if (authLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  // if (authLoading) return (
+  //   <div className="min-h-screen flex items-center justify-center bg-white">
+  //     <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+  //   </div>
+  // );
 
-  if (isAuthenticated && user && !user.isEmailVerified) {
-    const allowedPaths = [
-      '/verify-email',
-      '/login',
-      '/signup',
-      '/logout',
-      '/forgot-password',
-      '/password-reset',
-      '/reset-password',
-      '/invite/accept',
-    ];
-    const isAllowedPath = allowedPaths.some(path => location.pathname.startsWith(path));
+  // if (isAuthenticated && user && !user.isEmailVerified) {
+  //   const allowedPaths = [
+  //     '/verify-email',
+  //     '/login',
+  //     '/signup',
+  //     '/logout',
+  //     '/forgot-password',
+  //     '/password-reset',
+  //     '/reset-password',
+  //     '/invite/accept',
+  //   ];
+  //   const isAllowedPath = allowedPaths.some(path => location.pathname.startsWith(path));
     
-    if (!isAllowedPath) {
-      logger.info('[auth] Redirecting unverified user to /verify-email', {
-        userId: user.id,
-        email: user.email,
-        from: location.pathname,
-      });
-      return <Navigate to="/verify-email" replace />;
-    }
-  }
+  //   if (!isAllowedPath) {
+  //     logger.info('[auth] Redirecting unverified user to /verify-email', {
+  //       userId: user.id,
+  //       email: user.email,
+  //       from: location.pathname,
+  //     });
+  //     return <Navigate to="/verify-email" replace />;
+  //   }
+  // }
 
   return <>{children}</>;
 }

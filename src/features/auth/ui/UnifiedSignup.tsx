@@ -448,20 +448,22 @@ const UnifiedSignup = () => {
   const validateStep1 = (): boolean => {
     if (!state.firstName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your first name' })); return false; }
     if (!state.lastName.trim()) { setState(prev => ({ ...prev, error: 'Please enter your last name' })); return false; }
-    if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
+    // Date of birth is now optional
+    // if (!state.dateOfBirth) { setState(prev => ({ ...prev, error: 'Please enter your date of birth' })); return false; }
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
 
-    // Phone number validation based on environment
-    if (!isDevEnvironment) {
-      // Production: Phone number is required
-      if (!state.phone) { setState(prev => ({ ...prev, error: 'Please enter your mobile number' })); return false; }
-      if (state.phone.length < 7 || state.phone.length > 15) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
-      if (!state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
-    } else {
-      // Localhost: Phone number is optional, but if provided, must be verified
-      if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
-      if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
-    }
+    // TEMPORARY: Skip phone verification - go directly to subscription
+    // Phone number validation is completely optional now
+    // if (!isDevEnvironment) {
+    //   // Production: Phone number is required
+    //   if (!state.phone) { setState(prev => ({ ...prev, error: 'Please enter your mobile number' })); return false; }
+    //   if (state.phone.length < 7 || state.phone.length > 15) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
+    //   if (!state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
+    // } else {
+    //   // Localhost: Phone number is optional, but if provided, must be verified
+    //   if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
+    //   if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
+    // }
 
     if (!state.password || state.password.length < 10) { setState(prev => ({ ...prev, error: 'Password must be at least 10 characters' })); return false; }
     const typesCount = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter(r => r.test(state.password!)).length;
@@ -475,7 +477,8 @@ const UnifiedSignup = () => {
     if (!state.selectedRole) { setState(prev => ({ ...prev, error: 'Please select a user role' })); return false; }
     if (!state.country) { setState(prev => ({ ...prev, error: 'Please select your country' })); return false; }
     if (!state.state) { setState(prev => ({ ...prev, error: 'Please select your state' })); return false; }
-    if (!state.city) { setState(prev => ({ ...prev, error: 'Please select your city' })); return false; }
+    // City is now optional
+    // if (!state.city) { setState(prev => ({ ...prev, error: 'Please select your city' })); return false; }
     if (!state.preferredLanguage) { setState(prev => ({ ...prev, error: 'Please select your preferred language' })); return false; }
     if (!state.agreeToTerms) { setState(prev => ({ ...prev, error: 'Please agree to Terms & Privacy Policy' })); return false; }
     return true;
@@ -912,10 +915,10 @@ const UnifiedSignup = () => {
                   <DatePicker
                     name="dateOfBirth"
                     label="Date of Birth"
-                    required
+                    required={false}
                     value={state.dateOfBirth}
                     onChange={handleInputChange}
-                    placeholder="Select date"
+                    placeholder="Select date (Optional)"
                     maxDate={new Date().toISOString().split('T')[0]}
                   />
                 </div>
@@ -1147,7 +1150,7 @@ const UnifiedSignup = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">City <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">City <span className="text-gray-400 font-normal">(Optional)</span></label>
                     <select name="city" value={state.city} onChange={handleInputChange} disabled={!state.state} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none disabled:bg-gray-100 disabled:text-gray-400">
                       <option value="">Select City</option>
                       {cities.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
