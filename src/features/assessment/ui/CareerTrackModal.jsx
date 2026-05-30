@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar, Loader2 } from 'lucide-react';
 import { useRoleOverview } from '@/entities/user';
+import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counselling';
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
 import { supabase } from '@/shared/api/supabaseClient';
 import jsPDF from 'jspdf';
@@ -80,11 +81,28 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
 
     // Get AI-generated role overview (responsibilities + industry demand + career progression + learning roadmap + action items + suggested projects) in a single API call
     console.log('[CareerTrackModal] attemptId prop:', attemptId);
-    const { responsibilities, demandData, careerProgression, learningRoadmap, actionItems, suggestedProjects, loading: overviewLoading, error: overviewError } = useRoleOverview(
+    const { 
+        responsibilities: rawResponsibilities, 
+        demandData, 
+        careerProgression: rawCareerProgression, 
+        learningRoadmap: rawLearningRoadmap, 
+        actionItems: rawActionItems, 
+        suggestedProjects: rawSuggestedProjects, 
+        loading: overviewLoading, 
+        error: overviewError 
+    } = useRoleOverview(
         selectedRole ? getRoleName(selectedRole) : null,
         selectedTrack.cluster?.title || '',
+        { generateRoleOverview, getFallbackRoleOverview }, // Pass counselling API functions
         attemptId
     );
+    
+    // Safety: Ensure all arrays are defined (not undefined)
+    const responsibilities = rawResponsibilities || [];
+    const careerProgression = rawCareerProgression || [];
+    const learningRoadmap = rawLearningRoadmap || [];
+    const actionItems = rawActionItems || [];
+    const suggestedProjects = rawSuggestedProjects || [];
 
     // Log error for debugging
     if (overviewError) {

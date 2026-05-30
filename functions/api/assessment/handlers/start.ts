@@ -12,6 +12,8 @@ import { validateStartAssessmentRequest, validateLearnerData, validateAttemptDat
 import { dbAttemptToAssessmentAttempt } from '../utils/converters';
 import { loadSectionsWithQuestions } from '../utils/question-loader';
 import { createLogger } from '../../../lib/logger';
+import { normalizeStreamId } from '../utils/streamNormalizer';
+import { ensureStreamExists } from '../utils/ensureStreamExists';
 
 const logger = createLogger('StartHandler');
 
@@ -33,14 +35,26 @@ export async function startHandler(context: AuthenticatedContext) {
     logger.info('Starting assessment', { 
       userId: user.sub, 
       gradeLevel, 
-      streamId,
+      originalStreamId: streamId,
       hasEnv: !!env,
       hasQuestionGenUrl: !!env?.QUESTION_GENERATION_API_URL
     });
 
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
-      .select('id')
+      .select(`
+        id,
+        grade,
+        branch_field,
+        course_name,
+        program_id,
+        learner_type,
+        programs (
+          name,
+          code,
+          degree_level
+        )
+      `)
       .or(`user_id.eq.${user.sub},id.eq.${user.sub}`)
       .maybeSingle();
 
@@ -54,6 +68,79 @@ export async function startHandler(context: AuthenticatedContext) {
     }
 
     const learnerId = learnerData!.id;
+    
+    // **CRITICAL: Determine stream ID based on grade level**
+    // For school learners (middle, highschool), use grade-level-based stream IDs
+    // For higher_secondary and after10, use the EXACT stream ID from frontend (already includes suffix)
+    // For college learners, normalize the program name
+    let normalizedStreamId: string | null = null;
+    
+    if (gradeLevel === 'middle') {
+      // Grades 6-8: Use "middle_school" as stream ID
+      normalizedStreamId = 'middle_school';
+      logger.info('Using middle school stream ID', { gradeLevel, normalizedStreamId });
+    } else if (gradeLevel === 'highschool') {
+      // Grades 9-10: Use "high_school" as stream ID
+      normalizedStreamId = 'high_school';
+      logger.info('Using high school stream ID', { gradeLevel, normalizedStreamId });
+    } else if (gradeLevel === 'higher_secondary' || gradeLevel === 'after10') {
+      // Grades 11-12 or After 10th: Use the EXACT stream ID from frontend
+      // Frontend already sends IDs like "science_pcmb_after10", "commerce_maths_after10", etc.
+      normalizedStreamId = streamId;
+      logger.info('Using exact stream ID from frontend', { 
+        gradeLevel, 
+        streamId,
+        normalizedStreamId,
+        streamIdLength: streamId?.length || 0
+      });
+    } else if (gradeLevel === 'college') {
+      // College: Use program-based normalization
+      const actualProgramName = (learnerData.programs as any)?.name || 
+                                (learnerData.programs as any)?.code || 
+                                learnerData.course_name || 
+                                learnerData.branch_field ||
+                                streamId; // Fallback to frontend streamId if no program in profile
+      
+      logger.info('Program information', {
+        gradeLevel,
+        actualProgramName,
+        programFromDB: (learnerData.programs as any)?.name,
+        courseName: learnerData.course_name,
+        branchField: learnerData.branch_field,
+        frontendStreamId: streamId
+      });
+      
+      // Normalize using the ACTUAL program name from database, not the frontend streamId
+      normalizedStreamId = actualProgramName ? normalizeStreamId(actualProgramName) : streamId;
+      
+      logger.info('Stream ID normalization for college', { 
+        originalStreamId: streamId,
+        actualProgramName,
+        normalizedStreamId,
+        streamIdLength: normalizedStreamId?.length || 0
+      });
+    } else {
+      // For after12 or any other grade level: Use the selected category/stream from frontend
+      normalizedStreamId = streamId;
+      logger.info('Using frontend stream ID', { gradeLevel, streamId, normalizedStreamId });
+    }
+    
+    // **CRITICAL: Ensure the normalized stream ID exists in the database**
+    // This prevents foreign key constraint violations by auto-creating missing streams
+    if (normalizedStreamId) {
+      const streamExists = await ensureStreamExists(supabase, normalizedStreamId);
+      if (!streamExists) {
+        logger.error('Failed to ensure stream exists', { normalizedStreamId });
+        return Response.json(
+          { 
+            error: 'Failed to initialize assessment stream', 
+            message: 'Could not create or verify stream record in database' 
+          }, 
+          { status: 500 }
+        );
+      }
+      logger.info('Stream verified/created successfully', { normalizedStreamId });
+    }
 
     // **CRITICAL: Check for existing in-progress attempt BEFORE creating new one**
     const { data: existingAttempts, error: existingError } = await supabase
@@ -70,7 +157,7 @@ export async function startHandler(context: AuthenticatedContext) {
     if (existingAttempts && existingAttempts.length > 0) {
       const existingAttempt = existingAttempts[0];
       const sameGrade = existingAttempt.grade_level === gradeLevel;
-      const sameStream = existingAttempt.stream_id === streamId || (streamId === null && existingAttempt.stream_id === null);
+      const sameStream = existingAttempt.stream_id === normalizedStreamId || (normalizedStreamId === null && existingAttempt.stream_id === null);
 
       if (sameGrade && sameStream) {
         attempt = existingAttempt;
@@ -94,7 +181,7 @@ export async function startHandler(context: AuthenticatedContext) {
         .insert({
           learner_id: learnerId,
           grade_level: gradeLevel,
-          stream_id: streamId || null,
+          stream_id: normalizedStreamId || null,
           status: 'in_progress',
           all_responses: {},
           timer_remaining: null,
@@ -110,17 +197,124 @@ export async function startHandler(context: AuthenticatedContext) {
       }
 
       attempt = newAttempt;
+      
+      // Build and save learner context immediately
+      try {
+        logger.info('Building learner context', { learnerId, gradeLevel, normalizedStreamId });
+        
+        // We already have learnerData from above, no need to fetch again
+        let learnerContext: any = {};
+        
+        if (learnerData) {
+          // Extract program information (already fetched above)
+          const programName = (learnerData.programs as any)?.name || 
+                            (learnerData.programs as any)?.code || 
+                            learnerData.course_name || 
+                            learnerData.branch_field;
+          const programCode = (learnerData.programs as any)?.code || normalizedStreamId;
+          const programDegreeLevel = (learnerData.programs as any)?.degree_level;
+          
+          // Determine degree level
+          let degreeLevel: string | null = programDegreeLevel;
+          if (!degreeLevel && programName) {
+            const programLower = programName.toLowerCase();
+            if (programLower.includes('bachelor') || programLower.includes('b.tech') || programLower.includes('btech') || 
+                programLower.includes('bca') || programLower.includes('b.sc') || programLower.includes('b.com') || programLower.includes('bba')) {
+              degreeLevel = 'undergraduate';
+            } else if (programLower.includes('master') || programLower.includes('m.tech') || programLower.includes('mtech') || 
+                       programLower.includes('mca') || programLower.includes('mba') || programLower.includes('m.sc')) {
+              degreeLevel = 'postgraduate';
+            } else if (programLower.includes('diploma')) {
+              degreeLevel = 'diploma';
+            }
+          }
+          
+          // Build enhanced grade
+          let rawGrade = learnerData.grade || 'Learner';
+          if (gradeLevel === 'college' && programName) {
+            if (degreeLevel === 'undergraduate') {
+              rawGrade = `UG - ${programName}`;
+            } else if (degreeLevel === 'postgraduate') {
+              rawGrade = `PG - ${programName}`;
+            } else {
+              rawGrade = programName;
+            }
+          } else if (gradeLevel === 'middle') {
+            rawGrade = 'Grade 6-8';
+          } else if (gradeLevel === 'highschool') {
+            rawGrade = 'Grade 9-10';
+          } else if (gradeLevel === 'higher_secondary') {
+            rawGrade = 'Grade 11-12';
+          } else if (gradeLevel === 'after10') {
+            rawGrade = 'After 10th';
+          } else if (gradeLevel === 'after12') {
+            rawGrade = 'After 12th';
+          }
+          
+          // Determine learner type
+          let learnerType = 'general';
+          if (programName || degreeLevel || (learnerData as any).program_id) {
+            learnerType = 'college';
+          } else if ((learnerData as any).learner_type === 'school' || (learnerData as any).school_id) {
+            learnerType = 'school';
+          }
+          
+          learnerContext = {
+            rawGrade,
+            grade: learnerDetails.grade,
+            programName: programName || undefined,
+            programCode: programCode || undefined,
+            degreeLevel,
+            selectedStream: normalizedStreamId,
+            selectedCategory: null,
+            learnerType
+          };
+        } else {
+          // Fallback context
+          let rawGrade = 'Learner';
+          if (gradeLevel === 'middle') rawGrade = 'Grade 6-8';
+          else if (gradeLevel === 'highschool') rawGrade = 'Grade 9-10';
+          else if (gradeLevel === 'higher_secondary') rawGrade = 'Grade 11-12';
+          else if (gradeLevel === 'after10') rawGrade = 'After 10th';
+          else if (gradeLevel === 'after12') rawGrade = 'After 12th';
+          else if (gradeLevel === 'college') rawGrade = 'College';
+          
+          learnerContext = {
+            rawGrade,
+            selectedStream: normalizedStreamId,
+            selectedCategory: null,
+            learnerType: gradeLevel === 'college' ? 'college' : 'general'
+          };
+        }
+        
+        logger.info('Learner context built', { learnerContext });
+        
+        // Save learner context to attempt
+        const { error: contextError } = await supabase
+          .from('personal_assessment_attempts')
+          .update({ learner_context: learnerContext })
+          .eq('id', attempt.id);
+        
+        if (contextError) {
+          logger.error('Failed to save learner context', { error: contextError });
+        } else {
+          logger.info('Learner context saved successfully');
+        }
+      } catch (contextErr) {
+        logger.error('Error building learner context', { error: contextErr });
+        // Non-fatal - continue
+      }
     }
 
     let sections;
     try {
-      sections = await loadSectionsWithQuestions(supabase, gradeLevel, streamId, env);
+      sections = await loadSectionsWithQuestions(supabase, gradeLevel, normalizedStreamId, env);
       logger.info('Sections loaded successfully', { 
         sectionCount: sections?.length || 0,
         sectionNames: sections?.map((s: any) => s.name) || []
       });
     } catch (loadError) {
-      logger.error('Failed to load sections', { error: loadError, gradeLevel, streamId });
+      logger.error('Failed to load sections', { error: loadError, gradeLevel, normalizedStreamId });
       return Response.json(
         { error: 'Failed to load assessment sections', message: loadError instanceof Error ? loadError.message : 'Unknown error' },
         { status: 500 }
@@ -148,7 +342,8 @@ export async function startHandler(context: AuthenticatedContext) {
       attemptId: attempt.id, 
       sectionCount: sections.length,
       gradeLevel,
-      streamId
+      originalStreamId: streamId,
+      normalizedStreamId
     });
 
     return Response.json(result, { status: 201 });
