@@ -100,6 +100,8 @@ const AssessmentTestPage: React.FC = () => {
   const [showSectionIntro, setShowSectionIntro] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [adaptiveTimer, setAdaptiveTimer] = useState(60); // 60 seconds per question (1:00)
+  const adaptiveTimerRef = useRef(adaptiveTimer);
+  adaptiveTimerRef.current = adaptiveTimer; // keep ref in sync with state each render
   const [adaptiveElapsedTime, setAdaptiveElapsedTime] = useState(0); // Track total elapsed time for adaptive section
   const [resumeData, setResumeData] = useState<any>(null);
   const [isLoadingResume, setIsLoadingResume] = useState(false);
@@ -863,23 +865,20 @@ const AssessmentTestPage: React.FC = () => {
 
     if (shouldRunTimer) {
       const timer = setInterval(() => {
-        setAdaptiveTimer(prev => {
-          if (prev <= 1) {
-            // Time's up - auto-submit current answer or skip
-            const currentAnswer = selectedAnswer;
-            if (currentAnswer) {
-              adaptiveHook.submitAnswer(currentAnswer);
-              setSelectedAnswer(null);
-            }
-            return 60; // Reset to 60 seconds for next question
-          }
-          return prev - 1;
-        });
+        if (adaptiveTimerRef.current <= 1) {
+          // Time's up — submit selected answer or default to A, then reset timer
+          const answerToSubmit = (selectedAnswer || 'A') as 'A' | 'B' | 'C' | 'D';
+          adaptiveHook.submitAnswer(answerToSubmit);
+          if (selectedAnswer) setSelectedAnswer(null);
+          setAdaptiveTimer(60);
+        } else {
+          setAdaptiveTimer(prev => prev - 1);
+        }
       }, 1000);
 
       return () => clearInterval(timer);
     }
-  }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections, selectedAnswer, adaptiveHook]);
+  }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections, selectedAnswer]);
 
   // Adaptive elapsed time tracker (counts up for total time spent)
   useEffect(() => {
@@ -1155,7 +1154,7 @@ const AssessmentTestPage: React.FC = () => {
                 totalQuestions={ADAPTIVE_TOTAL_QUESTIONS}
                 elapsedTime={adaptiveElapsedTime}
                 perQuestionTimer={adaptiveTimer}
-                showPerQuestionTimer={true}
+                showPerQuestionTimer={false}
                 showNoWrongAnswers={true}
                 isAnswered={!!selectedAnswer}
                 isLastQuestion={adaptiveHook.isTestComplete}
