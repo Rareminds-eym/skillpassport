@@ -4,7 +4,7 @@
  */
 
 import { formatStreamId } from '@/shared/lib/utils/formatters';
-import { isCollegeLearner as checkIsCollegeLearner } from '@/entities/learner/lib/learnerType';
+import { isCollegeLearner as checkIsCollegeLearner, isSchoolStudent } from '@/entities/learner/lib/learnerType';
 
 const ReportHeader = ({ learnerInfo, gradeLevel }) => {
     // Debug
@@ -141,10 +141,13 @@ const ReportHeader = ({ learnerInfo, gradeLevel }) => {
         return 'Programme/Stream';
     };
 
+    // Check if school student (by gradeLevel or learner_type)
+    const isSchool = gradeLevel?.toLowerCase() === 'middle' || isSchoolStudent(learnerInfo);
+
     const infoItems = [
         { label: 'Learner Name', value: learnerInfo.name },
         { label: rollNumberLabel, value: learnerInfo.regNo },
-        { label: getStreamLabel(), value: formatStreamId(learnerInfo.stream || learnerInfo.branchField) || '—' },
+        { label: getStreamLabel(), value: isSchool ? '—' : (formatStreamId(learnerInfo.stream || learnerInfo.branchField) || '—') },
         { label: gradeCourseField.label, value: gradeCourseField.value },
         { label: institutionLabel, value: (learnerInfo.college && learnerInfo.college !== '—') ? learnerInfo.college : learnerInfo.school, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },

@@ -81,6 +81,7 @@ export const getlearnerSettingsByEmail = async (email) => {
         interests,
         languages,
         hobbies,
+        learner_type,
         school:organizations!learners_school_id_fkey (
           id,
           name,
@@ -256,6 +257,9 @@ export const getlearnerSettingsByEmail = async (email) => {
       
       // User role from users table
       userRole: userRole || null,
+      
+      // Learner type from learners table
+      learner_type: data.learner_type || null,
     };
 
     return { success: true, data: settingsData };

@@ -8,7 +8,7 @@
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
+import type { GradeLevel, InitializeTestResult } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
 import { authenticateUser } from '../../shared/auth';
 import { fetchDiagnosticQuestions, extractGradeNumber, learnerGradeToGradeLevel } from '../utils/question-bank';
@@ -99,15 +99,51 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     console.log('🚀 [InitializeHandler] initializeTest called:', { learnerId, gradeLevel: actualGradeLevel });
 
+    // Check for existing in-progress session FIRST
+    const { data: existingSession, error: existingError } = await supabase
+      .from('adaptive_aptitude_sessions')
+      .select('*')
+      .eq('learner_id', learnerId)
+      .eq('status', 'in_progress')
+      .order('started_at', { ascending: false })
+      .limit(1);
+
+    if (existingSession && existingSession.length > 0) {
+      const session = existingSession[0];
+      const sameGrade = session.grade_level === actualGradeLevel;
+
+      if (sameGrade) {
+        const currentPhaseQuestions = session.current_phase_questions as any[];
+        const sessionObj = dbSessionToTestSession(session, [], currentPhaseQuestions);
+
+        const result: InitializeTestResult = {
+          session: sessionObj,
+          firstQuestion: currentPhaseQuestions[0] || null,
+        };
+
+        return jsonResponse(result, 200);
+      } else {
+        return jsonResponse(
+          {
+            error: 'You have an in-progress adaptive test for a different grade level. Please abandon it first or resume it.',
+            existingSessionId: session.id,
+            existingGradeLevel: session.grade_level,
+            requestedGradeLevel: actualGradeLevel,
+          },
+          409
+        );
+      }
+    }
+
     // Fetch diagnostic screener questions from question bank (no AI)
     console.log('📝 [InitializeHandler] Fetching diagnostic screener questions from database...');
-    
+
     // Extract specific grade number from learner record
     const specificGrade = extractGradeNumber(learnerGradeString);
     console.log('🎯 [InitializeHandler] Using specific grade:', specificGrade || 'fallback to range');
-    
+
     const diagnosticQuestions = await fetchDiagnosticQuestions(supabase, actualGradeLevel, [], specificGrade || undefined);
-    
+
     console.log('📋 [InitializeHandler] Questions fetched from database:', {
       questionsCount: diagnosticQuestions.length,
       source: 'personal_assessment_questions',
@@ -125,10 +161,10 @@ export const initializeHandler: PagesFunction = async (context) => {
       .from('adaptive_aptitude_sessions')
       .insert({
         learner_id: learnerId,
-        grade_level: gradeLevel,
+        grade_level: actualGradeLevel,
         learner_course: specificGrade ? `Grade ${specificGrade}` : (learnerCourse || null),
         current_phase: 'diagnostic_screener',
-        current_difficulty: 3, // Default starting difficulty
+        current_difficulty: 3,
         difficulty_path: [],
         questions_answered: 0,
         correct_answers: 0,
@@ -143,7 +179,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       console.error('❌ [InitializeHandler] Failed to create session:', sessionError);
       throw new Error(`Failed to create test session: ${sessionError?.message || 'Unknown error'}`);
     }
-    
+
     console.log('✅ [InitializeHandler] Session created:', sessionData.id);
 
     // Convert to typed session

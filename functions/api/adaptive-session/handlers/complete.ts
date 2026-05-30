@@ -58,7 +58,8 @@ export const completeHandler: PagesFunction = async (context) => {
     console.log('✅ [CompleteHandler] User authenticated:', auth.user.id);
     console.log('🏁 [CompleteHandler] completeTest called:', { sessionId });
 
-    const supabase = createSupabaseAdminClient(env);
+    // Use the admin client from auth result
+    const supabase = auth.supabaseAdmin;
 
     // Validate session has no duplicate questions (Requirements: 3.1, 3.2)
     const validation = await validateSessionNoDuplicates(sessionId, supabase);

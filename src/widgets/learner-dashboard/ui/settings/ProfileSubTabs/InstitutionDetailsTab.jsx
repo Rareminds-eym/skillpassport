@@ -2,6 +2,7 @@ import React from "react";
 import { Briefcase, Save } from "lucide-react";
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
+import { isSchoolStudent, isCollegeStudent } from '@/entities/learner/lib/learnerType';
 
 const InstitutionDetailsTab = ({
   profileData,
@@ -41,10 +42,20 @@ const InstitutionDetailsTab = ({
   handleSaveProfile,
   isSaving,
 }) => {
-  // Determine learner type from role
-  const userRole = learnerData?.userRole;
-  const isSchoolLearner = userRole === 'learner';
-  const isCollegeLearner = userRole === 'learner';
+  // Determine learner type using utility functions
+  const isSchoolLearner = isSchoolStudent(learnerData);
+  const isCollegeLearner = isCollegeStudent(learnerData);
+  
+  // Debug logging
+  console.log('[InstitutionDetailsTab] Learner type detection:', {
+    learnerData,
+    isSchoolLearner,
+    isCollegeLearner,
+    learner_type: learnerData?.learner_type,
+    school_id: learnerData?.school_id,
+    university_college_id: learnerData?.university_college_id,
+    universityCollegeId: learnerData?.universityCollegeId
+  });
   
   return (
     <div>
@@ -54,40 +65,7 @@ const InstitutionDetailsTab = ({
           Institution Details
         </h3>
       </div>
-      
-      {/* Info banner - show appropriate message based on role
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-        <p className="text-sm text-gray-700 mb-3">
-          <span className="font-semibold">📍 This tab is for your institution information only:</span>
-        </p>
-        {isSchoolLearner && (
-          <div className="bg-white/60 rounded-lg p-3">
-            <p className="font-semibold text-gray-800 mb-1">� School Learners (Grade 6-12)</p>
-            <p className="text-gray-600 text-xs">Fill: School name + Your section (like "A", "B", "C")</p>
-          </div>
-        )}
-        {isCollegeLearner && (
-          <div className="bg-white/60 rounded-lg p-3">
-            <p className="font-semibold text-gray-800 mb-1">🎓 College Learners (Diploma/UG/PG)</p>
-            <p className="text-gray-600 text-xs">Fill: University → College → Program → Semester</p>
-          </div>
-        )}
-        {!isSchoolLearner && !isCollegeLearner && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div className="bg-white/60 rounded-lg p-3">
-              <p className="font-semibold text-gray-800 mb-1">🏫 School Learners (Grade 6-12)</p>
-              <p className="text-gray-600 text-xs">Fill: School name + Your section (like "A", "B", "C")</p>
-            </div>
-            <div className="bg-white/60 rounded-lg p-3">
-              <p className="font-semibold text-gray-800 mb-1">🎓 College Learners (Diploma/UG/PG)</p>
-              <p className="text-gray-600 text-xs">Fill: University → College → Program → Semester</p>
-            </div>
-          </div>
-        )}
-        <p className="text-xs text-amber-700 mt-3 bg-amber-50 rounded px-2 py-1">
-          ⚠️ Your academic year (Grade 10, UG Year 2, etc.) goes in the <span className="font-semibold">Academic Details</span> tab, not here.
-        </p>
-      </div> */}
+     
 
       {/* Organization Membership Card - Shows when assigned via invitation */}
       {(learnerData?.schoolOrganization || learnerData?.collegeOrganization) && (
@@ -145,12 +123,12 @@ const InstitutionDetailsTab = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* School Fields - Only for school learners */}
-        {(isSchoolLearner || !userRole) && (
+        {isSchoolLearner && (
           <>
             {/* School */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">
-                School Name {!isSchoolLearner && <span className="text-gray-400 text-xs font-normal">(For Grade 6-12 learners)</span>}
+                School Name
               </label>
           {!showCustomSchool ? (
             <>
@@ -272,12 +250,12 @@ const InstitutionDetailsTab = ({
         )}
 
         {/* College Fields - Only for college learners */}
-        {(isCollegeLearner || !userRole) && (
+        {isCollegeLearner && (
           <>
         {/* University */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">
-            University Name {!isCollegeLearner && <span className="text-gray-400 text-xs font-normal">(For Diploma/UG/PG learners)</span>}
+            University Name
           </label>
           {!showCustomUniversity && !profileData.university ? (
             <>

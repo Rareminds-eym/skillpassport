@@ -369,3 +369,18 @@ export interface ActionConfig {
   showExport?: boolean;
   showMessage?: boolean;
 }
+
+export interface UpdateLearnerInput {
+  name?: string;
+  date_of_birth?: string;
+  contact_number?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  bio?: string;
+  github_link?: string;
+  linkedin_link?: string;
+  portfolio_link?: string;
+  [key: string]: any;
+}

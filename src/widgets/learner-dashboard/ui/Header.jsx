@@ -37,7 +37,7 @@ const ICON_MAP = {
   ArrowRightOnRectangleIcon
 };
 
-const Header = ({ activeTab, setActiveTab }) => {
+const Header = ({ activeTab }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
@@ -129,17 +129,15 @@ const Header = ({ activeTab, setActiveTab }) => {
       return;
     }
 
-    setActiveTab(item.id);
     navigate(item.path);
     setMobileMenuOpen(false);
-  }, [setActiveTab, navigate]);
+  }, [navigate]);
 
   const handleDashboard = useCallback(() => {
-    setActiveTab("dashboard");
     localStorage.removeItem("dashboardActiveNav");
     navigate("/learner/dashboard");
     setMobileMenuOpen(false);
-  }, [setActiveTab, navigate]);
+  }, [navigate]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -264,7 +262,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                                 if (item.id === 'logout') {
                                   handleLogout();
                                 } else {
-                                  setActiveTab(item.id);
                                   navigate(item.path);
                                   setActiveModal(null);
                                 }

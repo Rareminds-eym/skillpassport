@@ -7,6 +7,15 @@ import { useAuthStore } from '@/shared/model/authStore';
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
+import {
+  ServiceResponse,
+  UserCreateData,
+  LearnerUpdateData,
+  LearnerApiResponse,
+  Learner,
+} from '@/entities/learner/model/types';
+
 
 const logger = getLogger('learner-service');
 
@@ -1998,3 +2007,31 @@ export async function updateSingleTrainingById(trainingId: string, updateData: T
     return { success: false, data: null, error: errorMessage };
   }
 }
+
+/**
+ * Get learner by user ID
+ * Uses authenticated API via ssoClient - secure, with token validation
+ */
+export const getLearnerByUserId = async (userId: string): Promise<ServiceResponse<Learner>> => {
+  if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+    logger.warn('Invalid user ID provided to getLearnerByUserId', { userId });
+    return { success: false, data: null, error: 'Invalid user ID format' };
+  }
+
+  try {
+    const response = await apiGet<LearnerApiResponse>(`/learners?id=${encodeURIComponent(userId)}`);
+    const learnerData: Learner | undefined = response?.learner || (response as Learner);
+
+    if (!learnerData || !learnerData.id) {
+      logger.warn('No learner data in response', { userId });
+      return { success: false, data: null, error: 'No learner data found' };
+    }
+
+    logger.info('Learner fetched successfully by user ID', { userId });
+    return { success: true, data: learnerData, error: null };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    logger.error('Error fetching learner by user ID', error instanceof Error ? error : new Error(String(error)));
+    return { success: false, data: null, error: errorMessage };
+  }
+};
