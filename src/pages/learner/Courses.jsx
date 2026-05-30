@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import {
     ArrowDownAZ,
+    Award,
     BookOpen,
     CheckCircle,
     ChevronLeft,
@@ -13,7 +14,8 @@ import {
     Lock,
     Play,
     TrendingUp,
-    Users
+    Users,
+    X
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -33,7 +35,7 @@ import {
 } from '@/shared/ui';
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';
+import { downloadCertificate, getCertificateProxyUrl, generateCourseCertificate } from '@/features/digital-portfolio';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
@@ -56,6 +58,7 @@ const Courses = () => {
   const [initialLoad, setInitialLoad] = useState(true);
   const [learnerGrade, setlearnerGrade] = useState(null);
   const [learnerBranch, setlearnerBranch] = useState(null);
+  const [learnerId, setLearnerId] = useState(null); // Add learner_id state
   const [filterByBranch, setFilterByBranch] = useState(true); // Toggle for branch filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -80,6 +83,13 @@ const Courses = () => {
   const [certificateUrls, setCertificateUrls] = useState({}); // Track certificate URLs per course
   const [downloadingCertificate, setDownloadingCertificate] = useState(null); // Track which certificate is downloading
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  
+  // Certificate generation modal state
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [certificateModalData, setCertificateModalData] = useState(null);
+  const [certificateFullName, setCertificateFullName] = useState('');
+  const [generatingCertificate, setGeneratingCertificate] = useState(false);
+  const [generatedCertificateUrl, setGeneratedCertificateUrl] = useState(null);
   
   // Refs to prevent duplicate fetches and track initialization
   const isFetchingRef = useRef(false);
@@ -140,13 +150,14 @@ const Courses = () => {
       try {
         const { data, error } = await supabase
           .from('learners')
-          .select('grade, branch_field')
+          .select('grade, branch_field, learner_id')
           .eq('email', user.email)
           .maybeSingle();
         
         if (!error && data) {
           setlearnerGrade(data.grade);
           setlearnerBranch(data.branch_field);
+          setLearnerId(data.learner_id);
           
           // Re-fetch courses with proper filtering once learner info is available
           // Only if courses have already been fetched once
@@ -375,24 +386,147 @@ const Courses = () => {
     return certificateUrls[courseId] || null;
   };
 
-  // Handle view certificate
-  const handleViewCertificate = (courseId, courseName, e) => {
+  // Handle "Get Certificate" button click - Open modal
+  const handleGetCertificate = async (courseId, courseName, e) => {
     e?.stopPropagation();
-    const certUrl = getCertificateUrl(courseId);
     
-    if (!certUrl) {
+    // Check if certificate already exists
+    const existingCertUrl = getCertificateUrl(courseId);
+    if (existingCertUrl) {
+      // Certificate already exists, show it directly
+      handleViewExistingCertificate(existingCertUrl);
       return;
     }
-
+    
+    // Get course details
+    const course = courses.find(c => c.course_id === courseId);
+    if (!course) {
+      toast.error('Course not found');
+      return;
+    }
+    
+    // Get learner data - use name column
     try {
-      // Special handling for data URLs (base64 encoded images)
-      // Browser security prevents opening data URLs directly in new tabs
+      if (!user?.email) {
+        toast.error('User email not found');
+        return;
+      }
+      
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('id, name, email')
+        .eq('email', user.email)
+        .maybeSingle();
+      
+      if (learnerError) {
+        logger.error('Error fetching learner data', learnerError);
+        toast.error('Failed to fetch learner information');
+        return;
+      }
+      
+      if (!learnerData) {
+        toast.error('Learner profile not found. Please complete your profile first.');
+        return;
+      }
+      
+      // Pre-fill name from learner data
+      const fullName = learnerData.name || '';
+      setCertificateFullName(fullName);
+      
+      // Set modal data
+      setCertificateModalData({
+        courseId,
+        courseName,
+        learnerId: learnerData.id,
+        learnerEmail: learnerData.email,
+        course
+      });
+      
+      setShowCertificateModal(true);
+    } catch (error) {
+      logger.error('Error preparing certificate modal', error);
+      toast.error('Failed to prepare certificate generation');
+    }
+  };
+
+  // Handle certificate generation
+  const handleGenerateCertificate = async () => {
+    if (!certificateFullName.trim()) {
+      toast.error('Please enter your full name');
+      return;
+    }
+    
+    if (!certificateModalData) {
+      toast.error('Certificate data not found');
+      return;
+    }
+    
+    setGeneratingCertificate(true);
+    
+    try {
+      const { courseId, courseName, learnerId, course } = certificateModalData;
+      
+      // Get educator name from course
+      const educatorName = course.educator_name || 'Course Instructor';
+      
+      // Determine course type
+      const courseType = course.course_type === 'webinar' ? 'webinar' : 'course';
+      
+      // Get issued_on date for webinars
+      const issuedOnDate = courseType === 'webinar' ? course.issued_on : null;
+      
+      logger.info('Generating certificate', { 
+        learnerId, 
+        learnerName: certificateFullName,
+        courseName, 
+        courseType, 
+        issuedOnDate 
+      });
+      
+      // Generate certificate
+      const result = await generateCourseCertificate(
+        learnerId,
+        certificateFullName,
+        courseId,
+        courseName,
+        educatorName,
+        learnerId || null, // Pass learner_id
+        courseType,
+        issuedOnDate
+      );
+      
+      if (result.success && result.certificateUrl) {
+        toast.success('Certificate generated successfully!');
+        
+        // Update local state
+        setCertificateUrls(prev => ({
+          ...prev,
+          [courseId]: result.certificateUrl
+        }));
+        
+        setGeneratedCertificateUrl(result.certificateUrl);
+        
+        // Refresh enrollments to get updated certificate URL
+        await fetchEnrollments();
+      } else {
+        toast.error(result.error || 'Failed to generate certificate');
+      }
+    } catch (error) {
+      logger.error('Error generating certificate', error);
+      toast.error('Failed to generate certificate. Please try again.');
+    } finally {
+      setGeneratingCertificate(false);
+    }
+  };
+
+  // Handle view existing certificate
+  const handleViewExistingCertificate = (certUrl) => {
+    try {
+      // Special handling for data URLs
       if (certUrl.startsWith('data:')) {
         try {
-          // Convert data URL to blob with proper validation
           const arr = certUrl.split(',');
           
-          // Validate data URL format
           if (arr.length < 2) {
             throw new Error('Invalid data URL: missing base64 content');
           }
@@ -403,7 +537,6 @@ const Courses = () => {
           }
           const mime = mimeMatch[1];
           
-          // Decode base64 with error handling
           let bstr;
           try {
             bstr = atob(arr[1]);
@@ -423,16 +556,14 @@ const Courses = () => {
           
           if (!newWindow) {
             toast.error('Please allow popups for this site to view the certificate.');
-            // Revoke immediately if window didn't open
             URL.revokeObjectURL(blobUrl);
           } else {
-            // Revoke after a reasonable delay to allow browser to load the blob
             setTimeout(() => {
               URL.revokeObjectURL(blobUrl);
             }, 5000);
           }
           
-          return; // Exit early for data URLs
+          return;
         } catch (blobError) {
           logger.error('Error converting data URL to blob', blobError instanceof Error ? blobError : new Error(String(blobError)));
           toast.error('Error displaying certificate. Please try downloading instead.');
@@ -459,20 +590,25 @@ const Courses = () => {
     }
   };
 
-  // Handle download certificate
-  const handleDownloadCertificate = async (courseId, courseName, e) => {
-    e?.stopPropagation();
-    const certUrl = getCertificateUrl(courseId);
-    if (!certUrl) return;
+  // Handle download certificate from modal
+  const handleDownloadCertificateFromModal = async () => {
+    if (!generatedCertificateUrl) return;
     
-    setDownloadingCertificate(courseId);
     try {
-      await downloadCertificate(certUrl, courseName);
+      await downloadCertificate(generatedCertificateUrl, certificateModalData.courseName);
+      toast.success('Certificate downloaded successfully!');
     } catch (error) {
       logger.error('Error downloading certificate', error);
-    } finally {
-      setDownloadingCertificate(null);
+      toast.error('Failed to download certificate');
     }
+  };
+
+  // Close certificate modal
+  const closeCertificateModal = () => {
+    setShowCertificateModal(false);
+    setCertificateModalData(null);
+    setCertificateFullName('');
+    setGeneratedCertificateUrl(null);
   };
 
   // Check if a course is new (posted within last 24 hours)
@@ -613,6 +749,124 @@ const Courses = () => {
         onStartCourse={handleStartCourse}
         enrollmentProgress={enrollmentProgress}
       />
+      
+      {/* Certificate Generation Modal */}
+      {showCertificateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-6 text-white relative">
+              <button
+                onClick={closeCertificateModal}
+                className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-white/20 rounded-xl">
+                  <Award className="w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Get Certificate</h2>
+                  <p className="text-indigo-100 text-sm mt-1">
+                    {certificateModalData?.courseName}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {!generatedCertificateUrl ? (
+                <>
+                  <p className="text-gray-600 mb-6">
+                    Please enter your full name as you want it to appear on the certificate.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={certificateFullName}
+                        onChange={(e) => setCertificateFullName(e.target.value)}
+                        placeholder="Enter your full name"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        disabled={generatingCertificate}
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={handleGenerateCertificate}
+                      disabled={generatingCertificate || !certificateFullName.trim()}
+                      className="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {generatingCertificate ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Generating Certificate...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Award className="w-5 h-5" />
+                          <span>Generate Certificate</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-center mb-6">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                      <CheckCircle className="w-8 h-8 text-green-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      Certificate Generated!
+                    </h3>
+                    <p className="text-gray-600">
+                      Your certificate has been generated successfully.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => handleViewExistingCertificate(generatedCertificateUrl)}
+                      className="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-blue-700 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Eye className="w-5 h-5" />
+                      <span>View Certificate</span>
+                    </button>
+                    
+                    <button
+                      onClick={handleDownloadCertificateFromModal}
+                      className="w-full py-3 bg-white border-2 border-indigo-600 text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Download className="w-5 h-5" />
+                      <span>Download Certificate</span>
+                    </button>
+                    
+                    <button
+                      onClick={closeCertificateModal}
+                      className="w-full py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+      
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
           {/* Initial Loading State - Full Page Loader */}
@@ -1089,32 +1343,13 @@ const Courses = () => {
                         >
                           View Course
                         </Button>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={(e) => handleViewCertificate(course.course_id, course.title, e)}
-                            disabled={!getCertificateUrl(course.course_id)}
-                            className={`flex-1 flex items-center justify-center gap-2 ${
-                              getCertificateUrl(course.course_id)
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            }`}
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Certificate
-                          </Button>
-                          <Button
-                            onClick={(e) => handleDownloadCertificate(course.course_id, course.title, e)}
-                            disabled={!getCertificateUrl(course.course_id) || downloadingCertificate === course.course_id}
-                            className={`flex-1 flex items-center justify-center gap-2 ${
-                              getCertificateUrl(course.course_id) && downloadingCertificate !== course.course_id
-                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            }`}
-                          >
-                            <Download className={`w-4 h-4 ${downloadingCertificate === course.course_id ? 'animate-bounce' : ''}`} />
-                            {downloadingCertificate === course.course_id ? '...' : 'Download'}
-                          </Button>
-                        </div>
+                        <Button
+                          onClick={(e) => handleGetCertificate(course.course_id, course.title, e)}
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
+                        >
+                          <Award className="w-4 h-4" />
+                          {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
+                        </Button>
                       </div>
                     ) : (
                       <Button
@@ -1284,28 +1519,11 @@ const Courses = () => {
                               View Course
                             </Button>
                             <Button
-                              onClick={(e) => handleViewCertificate(course.course_id, course.title, e)}
-                              disabled={!getCertificateUrl(course.course_id)}
-                              className={`flex items-center gap-2 ${
-                                getCertificateUrl(course.course_id)
-                                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              }`}
+                              onClick={(e) => handleGetCertificate(course.course_id, course.title, e)}
+                              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
                             >
-                              <Eye className="w-4 h-4" />
-                              View Certificate
-                            </Button>
-                            <Button
-                              onClick={(e) => handleDownloadCertificate(course.course_id, course.title, e)}
-                              disabled={!getCertificateUrl(course.course_id) || downloadingCertificate === course.course_id}
-                              className={`flex items-center gap-2 ${
-                                getCertificateUrl(course.course_id) && downloadingCertificate !== course.course_id
-                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              }`}
-                            >
-                              <Download className={`w-4 h-4 ${downloadingCertificate === course.course_id ? 'animate-bounce' : ''}`} />
-                              {downloadingCertificate === course.course_id ? '...' : 'Download'}
+                              <Award className="w-4 h-4" />
+                              {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
                             </Button>
                           </div>
                         ) : (

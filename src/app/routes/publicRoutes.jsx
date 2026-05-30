@@ -114,6 +114,11 @@ const OrganizationSetupPage = lazy(() =>
   import("@/pages/onboarding/OrganizationSetupPage")
 );
 
+// Test Pages
+const CertificateTest = lazy(() =>
+  import("@/pages/test/CertificateTest")
+);
+
 export const publicRoutes = [
   // Organization Setup (for admins without organization)
   <Route key="organization-setup" path="/organization-setup" element={<OrganizationSetupPage />} />,
@@ -146,6 +151,9 @@ export const publicRoutes = [
     <Route path="/about" element={<About />} />
     <Route path="/contact" element={<Contact />} />
     <Route path="/puter" element={<PuterDemo />} />
+
+    {/* Test Pages */}
+    <Route path="/test/certificate" element={<ProtectedRoute><CertificateTest /></ProtectedRoute>} />
 
     {/* Legal Pages */}
     <Route path="/terms" element={<TermsAndConditions />} />

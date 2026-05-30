@@ -71,6 +71,12 @@ const CoursePlayer = () => {
   const [positionInitialized, setPositionInitialized] = useState(false);
   const [lessonTimeSpent, setLessonTimeSpent] = useState({}); // Store time for all lessons
   
+  // Certificate name modal state
+  const [showCertificateNameModal, setShowCertificateNameModal] = useState(false);
+  const [certificateFullName, setCertificateFullName] = useState('');
+  const [generatingCertificate, setGeneratingCertificate] = useState(false);
+  const [pendingCertificateData, setPendingCertificateData] = useState(null);
+  
   // Video progress tracking refs
   const videoRef = useRef(null);
   const videoSaveTimeoutRef = useRef(null);
@@ -1279,6 +1285,116 @@ const CoursePlayer = () => {
            currentLessonIndex === currentModule.lessons.length - 1;
   };
 
+  // Handle certificate generation with name
+  const handleGenerateCertificate = async () => {
+    if (!certificateFullName.trim()) {
+      toast.error('Please enter your full name for the certificate');
+      return;
+    }
+
+    if (!pendingCertificateData) {
+      toast.error('Certificate data not found');
+      return;
+    }
+
+    setGeneratingCertificate(true);
+
+    try {
+      const {
+        learnerId,
+        learnerIdText,
+        courseName,
+        educatorName,
+        courseType,
+        issuedOnDate,
+        courseId: certCourseId
+      } = pendingCertificateData;
+
+      const isWebinar = courseType === 'webinar';
+
+      // Update learner name in database
+      try {
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            firstName: certificateFullName.split(' ')[0] || certificateFullName,
+            lastName: certificateFullName.split(' ').slice(1).join(' ') || ''
+          })
+          .eq('id', user.id);
+
+        if (updateError) {
+          logger.warn('Failed to update user name', updateError);
+        }
+      } catch (err) {
+        logger.warn('Error updating user name', err);
+      }
+
+      logger.info('Generating certificate', { learnerId, courseName, courseType, issuedOnDate, isWebinar });
+      const certResult = await generateCourseCertificate(
+        learnerId,
+        certificateFullName,
+        certCourseId,
+        courseName,
+        educatorName,
+        learnerIdText,
+        courseType,
+        issuedOnDate
+      );
+
+      if (certResult.success) {
+        logger.info('Certificate generated successfully', { credentialId: certResult.credentialId });
+        setShowCertificateNameModal(false);
+
+        // For webinars, download certificate immediately
+        if (isWebinar) {
+          try {
+            await downloadCertificate(certResult.certificateUrl, courseName);
+            logger.info('Webinar certificate downloaded successfully');
+            toast.success(`Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
+            setTimeout(() => {
+              navigate('/learner/courses');
+            }, 1500);
+          } catch (downloadError) {
+            logger.error('Failed to download webinar certificate', downloadError instanceof Error ? downloadError : new Error(String(downloadError)));
+            toast.error('Certificate generated but download failed. You can download it from My Learning page.', {
+              duration: 4000,
+              position: 'top-right',
+            });
+            setTimeout(() => {
+              navigate('/learner/my-learning', {
+                state: {
+                  courseCompleted: true,
+                  courseName,
+                  certificateUrl: certResult.certificateUrl
+                }
+              });
+            }, 1500);
+          }
+        } else {
+          // For courses, navigate to my learning page with success message
+          toast.success(`🎉 Congratulations! You have completed "${courseName}". Your certificate is ready!`);
+          setTimeout(() => {
+            navigate('/learner/my-learning', {
+              state: {
+                courseCompleted: true,
+                courseName,
+                certificateUrl: certResult.certificateUrl
+              }
+            });
+          }, 1500);
+        }
+      } else {
+        logger.error('Certificate generation failed', new Error(certResult.error));
+        toast.error('Certificate generation failed. Please try again.');
+      }
+    } catch (error) {
+      logger.error('Error generating certificate', error);
+      toast.error('An error occurred while generating the certificate');
+    } finally {
+      setGeneratingCertificate(false);
+    }
+  };
+
   // Complete the course (called when clicking Complete on last lesson)
   const completeCourse = async () => {
     const currentLesson = getCurrentLesson();
@@ -1350,68 +1466,29 @@ const CoursePlayer = () => {
       } else {
         logger.info('Course completed successfully');
         
-        // Generate certificate for the completed course
+        // Store data for certificate generation and show name modal
         const courseName = course?.title || 'Course';
         const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
-        const courseType = course?.course_type || 'course'; // Get course type from database
-        const issuedOnDate = course?.issued_on || null; // Get issued_on date for webinars
-        const isWebinar = courseType === 'webinar';
+        const courseType = course?.course_type || 'course';
+        const issuedOnDate = course?.issued_on || null;
         
-        logger.info('Generating certificate', { learnerId, courseName, courseType, issuedOnDate, isWebinar });
-        const certResult = await generateCourseCertificate(
+        // Pre-fill with existing name
+        const firstName = learnerRecord?.users?.firstName || '';
+        const lastName = learnerRecord?.users?.lastName || '';
+        const existingName = `${firstName} ${lastName}`.trim();
+        
+        setCertificateFullName(existingName);
+        setPendingCertificateData({
           learnerId,
-          learnerName,
-          courseId,
+          learnerIdText,
           courseName,
           educatorName,
-          learnerIdText,
           courseType,
-          issuedOnDate
-        );
+          issuedOnDate,
+          courseId
+        });
         
-        if (certResult.success) {
-          logger.info('Certificate generated successfully', { credentialId: certResult.credentialId });
-          
-          // For webinars, download certificate immediately
-          if (isWebinar) {
-            try {
-              await downloadCertificate(certResult.certificateUrl, courseName);
-              logger.info('Webinar certificate downloaded successfully');
-              toast.success(` Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
-              setTimeout(() => {
-                navigate('/learner/courses');
-              }, 1500);
-            } catch (downloadError) {
-              logger.error('Failed to download webinar certificate', downloadError instanceof Error ? downloadError : new Error(String(downloadError)));
-              toast.error('Certificate generated but download failed. You can download it from My Learning page.', {
-                duration: 4000,
-                position: 'top-right',
-              });
-              setTimeout(() => {
-                navigate('/learner/my-learning', { 
-                  state: { 
-                    courseCompleted: true, 
-                    courseName,
-                    certificateUrl: certResult.certificateUrl 
-                  } 
-                });
-              }, 1500);
-            }
-          } else {
-            // For courses, navigate to my learning page with success message
-            navigate('/learner/my-learning', { 
-              state: { 
-                courseCompleted: true, 
-                courseName,
-                certificateUrl: certResult.certificateUrl 
-              } 
-            });
-          }
-        } else {
-          logger.error('Certificate generation failed', new Error(certResult.error));
-          // Still navigate even if certificate fails
-          navigate('/learner/my-learning');
-        }
+        setShowCertificateNameModal(true);
       }
     } catch (error) {
       logger.error('Error in completeCourse', error instanceof Error ? error : new Error(String(error)));
@@ -1807,6 +1884,103 @@ const CoursePlayer = () => {
           }}
         />
       )}
+
+      {/* Certificate Name Modal */}
+      <AnimatePresence>
+        {showCertificateNameModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !generatingCertificate) {
+                setShowCertificateNameModal(false);
+              }
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Award className="w-6 h-6 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Certificate Name
+                  </h3>
+                </div>
+                {!generatingCertificate && (
+                  <button
+                    onClick={() => setShowCertificateNameModal(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                )}
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                Please enter your full name as you want it to appear on your certificate.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={certificateFullName}
+                    onChange={(e) => setCertificateFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                    disabled={generatingCertificate}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !generatingCertificate) {
+                        handleGenerateCertificate();
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setShowCertificateNameModal(false)}
+                    variant="outline"
+                    disabled={generatingCertificate}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleGenerateCertificate}
+                    disabled={generatingCertificate || !certificateFullName.trim()}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {generatingCertificate ? (
+                      <>
+                        <Clock className="w-4 h-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Award className="w-4 h-4 mr-2" />
+                        Generate Certificate
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

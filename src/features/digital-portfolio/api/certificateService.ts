@@ -7,6 +7,7 @@ import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import { ssoClient } from '@/shared/api/ssoClient';
+import { generateCertificateHTML } from '@/features/certificate-generation/lib/certificateTemplate';
 
 const logger = getLogger('certificate-service');
 
@@ -28,7 +29,86 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
   });
 };
 
+/**
+ * Converts HTML to PNG using html2canvas
+ * @param html - HTML string to convert
+ * @returns Data URL of the generated image
+ */
+const htmlToImage = async (html: string): Promise<string> => {
+  // Create a temporary container
+  const container = document.createElement('div');
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  container.style.top = '-9999px';
+  container.style.width = '3579px'; // Match certificate dimensions
+  container.style.height = '2551px';
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  try {
+    // Dynamically import html2canvas
+    const html2canvas = (await import('html2canvas')).default;
+    
+    // Wait for images to load
+    const images = container.querySelectorAll('img');
+    await Promise.all(
+      Array.from(images).map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+      })
+    );
+
+    // Generate canvas from HTML
+    const canvas = await html2canvas(container, {
+      scale: 1,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: 3579,
+      height: 2551
+    });
+
+    return canvas.toDataURL('image/png', 1.0);
+  } finally {
+    // Clean up
+    document.body.removeChild(container);
+  }
+};
+
 const generateCertificateImage = async (
+  learnerName: string,
+  courseName: string,
+  completionDate: string,
+  credentialId: string,
+  learnerIdText: string | null,
+  courseType: 'course' | 'webinar' = 'course',
+  instructorName?: string
+): Promise<string> => {
+  // Generate HTML using the new template
+  const certificateHTML = generateCertificateHTML(
+    {
+      studentName: learnerName,
+      studentId: learnerIdText || 'N/A',
+      courseName: courseName,
+      completionDate: completionDate,
+      instructorName: instructorName || 'Course Instructor',
+      credentialId: credentialId,
+      courseType: courseType
+    },
+    window.location.origin // Base URL for assets
+  );
+
+  // Convert HTML to image
+  return await htmlToImage(certificateHTML);
+};
+
+/**
+ * Legacy canvas-based certificate generation (kept as fallback)
+ */
+const generateCertificateImageCanvas = async (
   learnerName: string,
   courseName: string,
   completionDate: string,
@@ -46,6 +126,10 @@ const generateCertificateImage = async (
   canvas.width = 1200;
   canvas.height = 850;
   const ctx = canvas.getContext('2d');
+  
+  if (!ctx) {
+    throw new Error('Failed to get canvas context');
+  }
 
   // Background
   const gradient = ctx.createLinearGradient(0, 0, 1200, 850);
@@ -193,7 +277,11 @@ const generateCertificateImage = async (
 
 const dataURLtoBlob = (dataURL: string): Blob => {
   const [header, data] = dataURL.split(',');
-  const mime = header.match(/:(.*?);/)[1];
+  const mimeMatch = header.match(/:(.*?);/);
+  if (!mimeMatch) {
+    throw new Error('Invalid data URL format');
+  }
+  const mime = mimeMatch[1];
   const binary = atob(data);
   const array = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -227,12 +315,14 @@ const uploadToR2 = async (
   logger.info('Upload response received', { status: response.status, ok: response.ok });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    logger.error('Upload failed', { status: response.status, errorData });
-    throw new Error(`Upload failed (${response.status}): ${errorData.error || response.statusText}`);
+    const errorData: any = await response.json().catch(() => ({}));
+    const errorMessage = `Upload failed (${response.status}): ${errorData.error || response.statusText}`;
+    const error = new Error(errorMessage);
+    logger.error('Upload failed', error, { status: response.status, errorData });
+    throw error;
   }
 
-  const responseData = await response.json();
+  const responseData: any = await response.json();
   logger.info('Upload successful', { responseData });
 
   // Use the actual key returned from the upload response
@@ -248,7 +338,7 @@ const uploadToR2 = async (
 
 interface CertificateResult {
   success: boolean;
-  certificateUrl: string;
+  certificateUrl?: string;
   credentialId: string;
   warning?: string;
   error?: string;
@@ -271,7 +361,9 @@ export const generateCourseCertificate = async (
     const isWebinar = courseType === 'webinar';
     
     // For webinars, use the issued_on date from course table; for courses, use current date
-    let completionDate;
+    let completionDate: string;
+    let completionDateISO: string;
+    
     if (isWebinar && issuedOnDate) {
       // Format the issued_on date from the database
       const dateObj = new Date(issuedOnDate);
@@ -280,13 +372,16 @@ export const generateCourseCertificate = async (
         month: 'long',
         day: 'numeric'
       });
+      completionDateISO = dateObj.toISOString().split('T')[0];
     } else {
       // For courses, use current date (completion date)
-      completionDate = new Date().toLocaleDateString('en-US', {
+      const now = new Date();
+      completionDate = now.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       });
+      completionDateISO = now.toISOString().split('T')[0];
     }
     
     const certificateTitle = isWebinar 
@@ -297,7 +392,35 @@ export const generateCourseCertificate = async (
       ? `Certificate of Participation for "${courseName}"` 
       : `Certificate of Completion for "${courseName}"`;
 
-    const certificateDataUrl = await generateCertificateImage(learnerName, courseName, completionDate, credentialId, learnerIdText, courseType);
+    let certificateDataUrl: string;
+    
+    try {
+      // Try new HTML template first
+      certificateDataUrl = await generateCertificateImage(
+        learnerName, 
+        courseName, 
+        completionDateISO, 
+        credentialId, 
+        learnerIdText, 
+        courseType,
+        educatorName
+      );
+      logger.info('Certificate generated using HTML template');
+    } catch (htmlError) {
+      // Fallback to canvas-based generation
+      const errorMessage = htmlError instanceof Error ? htmlError.message : 'Unknown error';
+      logger.warn('HTML template generation failed, falling back to canvas', { error: errorMessage });
+      certificateDataUrl = await generateCertificateImageCanvas(
+        learnerName, 
+        courseName, 
+        completionDate, 
+        credentialId, 
+        learnerIdText, 
+        courseType
+      );
+      logger.info('Certificate generated using canvas fallback');
+    }
+    
     let certificateUrl = certificateDataUrl;
 
     // Upload to R2 - this is critical, we need the R2 URL for database storage
@@ -311,7 +434,7 @@ export const generateCourseCertificate = async (
       return { 
         success: false, 
         error: 'Failed to upload certificate to storage. Please try again.',
-        certificateUrl: undefined,
+        certificateUrl: '',
         credentialId
       };
     }
@@ -325,7 +448,7 @@ export const generateCourseCertificate = async (
       credential_id: credentialId,
       link: certificateUrl,
       document_url: certificateUrl,
-      issued_on: new Date().toISOString().split('T')[0],
+      issued_on: completionDateISO,
       description: certificateDescription,
       status: 'active',
       approval_status: 'approved',
@@ -358,11 +481,15 @@ export const generateCourseCertificate = async (
     return { success: true, certificateUrl, credentialId };
   } catch (error) {
     logger.error('Failed to generate course certificate', error instanceof Error ? error : new Error('Unknown error'));
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      credentialId: '' 
+    };
   }
 };
 
-export const downloadCertificate = async (certificateUrl, courseName) => {
+export const downloadCertificate = async (certificateUrl: string, courseName: string) => {
   const STORAGE_API_URL = getApiUrl('storage');
 
   try {
@@ -453,7 +580,7 @@ export const getCertificateProxyUrl = (certificateUrl: string | null, mode: 'inl
       
       url.searchParams.set('mode', mode);
       return url.toString();
-    } catch (error) {
+    } catch (error: unknown) {
       // If URL parsing fails, manually append mode parameter
       const separator = certificateUrl.includes('?') ? '&' : '?';
       return `${certificateUrl}${separator}mode=${mode}`;
