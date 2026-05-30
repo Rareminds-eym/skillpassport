@@ -10,8 +10,6 @@
  * - POST /api/assessment/update-progress - Update position and timings
  * - POST /api/assessment/submit - Submit completed assessment
  * - POST /api/assessment/abandon - Abandon in-progress assessment
- * - POST /api/assessment/analyze - Analyze completed assessment
- * - POST /api/assessment/generate-tracks - Generate career exploration tracks
  * - GET /api/assessment/check-in-progress - Check for in-progress assessments
  */
 
@@ -24,7 +22,6 @@ import { submitHandler } from './handlers/submit';
 import { abandonHandler } from './handlers/abandon';
 import { checkInProgressHandler } from './handlers/check-in-progress';
 import { analyzeHandler } from './handlers/analyze';
-import { generateTracksHandler } from './handlers/generate-tracks';
 
 /**
  * POST handler - Routes POST requests to appropriate handlers
@@ -46,8 +43,6 @@ export const onRequestPost = withAuth(async (context: any) => {
       return abandonHandler(context);
     } else if (path === '/analyze') {
       return analyzeHandler(context);
-    } else if (path === '/generate-tracks') {
-      return generateTracksHandler(context);
     } else {
       return apiNotFound(`Assessment endpoint not found: ${path}`, context.request);
     }
