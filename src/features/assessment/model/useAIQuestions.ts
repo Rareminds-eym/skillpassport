@@ -157,15 +157,6 @@ export const useAIQuestions = ({
       return;
     }
 
-    // learnerId is required for both cache lookup and saving generated questions.
-    // It is a dep of this useCallback so the hook re-fires automatically once it
-    // becomes available. Returning here (without setting isLoadingRef) keeps the
-    // mutex free so the subsequent valid call is never blocked.
-    if (!learnerId) {
-      console.log('⏳ learnerId not yet available, deferring question load');
-      return;
-    }
-
     // Set loading state to true when generation starts
     setLoading(true);
     isLoadingRef.current = true;

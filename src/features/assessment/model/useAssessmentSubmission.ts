@@ -14,7 +14,6 @@ import { analyzeAssessmentWithGemini } from '../api/geminiAssessmentService';
 import * as assessmentService from '../api/assessmentService';
 import { supabase } from '@/shared/api/supabaseClient';
 import type { GradeLevel } from '../model/types';
-import { useAssessmentStore } from './assessmentStore';
 
 // Import static question banks for fallback
 // @ts-ignore - JS exports
@@ -384,35 +383,35 @@ const buildlearnerContext = async (
   selectedCategory: string | null,
   learnerProgram?: string | null
 ): Promise<LearnerContext> => {
-  console.log('[LEARNER-CONTEXT] Building context with:', { userId, learnerStream, gradeLevel, selectedCategory, learnerProgram });
-  
   try {
-    // Fetch learner record
-    console.log('[LEARNER-CONTEXT] Fetching learner record for user_id:', userId);
-    const { data: learner, error: learnerError } = await supabase
-      .from('learners')
-      .select(`
-        grade,
-        branch_field,
-        course_name,
-        program_id,
-        learner_type,
-        school_id,
-        college_id,
-        programs (
-          name,
-          code,
-          degree_level
-        )
-      `)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // Fetch both learner record and user metadata
+    const [learnerResult, userResult] = await Promise.all([
+      supabase
+        .from('learners')
+        .select(`
+          grade,
+          branch_field,
+          course_name,
+          program_id,
+          learner_type,
+          school_id,
+          college_id,
+          programs (
+            name,
+            code,
+            degree_level
+          )
+        `)
+        .eq('user_id', userId)
+        .maybeSingle(),
+      getCurrentUser()
+    ]);
 
-    console.log('[LEARNER-CONTEXT] Learner query result:', { learner, learnerError });
+    const { data: learner, error: learnerError } = learnerResult;
+    const userMetadata = userResult.data?.user?.user_metadata;
 
     if (learnerError || !learner) {
       console.warn('⚠️ Could not fetch learner record:', learnerError?.message);
-      console.warn('⚠️ Falling back to fallback context');
       return buildFallbackContext(learnerStream, gradeLevel, selectedCategory, learnerProgram);
     }
 
@@ -438,7 +437,7 @@ const buildlearnerContext = async (
       (learner as any).school_id,
       (learner as any).college_id,
       (learner as any).learner_type,
-      null // userMetadata not available
+      userMetadata?.role
     );
 
     // Build enhanced grade
@@ -475,37 +474,15 @@ const buildFallbackContext = (
   selectedCategory: string | null,
   learnerProgram?: string | null
 ): LearnerContext => {
-  console.log('[LEARNER-CONTEXT] Building fallback context with:', { learnerStream, gradeLevel, selectedCategory, learnerProgram });
-  
   const category = selectedCategory || deriveCategory(learnerStream);
-  
-  // For college learners, try to build a better grade string
-  let enhancedGrade = 'Learner';
-  let degreeLevel: string | null = null;
-  
-  if (gradeLevel === 'college' && learnerProgram) {
-    // Extract degree level from program name
-    const programLower = learnerProgram.toLowerCase();
-    if (programLower.includes('bachelor') || programLower.includes('b.tech') || programLower.includes('btech')) {
-      degreeLevel = 'undergraduate';
-      enhancedGrade = `UG - ${learnerProgram}`;
-    } else if (programLower.includes('master') || programLower.includes('m.tech') || programLower.includes('mtech')) {
-      degreeLevel = 'postgraduate';
-      enhancedGrade = `PG - ${learnerProgram}`;
-    } else {
-      enhancedGrade = learnerProgram;
-    }
-  } else {
-    enhancedGrade = buildEnhancedGrade(null, learnerProgram ?? null, learnerStream, gradeLevel);
-  }
+  const enhancedGrade = buildEnhancedGrade(null, learnerProgram ?? null, learnerStream, gradeLevel);
 
   const context: LearnerContext = {
     rawGrade: enhancedGrade,
     selectedStream: learnerStream,
     selectedCategory: category,
-    learnerType: gradeLevel === 'college' ? 'college' : 'general',
+    learnerType: 'general',
     programName: learnerProgram ?? undefined,
-    degreeLevel: degreeLevel,
   };
 
   console.log('✅ [LEARNER-CONTEXT] Built fallback context:', JSON.stringify(context, null, 2));
@@ -577,57 +554,6 @@ const fetchAdaptiveResults = async (sessionId: string): Promise<any | null> => {
   }
 };
 
-/**
- * Computes the Stream Knowledge score from the knowledge section's questions and
- * the learner's answers.
- *
- * WHY: For college/comprehensive assessments the AI does not reliably score the
- * stream-knowledge MCQs, and the DB trigger is skipped for adaptive rows. The
- * knowledge questions carry a `correct` field and the learner's answers are stored
- * by question id, so we score them deterministically here and inject the result
- * into geminiResults.knowledge before saving.
- *
- * @param sections - Built assessment sections (knowledge section carries `correct`)
- * @param answers - Learner answers keyed by question id
- * @returns knowledge details (score 0-100, counts) or null when no knowledge section/questions
- */
-const computeKnowledgeScore = (
-  sections: any[],
-  answers: Record<string, any>
-): { score: number; correctCount: number; totalQuestions: number } | null => {
-  const knowledgeSection = sections?.find(
-    (s) =>
-      s?.name === 'knowledge' ||
-      s?.id === 'knowledge' ||
-      (typeof s?.id === 'string' && s.id.startsWith('knowledge'))
-  );
-
-  const questions = knowledgeSection?.questions ?? [];
-  if (!questions.length) return null;
-
-  let correctCount = 0;
-  let totalQuestions = 0;
-
-  for (const q of questions) {
-    const correct = q?.correct ?? q?.correct_answer ?? q?.correctAnswer;
-    if (correct == null) continue;
-
-    totalQuestions++;
-    const given = answers[String(q.id)];
-    if (given != null && String(given).trim() === String(correct).trim()) {
-      correctCount++;
-    }
-  }
-
-  if (totalQuestions === 0) return null;
-
-  return {
-    score: Math.round((correctCount / totalQuestions) * 100),
-    correctCount,
-    totalQuestions,
-  };
-};
-
 // ============================================================================
 // MAIN HOOK
 // ============================================================================
@@ -665,6 +591,152 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           ? (lastSection.timeLimit || 0) - (timeRemaining || 0)
           : elapsedTime;
         finalTimings[lastSection.id] = timeSpent;
+      }
+
+      // ✅ CRITICAL FIX: Fetch learner context for all learners to get their actual grade
+      // This ensures career recommendations are age-appropriate
+      let learnerContext: any = {};
+
+      if (userId) {
+        try {
+
+          const { data: learner, error: learnerError } = await supabase
+            .from('learners')
+            .select(`
+              grade,
+              branch_field,
+              course_name,
+              program_id,
+              programs (
+                name,
+                code,
+                degree_level
+              )
+            `)
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (!learnerError && learner) {
+            // Extract degree level from grade or program
+            const extractDegreeLevel = (grade: string | null, programDegreeLevel: string | null): string | null => {
+              if (programDegreeLevel) return programDegreeLevel;
+              if (!grade) return null;
+              const gradeStr = grade.toLowerCase();
+              if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') ||
+                gradeStr.includes('m.tech') || gradeStr.includes('mtech') ||
+                gradeStr.includes('mca') || gradeStr.includes('mba') ||
+                gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
+                return 'postgraduate';
+              }
+              if (gradeStr.includes('ug') || gradeStr.includes('undergraduate') ||
+                gradeStr.includes('b.tech') || gradeStr.includes('btech') ||
+                gradeStr.includes('bca') || gradeStr.includes('b.sc') ||
+                gradeStr.includes('b.com') || gradeStr.includes('ba ') ||
+                gradeStr.includes('bba')) {
+                return 'undergraduate';
+              }
+              if (gradeStr.includes('diploma')) {
+                return 'diploma';
+              }
+              return null;
+            };
+
+            // Priority: program.name > program.code > course_name > branch_field
+            const programName = (learner.programs as any)?.name ||
+              (learner.programs as any)?.code ||
+              learner.course_name ||
+              learner.branch_field;
+            const programCode = (learner.programs as any)?.code || null;
+            const degreeLevel = extractDegreeLevel(
+              learner.grade,
+              (learner.programs as any)?.degree_level
+            );
+
+            // ✅ FIX: For higher_secondary, include the selected stream in rawGrade
+            // This ensures AI knows if learner is in Arts/Science/Commerce
+            let enhancedGrade = learner.grade;
+            let derivedCategory = selectedCategory || deriveCategory(learnerStream);
+            
+            if (gradeLevel === 'higher_secondary' && learnerStream) {
+              // Map stream ID to readable name
+              const streamMap: Record<string, string> = {
+                'science': 'Science',
+                'commerce': 'Commerce',
+                'arts': 'Arts'
+              };
+              const streamName = streamMap[learnerStream] || learnerStream;
+              
+              // Parse the grade to get specific grade number (11 or 12)
+              let specificGrade = learner.grade;
+              if (learner.grade) {
+                const gradeStr = String(learner.grade).toLowerCase();
+                console.log(`🔍 Parsing learner.grade: "${learner.grade}" (lowercase: "${gradeStr}")`);
+                
+                // CRITICAL: Check for 12 FIRST, then 11 (to avoid "11" matching in "11/12")
+                if (gradeStr.includes('12') || gradeStr.includes('xii') || gradeStr.includes('twelve')) {
+                  specificGrade = 'Grade 12';
+                  console.log(`✅ Detected Grade 12 from: "${learner.grade}"`);
+                } else if (gradeStr.includes('11') || gradeStr.includes('xi') || gradeStr.includes('eleven')) {
+                  specificGrade = 'Grade 11';
+                  console.log(`✅ Detected Grade 11 from: "${learner.grade}"`);
+                } else {
+                  console.warn(`⚠️ Could not parse grade from: "${learner.grade}", keeping as-is`);
+                }
+              }
+              
+              enhancedGrade = `${specificGrade} - ${streamName}`;
+              console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}" (from learner.grade: "${learner.grade}")`);
+            }
+
+            learnerContext = {
+              rawGrade: enhancedGrade,
+              grade: learner.grade, // Keep original grade too
+              programName: programName,
+              programCode: programCode,
+              degreeLevel: degreeLevel,
+              selectedStream: learnerStream, // Include the selected stream
+              selectedCategory: derivedCategory // Include the category (arts/science/commerce)
+            };
+
+
+          } else {
+            console.warn('⚠️ Could not fetch learner context:', learnerError?.message);
+          }
+        } catch (learnerFetchErr) {
+          console.error('❌ Error fetching learner context:', learnerFetchErr);
+        }
+      }
+
+      // ✅ FIX: If no learner record but we have a stream selection, still include it
+      if (Object.keys(learnerContext).length === 0 && learnerStream && gradeLevel === 'higher_secondary') {
+        const streamMap: Record<string, string> = {
+          'science': 'Science',
+          'commerce': 'Commerce',
+          'arts': 'Arts'
+        };
+        const streamName = streamMap[learnerStream] || learnerStream;
+        const derivedCategory = selectedCategory || deriveCategory(learnerStream);
+        
+        // Try to determine specific grade from answers if available
+        // Check if there's a grade selection answer in the assessment
+        const gradeAnswer = answers['grade_selection'] || answers['learner_grade'];
+        let specificGrade = 'Grade 11'; // Default to Grade 11 if unknown
+        
+        if (gradeAnswer) {
+          // Parse grade from answer
+          const gradeStr = String(gradeAnswer).toLowerCase();
+          if (gradeStr.includes('12') || gradeStr.includes('xii') || gradeStr.includes('twelve')) {
+            specificGrade = 'Grade 12';
+          }
+          // If it includes '11', keep default Grade 11
+        }
+        
+        learnerContext = {
+          rawGrade: `${specificGrade} - ${streamName}`,
+          selectedStream: learnerStream,
+          selectedCategory: derivedCategory
+        };
+        console.log(`✅ Created fallback learner context: "${specificGrade} - ${streamName}"`);
       }
 
       try {
@@ -719,52 +791,15 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         console.log('📊 [Stage 1/6] Preparing your responses...');
         window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
 
-        // Try to fetch existing learner context from the attempt first
-        let finalLearnerContext: LearnerContext | null = null;
-        
-        try {
-          const { data: attemptData } = await supabase
-            .from('personal_assessment_attempts')
-            .select('learner_context')
-            .eq('id', attemptId)
-            .single();
-          
-          if (attemptData?.learner_context) {
-            console.log('✅ Using existing learner context from attempt:', attemptData.learner_context);
-            finalLearnerContext = attemptData.learner_context as LearnerContext;
-          }
-        } catch (fetchErr) {
-          console.warn('⚠️ Could not fetch existing learner context:', fetchErr);
-        }
-        
-        // If no existing context, build a new one
-        if (!finalLearnerContext) {
-          console.log('🔨 Building new learner context...');
-          finalLearnerContext = await buildlearnerContext(
-            userId!,
-            learnerStream,
-            gradeLevel,
-            selectedCategory || null,
-            learnerProgram || null
-          );
-          
-          // Save the newly built context
-          await storelearnerContext(attemptId, finalLearnerContext);
-        }
-        
-        // Final safety check - ensure we have a valid context
-        if (!finalLearnerContext || !finalLearnerContext.rawGrade) {
-          console.error('❌ Failed to build learner context, using emergency fallback');
-          finalLearnerContext = {
-            rawGrade: learnerProgram || gradeLevel || 'Learner',
-            selectedStream: learnerStream,
-            selectedCategory: selectedCategory || null,
-            learnerType: gradeLevel === 'college' ? 'college' : 'general',
-            programName: learnerProgram || undefined,
-          };
-        }
-        
-        console.log('✅ Final learner context:', finalLearnerContext);
+        const learnerContext = await buildlearnerContext(
+          userId!,
+          learnerStream,
+          gradeLevel,
+          selectedCategory || null,
+          learnerProgram || null
+        );
+
+        await storelearnerContext(attemptId, learnerContext);
 
         // ============================================================================
         // STEP 4: Fetch adaptive aptitude results
@@ -773,18 +808,11 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
         
         let adaptiveResults = null;
-
-        // Get session ID directly from the store state (not using the hook)
-        // We can't use hooks inside async functions, so we access the store directly
-        const storeSessionId = useAssessmentStore.getState().adaptiveSessionId;
-
-        console.log('🔍 [Preparing] Looking for adaptive session ID...');
-        console.log('🔍 [Preparing] From store:', storeSessionId);
-        console.log('🔍 [Preparing] From answers:', answers['adaptive_aptitude_session_id']);
-
-        // Use session ID from store (primary) or answers (fallback)
-        const sessionIdFromAnswers = storeSessionId || answers['adaptive_aptitude_session_id'];
-        console.log('🔍 [Preparing] Final session ID:', sessionIdFromAnswers);
+        
+        // CRITICAL: Get session ID from answers (stored when adaptive test completes)
+        console.log('🔍 [Preparing] Looking for adaptive session ID in answers...');
+        const sessionIdFromAnswers = answers['adaptive_aptitude_session_id'];
+        console.log('🔍 [Preparing] Session ID from answers:', sessionIdFromAnswers);
         
         // If we have a session ID in answers, ensure it's saved to the attempt table
         if (sessionIdFromAnswers && attemptId) {
@@ -818,31 +846,62 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           console.log('✅ [Preparing] Latest attempt data:', latestAttempt);
         }
         
-        // Use session ID from answers, fallback to attempt's saved session ID
-        // (for high school/simplified assessments that might have adaptive linked from elsewhere)
-        const sessionId = sessionIdFromAnswers || latestAttempt?.adaptive_aptitude_session_id;
+        // Use session ID from answers (most reliable)
+        const sessionId = sessionIdFromAnswers;
         const attemptGradeLevel = latestAttempt?.grade_level || gradeLevel;
-
-        console.log('🔗 [Preparing] Final session ID to use:', sessionId);
-        console.log('🔗 [Preparing] From answers:', sessionIdFromAnswers, '| From attempt:', latestAttempt?.adaptive_aptitude_session_id);
+        
+        console.log('� [Preparing] Final session ID to use:', sessionId);
         
         // Check if this grade level uses adaptive aptitude
         const usesAdaptiveAptitude = ['middle', 'highschool', 'after10', 'after12', 'college', 'higher_secondary'].includes(attemptGradeLevel || '');
         
         if (sessionId && usesAdaptiveAptitude) {
-          console.log('📋 [Preparing] Adaptive session ID found:', sessionId);
-          console.log('📋 [Preparing] Grade level:', attemptGradeLevel);
-          console.log('ℹ️ [Preparing] Backend will fetch and validate adaptive results using service role');
+          console.log('� [Preparing] Fetching adaptive aptitude results...');
+          console.log('🔍 [Preparing] Session ID:', sessionId);
+          console.log('🔍 [Preparing] Grade level:', attemptGradeLevel);
           
-          // NOTE: We do NOT query adaptive_aptitude_results or adaptive_aptitude_sessions here because:
-          // 1. Frontend uses authenticated client which may not have RLS access
-          // 2. Backend save-results handler uses service role and will fetch/validate the results
-          // 3. This prevents 400 Bad Request errors from RLS policies
-          
-          // Just pass the session ID to the backend - it will handle everything
-          adaptiveResults = null; // Backend will fetch this
+          try {
+            const { data: adaptiveData, error: adaptiveError } = await supabase
+              .from('adaptive_aptitude_results')
+              .select('*')
+              .eq('session_id', sessionId)
+              .maybeSingle();
+            
+            if (!adaptiveError && adaptiveData) {
+              adaptiveResults = adaptiveData;
+              console.log('✅ [Preparing] Adaptive results fetched:', {
+                level: adaptiveData.aptitude_level,
+                accuracy: adaptiveData.overall_accuracy,
+                totalQuestions: adaptiveData.total_questions,
+                totalCorrect: adaptiveData.total_correct,
+                accuracyBySubtag: adaptiveData.accuracy_by_subtag
+              });
+            } else {
+              console.warn('⚠️ [Preparing] No adaptive results found - test may not have been completed');
+              console.warn('⚠️ [Preparing] Error:', adaptiveError?.message);
+              console.warn('⚠️ [Preparing] Session ID:', sessionId);
+              
+              // Check if the session exists
+              const { data: sessionData } = await supabase
+                .from('adaptive_aptitude_sessions')
+                .select('status, total_questions_answered')
+                .eq('id', sessionId)
+                .maybeSingle();
+              
+              if (sessionData) {
+                console.warn('⚠️ [Preparing] Session exists but no results:', {
+                  status: sessionData.status,
+                  questionsAnswered: sessionData.total_questions_answered
+                });
+              } else {
+                console.warn('⚠️ [Preparing] Session does not exist in database');
+              }
+            }
+          } catch (adaptiveErr) {
+            console.error('❌ [Preparing] Error fetching adaptive results:', adaptiveErr);
+          }
         } else if (!sessionId && usesAdaptiveAptitude) {
-          console.info('ℹ️ [Preparing] No adaptive session ID in current answers - backend will auto-link completed session if available');
+          console.warn('⚠️ [Preparing] No adaptive session ID found - adaptive test may have been skipped');
         } else {
           console.log('ℹ️ [Preparing] Grade level does not use adaptive aptitude test');
         }
@@ -850,7 +909,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         // Log prepared answers
         console.log('📦 [Preparing] Prepared answers:', {
           totalAnswers: Object.keys(answers).length,
-          adaptiveSessionId: sessionId || 'none'
+          hasAdaptiveResults: !!adaptiveResults
         });
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -876,15 +935,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             stream: learnerStream,
             gradeLevel: gradeLevel || 'after12',
             hasAdaptiveResults: !!adaptiveResults,
-            learnerContext: finalLearnerContext,
+            learnerContext: learnerContext,
           });
-
-          // ============================================================================
-          // SKIP FRONTEND PRE-CALCULATION - Let backend handle all score calculations
-          // Backend has access to full question metadata (categoryMapping, riasecType, etc.)
-          // and can calculate scores more accurately
-          // ============================================================================
-          console.log('📊 [Pre-calculation] Skipping frontend calculation - backend will handle all scores');
 
           geminiResults = await analyzeAssessmentWithGemini(
             answers,
@@ -899,27 +951,10 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             },
             finalTimings,
             gradeLevel || 'after12',
-            null, // No pre-calculated scores - let backend calculate
-            learnerRecordId, // Pass learner ID for course recommendations
-            finalLearnerContext,
-            adaptiveResults,
-            sections
+            null,
+            learnerContext,
+            adaptiveResults
           );
-
-          // Deterministically score Stream Knowledge from the section's correct answers.
-          // The AI/DB-trigger paths leave this at 0 for adaptive (college) results, so we
-          // override geminiResults.knowledge with the real computed score before saving.
-          const knowledgeResult = computeKnowledgeScore(sections, answers);
-          if (knowledgeResult && geminiResults) {
-            const existingKnowledge = geminiResults.knowledge || {};
-            geminiResults.knowledge = {
-              ...existingKnowledge,
-              score: knowledgeResult.score,
-              correctCount: knowledgeResult.correctCount,
-              totalQuestions: knowledgeResult.totalQuestions,
-            };
-            console.log('📚 [Knowledge] Computed stream knowledge score:', knowledgeResult);
-          }
 
           const aiDuration = ((Date.now() - aiStartTime) / 1000).toFixed(1);
           console.log(`✅ [AI Analysis] Completed successfully in ${aiDuration}s`);

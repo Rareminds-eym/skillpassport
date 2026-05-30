@@ -444,18 +444,15 @@ Output Format - Respond with ONLY valid JSON (no markdown):
         created_at: new Date().toISOString()
     }));
 
-    if (learnerId) {
-        // Use upsert to handle potential race conditions or re-generation.
-        // Save whenever learnerId is known — attemptId is nullable metadata only;
-        // the uniqueness constraint is (learner_id, stream_id, question_type).
+    if (learnerId && attemptId) {
+        // Use upsert to handle potential race conditions or re-generation
         const { error } = await supabase
             .from('career_assessment_ai_questions')
             .upsert({
-                learner_id: learnerId,
+                learner_id: learnerId, // Use learnerId (UUID) not attemptId
                 question_type: 'knowledge',
-                questions: processedQuestions,
+                questions: processedQuestions, // Store the entire array as JSONB
                 stream_id: streamId,
-                attempt_id: attemptId || null,
                 created_at: new Date().toISOString()
             }, {
                 onConflict: 'learner_id, stream_id, question_type',

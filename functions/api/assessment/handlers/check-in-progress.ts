@@ -19,7 +19,6 @@
 import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { CheckInProgressResult } from '../types';
-import { loadSectionsWithQuestions } from '../utils/question-loader';
 
 const createEmptyResponse = (): CheckInProgressResult => ({
   success: true,
@@ -178,21 +177,7 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
       }
     }
 
-    // Step 4: Load sections for the in-progress attempt
-    let sections = null;
-    try {
-      sections = await loadSectionsWithQuestions(
-        supabase,
-        attempt.grade_level,
-        attempt.stream_id,
-        env
-      );
-    } catch (sectionsError) {
-      console.warn('[checkInProgress] Failed to load sections:', sectionsError);
-      // sections stays null — frontend error guard in handleResumeAssessment handles this
-    }
-
-    // Step 5: Build response with context
+    // Step 4: Build response with context
     const result: CheckInProgressResult = {
       success: true,
       hasInProgress: true,
@@ -201,10 +186,10 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
       all_responses: attempt.all_responses || {},
       // If adaptive is in progress, return adaptive position; otherwise regular position
       currentSectionIndex: isAdaptiveInProgress
-        ? attempt.current_section_index || 0
+        ? attempt.current_section_index || 0  // Frontend will interpret this with adaptive context
         : attempt.current_section_index || 0,
       currentQuestionIndex: isAdaptiveInProgress
-        ? (adaptiveSessionData?.currentQuestionIndex || 0)
+        ? (adaptiveSessionData?.currentQuestionIndex || 0)  // Use adaptive question index
         : attempt.current_question_index || 0,
       gradeLevel: attempt.grade_level || null,
       streamId: attempt.stream_id || null,
@@ -213,7 +198,6 @@ export async function checkInProgressHandler(context: AuthenticatedContext) {
       timerRemaining: attempt.timer_remaining,
       elapsedTime: attempt.elapsed_time || 0,
       started_at: attempt.started_at || null,
-      sections,
       // New fields for adaptive resume
       adaptiveSession: adaptiveSessionData,
       isAdaptiveInProgress: isAdaptiveInProgress,

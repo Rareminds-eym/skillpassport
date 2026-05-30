@@ -12,12 +12,12 @@ import { useAssessmentStore } from '../model/assessmentStore';
 import {
   startAssessment,
   saveResponse,
+  submitAssessment,
   checkInProgress,
   abandonAttempt,
   analyzeAssessment,
   StartAssessmentResponse,
 } from '../api/assessmentApiService';
-import { useAssessmentSubmission } from '../model'; // Import the submission hook
 import { normalizeStreamId } from '../api/careerAssessmentAIService';
 
 // Hooks
@@ -34,7 +34,6 @@ import { SectionCompleteScreen } from './screens/SectionCompleteScreen';
 import { AnalyzingScreen } from './screens/AnalyzingScreen';
 import { GradeSelectionScreen } from './GradeSelectionScreen';
 import { CategorySelectionScreen } from './CategorySelectionScreen';
-import { StreamSelectionScreen } from './StreamSelectionScreen';
 import { QuestionRenderer } from './questions/QuestionRenderer';
 import { ProgressHeader } from './layout/ProgressHeader';
 import { QuestionLayout } from './layout/QuestionLayout';
@@ -45,11 +44,11 @@ import type { GradeLevel as AdaptiveGradeLevel } from '@/shared/types/adaptiveAp
 import { getLogger } from '@/shared/config/logging';
 
 // Adaptive Aptitude Service
-import AdaptiveAptitudeApiService, { linkSessionToAttempt } from '../api/adaptiveAptitudeApiService';
+import AdaptiveAptitudeApiService from '../api/adaptiveAptitudeApiService';
 
 const logger = getLogger('AssessmentTestPage');
 
-type ScreenType = 'loading' | 'grade-selection' | 'category-selection' | 'stream-selection' | 'section-intro' | 'section-complete' | 'assessment' | 'analyzing' | 'complete' | 'error' | 'resume-prompt';
+type ScreenType = 'loading' | 'grade-selection' | 'category-selection' | 'section-intro' | 'section-complete' | 'assessment' | 'analyzing' | 'complete' | 'error' | 'resume-prompt';
 
 const getIconPathFromName = (sectionName?: string | null): string => {
   if (!sectionName) return '/assets/Assessment Icons/Career Interests.png';
@@ -79,13 +78,6 @@ const isAdaptiveSection = (section: any): boolean => {
   return section?.isAdaptive || section?.name === 'adaptive_aptitude';
 };
 
-const isAISection = (section: any): boolean =>
-  !isAdaptiveSection(section) && (
-    section?.name === 'aptitude' ||
-    section?.name === 'knowledge' ||
-    (typeof section?.id === 'string' && (section.id.startsWith('aptitude-') || section.id.startsWith('knowledge-')))
-  );
-
 const ADAPTIVE_TOTAL_QUESTIONS = 50;
 
 const AssessmentTestPage: React.FC = () => {
@@ -95,19 +87,15 @@ const AssessmentTestPage: React.FC = () => {
   const store = useAssessmentStore();
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('loading');
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedStream, setSelectedStream] = useState<string | null>(null);
   const [showSectionIntro, setShowSectionIntro] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [adaptiveTimer, setAdaptiveTimer] = useState(60); // 60 seconds per question (1:00)
-  const adaptiveTimerRef = useRef(adaptiveTimer);
-  adaptiveTimerRef.current = adaptiveTimer; // keep ref in sync with state each render
   const [adaptiveElapsedTime, setAdaptiveElapsedTime] = useState(0); // Track total elapsed time for adaptive section
   const [resumeData, setResumeData] = useState<any>(null);
   const [isLoadingResume, setIsLoadingResume] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isResumingAdaptive, setIsResumingAdaptive] = useState(false);
-  const [aiSectionTimer, setAiSectionTimer] = useState(59);
 
   // Ref to track pending AI section resume position
   // When resuming to an AI section, questions aren't loaded yet so we store the target position here
@@ -150,41 +138,9 @@ const AssessmentTestPage: React.FC = () => {
   const adaptiveHook = useAdaptiveAptitude({
     learnerId: learnerId || '',
     gradeLevel: getAdaptiveGradeLevel(selectedGrade),
-    onTestComplete: async (results) => {
-      // WHY: The adaptive session ID is the only link the backend (save-results)
-      // uses to derive aptitude_scores/aptitude_overall via the adaptive results.
-      // It must survive a page reload/resume between finishing the adaptive section
-      // and submitting the (later) aptitude/knowledge sections. We therefore persist
-      // it in TWO durable places, not just non-persisted Zustand state:
-      //   1) answers map  -> saved to attempts.all_responses (survives reload)
-      //   2) attempts.adaptive_aptitude_session_id -> via linkSessionToAttempt (DB)
-      // This restores the backup-link guarantee that was previously missing; without
-      // it a failed startTest link silently caused aptitude to be saved as 0/null.
-      const sessionId = results?.sessionId;
-      if (sessionId) {
-        store.saveAnswer('adaptive_aptitude_session_id', sessionId);
-
-        if (store.attemptId) {
-          try {
-            await linkSessionToAttempt(store.attemptId, sessionId);
-            logger.info('[onTestComplete] Adaptive session linked to attempt (backup link)', {
-              attemptId: store.attemptId,
-              sessionId,
-            });
-          } catch (err) {
-            // Non-blocking: store + answers fallback still allow submit-time recovery.
-            logger.warn('[onTestComplete] Backup session link failed (non-blocking)', {
-              error: err instanceof Error ? err.message : String(err),
-              attemptId: store.attemptId,
-              sessionId,
-            });
-          }
-        }
-      } else {
-        logger.warn('[onTestComplete] Completed adaptive test returned no sessionId');
-      }
-
-      // Show section-complete screen; user clicks "Submit Assessment" to submit.
+    onTestComplete: async () => {
+      // Show section-complete screen for adaptive test (it's the last section)
+      // User will click "Submit Assessment" to submit
       setCurrentScreen('section-complete');
     },
     onError: (err) => {
@@ -344,12 +300,19 @@ const AssessmentTestPage: React.FC = () => {
         const inProgressResponse = await checkInProgress();
 
         if (inProgressResponse.success && inProgressResponse.hasInProgress) {
+          // Show resume prompt with available data (will fetch sections on Resume click)
           setResumeData(inProgressResponse);
           setCurrentScreen('resume-prompt');
         } else {
-          setCurrentScreen('grade-selection');
+          // No in-progress assessment, show grade selection
+          if (learnerId) {
+            setCurrentScreen('grade-selection');
+          } else {
+            setCurrentScreen('grade-selection');
+          }
         }
       } catch (err: unknown) {
+        const error = err instanceof Error ? err : new Error('Unknown error');
         setCurrentScreen('grade-selection');
       }
     };
@@ -444,20 +407,6 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [handleStreamSelect, learnerProgram]);
 
-  // Handle category selection (Science/Commerce/Arts)
-  const handleCategorySelect = useCallback((categoryId: string): void => {
-    setSelectedCategory(categoryId);
-    
-    // For higher_secondary and after10, show stream selection screen
-    // For after12, directly start with the category as stream (no sub-streams)
-    if (selectedGrade === 'higher_secondary' || selectedGrade === 'after10') {
-      setCurrentScreen('stream-selection');
-    } else {
-      // For after12, use category directly as stream
-      handleStreamSelect(categoryId);
-    }
-  }, [selectedGrade, handleStreamSelect]);
-
   // Handle resume assessment from resume prompt screen
   const handleResumeAssessment = useCallback(async (): Promise<void> => {
     if (!resumeData) return;
@@ -476,8 +425,11 @@ const AssessmentTestPage: React.FC = () => {
       const streamId = resumeData.streamId || resumeData.stream_id;
       const { currentSectionIndex, currentQuestionIndex, answers, elapsedTime, attemptId, sections } = resumeData;
 
-      // sections are loaded by checkInProgress and stored in resumeData
-      const sectionsToUse = sections;
+      // Use pre-fetched sections from resumeData if available
+      const sectionsToUse = sections || (await startAssessment({
+        gradeLevel,
+        streamId
+      })).sections;
 
       if (sectionsToUse) {
         // Initialize store with sections
@@ -496,12 +448,6 @@ const AssessmentTestPage: React.FC = () => {
         if (isAdaptiveCompleted) {
           const adaptiveSection = sectionsToUse.find((s: any) => s.isAdaptive || s.name === 'adaptive_aptitude');
           const adaptiveSectionIndex = adaptiveSection ? sectionsToUse.indexOf(adaptiveSection) : (sectionsToUse.length - 1);
-
-          // Set position FIRST before restoring answers — same pattern as regular resume flow.
-          // useAnswerSync's detect-answers effect fires when saveAnswer runs and captures
-          // store.currentQuestionIndex into pendingQuestionIndexRef. If setCurrentQuestion
-          // hasn't run yet, it captures 0 and syncs questionIndex: 0 to the backend → Q1 on resume.
-          store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
 
           // Restore all previous answers
           if (answers && Object.keys(answers).length > 0) {
@@ -647,7 +593,7 @@ const AssessmentTestPage: React.FC = () => {
           if (isAISection && currentSection.questions.length === 0) {
             // Resuming to an AI section with no questions yet - store the target position
             // The AI questions effect will restore position once questions are loaded
-            logger.info('[Resume] Resuming to AI section - storing pending position for restore after questions load', {
+            logger.info('[Resume] Resuming to AI section - storing pending position for restore after questions load', { 
               sectionName: currentSection.name,
               sectionIndex: currentSectionIndex || 0,
               questionIndex: currentQuestionIndex || 0
@@ -713,46 +659,48 @@ const AssessmentTestPage: React.FC = () => {
     // useAnswerSync hook handles backend sync - no direct save needed
   }, [store]);
 
-  // Use the old submission hook that properly handles AI-generated questions
-  const { submit: submitAssessmentWithAI, isSubmitting } = useAssessmentSubmission();
-
   // Handle submit assessment
   const handleSubmit = useCallback(async (): Promise<void> => {
     if (!store.attemptId) return;
 
     store.setStatus('submitting');
     store.setLoading(true);
-    setCurrentScreen('analyzing');
 
     try {
-      // Use the old flow that properly fetches AI-generated questions
-      // and calls analyzeAssessmentWithGemini
-      await submitAssessmentWithAI({
+      const result = await submitAssessment({
+        attemptId: store.attemptId,
         answers: store.answers,
-        sections: store.sections,
-        learnerStream: store.streamId || null,
-        gradeLevel: store.gradeLevel,
-        sectionTimings: {}, // TODO: Track section timings
-        currentAttempt: { id: store.attemptId },
-        userId: user?.id || null,
-        timeRemaining: null,
-        elapsedTime: 0,
-        selectedCategory: undefined,
-        learnerProgram: learnerProgram || undefined, // Pass the learner program from the hook
       });
 
-      toast.success('Success');
-      store.setStatus('completed');
-      setCurrentScreen('complete');
+      if (result.success) {
+        // Show analyzing screen while backend processes
+        setCurrentScreen('analyzing');
+
+        // Step 1: Call analyze endpoint via service
+        const analyzeResult = await analyzeAssessment(store.attemptId, store.gradeLevel);
+
+        // Step 2: Check if analysis succeeded
+        if (analyzeResult.success) {
+          toast.success('Success');
+          store.setStatus('completed');
+          setCurrentScreen('complete');
+        } else {
+          // Analysis failed
+          store.setError(analyzeResult.error || 'Failed to analyze assessment');
+          setCurrentScreen('error');
+        }
+      } else {
+        store.setError(result.error || 'Failed to submit assessment');
+        setCurrentScreen('error');
+      }
     } catch (err: unknown) {
       const error = err instanceof Error ? err.message : 'Unknown error';
-      console.error('[AssessmentTestPage] Submit error:', error);
       store.setError(error);
       setCurrentScreen('error');
     } finally {
       store.setLoading(false);
     }
-  }, [store, submitAssessmentWithAI, user, learnerProgram]);
+  }, [store]);
 
   // Handle next question
   const handleNextQuestion = useCallback((): void => {
@@ -865,20 +813,23 @@ const AssessmentTestPage: React.FC = () => {
 
     if (shouldRunTimer) {
       const timer = setInterval(() => {
-        if (adaptiveTimerRef.current <= 1) {
-          // Time's up — submit selected answer or default to A, then reset timer
-          const answerToSubmit = (selectedAnswer || 'A') as 'A' | 'B' | 'C' | 'D';
-          adaptiveHook.submitAnswer(answerToSubmit);
-          if (selectedAnswer) setSelectedAnswer(null);
-          setAdaptiveTimer(60);
-        } else {
-          setAdaptiveTimer(prev => prev - 1);
-        }
+        setAdaptiveTimer(prev => {
+          if (prev <= 1) {
+            // Time's up - auto-submit current answer or skip
+            const currentAnswer = selectedAnswer;
+            if (currentAnswer) {
+              adaptiveHook.submitAnswer(currentAnswer);
+              setSelectedAnswer(null);
+            }
+            return 60; // Reset to 60 seconds for next question
+          }
+          return prev - 1;
+        });
       }, 1000);
 
       return () => clearInterval(timer);
     }
-  }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections, selectedAnswer]);
+  }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections, selectedAnswer, adaptiveHook]);
 
   // Adaptive elapsed time tracker (counts up for total time spent)
   useEffect(() => {
@@ -907,28 +858,6 @@ const AssessmentTestPage: React.FC = () => {
       setAdaptiveTimer(60); // Reset to 60 seconds for new question
     }
   }, [adaptiveHook.questionsAnswered, store.currentSectionIndex, adaptiveHook.currentQuestion, store.sections]);
-
-  // AI section per-question countdown (59 → 0, loops back to 59)
-  useEffect(() => {
-    if (store.sections.length === 0) return;
-    const currentSection = store.sections[store.currentSectionIndex];
-    if (!isAISection(currentSection) || currentScreen !== 'assessment' || showSectionIntro) return;
-
-    const timer = setInterval(() => {
-      setAiSectionTimer(prev => (prev <= 1 ? 59 : prev - 1));
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [store.currentSectionIndex, store.currentQuestionIndex, currentScreen, showSectionIntro, store.sections]);
-
-  // Reset AI section timer to 59 when question changes
-  useEffect(() => {
-    if (store.sections.length === 0) return;
-    const currentSection = store.sections[store.currentSectionIndex];
-    if (isAISection(currentSection)) {
-      setAiSectionTimer(59);
-    }
-  }, [store.currentQuestionIndex, store.currentSectionIndex, store.sections]);
 
   // Reset elapsed time when section changes
   const previousSectionIndexRef = useRef<number | null>(null);
@@ -978,30 +907,8 @@ const AssessmentTestPage: React.FC = () => {
     return (
       <CategorySelectionScreen
         gradeLevel={selectedGrade}
-        onCategorySelect={handleCategorySelect}
-        onBack={() => {
-          setSelectedGrade(null);
-          setSelectedCategory(null);
-          setCurrentScreen('grade-selection');
-        }}
-        loading={store.loading}
-      />
-    );
-  }
-
-  // Stream selection screen (for higher_secondary and after10)
-  if (currentScreen === 'stream-selection' && selectedGrade && selectedCategory) {
-    return (
-      <StreamSelectionScreen
-        gradeLevel={selectedGrade}
-        selectedCategory={selectedCategory}
         onStreamSelect={handleStreamSelect}
-        onBack={() => {
-          setSelectedCategory(null);
-          setCurrentScreen('category-selection');
-        }}
-        isLoading={store.loading}
-        learnerProgram={learnerProgram}
+        loading={store.loading}
       />
     );
   }
@@ -1154,7 +1061,7 @@ const AssessmentTestPage: React.FC = () => {
                 totalQuestions={ADAPTIVE_TOTAL_QUESTIONS}
                 elapsedTime={adaptiveElapsedTime}
                 perQuestionTimer={adaptiveTimer}
-                showPerQuestionTimer={false}
+                showPerQuestionTimer={true}
                 showNoWrongAnswers={true}
                 isAnswered={!!selectedAnswer}
                 isLastQuestion={adaptiveHook.isTestComplete}
@@ -1203,7 +1110,6 @@ const AssessmentTestPage: React.FC = () => {
     })();
 
     const isLastQuestion = store.currentQuestionIndex === currentSection.questions.length - 1 && store.currentSectionIndex === store.sections.length - 1;
-    const isCurrentAISection = isAISection(currentSection);
 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -1241,8 +1147,6 @@ const AssessmentTestPage: React.FC = () => {
                 isAnswered={isCurrentAnswered}
                 isLastQuestion={isLastQuestion}
                 canGoPrevious={store.currentQuestionIndex > 0}
-                perQuestionTimer={isCurrentAISection ? aiSectionTimer : null}
-                showPerQuestionTimer={isCurrentAISection}
                 onNext={() => {
                   // Block only if offline
                   if (!syncStatus.isOnline) {

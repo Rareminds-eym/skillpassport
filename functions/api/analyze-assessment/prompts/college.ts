@@ -455,22 +455,6 @@ SJT: ${JSON.stringify(assessmentData.employabilityAnswers?.sjt || [], null, 2)}
 ## Knowledge Test Results:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
-**KNOWLEDGE SCORING INSTRUCTIONS** (CRITICAL - READ CAREFULLY):
-
-**YOU MUST CALCULATE THE KNOWLEDGE SCORE FROM THE ANSWERS ABOVE:**
-
-1. Count the total number of questions where "isCorrect" is true
-2. Divide by total number of questions (${assessmentData.totalKnowledgeQuestions || 20})
-3. Multiply by 100 to get percentage
-4. Round to nearest integer
-
-**Example Calculation**:
-- Total correct: ${assessmentData.knowledgeAnswers ? Object.values(assessmentData.knowledgeAnswers).filter((a: any) => a.isCorrect === true).length : 0}
-- Total questions: ${assessmentData.totalKnowledgeQuestions || 20}
-- Percentage: ${assessmentData.knowledgeAnswers ? Math.round((Object.values(assessmentData.knowledgeAnswers).filter((a: any) => a.isCorrect === true).length / (assessmentData.totalKnowledgeQuestions || 20)) * 100) : 0}%
-
-**VALIDATION**: The knowledge score you return MUST match the calculated percentage above.
-
 ${adaptiveSection}
 
 ## Section Timings:

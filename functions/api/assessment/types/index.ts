@@ -117,7 +117,6 @@ export interface CheckInProgressResult {
   timerRemaining: number | null;
   elapsedTime: number;
   started_at: string | null;
-  sections?: AssessmentSection[] | null;
   // Adaptive test resume fields
   adaptiveSession?: AdaptiveSessionInfo | null;
   isAdaptiveInProgress?: boolean;
@@ -194,7 +193,6 @@ export interface AssessmentQuestion {
   options?: unknown;
   maxSelections?: number;
   categoryMapping?: unknown;
-  riasecType?: 'R' | 'I' | 'A' | 'S' | 'E' | 'C';
   metadata?: unknown;
   correctAnswer?: string;
   explanation?: string;
