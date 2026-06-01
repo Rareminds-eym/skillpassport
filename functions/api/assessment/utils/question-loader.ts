@@ -26,8 +26,8 @@ export async function loadSectionsWithQuestions(
 ): Promise<AssessmentSection[]> {
   logger.info('Loading sections', { gradeLevel, streamId, hasEnv: !!env });
   
-  const gradeSpecificGrades = ['middle', 'highschool', 'higher_secondary'];
-  const useGeneralSections = ['after10', 'after12', 'college'].includes(gradeLevel);
+  const gradeSpecificGrades = ['middle', 'highschool'];
+  const useGeneralSections = ['after10', 'after12', 'higher_secondary', 'college'].includes(gradeLevel);
 
   let allSections: any[] = [];
 
@@ -46,7 +46,7 @@ export async function loadSectionsWithQuestions(
       logger.info('Fetched grade-specific sections', { count: gradeSections?.length || 0, gradeLevel });
       return gradeSections || [];
     } else {
-      // For after10, after12, college: fetch standard sections (riasec, bigfive, values, employability)
+      // For after10, after12, higher_secondary, college: fetch standard sections (riasec, bigfive, values, employability)
       let standardQuery = supabase
         .from('personal_assessment_sections')
         .select('*')
@@ -59,7 +59,7 @@ export async function loadSectionsWithQuestions(
 
       const { data: standardSections, error: standardError } = await standardQuery;
       if (standardError) throw standardError;
-      logger.info('Fetched standard sections for college/after10/after12', { 
+      logger.info('Fetched standard sections for college/after10/after12/higher_secondary', { 
         count: standardSections?.length || 0, 
         sections: standardSections?.map((s: any) => s.name),
         gradeLevel 
