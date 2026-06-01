@@ -35,6 +35,7 @@ import { SectionCompleteScreen } from './screens/SectionCompleteScreen';
 import { AnalyzingScreen } from './screens/AnalyzingScreen';
 import { GradeSelectionScreen } from './GradeSelectionScreen';
 import { CategorySelectionScreen } from './CategorySelectionScreen';
+import { StreamSelectionScreen } from './StreamSelectionScreen';
 import { QuestionRenderer } from './questions/QuestionRenderer';
 import { ProgressHeader } from './layout/ProgressHeader';
 import { QuestionLayout } from './layout/QuestionLayout';
@@ -49,7 +50,7 @@ import AdaptiveAptitudeApiService from '../api/adaptiveAptitudeApiService';
 
 const logger = getLogger('AssessmentTestPage');
 
-type ScreenType = 'loading' | 'grade-selection' | 'category-selection' | 'section-intro' | 'section-complete' | 'assessment' | 'analyzing' | 'error' | 'resume-prompt';
+type ScreenType = 'loading' | 'grade-selection' | 'category-selection' | 'stream-selection' | 'section-intro' | 'section-complete' | 'assessment' | 'analyzing' | 'error' | 'resume-prompt';
 
 const getIconPathFromName = (sectionName?: string | null): string => {
   if (!sectionName) return '/assets/Assessment Icons/Career Interests.png';
@@ -95,6 +96,7 @@ const AssessmentTestPage: React.FC = () => {
   const store = useAssessmentStore();
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('loading');
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedStream, setSelectedStream] = useState<string | null>(null);
   const [showSectionIntro, setShowSectionIntro] = useState(true);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -359,6 +361,13 @@ const AssessmentTestPage: React.FC = () => {
       setCurrentScreen('category-selection');
     }
   }, [handleStreamSelect, learnerProgram]);
+
+  // Handle category selection (Science/Commerce/Arts)
+  const handleCategorySelect = useCallback((categoryId: string): void => {
+    setSelectedCategory(categoryId);
+    // Move to stream selection screen
+    setCurrentScreen('stream-selection');
+  }, []);
 
   // Handle resume assessment from resume prompt screen
   const handleResumeAssessment = useCallback(async (): Promise<void> => {
@@ -830,8 +839,29 @@ const AssessmentTestPage: React.FC = () => {
     return (
       <CategorySelectionScreen
         gradeLevel={selectedGrade}
+        onCategorySelect={handleCategorySelect}
+        onBack={() => {
+          setSelectedGrade(null);
+          setSelectedCategory(null);
+          setCurrentScreen('grade-selection');
+        }}
+      />
+    );
+  }
+
+  // Show stream selection screen (after category selection)
+  if (currentScreen === 'stream-selection' && selectedGrade && selectedCategory) {
+    return (
+      <StreamSelectionScreen
         onStreamSelect={handleStreamSelect}
-        loading={store.loading}
+        onBack={() => {
+          setSelectedCategory(null);
+          setCurrentScreen('category-selection');
+        }}
+        selectedCategory={selectedCategory}
+        gradeLevel={selectedGrade}
+        isLoading={false}
+        learnerProgram={learnerProgram}
       />
     );
   }
