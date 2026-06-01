@@ -98,7 +98,11 @@ const Courses = () => {
         }));
       }
       // Refresh enrollments to get updated certificate URL
-      await fetchEnrollments();
+      try {
+        await fetchEnrollments();
+      } catch (error) {
+        logger.error('Error refreshing enrollments after certificate generation', error instanceof Error ? error : new Error(String(error)));
+      }
     }
   });
   
@@ -401,23 +405,23 @@ const Courses = () => {
   const handleGetCertificate = async (courseId, courseName, e) => {
     e?.stopPropagation();
     
-    // Check if certificate already exists
-    const existingCertUrl = getCertificateUrl(courseId);
-    if (existingCertUrl) {
-      // Certificate already exists, show it directly
-      viewCertificate(existingCertUrl);
-      return;
-    }
-    
-    // Get course details
-    const course = courses.find(c => c.course_id === courseId);
-    if (!course) {
-      toast.error('Course not found');
-      return;
-    }
-    
-    // Get learner data
     try {
+      // Check if certificate already exists
+      const existingCertUrl = getCertificateUrl(courseId);
+      if (existingCertUrl) {
+        // Certificate already exists, show it directly
+        viewCertificate(existingCertUrl);
+        return;
+      }
+      
+      // Get course details
+      const course = courses.find(c => c.course_id === courseId);
+      if (!course) {
+        toast.error('Course not found');
+        return;
+      }
+      
+      // Get learner data
       if (!user?.email) {
         toast.error('User email not found');
         return;
@@ -430,7 +434,7 @@ const Courses = () => {
         .maybeSingle();
       
       if (learnerError) {
-        logger.error('Error fetching learner data', learnerError);
+        logger.error('Error fetching learner data', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
         toast.error('Failed to fetch learner information');
         return;
       }
@@ -456,7 +460,7 @@ const Courses = () => {
         prefillName: learnerData.name || ''
       });
     } catch (error) {
-      logger.error('Error preparing certificate modal', error);
+      logger.error('Error preparing certificate modal', error instanceof Error ? error : new Error(String(error)));
       toast.error('Failed to prepare certificate generation');
     }
   };

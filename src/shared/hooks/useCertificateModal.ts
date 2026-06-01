@@ -6,40 +6,80 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('useCertificateModal');
 
+interface User {
+  id?: string;
+  email?: string;
+}
+
+interface CertificateData {
+  courseId: string;
+  courseName: string;
+  educatorName: string;
+  courseType: 'course' | 'webinar';
+  issuedOnDate?: string;
+  learnerId: string;
+  learnerIdText: string;
+  prefillName?: string;
+}
+
+interface CertificateResult {
+  certificateUrl: string;
+  credentialId: string;
+  courseName: string;
+  courseType: string;
+}
+
+interface UseCertificateModalOptions {
+  user?: User;
+  onSuccess?: (result: CertificateResult) => void;
+  onError?: (error: Error) => void;
+}
+
+interface UseCertificateModalReturn {
+  showModal: boolean;
+  fullName: string;
+  isGenerating: boolean;
+  pendingData: CertificateData | null;
+  generatedUrl: string | null;
+  showConfirmation: boolean;
+  validationError: string;
+  setFullName: (name: string) => void;
+  openModal: (data: CertificateData) => Promise<void>;
+  closeModal: () => void;
+  showConfirmationDialog: () => void;
+  cancelConfirmation: () => void;
+  generateCertificate: () => Promise<void>;
+  downloadGeneratedCertificate: () => Promise<void>;
+}
+
 /**
  * Custom hook for managing certificate generation modal state and logic
- * 
- * @param {Object} options
- * @param {Object} options.user - Current user object
- * @param {Function} options.onSuccess - Callback after successful certificate generation
- * @param {Function} options.onError - Callback on error
- * @returns {Object} Modal state and handlers
  */
-export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
+export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificateModalOptions = {}): UseCertificateModalReturn => {
   const [showModal, setShowModal] = useState(false);
   const [fullName, setFullName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [pendingData, setPendingData] = useState(null);
-  const [generatedUrl, setGeneratedUrl] = useState(null);
+  const [pendingData, setPendingData] = useState<CertificateData | null>(null);
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [validationError, setValidationError] = useState('');
 
   /**
    * Fetch learner name from database
    */
-  const fetchLearnerName = async () => {
+  const fetchLearnerName = async (): Promise<string> => {
     if (!user?.id && !user?.email) return '';
     
     try {
       // Try to fetch from learners table using user_id or email
-      const query = supabase
+      let query = supabase
         .from('learners')
         .select('name');
       
       if (user.id) {
-        query.eq('user_id', user.id);
+        query = query.eq('user_id', user.id);
       } else if (user.email) {
-        query.eq('email', user.email);
+        query = query.eq('email', user.email);
       }
       
       const { data, error } = await query.maybeSingle();
@@ -58,17 +98,8 @@ export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
 
   /**
    * Open modal with pre-filled data
-   * @param {Object} data - Certificate data
-   * @param {string} data.courseId - Course ID
-   * @param {string} data.courseName - Course name
-   * @param {string} data.educatorName - Educator name
-   * @param {string} data.courseType - 'course' or 'webinar'
-   * @param {string} data.issuedOnDate - Issue date for webinars
-   * @param {string} data.learnerId - Learner database ID
-   * @param {string} data.learnerIdText - Learner ID text for certificate
-   * @param {string} data.prefillName - Pre-filled name (optional, will fetch from DB if not provided)
    */
-  const openModal = async (data) => {
+  const openModal = async (data: CertificateData): Promise<void> => {
     setPendingData(data);
     
     // Fetch name from database if not provided
@@ -84,7 +115,7 @@ export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
   /**
    * Close modal and reset state
    */
-  const closeModal = () => {
+  const closeModal = (): void => {
     setShowModal(false);
     setShowConfirmation(false);
     setPendingData(null);
@@ -96,7 +127,7 @@ export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
   /**
    * Validate name input
    */
-  const validateName = (name) => {
+  const validateName = (name: string): string | null => {
     const trimmedName = name.trim();
     
     if (!trimmedName) {
@@ -122,7 +153,7 @@ export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
   /**
    * Handle name change with validation
    */
-  const handleNameChange = (name) => {
+  const handleNameChange = (name: string): void => {
     setFullName(name);
     // Clear validation error when user types
     if (validationError) {
@@ -133,7 +164,7 @@ export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
   /**
    * Show confirmation dialog
    */
-  const showConfirmationDialog = () => {
+  const showConfirmationDialog = (): void => {
     const error = validateName(fullName);
     if (error) {
       setValidationError(error);
@@ -147,14 +178,14 @@ export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
   /**
    * Cancel confirmation and go back to edit
    */
-  const cancelConfirmation = () => {
+  const cancelConfirmation = (): void => {
     setShowConfirmation(false);
   };
 
   /**
    * Generate certificate with current data (called after confirmation)
    */
-  const generateCertificate = async () => {
+  const generateCertificate = async (): Promise<void> => {
     const trimmedName = fullName.trim();
     const error = validateName(trimmedName);
     
@@ -192,14 +223,14 @@ export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
           const lastName = nameParts.slice(1).join(' ') || '';
           
           // Update learners table
-          const learnerQuery = supabase
+          let learnerQuery = supabase
             .from('learners')
             .update({ name: trimmedName });
           
           if (user.id) {
-            learnerQuery.eq('user_id', user.id);
+            learnerQuery = learnerQuery.eq('user_id', user.id);
           } else if (user.email) {
-            learnerQuery.eq('email', user.email);
+            learnerQuery = learnerQuery.eq('email', user.email);
           }
           
           const { error: learnerUpdateError } = await learnerQuery;
@@ -268,11 +299,11 @@ export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
         }
       }
     } catch (error) {
-      logger.error('Error generating certificate', error);
+      logger.error('Error generating certificate', error instanceof Error ? error : new Error(String(error)));
       toast.error('An error occurred while generating the certificate');
       
       if (onError) {
-        onError(error);
+        onError(error instanceof Error ? error : new Error(String(error)));
       }
     } finally {
       setIsGenerating(false);
@@ -282,14 +313,14 @@ export const useCertificateModal = ({ user, onSuccess, onError } = {}) => {
   /**
    * Download the generated certificate
    */
-  const downloadGeneratedCertificate = async () => {
+  const downloadGeneratedCertificate = async (): Promise<void> => {
     if (!generatedUrl || !pendingData?.courseName) return;
     
     try {
       await downloadCertificate(generatedUrl, pendingData.courseName);
       toast.success('Certificate downloaded successfully!');
     } catch (error) {
-      logger.error('Error downloading certificate', error);
+      logger.error('Error downloading certificate', error instanceof Error ? error : new Error(String(error)));
       toast.error('Failed to download certificate');
     }
   };

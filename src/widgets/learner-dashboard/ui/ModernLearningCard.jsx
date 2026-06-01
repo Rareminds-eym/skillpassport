@@ -844,7 +844,9 @@ const ModernLearningCard = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleViewCertificate(e);
+                          if (certificateUrl) {
+                            viewCertificate(certificateUrl);
+                          }
                           setShowDropdown(false);
                         }}
                         className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -854,9 +856,19 @@ const ModernLearningCard = ({
                       </button>
                       {isInternalCourse && (
                         <button
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            handleDownloadCertificate(e);
+                            if (certificateUrl) {
+                              setIsDownloading(true);
+                              try {
+                                await downloadCertificate(certificateUrl, item.course || item.title);
+                                toast.success('Certificate downloaded successfully!');
+                              } catch (error) {
+                                toast.error('Failed to download certificate');
+                              } finally {
+                                setIsDownloading(false);
+                              }
+                            }
                             setShowDropdown(false);
                           }}
                           disabled={isDownloading}
@@ -1000,7 +1012,9 @@ const ModernLearningCard = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleViewCertificate(e);
+                        if (certificateUrl) {
+                          viewCertificate(certificateUrl);
+                        }
                         setShowDropdown(false);
                       }}
                       className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -1012,7 +1026,7 @@ const ModernLearningCard = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDownloadCertificate(e);
+                          handleGetCertificate(e);
                           setShowDropdown(false);
                         }}
                         disabled={isDownloading}

@@ -8,9 +8,9 @@ const logger = getLogger('certificateUtils');
  * View a certificate in a new window
  * Handles both data URLs and regular URLs
  * 
- * @param {string} certUrl - Certificate URL (data URL or regular URL)
+ * @param certUrl - Certificate URL (data URL or regular URL)
  */
-export const viewCertificate = (certUrl) => {
+export const viewCertificate = (certUrl: string): void => {
   if (!certUrl) {
     toast.error('Certificate URL not found');
     return;
@@ -32,7 +32,7 @@ export const viewCertificate = (certUrl) => {
         }
         const mime = mimeMatch[1];
         
-        let bstr;
+        let bstr: string;
         try {
           bstr = atob(arr[1]);
         } catch (decodeError) {

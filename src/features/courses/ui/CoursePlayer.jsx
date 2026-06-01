@@ -1,3 +1,13 @@
+/**
+ * WARNING: This file appears to be an old/unused version of CoursePlayer.
+ * The active version is in src/pages/learner/CoursePlayer.jsx
+ * This file contains outdated certificate generation code and should either be:
+ * 1. Removed if truly unused, or
+ * 2. Updated to use the useCertificateModal hook pattern
+ * 
+ * DO NOT USE THIS FILE - Use src/pages/learner/CoursePlayer.jsx instead
+ */
+
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     Award,
