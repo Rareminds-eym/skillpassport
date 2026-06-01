@@ -24,6 +24,9 @@ import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
 import { authenticateUser, AuthResult } from '../shared/auth';
 import { createAuthenticationError } from './utils/error-handling';
+import { getLogger } from '../../../src/shared/config/logging';
+
+const logger = getLogger('storage-api');
 
 // Import all handlers
 import { handleUpload } from './handlers/upload';
@@ -43,10 +46,28 @@ import { handleMediaProxy } from './handlers/media-proxy';
 const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content', '/media-proxy'];
 
 /**
- * Check if the given path is a public endpoint
+ * Check if the given path is a public endpoint or certificate upload
  */
-function isPublicEndpoint(path: string): boolean {
-  return PUBLIC_ENDPOINTS.includes(path);
+async function isPublicEndpoint(path: string, request: Request): Promise<boolean> {
+  if (PUBLIC_ENDPOINTS.includes(path)) {
+    return true;
+  }
+  
+  // Allow /upload for certificate context without authentication
+  // The upload handler will validate the context
+  if (path === '/upload' && request.method === 'POST') {
+    const contentType = request.headers.get('content-type') || '';
+    logger.info('Upload request received', { contentType });
+    // Check if it's a multipart upload (certificates are uploaded as multipart)
+    if (contentType.includes('multipart/form-data')) {
+      // We allow it through - the upload handler will check the context field
+      // and only allow certificate uploads without auth
+      logger.info('Allowing multipart upload through');
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 // Extended context type with authentication
@@ -78,7 +99,8 @@ export const onRequest: PagesFunction = async (context) => {
     let authenticatedContext: AuthenticatedContext = { ...context };
 
     // Check if endpoint requires authentication
-    if (!isPublicEndpoint(path)) {
+    const isPublic = await isPublicEndpoint(path, request);
+    if (!isPublic) {
       // Attempt authentication for protected endpoints
       const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
       
@@ -211,7 +233,7 @@ export const onRequest: PagesFunction = async (context) => {
         );
     }
   } catch (error) {
-    console.error('Storage API Error:', error);
+    logger.error('Storage API Error', error instanceof Error ? error : new Error(String(error)));
     return jsonResponse(
       {
         error: (error as Error).message || 'Internal server error',

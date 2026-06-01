@@ -133,7 +133,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       /* "THIS IS TO CERTIFY THAT" */
       .text-2 {
         font-family: 'Open Sans', sans-serif;
-        font-size: 2.6rem;
+        font-size: 3.5rem;
         font-weight: 500;
         color: #333333;
         text-transform: uppercase;
@@ -155,7 +155,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       /* Student ID line */
       .text-3 {
         font-family: 'Open Sans', sans-serif;
-        font-size: 3.5rem;
+        font-size: 3rem;
         font-weight: 400;
         color: #333333;
         line-height: 1.6;
@@ -164,7 +164,8 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       }
       
       .text-3 strong {
-        font-weight: 600;
+        font-size: 3.2rem;
+        font-weight: 500;
         color: #031e51;
       }
       
@@ -183,7 +184,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       /* Date line */
       .text-4 {
         font-family: 'Open Sans', sans-serif;
-        font-size: 3.5rem;
+        font-size: 3rem;
         font-weight: 400;
         color: #333333;
         margin: 0;
@@ -336,8 +337,8 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       <!-- Right Side Content -->
       <div class="col-2">
         <p class="text-2">This is to certify that</p>
-        <p class="student-name">${data.studentName}</p>
-        <p class="text-3">with Learner Id <strong style="font-weight:500;font-size:2rem">${data.studentId}</strong><br>${achievementText}</p>
+        <p class="student-name">${data.studentName.toUpperCase()}</p>
+        <p class="text-3">with Learner Id <strong>${data.studentId}</strong><br>${achievementText}</p>
         <p class="course-name">${data.courseName}</p>
         <p class="text-4">${dateLabel} <span class="completion-date">${formatDate(data.completionDate)}</span></p>
       </div>
@@ -346,15 +347,13 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       <div class="signature-left">
         <img src="${baseUrl}/assets/certificates/instructor.png" alt="Instructor Signature" width="150" height="60">
         <div class="signature-line"></div>
-        <p class="signature-name">${data.instructorName || 'Prof. Michael Chen'}</p>
         <p class="signature-title">Course Instructor</p>
       </div>
       
       <div class="signature-right">
         <img src="${baseUrl}/assets/certificates/admin.png" alt="Administrator Signature" width="150" height="60">
         <div class="signature-line"></div>
-        <p class="signature-name">Platform Administrator</p>
-        <p class="signature-title">Skill Ecosystem</p>
+        <p class="signature-title">Platform Administrator</p>
       </div>
       
       <!-- Platform Name -->

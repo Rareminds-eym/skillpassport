@@ -19,16 +19,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
 import { RestoreProgressModal } from '@/features/courses';
-import { Badge, Button, Card, CardContent } from '@/shared/ui';
+import { Badge, Button, Card, CardContent, CertificateNameModal } from '@/shared/ui';
 import { useUser } from '@/features/auth';
 import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
 import { supabase } from '@/shared/api/supabaseClient';
-import { generateCourseCertificate, downloadCertificate } from '@/features/digital-portfolio';
+import { downloadCertificate } from '@/features/digital-portfolio';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
 import { courseProgressService } from '@/features/courses';
 import { fileService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api';
 import { getLogger } from '@/shared/config/logging';
+import { useCertificateModal } from '@/shared/hooks';
 
 const logger = getLogger('course-player');
 
@@ -71,11 +72,52 @@ const CoursePlayer = () => {
   const [positionInitialized, setPositionInitialized] = useState(false);
   const [lessonTimeSpent, setLessonTimeSpent] = useState({}); // Store time for all lessons
   
-  // Certificate name modal state
-  const [showCertificateNameModal, setShowCertificateNameModal] = useState(false);
-  const [certificateFullName, setCertificateFullName] = useState('');
-  const [generatingCertificate, setGeneratingCertificate] = useState(false);
-  const [pendingCertificateData, setPendingCertificateData] = useState(null);
+  // Certificate modal hook
+  const certificateModal = useCertificateModal({
+    user,
+    onSuccess: async ({ certificateUrl, courseName, courseType }) => {
+      const isWebinar = courseType === 'webinar';
+      
+      certificateModal.closeModal();
+      
+      if (isWebinar) {
+        try {
+          await downloadCertificate(certificateUrl, courseName);
+          logger.info('Webinar certificate downloaded successfully');
+          toast.success(`Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
+          setTimeout(() => {
+            navigate('/learner/courses');
+          }, 1500);
+        } catch (downloadError) {
+          logger.error('Failed to download webinar certificate', downloadError instanceof Error ? downloadError : new Error(String(downloadError)));
+          toast.error('Certificate generated but download failed. You can download it from My Learning page.', {
+            duration: 4000,
+            position: 'top-right',
+          });
+          setTimeout(() => {
+            navigate('/learner/my-learning', {
+              state: {
+                courseCompleted: true,
+                courseName,
+                certificateUrl
+              }
+            });
+          }, 1500);
+        }
+      } else {
+        toast.success(`🎉 Congratulations! You have completed "${courseName}". Your certificate is ready!`);
+        setTimeout(() => {
+          navigate('/learner/my-learning', {
+            state: {
+              courseCompleted: true,
+              courseName,
+              certificateUrl
+            }
+          });
+        }, 1500);
+      }
+    }
+  });
   
   // Video progress tracking refs
   const videoRef = useRef(null);
@@ -1418,16 +1460,12 @@ const CoursePlayer = () => {
 
     // Update course enrollment to completed status
     try {
-      // Get learner's database ID and user's name from users table
+      // Get learner's database ID and user's name from learners table
       let learnerRecord;
       try {
         const { data, error: learnerError } = await supabase
           .from('learners')
-          .select(`
-            id,
-            learner_id,
-            users!inner(firstName, lastName)
-          `)
+          .select('id, learner_id, name')
           .eq('user_id', user.id)
           .single();
 
@@ -1444,12 +1482,10 @@ const CoursePlayer = () => {
       }
 
       const learnerId = learnerRecord.id;
-      const learnerIdText = learnerRecord.learner_id; // Text field to display on certificate
+      const learnerIdText = learnerRecord.learner_id;
       
-      // Get learner name from users table firstName and lastName with proper null checks
-      const firstName = learnerRecord?.users?.firstName || '';
-      const lastName = learnerRecord?.users?.lastName || '';
-      const learnerName = `${firstName} ${lastName}`.trim() || user?.email?.split('@')[0] || 'Learner';
+      // Get learner name from learners table
+      const prefillName = learnerRecord.name || user?.email?.split('@')[0] || '';
 
       const { error } = await supabase
         .from('course_enrollments')
@@ -1466,29 +1502,22 @@ const CoursePlayer = () => {
       } else {
         logger.info('Course completed successfully');
         
-        // Store data for certificate generation and show name modal
+        // Open certificate modal with data
         const courseName = course?.title || 'Course';
         const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
         const courseType = course?.course_type || 'course';
         const issuedOnDate = course?.issued_on || null;
         
-        // Pre-fill with existing name
-        const firstName = learnerRecord?.users?.firstName || '';
-        const lastName = learnerRecord?.users?.lastName || '';
-        const existingName = `${firstName} ${lastName}`.trim();
-        
-        setCertificateFullName(existingName);
-        setPendingCertificateData({
+        certificateModal.openModal({
           learnerId,
           learnerIdText,
           courseName,
           educatorName,
           courseType,
           issuedOnDate,
-          courseId
+          courseId,
+          prefillName
         });
-        
-        setShowCertificateNameModal(true);
       }
     } catch (error) {
       logger.error('Error in completeCourse', error instanceof Error ? error : new Error(String(error)));
@@ -1887,98 +1916,19 @@ const CoursePlayer = () => {
 
       {/* Certificate Name Modal */}
       <AnimatePresence>
-        {showCertificateNameModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget && !generatingCertificate) {
-                setShowCertificateNameModal(false);
-              }
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Award className="w-6 h-6 text-green-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    Certificate Name
-                  </h3>
-                </div>
-                {!generatingCertificate && (
-                  <button
-                    onClick={() => setShowCertificateNameModal(false)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5 text-gray-500" />
-                  </button>
-                )}
-              </div>
-
-              <p className="text-sm text-gray-600 mb-4">
-                Please enter your full name as you want it to appear on your certificate.
-              </p>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    value={certificateFullName}
-                    onChange={(e) => setCertificateFullName(e.target.value)}
-                    placeholder="Enter your full name"
-                    disabled={generatingCertificate}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !generatingCertificate) {
-                        handleGenerateCertificate();
-                      }
-                    }}
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setShowCertificateNameModal(false)}
-                    variant="outline"
-                    disabled={generatingCertificate}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleGenerateCertificate}
-                    disabled={generatingCertificate || !certificateFullName.trim()}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    {generatingCertificate ? (
-                      <>
-                        <Clock className="w-4 h-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Award className="w-4 h-4 mr-2" />
-                        Generate Certificate
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
+        {certificateModal.showModal && (
+          <CertificateNameModal
+            isOpen={certificateModal.showModal}
+            onClose={certificateModal.closeModal}
+            fullName={certificateModal.fullName}
+            onFullNameChange={certificateModal.setFullName}
+            onConfirm={certificateModal.showConfirmationDialog}
+            onGenerate={certificateModal.generateCertificate}
+            isGenerating={certificateModal.isGenerating}
+            showConfirmation={certificateModal.showConfirmation}
+            onCancelConfirmation={certificateModal.cancelConfirmation}
+            validationError={certificateModal.validationError}
+          />
         )}
       </AnimatePresence>
     </div>

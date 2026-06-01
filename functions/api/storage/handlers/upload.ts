@@ -175,6 +175,9 @@ import {
 } from '../utils/file-validator';
 import { validateFileSizeBackend } from '../utils/file-size-validator';
 import { getFileSizeLimit } from '../config/fileSizeLimits';
+import { getLogger } from '../../../../src/shared/config/logging';
+
+const logger = getLogger('storage-upload');
 
 /**
  * Allowed file types (MIME types)
@@ -257,17 +260,23 @@ export const handleUpload: PagesFunction = async (context) => {
   const authenticatedContext = context as AuthenticatedContext;
 
   try {
-    // Require authentication
-    if (!authenticatedContext.user) {
-      return createAuthenticationError('/upload', 'missing_token');
-    }
-
-    const { user } = authenticatedContext;
-    // Parse multipart form data
+    // Parse multipart form data first to check context
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const filename = formData.get('filename') as string;
     const uploadContext = (formData.get('context') as string) || 'default';
+
+    // For certificate uploads, we don't require authentication
+    // The certificate generation is triggered by backend after course completion
+    const requiresAuth = uploadContext !== 'certificate';
+    
+    // Require authentication for non-certificate uploads
+    if (requiresAuth && !authenticatedContext.user) {
+      return createAuthenticationError('/upload', 'missing_token');
+    }
+
+    // For certificate uploads without user, use a system user ID
+    const userId = authenticatedContext.user?.id || 'system';
 
     // Validate required fields
     if (!file) {
@@ -281,7 +290,7 @@ export const handleUpload: PagesFunction = async (context) => {
     // Validate file size using centralized configuration
     const sizeValidation = validateFileSizeBackend(file.size, {
       context: uploadContext,
-      userId: user.id,
+      userId: userId,
       filename
     });
     if (!sizeValidation.valid) {
@@ -304,11 +313,10 @@ export const handleUpload: PagesFunction = async (context) => {
     // Validates that the file extension matches the declared MIME type
     const extensionValidation = validateFileExtension(filename, file.type);
     if (!extensionValidation.valid) {
-      console.error('🚨 [SECURITY] Extension validation failed:', {
-        userId: user.id,
+      logger.error('Extension validation failed', new Error(extensionValidation.error || 'Unknown error'), {
+        userId: userId,
         filename,
         declaredType: file.type,
-        error: extensionValidation.error,
         timestamp: new Date().toISOString()
       });
       return jsonResponse({ error: extensionValidation.error }, 400);
@@ -323,12 +331,11 @@ export const handleUpload: PagesFunction = async (context) => {
     // Blocks: Windows EXE (MZ), Linux ELF, macOS Mach-O, Java Class files
     const dangerousFileCheck = detectDangerousFile(arrayBuffer);
     if (dangerousFileCheck.dangerous) {
-      console.error('🚨 [SECURITY] Malware upload attempt:', {
-        userId: user.id,
+      logger.error('Malware upload attempt', new Error(dangerousFileCheck.reason || 'Unknown threat'), {
+        userId: userId,
         filename,
         declaredType: file.type,
         actualType: dangerousFileCheck.fileType,
-        reason: dangerousFileCheck.reason,
         timestamp: new Date().toISOString()
       });
       return jsonResponse({ 
@@ -343,11 +350,10 @@ export const handleUpload: PagesFunction = async (context) => {
     // Example: An EXE file with file.type set to "image/png" will be caught here
     const signatureValidation = validateFileSignature(arrayBuffer, file.type);
     if (!signatureValidation.valid) {
-      console.error('🚨 [SECURITY] MIME type spoofing attempt:', {
-        userId: user.id,
+      logger.error('MIME type spoofing attempt', new Error(signatureValidation.error || 'Unknown error'), {
+        userId: userId,
         filename,
         declaredType: file.type,
-        error: signatureValidation.error,
         timestamp: new Date().toISOString()
       });
       return jsonResponse({ error: signatureValidation.error }, 400);
@@ -361,10 +367,9 @@ export const handleUpload: PagesFunction = async (context) => {
     if (file.type === 'image/svg+xml') {
       const svgValidation = await validateSVGContent(arrayBuffer);
       if (!svgValidation.safe) {
-        console.error('🚨 [SECURITY] Malicious SVG upload attempt:', {
-          userId: user.id,
+        logger.error('Malicious SVG upload attempt', new Error(svgValidation.error || 'Unknown threat'), {
+          userId: userId,
           filename,
-          error: svgValidation.error,
           threats: svgValidation.threats,
           timestamp: new Date().toISOString()
         });
@@ -381,7 +386,7 @@ export const handleUpload: PagesFunction = async (context) => {
     // Generate unique file key with user ID
     // Format: uploads/{userId}/{timestamp}-{uuid}.{extension}
     // This ensures files are organized by user and have unique names
-    const fileKey = generateUniqueKey(filename, user.id);
+    const fileKey = generateUniqueKey(filename, userId);
 
     // Use validated actualType from signature validation for R2 upload
     // This ensures the Content-Type header in R2 matches the actual file type
@@ -398,7 +403,7 @@ export const handleUpload: PagesFunction = async (context) => {
       }
     );
 
-    console.log('✅ File uploaded successfully:', { fileKey, filename, size: file.size, type: contentType });
+    logger.info('File uploaded successfully', { fileKey, filename, size: file.size, type: contentType });
 
     return jsonResponse({
       success: true,

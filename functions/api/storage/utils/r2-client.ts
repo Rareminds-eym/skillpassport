@@ -32,19 +32,25 @@ export class R2Client {
   private endpoint: string;
   private bucketName: string;
   private publicUrl?: string;
+  private r2Bucket?: any; // R2 binding if available
 
   /**
    * Create a new R2 client instance
    * @param env - Pages environment variables containing R2 credentials
    */
   constructor(env: PagesEnv) {
+    // Check if R2 binding is available (preferred method)
+    this.r2Bucket = (env as any).R2_BUCKET;
+    
     if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
-      throw new Error('R2 credentials not configured. Required: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_R2_ACCESS_KEY_ID, CLOUDFLARE_R2_SECRET_ACCESS_KEY');
+      if (!this.r2Bucket) {
+        throw new Error('R2 credentials not configured. Required: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_R2_ACCESS_KEY_ID, CLOUDFLARE_R2_SECRET_ACCESS_KEY or R2_BUCKET binding');
+      }
     }
 
     this.client = new AwsClient({
-      accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
-      secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+      accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
+      secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
     });
 
     this.endpoint = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
@@ -66,6 +72,23 @@ export class R2Client {
     contentType: string,
     additionalHeaders?: Record<string, string>
   ): Promise<string> {
+    // Use R2 binding if available (preferred for large files in dev)
+    if (this.r2Bucket) {
+      try {
+        await this.r2Bucket.put(key, body, {
+          httpMetadata: {
+            contentType: contentType,
+            contentDisposition: additionalHeaders?.['Content-Disposition']
+          }
+        });
+        return this.getPublicUrl(key);
+      } catch (bindingError) {
+        console.error('[R2Client] R2 binding upload failed, falling back to S3 API:', bindingError);
+        // Fall through to S3 API method
+      }
+    }
+
+    // Fallback to S3 API
     const uploadUrl = `${this.endpoint}/${this.bucketName}/${key}`;
 
     const headers: Record<string, string> = {
@@ -89,7 +112,6 @@ export class R2Client {
       throw new Error(`R2 upload failed: ${response.status} - ${errorText}`);
     }
 
-    // Return the public URL
     return this.getPublicUrl(key);
   }
 
@@ -236,6 +258,29 @@ export class R2Client {
    * @returns Response object containing the file content
    */
   async getObject(key: string, range?: string): Promise<Response> {
+    // Use R2 binding if available
+    if (this.r2Bucket) {
+      try {
+        const object = await this.r2Bucket.get(key, range ? { range: { offset: 0, length: parseInt(range.split('-')[1]) } } : undefined);
+        
+        if (!object) {
+          throw new Error(`R2 get object failed: 404 - Not Found`);
+        }
+
+        return new Response(object.body, {
+          headers: {
+            'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
+            'Content-Length': object.size.toString(),
+            'ETag': object.httpEtag,
+          }
+        });
+      } catch (bindingError) {
+        console.error('[R2Client] R2 binding get failed, falling back to S3 API:', bindingError);
+        // Fall through to S3 API method
+      }
+    }
+
+    // Fallback to S3 API
     const downloadUrl = `${this.endpoint}/${this.bucketName}/${key}`;
 
     const headers: Record<string, string> = {};

@@ -1,0 +1,1 @@
+export { useCertificateModal } from './useCertificateModal';
