@@ -257,26 +257,31 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
   // AI questions are used for after10, after12, higher_secondary, and college
   const usesAIQuestions = gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'higher_secondary' || gradeLevel === 'college';
   
-  logger.info('[loadAISections] Starting AI section load', { 
-    streamId, 
-    gradeLevel, 
+  logger.info('[loadAISections] Starting AI section load', {
+    streamId,
+    gradeLevel,
     usesAIQuestions,
     hasStreamId: !!streamId,
     hasEnv: !!env
   });
-  
-  if (!streamId || !usesAIQuestions) {
-    logger.warn('[loadAISections] Skipping AI sections - missing requirements', { 
-      hasStreamId: !!streamId, 
+
+  // CRITICAL FIX: For grades that use AI questions, we MUST have streamId
+  // If streamId is missing, log error but don't fail silently
+  if (!streamId && usesAIQuestions) {
+    logger.error('[loadAISections] CRITICAL: Missing streamId for grade level that requires AI questions', {
+      gradeLevel,
       usesAIQuestions,
-      reason: !streamId ? 'No streamId provided' : 'Grade level does not use AI questions'
+      message: 'AI sections (aptitude & knowledge) will NOT be loaded without streamId'
     });
+    return sections;
+  }
+
+  if (!usesAIQuestions) {
     return sections;
   }
 
   try {
     // === ALWAYS ADD APTITUDE SECTION (questions generated on-demand) ===
-    logger.info('[loadAISections] Adding Stream Based Aptitude section placeholder', { streamId });
     
     sections.push({
       id: `aptitude-${streamId}`,
@@ -295,7 +300,7 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
     });
 
     // === ALWAYS ADD KNOWLEDGE SECTION (questions generated on-demand) ===
-    logger.info('[loadAISections] Adding Stream Knowledge section placeholder', { streamId });
+    logger.info('[loadAISections] Adding Stream Knowledge section placeholder', { streamId, gradeLevel });
     
     sections.push({
       id: `knowledge-${streamId}`,

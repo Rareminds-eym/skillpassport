@@ -46,7 +46,7 @@ COMMENT ON COLUMN public.capabilities_master.description IS 'Capability Descript
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.occupations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code VARCHAR(10) UNIQUE NOT NULL,
+  code VARCHAR(20) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -75,7 +75,13 @@ CREATE TABLE IF NOT EXISTS public.embeddings (
 );
 
 CREATE INDEX idx_embeddings_entity ON public.embeddings(entity_type, entity_id);
-CREATE INDEX idx_embeddings_embedding ON public.embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+-- NOTE: No ANN (ivfflat/HNSW) index on `embedding` on purpose. With only ~277 occupation
+-- vectors, an ivfflat index (lists=100, default probes=1) returns approximate results — a query
+-- often hits one sparse list and gets back only a handful of rows instead of the requested top-K.
+-- Exact brute-force KNN over a few hundred rows is sub-millisecond, so an index hurts correctness
+-- with no speed benefit. Reintroduce an ANN index (HNSW, or ivfflat with lists ~= sqrt(rows) and
+-- probes raised) only when the embedding set grows large (tens of thousands+).
+-- CREATE INDEX idx_embeddings_embedding ON public.embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
 COMMENT ON TABLE public.embeddings IS 'Generic embedding storage for RAG. Supports occupations, capabilities, domains, and future entity types.';
 COMMENT ON COLUMN public.embeddings.entity_type IS 'Entity type: occupation, capability, domain';

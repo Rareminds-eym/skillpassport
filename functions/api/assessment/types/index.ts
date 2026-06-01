@@ -375,6 +375,9 @@ export interface StudentAssessmentData {
   aptitude_overall?: number;
   learning_preferences?: Record<string, unknown>;
   accuracy_by_subtag?: Record<string, number>;
+  big_five_scores?: Record<string, number>;
+  work_values?: Record<string, number>;
+  knowledge_score?: number;
 }
 
 /**
@@ -402,4 +405,38 @@ export interface CommonConfig {
  */
 export interface GradeLevelConfig extends CommonConfig {
   systemPrompt: string;
+}
+
+// ============================================================================
+// Cluster-generation prompt types (per grade level)
+// ============================================================================
+
+/** Minimal occupation shape the cluster prompts need (from the deterministic candidate list). */
+export interface PromptOccupation {
+  occupation_id: string;
+  name: string;
+  riasecCodes: string[];
+}
+
+/**
+ * Extra narrative context for the cluster prompt. Not used for scoring — only to help the
+ * model write accurate, evidence-citing narratives.
+ */
+export interface ClusterNarrativeContext {
+  adaptive?: {
+    overallAccuracy?: number | string | null;
+    aptitudeLevel?: number | string | null;
+    confidenceTag?: string | null;
+    accuracyBySubtag?: Record<string, any> | null;
+  } | null;
+  reflections?: Array<{ question: string; answer: string }>;
+  /** AI profile-synthesis narrative (college). Appended to the structured embedding query
+   *  and provided to the cluster prompt for richer, consistent narratives. */
+  profileNarrative?: string;
+}
+
+/** A per-grade prompt builder returns the system + user messages for the cluster LLM call. */
+export interface ClusterPrompt {
+  system: string;
+  user: string;
 }

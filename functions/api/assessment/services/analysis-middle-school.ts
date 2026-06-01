@@ -6,9 +6,28 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { RIASECScores, StrengthScore, AdaptiveAptitudeData, CareerFitData } from '../types';
+import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../types';
 import { getTopCategories, getTopStrengths } from '../lib/analysis-helpers';
-import { generateCareerTracksForStudent } from './career-track-generator';
+import { generateMiddleSchoolCareerClusters } from './career-cluster-generator';
+import type { StudentProfile } from './scoring-service';
+
+/**
+ * Flatten the adaptive `accuracy_by_subtag` shape ({ subtag: { total, correct, accuracy } })
+ * into the { subtag: number } form the scoring service expects. Accuracy stays on the 0-100 scale.
+ */
+function flattenAccuracyBySubtag(
+  raw: Record<string, any> | null | undefined
+): Record<string, number> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const out: Record<string, number> = {};
+  for (const [subtag, value] of Object.entries(raw)) {
+    if (typeof value === 'number') out[subtag] = value;
+    else if (value && typeof value === 'object' && typeof value.accuracy === 'number') {
+      out[subtag] = value.accuracy;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
   const { data: session } = await supabase
@@ -311,45 +330,48 @@ export async function analyzeMiddleSchool(
       }
     }
 
-    // Step 11: Generate career tracks during analyze phase
-    let careerFitData: CareerFitData | null = null;
-
+    // Step 11: Generate career clusters (deterministic retrieval/scoring + OpenRouter narrative)
+    // and merge them into gemini_results.careerFit. Non-fatal: analysis succeeds regardless.
+    let careerFit: { clusters: unknown[] } | null = null;
     try {
-      console.log('[analyzeMiddleSchool] Step 11 - Starting career track generation');
-      const studentAssessmentData = {
-        attempt_id: attemptId,
-        learner_id: learnerId,
-        grade_level: attempt.grade_level,
-        riasec_scores: riasecScores,
+      const student: StudentProfile = {
+        riasec_scores: riasecScores as unknown as Record<string, number>,
         riasec_code: riasecCode,
         strength_scores: strengthScores,
-        aptitude_scores: adaptiveData,
-        aptitude_overall: aptitudeOverall,
+        // Adaptive overall_accuracy is 0-100; the scorer expects a 0-1 fraction.
+        aptitude_overall: aptitudeOverall != null ? aptitudeOverall / 100 : undefined,
+        accuracy_by_subtag: flattenAccuracyBySubtag(adaptiveData?.accuracyBySubtag as any),
         learning_preferences: learningPreferences,
-        accuracy_by_subtag: adaptiveData?.accuracyBySubtag as Record<string, number> | undefined,
       };
 
-      careerFitData = await generateCareerTracksForStudent(supabase, studentAssessmentData, context.env as Record<string, string>);
-      console.log('[analyzeMiddleSchool] Step 11 - Career tracks generated successfully');
+      careerFit = await generateMiddleSchoolCareerClusters(
+        supabase,
+        student,
+        context.env as Record<string, string>,
+        { adaptive: adaptiveData as any, reflections }
+      );
 
-      // Store career fit data with analysis results
-      const { error: careerFitUpdateError } = await supabase
-        .from('personal_assessment_results')
-        .update({
-          result: {
-            success: true,
-            grade_level: attempt.grade_level,
-            careerFit: careerFitData,
-            generation_timestamp: new Date().toISOString(),
-          },
-        })
-        .eq('attempt_id', attemptId);
+      if (careerFit) {
+        // Preserve existing gemini_results fields; only merge/overwrite the careerFit key.
+        const { data: existing } = await supabase
+          .from('personal_assessment_results')
+          .select('gemini_results')
+          .eq('attempt_id', attemptId)
+          .single();
 
-      if (careerFitUpdateError) {
-        console.error('[analyzeMiddleSchool] Failed to update career fit:', careerFitUpdateError);
+        const mergedGemini = { ...(existing?.gemini_results || {}), careerFit };
+
+        const { error: geminiUpdateError } = await supabase
+          .from('personal_assessment_results')
+          .update({ gemini_results: mergedGemini })
+          .eq('attempt_id', attemptId);
+
+        if (geminiUpdateError) {
+          console.error('[ANALYZE-MIDDLE] Failed to store careerFit:', geminiUpdateError.message);
+        }
       }
-    } catch (trackError) {
-      console.error('[analyzeMiddleSchool] Career track generation failed:', trackError instanceof Error ? trackError.message : trackError);
+    } catch (clusterError) {
+      console.error('[ANALYZE-MIDDLE] Career cluster generation failed (non-fatal):', clusterError);
     }
 
     return Response.json(
@@ -362,8 +384,8 @@ export async function analyzeMiddleSchool(
         adaptiveData,
         aptitudeOverall,
         adaptiveSessionId: resolvedSessionId,
+        careerFit,
         profileSnapshot,
-        careerFit: careerFitData,
       },
       { status: 200 }
     );

@@ -155,9 +155,6 @@ const WorkPreferencesSection = ({ workPreferences }) => {
  * @returns {JSX.Element} - Print view component
  */
 const PrintViewCollege = ({ results, learnerInfo, riasecNames, traitNames, courseRecommendations, learnerAcademicData }) => {
-  // Debug: Log learnerInfo to see what data is being passed
-  console.log('PrintViewCollege - learnerInfo received:', learnerInfo);
-  
   // Handle null results
   if (!results) {
     return (
@@ -214,9 +211,6 @@ const PrintViewCollege = ({ results, learnerInfo, riasecNames, traitNames, cours
 
   // Safe learner info with defaults
   const safelearnerInfo = getSafelearnerInfo(learnerInfo);
-  
-  // Debug: Log safelearnerInfo to see what getSafelearnerInfo returns
-  console.log('PrintViewCollege - safelearnerInfo after getSafelearnerInfo:', safelearnerInfo);
 
   // Safe RIASEC names with defaults
   const safeRiasecNames = riasecNames || defaultRiasecNames;

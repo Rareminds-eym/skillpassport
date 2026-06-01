@@ -15,6 +15,49 @@ import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('StartHandler');
 
+/**
+ * Infer UG/PG/diploma from any available text signal: program name, code, course name,
+ * branch, or grade. College learners often have grade=null and no linked program row, so
+ * the program/course NAME ("Bachelor of Computer Applications") is the most reliable source.
+ */
+function deriveDegreeLevel(...signals: Array<string | null | undefined>): string | null {
+  const text = signals.filter(Boolean).join(' ').toLowerCase();
+  if (!text) return null;
+  if (/(\bpg\b|postgraduate|post[-\s]?graduate|\bmaster|m\.?tech|mtech|mca|mba|m\.?sc|msc|m\.?com|mcom|\bma\b|\bm\.?a\b)/.test(text)) return 'postgraduate';
+  if (/(\bug\b|undergraduate|under[-\s]?graduate|\bbachelor|b\.?tech|btech|bca|b\.?sc|bsc|b\.?com|bcom|bba|\bba\b|\bb\.?a\b)/.test(text)) return 'undergraduate';
+  if (text.includes('diploma')) return 'diploma';
+  return null;
+}
+
+function buildLearnerContext(
+  learner: any,
+  streamId: string | null
+): Record<string, unknown> | null {
+  const programs = learner?.programs;
+  const programName =
+    programs?.name || programs?.code || learner?.course_name || learner?.branch_field || null;
+  const programCode = programs?.code || null;
+  const degreeLevel =
+    programs?.degree_level ||
+    deriveDegreeLevel(
+      programs?.name,
+      programs?.code,
+      learner?.course_name,
+      learner?.branch_field,
+      learner?.grade
+    );
+
+  if (!programName && !streamId && !learner?.grade) return null;
+
+  return {
+    rawGrade: learner?.grade || null,
+    programName: programName || null,
+    programCode,
+    degreeLevel,
+    selectedStream: streamId || null,
+  };
+}
+
 export async function startHandler(context: AuthenticatedContext) {
   const user = context.data.user;
   const env = context.env as Record<string, string>;
@@ -40,7 +83,14 @@ export async function startHandler(context: AuthenticatedContext) {
 
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')
-      .select('id')
+      .select(`
+        id,
+        grade,
+        course_name,
+        branch_field,
+        program_id,
+        programs ( name, code, degree_level )
+      `)
       .or(`user_id.eq.${user.sub},id.eq.${user.sub}`)
       .maybeSingle();
 
@@ -95,6 +145,7 @@ export async function startHandler(context: AuthenticatedContext) {
           learner_id: learnerId,
           grade_level: gradeLevel,
           stream_id: streamId || null,
+          learner_context: buildLearnerContext(learnerData, streamId || null),
           status: 'in_progress',
           all_responses: {},
           timer_remaining: null,

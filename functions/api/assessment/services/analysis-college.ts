@@ -8,6 +8,137 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { RIASECScores, AdaptiveAptitudeData } from '../types';
 import { getTopCategories, getTopScores } from '../lib/analysis-helpers';
+import { generateCollegeCareerClusters } from './career-cluster-generator';
+import { generateCollegeSynthesis } from './college-analysis-generator';
+import type { StudentProfile } from './scoring-service';
+
+/**
+ * Flatten adaptive `accuracy_by_subtag` ({ subtag: { accuracy } }) into { subtag: number }
+ * (0-100) for the scoring service. (Same shape fix as middle school.)
+ */
+function flattenAccuracyBySubtag(
+  raw: Record<string, any> | null | undefined
+): Record<string, number> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === 'number') out[k] = v;
+    else if (v && typeof v === 'object' && typeof v.accuracy === 'number') out[k] = v.accuracy;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+interface StreamMcqScores {
+  streamAptitudeScore: number | null;     // 0-100 overall
+  streamAptitudeDetails: any | null;       // { score, correctCount, totalQuestions, byDifficulty }
+  knowledgeScore: number | null;           // 0-100 overall
+  knowledgeDetails: any | null;            // { score, correctCount, totalQuestions, byTopic, strongTopics, weakTopics, recommendation }
+}
+
+/**
+ * Score the AI-generated stream MCQ answers (aptitude + knowledge). These questions live in
+ * career_assessment_ai_questions (questions JSONB array); each has an id/uuid that matches a
+ * key in all_responses, and a `correct_answer` (option TEXT) to compare the stored answer to.
+ *
+ * Aptitude: overall % + byDifficulty breakdown (difficulty is reliable; category is AI-mislabeled,
+ * so it is intentionally NOT bucketed). Knowledge: overall %.
+ */
+async function scoreStreamMcq(
+  supabase: any,
+  learnerId: string,
+  allResponses: Record<string, any>
+): Promise<StreamMcqScores> {
+  const { data: sets } = await supabase
+    .from('career_assessment_ai_questions')
+    .select('question_type, questions')
+    .eq('learner_id', learnerId)
+    .eq('is_active', true);
+
+  const apt = { correct: 0, total: 0, byDiff: {} as Record<string, { correct: number; total: number }> };
+  const know = { correct: 0, total: 0, byTopic: {} as Record<string, { correct: number; total: number }> };
+
+  // Resolve any value to its FULL option text using the question's options list, then compare
+  // full strings. The stored answer is the full option text ("A. To provide ..."), while
+  // correct_answer is usually the letter ("A") — resolving both to the full option makes them
+  // comparable. Handles letter ("A"), prefixed ("A.", "A)"), and already-full-text values.
+  const toFullOption = (v: any, options: any): string => {
+    const s = String(v ?? '').trim();
+    const opts: string[] = Array.isArray(options) ? options.map((o) => String(o).trim()) : [];
+    const exact = opts.find((o) => o.toLowerCase() === s.toLowerCase());
+    if (exact) return exact.toLowerCase();
+    const m = s.match(/^([A-Za-z])(?:[.).:\s]|$)/);
+    if (m && opts.length) {
+      const opt = opts.find((o) => new RegExp(`^${m[1]}[.).:\\s]`, 'i').test(o));
+      if (opt) return opt.toLowerCase();
+    }
+    return s.toLowerCase();
+  };
+
+  for (const row of sets || []) {
+    let qs = row.questions;
+    if (typeof qs === 'string') { try { qs = JSON.parse(qs); } catch { qs = []; } }
+    if (!Array.isArray(qs)) continue;
+
+    for (const q of qs) {
+      const qid = q.id || q.uuid;
+      if (qid == null || !(qid in allResponses)) continue;
+      const isCorrect = toFullOption(allResponses[qid], q.options) === toFullOption(q.correct_answer, q.options);
+
+      if (row.question_type === 'aptitude') {
+        apt.total++; if (isCorrect) apt.correct++;
+        const d = (q.difficulty || 'unknown').toLowerCase();
+        (apt.byDiff[d] ||= { correct: 0, total: 0 }).total++;
+        if (isCorrect) apt.byDiff[d].correct++;
+      } else if (row.question_type === 'knowledge') {
+        know.total++; if (isCorrect) know.correct++;
+        // Knowledge questions carry meaningful skill_tag topics (Web Development, OS, …).
+        const topic = q.skill_tag || q.category || 'General';
+        (know.byTopic[topic] ||= { correct: 0, total: 0 }).total++;
+        if (isCorrect) know.byTopic[topic].correct++;
+      }
+    }
+  }
+
+  const pct = (c: number, t: number) => (t > 0 ? Math.round((c / t) * 100) : 0);
+
+  const streamAptitudeScore = apt.total > 0 ? pct(apt.correct, apt.total) : null;
+  const streamAptitudeDetails = apt.total > 0
+    ? {
+        score: streamAptitudeScore,
+        correctCount: apt.correct,
+        totalQuestions: apt.total,
+        byDifficulty: Object.fromEntries(
+          Object.entries(apt.byDiff).map(([k, v]) => [
+            k,
+            { correct: v.correct, total: v.total, percentage: pct(v.correct, v.total) },
+          ])
+        ),
+      }
+    : null;
+
+  const knowledgeScore = know.total > 0 ? pct(know.correct, know.total) : null;
+  const byTopic = Object.fromEntries(
+    Object.entries(know.byTopic).map(([k, v]) => [k, { correct: v.correct, total: v.total, percentage: pct(v.correct, v.total) }])
+  );
+  // Strong = fully correct topics; weak = topics with at least one wrong answer.
+  const strongTopics = Object.entries(byTopic).filter(([, v]: any) => v.percentage >= 100).map(([k]) => k);
+  const weakTopics = Object.entries(byTopic).filter(([, v]: any) => v.percentage < 50).map(([k]) => k);
+  const knowledgeDetails = know.total > 0
+    ? {
+        score: knowledgeScore,
+        correctCount: know.correct,
+        totalQuestions: know.total,
+        byTopic,
+        strongTopics,
+        weakTopics,
+        recommendation: weakTopics.length
+          ? `Strengthen these areas: ${weakTopics.join(', ')}.`
+          : 'Solid domain knowledge across the assessed topics.',
+      }
+    : null;
+
+  return { streamAptitudeScore, streamAptitudeDetails, knowledgeScore, knowledgeDetails };
+}
 
 async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
   const { data: session } = await supabase
@@ -37,7 +168,7 @@ export async function analyzeCollege(
     // Step 1: Fetch attempt with all_responses
     const { data: attempt, error: attemptError } = await supabase
       .from('personal_assessment_attempts')
-      .select('id, all_responses, grade_level, stream_id, started_at, adaptive_aptitude_session_id')
+      .select('id, all_responses, grade_level, stream_id, learner_context, started_at, adaptive_aptitude_session_id')
       .eq('id', attemptId)
       .eq('learner_id', learnerId)
       .single();
@@ -104,6 +235,17 @@ export async function analyzeCollege(
       C: 'conventional',
     };
 
+    // Track how many Likert questions contributed to each type, so the summed ratings can be
+    // converted to a 0-100 percentage (sum ÷ (count × 5)) for the match scorer.
+    const riasecCounts: RIASECScores = {
+      realistic: 0,
+      investigative: 0,
+      artistic: 0,
+      social: 0,
+      enterprising: 0,
+      conventional: 0,
+    };
+
     // Step 4: Calculate Big Five scores from bigfive section
     const bigFiveScores: Record<string, number[]> = {
       openness: [],
@@ -111,6 +253,15 @@ export async function analyzeCollege(
       extraversion: [],
       agreeableness: [],
       neuroticism: [],
+    };
+
+    // Big Five dimension is stored in category_mapping.type as a single letter (O/C/E/A/N).
+    const BIGFIVE_LETTER_MAP: Record<string, string> = {
+      O: 'openness',
+      C: 'conscientiousness',
+      E: 'extraversion',
+      A: 'agreeableness',
+      N: 'neuroticism',
     };
 
     // Step 5: Calculate Values scores from values section
@@ -134,27 +285,38 @@ export async function analyzeCollege(
 
       const sectionName = sectionMap.get(question.section_id);
 
-      // Process RIASEC section
+      // Process RIASEC section. College uses a LIKERT form: category_mapping = { type: 'R' }
+      // and the answer is a 1-5 rating → add the rating to that letter. (Middle school uses an
+      // option-text → letter map with a count; both shapes handled here.)
       if (sectionName === 'riasec' && question.category_mapping && typeof question.category_mapping === 'object') {
         const mapping = question.category_mapping as Record<string, string>;
-        const answerArray = Array.isArray(answer) ? answer : [answer];
-
-        for (const selectedOption of answerArray) {
-          if (selectedOption && typeof selectedOption === 'string') {
-            const letter = mapping[selectedOption];
-            if (letter && RIASEC_LETTER_MAP[letter]) {
-              riasecScores[RIASEC_LETTER_MAP[letter]] += 1;
+        if (typeof mapping.type === 'string' && typeof answer === 'number') {
+          // Likert: one tagged letter, rating accumulates the interest strength.
+          const key = RIASEC_LETTER_MAP[mapping.type];
+          if (key) {
+            riasecScores[key] += answer;
+            riasecCounts[key] += 1;
+          }
+        } else {
+          // Option-text → letter, counted.
+          const answerArray = Array.isArray(answer) ? answer : [answer];
+          for (const selectedOption of answerArray) {
+            if (selectedOption && typeof selectedOption === 'string') {
+              const letter = mapping[selectedOption];
+              if (letter && RIASEC_LETTER_MAP[letter]) {
+                riasecScores[RIASEC_LETTER_MAP[letter]] += 1;
+              }
             }
           }
         }
       }
 
-      // Process Big Five section
-      if (sectionName === 'bigfive' && question.metadata && typeof answer === 'number') {
-        const metadata = question.metadata as any;
-        const dimension = metadata.dimension || metadata.big_five_dimension;
-        if (dimension && bigFiveScores[dimension.toLowerCase()]) {
-          bigFiveScores[dimension.toLowerCase()].push(answer);
+      // Process Big Five section — dimension letter (O/C/E/A/N) is in category_mapping.type
+      if (sectionName === 'bigfive' && typeof answer === 'number') {
+        const letter = (question.category_mapping as any)?.type;
+        const dimension = letter ? BIGFIVE_LETTER_MAP[letter] : undefined;
+        if (dimension && bigFiveScores[dimension]) {
+          bigFiveScores[dimension].push(answer);
         }
       }
 
@@ -170,10 +332,10 @@ export async function analyzeCollege(
         }
       }
 
-      // Process Employability section
-      if (sectionName === 'employability' && question.metadata && typeof answer === 'number') {
-        const metadata = question.metadata as any;
-        const skillType = metadata.skill_type || metadata.employability_skill;
+      // Process Employability section — skill type is in category_mapping.type
+      if (sectionName === 'employability' && typeof answer === 'number') {
+        const skillType = (question.category_mapping as any)?.type
+          || (question.metadata as any)?.skill_type;
         if (skillType) {
           if (!employabilityScores[skillType]) {
             employabilityScores[skillType] = [];
@@ -290,10 +452,53 @@ export async function analyzeCollege(
       }
     }
 
-    // Step 14: Build profile snapshot
+    // Step 13b: Score AI-generated stream MCQ (aptitude + knowledge). These are the real
+    // stream aptitude/knowledge scores; the section-based aptitude/knowledgePercentage above
+    // are ~null for college (those questions are AI-generated, not in the sections table).
+    const streamMcq = await scoreStreamMcq(supabase, learnerId, allResponses);
+    const effectiveKnowledgeScore = streamMcq.knowledgeScore ?? knowledgePercentage;
+
+    // Step 13c: RIASEC top categories / code (needed by synthesis, snapshot, and clusters).
     const topCategories = getTopCategories(riasecScores);
     const riasecCode = topCategories.map((c) => c[0]).join('');
 
+    // Convert the Likert sums to 0-100 percentages (sum ÷ (count × 5)) for the match scorer.
+    // The raw sums are still stored for the UI; the scorer's hexagon Interest Fit needs 0-100.
+    const riasecPercentages: Record<string, number> = {};
+    for (const key of Object.keys(riasecScores) as Array<keyof RIASECScores>) {
+      const count = riasecCounts[key];
+      riasecPercentages[key] = count > 0 ? Math.round((riasecScores[key] / (count * 5)) * 100) : 0;
+    }
+
+    // Step 13d: Build the student profile once (shared by synthesis + cluster generation).
+    const studentProfile: StudentProfile = {
+      riasec_scores: riasecPercentages,
+      riasec_code: riasecCode,
+      strength_scores: [], // college has no character strengths section (uses Big Five)
+      aptitude_overall: aptitudeOverall != null ? aptitudeOverall / 100 : undefined,
+      accuracy_by_subtag: flattenAccuracyBySubtag(adaptiveData?.accuracyBySubtag as any),
+      big_five_scores: bigFiveAggregated,
+      work_values: valuesAggregated,
+      knowledge_score: effectiveKnowledgeScore ?? undefined,
+      stream:
+        (attempt.learner_context as any)?.programName ||
+        (attempt.learner_context as any)?.selectedStream ||
+        attempt.stream_id ||
+        undefined,
+      degreeLevel: (attempt.learner_context as any)?.degreeLevel || undefined,
+    };
+    const narrativeContext = { adaptive: adaptiveData as any, reflections: [] as any[] };
+
+    // Step 13e: AI profile synthesis — narrative report sections + a profileNarrative reused
+    // in the RAG query. LLM does NOT pick/score/rank occupations (deterministic). Non-fatal.
+    const synthesis = await generateCollegeSynthesis(
+      studentProfile,
+      narrativeContext,
+      { employabilityScores: employabilityAggregated, streamAptitude: streamMcq.streamAptitudeDetails },
+      context.env as Record<string, string>
+    );
+
+    // Step 14: Build profile snapshot
     const profileSnapshot = {
       grade_level: attempt.grade_level,
       stream_id: attempt.stream_id,
@@ -303,8 +508,8 @@ export async function analyzeCollege(
       top_big_five: getTopScores(bigFiveAggregated, 3),
       top_values: getTopScores(valuesAggregated, 3),
       top_employability: getTopScores(employabilityAggregated, 3),
-      aptitude_percentage: aptitudePercentage,
-      knowledge_percentage: knowledgePercentage,
+      stream_aptitude_percentage: streamMcq.streamAptitudeScore,
+      knowledge_percentage: effectiveKnowledgeScore,
     };
 
     // Step 15: Validate results before storing - prevent empty data insertion
@@ -331,15 +536,23 @@ export async function analyzeCollege(
           stream_id: attempt.stream_id || 'general',
           riasec_scores: riasecScores,
           riasec_code: riasecCode,
-          big_five_scores: bigFiveAggregated,
-          values_scores: valuesAggregated,
+          bigfive_scores: bigFiveAggregated,
+          work_values_scores: valuesAggregated,
           employability_scores: employabilityAggregated,
           aptitude_scores: adaptiveData,
           aptitude_overall: aptitudeOverall,
-          stream_aptitude_score: aptitudePercentage,
-          stream_knowledge_score: knowledgePercentage,
+          stream_aptitude_score: streamMcq.streamAptitudeScore,
+          stream_aptitude_details: streamMcq.streamAptitudeDetails,
+          knowledge_score: effectiveKnowledgeScore,
+          knowledge_details: streamMcq.knowledgeDetails,
           adaptive_aptitude_session_id: resolvedSessionId,
           profile_snapshot: profileSnapshot,
+          // AI profile-synthesis narrative columns (LLM-generated, non-fatal if synthesis failed)
+          employability_readiness: synthesis?.employability?.overallReadiness ?? null,
+          skill_gap: synthesis?.skillGap ?? null,
+          roadmap: synthesis?.roadmap ?? null,
+          final_note: synthesis?.finalNote ?? null,
+          overall_summary: synthesis?.overallSummary ?? null,
           created_at: new Date().toISOString(),
         },
         { onConflict: 'attempt_id' }
@@ -368,6 +581,37 @@ export async function analyzeCollege(
       }
     }
 
+    // Step 18: Generate career clusters (deterministic 5-component scoring + RAG re-rank +
+    // OpenRouter narrative). The RAG query is the structured signals + the synthesis
+    // profileNarrative. Then merge synthesis sections + careerFit into gemini_results. Non-fatal.
+    let careerFit: { clusters: unknown[]; specificOptions?: unknown } | null = null;
+    try {
+      careerFit = await generateCollegeCareerClusters(
+        supabase,
+        studentProfile,
+        context.env as Record<string, string>,
+        { ...narrativeContext, profileNarrative: synthesis?.profileNarrative }
+      );
+
+      // gemini_results holds ONLY what has no dedicated column:
+      //  - careerFit (the report reads clusters from gemini_results.careerFit)
+      //  - profileNarrative (no column)
+      // skillGap / roadmap / finalNote / overallSummary / employability_readiness /
+      // knowledge live in their own columns — do NOT duplicate them here.
+      const mergedGemini: Record<string, unknown> = {};
+      if (synthesis?.profileNarrative) mergedGemini.profileNarrative = synthesis.profileNarrative;
+      if (careerFit) mergedGemini.careerFit = careerFit;
+      const { error: geminiUpdateError } = await supabase
+        .from('personal_assessment_results')
+        .update({ gemini_results: mergedGemini })
+        .eq('attempt_id', attemptId);
+      if (geminiUpdateError) {
+        console.error('[ANALYZE-COLLEGE] Failed to store gemini_results:', geminiUpdateError.message);
+      }
+    } catch (clusterError) {
+      console.error('[ANALYZE-COLLEGE] Career cluster generation failed (non-fatal):', clusterError);
+    }
+
     return Response.json(
       {
         success: true,
@@ -381,6 +625,7 @@ export async function analyzeCollege(
         adaptiveData,
         aptitudeOverall,
         adaptiveSessionId: resolvedSessionId,
+        careerFit,
         profileSnapshot,
       },
       { status: 200 }

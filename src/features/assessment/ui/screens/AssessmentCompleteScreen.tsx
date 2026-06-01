@@ -55,7 +55,7 @@ export const AssessmentCompleteScreen: React.FC<AssessmentCompleteScreenProps> =
         {/* Action Buttons */}
         <div className="space-y-3">
           <button
-            onClick={() => navigate(`/assessment/result?attemptId=${attemptId}`)}
+            onClick={() => navigate(`/learner/assessment/result?attemptId=${attemptId}`)}
             className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105"
           >
             View Results

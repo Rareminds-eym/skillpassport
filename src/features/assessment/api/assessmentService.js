@@ -362,7 +362,6 @@ export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId)
     });
 
     // Get auth token
-    const user = useAuthStore.getState().user;
     const token = ssoClient.getAccessToken();
 
     if (!token) {
@@ -1056,6 +1055,23 @@ export const getlearnerAttempts = async (learnerId) => {
  * Get a specific attempt with full results
  * @param {string} attemptId - Attempt UUID
  */
+/**
+ * Get the analysis result for an attempt via the backend Pages Function.
+ * Backend verifies ownership and returns { result, attempt, learnerInfo }.
+ * @param {string} attemptId
+ * @returns {Promise<{success:boolean,hasResult:boolean,result:object|null,attempt:object,learnerInfo:object}>}
+ */
+export const getResult = async (attemptId) => {
+  const response = await ssoClient.fetch(`/api/assessment/result?attemptId=${encodeURIComponent(attemptId)}`, {
+    method: 'GET',
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Failed to load result (${response.status})`);
+  }
+  return response.json();
+};
+
 export const getAttemptWithResults = async (attemptId) => {
   // 🔧 CRITICAL FIX: Join with personal_assessment_results to get the result record
   const { data, error } = await supabase

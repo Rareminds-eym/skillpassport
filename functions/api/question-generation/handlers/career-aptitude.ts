@@ -454,16 +454,18 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
     
     console.log('🧠 ============================================');
 
-    // Use sequential numeric IDs for consistency with answer storage
-    // Format: 1, 2, 3, ... (not UUIDs) so answers can be matched
-    const processedQuestions = uniqueQuestions.map((q: any, index: number) => ({
-        ...q,
-        id: index + 1, // Sequential numeric ID
-        uuid: generateUUID(), // Keep UUID for database uniqueness
-        stream_id: streamId,
-        grade_level: gradeLevel || 'general',
-        created_at: new Date().toISOString()
-    }));
+    // Use UUIDs for all question IDs (required for database consistency)
+    const processedQuestions = uniqueQuestions.map((q: any) => {
+        const questionUuid = generateUUID();
+        return {
+            ...q,
+            id: questionUuid, // Use UUID as the ID
+            uuid: questionUuid, // Keep UUID field for consistency
+            stream_id: streamId,
+            grade_level: gradeLevel || 'general',
+            created_at: new Date().toISOString()
+        };
+    });
 
     if (learnerId && attemptId) {
         // Use upsert to handle potential race conditions or re-generation

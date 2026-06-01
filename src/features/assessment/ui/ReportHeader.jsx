@@ -7,10 +7,6 @@ import { formatStreamId } from '@/shared/lib/utils/formatters';
 import { isCollegeLearner as checkIsCollegeLearner } from '@/entities/learner/lib/learnerType';
 
 const ReportHeader = ({ learnerInfo, gradeLevel }) => {
-    // Debug
-    console.log('ReportHeader gradeLevel:', gradeLevel);
-    console.log('ReportHeader learnerInfo:', learnerInfo);
-
     // Format stream display name
     const formatStreamDisplay = (stream) => {
         if (!stream || stream === '—') return '—';
@@ -131,6 +127,22 @@ const ReportHeader = ({ learnerInfo, gradeLevel }) => {
     const institutionLabel = getInstitutionLabel();
     const rollNumberLabel = getRollNumberLabel();
 
+    // Human-readable grade-level category for the "Level" field.
+    const getGradeLevelDisplay = () => {
+        const level = gradeLevel?.toLowerCase();
+        const labels = {
+            middle: 'Middle School',
+            middleschool: 'Middle School',
+            high: 'High School',
+            highschool: 'High School',
+            higher_secondary: 'Higher Secondary',
+            after10: 'After 10th',
+            after12: 'After 12th',
+            college: 'College',
+        };
+        return labels[level] || '—';
+    };
+
     // Determine the stream/level label based on grade level
     const getStreamLabel = () => {
         const level = gradeLevel?.toLowerCase();
@@ -141,10 +153,19 @@ const ReportHeader = ({ learnerInfo, gradeLevel }) => {
         return 'Programme/Stream';
     };
 
+    // College "Level" field shows the grade-level category; others show the stream.
+    const getStreamValue = () => {
+        const level = gradeLevel?.toLowerCase();
+        if (level === 'college' || level === 'university') {
+            return getGradeLevelDisplay();
+        }
+        return formatStreamId(learnerInfo.stream || learnerInfo.branchField) || '—';
+    };
+
     const infoItems = [
         { label: 'Learner Name', value: learnerInfo.name },
         { label: rollNumberLabel, value: learnerInfo.regNo },
-        { label: getStreamLabel(), value: formatStreamId(learnerInfo.stream || learnerInfo.branchField) || '—' },
+        { label: getStreamLabel(), value: getStreamValue() },
         { label: gradeCourseField.label, value: gradeCourseField.value },
         { label: institutionLabel, value: (learnerInfo.college && learnerInfo.college !== '—') ? learnerInfo.college : learnerInfo.school, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },
