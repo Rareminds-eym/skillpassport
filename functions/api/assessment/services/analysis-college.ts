@@ -268,7 +268,12 @@ export async function analyzeCollege(
     const valuesScores: Record<string, number[]> = {};
 
     // Step 6: Calculate Employability scores from employability section
+    // Part A (likert, 1-5) → per-skill self-ratings. Part B (sjt) → situational judgment:
+    // the chosen option is graded best=1.0 / worst=0.0 / neutral=0.5 and folded into an
+    // overall SJT score so behaviour (not just self-rating) contributes to employability.
     const employabilityScores: Record<string, number[]> = {};
+    let sjtCredits = 0;
+    let sjtCount = 0;
 
     // Step 7: Process aptitude scores (stream-based aptitude)
     let aptitudeCorrect = 0;
@@ -332,7 +337,7 @@ export async function analyzeCollege(
         }
       }
 
-      // Process Employability section — skill type is in category_mapping.type
+      // Process Employability section — Part A (likert): skill type is in category_mapping.type
       if (sectionName === 'employability' && typeof answer === 'number') {
         const skillType = (question.category_mapping as any)?.type
           || (question.metadata as any)?.skill_type;
@@ -342,6 +347,22 @@ export async function analyzeCollege(
           }
           employabilityScores[skillType].push(answer);
         }
+      }
+
+      // Process Employability section — Part B (sjt): the answer is a { best, worst } object.
+      // Award 0.5 for correctly identifying the best response and 0.5 for the worst, against
+      // the keys stored in category_mapping → 0.0–1.0 credit per scenario.
+      if (sectionName === 'employability' && question.question_type === 'sjt'
+          && answer && typeof answer === 'object' && !Array.isArray(answer)) {
+        const mapping = (question.category_mapping as any) || {};
+        const sjtAnswer = answer as { best?: string; worst?: string };
+        const best = typeof mapping.best === 'string' ? mapping.best.trim() : undefined;
+        const worst = typeof mapping.worst === 'string' ? mapping.worst.trim() : undefined;
+        let credit = 0;
+        if (best && typeof sjtAnswer.best === 'string' && sjtAnswer.best.trim() === best) credit += 0.5;
+        if (worst && typeof sjtAnswer.worst === 'string' && sjtAnswer.worst.trim() === worst) credit += 0.5;
+        sjtCredits += credit;
+        sjtCount += 1;
       }
 
       // Process Aptitude section (stream-based aptitude)
@@ -377,12 +398,19 @@ export async function analyzeCollege(
       }
     }
 
-    // Step 11: Aggregate Employability scores
+    // Step 11: Aggregate Employability scores on a 0-100 scale.
+    // Per-skill self-ratings (1-5) are normalized: (avg ÷ 5) × 100. The SJT credits (0-1 each)
+    // are averaged and scaled the same way, then stored as an "SJT" dimension so situational
+    // judgment is part of the employability score alongside the self-rated skills.
     const employabilityAggregated: Record<string, number> = {};
     for (const [skillType, ratings] of Object.entries(employabilityScores)) {
       if (ratings.length > 0) {
-        employabilityAggregated[skillType] = Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 100) / 100;
+        const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+        employabilityAggregated[skillType] = Math.round((avg / 5) * 100);
       }
+    }
+    if (sjtCount > 0) {
+      employabilityAggregated.SJT = Math.round((sjtCredits / sjtCount) * 100);
     }
 
     // Step 12: Calculate aptitude and knowledge percentages

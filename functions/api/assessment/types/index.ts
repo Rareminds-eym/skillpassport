@@ -189,6 +189,8 @@ export interface AssessmentQuestion {
   id: string;
   text: string;
   type: 'mcq' | 'rating' | 'multiselect' | 'text' | 'sjt' | 'likert';
+  partType?: 'sjt';
+  scenario?: string;
   order: number;
   options?: unknown;
   maxSelections?: number;

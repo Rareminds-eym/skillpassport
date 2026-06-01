@@ -30,6 +30,8 @@ STRICT RULES:
 - The 3 clusters must be in genuinely DIFFERENT industries/domains.
 - Write for a college-age reader: specific, professional, oriented to near-term entry and growth.
 - Ground every claim in the student's actual signals (RIASEC, Big Five, work values, knowledge, aptitude, employability).
+- TRANSLATE scores into plain meaning — write "your openness to new experiences" or "strong people skills", NEVER raw numbers like "openness (3.33)" or "social score 32". No digits/percentages in narrative fields.
+- Write narrative fields (whyItFits, derivation, description, evidence) in a warm, learner-facing voice. whyItFits is SECOND person ("You..."); other fields may use "the learner".
 - Order the 3 clusters best-fit first (cluster 1 = strongest fit, cluster 3 = exploratory).
 
 Return ONLY valid JSON in this exact shape:
@@ -38,17 +40,17 @@ Return ONLY valid JSON in this exact shape:
     {
       "occupationIds": ["<id from the provided list>", "..."],
       "title": "<specific career domain name>",
-      "derivation": "<how their RIASEC + Big Five + work values + aptitude point here>",
-      "description": "<2-3 sentences on the field and why it fits this student>",
+      "derivation": "<how their interests, personality, values and aptitude point here — plain language>",
+      "description": "<2-3 sentences on the field and why it fits this learner>",
       "whatYoullDo": "<realistic day-to-day for these roles>",
-      "whyItFits": "<connect their specific scores/traits/values>",
+      "whyItFits": "<2-3 sentences, second person ('You're a strong fit because...'), connecting their strengths, traits and values to this field in PLAIN language — no raw scores or numbers>",
       "evidence": {
-        "interest": "<RIASEC evidence citing their scores>",
-        "aptitude": "<aptitude/knowledge evidence>",
-        "personality": "<Big Five evidence>",
-        "values": "<work-values evidence>",
-        "employability": "<employability-skills evidence>",
-        "adaptiveAptitude": "<adaptive aptitude evidence>"
+        "interest": "<how their interests align — plain language>",
+        "aptitude": "<how their aptitude/knowledge align>",
+        "personality": "<how their personality traits align>",
+        "values": "<how their work values align>",
+        "employability": "<how their employability skills align>",
+        "adaptiveAptitude": "<adaptive aptitude alignment, if available>"
       },
       "roles": { "entry": ["<entry-level titles>"], "mid": ["<mid-career titles>"] },
       "domains": ["<related industries>"],

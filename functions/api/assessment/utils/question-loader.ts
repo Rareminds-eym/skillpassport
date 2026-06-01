@@ -392,10 +392,24 @@ function mapQuestions(questions: any[]): AssessmentQuestion[] {
       }
     }
 
+    // SJT (situational judgment) questions are rendered with a best/worst picker, not a
+    // Likert scale. The client routes on `partType === 'sjt'`, so surface it here along with
+    // the scenario text stored in category_mapping.
+    let categoryMapping = q.category_mapping;
+    if (typeof categoryMapping === 'string') {
+      try {
+        categoryMapping = JSON.parse(categoryMapping);
+      } catch (e) {
+        categoryMapping = undefined;
+      }
+    }
+    const isSjt = q.question_type === 'sjt';
+
     return {
       id: q.id,
       text: q.question_text,
       type: q.question_type,
+      ...(isSjt ? { partType: 'sjt', scenario: categoryMapping?.scenario } : {}),
       order: q.order_number,
       options: q.options ? (typeof q.options === 'string' ? JSON.parse(q.options) : q.options) : [],
       maxSelections,

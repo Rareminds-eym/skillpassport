@@ -18,7 +18,7 @@
 
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
-import { callOpenRouterWithRetry, getAPIKeys, MODEL_PROFILES } from '../shared/ai-config';
+import { callOpenRouterWithRetry, getAPIKeys, MODEL_PROFILES, repairAndParseJSON } from '../shared/ai-config';
 import { createClient } from '@supabase/supabase-js';
 import { handleCourseMatching } from './handlers/course-matching';
 
@@ -112,13 +112,22 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         roleData = exploreLater.find((role: any) => role.name === roleName);
       }
 
-      if (!roleData || !roleData.roleOverview) {
-        console.log(`[Storage] Role "${roleName}" not found in any fit array or no roleOverview`);
+      // Treat as a cache MISS unless the stored overview actually contains generated content.
+      // The course-matcher writes only { matchedPlatformCourses } into this same field, so an
+      // object lacking `responsibilities` means the AI overview was never generated/stored —
+      // return exists:false so generateRoleOverview regenerates and the POST merges into it.
+      const overview = roleData?.roleOverview;
+      const hasOverviewContent = overview
+        && Array.isArray(overview.responsibilities)
+        && overview.responsibilities.length > 0;
+
+      if (!hasOverviewContent) {
+        console.log(`[Storage] Role "${roleName}" has no generated overview yet (cache miss)`);
         return jsonResponse({ exists: false, data: null }, 200);
       }
 
       console.log(`[Storage] ✅ Found roleOverview for: ${roleName}`);
-      return jsonResponse({ exists: true, data: roleData.roleOverview }, 200);
+      return jsonResponse({ exists: true, data: overview }, 200);
     }
 
     // Store role overview in DB
@@ -303,8 +312,7 @@ Return ONLY a JSON object with this EXACT structure (no markdown, no extra text)
       "duration": "4 weeks",
       "level": "Beginner" | "Intermediate" | "Advanced" | "Professional",
       "skills": ["Skill 1", "Skill 2", "Skill 3"]
-    },
-    // 3 more courses...
+    }
   ],
   "freeResources": [
     {
@@ -312,8 +320,7 @@ Return ONLY a JSON object with this EXACT structure (no markdown, no extra text)
       "description": "What this resource provides",
       "type": "YouTube" | "Documentation" | "Certification" | "Community" | "Tool",
       "url": "https://..."
-    },
-    // 2 more resources...
+    }
   ],
   "actionItems": [
     {"title": "Action 1", "description": "Specific action to take"},
@@ -328,12 +335,13 @@ Return ONLY a JSON object with this EXACT structure (no markdown, no extra text)
       "difficulty": "Beginner" | "Intermediate" | "Advanced",
       "skills": ["Skill 1", "Skill 2", "Skill 3"],
       "estimatedTime": "2-4 hours"
-    },
-    // 2 more projects...
+    }
   ]
 }
 
-CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic placeholders.`;
+CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic placeholders.
+Provide exactly 4 recommendedCourses, 3 freeResources, and 3 suggestedProjects.
+Return ONLY raw JSON — no comments, no trailing commas, no markdown fences.`;
 
       try {
         const content = await callOpenRouterWithRetry(openRouter, [
@@ -352,13 +360,13 @@ CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic plac
           temperature: 0.7,
         });
 
-        // Parse JSON response
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
+        // Parse JSON response. Use repairAndParseJSON (strips trailing commas, JS-style
+        // comments like "// 3 more courses...", and markdown fences) — raw JSON.parse fails on
+        // the trailing commas LLMs routinely emit, which silently dropped us to the fallback.
+        const parsed = repairAndParseJSON(content, true);
+        if (!parsed || typeof parsed !== 'object') {
           throw new Error('No JSON found in response');
         }
-
-        const parsed = JSON.parse(jsonMatch[0]);
 
         // Validate required fields
         if (!parsed.responsibilities || !Array.isArray(parsed.responsibilities)) {

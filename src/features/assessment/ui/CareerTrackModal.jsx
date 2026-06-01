@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar, Loader2 } from 'lucide-react';
 import { useRoleOverview } from '@/entities/user';
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
+import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counselling';
 import { supabase } from '@/shared/api/supabaseClient';
 import jsPDF from 'jspdf';
 
@@ -79,10 +80,10 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     };
 
     // Get AI-generated role overview (responsibilities + industry demand + career progression + learning roadmap + action items + suggested projects) in a single API call
-    console.log('[CareerTrackModal] attemptId prop:', attemptId);
     const { responsibilities, demandData, careerProgression, learningRoadmap, actionItems, suggestedProjects, loading: overviewLoading, error: overviewError } = useRoleOverview(
         selectedRole ? getRoleName(selectedRole) : null,
         selectedTrack.cluster?.title || '',
+        { generateRoleOverview, getFallbackRoleOverview },
         attemptId
     );
 

@@ -105,6 +105,24 @@ export async function startHandler(context: AuthenticatedContext) {
 
     const learnerId = learnerData!.id;
 
+    // Resolve the requested stream to a real personal_assessment_streams row. The frontend
+    // normalizes a program name to a stream id (e.g. hospitality "Hotel Management" → 'bhm')
+    // that may have no table row, which would violate the stream_id FK. Any unknown stream
+    // falls back to the generic 'college' stream. RAG steering is unaffected — career
+    // recommendations use learner_context.programName, not stream_id.
+    let effectiveStreamId: string | null = streamId || null;
+    if (effectiveStreamId) {
+      const { data: streamRow } = await supabase
+        .from('personal_assessment_streams')
+        .select('id')
+        .eq('id', effectiveStreamId)
+        .maybeSingle();
+      if (!streamRow) {
+        logger.warn('Unknown stream_id — falling back to college', { requestedStreamId: effectiveStreamId });
+        effectiveStreamId = 'college';
+      }
+    }
+
     // **CRITICAL: Check for existing in-progress attempt BEFORE creating new one**
     const { data: existingAttempts, error: existingError } = await supabase
       .from('personal_assessment_attempts')
@@ -120,7 +138,7 @@ export async function startHandler(context: AuthenticatedContext) {
     if (existingAttempts && existingAttempts.length > 0) {
       const existingAttempt = existingAttempts[0];
       const sameGrade = existingAttempt.grade_level === gradeLevel;
-      const sameStream = existingAttempt.stream_id === streamId || (streamId === null && existingAttempt.stream_id === null);
+      const sameStream = existingAttempt.stream_id === effectiveStreamId || (effectiveStreamId === null && existingAttempt.stream_id === null);
 
       if (sameGrade && sameStream) {
         attempt = existingAttempt;
@@ -144,8 +162,8 @@ export async function startHandler(context: AuthenticatedContext) {
         .insert({
           learner_id: learnerId,
           grade_level: gradeLevel,
-          stream_id: streamId || null,
-          learner_context: buildLearnerContext(learnerData, streamId || null),
+          stream_id: effectiveStreamId,
+          learner_context: buildLearnerContext(learnerData, effectiveStreamId),
           status: 'in_progress',
           all_responses: {},
           timer_remaining: null,
@@ -165,7 +183,7 @@ export async function startHandler(context: AuthenticatedContext) {
 
     let sections;
     try {
-      sections = await loadSectionsWithQuestions(supabase, gradeLevel, streamId, env);
+      sections = await loadSectionsWithQuestions(supabase, gradeLevel, effectiveStreamId, env);
       logger.info('Sections loaded successfully', { 
         sectionCount: sections?.length || 0,
         sectionNames: sections?.map((s: any) => s.name) || []

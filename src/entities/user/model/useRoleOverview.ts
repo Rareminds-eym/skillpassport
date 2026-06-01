@@ -150,14 +150,14 @@ export function useRoleOverview(
     // Check cache first
     const cached = checkCache(role, cluster);
     if (cached) {
-      setResponsibilities(cached.responsibilities);
-      setDemandData(cached.industryDemand);
-      setCareerProgression(cached.careerProgression);
-      setLearningRoadmap(cached.learningRoadmap);
-      setRecommendedCourses(cached.recommendedCourses);
-      setFreeResources(cached.freeResources);
-      setActionItems(cached.actionItems);
-      setSuggestedProjects(cached.suggestedProjects || []);
+      setResponsibilities(cached.responsibilities ?? []);
+      setDemandData(cached.industryDemand ?? null);
+      setCareerProgression(cached.careerProgression ?? []);
+      setLearningRoadmap(cached.learningRoadmap ?? []);
+      setRecommendedCourses(cached.recommendedCourses ?? []);
+      setFreeResources(cached.freeResources ?? []);
+      setActionItems(cached.actionItems ?? []);
+      setSuggestedProjects(cached.suggestedProjects ?? []);
       setLoading(false);
       setError(null);
       return;
@@ -170,14 +170,14 @@ export function useRoleOverview(
       const result = await counsellingAPI.generateRoleOverview(role, cluster, attempt);
 
       if (currentRequestRef.current === requestKey) {
-        setResponsibilities(result.responsibilities);
-        setDemandData(result.industryDemand);
-        setCareerProgression(result.careerProgression);
-        setLearningRoadmap(result.learningRoadmap);
-        setRecommendedCourses(result.recommendedCourses);
-        setFreeResources(result.freeResources);
-        setActionItems(result.actionItems);
-        setSuggestedProjects(result.suggestedProjects || []);
+        setResponsibilities(result.responsibilities ?? []);
+        setDemandData(result.industryDemand ?? null);
+        setCareerProgression(result.careerProgression ?? []);
+        setLearningRoadmap(result.learningRoadmap ?? []);
+        setRecommendedCourses(result.recommendedCourses ?? []);
+        setFreeResources(result.freeResources ?? []);
+        setActionItems(result.actionItems ?? []);
+        setSuggestedProjects(result.suggestedProjects ?? []);
         setCache(role, cluster, result, false); // Cache as real API data
         setLoading(false);
         setError(null);
@@ -188,15 +188,15 @@ export function useRoleOverview(
         setError(err instanceof Error ? err : new Error('Failed to generate role overview'));
 
         // Return fallback without exposing error to user
-        const fallback = counsellingAPI.getFallbackRoleOverview(role);
-        setResponsibilities(fallback.responsibilities);
-        setDemandData(fallback.industryDemand);
-        setCareerProgression(fallback.careerProgression);
-        setLearningRoadmap(fallback.learningRoadmap);
-        setRecommendedCourses(fallback.recommendedCourses);
-        setFreeResources(fallback.freeResources);
-        setActionItems(fallback.actionItems);
-        setSuggestedProjects(fallback.suggestedProjects || []);
+        const fallback = counsellingAPI.getFallbackRoleOverview(role) || {};
+        setResponsibilities(fallback.responsibilities ?? []);
+        setDemandData(fallback.industryDemand ?? null);
+        setCareerProgression(fallback.careerProgression ?? []);
+        setLearningRoadmap(fallback.learningRoadmap ?? []);
+        setRecommendedCourses(fallback.recommendedCourses ?? []);
+        setFreeResources(fallback.freeResources ?? []);
+        setActionItems(fallback.actionItems ?? []);
+        setSuggestedProjects(fallback.suggestedProjects ?? []);
         // Don't cache fallback data - we want to retry API next time
         setLoading(false);
       }
@@ -220,7 +220,10 @@ export function useRoleOverview(
     }
 
     fetchRoleOverview(roleName, clusterTitle, attemptId);
-  }, [roleName, clusterTitle, attemptId, fetchRoleOverview, counsellingAPI]);
+    // counsellingAPI is intentionally excluded: callers pass an inline { generateRoleOverview,
+    // getFallbackRoleOverview } object that is a new reference every render, which would cause an
+    // infinite fetch→setState→render loop. The functions themselves are stable module imports.
+  }, [roleName, clusterTitle, attemptId, fetchRoleOverview]);
 
   return {
     responsibilities,

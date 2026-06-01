@@ -45,16 +45,17 @@ Return ONLY valid JSON in this exact shape:
     "exposure": { "activities": ["<activity>"], "certifications": ["<cert>"] }
   },
   "finalNote": { "advantage": "<advantage>", "growthFocus": "<focus>", "nextReview": "<timeline>" },
-  "overallSummary": "<4 sentences (~60-80 words), written in the THIRD PERSON about the learner. Sentence 1: name their program and the 1-2 career directions they show strong potential for. Sentence 2: connect their specific strengths (e.g. communication, teamwork) and what they value to those directions. Sentence 3: name the ONE most important skill/area to develop and why it matters for those roles. Sentence 4: an honest readiness statement plus the single most useful next step (e.g. internships). Plain language — no scores, no RIASEC letters, no jargon.>"
+  "overallSummary": "<2-3 sentences (~40-50 words), THIRD PERSON about the learner. Sentence 1 MUST state their study level AND program/stream by name (e.g. 'an undergraduate pursuing Hospitality & Hotel Management') and the 1-2 career directions they show strong potential for, tied to a specific strength. Sentence 2: the ONE most important skill/area to develop. Optional Sentence 3: a short readiness statement + the single most useful next step. Plain language — no scores, no RIASEC letters, no jargon.>"
 }
 
 WRITING RULES FOR overallSummary:
-- Follow the 4-sentence structure exactly: program + direction → strengths/values alignment → key development area → readiness + next step.
-- Third person ("The learner is pursuing... Their strengths in...").
+- Keep it to 2-3 sentences, ~40-50 words. Be concise — no filler.
+- Third person ("The learner, an undergraduate pursuing...").
+- ALWAYS open by naming BOTH the study level (undergraduate / postgraduate) AND the exact program/stream name from the inputs. If the level is not specified, just name the program.
 - Translate scores into plain meaning (say "strengths in communication and teamwork" not "high employability score").
 - Be specific to THIS student — never a sentence that could apply to anyone.
-- Reference the actual program/stream name when available.
-- Model example (style only, do NOT copy content): "The learner is pursuing a Bachelor of Commerce and shows strong potential for roles in business analysis and marketing. Their strengths in communication and teamwork, combined with a desire for impactful work, align well with these career paths. Developing numerical skills will be crucial for their success in analytical roles. Overall, they are well-prepared for entry-level positions and should seek internships to gain practical experience."
+- Derive the program, level, directions, strengths and gaps ENTIRELY from the inputs below. Do NOT assume any field — the example uses placeholders, not real values.
+- Structure (style only — fill placeholders from the actual inputs, do NOT copy any field): "The learner, [a/an] [study level] pursuing [program name], shows strong potential in [career direction(s) implied by their scores], supported by [their top strengths]. Building stronger [key gap] is their next step. They are [readiness] for entry-level roles and should [single most useful next step]."
 
 Ground every statement in the scores provided. Be specific and professional.`;
 
@@ -77,7 +78,7 @@ RIASEC code: ${student.riasec_code}
 RIASEC scores: ${JSON.stringify(student.riasec_scores)}
 Big Five (1-5): ${JSON.stringify(student.big_five_scores || {})}
 Work values (1-5): ${JSON.stringify(student.work_values || {})}
-Employability skills (1-5): ${JSON.stringify(extras.employabilityScores || {})}
+Employability skills (0-100, includes an SJT situational-judgment score): ${JSON.stringify(extras.employabilityScores || {})}
 Domain knowledge score: ${student.knowledge_score != null ? student.knowledge_score + '%' : 'n/a'}
 Stream aptitude: ${extras.streamAptitude ? JSON.stringify(extras.streamAptitude) : 'n/a'}
 Adaptive aptitude: overall ${adaptive?.overallAccuracy ?? 'n/a'}%, level ${adaptive?.aptitudeLevel ?? 'n/a'}, by area — ${aptByArea}

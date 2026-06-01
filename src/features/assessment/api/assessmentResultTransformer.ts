@@ -19,6 +19,29 @@ export const transformAptitudeScores = (dbAptitude) => {
     return null;
   }
 
+  // Adaptive-aptitude format (college): { accuracyBySubtag: { verbal_reasoning: { accuracy, ... } },
+  // overallAccuracy, ... }. Build the { scores, topStrengths, overallScore } shape the UI expects
+  // by treating each reasoning subtag's accuracy as its percentage.
+  if (dbAptitude.accuracyBySubtag && typeof dbAptitude.accuracyBySubtag === 'object') {
+    const titleCase = (s) => String(s).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    const entries = Object.entries(dbAptitude.accuracyBySubtag)
+      .map(([tag, v]) => [tag, typeof v === 'object' && v ? Number(v.accuracy) || 0 : Number(v) || 0]);
+
+    const scores = {};
+    entries.forEach(([tag, pct]) => { scores[titleCase(tag)] = { percentage: Math.round(pct) }; });
+
+    const topStrengths = entries
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([tag]) => titleCase(tag));
+
+    const overallScore = dbAptitude.overallAccuracy != null
+      ? Math.round(Number(dbAptitude.overallAccuracy))
+      : (entries.length ? Math.round(entries.reduce((s, [, p]) => s + p, 0) / entries.length) : null);
+
+    return { scores, topStrengths, overallScore };
+  }
+
   // Check if data is already in the correct format (test-based scores)
   // Format: { verbal: { total: 1, correct: 1, percentage: 100 }, ... }
   const hasTestBasedFormat = Object.keys(dbAptitude).some(key => 
@@ -424,7 +447,9 @@ export const transformAssessmentResults = (dbResults) => {
       // RIASEC from columns
       riasec: {
         scores: dbResults.riasec_scores || {},
-        topThree: dbResults.top_interests || [],
+        topThree: (dbResults.top_interests && dbResults.top_interests.length)
+          ? dbResults.top_interests
+          : (dbResults.riasec_code ? dbResults.riasec_code.split('').slice(0, 3) : []),
         maxScore: 20
       },
       
@@ -519,7 +544,11 @@ export const transformAssessmentResults = (dbResults) => {
     riasec: {
       scores: dbResults.riasec_scores || {},
       code: dbResults.riasec_code || null,
-      topThree: dbResults.top_interests || [],
+      // Prefer stored top_interests; otherwise derive the top three letters from the RIASEC code
+      // (e.g. "SAC" → ["S","A","C"]), which is what the new pipeline stores.
+      topThree: (dbResults.top_interests && dbResults.top_interests.length)
+        ? dbResults.top_interests
+        : (dbResults.riasec_code ? dbResults.riasec_code.split('').slice(0, 3) : []),
       maxScore: 20
     },
     
@@ -568,7 +597,11 @@ export const transformAssessmentResults = (dbResults) => {
     careerFit: dbResults.career_fit || geminiTransformed.careerFit || null,
 
     // ===== SKILL GAP =====
-    skillGap: dbResults.skill_gap || geminiTransformed.skillGap,
+    // The new pipeline stores strengths under `currentStrengths`; expose them also as `strengths`
+    // so consumers reading skillGap.strengths (e.g. the career-track modal) work.
+    skillGap: dbResults.skill_gap
+      ? { ...dbResults.skill_gap, strengths: dbResults.skill_gap.strengths || dbResults.skill_gap.currentStrengths || [] }
+      : geminiTransformed.skillGap,
 
     // ===== ROADMAP =====
     roadmap: dbResults.roadmap || geminiTransformed.roadmap,

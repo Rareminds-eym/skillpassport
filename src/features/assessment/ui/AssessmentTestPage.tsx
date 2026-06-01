@@ -1028,6 +1028,11 @@ const AssessmentTestPage: React.FC = () => {
         return selectedCount === currentQuestion.maxSelections;
       }
 
+      // SJT questions require BOTH a best and a worst selection to be complete.
+      if (currentQuestion?.partType === 'sjt' || currentQuestion?.type === 'sjt') {
+        return Boolean(answer?.best && answer?.worst);
+      }
+
       return hasAnswer;
     })();
 
