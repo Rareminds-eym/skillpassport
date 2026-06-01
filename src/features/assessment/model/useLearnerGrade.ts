@@ -10,10 +10,13 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { calculateMonthsInGrade, getGradeLevelFromGrade } from '../lib/gradeUtils';
 import { isCollegeLearner as checkIsCollegeLearner } from '@/entities/learner/lib/learnerType';
+import { getLogger } from '@/shared/config/logging';
 import type { GradeLevel } from '../model/types';
+
+const logger = getLogger('useLearnerGrade');
 
 interface LearnerGradeData {
   learnerId: string | null;
@@ -63,72 +66,31 @@ export const useLearnerGrade = ({ userId, userEmail }: UselearnerGradeOptions): 
       setLoading(true);
       setError(null);
 
-      // OPTIMIZED: Single query with OR condition to check both user_id and id
-      // Also fetch by email as fallback in the same query pattern
-      // Include user role from public.users table for learner type detection
-      // Include custom institution names (university, college_school_name) for profile completion check
-      const { data: learner, error: fetchError } = await supabase
-        .from('learners')
-        .select(`
-          id, 
-          user_id,
-          grade, 
-          grade_start_date, 
-          school_class_id, 
-          school_id, 
-          university_college_id, 
-          program_id, 
-          course_name, 
-          branch_field,
-          university,
-          college_school_name,
-          school_classes:school_class_id(grade, academic_year), 
-          program:program_id(name, code),
-          users!inner(role)
-        `)
-        .or(`user_id.eq.${userId}${userEmail ? `,email.eq.${userEmail}` : ''}`)
-        .maybeSingle();
+      const response = await ssoClient.fetch(`/api/learners/profile?user_id=${userId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-
-      if (fetchError) {
-        console.error('Error fetching learner grade:', fetchError);
-        setError(fetchError.message);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logger.error('Failed to fetch learner grade profile', errorData);
+        setError(errorData.error || 'Failed to fetch learner profile');
+        fetchComplete.current = true;
         return;
       }
 
+      const { learner } = await response.json();
+
       if (learner) {
-        // Log the fetched data for debugging
-        console.log('🔍 useLearnerGrade - Fetched learner data:', {
-          id: learner.id,
-          user_id: learner.user_id,
-          school_id: learner.school_id,
-          university_college_id: learner.university_college_id,
-          university: learner.university,
-          college_school_name: learner.college_school_name,
-          users: learner.users,
-          usersRole: (learner.users as any)?.role
-        });
-
-        // Extract role from the joined users table
-        // The join returns an array with one object
-        const userRole = Array.isArray(learner.users) && learner.users.length > 0
-          ? (learner.users[0] as any)?.role
-          : (learner.users as any)?.role;
-
-        // Store complete profile data for missing field analysis
-        // Include the extracted role at the top level for easier access
-        const profileDataWithRole = {
-          ...learner,
-          role: userRole
-        };
-        setProfileData(profileDataWithRole);
+        // Backend already extracts role and includes it at top level
+        setProfileData(learner);
 
         // Save learner ID
         setLearnerId(learner.id);
 
         // Check if learner is a college learner (using centralized utility)
-        // Pass the role to the utility for proper detection
-        const isCollege = checkIsCollegeLearner({ ...learner, role: userRole });
+        // Backend already includes role at top level
+        const isCollege = checkIsCollegeLearner(learner);
         setIsCollegeLearner(isCollege);
 
         // Set program name if available
@@ -170,7 +132,7 @@ export const useLearnerGrade = ({ userId, userEmail }: UselearnerGradeOptions): 
 
       fetchComplete.current = true;
     } catch (err) {
-      console.error('Error fetching learner grade:', err);
+      logger.error('Error fetching learner grade', err instanceof Error ? err : new Error(String(err)));
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);

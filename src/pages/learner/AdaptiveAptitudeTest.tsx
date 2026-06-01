@@ -1,9 +1,9 @@
 /**
- * Adaptive Aptitude Test Page Component
- * 
- * Main page for taking the adaptive aptitude test.
- * Reuses existing assessment UI components and wires up the useAdaptiveAptitude hook.
- * 
+ * Adaptive Aptitude Test Component
+ *
+ * Can be used as standalone page or embedded within AssessmentTestPage.
+ * Wires up the useAdaptiveAptitude hook for adaptive testing flow.
+ *
  * Requirements: 5.1
  */
 
@@ -33,10 +33,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/ui';
-import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
-
-import { useLearnerProfile } from '@/features/learner-profile';
-import { useLearnerDataByEmail } from '@/entities/learner';
+import { useAdaptiveAptitude } from '@/features/assessment/model';
+import { useLearnerGrade } from '@/features/assessment/model/useLearnerGrade';
 import { useAntiCheating } from '@/shared/lib/hooks';
 import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '@/shared/types/adaptiveAptitude';
 import { getLogger } from '@/shared/config/logging';
@@ -90,22 +88,41 @@ const CONFIDENCE_COLORS: Record<ConfidenceTag, { bg: string; text: string; borde
 // COMPONENT
 // =============================================================================
 
+interface AdaptiveAptitudeTestProps {
+  gradeLevel?: GradeLevel;
+  learnerId?: string;
+  onComplete?: (results: any) => void;
+}
+
 /**
- * Adaptive Aptitude Test Page
- * 
+ * Adaptive Aptitude Test Component
+ *
  * Provides the UI for taking an adaptive aptitude test that adjusts difficulty
  * based on learner performance.
+ *
+ * @param gradeLevel - Grade level for the test (optional, defaults from location state)
+ * @param onComplete - Callback when test completes (optional, defaults to navigate)
  */
-const AdaptiveAptitudeTest = () => {
+const AdaptiveAptitudeTest: React.FC<AdaptiveAptitudeTestProps> = ({
+  gradeLevel: propGradeLevel,
+  learnerId: propLearnerId,
+  onComplete: propOnComplete,
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useUser();
-  
-  // Get grade level from navigation state or default to high_school
-  const gradeLevel: GradeLevel = location.state?.gradeLevel || 'high_school';
-  
-  // Get learner data
-  const { learnerData, loading: learnerLoading } = useLearnerDataByEmail(user?.email || '', false);
+
+  // Get grade level from props, location state, or default
+  const gradeLevel: GradeLevel = propGradeLevel || location.state?.gradeLevel || 'high_school';
+
+  // Get learner data using proper userId lookup (same pattern as AssessmentTestPage)
+  // Only call hook if learnerId not provided as prop (embedded mode)
+  const { learnerId: hookLearnerId, loading: learnerLoading } = useLearnerGrade({
+    userId: propLearnerId ? undefined : user?.id
+  });
+
+  // Use provided learnerId or get from hook
+  const learnerId = propLearnerId || hookLearnerId;
   
   // Local state
   const [selectedAnswer, setSelectedAnswer] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
@@ -114,12 +131,14 @@ const AdaptiveAptitudeTest = () => {
   
   // Use the adaptive aptitude hook
   const {
+    sessionId,
     currentQuestion,
-    session,
-    progress,
     phase,
+    difficulty,
+    questionsAnswered,
+    correctAnswers,
+    abilityEstimate,
     loading,
-    submitting,
     error,
     isTestComplete,
     results,
@@ -129,10 +148,12 @@ const AdaptiveAptitudeTest = () => {
     // abandonTest is available for future use
     clearError,
   } = useAdaptiveAptitude({
-    learnerId: learnerData?.id || '',
+    learnerId: learnerId || '',
     gradeLevel,
     onTestComplete: (testResults) => {
       logger.info('Adaptive aptitude test completed', testResults);
+      // Call parent callback if provided (for embedded mode)
+      propOnComplete?.(testResults);
     },
     onError: (err) => {
       logger.error('Adaptive aptitude test error', err);
@@ -146,41 +167,45 @@ const AdaptiveAptitudeTest = () => {
   useEffect(() => {
     if (DEBUG_MODE) {
       logger.info('🔍 [AdaptiveAptitudeTest] Component State:', {
-        user: user?.email,
-        learnerData: learnerData ? { id: learnerData.id, email: learnerData.email } : null,
+        userId: user?.id,
+        learnerId,
         learnerLoading,
         gradeLevel,
         testInitialized,
         loading,
         error,
+        sessionId,
         currentQuestion: currentQuestion ? { id: currentQuestion.id, text: currentQuestion.text?.substring(0, 50) } : null,
-        session: session ? { id: session.id, phase: session.currentPhase, questionsAnswered: session.questionsAnswered } : null,
         phase,
+        difficulty,
+        questionsAnswered,
+        correctAnswers,
+        abilityEstimate,
         isTestComplete,
         results: results ? 'Available' : null,
       });
     }
-  }, [user, learnerData, learnerLoading, gradeLevel, testInitialized, loading, error, currentQuestion, session, phase, isTestComplete, results]);
+  }, [user, learnerId, learnerLoading, gradeLevel, testInitialized, loading, error, sessionId, currentQuestion, phase, difficulty, questionsAnswered, correctAnswers, abilityEstimate, isTestComplete, results]);
 
   // Initialize test when learner data is available
   useEffect(() => {
     const initializeTest = async () => {
       logger.info('initializeTest called', {
-        hasLearnerId: !!learnerData?.id,
-        learnerId: learnerData?.id,
+        hasLearnerId: !!learnerId,
+        learnerId,
         testInitialized,
         loading
       });
-      
-      if (learnerData?.id && !testInitialized && !loading) {
+
+      if (learnerId && !testInitialized && !loading) {
         logger.info('Starting test initialization');
         setTestInitialized(true);
-        
+
         try {
           logger.info('Checking for existing session');
           const hasExistingSession = await checkAndResumeSession();
           logger.info('Existing session check result', { hasExistingSession });
-          
+
           if (!hasExistingSession) {
             logger.info('No existing session, starting new test');
             await startTest();
@@ -193,7 +218,7 @@ const AdaptiveAptitudeTest = () => {
         }
       } else {
         logger.info('Waiting for conditions', {
-          hasLearnerId: !!learnerData?.id,
+          hasLearnerId: !!learnerId,
           testInitialized,
           loading,
         });
@@ -201,7 +226,7 @@ const AdaptiveAptitudeTest = () => {
     };
 
     initializeTest();
-  }, [learnerData?.id, testInitialized, loading, checkAndResumeSession, startTest]);
+  }, [learnerId, testInitialized, loading, checkAndResumeSession, startTest]);
 
   // Reset selected answer when question changes
   useEffect(() => {
@@ -218,8 +243,12 @@ const AdaptiveAptitudeTest = () => {
 
   // Handle exit
   const handleExit = async () => {
-    // Progress is auto-saved, just navigate away
-    navigate('/learner/my-learning');
+    // Progress is auto-saved, navigate or call callback
+    if (propOnComplete) {
+      propOnComplete(results);
+    } else {
+      navigate('/learner/my-learning');
+    }
   };
 
   // Handle abandon and exit (abandonTest available from hook if needed)
@@ -236,8 +265,75 @@ const AdaptiveAptitudeTest = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Loading state
-  if (loading || learnerLoading || !testInitialized) {
+  // Intro screen (before test starts)
+  if (!testInitialized && !loading && learnerId && !learnerLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <Card className="overflow-hidden rounded-2xl shadow-lg border border-gray-100">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-8 py-12 text-center text-white">
+              <Brain className="w-16 h-16 mx-auto mb-4" />
+              <h1 className="text-3xl font-bold mb-2">Adaptive Aptitude Test</h1>
+              <p className="text-blue-100">
+                {gradeLevel === 'middle_school' ? 'Middle School (Grades 6-8)' : 'High School'}
+              </p>
+            </div>
+
+            <CardContent className="p-8">
+              <div className="space-y-6">
+                {/* Description */}
+                <div className="space-y-2">
+                  <p className="text-gray-700 font-medium">
+                    A smart test that adjusts to your skill level
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    It gets easier or harder based on how you're doing. Take your time with each question. You have 5 minutes per question - just do your best!
+                  </p>
+                </div>
+
+                {/* Key Info */}
+                <div className="space-y-3 pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <span className="text-sm font-bold text-blue-600">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">Adjusts to your level</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <span className="text-sm font-bold text-blue-600">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">50 questions total</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <span className="text-sm font-bold text-blue-600">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">~1 min per question</span>
+                  </div>
+                </div>
+
+                {/* Start Button */}
+                <Button
+                  onClick={() => {
+                    logger.info('User clicked Start Test button');
+                    startTest();
+                  }}
+                  className="w-full mt-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2"
+                >
+                  Start Test
+                  <ChevronRight className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state (after test starts)
+  if (loading || learnerLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
@@ -247,11 +343,8 @@ const AdaptiveAptitudeTest = () => {
           <div className="bg-white rounded-xl p-4 mb-4 border-2 border-blue-200">
             <div className="flex items-center justify-center gap-2">
               <Brain className="w-6 h-6 text-blue-600" />
-              <p className="text-lg font-bold text-blue-600">Adaptive Aptitude Test</p>
+              <p className="text-lg font-bold text-blue-600">Loading Questions</p>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Grade Level: {gradeLevel === 'middle_school' ? 'Middle School' : 'High School'}
-            </p>
           </div>
           <p className="text-sm text-gray-400">This may take a few seconds...</p>
           
@@ -264,7 +357,7 @@ const AdaptiveAptitudeTest = () => {
               </div>
               <div className="space-y-1 font-mono">
                 <p>User Email: {user?.email || 'Not logged in'}</p>
-                <p>Learner ID: {learnerData?.id || 'Loading...'}</p>
+                <p>Learner ID: {learnerId || 'Loading...'}</p>
                 <p>Learner Loading: {learnerLoading ? 'Yes' : 'No'}</p>
                 <p>Hook Loading: {loading ? 'Yes' : 'No'}</p>
                 <p>Test Initialized: {testInitialized ? 'Yes' : 'No'}</p>
@@ -501,8 +594,9 @@ const AdaptiveAptitudeTest = () => {
     );
   }
 
-  // Calculate progress percentage
-  const progressPercentage = progress ? progress.completionPercentage : 0;
+  // Calculate progress percentage (50 total questions in adaptive test)
+  const totalQuestionsInTest = 50;
+  const progressPercentage = Math.round((questionsAnswered / totalQuestionsInTest) * 100);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-8 px-4">
@@ -557,7 +651,7 @@ const AdaptiveAptitudeTest = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">
-              Question {progress ? progress.questionsAnswered + 1 : 1}
+              Question {questionsAnswered + 1}
             </span>
             <span className="text-sm font-medium text-blue-600">
               {progressPercentage}% Complete
@@ -604,7 +698,7 @@ const AdaptiveAptitudeTest = () => {
                   <div className="flex items-start gap-3 mb-4">
                     <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-blue-600 font-bold text-sm">
-                        {progress ? progress.currentQuestionIndex + 1 : 1}
+                        {questionsAnswered + 1}
                       </span>
                     </div>
                     <div className="flex-1">
@@ -663,22 +757,22 @@ const AdaptiveAptitudeTest = () => {
           <div className="flex justify-end">
             <Button
               onClick={handleSubmitAnswer}
-              disabled={!selectedAnswer || submitting}
+              disabled={!selectedAnswer || loading}
               className="px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {(() => {
                 // Current question number (1-based)
-                const currentQuestionNumber = progress ? progress.questionsAnswered + 1 : 1;
-                const totalQuestions = progress?.estimatedTotalQuestions || 50;
+                const currentQuestionNumber = questionsAnswered + 1;
+                const totalQuestions = totalQuestionsInTest;
                 const isLastQuestion = currentQuestionNumber === totalQuestions;
 
                 if (DEBUG_MODE) {
                   logger.info('Button logic', {
                     currentQuestionNumber,
                     totalQuestions,
-                    questionsAnswered: progress?.questionsAnswered,
+                    questionsAnswered,
                     isLastQuestion,
-                    submitting
+                    loading
                   });
                 }
 

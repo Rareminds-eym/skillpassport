@@ -6,6 +6,7 @@ import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
 import { supabase } from '@/shared/api/supabaseClient';
 import { useTour } from '@/shared/model/tourStore';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('GenericAssessmentResultTour');
 import {

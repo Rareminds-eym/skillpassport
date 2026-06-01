@@ -90,6 +90,14 @@ import { useUserRole } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
+import {
+  useHasAssessment,
+  useHasInProgressAssessment,
+  useLatestAttemptId,
+  useAssessmentLoading,
+  useLearnerId,
+  useLearnerActions
+} from '@/shared/model/learnerStore';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
@@ -858,14 +866,21 @@ const LearnerDashboard = () => {
     loading: achievementsLoading,
   } = useLearnerAchievements(learnerId, userEmail);
 
-  // Use new backend API hooks for assessment and AI recommendations
-  const {
-    recommendations: assessmentRecommendations,
-    loading: recommendationsLoading,
-    hasAssessment,
-    hasInProgressAssessment,
-    latestAttemptId,
-  } = useLearnerAssessment({ enabled: !isViewingOthersProfile });
+  // Get assessment data from learner store
+  const hasAssessment = useHasAssessment();
+  const hasInProgressAssessment = useHasInProgressAssessment();
+  const latestAttemptId = useLatestAttemptId();
+  const assessmentLoading = useAssessmentLoading();
+
+  // Get action to load assessment data
+  const { loadAssessmentData } = useLearnerActions();
+
+  // Load assessment data when learner loads
+  React.useEffect(() => {
+    if (learnerId && !isViewingOthersProfile) {
+      loadAssessmentData(learnerId);
+    }
+  }, [learnerId, isViewingOthersProfile, loadAssessmentData]);
 
   // Use new backend API hook for AI recommendations
   const {
@@ -1974,32 +1989,40 @@ const LearnerDashboard = () => {
           </div>*/}
 
           <div className="flex justify-center py-4">
-            {hasAssessment ? (
-              <Button
-                onClick={() => navigate(latestAttemptId ? `/learner/assessment/result?attemptId=${latestAttemptId}` : "/learner/assessment/result")}
-                className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-              >
-                <Eye className="w-5 h-5 mr-2" />
-                View Results
-              </Button>
-            ) : hasInProgressAssessment ? (
-              <Button
-                onClick={() => navigate("/learner/assessment/test")}
-                className="w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-              >
-                <Clock className="w-5 h-5 mr-2" />
-                Continue Assessment
-                <ChevronRight className="w-5 h-5 ml-2" />
-              </Button>
-            ) : (
-              <Button
-                onClick={() => navigate("/learner/assessment/test")}
-                className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-              >
-                Start Assessment
-                <ChevronRight className="w-5 h-5 ml-2" />
-              </Button>
-            )}
+            {(() => {
+              if (hasAssessment) {
+                return (
+                  <Button
+                    onClick={() => navigate(latestAttemptId ? `/learner/assessment/result?attemptId=${latestAttemptId}` : "/learner/assessment/result")}
+                    className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+                  >
+                    <Eye className="w-5 h-5 mr-2" />
+                    View Results
+                  </Button>
+                );
+              } else if (hasInProgressAssessment) {
+                return (
+                  <Button
+                    onClick={() => navigate("/learner/assessment/test")}
+                    className="w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+                  >
+                    <Clock className="w-5 h-5 mr-2" />
+                    Continue Assessment
+                    <ChevronRight className="w-5 h-5 ml-2" />
+                  </Button>
+                );
+              } else {
+                return (
+                  <Button
+                    onClick={() => navigate("/learner/assessment/test")}
+                    className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+                  >
+                    Start Assessment
+                    <ChevronRight className="w-5 h-5 ml-2" />
+                  </Button>
+                );
+              }
+            })()}
           </div>
 
           {/* Conditional content below Start Assessment button */}
@@ -2483,7 +2506,7 @@ const LearnerDashboard = () => {
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">
           {/* No Assessment CTA - TOP (only show when not expanded) */}
-          {!hasAssessment && !recommendationsLoading && !showAllTraining && (
+          {!hasAssessment && !aiLoading && !showAllTraining && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div
@@ -2515,11 +2538,11 @@ const LearnerDashboard = () => {
           )}
 
           {/* AI-Powered Recommendations Section */}
-          {hasAssessment && assessmentRecommendations && (
+          {hasAssessment && aiRecommendations && (
             <div className="mb-6">
               <div className="max-h-[400px] overflow-y-auto pr-2">
                 <TrainingRecommendations
-                  recommendations={assessmentRecommendations}
+                  recommendations={aiRecommendations}
                   showAll={showAllTraining}
                 />
               </div>

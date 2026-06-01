@@ -175,38 +175,10 @@ export {
   QuestionLayout,
 } from './ui/layout';
 
-// Navigation
-export { QuestionNavigation } from './ui';
-
-// Test UI Components
-export { default as HelpSupport } from './ui/test/HelpSupport';
-export { default as InstructionsPage } from './ui/test/InstructionsPage';
-export { default as NavigationButtons } from './ui/test/NavigationButtons';
-export { default as NotificationModal } from './ui/test/NotificationModal';
-export { default as PermissionsModal } from './ui/test/PermissionsModal';
-export { default as ProgressBar } from './ui/test/ProgressBar';
-export { default as QuestionCard } from './ui/test/QuestionCard';
-export { default as ReviewPage } from './ui/test/ReviewPage';
-export { default as TestHeader } from './ui/test/TestHeader';
-export { default as TimeWarningModal } from './ui/test/TimeWarningModal';
-export { default as WarningModal } from './ui/test/WarningModal';
-
 // =============================================================================
-// ASSESSMENT CONTEXT & HOOKS
+// ASSESSMENT HOOKS
 // =============================================================================
-export {
-  AssessmentProvider,
-  useAssessmentContext,
-} from './model/AssessmentContext';
-
-export {
-  useAssessmentSubmission,
-  useLearnerGrade,
-  useAIQuestions,
-  useAssessmentProgress,
-  useAssessmentResults,
-  useAssessmentRecommendations,
-} from './model';
+export * from './model';
 
 // =============================================================================
 // ASSESSMENT CONFIGURATION
@@ -279,4 +251,5 @@ export { default as Question } from './ui/QuestionNavigation';
 export { calculateStreamRecommendations } from './lib/streamMatchingEngine';
 
 // Store exports
-export * from './model/testStore';
+export * from './model/assessmentStore';
+export { useAssessmentService } from './model/useAssessmentService';

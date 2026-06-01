@@ -52,5 +52,10 @@ export { useAssessmentRecommendations } from './useAssessmentRecommendations';
 // @ts-expect-error - TS file with potential type issues
 export { default as useAssessment } from './useAssessment';
 
-// Assessment context
-export { AssessmentProvider, useAssessmentContext } from './AssessmentContext';
+// Assessment store and service
+export * from './assessmentStore';
+export { useAssessmentService } from './useAssessmentService';
+
+// Adaptive Aptitude hook
+export { useAdaptiveAptitude } from '../lib/useAdaptiveAptitude';
+export type { UseAdaptiveAptitudeOptions } from '../lib/useAdaptiveAptitude';
