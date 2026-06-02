@@ -78,10 +78,6 @@ export async function updateLearnerName(user: User, fullName: string): Promise<b
   if (!user?.id && !user?.email) return false;
   
   try {
-    const nameParts = fullName.split(' ');
-    const firstName = nameParts[0] || fullName;
-    const lastName = nameParts.slice(1).join(' ') || '';
-    
     // Update learners table
     let learnerQuery = supabase
       .from('learners')
@@ -102,6 +98,11 @@ export async function updateLearnerName(user: User, fullName: string): Promise<b
     
     // Also update users table for backward compatibility
     if (user.id) {
+      // Split name only when needed for users table update
+      const nameParts = fullName.split(' ');
+      const firstName = nameParts[0] || fullName;
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
       const { error: userUpdateError } = await supabase
         .from('users')
         .update({

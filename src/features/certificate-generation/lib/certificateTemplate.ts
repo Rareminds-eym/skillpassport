@@ -341,7 +341,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
   </head>
   <body style="width: 3579px; height: 2551px; min-height: 2551px; margin: 0; padding: 0; overflow: visible;">
     <div class="background" style="width: 3579px; height: 2551px; min-height: 2551px; position: relative; overflow: hidden;">
-      <img class="graphic-copy" src="${baseUrl}/certificate/images/graphic_copy.png" alt="" width="3094" height="2551">
+      <img class="graphic-copy" src="${baseUrl}/certificate/images/graphic_copy.png" alt="Decorative certificate background pattern" width="3094" height="2551">
       
       <!-- Certificate Title - Absolutely Positioned -->
       <div class="title">
@@ -350,7 +350,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       </div>
       
       <!-- Skill Ecosystem Logo - Absolutely Positioned -->
-      <img class="skill-ecosystem-logo" src="${baseUrl}/certificate/images/skill_ecosystem_logo.png" alt="" width="520" height="520">
+      <img class="skill-ecosystem-logo" src="${baseUrl}/certificate/images/skill_ecosystem_logo.png" alt="Skill Ecosystem Platform Logo" width="520" height="520">
       
       <!-- Right Side Content -->
       <div class="col-2">
@@ -377,7 +377,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       <!-- Platform Name -->
       <div class="platform-name">Rareminds Skill Ecosystem Platform</div>
       
-      <img class="rareminds-logo-01-copy-1" src="${baseUrl}/certificate/images/rareminds_logo-01_copy_1.png" alt="">
+      <img class="rareminds-logo-01-copy-1" src="${baseUrl}/certificate/images/rareminds_logo-01_copy_1.png" alt="Rareminds Company Logo">
       <div class="credential-id">Credential ID: ${escapeHtml(data.credentialId)}</div>
     </div>
   </body>

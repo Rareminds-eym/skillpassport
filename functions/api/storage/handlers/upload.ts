@@ -289,22 +289,29 @@ export const handleUpload: PagesFunction = async (context) => {
     }
 
     // SECURITY: Defense-in-depth against header spoofing
-    // If request arrived via unauthenticated path (header check), verify body context matches
-    // This prevents attackers from setting x-upload-context: certificate in header
-    // while submitting a different context in the body
+    // Verify header and body context match for all requests (authenticated and unauthenticated)
+    // This prevents attackers from setting x-upload-context in header that differs from body
+    const headerContext = request.headers.get('x-upload-context');
+    
+    // Only validate header/body match if header is present
+    // (header is optional, but if provided must match body)
+    if (headerContext && headerContext !== uploadContext) {
+      logger.error('Context mismatch between header and body', new Error('Spoofing attempt'), {
+        headerContext,
+        bodyContext: uploadContext,
+        authenticated: !!authenticatedContext.user,
+        userId: authenticatedContext.user?.id,
+        timestamp: new Date().toISOString()
+      });
+      return jsonResponse({ 
+        error: 'Upload context mismatch',
+        message: 'Header and body context must match'
+      }, 400);
+    }
+    
+    // Additional validation for unauthenticated requests
     if (!authenticatedContext.user) {
-      const headerContext = request.headers.get('x-upload-context');
-      
-      // Verify both header and body context match and are in allowed list
-      if (headerContext !== uploadContext) {
-        logger.error('Context mismatch between header and body', new Error('Spoofing attempt'), {
-          headerContext,
-          bodyContext: uploadContext,
-          timestamp: new Date().toISOString()
-        });
-        return createAuthenticationError('/upload', 'forbidden_context');
-      }
-      
+      // For unauthenticated requests, context must be in allowed list
       if (!UNAUTHENTICATED_UPLOAD_CONTEXTS.includes(
         uploadContext as (typeof UNAUTHENTICATED_UPLOAD_CONTEXTS)[number]
       )) {
@@ -318,7 +325,13 @@ export const handleUpload: PagesFunction = async (context) => {
       
       logger.info('Unauthenticated upload validated', { 
         context: uploadContext,
-        headerMatch: true 
+        headerMatch: !headerContext || headerContext === uploadContext 
+      });
+    } else {
+      logger.info('Authenticated upload validated', { 
+        context: uploadContext,
+        userId: authenticatedContext.user.id,
+        headerMatch: !headerContext || headerContext === uploadContext 
       });
     }
 

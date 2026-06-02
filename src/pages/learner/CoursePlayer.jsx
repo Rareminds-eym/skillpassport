@@ -101,22 +101,13 @@ const CoursePlayer = () => {
    */
   const certificateModal = useCertificateModal({
     user,
-    // NOTE: Dependency array [navigate] is intentionally minimal for stability
-    // - 'user' is passed to useCertificateModal but NOT used inside this callback
-    // - 'navigate' is the only reactive dependency used in the callback body
-    // - 'logger' is a module-level constant (getLogger result) - stable reference
-    // - 'downloadCertificate' is an imported function - stable reference
-    // - 'closeModalRef' is a ref - doesn't trigger re-renders
-    // Adding stable imports to deps would cause unnecessary callback recreation
     onSuccess: useCallback(async ({ certificateUrl, courseName, courseType }) => {
       try {
         const isWebinar = courseType === 'webinar';
         
         // Close modal using ref to avoid circular dependency
-        // This is safe because closeModalRef is populated immediately after hook initialization
-        if (closeModalRef.current) {
-          closeModalRef.current();
-        }
+        // Use optional chaining for safety in case ref is not yet populated
+        closeModalRef.current?.();
         
         if (isWebinar) {
           try {
@@ -158,7 +149,7 @@ const CoursePlayer = () => {
         logger.error('Error in certificate success handler', error instanceof Error ? error : new Error(String(error)));
         toast.error('Something went wrong after course completion. Please check My Learning.');
       }
-    }, [navigate])
+    }, [navigate]) // downloadCertificate and logger are stable imports, navigate is the only reactive dependency
   });
   
   /**

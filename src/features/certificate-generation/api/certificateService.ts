@@ -523,60 +523,6 @@ export const generateCourseCertificate = async (
   }
 };
 
-export const downloadCertificate = async (certificateUrl: string, courseName: string) => {
-  const STORAGE_API_URL = getApiUrl('storage');
-
-  try {
-    // If it's a data URL, download directly
-    if (certificateUrl.startsWith('data:')) {
-      const link = document.createElement('a');
-      link.href = certificateUrl;
-      link.download = `${courseName.replace(/[^a-z0-9]/gi, '_')}_Certificate.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
-
-    let downloadUrl = certificateUrl;
-
-    // If it's already a proxy URL, use it directly
-    if (certificateUrl.includes('/course-certificate')) {
-      downloadUrl = certificateUrl;
-    }
-    // If it's a direct R2 URL, convert to proxy URL
-    else if (certificateUrl.includes('.r2.dev/') || certificateUrl.includes('r2.cloudflarestorage.com')) {
-      downloadUrl = `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}`;
-    }
-    // For any other URL, try using the proxy
-    else {
-      downloadUrl = `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}`;
-    }
-
-    const response = await fetch(downloadUrl);
-
-    if (!response.ok) {
-      throw new Error(`Download failed: ${response.status}`);
-    }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${courseName.replace(/[^a-z0-9]/gi, '_')}_Certificate.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    // Clean up the blob URL
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    logger.error('Failed to download certificate', error instanceof Error ? error : new Error('Unknown error'));
-    throw error;
-  }
-};
-
-// Re-export getCertificateProxyUrl from shared utilities
-// This function is a pure URL transformer without business logic
-export { getCertificateProxyUrl } from '@/shared/lib/utils/certificate-utils';
+// Re-export utility functions from shared layer for feature-level API consistency
+// These are pure utility functions without business logic specific to certificate generation
+export { downloadCertificate, getCertificateProxyUrl } from '@/shared/lib/utils/certificate-utils';

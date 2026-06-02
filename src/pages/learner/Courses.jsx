@@ -474,18 +474,20 @@ const Courses = () => {
     
     try {
       // Check if certificate already exists - use callback to get fresh state
+      // This avoids adding certificateUrls to dependency array which would break memoization
+      let certificateExists = false;
       setCertificateUrls(currentUrls => {
         const existingCertUrl = currentUrls[courseId];
         if (existingCertUrl) {
           // Certificate already exists, show it directly
+          certificateExists = true;
           viewCertificate(existingCertUrl);
         }
         return currentUrls; // No state change
       });
       
-      // Early return check - we need to check again outside the setState
-      const existingCertUrl = certificateUrls[courseId];
-      if (existingCertUrl) {
+      // Early return if certificate exists
+      if (certificateExists) {
         return;
       }
       
@@ -563,7 +565,7 @@ const Courses = () => {
       preparingCertificateRef.current.delete(courseId);
       setPreparingCertificate(null);
     }
-  }, [user?.email, certificateModal, certificateUrls]);
+  }, [user?.email, certificateModal]); // Removed certificateUrls - accessed via setState callback for fresh state
 
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {

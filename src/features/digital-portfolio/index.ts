@@ -32,10 +32,9 @@ export type { ProfileCompletionErrorBoundary } from './ui/shared/ProfileCompleti
 // Store exports
 export * from './model/portfolioStore';
 
-// Re-export certificate functions from certificate-generation feature for backward compatibility
-// DEPRECATED: Import directly from @/features/certificate-generation instead
+// Re-export certificate utility functions from shared layer for backward compatibility
+// These are pure utility functions without business logic
 export {
   getCertificateProxyUrl,
-  downloadCertificate,
-  generateCourseCertificate
-} from '@/features/certificate-generation';
+  downloadCertificate
+} from '@/shared/lib/utils/certificate-utils';

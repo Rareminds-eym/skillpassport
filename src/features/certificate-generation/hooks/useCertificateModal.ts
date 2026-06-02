@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { 
   fetchLearnerName, 
@@ -64,6 +64,16 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [validationError, setValidationError] = useState('');
+  
+  // Ref to track if component is mounted - prevents state updates after unmount
+  const isMountedRef = useRef(true);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   /**
    * Fetch learner name from database
@@ -82,24 +92,35 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
 
   /**
    * Open modal with pre-filled data
+   * Implements proper cancellation to prevent memory leaks from async operations
    */
   const openModal = async (data: CertificateData): Promise<void> => {
     setPendingData(data);
     
-    try {
-      // Fetch name from database if not provided
-      const nameToUse = data.prefillName || (await fetchName());
-      setFullName(nameToUse);
-    } catch (error) {
-      logger.error('Error fetching learner name in openModal', error instanceof Error ? error : new Error(String(error)));
-      // Use email fallback if fetching fails
-      setFullName(user?.email?.split('@')[0] || '');
-    }
-    
+    // Reset state immediately
     setGeneratedUrl(null);
     setShowConfirmation(false);
     setValidationError('');
-    setShowModal(true);
+    
+    try {
+      // Fetch name from database if not provided
+      const nameToUse = data.prefillName || (await fetchName());
+      
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setFullName(nameToUse);
+        setShowModal(true);
+      }
+    } catch (error) {
+      logger.error('Error fetching learner name in openModal', error instanceof Error ? error : new Error(String(error)));
+      
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        // Use email fallback if fetching fails
+        setFullName(user?.email?.split('@')[0] || '');
+        setShowModal(true);
+      }
+    }
   };
 
   /**
@@ -190,6 +211,7 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
 
   /**
    * Generate certificate with current data (called after confirmation)
+   * Implements comprehensive error handling and type safety
    */
   const generateCertificate = async (): Promise<void> => {
     const trimmedName = fullName.trim();
@@ -235,38 +257,40 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
       // Delegate to features layer for business logic
       const result = await generateCertificateWithNameUpdate(user, params);
 
+      // Only proceed if component is still mounted
+      if (!isMountedRef.current) {
+        logger.warn('Component unmounted during certificate generation');
+        return;
+      }
+
       // Show warning if name update failed but certificate generation succeeded
       if (result.nameUpdateFailed && result.success) {
         toast.error('Warning: Your name was not saved. The certificate will still be generated.');
       }
 
-      // Validate result object exists and has expected shape with proper type narrowing
+      // Comprehensive validation of result object with proper type guards
       if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response from certificate generation service');
+        throw new Error('Invalid response from certificate generation service: result is not an object');
       }
 
-      // Type guard: Ensure result has the expected structure
-      const isValidSuccessResult = (
-        'success' in result && 
-        typeof result.success === 'boolean' &&
-        result.success &&
-        'certificateUrl' in result && 
-        typeof result.certificateUrl === 'string' &&
-        result.certificateUrl.length > 0 &&
-        'credentialId' in result &&
-        typeof result.credentialId === 'string'
-      );
-
-      const isValidErrorResult = (
-        'success' in result &&
-        typeof result.success === 'boolean' &&
-        !result.success
-      );
-
-      if (isValidSuccessResult) {
-        // Type assertion is safe here because we validated the structure above
-        const certificateUrl = result.certificateUrl as string;
-        const credentialId = result.credentialId as string;
+      // Check for success response
+      if ('success' in result && result.success === true) {
+        // Validate required success fields exist and have correct types
+        if (!('certificateUrl' in result) || typeof result.certificateUrl !== 'string') {
+          throw new Error('Invalid success response: certificateUrl is missing or invalid');
+        }
+        
+        if (!result.certificateUrl || result.certificateUrl.trim().length === 0) {
+          throw new Error('Invalid success response: certificateUrl is empty');
+        }
+        
+        if (!('credentialId' in result) || typeof result.credentialId !== 'string') {
+          throw new Error('Invalid success response: credentialId is missing or invalid');
+        }
+        
+        // Safe to use values now - validation complete
+        const certificateUrl = result.certificateUrl;
+        const credentialId = result.credentialId;
         
         logger.info('Certificate generated successfully', { credentialId });
         setGeneratedUrl(certificateUrl);
@@ -281,8 +305,13 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
             courseId
           });
         }
-      } else if (isValidErrorResult) {
-        const errorMessage = ('error' in result && typeof result.error === 'string') 
+        
+        return;
+      }
+      
+      // Check for error response
+      if ('success' in result && result.success === false) {
+        const errorMessage = ('error' in result && typeof result.error === 'string' && result.error.length > 0) 
           ? result.error 
           : 'Certificate generation failed';
         const errorObj = new Error(errorMessage);
@@ -292,20 +321,35 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
         if (onError) {
           onError(errorObj);
         }
-      } else {
-        // Unexpected response structure
-        throw new Error('Unexpected response structure from certificate generation service');
+        
+        return;
       }
+      
+      // Unexpected response structure - neither success nor error
+      throw new Error(
+        'Unexpected response structure from certificate generation service: ' +
+        `missing or invalid 'success' field. Response keys: ${Object.keys(result).join(', ')}`
+      );
+      
     } catch (error) {
+      // Only show error if component is still mounted
+      if (!isMountedRef.current) {
+        logger.warn('Component unmounted during error handling');
+        return;
+      }
+      
       const errorObj = error instanceof Error ? error : new Error(String(error));
       logger.error('Error generating certificate', errorObj);
-      toast.error('An error occurred while generating the certificate');
+      toast.error(error instanceof Error ? error.message : 'An error occurred while generating the certificate');
       
       if (onError) {
-        onError(error instanceof Error ? error : new Error(String(error)));
+        onError(errorObj);
       }
     } finally {
-      setIsGenerating(false);
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setIsGenerating(false);
+      }
     }
   };
 
