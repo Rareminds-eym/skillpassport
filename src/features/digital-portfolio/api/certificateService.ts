@@ -13,6 +13,18 @@ const logger = getLogger('certificate-service');
 
 const STORAGE_API_URL = getApiUrl('storage');
 
+// Type definitions for API responses
+interface UploadErrorResponse {
+  error?: string;
+  [key: string]: unknown;
+}
+
+interface UploadSuccessResponse {
+  key: string;
+  url?: string;
+  [key: string]: unknown;
+}
+
 const generateCredentialId = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -310,19 +322,22 @@ const uploadToR2 = async (
   const response = await ssoClient.fetch(`${STORAGE_API_URL}/upload`, {
     method: 'POST',
     body: formData,
+    headers: {
+      'x-upload-context': 'certificate', // Signal unauthenticated certificate upload
+    },
   });
 
   logger.info('Upload response received', { status: response.status, ok: response.ok });
 
   if (!response.ok) {
-    const errorData: any = await response.json().catch(() => ({}));
+    const errorData = await response.json().catch(() => ({})) as UploadErrorResponse;
     const errorMessage = `Upload failed (${response.status}): ${errorData.error || response.statusText}`;
     const error = new Error(errorMessage);
     logger.error('Upload failed', error, { status: response.status, errorData });
     throw error;
   }
 
-  const responseData: any = await response.json();
+  const responseData: UploadSuccessResponse = await response.json();
   logger.info('Upload successful', { responseData });
 
   // Use the actual key returned from the upload response

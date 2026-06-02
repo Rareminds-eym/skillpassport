@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Award, CheckCircle, Clock, Download, Eye, X } from 'lucide-react';
+import { Award, CheckCircle, Clock, Download, Eye, X, Edit3 } from 'lucide-react';
 import { Button } from '@/shared/ui';
 
 /**
@@ -161,7 +161,7 @@ export const CertificateNameModal = ({
                           <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">
                             Certificate Recipient
                           </p>
-                          <p className="text-2xl font-bold text-gray-900 break-words leading-tight">
+                          <p className="text-2xl font-bold text-gray-900 break-words leading-tight uppercase">
                             {fullName}
                           </p>
                         </div>
@@ -181,9 +181,14 @@ export const CertificateNameModal = ({
                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
                       </div>
-                      <p className="text-xs text-amber-800 font-medium">
-                        <strong>Important:</strong> Make sure your name is spelled correctly. Once generated, the certificate cannot be modified.
-                      </p>
+                      <div className="flex-1">
+                        <p className="text-xs text-amber-800 font-medium">
+                          <strong>Important:</strong> Make sure your name is spelled correctly. Once generated, the certificate cannot be modified.
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          Note: Your name will be converted to <strong>UPPERCASE</strong> when printed on the certificate.
+                        </p>
+                      </div>
                     </div>
                   </motion.div>
                 </div>
@@ -195,7 +200,7 @@ export const CertificateNameModal = ({
                     disabled={isGenerating}
                     className="flex-1 border-2 hover:bg-gray-50"
                   >
-                    <X className="w-4 h-4 mr-2" />
+                    <Edit3 className="w-4 h-4 mr-2" />
                     Edit Name
                   </Button>
                   <motion.div 

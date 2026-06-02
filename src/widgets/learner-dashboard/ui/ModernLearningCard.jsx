@@ -221,7 +221,27 @@ const ModernLearningCard = ({
     }
   };
 
-  // Handle "Get Certificate" button click
+  /**
+   * Handle "Get Certificate" button click
+   * 
+   * Two scenarios:
+   * 1. Certificate exists: View it directly using viewCertificate utility
+   * 2. Certificate doesn't exist: Open modal to generate new certificate
+   * 
+   * Generation Flow:
+   * - Prepare certificate data from item props
+   * - Validate required data (learnerData.id and course_id)
+   * - Guard check ensures modal is initialized
+   * - Open modal with pre-filled certificate information
+   * - User confirms name and generates certificate
+   * 
+   * Error Handling:
+   * - Guard check prevents crashes if hook initialization failed
+   * - Try-catch handles errors during modal opening
+   * - Enhanced logging provides debugging context
+   * 
+   * @param {Event} e - Click event (for stopPropagation)
+   */
   const handleGetCertificate = async (e) => {
     e?.stopPropagation();
     
@@ -231,18 +251,36 @@ const ModernLearningCard = ({
       return;
     }
     
-    // Get course details and open modal
+    // Prepare certificate data from item
     const courseName = item.course || item.title;
     const educatorName = item.educator_name || 'Course Instructor';
     const courseType = item.course_type === 'webinar' ? 'webinar' : 'course';
     const issuedOnDate = courseType === 'webinar' ? item.issued_on : null;
     
+    // Validate required data
     if (!learnerData?.id || !item.course_id) {
       toast.error('Missing required information');
       return;
     }
     
+    /**
+     * Guard check: Ensure certificate modal is properly initialized
+     * 
+     * Prevents runtime errors if:
+     * - The useCertificateModal hook failed to initialize
+     * - Component unmounted during async operation
+     * - Hook returned undefined/null due to error
+     * 
+     * Logs error with context for debugging
+     */
+    if (!certificateModal?.openModal) {
+      logger.error('Certificate modal not initialized', { certificateModal });
+      toast.error('Certificate modal is not available. Please refresh the page.');
+      return;
+    }
+
     try {
+      // Open certificate modal with all required data
       await certificateModal.openModal({
         learnerId: learnerData.id,
         learnerIdText: learnerData.learner_id || null,
@@ -254,7 +292,26 @@ const ModernLearningCard = ({
         prefillName: learnerData?.name || ''
       });
     } catch (error) {
-      logger.error('Failed to open certificate modal', error instanceof Error ? error : new Error(String(error)));
+      /**
+       * Enhanced error logging for modal opening failures
+       * 
+       * Logs:
+       * - Original error object with full stack trace
+       * - Modal state (hasOpenModal flag)
+       * - Course data context for debugging
+       * 
+       * This helps identify whether the issue is:
+       * - Modal hook initialization failure
+       * - Invalid certificate data
+       * - Network/database errors
+       */
+      logger.error('Failed to open certificate modal', { 
+        error: error instanceof Error ? error : new Error(String(error)),
+        modalState: {
+          hasOpenModal: !!certificateModal?.openModal,
+          courseData: { courseName, educatorName, courseType }
+        }
+      });
       toast.error('Failed to open certificate modal. Please try again.');
     }
   };

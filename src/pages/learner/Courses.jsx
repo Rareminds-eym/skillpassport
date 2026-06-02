@@ -60,7 +60,6 @@ const Courses = () => {
   const [initialLoad, setInitialLoad] = useState(true);
   const [learnerGrade, setlearnerGrade] = useState(null);
   const [learnerBranch, setlearnerBranch] = useState(null);
-  const [learnerId, setLearnerId] = useState(null); // Add learner_id state
   const [filterByBranch, setFilterByBranch] = useState(true); // Toggle for branch filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -86,18 +85,31 @@ const Courses = () => {
   const [downloadingCertificate, setDownloadingCertificate] = useState(null); // Track which certificate is downloading
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   
-  // Certificate modal hook
+  /**
+   * Certificate modal hook for course certificate generation
+   * 
+   * Flow:
+   * 1. User clicks "Get Certificate" on completed course
+   * 2. handleGetCertificate fetches fresh learner data
+   * 3. Opens modal with pre-filled certificate information
+   * 4. User enters/confirms name and generates certificate
+   * 5. onSuccess callback updates local state and refreshes enrollments
+   * 
+   * State Updates:
+   * - certificateUrls: Updates with new certificate URL for instant UI feedback
+   * - Triggers fetchEnrollments to sync with database
+   */
   const certificateModal = useCertificateModal({
     user,
     onSuccess: async ({ certificateUrl, courseId }) => {
-      // Update local state with new certificate URL
+      // Update local state with new certificate URL for immediate UI update
       if (courseId) {
         setCertificateUrls(prev => ({
           ...prev,
           [courseId]: certificateUrl
         }));
       }
-      // Refresh enrollments to get updated certificate URL
+      // Refresh enrollments to get updated certificate URL from database
       try {
         await fetchEnrollments();
       } catch (error) {
@@ -165,14 +177,13 @@ const Courses = () => {
       try {
         const { data, error } = await supabase
           .from('learners')
-          .select('grade, branch_field, learner_id')
+          .select('grade, branch_field')
           .eq('email', user.email)
           .maybeSingle();
         
         if (!error && data) {
           setlearnerGrade(data.grade);
           setlearnerBranch(data.branch_field);
-          setLearnerId(data.learner_id);
           
           // Re-fetch courses with proper filtering once learner info is available
           // Only if courses have already been fetched once
@@ -396,12 +407,34 @@ const Courses = () => {
     return progress?.progress || 0;
   };
 
-  // Get certificate URL for a course
+  /**
+   * Get certificate URL for a course from local state
+   * 
+   * @param {string} courseId - Course ID to look up
+   * @returns {string|null} Certificate URL or null if not available
+   */
   const getCertificateUrl = (courseId) => {
     return certificateUrls[courseId] || null;
   };
 
-  // Handle "Get Certificate" button click - Open modal
+  /**
+   * Handle "Get Certificate" button click
+   * 
+   * Two scenarios:
+   * 1. Certificate exists: View it directly using viewCertificate utility
+   * 2. Certificate doesn't exist: Open modal to generate new certificate
+   * 
+   * Generation Flow:
+   * - Fetch fresh learner data from database
+   * - Prepare certificate parameters (name, educator, course type, etc.)
+   * - Guard check ensures modal is initialized
+   * - Open modal with pre-filled data
+   * - User confirms name and generates certificate
+   * 
+   * @param {string} courseId - ID of the course
+   * @param {string} courseName - Name of the course
+   * @param {Event} e - Click event (for stopPropagation)
+   */
   const handleGetCertificate = async (courseId, courseName, e) => {
     e?.stopPropagation();
     
@@ -414,14 +447,14 @@ const Courses = () => {
         return;
       }
       
-      // Get course details
+      // Get course details for certificate generation
       const course = courses.find(c => c.course_id === courseId);
       if (!course) {
         toast.error('Course not found');
         return;
       }
       
-      // Get learner data
+      // Get learner data - fetch fresh from database
       if (!user?.email) {
         toast.error('User email not found');
         return;
@@ -444,11 +477,35 @@ const Courses = () => {
         return;
       }
       
-      // Open modal with data
+      /**
+       * Prepare certificate data for modal
+       * 
+       * Data includes:
+       * - educatorName: Instructor name or default
+       * - courseType: 'webinar' or 'course'
+       * - issuedOnDate: Only for webinars, null for courses
+       */
       const educatorName = course.educator_name || 'Course Instructor';
       const courseType = course.course_type === 'webinar' ? 'webinar' : 'course';
       const issuedOnDate = courseType === 'webinar' ? course.issued_on : null;
       
+      /**
+       * Guard check: Ensure certificate modal is properly initialized
+       * 
+       * Prevents runtime errors if:
+       * - Hook failed to initialize
+       * - Component unmounted during async operation
+       * - Hook returned undefined due to error
+       * 
+       * Logs detailed error context for debugging
+       */
+      if (!certificateModal?.openModal) {
+        logger.error('Certificate modal not initialized', { certificateModal });
+        toast.error('Certificate modal is not available. Please refresh the page.');
+        return;
+      }
+      
+      // Open certificate modal with all required data
       await certificateModal.openModal({
         learnerId: learnerData.id,
         learnerIdText: learnerData.learner_id,

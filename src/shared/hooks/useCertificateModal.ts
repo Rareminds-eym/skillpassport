@@ -103,9 +103,15 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
   const openModal = async (data: CertificateData): Promise<void> => {
     setPendingData(data);
     
-    // Fetch name from database if not provided
-    const nameToUse = data.prefillName || (await fetchLearnerName());
-    setFullName(nameToUse);
+    try {
+      // Fetch name from database if not provided
+      const nameToUse = data.prefillName || (await fetchLearnerName());
+      setFullName(nameToUse);
+    } catch (error) {
+      logger.error('Error fetching learner name in openModal', error instanceof Error ? error : new Error(String(error)));
+      // Use email fallback if fetching fails
+      setFullName(user?.email?.split('@')[0] || '');
+    }
     
     setGeneratedUrl(null);
     setShowConfirmation(false);

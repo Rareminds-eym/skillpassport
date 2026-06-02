@@ -51,9 +51,14 @@ const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content', '/medi
 const UNAUTHENTICATED_UPLOAD_CONTEXTS = ['certificate'] as const;
 
 /**
- * Check if the given path is a public endpoint or certificate upload
+ * Check if the given path is a public endpoint or unauthenticated upload
+ * 
+ * Uses header-based detection for upload context to avoid body parsing issues:
+ * - No request cloning or body buffering
+ * - Immediate decision based on x-upload-context header
+ * - Body validation happens in the handler after proper authentication check
  */
-async function isPublicEndpoint(path: string, request: Request): Promise<boolean> {
+function isPublicEndpoint(path: string, request: Request): boolean {
   if (PUBLIC_ENDPOINTS.includes(path)) {
     return true;
   }
@@ -61,35 +66,22 @@ async function isPublicEndpoint(path: string, request: Request): Promise<boolean
   // Allow /upload for specific contexts without authentication
   // This is used for certificate uploads triggered by backend after course completion
   if (path === '/upload' && request.method === 'POST') {
-    const contentType = request.headers.get('content-type') || '';
-    logger.info('Upload request received', { contentType });
+    // Check x-upload-context header (set by backend)
+    const uploadContext = request.headers.get('x-upload-context');
     
-    // Check if it's a multipart upload
-    if (contentType.includes('multipart/form-data')) {
-      try {
-        // Clone request to read form data without consuming the original
-        const clonedRequest = request.clone();
-        const formData = await clonedRequest.formData();
-        const uploadContext = (formData.get('context') as string) || 'default';
-        
-        // Only allow specific contexts through without authentication
-        const isAllowedContext = UNAUTHENTICATED_UPLOAD_CONTEXTS.includes(uploadContext as any);
-        
-        if (isAllowedContext) {
-          logger.info('Allowing unauthenticated upload for valid context', { context: uploadContext });
-          return true;
-        } else {
-          logger.warn('Multipart upload with unauthorized context', { 
-            context: uploadContext,
-            allowedContexts: UNAUTHENTICATED_UPLOAD_CONTEXTS 
-          });
-          return false;
-        }
-      } catch (error) {
-        logger.error('Failed to parse upload context', error instanceof Error ? error : new Error(String(error)), { path });
-        return false;
-      }
+    if (uploadContext && UNAUTHENTICATED_UPLOAD_CONTEXTS.includes(
+      uploadContext as (typeof UNAUTHENTICATED_UPLOAD_CONTEXTS)[number]
+    )) {
+      logger.info('Allowing unauthenticated upload via header', { context: uploadContext });
+      return true;
     }
+    
+    // No header or unrecognized context - require authentication
+    logger.debug('Upload requires authentication', { 
+      hasHeader: !!uploadContext, 
+      context: uploadContext 
+    });
+    return false;
   }
   
   return false;
@@ -124,7 +116,7 @@ export const onRequest: PagesFunction = async (context) => {
     let authenticatedContext: AuthenticatedContext = { ...context };
 
     // Check if endpoint requires authentication
-    const isPublic = await isPublicEndpoint(path, request);
+    const isPublic = isPublicEndpoint(path, request);
     if (!isPublic) {
       // Attempt authentication for protected endpoints
       const authResult = await authenticateUser(request, env as unknown as Record<string, string>);

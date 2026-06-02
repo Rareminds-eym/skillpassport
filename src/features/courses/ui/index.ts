@@ -13,5 +13,5 @@ export { default as QuizProgressTracker } from './QuizProgressTracker';
 export { default as RestoreProgressModal } from './RestoreProgressModal';
 export { default as SyncStatusIndicator } from './SyncStatusIndicator';
 
-// Course player
-export { default as CoursePlayer } from './CoursePlayer';
+// Course player is now in pages/learner/CoursePlayer.jsx
+// Not exported from features layer to maintain FSD compliance

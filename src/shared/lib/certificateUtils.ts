@@ -19,6 +19,8 @@ export const viewCertificate = (certUrl: string): void => {
   try {
     // Special handling for data URLs
     if (certUrl.startsWith('data:')) {
+      let blobUrl: string | null = null;
+      
       try {
         const arr = certUrl.split(',');
         
@@ -45,17 +47,23 @@ export const viewCertificate = (certUrl: string): void => {
           u8arr[n] = bstr.charCodeAt(n);
         }
         const blob = new Blob([u8arr], { type: mime });
-        const blobUrl = URL.createObjectURL(blob);
+        blobUrl = URL.createObjectURL(blob);
         
         const newWindow = window.open(blobUrl, '_blank');
         
         if (!newWindow) {
           toast.error('Please allow popups for this site to view the certificate.');
+          // Cleanup immediately if popup was blocked
           URL.revokeObjectURL(blobUrl);
+          blobUrl = null;
         } else {
+          // Cleanup after a delay if popup succeeded
           setTimeout(() => {
-            URL.revokeObjectURL(blobUrl);
+            if (blobUrl) {
+              URL.revokeObjectURL(blobUrl);
+            }
           }, 5000);
+          blobUrl = null; // Clear reference so finally block doesn't double-revoke
         }
         
         return;
@@ -63,6 +71,11 @@ export const viewCertificate = (certUrl: string): void => {
         logger.error('Error converting data URL to blob', blobError instanceof Error ? blobError : new Error(String(blobError)));
         toast.error('Error displaying certificate. Please try downloading instead.');
         return;
+      } finally {
+        // Ensure blob URL is always cleaned up if not already handled
+        if (blobUrl) {
+          URL.revokeObjectURL(blobUrl);
+        }
       }
     }
     

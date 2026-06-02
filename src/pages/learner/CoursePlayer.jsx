@@ -72,27 +72,71 @@ const CoursePlayer = () => {
   const [positionInitialized, setPositionInitialized] = useState(false);
   const [lessonTimeSpent, setLessonTimeSpent] = useState({}); // Store time for all lessons
   
-  // Stabilized onSuccess callback to avoid stale closures
-  const handleCertificateSuccess = useCallback(async ({ certificateUrl, courseName, courseType }) => {
-    try {
-      const isWebinar = courseType === 'webinar';
-      
-      certificateModal.closeModal();
-      
-      if (isWebinar) {
-        try {
-          await downloadCertificate(certificateUrl, courseName);
-          logger.info('Webinar certificate downloaded successfully');
-          toast.success(`Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
-          setTimeout(() => {
-            navigate('/learner/courses');
-          }, 1500);
-        } catch (downloadError) {
-          logger.error('Failed to download webinar certificate', downloadError instanceof Error ? downloadError : new Error(String(downloadError)));
-          toast.error('Certificate generated but download failed. You can download it from My Learning page.', {
-            duration: 4000,
-            position: 'top-right',
-          });
+  /**
+   * Ref to store closeModal function to avoid circular dependency.
+   * This ref is populated after certificateModal is initialized, allowing the
+   * onSuccess callback to access closeModal without creating a stale closure.
+   * 
+   * Without this pattern, we would have:
+   * 1. handleCertificateSuccess needs certificateModal.closeModal
+   * 2. certificateModal needs handleCertificateSuccess as onSuccess
+   * 3. Circular dependency causes stale closures
+   */
+  const closeModalRef = useRef(null);
+  
+  /**
+   * Certificate modal hook for course completion certificate generation.
+   * 
+   * IMPORTANT: This hook is initialized before any callbacks that reference it,
+   * to avoid circular dependency issues. The onSuccess callback uses closeModalRef
+   * instead of directly referencing certificateModal.closeModal.
+   * 
+   * Flow:
+   * 1. Course completion triggers certificateModal.openModal()
+   * 2. User enters name and generates certificate
+   * 3. onSuccess callback handles post-generation logic:
+   *    - Closes the modal via closeModalRef
+   *    - Downloads certificate (for webinars) or shows success message
+   *    - Navigates to appropriate page
+   */
+  const certificateModal = useCertificateModal({
+    user,
+    onSuccess: useCallback(async ({ certificateUrl, courseName, courseType }) => {
+      try {
+        const isWebinar = courseType === 'webinar';
+        
+        // Close modal using ref to avoid circular dependency
+        // This is safe because closeModalRef is populated immediately after hook initialization
+        if (closeModalRef.current) {
+          closeModalRef.current();
+        }
+        
+        if (isWebinar) {
+          try {
+            await downloadCertificate(certificateUrl, courseName);
+            logger.info('Webinar certificate downloaded successfully');
+            toast.success(`Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
+            setTimeout(() => {
+              navigate('/learner/courses');
+            }, 1500);
+          } catch (downloadError) {
+            logger.error('Failed to download webinar certificate', downloadError instanceof Error ? downloadError : new Error(String(downloadError)));
+            toast.error('Certificate generated but download failed. You can download it from My Learning page.', {
+              duration: 4000,
+              position: 'top-right',
+            });
+            setTimeout(() => {
+              navigate('/learner/my-learning', {
+                state: {
+                  courseCompleted: true,
+                  courseName,
+                  certificateUrl
+                }
+              });
+            }, 1500);
+          }
+        } else {
+          toast.success(`🎉 Congratulations! You have completed "${courseName}". Your certificate is ready!`);
           setTimeout(() => {
             navigate('/learner/my-learning', {
               state: {
@@ -103,29 +147,22 @@ const CoursePlayer = () => {
             });
           }, 1500);
         }
-      } else {
-        toast.success(`🎉 Congratulations! You have completed "${courseName}". Your certificate is ready!`);
-        setTimeout(() => {
-          navigate('/learner/my-learning', {
-            state: {
-              courseCompleted: true,
-              courseName,
-              certificateUrl
-            }
-          });
-        }, 1500);
+      } catch (error) {
+        logger.error('Error in certificate success handler', error instanceof Error ? error : new Error(String(error)));
+        toast.error('Something went wrong after course completion. Please check My Learning.');
       }
-    } catch (error) {
-      logger.error('Error in certificate success handler', error instanceof Error ? error : new Error(String(error)));
-      toast.error('Something went wrong after course completion. Please check My Learning.');
-    }
-  }, [navigate, user]);
-  
-  // Certificate modal hook
-  const certificateModal = useCertificateModal({
-    user,
-    onSuccess: handleCertificateSuccess
+    }, [navigate])
   });
+  
+  /**
+   * Store closeModal function in ref after certificateModal initialization.
+   * This allows the onSuccess callback to access the latest closeModal function
+   * without creating a circular dependency or stale closure.
+   * 
+   * Pattern: Ref is updated on every render, ensuring the callback always has
+   * access to the current closeModal function.
+   */
+  closeModalRef.current = certificateModal.closeModal;
   
   // Video progress tracking refs
   const videoRef = useRef(null);
@@ -1400,14 +1437,45 @@ const CoursePlayer = () => {
       } else {
         logger.info('Course completed successfully');
         
-        // Open certificate modal with data
+        /**
+         * Open certificate generation modal
+         * 
+         * Flow:
+         * 1. Prepare certificate data (course name, educator, type, issued date)
+         * 2. Guard check ensures modal hook is properly initialized
+         * 3. Call openModal with all required certificate parameters
+         * 4. Modal shows name input, user confirms, certificate generates
+         * 5. onSuccess callback (defined above) handles post-generation flow
+         * 
+         * Error Handling:
+         * - Guard check prevents crashes if hook initialization failed
+         * - Try-catch handles any errors during modal opening
+         * - Enhanced logging provides debugging context
+         */
         const courseName = course?.title || 'Course';
         const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
         const courseType = course?.course_type || 'course';
         const issuedOnDate = course?.issued_on || null;
         
+        /**
+         * Guard check: Ensure certificate modal is properly initialized
+         * 
+         * This prevents runtime errors if:
+         * - The useCertificateModal hook failed to initialize
+         * - Component unmounted during async operation
+         * - Hook returned undefined/null due to error
+         * 
+         * If check fails, logs error with context and shows user-friendly message
+         */
+        if (!certificateModal?.openModal) {
+          logger.error('Certificate modal not initialized', { certificateModal });
+          toast.error('Certificate modal is not available. Please refresh the page.');
+          return;
+        }
+        
         try {
-          certificateModal.openModal({
+          // Open modal with certificate data
+          await certificateModal.openModal({
             learnerId,
             learnerIdText,
             courseName,
@@ -1418,7 +1486,26 @@ const CoursePlayer = () => {
             prefillName
           });
         } catch (modalError) {
-          logger.error('Failed to open certificate modal', modalError instanceof Error ? modalError : new Error(String(modalError)));
+          /**
+           * Enhanced error logging for modal opening failures
+           * 
+           * Logs:
+           * - Original error object with full stack trace
+           * - Modal state (hasOpenModal flag)
+           * - Course data context for debugging
+           * 
+           * This helps identify whether the issue is:
+           * - Modal hook initialization failure
+           * - Invalid certificate data
+           * - Network/database errors
+           */
+          logger.error('Failed to open certificate modal', { 
+            error: modalError instanceof Error ? modalError : new Error(String(modalError)),
+            modalState: {
+              hasOpenModal: !!certificateModal?.openModal,
+              courseData: { courseName, educatorName, courseType }
+            }
+          });
           toast.error('Failed to open certificate modal. Please try again.');
         }
       }

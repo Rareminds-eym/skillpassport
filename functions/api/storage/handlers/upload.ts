@@ -304,6 +304,40 @@ export const handleUpload: PagesFunction = async (context) => {
       return createAuthenticationError('/upload', 'missing_token');
     }
 
+    // SECURITY: Defense-in-depth against header spoofing
+    // If request arrived via unauthenticated path (header check), verify body context matches
+    // This prevents attackers from setting x-upload-context: certificate in header
+    // while submitting a different context in the body
+    if (!authenticatedContext.user) {
+      const headerContext = request.headers.get('x-upload-context');
+      
+      // Verify both header and body context match and are in allowed list
+      if (headerContext !== uploadContext) {
+        logger.error('Context mismatch between header and body', new Error('Spoofing attempt'), {
+          headerContext,
+          bodyContext: uploadContext,
+          timestamp: new Date().toISOString()
+        });
+        return createAuthenticationError('/upload', 'forbidden_context');
+      }
+      
+      if (!UNAUTHENTICATED_UPLOAD_CONTEXTS.includes(
+        uploadContext as (typeof UNAUTHENTICATED_UPLOAD_CONTEXTS)[number]
+      )) {
+        logger.error('Forbidden upload context for unauthenticated request', new Error('Context not allowed'), {
+          context: uploadContext,
+          allowedContexts: UNAUTHENTICATED_UPLOAD_CONTEXTS,
+          timestamp: new Date().toISOString()
+        });
+        return createAuthenticationError('/upload', 'forbidden_context');
+      }
+      
+      logger.info('Unauthenticated upload validated', { 
+        context: uploadContext,
+        headerMatch: true 
+      });
+    }
+
     // For unauthenticated certificate uploads, generate a unique system identifier
     // This maintains audit trail while avoiding confusion with real user IDs
     const userId = authenticatedContext.user?.id || `system-cert-${Date.now()}-${crypto.randomUUID().substring(0, 8)}`;
