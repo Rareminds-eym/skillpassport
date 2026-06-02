@@ -27,6 +27,7 @@ interface CertificateResult {
   credentialId: string;
   courseName: string;
   courseType: string;
+  courseId: string;
 }
 
 interface UseCertificateModalOptions {
@@ -91,7 +92,7 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
       // Fallback to email username
       return user?.email?.split('@')[0] || '';
     } catch (error) {
-      logger.warn('Error fetching learner name', error instanceof Error ? error : new Error(String(error)));
+      logger.warn('Error fetching learner name', { error: error instanceof Error ? error.message : String(error) });
       return user?.email?.split('@')[0] || '';
     }
   };
@@ -103,7 +104,7 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
     setPendingData(data);
     
     // Fetch name from database if not provided
-    const nameToUse = data.prefillName || await fetchLearnerName();
+    const nameToUse = data.prefillName || (await fetchLearnerName());
     setFullName(nameToUse);
     
     setGeneratedUrl(null);
@@ -236,7 +237,7 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
           const { error: learnerUpdateError } = await learnerQuery;
           
           if (learnerUpdateError) {
-            logger.warn('Failed to update learner name', learnerUpdateError instanceof Error ? learnerUpdateError : new Error(String(learnerUpdateError)));
+            logger.warn('Failed to update learner name', { error: learnerUpdateError });
           }
           
           // Also update users table for backward compatibility
@@ -250,11 +251,11 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
               .eq('id', user.id);
 
             if (userUpdateError) {
-              logger.warn('Failed to update user name', userUpdateError instanceof Error ? userUpdateError : new Error(String(userUpdateError)));
+              logger.warn('Failed to update user name', { error: userUpdateError });
             }
           }
         } catch (err) {
-          logger.warn('Error updating name', err instanceof Error ? err : new Error(String(err)));
+          logger.warn('Error updating name', { error: err instanceof Error ? err.message : String(err) });
         }
       }
 
@@ -287,11 +288,13 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
             certificateUrl: result.certificateUrl,
             credentialId: result.credentialId,
             courseName,
-            courseType
+            courseType,
+            courseId
           });
         }
       } else {
-        logger.error('Certificate generation failed', new Error(result.error));
+        const errorObj = new Error(result.error || 'Certificate generation failed');
+        logger.error('Certificate generation failed', errorObj);
         toast.error(result.error || 'Failed to generate certificate');
         
         if (onError) {
@@ -299,7 +302,8 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
         }
       }
     } catch (error) {
-      logger.error('Error generating certificate', error instanceof Error ? error : new Error(String(error)));
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error generating certificate', errorObj);
       toast.error('An error occurred while generating the certificate');
       
       if (onError) {
@@ -320,7 +324,8 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
       await downloadCertificate(generatedUrl, pendingData.courseName);
       toast.success('Certificate downloaded successfully!');
     } catch (error) {
-      logger.error('Error downloading certificate', error instanceof Error ? error : new Error(String(error)));
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error downloading certificate', errorObj);
       toast.error('Failed to download certificate');
     }
   };

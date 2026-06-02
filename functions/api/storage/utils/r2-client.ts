@@ -32,7 +32,7 @@ export class R2Client {
   private endpoint: string;
   private bucketName: string;
   private publicUrl?: string;
-  private r2Bucket?: any; // R2 binding if available
+  private r2Bucket?: PagesEnv['R2_BUCKET']; // R2 binding if available
 
   /**
    * Create a new R2 client instance
@@ -40,7 +40,7 @@ export class R2Client {
    */
   constructor(env: PagesEnv) {
     // Check if R2 binding is available (preferred method)
-    this.r2Bucket = (env as any).R2_BUCKET;
+    this.r2Bucket = env.R2_BUCKET;
     
     if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
       if (!this.r2Bucket) {
@@ -160,22 +160,15 @@ export class R2Client {
 
     // Parse XML response (simple parsing for S3-compatible list response)
     const objects: R2Object[] = [];
-    const keyMatches = xmlText.matchAll(/<Key>([^<]+)<\/Key>/g);
-    const sizeMatches = xmlText.matchAll(/<Size>([^<]+)<\/Size>/g);
-    const lastModMatches = xmlText.matchAll(/<LastModified>([^<]+)<\/LastModified>/g);
-    const etagMatches = xmlText.matchAll(/<ETag>"?([^<"]+)"?<\/ETag>/g);
-
-    const keys = Array.from(keyMatches, m => m[1]);
-    const sizes = Array.from(sizeMatches, m => parseInt(m[1], 10));
-    const lastMods = Array.from(lastModMatches, m => new Date(m[1]));
-    const etags = Array.from(etagMatches, m => m[1]);
-
-    for (let i = 0; i < keys.length; i++) {
+    const contentsBlocks = xmlText.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g);
+    
+    for (const block of contentsBlocks) {
+      const inner = block[1];
       objects.push({
-        key: keys[i],
-        size: sizes[i] || 0,
-        lastModified: lastMods[i] || new Date(),
-        etag: etags[i] || '',
+        key: inner.match(/<Key>([^<]+)<\/Key>/)?.[1] ?? '',
+        size: parseInt(inner.match(/<Size>([^<]+)<\/Size>/)?.[1] ?? '0', 10),
+        lastModified: new Date(inner.match(/<LastModified>([^<]+)<\/LastModified>/)?.[1] ?? ''),
+        etag: inner.match(/<ETag>"?([^<"]+)"?<\/ETag>/)?.[1] ?? '',
       });
     }
 
@@ -194,32 +187,27 @@ export class R2Client {
     contentType: string,
     expiresIn: number = 3600
   ): Promise<{ url: string; headers: Record<string, string> }> {
-    const uploadUrl = `${this.endpoint}/${this.bucketName}/${key}`;
+    // Add X-Amz-Expires to the URL BEFORE signing
+    const uploadUrl = new URL(`${this.endpoint}/${this.bucketName}/${key}`);
+    uploadUrl.searchParams.set('X-Amz-Expires', expiresIn.toString());
 
-    const uploadRequest = new Request(uploadUrl, {
+    const uploadRequest = new Request(uploadUrl.toString(), {
       method: 'PUT',
       headers: {
         'Content-Type': contentType,
       },
     });
 
-    const signedRequest = await this.client.sign(uploadRequest);
-
-    // Extract the signed URL and headers
-    const headers: Record<string, string> = {
-      'Content-Type': contentType,
-    };
-
-    // Copy authentication headers from signed request
-    const authHeader = signedRequest.headers.get('Authorization');
-    const dateHeader = signedRequest.headers.get('x-amz-date');
-
-    if (authHeader) headers['Authorization'] = authHeader;
-    if (dateHeader) headers['x-amz-date'] = dateHeader;
+    // Sign with query parameters instead of Authorization header
+    const signedRequest = await this.client.sign(uploadRequest, {
+      aws: {
+        signQuery: true,
+      },
+    });
 
     return {
       url: signedRequest.url,
-      headers,
+      headers: { 'Content-Type': contentType },
     };
   }
 
@@ -258,10 +246,25 @@ export class R2Client {
    * @returns Response object containing the file content
    */
   async getObject(key: string, range?: string): Promise<Response> {
+    // Validate range BEFORE try/catch so bad input throws to the caller
+    let r2Range: { offset: number; length: number } | undefined;
+    if (range) {
+      const match = range.match(/^bytes=(\d+)-(\d+)$/);
+      if (!match) {
+        throw new Error(`Invalid Range header format: "${range}". Expected "bytes=start-end"`);
+      }
+      const start = parseInt(match[1], 10);
+      const end   = parseInt(match[2], 10);
+      if (start > end) {
+        throw new Error(`Invalid range: start (${start}) must be <= end (${end})`);
+      }
+      r2Range = { offset: start, length: end - start + 1 };
+    }
+
     // Use R2 binding if available
     if (this.r2Bucket) {
       try {
-        const object = await this.r2Bucket.get(key, range ? { range: { offset: 0, length: parseInt(range.split('-')[1]) } } : undefined);
+        const object = await this.r2Bucket.get(key, r2Range ? { range: r2Range } : undefined);
         
         if (!object) {
           throw new Error(`R2 get object failed: 404 - Not Found`);
@@ -332,7 +335,8 @@ export class R2Client {
       // Handle direct key parameter
       if (url.includes('?key=')) {
         const urlObj = new URL(url);
-        return decodeURIComponent(urlObj.searchParams.get('key') || '');
+        const key = urlObj.searchParams.get('key');
+        return key ? decodeURIComponent(key) : null;
       }
 
       // Handle proxy URL with url parameter

@@ -242,16 +242,21 @@ const ModernLearningCard = ({
       return;
     }
     
-    certificateModal.openModal({
-      learnerId: learnerData.id,
-      learnerIdText: learnerData.learner_id || null,
-      courseName,
-      educatorName,
-      courseType,
-      issuedOnDate,
-      courseId: item.course_id,
-      prefillName: learnerData?.name || ''
-    });
+    try {
+      await certificateModal.openModal({
+        learnerId: learnerData.id,
+        learnerIdText: learnerData.learner_id || null,
+        courseName,
+        educatorName,
+        courseType,
+        issuedOnDate,
+        courseId: item.course_id,
+        prefillName: learnerData?.name || ''
+      });
+    } catch (error) {
+      logger.error('Failed to open certificate modal', error instanceof Error ? error : new Error(String(error)));
+      toast.error('Failed to open certificate modal. Please try again.');
+    }
   };
 
   // Get progress color based on completion status - Only blue and green
@@ -1024,9 +1029,19 @@ const ModernLearningCard = ({
                     </button>
                     {isInternalCourse && (
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          handleGetCertificate(e);
+                          if (certificateUrl) {
+                            setIsDownloading(true);
+                            try {
+                              await downloadCertificate(certificateUrl, item.course || item.title);
+                              toast.success('Certificate downloaded successfully!');
+                            } catch (error) {
+                              toast.error('Failed to download certificate');
+                            } finally {
+                              setIsDownloading(false);
+                            }
+                          }
                           setShowDropdown(false);
                         }}
                         disabled={isDownloading}

@@ -89,12 +89,12 @@ const Courses = () => {
   // Certificate modal hook
   const certificateModal = useCertificateModal({
     user,
-    onSuccess: async ({ certificateUrl }) => {
+    onSuccess: async ({ certificateUrl, courseId }) => {
       // Update local state with new certificate URL
-      if (certificateModal.pendingData?.courseId) {
+      if (courseId) {
         setCertificateUrls(prev => ({
           ...prev,
-          [certificateModal.pendingData.courseId]: certificateUrl
+          [courseId]: certificateUrl
         }));
       }
       // Refresh enrollments to get updated certificate URL
@@ -449,7 +449,7 @@ const Courses = () => {
       const courseType = course.course_type === 'webinar' ? 'webinar' : 'course';
       const issuedOnDate = courseType === 'webinar' ? course.issued_on : null;
       
-      certificateModal.openModal({
+      await certificateModal.openModal({
         learnerId: learnerData.id,
         learnerIdText: learnerData.learner_id,
         courseName,

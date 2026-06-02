@@ -56,6 +56,7 @@ export interface PagesEnv {
   CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
   CLOUDFLARE_R2_BUCKET_NAME?: string;
   CLOUDFLARE_R2_PUBLIC_URL?: string;
+  R2_BUCKET?: R2Bucket;
 
   // KV Cache namespace removed - dependency eliminated
 }

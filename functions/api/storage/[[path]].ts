@@ -46,6 +46,11 @@ import { handleMediaProxy } from './handlers/media-proxy';
 const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content', '/media-proxy'];
 
 /**
+ * Valid upload contexts that can be used without authentication
+ */
+const UNAUTHENTICATED_UPLOAD_CONTEXTS = ['certificate'] as const;
+
+/**
  * Check if the given path is a public endpoint or certificate upload
  */
 async function isPublicEndpoint(path: string, request: Request): Promise<boolean> {
@@ -53,17 +58,37 @@ async function isPublicEndpoint(path: string, request: Request): Promise<boolean
     return true;
   }
   
-  // Allow /upload for certificate context without authentication
-  // The upload handler will validate the context
+  // Allow /upload for specific contexts without authentication
+  // This is used for certificate uploads triggered by backend after course completion
   if (path === '/upload' && request.method === 'POST') {
     const contentType = request.headers.get('content-type') || '';
     logger.info('Upload request received', { contentType });
-    // Check if it's a multipart upload (certificates are uploaded as multipart)
+    
+    // Check if it's a multipart upload
     if (contentType.includes('multipart/form-data')) {
-      // We allow it through - the upload handler will check the context field
-      // and only allow certificate uploads without auth
-      logger.info('Allowing multipart upload through');
-      return true;
+      try {
+        // Clone request to read form data without consuming the original
+        const clonedRequest = request.clone();
+        const formData = await clonedRequest.formData();
+        const uploadContext = (formData.get('context') as string) || 'default';
+        
+        // Only allow specific contexts through without authentication
+        const isAllowedContext = UNAUTHENTICATED_UPLOAD_CONTEXTS.includes(uploadContext as any);
+        
+        if (isAllowedContext) {
+          logger.info('Allowing unauthenticated upload for valid context', { context: uploadContext });
+          return true;
+        } else {
+          logger.warn('Multipart upload with unauthorized context', { 
+            context: uploadContext,
+            allowedContexts: UNAUTHENTICATED_UPLOAD_CONTEXTS 
+          });
+          return false;
+        }
+      } catch (error) {
+        logger.error('Failed to parse upload context', error instanceof Error ? error : new Error(String(error)), { path });
+        return false;
+      }
     }
   }
   

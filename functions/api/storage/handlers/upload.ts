@@ -174,10 +174,15 @@ import {
   validateSVGContent,
 } from '../utils/file-validator';
 import { validateFileSizeBackend } from '../utils/file-size-validator';
-import { getFileSizeLimit } from '../config/fileSizeLimits';
+import { getFileSizeLimit, type UploadContext } from '../config/fileSizeLimits';
 import { getLogger } from '../../../../src/shared/config/logging';
 
 const logger = getLogger('storage-upload');
+
+/**
+ * Valid upload contexts that can be used without authentication
+ */
+const UNAUTHENTICATED_UPLOAD_CONTEXTS: ReadonlyArray<UploadContext> = ['certificate'];
 
 /**
  * Allowed file types (MIME types)
@@ -266,17 +271,42 @@ export const handleUpload: PagesFunction = async (context) => {
     const filename = formData.get('filename') as string;
     const uploadContext = (formData.get('context') as string) || 'default';
 
-    // For certificate uploads, we don't require authentication
-    // The certificate generation is triggered by backend after course completion
-    const requiresAuth = uploadContext !== 'certificate';
+    // Validate upload context is a valid value
+    const validContexts: ReadonlyArray<string> = [
+      'assignment',
+      'course_video',
+      'course_resource',
+      'document',
+      'certificate',
+      'resume',
+      'message_attachment',
+      'profile_photo',
+      'default'
+    ];
     
-    // Require authentication for non-certificate uploads
+    if (!validContexts.includes(uploadContext)) {
+      logger.warn('Invalid upload context provided', { 
+        context: uploadContext, 
+        validContexts 
+      });
+      return jsonResponse({ 
+        error: 'Invalid upload context',
+        validContexts 
+      }, 400);
+    }
+
+    // Determine if authentication is required for this context
+    const requiresAuth = !UNAUTHENTICATED_UPLOAD_CONTEXTS.includes(uploadContext as UploadContext);
+    
+    // Require authentication for contexts that need it
     if (requiresAuth && !authenticatedContext.user) {
+      logger.warn('Authentication required for upload context', { context: uploadContext });
       return createAuthenticationError('/upload', 'missing_token');
     }
 
-    // For certificate uploads without user, use a system user ID
-    const userId = authenticatedContext.user?.id || 'system';
+    // For unauthenticated certificate uploads, generate a unique system identifier
+    // This maintains audit trail while avoiding confusion with real user IDs
+    const userId = authenticatedContext.user?.id || `system-cert-${Date.now()}-${crypto.randomUUID().substring(0, 8)}`;
 
     // Validate required fields
     if (!file) {

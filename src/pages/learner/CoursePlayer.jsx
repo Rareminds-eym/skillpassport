@@ -72,10 +72,9 @@ const CoursePlayer = () => {
   const [positionInitialized, setPositionInitialized] = useState(false);
   const [lessonTimeSpent, setLessonTimeSpent] = useState({}); // Store time for all lessons
   
-  // Certificate modal hook
-  const certificateModal = useCertificateModal({
-    user,
-    onSuccess: async ({ certificateUrl, courseName, courseType }) => {
+  // Stabilized onSuccess callback to avoid stale closures
+  const handleCertificateSuccess = useCallback(async ({ certificateUrl, courseName, courseType }) => {
+    try {
       const isWebinar = courseType === 'webinar';
       
       certificateModal.closeModal();
@@ -116,7 +115,16 @@ const CoursePlayer = () => {
           });
         }, 1500);
       }
+    } catch (error) {
+      logger.error('Error in certificate success handler', error instanceof Error ? error : new Error(String(error)));
+      toast.error('Something went wrong after course completion. Please check My Learning.');
     }
+  }, [navigate, user]);
+  
+  // Certificate modal hook
+  const certificateModal = useCertificateModal({
+    user,
+    onSuccess: handleCertificateSuccess
   });
   
   // Video progress tracking refs
@@ -1398,16 +1406,21 @@ const CoursePlayer = () => {
         const courseType = course?.course_type || 'course';
         const issuedOnDate = course?.issued_on || null;
         
-        certificateModal.openModal({
-          learnerId,
-          learnerIdText,
-          courseName,
-          educatorName,
-          courseType,
-          issuedOnDate,
-          courseId,
-          prefillName
-        });
+        try {
+          certificateModal.openModal({
+            learnerId,
+            learnerIdText,
+            courseName,
+            educatorName,
+            courseType,
+            issuedOnDate,
+            courseId,
+            prefillName
+          });
+        } catch (modalError) {
+          logger.error('Failed to open certificate modal', modalError instanceof Error ? modalError : new Error(String(modalError)));
+          toast.error('Failed to open certificate modal. Please try again.');
+        }
       }
     } catch (error) {
       logger.error('Error in completeCourse', error instanceof Error ? error : new Error(String(error)));
