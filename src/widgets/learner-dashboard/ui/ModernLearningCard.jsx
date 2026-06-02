@@ -15,12 +15,10 @@ import {
     Trash2,
     TrendingUp,
     Users,
-    X,
     Zap
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useUser } from '@/shared/model/authStore';
 import { useLearnerDataById } from '@/entities/learner';
 import { supabase } from "@/shared/api/supabaseClient";
@@ -948,7 +946,10 @@ const ModernLearningCard = ({
                       </button>
                       {isInternalCourse && (
                         <button
-                          onClick={handleDownloadCertificate}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadCertificate(e);
+                          }}
                           disabled={isDownloading}
                           className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
                             isDownloading 
@@ -1102,7 +1103,10 @@ const ModernLearningCard = ({
                     </button>
                     {isInternalCourse && (
                       <button
-                        onClick={handleDownloadCertificate}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadCertificate(e);
+                        }}
                         disabled={isDownloading}
                         className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
                           isDownloading 

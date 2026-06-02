@@ -154,6 +154,22 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
       return 'Name must contain at least one letter';
     }
     
+    // Security: Reject names with HTML/script tags or suspicious patterns
+    const suspiciousPatterns = [
+      /<script/i,
+      /<\/script/i,
+      /<iframe/i,
+      /javascript:/i,
+      /onerror=/i,
+      /onload=/i,
+      /<img/i,
+      /<svg/i,
+    ];
+    
+    if (suspiciousPatterns.some(pattern => pattern.test(trimmedName))) {
+      return 'Name contains invalid characters';
+    }
+    
     return null;
   };
 
@@ -243,7 +259,9 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
           const { error: learnerUpdateError } = await learnerQuery;
           
           if (learnerUpdateError) {
-            logger.warn('Failed to update learner name', { error: learnerUpdateError });
+            logger.error('Failed to update learner name', learnerUpdateError instanceof Error ? learnerUpdateError : new Error(String(learnerUpdateError)));
+            toast.error('Warning: Your name was not saved. The certificate will still be generated.');
+            // Continue with certificate generation despite name update failure
           }
           
           // Also update users table for backward compatibility
@@ -257,11 +275,18 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
               .eq('id', user.id);
 
             if (userUpdateError) {
-              logger.warn('Failed to update user name', { error: userUpdateError });
+              logger.error('Failed to update user name', userUpdateError instanceof Error ? userUpdateError : new Error(String(userUpdateError)));
+              // Don't show another toast if we already showed one for learner update failure
+              if (!learnerUpdateError) {
+                toast.error('Warning: Your name was not saved. The certificate will still be generated.');
+              }
             }
           }
         } catch (err) {
-          logger.warn('Error updating name', { error: err instanceof Error ? err.message : String(err) });
+          const error = err instanceof Error ? err : new Error(String(err));
+          logger.error('Error updating name', error);
+          toast.error('Warning: Failed to save your name. The certificate will still be generated.');
+          // Continue with certificate generation despite name update failure
         }
       }
 
@@ -284,27 +309,51 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
         issuedOnDate
       );
 
-      // Validate result object exists and has expected shape
+      // Validate result object exists and has expected shape with proper type narrowing
       if (!result || typeof result !== 'object') {
         throw new Error('Invalid response from certificate generation service');
       }
 
-      if (result.success && result.certificateUrl) {
-        logger.info('Certificate generated successfully', { credentialId: result.credentialId });
-        setGeneratedUrl(result.certificateUrl);
+      // Type guard: Ensure result has the expected structure
+      const isValidSuccessResult = (
+        'success' in result && 
+        typeof result.success === 'boolean' &&
+        result.success &&
+        'certificateUrl' in result && 
+        typeof result.certificateUrl === 'string' &&
+        result.certificateUrl.length > 0 &&
+        'credentialId' in result &&
+        typeof result.credentialId === 'string'
+      );
+
+      const isValidErrorResult = (
+        'success' in result &&
+        typeof result.success === 'boolean' &&
+        !result.success
+      );
+
+      if (isValidSuccessResult) {
+        // Type assertion is safe here because we validated the structure above
+        const certificateUrl = result.certificateUrl as string;
+        const credentialId = result.credentialId as string;
+        
+        logger.info('Certificate generated successfully', { credentialId });
+        setGeneratedUrl(certificateUrl);
         toast.success('Certificate generated successfully!');
         
         if (onSuccess) {
           onSuccess({
-            certificateUrl: result.certificateUrl,
-            credentialId: result.credentialId,
+            certificateUrl,
+            credentialId,
             courseName,
             courseType,
             courseId
           });
         }
-      } else {
-        const errorMessage = result.error || 'Certificate generation failed';
+      } else if (isValidErrorResult) {
+        const errorMessage = ('error' in result && typeof result.error === 'string') 
+          ? result.error 
+          : 'Certificate generation failed';
         const errorObj = new Error(errorMessage);
         logger.error('Certificate generation failed', errorObj);
         toast.error(errorMessage);
@@ -312,6 +361,9 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
         if (onError) {
           onError(errorObj);
         }
+      } else {
+        // Unexpected response structure
+        throw new Error('Unexpected response structure from certificate generation service');
       }
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error));

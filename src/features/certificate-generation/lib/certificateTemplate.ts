@@ -13,6 +13,24 @@ interface CertificateData {
   courseType?: 'course' | 'webinar';
 }
 
+/**
+ * Escapes HTML special characters to prevent XSS attacks
+ * @param text - The text to escape
+ * @returns Escaped text safe for HTML insertion
+ */
+function escapeHtml(text: string): string {
+  const htmlEscapeMap: { [key: string]: string } = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '/': '&#x2F;',
+  };
+  
+  return text.replace(/[&<>"'\/]/g, (char) => htmlEscapeMap[char]);
+}
+
 export function generateCertificateHTML(data: CertificateData, baseUrl: string = ''): string {
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -33,7 +51,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
   return `<!doctype html>
 <html>
   <head>
-    <title>Certificate ${certificateType} - ${data.studentName}</title>
+    <title>Certificate ${certificateType} - ${escapeHtml(data.studentName)}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
@@ -337,9 +355,9 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       <!-- Right Side Content -->
       <div class="col-2">
         <p class="text-2">This is to certify that</p>
-        <p class="student-name">${data.studentName.toUpperCase()}</p>
-        <p class="text-3">with Learner Id <strong>${data.studentId}</strong><br>${achievementText}</p>
-        <p class="course-name">${data.courseName}</p>
+        <p class="student-name">${escapeHtml(data.studentName.toUpperCase())}</p>
+        <p class="text-3">with Learner Id <strong>${escapeHtml(data.studentId)}</strong><br>${achievementText}</p>
+        <p class="course-name">${escapeHtml(data.courseName)}</p>
         <p class="text-4">${dateLabel} <span class="completion-date">${formatDate(data.completionDate)}</span></p>
       </div>
       
@@ -360,7 +378,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       <div class="platform-name">Rareminds Skill Ecosystem Platform</div>
       
       <img class="rareminds-logo-01-copy-1" src="${baseUrl}/certificate/images/rareminds_logo-01_copy_1.png" alt="">
-      <div class="credential-id">Credential ID: ${data.credentialId}</div>
+      <div class="credential-id">Credential ID: ${escapeHtml(data.credentialId)}</div>
     </div>
   </body>
 </html>`;

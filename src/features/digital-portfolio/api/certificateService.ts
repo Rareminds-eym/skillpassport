@@ -61,17 +61,36 @@ const htmlToImage = async (html: string): Promise<string> => {
     // Dynamically import html2canvas
     const html2canvas = (await import('html2canvas')).default;
     
-    // Wait for images to load
+    // Wait for images to load with proper error handling
     const images = container.querySelectorAll('img');
-    await Promise.all(
-      Array.from(images).map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-        });
-      })
-    );
+    try {
+      await Promise.all(
+        Array.from(images).map(img => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve, reject) => {
+            // Set a timeout to prevent hanging
+            const timeout = setTimeout(() => {
+              reject(new Error(`Image load timeout: ${img.src}`));
+            }, 10000); // 10 second timeout
+            
+            img.onload = () => {
+              clearTimeout(timeout);
+              resolve(undefined);
+            };
+            img.onerror = () => {
+              clearTimeout(timeout);
+              reject(new Error(`Failed to load image: ${img.src}`));
+            };
+          });
+        })
+      );
+    } catch (imageError) {
+      // Log the error but continue - html2canvas may still work with partial images
+      logger.warn('Some certificate images failed to load', { 
+        error: imageError instanceof Error ? imageError.message : String(imageError) 
+      });
+      // Continue anyway - html2canvas can handle missing images
+    }
 
     // Generate canvas from HTML
     const canvas = await html2canvas(container, {

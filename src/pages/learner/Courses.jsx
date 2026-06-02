@@ -211,7 +211,8 @@ const Courses = () => {
       hasFetchedCoursesRef.current = true;
       fetchCourses();
     }
-  }, [fetchCourses]); // Include fetchCourses in dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Fetch courses when search, filter, sort, or page changes
   useEffect(() => {
@@ -219,7 +220,8 @@ const Courses = () => {
     if (hasFetchedCoursesRef.current) {
       fetchCourses();
     }
-  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch, fetchCourses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch, learnerGrade, learnerBranch]);
 
   // Fetch learner grade and branch for filtering
   useEffect(() => {
@@ -237,11 +239,8 @@ const Courses = () => {
           setlearnerGrade(data.grade);
           setlearnerBranch(data.branch_field);
           
-          // Re-fetch courses with proper filtering once learner info is available
-          // Only if courses have already been fetched once
-          if (hasFetchedCoursesRef.current) {
-            fetchCourses();
-          }
+          // Note: No need to manually call fetchCourses() here
+          // The filter-watching useEffect will automatically trigger when learnerGrade/learnerBranch change
         }
       } catch (error) {
         logger.error('Error fetching learner info', error);
@@ -249,7 +248,7 @@ const Courses = () => {
     };
     
     fetchlearnerInfo();
-  }, [user?.email, fetchCourses]);
+  }, [user?.email]);
 
   // Separate effect for enrollments - only when user email changes
   useEffect(() => {
@@ -261,7 +260,9 @@ const Courses = () => {
       hasFetchedEnrollmentsRef.current = true;
       fetchEnrollments();
     }
-  }, [user?.email, fetchEnrollments]);
+    // fetchEnrollments is stable (empty deps), so not needed in dependency array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
 
   const fetchCourses = useCallback(async () => {
     // Prevent duplicate fetches
