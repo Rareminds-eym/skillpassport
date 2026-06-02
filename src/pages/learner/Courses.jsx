@@ -41,7 +41,7 @@ import { useSubscriptionContext } from '@/features/subscription/model/subscripti
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 import { getLogger } from '@/shared/config/logging';
 import toast from 'react-hot-toast';
-import { useCertificateModal } from '@/shared/hooks';
+import { useCertificateModal } from '@/features/certificate-generation';
 import { viewCertificate } from '@/shared/lib/certificateUtils';
 
 import { useUser } from '@/shared/model/authStore';
@@ -457,12 +457,14 @@ const Courses = () => {
    * - Open modal with pre-filled data
    * - User confirms name and generates certificate
    * 
-   * @param {string} courseId - ID of the course
-   * @param {string} courseName - Name of the course
+   * @param {Object} course - Course object containing course_id, title, educator_name, course_type, issued_on
    * @param {Event} e - Click event (for stopPropagation)
    */
-  const handleGetCertificate = useCallback(async (courseId, courseName, e) => {
+  const handleGetCertificate = useCallback(async (course, e) => {
     e?.stopPropagation();
+    
+    const courseId = course.course_id;
+    const courseName = course.title;
     
     // Race condition guard: Prevent duplicate calls for the same certificate
     if (preparingCertificateRef.current.has(courseId)) {
@@ -471,24 +473,25 @@ const Courses = () => {
     }
     
     try {
-      // Check if certificate already exists
-      const existingCertUrl = getCertificateUrl(courseId);
+      // Check if certificate already exists - use callback to get fresh state
+      setCertificateUrls(currentUrls => {
+        const existingCertUrl = currentUrls[courseId];
+        if (existingCertUrl) {
+          // Certificate already exists, show it directly
+          viewCertificate(existingCertUrl);
+        }
+        return currentUrls; // No state change
+      });
+      
+      // Early return check - we need to check again outside the setState
+      const existingCertUrl = certificateUrls[courseId];
       if (existingCertUrl) {
-        // Certificate already exists, show it directly
-        viewCertificate(existingCertUrl);
         return;
       }
       
       // Mark this certificate as being prepared
       preparingCertificateRef.current.add(courseId);
       setPreparingCertificate(courseId);
-      
-      // Get course details for certificate generation
-      const course = courses.find(c => c.course_id === courseId);
-      if (!course) {
-        toast.error('Course not found');
-        return;
-      }
       
       // Get learner data - fetch fresh from database
       if (!user?.email) {
@@ -560,7 +563,7 @@ const Courses = () => {
       preparingCertificateRef.current.delete(courseId);
       setPreparingCertificate(null);
     }
-  }, [courses, user?.email, certificateModal]);
+  }, [user?.email, certificateModal, certificateUrls]);
 
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {
@@ -1196,7 +1199,7 @@ const Courses = () => {
                           View Course
                         </Button>
                         <Button
-                          onClick={(e) => handleGetCertificate(course.course_id, course.title, e)}
+                          onClick={(e) => handleGetCertificate(course, e)}
                           disabled={preparingCertificate === course.course_id}
                           className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -1381,7 +1384,7 @@ const Courses = () => {
                               View Course
                             </Button>
                             <Button
-                              onClick={(e) => handleGetCertificate(course.course_id, course.title, e)}
+                              onClick={(e) => handleGetCertificate(course, e)}
                               disabled={preparingCertificate === course.course_id}
                               className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                             >

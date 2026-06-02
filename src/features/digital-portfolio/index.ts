@@ -7,8 +7,6 @@ export { copyToClipboard } from './lib/exportppUtils';
 export { saveResumeToTables } from './api/resumeDataService';
 export { exportAsJSON } from './lib/exportppUtils';
 export { generateQRCode } from './lib/exportppUtils';
-export { getCertificateProxyUrl } from './api/certificateService';
-export { downloadCertificate } from './api/certificateService';
 export { generateShareableLink } from './lib/exportppUtils';
 export { getlearnerPortfolioByEmail } from './api/portfolioService';
 export { parseResumeWithAI } from './api/resumeParserService';
@@ -17,7 +15,6 @@ export { getBadgeProgress } from './api/badgeService';
 export { generateBadges } from './api/badgeService';
 export { mergeResumeData } from './api/resumeParserService';
 export { exportResume } from './lib/exportppUtils';
-export { generateCourseCertificate } from './api/certificateService';
 export { sharePortfolio } from './lib/exportppUtils';
 export { exportAsHTML } from './lib/exportppUtils';
 export type { default as ThemeToggle } from './ui/shared/ThemeToggle';
@@ -34,3 +31,11 @@ export type { ProfileCompletionErrorBoundary } from './ui/shared/ProfileCompleti
 
 // Store exports
 export * from './model/portfolioStore';
+
+// Re-export certificate functions from certificate-generation feature for backward compatibility
+// DEPRECATED: Import directly from @/features/certificate-generation instead
+export {
+  getCertificateProxyUrl,
+  downloadCertificate,
+  generateCourseCertificate
+} from '@/features/certificate-generation';

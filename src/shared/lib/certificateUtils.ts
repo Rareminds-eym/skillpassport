@@ -1,5 +1,5 @@
 import toast from 'react-hot-toast';
-import { getCertificateProxyUrl } from '@/features/digital-portfolio';
+import { getCertificateProxyUrl } from '@/shared/lib/utils/certificate-utils';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('certificateUtils');

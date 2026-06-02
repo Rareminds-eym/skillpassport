@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
-import { generateCourseCertificate, downloadCertificate } from '@/features/digital-portfolio';
+import { 
+  fetchLearnerName, 
+  generateCertificateWithNameUpdate,
+  type User,
+  type CertificateGenerationParams 
+} from '../api/certificateLearnerService';
+import { downloadCertificate } from '../api/certificateService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('useCertificateModal');
-
-interface User {
-  id?: string;
-  email?: string;
-}
 
 interface CertificateData {
   courseId: string;
@@ -68,31 +68,14 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
   /**
    * Fetch learner name from database
    */
-  const fetchLearnerName = async (): Promise<string> => {
+  const fetchName = async (): Promise<string> => {
     if (!user?.id && !user?.email) return '';
     
     try {
-      // Try to fetch from learners table using user_id or email
-      let query = supabase
-        .from('learners')
-        .select('name');
-      
-      if (user.id) {
-        query = query.eq('user_id', user.id);
-      } else if (user.email) {
-        query = query.eq('email', user.email);
-      }
-      
-      const { data, error } = await query.maybeSingle();
-      
-      if (!error && data?.name) {
-        return data.name;
-      }
-      
-      // Fallback to email username
-      return user?.email?.split('@')[0] || '';
+      return await fetchLearnerName(user);
     } catch (error) {
-      logger.warn('Error fetching learner name', { error: error instanceof Error ? error.message : String(error) });
+      logger.error('Error fetching learner name in openModal', error instanceof Error ? error : new Error(String(error)));
+      // Use email fallback if fetching fails
       return user?.email?.split('@')[0] || '';
     }
   };
@@ -105,7 +88,7 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
     
     try {
       // Fetch name from database if not provided
-      const nameToUse = data.prefillName || (await fetchLearnerName());
+      const nameToUse = data.prefillName || (await fetchName());
       setFullName(nameToUse);
     } catch (error) {
       logger.error('Error fetching learner name in openModal', error instanceof Error ? error : new Error(String(error)));
@@ -237,77 +220,25 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
         courseId
       } = pendingData;
 
-      // Update user name in database if user object is provided
-      // Store in learners table for consistency
-      if (user?.id || user?.email) {
-        try {
-          const nameParts = trimmedName.split(' ');
-          const firstName = nameParts[0] || trimmedName;
-          const lastName = nameParts.slice(1).join(' ') || '';
-          
-          // Update learners table
-          let learnerQuery = supabase
-            .from('learners')
-            .update({ name: trimmedName });
-          
-          if (user.id) {
-            learnerQuery = learnerQuery.eq('user_id', user.id);
-          } else if (user.email) {
-            learnerQuery = learnerQuery.eq('email', user.email);
-          }
-          
-          const { error: learnerUpdateError } = await learnerQuery;
-          
-          if (learnerUpdateError) {
-            logger.error('Failed to update learner name', learnerUpdateError instanceof Error ? learnerUpdateError : new Error(String(learnerUpdateError)));
-            toast.error('Warning: Your name was not saved. The certificate will still be generated.');
-            // Continue with certificate generation despite name update failure
-          }
-          
-          // Also update users table for backward compatibility
-          if (user.id) {
-            const { error: userUpdateError } = await supabase
-              .from('users')
-              .update({
-                firstName,
-                lastName
-              })
-              .eq('id', user.id);
-
-            if (userUpdateError) {
-              logger.error('Failed to update user name', userUpdateError instanceof Error ? userUpdateError : new Error(String(userUpdateError)));
-              // Don't show another toast if we already showed one for learner update failure
-              if (!learnerUpdateError) {
-                toast.error('Warning: Your name was not saved. The certificate will still be generated.');
-              }
-            }
-          }
-        } catch (err) {
-          const error = err instanceof Error ? err : new Error(String(err));
-          logger.error('Error updating name', error);
-          toast.error('Warning: Failed to save your name. The certificate will still be generated.');
-          // Continue with certificate generation despite name update failure
-        }
-      }
-
-      logger.info('Generating certificate', { 
-        learnerId, 
-        learnerName: trimmedName,
-        courseName, 
-        courseType, 
-        issuedOnDate 
-      });
-
-      const result = await generateCourseCertificate(
+      // Prepare certificate generation parameters
+      const params: CertificateGenerationParams = {
         learnerId,
-        trimmedName,
+        learnerName: trimmedName,
+        learnerIdText,
         courseId,
         courseName,
         educatorName,
-        learnerIdText,
         courseType,
         issuedOnDate
-      );
+      };
+
+      // Delegate to features layer for business logic
+      const result = await generateCertificateWithNameUpdate(user, params);
+
+      // Show warning if name update failed but certificate generation succeeded
+      if (result.nameUpdateFailed && result.success) {
+        toast.error('Warning: Your name was not saved. The certificate will still be generated.');
+      }
 
       // Validate result object exists and has expected shape with proper type narrowing
       if (!result || typeof result !== 'object') {

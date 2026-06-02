@@ -25,6 +25,7 @@ import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
 import { authenticateUser, AuthResult } from '../shared/auth';
 import { createAuthenticationError } from './utils/error-handling';
 import { getLogger } from '../../../src/shared/config/logging';
+import { UNAUTHENTICATED_UPLOAD_CONTEXTS, isValidUploadContext } from './config/uploadContexts';
 
 const logger = getLogger('storage-api');
 
@@ -44,11 +45,6 @@ import { handleMediaProxy } from './handlers/media-proxy';
 // Define public endpoints that don't require JWT authentication
 // Note: /media-proxy uses token-based auth in URL params, not JWT
 const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content', '/media-proxy'];
-
-/**
- * Valid upload contexts that can be used without authentication
- */
-const UNAUTHENTICATED_UPLOAD_CONTEXTS = ['certificate'] as const;
 
 /**
  * Check if the given path is a public endpoint or unauthenticated upload

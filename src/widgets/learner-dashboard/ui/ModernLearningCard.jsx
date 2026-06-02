@@ -27,7 +27,7 @@ import { checkAssessmentStatus } from "@/features/assessment/api/externalAssessm
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 import { viewCertificate } from '@/shared/lib/certificateUtils';
-import { useCertificateModal } from '@/shared/hooks';
+import { useCertificateModal } from '@/features/certificate-generation';
 import { CertificateNameModal } from '@/shared/ui';
 
 const logger = getLogger('modern-learning-card');

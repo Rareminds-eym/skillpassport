@@ -175,14 +175,10 @@ import {
 } from '../utils/file-validator';
 import { validateFileSizeBackend } from '../utils/file-size-validator';
 import { getFileSizeLimit, type UploadContext } from '../config/fileSizeLimits';
+import { UNAUTHENTICATED_UPLOAD_CONTEXTS, VALID_UPLOAD_CONTEXTS } from '../config/uploadContexts';
 import { getLogger } from '../../../../src/shared/config/logging';
 
 const logger = getLogger('storage-upload');
-
-/**
- * Valid upload contexts that can be used without authentication
- */
-const UNAUTHENTICATED_UPLOAD_CONTEXTS: ReadonlyArray<UploadContext> = ['certificate'];
 
 /**
  * Allowed file types (MIME types)
@@ -271,27 +267,15 @@ export const handleUpload: PagesFunction = async (context) => {
     const filename = formData.get('filename') as string;
     const uploadContext = (formData.get('context') as string) || 'default';
 
-    // Validate upload context is a valid value
-    const validContexts: ReadonlyArray<string> = [
-      'assignment',
-      'course_video',
-      'course_resource',
-      'document',
-      'certificate',
-      'resume',
-      'message_attachment',
-      'profile_photo',
-      'default'
-    ];
-    
-    if (!validContexts.includes(uploadContext)) {
+    // Validate upload context using centralized configuration
+    if (!VALID_UPLOAD_CONTEXTS.includes(uploadContext)) {
       logger.warn('Invalid upload context provided', { 
         context: uploadContext, 
-        validContexts 
+        validContexts: VALID_UPLOAD_CONTEXTS 
       });
       return jsonResponse({ 
         error: 'Invalid upload context',
-        validContexts 
+        validContexts: VALID_UPLOAD_CONTEXTS 
       }, 400);
     }
 

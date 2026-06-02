@@ -29,7 +29,7 @@ import { courseProgressService } from '@/features/courses';
 import { fileService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api';
 import { getLogger } from '@/shared/config/logging';
-import { useCertificateModal } from '@/shared/hooks';
+import { useCertificateModal } from '@/features/certificate-generation';
 
 const logger = getLogger('course-player');
 
@@ -101,11 +101,13 @@ const CoursePlayer = () => {
    */
   const certificateModal = useCertificateModal({
     user,
-    // NOTE: Dependency array [navigate] is correct. 
+    // NOTE: Dependency array [navigate] is intentionally minimal for stability
     // - 'user' is passed to useCertificateModal but NOT used inside this callback
     // - 'navigate' is the only reactive dependency used in the callback body
-    // - 'logger' and 'downloadCertificate' are stable imports and don't need to be in dependencies
-    // - 'closeModalRef' is a ref and doesn't need to be in dependencies
+    // - 'logger' is a module-level constant (getLogger result) - stable reference
+    // - 'downloadCertificate' is an imported function - stable reference
+    // - 'closeModalRef' is a ref - doesn't trigger re-renders
+    // Adding stable imports to deps would cause unnecessary callback recreation
     onSuccess: useCallback(async ({ certificateUrl, courseName, courseType }) => {
       try {
         const isWebinar = courseType === 'webinar';
@@ -1418,6 +1420,13 @@ const CoursePlayer = () => {
         learnerRecord = data;
       } catch (err) {
         logger.error('Unexpected error fetching learner record', err instanceof Error ? err : new Error(String(err)));
+        return;
+      }
+
+      // Additional defensive null check (should never happen due to checks above)
+      if (!learnerRecord) {
+        logger.error('Learner record is null or undefined after successful fetch');
+        toast.error('Failed to retrieve learner information.');
         return;
       }
 
