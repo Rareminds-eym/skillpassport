@@ -101,6 +101,10 @@ const CoursePlayer = () => {
    */
   const certificateModal = useCertificateModal({
     user,
+    // NOTE: Dependency array [navigate] is correct. 
+    // - 'user' is passed to useCertificateModal but NOT used inside this callback
+    // - Only 'navigate' is used inside the callback body (lines 103-154)
+    // - closeModalRef is a ref and doesn't need to be in dependencies
     onSuccess: useCallback(async ({ certificateUrl, courseName, courseType }) => {
       try {
         const isWebinar = courseType === 'webinar';

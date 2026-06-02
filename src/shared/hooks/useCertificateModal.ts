@@ -284,6 +284,11 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
         issuedOnDate
       );
 
+      // Validate result object exists and has expected shape
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response from certificate generation service');
+      }
+
       if (result.success && result.certificateUrl) {
         logger.info('Certificate generated successfully', { credentialId: result.credentialId });
         setGeneratedUrl(result.certificateUrl);
@@ -299,12 +304,13 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
           });
         }
       } else {
-        const errorObj = new Error(result.error || 'Certificate generation failed');
+        const errorMessage = result.error || 'Certificate generation failed';
+        const errorObj = new Error(errorMessage);
         logger.error('Certificate generation failed', errorObj);
-        toast.error(result.error || 'Failed to generate certificate');
+        toast.error(errorMessage);
         
         if (onError) {
-          onError(new Error(result.error));
+          onError(errorObj);
         }
       }
     } catch (error) {

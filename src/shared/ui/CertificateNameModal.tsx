@@ -2,6 +2,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Award, CheckCircle, Clock, Download, Eye, X, Edit3 } from 'lucide-react';
 import { Button } from '@/shared/ui';
 
+export interface CertificateNameModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  fullName: string;
+  onFullNameChange: (name: string) => void;
+  onConfirm: () => void;
+  onGenerate: () => void;
+  isGenerating?: boolean;
+  showConfirmation?: boolean;
+  onCancelConfirmation: () => void;
+  validationError?: string;
+  generatedCertificateUrl?: string | null;
+  onView: () => void;
+  onDownload: () => void;
+}
+
 /**
  * Reusable Certificate Name Modal Component
  */
@@ -19,8 +35,7 @@ export const CertificateNameModal = ({
   generatedCertificateUrl = null,
   onView,
   onDownload,
-  courseName = null
-}) => {
+}: CertificateNameModalProps) => {
   if (!isOpen) return null;
 
   const handleConfirm = () => {
@@ -28,7 +43,7 @@ export const CertificateNameModal = ({
     onConfirm();
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !isGenerating && fullName.trim() && !showConfirmation) {
       handleConfirm();
     }
@@ -90,7 +105,7 @@ export const CertificateNameModal = ({
                       className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed ${
                         validationError ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      onKeyPress={handleKeyPress}
+                      onKeyDown={handleKeyDown}
                       autoFocus
                     />
                     {validationError && (

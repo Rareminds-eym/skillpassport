@@ -83,46 +83,15 @@ const Courses = () => {
   const [enrollmentProgress, setEnrollmentProgress] = useState({}); // Track progress per course
   const [certificateUrls, setCertificateUrls] = useState({}); // Track certificate URLs per course
   const [downloadingCertificate, setDownloadingCertificate] = useState(null); // Track which certificate is downloading
+  const [preparingCertificate, setPreparingCertificate] = useState(null); // Track which certificate is being prepared
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-  
-  /**
-   * Certificate modal hook for course certificate generation
-   * 
-   * Flow:
-   * 1. User clicks "Get Certificate" on completed course
-   * 2. handleGetCertificate fetches fresh learner data
-   * 3. Opens modal with pre-filled certificate information
-   * 4. User enters/confirms name and generates certificate
-   * 5. onSuccess callback updates local state and refreshes enrollments
-   * 
-   * State Updates:
-   * - certificateUrls: Updates with new certificate URL for instant UI feedback
-   * - Triggers fetchEnrollments to sync with database
-   */
-  const certificateModal = useCertificateModal({
-    user,
-    onSuccess: async ({ certificateUrl, courseId }) => {
-      // Update local state with new certificate URL for immediate UI update
-      if (courseId) {
-        setCertificateUrls(prev => ({
-          ...prev,
-          [courseId]: certificateUrl
-        }));
-      }
-      // Refresh enrollments to get updated certificate URL from database
-      try {
-        await fetchEnrollments();
-      } catch (error) {
-        logger.error('Error refreshing enrollments after certificate generation', error instanceof Error ? error : new Error(String(error)));
-      }
-    }
-  });
   
   // Refs to prevent duplicate fetches and track initialization
   const isFetchingRef = useRef(false);
   const hasFetchedCoursesRef = useRef(false);
   const hasFetchedEnrollmentsRef = useRef(false);
   const userEmailRef = useRef(user?.email);
+  const preparingCertificateRef = useRef(new Set()); // Track certificates currently being prepared
   
   // Helper function to check if user has access to a course
   const canAccessCourse = useCallback((course) => {
@@ -139,6 +108,89 @@ const Courses = () => {
     
     return userPlanLevel >= coursePlanLevel;
   }, [userPlan]);
+
+  // Memoized callback for fetching enrollments
+  const fetchEnrollments = useCallback(async () => {
+    const email = userEmailRef.current;
+    if (!email) return;
+    
+    try {
+      const result = await courseEnrollmentService.getlearnerEnrollments(email);
+      if (result.success && result.data) {
+        const enrolledIds = new Set(result.data.map(enrollment => enrollment.course_id));
+        setEnrolledCourseIds(enrolledIds);
+        
+        // Track progress and certificate URLs for each enrolled course
+        const progressMap = {};
+        const certUrls = {};
+        result.data.forEach(enrollment => {
+          progressMap[enrollment.course_id] = {
+            progress: enrollment.progress || 0,
+            lastModuleIndex: enrollment.last_module_index || 0,
+            lastLessonIndex: enrollment.last_lesson_index || 0,
+            status: enrollment.status
+          };
+          // Track certificate URL if available
+          if (enrollment.certificate_url) {
+            certUrls[enrollment.course_id] = enrollment.certificate_url;
+          }
+        });
+        setEnrollmentProgress(progressMap);
+        setCertificateUrls(certUrls);
+        
+      }
+    } catch (error) {
+      logger.error('Error fetching enrollments', error);
+    }
+  }, []);
+
+  /**
+   * Certificate success handler - memoized to prevent unnecessary re-renders
+   * 
+   * Flow:
+   * 1. Updates local state with new certificate URL for instant UI feedback
+   * 2. Refreshes enrollments to sync with database
+   * 
+   * @param {Object} result - Certificate generation result
+   * @param {string} result.certificateUrl - Generated certificate URL
+   * @param {string} result.courseId - Course ID
+   */
+  const handleCertificateSuccess = useCallback(async ({ certificateUrl, courseId }) => {
+    // Update local state with new certificate URL for immediate UI update
+    if (courseId) {
+      setCertificateUrls(prev => ({
+        ...prev,
+        [courseId]: certificateUrl
+      }));
+    }
+    
+    // Refresh enrollments to get updated certificate URL from database
+    try {
+      await fetchEnrollments();
+    } catch (error) {
+      logger.error('Error refreshing enrollments after certificate generation', 
+        error instanceof Error ? error : new Error(String(error)));
+    }
+  }, [fetchEnrollments]);
+
+  /**
+   * Certificate modal hook for course certificate generation
+   * 
+   * Flow:
+   * 1. User clicks "Get Certificate" on completed course
+   * 2. handleGetCertificate fetches fresh learner data
+   * 3. Opens modal with pre-filled certificate information
+   * 4. User enters/confirms name and generates certificate
+   * 5. onSuccess callback updates local state and refreshes enrollments
+   * 
+   * State Updates:
+   * - certificateUrls: Updates with new certificate URL for instant UI feedback
+   * - Triggers fetchEnrollments to sync with database
+   */
+  const certificateModal = useCertificateModal({
+    user,
+    onSuccess: handleCertificateSuccess
+  });
 
   // Handle window resize for responsive pagination
   useEffect(() => {
@@ -159,7 +211,7 @@ const Courses = () => {
       hasFetchedCoursesRef.current = true;
       fetchCourses();
     }
-  }, []); // Empty dependency array - fetch once on mount
+  }, [fetchCourses]); // Include fetchCourses in dependencies
 
   // Fetch courses when search, filter, sort, or page changes
   useEffect(() => {
@@ -167,7 +219,7 @@ const Courses = () => {
     if (hasFetchedCoursesRef.current) {
       fetchCourses();
     }
-  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch]);
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch, fetchCourses]);
 
   // Fetch learner grade and branch for filtering
   useEffect(() => {
@@ -197,7 +249,7 @@ const Courses = () => {
     };
     
     fetchlearnerInfo();
-  }, [user?.email]);
+  }, [user?.email, fetchCourses]);
 
   // Separate effect for enrollments - only when user email changes
   useEffect(() => {
@@ -209,7 +261,7 @@ const Courses = () => {
       hasFetchedEnrollmentsRef.current = true;
       fetchEnrollments();
     }
-  }, [user?.email]);
+  }, [user?.email, fetchEnrollments]);
 
   const fetchCourses = useCallback(async () => {
     // Prevent duplicate fetches
@@ -355,40 +407,6 @@ const Courses = () => {
     }
   }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters, currentPage, learnerGrade, learnerBranch, filterByBranch]);
 
-  const fetchEnrollments = useCallback(async () => {
-    const email = userEmailRef.current;
-    if (!email) return;
-    
-    try {
-      const result = await courseEnrollmentService.getlearnerEnrollments(email);
-      if (result.success && result.data) {
-        const enrolledIds = new Set(result.data.map(enrollment => enrollment.course_id));
-        setEnrolledCourseIds(enrolledIds);
-        
-        // Track progress and certificate URLs for each enrolled course
-        const progressMap = {};
-        const certUrls = {};
-        result.data.forEach(enrollment => {
-          progressMap[enrollment.course_id] = {
-            progress: enrollment.progress || 0,
-            lastModuleIndex: enrollment.last_module_index || 0,
-            lastLessonIndex: enrollment.last_lesson_index || 0,
-            status: enrollment.status
-          };
-          // Track certificate URL if available
-          if (enrollment.certificate_url) {
-            certUrls[enrollment.course_id] = enrollment.certificate_url;
-          }
-        });
-        setEnrollmentProgress(progressMap);
-        setCertificateUrls(certUrls);
-        
-      }
-    } catch (error) {
-      logger.error('Error fetching enrollments', error);
-    }
-  }, []);
-
   // Check if course has resumable progress
   const hasResumableProgress = (courseId) => {
     const progress = enrollmentProgress[courseId];
@@ -420,11 +438,18 @@ const Courses = () => {
   /**
    * Handle "Get Certificate" button click
    * 
+   * Race Condition Protection:
+   * - Uses ref-based guard to prevent duplicate simultaneous calls
+   * - Tracks loading state per certificate
+   * - Early returns if already processing
+   * 
    * Two scenarios:
    * 1. Certificate exists: View it directly using viewCertificate utility
    * 2. Certificate doesn't exist: Open modal to generate new certificate
    * 
    * Generation Flow:
+   * - Check if already preparing this certificate (guard)
+   * - Set loading state
    * - Fetch fresh learner data from database
    * - Prepare certificate parameters (name, educator, course type, etc.)
    * - Guard check ensures modal is initialized
@@ -435,8 +460,14 @@ const Courses = () => {
    * @param {string} courseName - Name of the course
    * @param {Event} e - Click event (for stopPropagation)
    */
-  const handleGetCertificate = async (courseId, courseName, e) => {
+  const handleGetCertificate = useCallback(async (courseId, courseName, e) => {
     e?.stopPropagation();
+    
+    // Race condition guard: Prevent duplicate calls for the same certificate
+    if (preparingCertificateRef.current.has(courseId)) {
+      logger.warn('Certificate preparation already in progress for course', { courseId });
+      return;
+    }
     
     try {
       // Check if certificate already exists
@@ -446,6 +477,10 @@ const Courses = () => {
         viewCertificate(existingCertUrl);
         return;
       }
+      
+      // Mark this certificate as being prepared
+      preparingCertificateRef.current.add(courseId);
+      setPreparingCertificate(courseId);
       
       // Get course details for certificate generation
       const course = courses.find(c => c.course_id === courseId);
@@ -519,8 +554,12 @@ const Courses = () => {
     } catch (error) {
       logger.error('Error preparing certificate modal', error instanceof Error ? error : new Error(String(error)));
       toast.error('Failed to prepare certificate generation');
+    } finally {
+      // Always clean up loading state
+      preparingCertificateRef.current.delete(courseId);
+      setPreparingCertificate(null);
     }
-  };
+  }, [courses, user?.email, certificateModal]);
 
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {
@@ -1157,10 +1196,20 @@ const Courses = () => {
                         </Button>
                         <Button
                           onClick={(e) => handleGetCertificate(course.course_id, course.title, e)}
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
+                          disabled={preparingCertificate === course.course_id}
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <Award className="w-4 h-4" />
-                          {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
+                          {preparingCertificate === course.course_id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Preparing...
+                            </>
+                          ) : (
+                            <>
+                              <Award className="w-4 h-4" />
+                              {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
+                            </>
+                          )}
                         </Button>
                       </div>
                     ) : (
@@ -1332,10 +1381,20 @@ const Courses = () => {
                             </Button>
                             <Button
                               onClick={(e) => handleGetCertificate(course.course_id, course.title, e)}
-                              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
+                              disabled={preparingCertificate === course.course_id}
+                              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <Award className="w-4 h-4" />
-                              {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
+                              {preparingCertificate === course.course_id ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  Preparing...
+                                </>
+                              ) : (
+                                <>
+                                  <Award className="w-4 h-4" />
+                                  {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
+                                </>
+                              )}
                             </Button>
                           </div>
                         ) : (

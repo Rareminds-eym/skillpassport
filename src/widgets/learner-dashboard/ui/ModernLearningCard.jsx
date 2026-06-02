@@ -316,6 +316,36 @@ const ModernLearningCard = ({
     }
   };
 
+  /**
+   * Handle certificate download
+   * 
+   * Downloads the certificate PDF file and shows appropriate toast notifications.
+   * Manages loading state to prevent duplicate downloads.
+   * 
+   * @param {Event} e - Click event (for stopPropagation)
+   */
+  const handleDownloadCertificate = async (e) => {
+    e?.stopPropagation();
+    
+    if (!certificateUrl) {
+      toast.error('No certificate available to download');
+      return;
+    }
+    
+    setIsDownloading(true);
+    setShowDropdown(false);
+    
+    try {
+      await downloadCertificate(certificateUrl, item.course || item.title);
+      toast.success('Certificate downloaded successfully!');
+    } catch (error) {
+      logger.error('Failed to download certificate', { error, certificateUrl });
+      toast.error('Failed to download certificate');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // Get progress color based on completion status - Only blue and green
   const getProgressColor = () => {
     if (isCompleted) return 'from-green-500 to-green-600';
@@ -918,21 +948,7 @@ const ModernLearningCard = ({
                       </button>
                       {isInternalCourse && (
                         <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (certificateUrl) {
-                              setIsDownloading(true);
-                              try {
-                                await downloadCertificate(certificateUrl, item.course || item.title);
-                                toast.success('Certificate downloaded successfully!');
-                              } catch (error) {
-                                toast.error('Failed to download certificate');
-                              } finally {
-                                setIsDownloading(false);
-                              }
-                            }
-                            setShowDropdown(false);
-                          }}
+                          onClick={handleDownloadCertificate}
                           disabled={isDownloading}
                           className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
                             isDownloading 
@@ -1086,21 +1102,7 @@ const ModernLearningCard = ({
                     </button>
                     {isInternalCourse && (
                       <button
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          if (certificateUrl) {
-                            setIsDownloading(true);
-                            try {
-                              await downloadCertificate(certificateUrl, item.course || item.title);
-                              toast.success('Certificate downloaded successfully!');
-                            } catch (error) {
-                              toast.error('Failed to download certificate');
-                            } finally {
-                              setIsDownloading(false);
-                            }
-                          }
-                          setShowDropdown(false);
-                        }}
+                        onClick={handleDownloadCertificate}
                         disabled={isDownloading}
                         className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
                           isDownloading 
