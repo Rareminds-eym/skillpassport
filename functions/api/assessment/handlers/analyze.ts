@@ -6,17 +6,21 @@
  *
  * Supported Grade Levels:
  * - middle: Grades 6-8 (RIASEC + Strengths + Learning Prefs + Adaptive) ✅
- * - highschool: Grades 9-10 (TODO)
- * - higher_secondary: Grades 11-12 (TODO)
- * - after10: Post 10th std (TODO)
- * - after12: Post 12th std (TODO)
- * - college: College/Higher ed (separate endpoint)
+ * - highschool: Grades 9-10 (RIASEC + Strengths + Learning Prefs + Adaptive + Career Exploration) ✅
+ * - higher_secondary: Grades 11-12 (RIASEC + Strengths + Adaptive + College Prep) ✅
+ * - after10: Post 10th std (RIASEC + Strengths + Vocational Focus) ✅
+ * - after12: Post 12th std (RIASEC + Strengths + Career Entry/College Decision) ✅
+ * - college: College/Higher ed (5-component scoring + Big Five + Values + Knowledge) ✅
  */
 
 import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { AnalyzeRequest } from '../types';
 import { analyzeMiddleSchool } from '../services/analysis-middle-school';
+import { analyzeHighSchool } from '../services/analysis-highschool';
+import { analyzeHigherSecondary } from '../services/analysis-higher-secondary';
+import { analyzeAfter10 } from '../services/analysis-after10';
+import { analyzeAfter12 } from '../services/analysis-after12';
 import { analyzeCollege } from '../services/analysis-college';
 
 export async function analyzeHandler(context: AuthenticatedContext) {
@@ -79,28 +83,16 @@ export async function analyzeHandler(context: AuthenticatedContext) {
         return analyzeMiddleSchool(context, supabase, attemptId, learnerId);
 
       case 'highschool':
-        return Response.json(
-          { error: 'High school analysis not yet implemented' },
-          { status: 501 }
-        );
+        return analyzeHighSchool(context, supabase, attemptId, learnerId);
 
       case 'higher_secondary':
-        return Response.json(
-          { error: 'Higher secondary analysis not yet implemented' },
-          { status: 501 }
-        );
+        return analyzeHigherSecondary(context, supabase, attemptId, learnerId);
 
       case 'after10':
-        return Response.json(
-          { error: 'Post-10th analysis not yet implemented' },
-          { status: 501 }
-        );
+        return analyzeAfter10(context, supabase, attemptId, learnerId);
 
       case 'after12':
-        return Response.json(
-          { error: 'Post-12th analysis not yet implemented' },
-          { status: 501 }
-        );
+        return analyzeAfter12(context, supabase, attemptId, learnerId);
 
       case 'college':
         return analyzeCollege(context, supabase, attemptId, learnerId);
