@@ -13,7 +13,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
-import { startTokenRefresh, stopTokenRefresh } from '@/shared/services/tokenRefreshService';
+import { startTokenRefresh, stopTokenRefresh, tokenRefreshService } from '@/shared/services/tokenRefreshService';
 import type { MeResponse, LoginResponse } from '@rareminds-eym/auth-client';
 
 const logger = getLogger('auth-store');
