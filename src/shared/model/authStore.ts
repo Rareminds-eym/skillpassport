@@ -446,7 +446,7 @@ if (typeof window !== 'undefined') {
           ...computeRoleFlags(me.roles),
         });
         // Ensure token refresh is running after cross-tab login/refresh
-        if (event === 'LOGIN') {
+        if (event === 'LOGIN' || !tokenRefreshService.isRunning()) {
           startTokenRefresh();
         }
       } catch {

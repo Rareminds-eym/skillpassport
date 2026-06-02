@@ -17,7 +17,7 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('token-refresh-service');
 
 // Token lifetime configuration
-const ACCESS_TOKEN_LIFETIME_MS = 1 * 60 * 1000; // 15 minutes
+const ACCESS_TOKEN_LIFETIME_MS = 15 * 60 * 1000; // 15 minutes
 const REFRESH_THRESHOLD = 0.8; // Refresh at 80% of lifetime (12 minutes)
 const REFRESH_INTERVAL_MS = ACCESS_TOKEN_LIFETIME_MS * REFRESH_THRESHOLD;
 
@@ -87,8 +87,8 @@ class TokenRefreshService {
     }
 
     // Schedule the next refresh
-    this.refreshTimer = setTimeout(() => {
-      this.performRefresh();
+    this.refreshTimer = setTimeout(async () => {
+      await this.performRefresh();
     }, REFRESH_INTERVAL_MS);
 
     logger.debug('Next token refresh scheduled', {
@@ -113,7 +113,7 @@ class TokenRefreshService {
       this.scheduleNextRefresh();
       return true;
     } catch (error) {
-      logger.error('Token refresh failed', error as Error);
+      logger.error('Token refresh failed', error instanceof Error ? error : new Error(String(error)));
 
       // On refresh failure, the session is likely expired
       // The ssoClient will trigger onSessionExpired callback
