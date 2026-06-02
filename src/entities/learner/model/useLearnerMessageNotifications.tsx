@@ -1,9 +1,5 @@
-// TODO: Dependency Injection Required
-// This hook needs MessageService/Message types passed as parameters
-// Update all call sites to pass these dependencies from @/features/messaging
-
 import React, { useEffect, useRef } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { getSSEClient } from '@/shared/api/sseRealtimeClient';
 import toast from 'react-hot-toast';
 import { MessageSquare, X, User, Briefcase } from 'lucide-react';
 import { getLogger } from '@/shared/config/logging';
@@ -18,17 +14,9 @@ interface UselearnerMessageNotificationsProps {
   enabled?: boolean;
   playSound?: boolean;
   onMessageReceived?: (message: Message) => void;
-  excludeConversationId?: string | null; // Don't show toast for this conversation (e.g., currently open)
+  excludeConversationId?: string | null;
 }
 
-/**
- * Enhanced hot-toast notifications for learner messages
- * - Shows toast for new messages with smooth animations
- * - Integrates with zustand store
- * - Handles realtime updates without blocking
- * - Supports sound notifications
- * - Auto-increments unread count
- */
 export const useLearnerMessageNotifications = ({
   learnerId,
   enabled = true,
@@ -40,18 +28,14 @@ export const useLearnerMessageNotifications = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioEnabled, setAudioEnabled] = React.useState(false);
 
-  // Initialize audio and enable it after first user interaction
   useEffect(() => {
     if (!playSound || typeof window === 'undefined') return;
 
-    // Create audio element
     audioRef.current = new Audio('/notificacion.mp3');
     audioRef.current.volume = 0.3;
 
-    // Enable audio after first user interaction
     const enableAudio = () => {
       if (audioRef.current && !audioEnabled) {
-        // Play and immediately pause to prime the audio
         audioRef.current.play()
           .then(() => {
             audioRef.current?.pause();
@@ -59,13 +43,11 @@ export const useLearnerMessageNotifications = ({
             setAudioEnabled(true);
           })
           .catch((error) => {
-            // Silent fail - audio will remain disabled
             logger.warn('Unable to play notification sound', { error: error instanceof Error ? error.message : String(error) });
           });
       }
     };
 
-    // Listen for first user interaction
     document.addEventListener('click', enableAudio, { once: true });
     document.addEventListener('keydown', enableAudio, { once: true });
 
@@ -78,55 +60,37 @@ export const useLearnerMessageNotifications = ({
   useEffect(() => {
     if (!learnerId || !enabled) return;
 
-    const channel = supabase
-      .channel(`learner-message-notifications:${learnerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${learnerId}`
-        },
-        (payload) => {
-          const message = payload.new as Message;
+    const sseClient = getSSEClient();
+    const unsub = sseClient.subscribe('messages', {
+      event: 'INSERT',
+      filter: `receiver_id=eq.${learnerId}`
+    }, (event) => {
+      if (event.type !== 'change') return;
+      const message = event.payload as Message;
 
-          // Don't show notification if current learner sent the message
-          if (message.sender_id === learnerId) return;
+      if (message.sender_id === learnerId) return;
 
-          // Don't show toast if this is the currently open conversation
-          if (excludeConversationId && message.conversation_id === excludeConversationId) {
-            // Still add to store and increment unread
-            addMessage(message);
-            return;
-          }
+      if (excludeConversationId && message.conversation_id === excludeConversationId) {
+        addMessage(message);
+        return;
+      }
 
-          // Increment unread count in store
-          incrementUnreadCount();
+      incrementUnreadCount();
+      addMessage(message);
 
-          // Add message to store
-          addMessage(message);
+      if (onMessageReceived) {
+        onMessageReceived(message);
+      }
 
-          // Call custom handler if provided
-          if (onMessageReceived) {
-            onMessageReceived(message);
-          }
-
-          // Show toast notification with smooth animation
-          showMessageToast(message, playSound ? audioRef.current : null);
-        }
-      )
-      .subscribe();
+      showMessageToast(message, playSound ? audioRef.current : null);
+    });
 
     return () => {
-      channel.unsubscribe();
+      unsub();
     };
   }, [learnerId, enabled, onMessageReceived, excludeConversationId, playSound, incrementUnreadCount, addMessage]);
 };
 
-/**
- * Show toast notification for a new message
- */
 const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
   const senderType = message.sender_type === 'recruiter' ? 'Recruiter' : 'Learner';
   const senderIcon = message.sender_type === 'recruiter' ? Briefcase : User;
@@ -145,14 +109,12 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
       >
         <div className="flex-1 w-0 p-4">
           <div className="flex items-start">
-            {/* Icon */}
             <div className="flex-shrink-0 pt-0.5">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
                 <MessageSquare className="w-6 h-6 text-white" />
               </div>
             </div>
 
-            {/* Content */}
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
                 {React.createElement(senderIcon, {
@@ -167,7 +129,6 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
                 {message.message_text}
               </p>
 
-              {/* Timestamp */}
               <p className="mt-1 text-xs text-gray-400">
                 Just now
               </p>
@@ -175,7 +136,6 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
           </div>
         </div>
 
-        {/* Close button */}
         <div className="flex border-l border-gray-100">
           <button
             onClick={() => toast.dismiss(t.id)}
@@ -190,21 +150,18 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
     {
       duration: 5000,
       position: 'top-right',
-      id: `message-${message.id}`, // Prevent duplicate toasts
+      id: `message-${message.id}`,
     }
   );
 
-  // Play notification sound (only if audio was enabled by user interaction)
   if (audio) {
     audio.currentTime = 0;
     audio.play().catch((error) => {
-      // Silently handle autoplay restrictions
       logger.warn('Unable to play notification sound', { error: error instanceof Error ? error.message : String(error) });
     });
   }
 };
 
-// Add these animations to your global CSS or Tailwind config
 const style = document.createElement('style');
 style.textContent = `
   @keyframes slideInRight {
@@ -244,4 +201,3 @@ if (typeof document !== 'undefined' && !document.getElementById('message-toast-s
 }
 
 export default useLearnerMessageNotifications;
-

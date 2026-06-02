@@ -1,5 +1,6 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 import { UserRole, Permission } from '@/shared/types/Permissions';
 
 const logger = getLogger('permission-service');
@@ -24,15 +25,8 @@ class PermissionService {
     try {
       const user = useAuthStore.getState().user;
       if (!user) return null;
-
-      const { data: userData, error } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-      return userData.role as UserRole;
+      const response: any = await apiPost('/user/actions', { action: 'get-current-user-role', userId: user.id });
+      return response?.data?.role as UserRole ?? null;
     } catch (error) {
       logger.error('Failed to get current user role', error instanceof Error ? error : new Error(String(error)));
       return null;
@@ -52,40 +46,8 @@ class PermissionService {
         targetUserId = user.id;
       }
 
-      // Get user's role from users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', targetUserId)
-        .single();
-
-      if (userError) throw userError;
-
-      // Get permissions for this role
-      const { data: permissionsData, error: permError } = await supabase
-        .from('college_role_module_permissions')
-        .select(`
-          college_setting_modules(module_name),
-          college_setting_permissions(permission_name)
-        `)
-        .eq('role_type', userData.role);
-
-      if (permError) throw permError;
-
-      // Format permissions into object
-      const permissions: UserPermissions = {};
-      
-      permissionsData?.forEach((item: any) => {
-        const module = item.college_setting_modules.module_name;
-        const permission = item.college_setting_permissions.permission_name;
-        
-        if (!permissions[module]) {
-          permissions[module] = [];
-        }
-        permissions[module].push(permission);
-      });
-
-      return permissions;
+      const response: any = await apiPost('/user/actions', { action: 'get-permissions', userId: targetUserId });
+      return response?.data?.permissions ?? {};
     } catch (error) {
       logger.error('Failed to fetch user permissions', error instanceof Error ? error : new Error(String(error)));
       return {};

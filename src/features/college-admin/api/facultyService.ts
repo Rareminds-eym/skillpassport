@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export interface Faculty {
   id: string;
@@ -40,12 +40,9 @@ export interface Faculty {
 
 // Get faculty statistics
 export const getFacultyStatistics = async (collegeId: string) => {
-  const { data: faculty } = await supabase
-    .from('college_lecturers')
-    .select('accountStatus, verification_status')
-    .eq('collegeId', collegeId);
+  const result = await apiPost('/college-admin/faculty', { action: 'get-faculty-statistics', college_id: collegeId });
 
-  if (!faculty) return {
+  if (!result.success || !result.data) return {
     total: 0,
     active: 0,
     pending: 0,
@@ -54,75 +51,41 @@ export const getFacultyStatistics = async (collegeId: string) => {
     verified: 0,
   };
 
-  const stats = {
-    total: faculty.length,
-    active: faculty.filter(f => f.accountStatus === 'active').length,
-    pending: faculty.filter(f => f.accountStatus === 'pending').length,
-    deactivated: faculty.filter(f => f.accountStatus === 'deactivated').length,
-    suspended: faculty.filter(f => f.accountStatus === 'suspended').length,
-    verified: faculty.filter(f => f.verification_status === 'verified').length,
-  };
-
-  return stats;
+  return result.data;
 };
 
 // Get all faculty for a college
 export const getFaculty = async (collegeId: string) => {
-  const { data, error } = await supabase
-    .from('college_lecturers')
-    .select('*')
-    .eq('collegeId', collegeId)
-    .order('createdAt', { ascending: false});
-
-  if (error) throw error;
-  return data as Faculty[];
+  const result = await apiPost('/college-admin/faculty', { action: 'get-faculty', college_id: collegeId });
+  if (!result.success) throw new Error(result.error || 'Failed to fetch faculty');
+  return result.data as Faculty[];
 };
 
 // Get faculty by ID
 export const getFacultyById = async (facultyId: string) => {
-  const { data, error } = await supabase
-    .from('college_lecturers')
-    .select('*')
-    .eq('id', facultyId)
-    .single();
-
-  if (error) throw error;
-  return data as Faculty;
+  const result = await apiPost('/college-admin/faculty', { action: 'get-faculty-by-id', faculty_id: facultyId });
+  if (!result.success) throw new Error(result.error || 'Failed to fetch faculty');
+  return result.data as Faculty;
 };
 
 // Create new faculty
 export const createFaculty = async (facultyData: Partial<Faculty>) => {
-  const { data, error } = await supabase
-    .from('college_lecturers')
-    .insert(facultyData)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as Faculty;
+  const result = await apiPost('/college-admin/faculty', { action: 'create-faculty', ...facultyData });
+  if (!result.success) throw new Error(result.error || 'Failed to create faculty');
+  return result.data as Faculty;
 };
 
 // Update faculty
 export const updateFaculty = async (facultyId: string, updates: Partial<Faculty>) => {
-  const { data, error } = await supabase
-    .from('college_lecturers')
-    .update(updates)
-    .eq('id', facultyId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as Faculty;
+  const result = await apiPost('/college-admin/faculty', { action: 'update-faculty', faculty_id: facultyId, ...updates });
+  if (!result.success) throw new Error(result.error || 'Failed to update faculty');
+  return result.data as Faculty;
 };
 
 // Delete faculty
 export const deleteFaculty = async (facultyId: string) => {
-  const { error } = await supabase
-    .from('college_lecturers')
-    .delete()
-    .eq('id', facultyId);
-
-  if (error) throw error;
+  const result = await apiPost('/college-admin/faculty', { action: 'delete-faculty', faculty_id: facultyId });
+  if (!result.success) throw new Error(result.error || 'Failed to delete faculty');
 };
 
 // Update faculty status

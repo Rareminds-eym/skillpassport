@@ -25,7 +25,6 @@ import { assessmentService } from '@/features/assessment';
 import { markEntryService } from '@/features/college-admin';
 import { transcriptService } from '@/features/college-admin';
 import { departmentService } from '@/entities/department';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-examination-management');

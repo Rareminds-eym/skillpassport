@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import {
   Users,
@@ -73,28 +73,22 @@ const FacultyPerformanceAnalytics: React.FC<FacultyPerformanceAnalyticsProps> = 
   const loadFacultyAnalytics = async () => {
     setLoading(true);
     try {
-      // Fetch faculty with their timetable stats
-      const { data, error } = await supabase
-        .from('college_lecturers')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          department,
-          designation,
-          experienceYears,
-          accountStatus
-        `)
-        .eq('collegeId', collegeId)
-        .eq('accountStatus', 'active');
+      const lecturersResult = await apiPost('/college-admin/faculty', {
+        action: 'get-lecturers',
+        college_id: collegeId,
+        status: 'active',
+      });
 
-      if (error) throw error;
+      if (!lecturersResult.data) throw new Error('Failed to fetch lecturers');
+      const data = lecturersResult.data;
 
       // Fetch timetable slots for each faculty
-      const { data: slots } = await supabase
-        .from('college_timetable_slots')
-        .select('educator_id, class_id, subject_name')
-        .in('educator_id', data?.map(f => f.id) || []);
+      const slotsResult = await apiPost('/college-admin/classes', {
+        action: 'get-timetable-slots',
+        educator_ids: data.map((f: any) => f.id),
+      });
+
+      const slots = slotsResult.data || [];
 
       // Process data
       const processedData: FacultyData[] = (data || []).map(faculty => {

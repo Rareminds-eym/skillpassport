@@ -9,7 +9,6 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLearners } from '@/entities/learner/model/useAdminLearners';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-library');

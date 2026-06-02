@@ -76,6 +76,21 @@ import {
   handleSendInterviewReminder,
 } from './handlers/events';
 import { handleResetPassword } from './handlers/password';
+import { onRequestPost } from './handlers/actions';
+import {
+  handleGetProfileExtended,
+  handleUpsertProfileExtended,
+  handleChangeRole,
+  handleLogActivity,
+  handleGetUser,
+  handleListUsers,
+  handleGetUserStats,
+  handleGetUserActivity,
+  handleGetUserDocuments,
+  handleUpdateUser,
+  handleDeleteUser,
+  handleGetRoleHistory,
+} from './handlers/management';
 
 const API_VERSION = '1.0.0';
 
@@ -238,9 +253,77 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleResetPassword(request, env);
     }
 
+    // Management endpoints
+    if (path === '/profile-extended' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetProfileExtended(request, env);
+      })(context);
+    }
+    if (path === '/profile-extended' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleUpsertProfileExtended(request, env);
+      })(context);
+    }
+    if (path === '/change-role' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        const user = getContextUser(authContext);
+        return await handleChangeRole(request, env, user.id);
+      })(context);
+    }
+    if (path === '/log-activity' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleLogActivity(request, env);
+      })(context);
+    }
+    if (path === '/by-id' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetUser(request, env);
+      })(context);
+    }
+    if (path === '/list' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleListUsers(request, env);
+      })(context);
+    }
+    if (path === '/stats' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetUserStats(request, env);
+      })(context);
+    }
+    if (path === '/activity' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetUserActivity(request, env);
+      })(context);
+    }
+    if (path === '/documents' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetUserDocuments(request, env);
+      })(context);
+    }
+    if (path === '/update' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleUpdateUser(request, env);
+      })(context);
+    }
+    if (path === '/delete' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleDeleteUser(request, env);
+      })(context);
+    }
+    if (path === '/role-history' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetRoleHistory(request, env);
+      })(context);
+    }
+
+    // Actions dispatch endpoint
+    if (path === '/actions' && request.method === 'POST') {
+      return onRequestPost(context);
+    }
+
     return apiError(404, 'NOT_FOUND', 'Not found', request);
   } catch (error) {
     console.error('User API Error:', error);
-    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Internal server error', request);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Internal server error', request);
   }
 };

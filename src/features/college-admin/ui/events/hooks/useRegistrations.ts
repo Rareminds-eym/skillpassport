@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import toast from "react-hot-toast";
 import { EventRegistration, CollegeEvent } from '@/features/learner-profile/model';
 import { collegeEventRegistrationsService } from "@/features/college-admin";
@@ -11,32 +11,11 @@ export const useRegistrations = (onCountsChange: () => void) => {
   const loadRegistrations = useCallback(async (eventId: string) => {
     try {
       setLoading(true);
-      // First get registrations
-      const { data: regs, error: regError } = await supabase
-        .from("college_event_registrations")
-        .select("*")
-        .eq("event_id", eventId)
-        .order("registered_at", { ascending: false });
-      if (regError) throw regError;
-      
-      // Then fetch learner details separately to avoid 406 errors
-      const learnerIds = [...new Set((regs || []).map(r => r.learner_id))];
-      let learnerMap: Record<string, { name: string; email: string }> = {};
-      
-      if (learnerIds.length > 0) {
-        const { data: learners } = await supabase
-          .from("learners")
-          .select("id, name, email")
-          .in("id", learnerIds);
-        learnerMap = (learners || []).reduce((acc, s) => ({ ...acc, [s.id]: s }), {});
-      }
-      
-      // Combine data
-      const combined = (regs || []).map(r => ({
-        ...r,
-        learner: learnerMap[r.learner_id] || null
-      }));
-      setRegistrations(combined);
+      const response = await apiPost('/college-admin/events', {
+        action: 'get-event-registrations',
+        event_id: eventId,
+      });
+      setRegistrations(response.data || []);
     } catch { toast.error("Failed to load registrations"); }
     finally { setLoading(false); }
   }, []);

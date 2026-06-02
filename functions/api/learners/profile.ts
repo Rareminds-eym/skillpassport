@@ -310,6 +310,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       return apiSuccess({ success: true }, context.request, { startTime });
     }
 
+    case 'toggle-visibility': {
+      const { tableName, itemId, enabled } = body;
+      if (!tableName || !itemId) {
+        return apiError(400, 'VALIDATION_ERROR', 'tableName and itemId are required', context.request, { startTime });
+      }
+      const { error: updateError } = await supabase
+        .from(tableName)
+        .update({ enabled })
+        .eq('id', itemId);
+      if (updateError) {
+        return apiError(500, 'INTERNAL_ERROR', updateError.message, context.request, { startTime });
+      }
+      return apiSuccess({ success: true }, context.request, { startTime });
+    }
+
     default:
       return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
   }

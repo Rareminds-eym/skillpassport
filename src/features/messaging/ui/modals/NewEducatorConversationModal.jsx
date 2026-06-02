@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Small Message Modal Component
 const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
@@ -187,101 +187,48 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
     setLoading(true);
     try {
       console.log('🔍 Starting fetchlearnerEducators for learnerId:', learnerId);
-      
-      // Get learner data to check both school_id and university_college_id
-      let { data: learnerData, error: learnerError } = await supabase
-        .from('learners')
-        .select('school_id, university_college_id, program_section_id, program_id, id, user_id')
-        .eq('id', learnerId)
-        .single();
 
-      console.log('📊 Learner data:', learnerData);
-      console.log('❌ Learner error:', learnerError);
+      // Get learner context (school_id, university_college_id)
+      let { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-context', learnerId });
 
-      if (learnerError) {
-        console.error('❌ Error fetching learner data:', learnerError);
-        // Try with user_id instead
-        const { data: learnerDataByUserId, error: userIdError } = await supabase
-          .from('learners')
-          .select('school_id, university_college_id, program_section_id, program_id, id, user_id')
-          .eq('user_id', learnerId)
-          .single();
-        
-        console.log('📊 Learner data by user_id:', learnerDataByUserId);
-        
-        if (userIdError) {
-          console.error('❌ Error fetching learner by user_id:', userIdError);
+      // Fallback: try with user_id
+      if (!learnerData) {
+        const { data: learnerByUserId } = await apiPost('/messaging/actions', { action: 'fetch-learner-context-by-user-id', userId: learnerId });
+        if (!learnerByUserId) {
+          console.log('⚠️ Learner not found by id or user_id');
           setLoading(false);
           return;
         }
-        
-        // Use the data found by user_id
-        learnerData = learnerDataByUserId;
+        learnerData = learnerByUserId;
       }
 
       const allEducators = [];
 
       // Fetch ALL school educators if learner has school_id
       if (learnerData?.school_id) {
-        console.log('🏫 Fetching ALL school educators for school_id:', learnerData.school_id);
-        
-        const { data: schoolEducators, error: schoolError } = await supabase
-          .from('school_educators')
-          .select(`
-            id,
-            first_name,
-            last_name,
-            email,
-            photo_url
-          `)
-          .eq('school_id', learnerData.school_id);
-
-        console.log('🏫 School educators:', schoolEducators);
-        console.log('❌ School error:', schoolError);
-
-        if (!schoolError && schoolEducators) {
+        console.log('🏫 Fetching school educators for school_id:', learnerData.school_id);
+        const { data: schoolEducators } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'admin-educator', contextId: learnerData.school_id });
+        if (schoolEducators) {
           const educatorList = schoolEducators.map(educator => ({
             id: educator.id,
-            name: `${educator.first_name} ${educator.last_name}`,
+            name: educator.name,
             email: educator.email,
             photo_url: educator.photo_url,
             type: 'school_educator',
-            classes: [] // No class info needed
+            classes: []
           }));
-
           allEducators.push(...educatorList);
-          console.log('✅ Added ALL school educators:', educatorList.length);
         }
       }
 
       // Fetch college lecturers if learner has university_college_id
       if (learnerData?.university_college_id) {
-        console.log('🎓 Fetching all college lecturers for college_id:', learnerData.university_college_id);
-        
-        // Get all lecturers from the learner's college
-        const { data: allCollegeLecturers, error: collegeError } = await supabase
-          .from('college_lecturers')
-          .select(`
-            id,
-            first_name,
-            last_name,
-            email,
-            department,
-            specialization,
-            collegeId,
-            user_id
-          `)
-          .eq('collegeId', learnerData.university_college_id);
-
-        console.log('🎓 All college lecturers:', allCollegeLecturers);
-        console.log('❌ College error:', collegeError);
-
-        if (!collegeError && allCollegeLecturers && allCollegeLecturers.length > 0) {
-          console.log('✅ Found college lecturers:', allCollegeLecturers.length);
-          
+        console.log('🎓 Fetching college lecturers for college_id:', learnerData.university_college_id);
+        const { data: allCollegeLecturers } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-lecturer', contextId: learnerData.university_college_id });
+        if (allCollegeLecturers && allCollegeLecturers.length > 0) {
           const collegeEducators = allCollegeLecturers.map(lecturer => ({
             id: lecturer.id,
-            name: `${lecturer.first_name} ${lecturer.last_name}`,
+            name: lecturer.name,
             email: lecturer.email,
             photo_url: null,
             type: 'college_lecturer',
@@ -289,9 +236,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, learnerId, onConversati
             specialization: lecturer.specialization,
             classes: []
           }));
-
           allEducators.push(...collegeEducators);
-          console.log('✅ Added all college lecturers to educator list');
         } else {
           console.log('ℹ️ No college lecturers found in this college');
         }

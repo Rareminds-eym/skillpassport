@@ -3,229 +3,125 @@
  * Handles notifications for learners about pipeline changes, interviews, etc.
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
+import { getSSEClient } from '@/shared/api/sseRealtimeClient';
 
 export class LearnerNotificationService {
-  /**
-   * Get all notifications for a learner
-   * @param {string} learnerId - Learner's UUID
-   * @param {Object} options - Query options
-   * @returns {Promise<Array>} List of notifications
-   */
   static async getlearnerNotifications(learnerId, options = {}) {
     try {
-      let query = supabase
-        .from('learner_notifications')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .order('created_at', { ascending: false });
-
-      if (options.unreadOnly) {
-        query = query.eq('is_read', false);
-      }
-
-      if (options.type) {
-        query = query.eq('notification_type', options.type);
-      }
-
-      if (options.limit) {
-        query = query.limit(options.limit);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      return data || [];
+      const result = await apiPost('/learners/notifications', {
+        action: 'get-notifications', learnerId,
+        unreadOnly: options.unreadOnly,
+        type: options.type,
+        limit: options.limit,
+      });
+      return result?.data?.data || [];
     } catch (error) {
       console.error('Error fetching learner notifications:', error);
       throw error;
     }
   }
 
-  /**
-   * Get unread notification count
-   * @param {string} learnerId - Learner's UUID
-   * @returns {Promise<number>} Count of unread notifications
-   */
   static async getUnreadCount(learnerId) {
     try {
-      const { count, error } = await supabase
-        .from('learner_notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('learner_id', learnerId)
-        .eq('is_read', false);
-
-      if (error) throw error;
-
-      return count || 0;
+      const result = await apiPost('/learners/notifications', {
+        action: 'get-unread-count', learnerId,
+      });
+      return result?.data?.count || 0;
     } catch (error) {
       console.error('Error fetching unread count:', error);
       return 0;
     }
   }
 
-  /**
-   * Mark notification as read
-   * @param {number} notificationId - Notification ID
-   * @param {string} learnerId - Learner's UUID for verification
-   * @returns {Promise<boolean>} Success status
-   */
   static async markAsRead(notificationId, learnerId) {
     try {
-      const { data, error } = await supabase
-        .from('learner_notifications')
-        .update({
-          is_read: true,
-          read_at: new Date().toISOString()
-        })
-        .eq('id', notificationId)
-        .eq('learner_id', learnerId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return !!data;
+      const result = await apiPost('/learners/notifications', {
+        action: 'mark-as-read', notificationId, learnerId,
+      });
+      return result?.data?.success || false;
     } catch (error) {
       console.error('Error marking notification as read:', error);
       return false;
     }
   }
 
-  /**
-   * Mark all notifications as read
-   * @param {string} learnerId - Learner's UUID
-   * @returns {Promise<boolean>} Success status
-   */
   static async markAllAsRead(learnerId) {
     try {
-      const { error } = await supabase
-        .from('learner_notifications')
-        .update({
-          is_read: true,
-          read_at: new Date().toISOString()
-        })
-        .eq('learner_id', learnerId)
-        .eq('is_read', false);
-
-      if (error) throw error;
-
-      return true;
+      const result = await apiPost('/learners/notifications', {
+        action: 'mark-all-as-read', learnerId,
+      });
+      return result?.data?.success || false;
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
       return false;
     }
   }
 
-  /**
-   * Create a manual notification (for system/admin use)
-   * @param {Object} notificationData - Notification data
-   * @returns {Promise<Object>} Created notification
-   */
   static async createNotification(notificationData) {
     try {
-      const { data, error } = await supabase
-        .from('learner_notifications')
-        .insert([{
-          learner_id: notificationData.learner_id,
-          notification_type: notificationData.notification_type,
-          title: notificationData.title,
-          message: notificationData.message,
-          pipeline_candidate_id: notificationData.pipeline_candidate_id || null,
-          opportunity_id: notificationData.opportunity_id || null,
-          interview_id: notificationData.interview_id || null,
-          application_id: notificationData.application_id || null,
-          metadata: notificationData.metadata || null
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return data;
+      const result = await apiPost('/learners/notifications', {
+        action: 'create-notification', ...notificationData,
+      });
+      return result?.data?.data;
     } catch (error) {
       console.error('Error creating notification:', error);
       throw error;
     }
   }
 
-  /**
-   * Delete a notification
-   * @param {number} notificationId - Notification ID
-   * @param {string} learnerId - Learner's UUID for verification
-   * @returns {Promise<boolean>} Success status
-   */
   static async deleteNotification(notificationId, learnerId) {
     try {
-      const { error } = await supabase
-        .from('learner_notifications')
-        .delete()
-        .eq('id', notificationId)
-        .eq('learner_id', learnerId);
-
-      if (error) throw error;
-
-      return true;
+      const result = await apiPost('/learners/notifications', {
+        action: 'delete-notification', notificationId, learnerId,
+      });
+      return result?.data?.success || false;
     } catch (error) {
       console.error('Error deleting notification:', error);
       return false;
     }
   }
 
-  /**
-   * Subscribe to real-time notifications
-   * @param {string} learnerId - Learner's UUID
-   * @param {Function} onNotification - Callback when new notification arrives
-   * @returns {Object} Supabase subscription channel
-   */
   static subscribeToNotifications(learnerId, onNotification) {
-    const channel = supabase
-      .channel(`learner-notifications-${learnerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'learner_notifications',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        (payload) => {
-          onNotification(payload.new);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'learner_notifications',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        (payload) => {
-          onNotification(payload.new);
-        }
-      )
-      .subscribe();
+    const sseClient = getSSEClient();
+    const unsubscribers = [];
 
-    return channel;
+    // Subscribe to INSERT events
+    const unsubInsert = sseClient.subscribe(
+      'learner_notifications',
+      { event: 'INSERT', filter: `learner_id=eq.${learnerId}` },
+      (event) => {
+        if (event.type === 'change') {
+          onNotification(event.payload);
+        }
+      }
+    );
+    unsubscribers.push(unsubInsert);
+
+    // Subscribe to UPDATE events
+    const unsubUpdate = sseClient.subscribe(
+      'learner_notifications',
+      { event: 'UPDATE', filter: `learner_id=eq.${learnerId}` },
+      (event) => {
+        if (event.type === 'change') {
+          onNotification(event.payload);
+        }
+      }
+    );
+    unsubscribers.push(unsubUpdate);
+
+    // Return unsubscribe function
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
   }
 
-  /**
-   * Unsubscribe from notifications
-   * @param {Object} channel - Supabase channel to unsubscribe
-   */
-  static unsubscribeFromNotifications(channel) {
-    if (channel) {
-      supabase.removeChannel(channel);
+  static unsubscribeFromNotifications(unsubscribeFn) {
+    if (unsubscribeFn && typeof unsubscribeFn === 'function') {
+      unsubscribeFn();
     }
   }
 
-  /**
-   * Get notification icon and color based on type
-   * @param {string} type - Notification type
-   * @returns {Object} Icon and color configuration
-   */
   static getNotificationConfig(type) {
     const configs = {
       stage_change: {

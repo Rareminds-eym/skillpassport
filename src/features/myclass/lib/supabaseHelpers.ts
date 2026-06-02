@@ -1,4 +1,3 @@
-import { supabase } from '@/shared/api/supabaseClient';
 
 /**
  * Reusable Supabase query helpers

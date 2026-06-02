@@ -3,7 +3,7 @@
  * Generates course completion certificates using Cloudflare R2 storage
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import { ssoClient } from '@/shared/api/ssoClient';
@@ -317,7 +317,8 @@ export const generateCourseCertificate = async (
     }
 
     // Save to database
-    const { error: certificateError } = await supabase.from('certificates').insert({
+    const certResponse: any = await apiPost('/college-admin/digital-portfolio', {
+      action: 'insert-certificate',
       learner_id: learnerId,
       title: certificateTitle,
       issuer: educatorName || 'Skill Ecosystem Platform',
@@ -332,25 +333,25 @@ export const generateCourseCertificate = async (
       enabled: true
     });
 
-    if (certificateError) {
-      logger.error('Failed to insert certificate into database', certificateError);
-      throw new Error(`Database insert failed: ${certificateError.message}`);
+    if (!certResponse?.success) {
+      logger.error('Failed to insert certificate into database', certResponse?.error);
+      throw new Error(`Database insert failed: ${certResponse?.error?.message || 'Unknown error'}`);
     }
 
     logger.info('Certificate saved to database successfully', { credentialId, courseType, isWebinar });
 
     // Update enrollment
-    const { error: enrollmentError } = await supabase
-      .from('course_enrollments')
-      .update({ certificate_url: certificateUrl })
-      .eq('learner_id', learnerId)
-      .eq('course_id', courseId);
-
-    if (enrollmentError) {
-      logger.error('Failed to update enrollment with certificate URL', enrollmentError);
-      // Don't throw here - certificate is already saved, just log the error
-    } else {
+    try {
+      await apiPost('/college-admin/digital-portfolio', {
+        action: 'update-enrollment-certificate',
+        learner_id: learnerId,
+        course_id: courseId,
+        certificate_url: certificateUrl,
+      });
       logger.info('Enrollment updated with certificate URL', { learnerId, courseId });
+    } catch (err) {
+      logger.error('Failed to update enrollment with certificate URL', err as Error);
+      // Don't throw here - certificate is already saved, just log the error
     }
 
     // Embedding regeneration handled by database trigger on certificates table

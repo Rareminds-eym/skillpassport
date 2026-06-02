@@ -1,13 +1,12 @@
 import { ArrowDownTrayIcon, ArrowUpTrayIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface RequisitionImportProps {
   isOpen: boolean;
   onClose: () => void;
   onImportComplete: () => void;
-  userId?: string;
 }
 
 interface ImportRow {
@@ -36,7 +35,6 @@ const RequisitionImport: React.FC<RequisitionImportProps> = ({
   isOpen,
   onClose,
   onImportComplete,
-  userId
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
@@ -211,90 +209,22 @@ const RequisitionImport: React.FC<RequisitionImportProps> = ({
         return;
       }
 
-      // Get recruiter IDs if emails are provided
-      const recruiterEmails = validRows
-        .map(row => row.recruiter_email)
-        .filter(Boolean);
+      const { data: result } = await apiPost('/recruiter/actions', {
+        action: 'import-requisitions',
+        rows: validRows,
+      });
       
-      let recruiterMap: Record<string, string> = {};
+      setProgress(100);
+      setSuccessCount(result?.success || 0);
       
-      if (recruiterEmails.length > 0) {
-        const { data: recruiters } = await supabase
-          .from('recruiters')
-          .select('id, email')
-          .in('email', recruiterEmails);
-        
-        if (recruiters) {
-          recruiterMap = recruiters.reduce((acc, r) => {
-            acc[r.email] = r.id;
-            return acc;
-          }, {} as Record<string, string>);
-        }
+      if (result?.errors?.length > 0) {
+        setErrors(result.errors.map((e: any) => `Row ${e.row}: ${e.error}`));
       }
-
-      // Import rows
-      let imported = 0;
-      const importErrors: string[] = [];
-
-      for (let i = 0; i < validRows.length; i++) {
-        const row = validRows[i];
-        
-        try {
-          const requisitionData = {
-            title: row.job_title,
-            job_title: row.job_title,
-            company_name: row.company_name || 'Not Specified',
-            company_logo: null,
-            department: row.department,
-            location: row.location,
-            mode: row.mode || null,
-            employment_type: row.employment_type,
-            experience_level: row.experience_level,
-            experience_required: row.experience_required || null,
-            salary_range_min: row.salary_range_min ? Number(row.salary_range_min) : null,
-            salary_range_max: row.salary_range_max ? Number(row.salary_range_max) : null,
-            status: row.status.toLowerCase(),
-            description: row.description || '',
-            requirements: parseArrayField(row.requirements),
-            responsibilities: parseArrayField(row.responsibilities),
-            skills_required: parseArrayField(row.skills_required),
-            benefits: parseArrayField(row.benefits),
-            deadline: row.deadline ? new Date(row.deadline).toISOString() : null,
-            applications_count: row.applications_count ? Number(row.applications_count) : 0,
-            messages_count: 0,
-            views_count: 0,
-            created_by: userId,
-            posted_date: new Date().toISOString(),
-            is_active: row.status.toLowerCase() === 'open',
-            recruiter_id: row.recruiter_email ? recruiterMap[row.recruiter_email] : null
-          };
-
-          const { error } = await supabase
-            .from('opportunities')
-            .insert(requisitionData);
-
-          if (error) {
-            importErrors.push(`Row ${i + 2}: ${error.message}`);
-          } else {
-            imported++;
-          }
-        } catch (err: any) {
-          importErrors.push(`Row ${i + 2}: ${err.message}`);
-        }
-
-        setProgress(Math.round(((i + 1) / validRows.length) * 100));
-      }
-
-      setSuccessCount(imported);
       
-      if (importErrors.length > 0) {
-        setErrors(importErrors);
-      }
-
-      if (imported > 0) {
+      if ((result?.success || 0) > 0) {
         setTimeout(() => {
           onImportComplete();
-          if (importErrors.length === 0) {
+          if (!result?.errors?.length) {
             onClose();
           }
         }, 1500);

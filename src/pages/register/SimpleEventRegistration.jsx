@@ -375,7 +375,7 @@ export default function SimpleEventRegistration() {
 
     try {
       // Worker handles everything: check duplicate, create/reuse registration, create order
-      const orderData = await paymentsApiService.createEventOrder({
+      const envelope = await paymentsApiService.createEventOrder({
         amount: REGISTRATION_FEE * 100,
         currency: 'INR',
         planName: `Registration - ${campaign}`,
@@ -385,6 +385,7 @@ export default function SimpleEventRegistration() {
         campaign: campaign,
         origin: window.location.origin,
       }, null);
+      const orderData = envelope.data;
 
       // Worker returns registrationId (either existing or newly created)
       const registrationId = orderData.registrationId;

@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { QRCodeSVG } from 'qrcode.react';
 import jsPDF from 'jspdf';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { ExternalLinkIcon, File } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -982,10 +982,9 @@ const LearnerProfileDrawer = ({ learner, isOpen, onClose }: {
         };
       }
 
-      const { error } = await supabase.from('learners').update(updateData).eq('id', learner.id);
-
-      if (error) {
-        throw error;
+      const response: any = await apiPost('/learners', { id: learner.id, ...updateData });
+      if (!response?.data?.learner) {
+        throw new Error('Failed to update learner');
       }
 
       setShowApprovalModal(false);
@@ -1053,10 +1052,9 @@ const LearnerProfileDrawer = ({ learner, isOpen, onClose }: {
         updateData.grade = getTotalSemesters().toString();
       }
 
-      const { error } = await supabase.from('learners').update(updateData).eq('id', learner.id);
-
-      if (error) {
-        throw error;
+      const response: any = await apiPost('/learners', { id: learner.id, ...updateData });
+      if (!response?.data?.learner) {
+        throw new Error('Failed to update learner');
       }
 
       setShowGraduationModal(false);

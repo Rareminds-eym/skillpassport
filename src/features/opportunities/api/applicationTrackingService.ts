@@ -1,5 +1,5 @@
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('applicationTrackingService');
 
@@ -95,185 +95,9 @@ class ApplicationTrackingService {
   async getAllApplications(filters: ApplicationFilters = {}): Promise<ApplicationTrackingData[]> {
     try {
       // First get applied jobs
-      let appliedJobsQuery = supabase
-        .from('applied_jobs')
-        .select('*')
-        .order('applied_at', { ascending: false });
-
-      // Apply filters to applied_jobs
-      if (filters.status) {
-        appliedJobsQuery = appliedJobsQuery.eq('application_status', filters.status);
-      }
-
-      if (filters.date_from) {
-        appliedJobsQuery = appliedJobsQuery.gte('applied_at', filters.date_from);
-      }
-
-      if (filters.date_to) {
-        appliedJobsQuery = appliedJobsQuery.lte('applied_at', filters.date_to);
-      }
-
-      const { data: appliedJobs, error: appliedJobsError } = await appliedJobsQuery;
-
-      if (appliedJobsError) {
-        throw appliedJobsError;
-      }
-
-      if (!appliedJobs || appliedJobs.length === 0) {
-        return [];
-      }
-
-      // Get unique learner IDs and opportunity IDs
-      const learnerIds = [...new Set(appliedJobs.map(job => job.learner_id))];
-      const opportunityIds = [...new Set(appliedJobs.map(job => job.opportunity_id))];
-
-      // Fetch learners data with university name from organizations table
-      const { data: learners, error: learnersError } = await supabase
-        .from('learners')
-        .select(`
-          id, 
-          user_id, 
-          name, 
-          email, 
-          contact_number, 
-          university, 
-          universityId,
-          branch_field, 
-          course_name, 
-          college_school_name, 
-          district_name, 
-          currentCgpa, 
-          expectedGraduationDate, 
-          approval_status, 
-          college_id,
-          organizations:universityId (
-            id,
-            name
-          )
-        `)
-        .in('id', learnerIds);
-
-
-      // Fetch opportunities data
-      const { data: opportunities, error: opportunitiesError } = await supabase
-        .from('opportunities')
-        .select('*')
-        .in('id', opportunityIds);
-
-
-      // Get unique company names from opportunities for company lookup
-      const companyNames = [...new Set((opportunities || []).map(opp => opp.company_name).filter(Boolean))];
-      
-      // Fetch companies data
-      let companies: any[] = [];
-      if (companyNames.length > 0) {
-        const { data: companiesData, error: companiesError } = await supabase
-          .from('companies')
-          .select('id, name, industry, companySize, hqCity, hqState, website, accountStatus')
-          .in('name', companyNames);
-
-        if (companiesError) {
-          // Handle error silently
-          logger.error('Failed to fetch companies', companiesError as Error);
-        } else {
-          companies = companiesData || [];
-        }
-      }
-
-      // Create lookup maps - applied_jobs.learner_id references learners.id
-      const learnerMap = (learners || []).reduce((acc, learner) => {
-        acc[learner.id] = learner;
-        return acc;
-      }, {} as Record<string, any>);
-      const opportunityMap = (opportunities || []).reduce((acc, opp) => {
-        acc[opp.id] = opp;
-        return acc;
-      }, {} as Record<number, any>);
-
-      const companyMap = companies.reduce((acc, company) => {
-        acc[company.name] = company;
-        return acc;
-      }, {} as Record<string, any>);
-
-      // Combine all data
-      let result = appliedJobs.map(job => {
-        const learner = learnerMap[job.learner_id];
-        const opportunity = opportunityMap[job.opportunity_id];
-        const company = opportunity ? companyMap[opportunity.company_name] : null;
-
-
-        return {
-          ...job,
-          learner: learner ? {
-            id: learner.id,
-            user_id: learner.user_id,
-            name: learner.name || 'Unknown Learner',
-            email: learner.email || 'No email',
-            contact_number: learner.contact_number || learner.contactNumber || '',
-            university: learner.organizations?.name || learner.university || 'N/A',
-            branch_field: learner.branch_field || '',
-            course_name: learner.course_name || '',
-            college_school_name: learner.college_school_name || '',
-            district_name: learner.district_name || '',
-            currentCgpa: learner.currentCgpa || null,
-            expectedGraduationDate: learner.expectedGraduationDate || '',
-            approval_status: learner.approval_status,
-            college_id: learner.college_id
-          } : {
-            id: job.learner_id,
-            user_id: '',
-            name: 'Unknown Learner',
-            email: 'No email',
-            contact_number: '',
-            university: 'N/A',
-            branch_field: '',
-            course_name: '',
-            college_school_name: '',
-            district_name: '',
-            currentCgpa: null,
-            expectedGraduationDate: '',
-            approval_status: '',
-            college_id: ''
-          },
-          opportunity,
-          company
-        };
-      });
-
-      // Apply additional filters
-      if (filters.search) {
-        const search = filters.search.toLowerCase();
-        result = result.filter(app => 
-          app.learner?.name?.toLowerCase().includes(search) ||
-          app.learner?.email?.toLowerCase().includes(search) ||
-          app.opportunity?.title?.toLowerCase().includes(search) ||
-          app.opportunity?.job_title?.toLowerCase().includes(search) ||
-          app.opportunity?.company_name?.toLowerCase().includes(search) ||
-          app.company?.name?.toLowerCase().includes(search)
-        );
-      }
-
-      if (filters.company_name) {
-        result = result.filter(app => app.opportunity?.company_name === filters.company_name);
-      }
-
-      if (filters.department) {
-        result = result.filter(app => 
-          app.learner?.branch_field === filters.department ||
-          app.learner?.course_name === filters.department ||
-          app.opportunity?.department === filters.department
-        );
-      }
-
-      if (filters.employment_type) {
-        result = result.filter(app => app.opportunity?.employment_type === filters.employment_type);
-      }
-
-      if (filters.college_id) {
-        result = result.filter(app => app.learner?.college_id === filters.college_id);
-      }
-
-      return result;
+      const response: any = await apiPost('/opportunities', { action: 'get-all-applications', ...filters });
+      if (response?.error) throw new Error(response.error.message);
+      return response?.data?.applications || [];
     } catch (error) {
       logger.error('Failed to fetch all applications', error as Error);
       throw error;
@@ -285,129 +109,13 @@ class ApplicationTrackingService {
    */
   async getApplicationStats(filters: ApplicationFilters = {}): Promise<ApplicationStats> {
     try {
-      // If college_id filter is provided, we need to filter by learners from that college
-      if (filters.college_id) {
-        // First get learner IDs from the college
-        const { data: learners, error: learnersError } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('college_id', filters.college_id);
-
-        if (learnersError) {
-          logger.error('Failed to fetch learners for stats', learnersError as Error);
-          throw learnersError;
-        }
-
-        const learnerIds = (learners || []).map(s => s.id);
-
-        if (learnerIds.length === 0) {
-          return {
-            total: 0,
-            applied: 0,
-            viewed: 0,
-            under_review: 0,
-            interview_scheduled: 0,
-            interviewed: 0,
-            offer_received: 0,
-            accepted: 0,
-            rejected: 0,
-            withdrawn: 0
-          };
-        }
-
-        // Now query applied_jobs for these learners
-        let query = supabase
-          .from('applied_jobs')
-          .select('application_status')
-          .in('learner_id', learnerIds);
-
-        // Apply other filters
-        if (filters.status) {
-          query = query.eq('application_status', filters.status);
-        }
-
-        if (filters.date_from) {
-          query = query.gte('applied_at', filters.date_from);
-        }
-
-        if (filters.date_to) {
-          query = query.lte('applied_at', filters.date_to);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          logger.error('Failed to fetch application stats', error as Error);
-          throw error;
-        }
-
-        const stats: ApplicationStats = {
-          total: data?.length || 0,
-          applied: 0,
-          viewed: 0,
-          under_review: 0,
-          interview_scheduled: 0,
-          interviewed: 0,
-          offer_received: 0,
-          accepted: 0,
-          rejected: 0,
-          withdrawn: 0
-        };
-
-        data?.forEach(app => {
-          if (app.application_status && stats.hasOwnProperty(app.application_status)) {
-            stats[app.application_status as keyof ApplicationStats]++;
-          }
-        });
-
-        return stats;
-      }
-
-      // Original logic for when no college_id filter
-      let query = supabase
-        .from('applied_jobs')
-        .select('application_status');
-
-      // Apply filters
-      if (filters.status) {
-        query = query.eq('application_status', filters.status);
-      }
-
-      if (filters.date_from) {
-        query = query.gte('applied_at', filters.date_from);
-      }
-
-      if (filters.date_to) {
-        query = query.lte('applied_at', filters.date_to);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        logger.error('Failed to fetch application stats', error as Error);
-        throw error;
-      }
-
-      const stats: ApplicationStats = {
-        total: data?.length || 0,
-        applied: 0,
-        viewed: 0,
-        under_review: 0,
-        interview_scheduled: 0,
-        interviewed: 0,
-        offer_received: 0,
-        accepted: 0,
-        rejected: 0,
-        withdrawn: 0
+      const response: any = await apiPost('/opportunities', { action: 'get-application-stats', ...filters });
+      if (response?.error) throw new Error(response.error.message);
+      return response?.data?.stats || {
+        total: 0, applied: 0, viewed: 0, under_review: 0,
+        interview_scheduled: 0, interviewed: 0, offer_received: 0,
+        accepted: 0, rejected: 0, withdrawn: 0
       };
-
-      data?.forEach(app => {
-        if (app.application_status && stats.hasOwnProperty(app.application_status)) {
-          stats[app.application_status as keyof ApplicationStats]++;
-        }
-      });
-
-      return stats;
     } catch (error) {
       logger.error('Failed to get application stats', error as Error);
       throw error;
@@ -423,39 +131,14 @@ class ApplicationTrackingService {
     notes?: string
   ): Promise<ApplicationTrackingData> {
     try {
-      const updateData: any = {
-        application_status: status,
-        updated_at: new Date().toISOString()
-      };
-
-      if (notes) {
-        updateData.notes = notes;
-      }
-
-      // Add timestamp for specific statuses
-      if (status === 'viewed') {
-        updateData.viewed_at = new Date().toISOString();
-      } else if (status === 'interview_scheduled') {
-        updateData.interview_scheduled_at = new Date().toISOString();
-      }
-
-      const { data, error } = await supabase
-        .from('applied_jobs')
-        .update(updateData)
-        .eq('id', applicationId)
-        .select()
-        .single();
-
-      if (error) {
-        logger.error('Failed to update application status', error as Error);
-        throw error;
-      }
+      const response: any = await apiPost('/opportunities', { action: 'update-application-status', id: applicationId, status, notes });
+      if (response?.error) throw new Error(response.error.message);
 
       // Return the updated application with joined data
       const applications = await this.getAllApplications();
       const updatedApplication = applications.find(app => app.id === applicationId);
       
-      return updatedApplication || data;
+      return updatedApplication || response?.data?.application;
     } catch (error) {
       logger.error('Failed to update application status', error as Error);
       throw error;
@@ -471,34 +154,9 @@ class ApplicationTrackingService {
     notes?: string
   ): Promise<ApplicationTrackingData[]> {
     try {
-      const updateData: any = {
-        application_status: status,
-        updated_at: new Date().toISOString()
-      };
-
-      if (notes) {
-        updateData.notes = notes;
-      }
-
-      // Add timestamp for specific statuses
-      if (status === 'viewed') {
-        updateData.viewed_at = new Date().toISOString();
-      } else if (status === 'interview_scheduled') {
-        updateData.interview_scheduled_at = new Date().toISOString();
-      }
-
-      const { data, error } = await supabase
-        .from('applied_jobs')
-        .update(updateData)
-        .in('id', applicationIds)
-        .select();
-
-      if (error) {
-        logger.error('Failed to bulk update applications', error as Error);
-        throw error;
-      }
-
-      return data || [];
+      const response: any = await apiPost('/opportunities', { action: 'bulk-update-applications', ids: applicationIds, status, notes });
+      if (response?.error) throw new Error(response.error.message);
+      return response?.data?.applications || [];
     } catch (error) {
       logger.error('Failed to bulk update applications', error as Error);
       throw error;
@@ -511,51 +169,9 @@ class ApplicationTrackingService {
   async getCompaniesWithApplications(): Promise<Array<{id: string, name: string}>> {
     try {
       // Get all opportunities that have applications
-      const { data: appliedJobs, error: appliedJobsError } = await supabase
-        .from('applied_jobs')
-        .select('opportunity_id');
-
-      if (appliedJobsError) {
-        logger.error('Failed to fetch applied jobs for companies', appliedJobsError as Error);
-        throw appliedJobsError;
-      }
-
-      if (!appliedJobs || appliedJobs.length === 0) {
-        return [];
-      }
-
-      const opportunityIds = [...new Set(appliedJobs.map(job => job.opportunity_id))];
-
-      const { data: opportunities, error: opportunitiesError } = await supabase
-        .from('opportunities')
-        .select('company_name')
-        .in('id', opportunityIds);
-
-      if (opportunitiesError) {
-        logger.error('Failed to fetch opportunities for companies', opportunitiesError as Error);
-        throw opportunitiesError;
-      }
-
-      // Get unique company names
-      const uniqueCompanyNames = [...new Set((opportunities || []).map(opp => opp.company_name).filter(Boolean))];
-
-      // Fetch company details
-      if (uniqueCompanyNames.length === 0) {
-        return [];
-      }
-
-      const { data: companies, error: companiesError } = await supabase
-        .from('companies')
-        .select('id, name')
-        .in('name', uniqueCompanyNames);
-
-      if (companiesError) {
-        logger.error('Failed to fetch companies', companiesError as Error);
-        // Return company names even if companies table lookup fails
-        return uniqueCompanyNames.map((name, index) => ({ id: `temp_${index}`, name }));
-      }
-
-      return companies || [];
+      const response: any = await apiPost('/opportunities', { action: 'get-companies-with-applications' });
+      if (response?.error) throw new Error(response.error.message);
+      return response?.data?.companies || [];
     } catch (error) {
       logger.error('Failed to get companies with applications', error as Error);
       throw error;
@@ -589,19 +205,9 @@ class ApplicationTrackingService {
    */
   async getPipelineDataForApplication(learnerId: string, opportunityId: number): Promise<any> {
     try {
-      const { data, error } = await supabase
-        .from('pipeline_candidates')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .eq('opportunity_id', opportunityId)
-        .maybeSingle();
-
-      if (error) {
-        logger.error('Failed to fetch pipeline data', error as Error);
-        return null;
-      }
-
-      return data;
+      const response: any = await apiPost('/opportunities', { action: 'get-pipeline-data-for-application', learner_id: learnerId, opportunity_id: opportunityId });
+      if (response?.error) return null;
+      return response?.data?.pipelineCandidate;
     } catch (error) {
       logger.error('Failed to get pipeline data for application', error as Error);
       return null;

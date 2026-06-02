@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from '@/shared/model/authStore';
 import { useLearnerDataById } from '@/entities/learner';
-import { supabase } from "@/shared/api/supabaseClient";
+import { apiPost } from '@/shared/api/apiClient';
 import { downloadCertificate, getCertificateProxyUrl } from "@/features/digital-portfolio";
 import { checkAssessmentStatus } from "@/features/assessment/api/externalAssessmentService";
 
@@ -172,20 +172,14 @@ const ModernLearningCard = ({
       }
       
       try {
-        // Fetch certificate using learner's database ID
-        const { data: enrollment, error } = await supabase
-          .from('course_enrollments')
-          .select('certificate_url')
-          .eq('learner_id', learnerData.id)
-          .eq('course_id', item.course_id)
-          .single();
+        const data = await apiPost('/learner-dashboard-widgets/actions', {
+          action: 'get-certificate-url',
+          learnerId: learnerData.id,
+          courseId: item.course_id,
+        });
 
-        if (error) {
-          return;
-        }
-
-        if (enrollment?.certificate_url && enrollment.certificate_url.trim() !== '') {
-          setCertificateUrl(enrollment.certificate_url);
+        if (data?.certificate_url && data.certificate_url.trim() !== '') {
+          setCertificateUrl(data.certificate_url);
         }
       } catch (error) {
         console.error('Error fetching certificate URL:', error);

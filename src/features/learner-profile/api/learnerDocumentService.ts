@@ -1,10 +1,7 @@
-/**
- * Learner Document Service
- * Handles document upload, storage, and management for learners
- */
+import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
 
-import { supabase } from '@/shared/api/supabaseClient';
-import { uploadFile, deleteFile, getDocumentUrl } from '@/shared/api/fileUploadService';
+const logger = getLogger('learnerDocumentService');
 
 export interface LearnerDocument {
   url: string;
@@ -20,26 +17,19 @@ export interface DocumentUploadResult {
   error?: string;
 }
 
-/**
- * Upload a document for a learner
- */
 export const uploadlearnerDocument = async (
   learnerId: string,
   file: File,
   documentType: LearnerDocument['type']
 ): Promise<DocumentUploadResult> => {
   try {
-    // Upload file to R2 storage
+    const { uploadFile, deleteFile } = await import('@/shared/api/fileUploadService');
     const uploadResult = await uploadFile(file, `learners/${learnerId}`);
-    
+
     if (!uploadResult.success || !uploadResult.url) {
-      return {
-        success: false,
-        error: uploadResult.error || 'Upload failed'
-      };
+      return { success: false, error: uploadResult.error || 'Upload failed' };
     }
 
-    // Create document object
     const document: LearnerDocument = {
       url: uploadResult.url,
       name: file.name,
@@ -48,40 +38,19 @@ export const uploadlearnerDocument = async (
       size: file.size
     };
 
-    // Get current documents
-    const { data: learner, error: fetchError } = await supabase
-      .from('learners')
-      .select('documents')
-      .eq('id', learnerId)
-      .single();
+    const docResult = await apiPost<LearnerDocument[]>('/learner-profile/actions', {
+      action: 'fetch-learner-documents',
+      learnerId,
+    });
+    const currentDocuments = docResult?.data || [];
 
-    if (fetchError) {
-      // Clean up uploaded file
-      await deleteFile(uploadResult.url);
-      return {
-        success: false,
-        error: `Failed to fetch learner: ${fetchError.message}`
-      };
-    }
-
-    // Add new document to existing documents
-    const currentDocuments = learner?.documents || [];
     const updatedDocuments = [...currentDocuments, document];
 
-    // Update learner record
-    const { error: updateError } = await supabase
-      .from('learners')
-      .update({ documents: updatedDocuments })
-      .eq('id', learnerId);
-
-    if (updateError) {
-      // Clean up uploaded file
-      await deleteFile(uploadResult.url);
-      return {
-        success: false,
-        error: `Failed to update learner record: ${updateError.message}`
-      };
-    }
+    const updateResult = await apiPost<LearnerDocument[]>('/learner-profile/actions', {
+      action: 'update-learner-documents',
+      learnerId,
+      documents: updatedDocuments,
+    });
 
     return {
       success: true,
@@ -95,64 +64,40 @@ export const uploadlearnerDocument = async (
   }
 };
 
-/**
- * Get all documents for a learner
- */
 export const getlearnerDocuments = async (learnerId: string): Promise<LearnerDocument[]> => {
   try {
-    const { data: learner, error } = await supabase
-      .from('learners')
-      .select('documents')
-      .eq('id', learnerId)
-      .single();
-
-    if (error) {
-      return [];
-    }
-
-    return learner?.documents || [];
+    const result = await apiPost<LearnerDocument[]>('/learner-profile/actions', {
+      action: 'fetch-learner-documents',
+      learnerId,
+    });
+    return result?.data || [];
   } catch (error) {
     return [];
   }
 };
 
-/**
- * Delete a document for a learner
- */
 export const deletelearnerDocument = async (
   learnerId: string,
   documentUrl: string
 ): Promise<boolean> => {
   try {
-    // Get current documents
-    const { data: learner, error: fetchError } = await supabase
-      .from('learners')
-      .select('documents')
-      .eq('id', learnerId)
-      .single();
+    const docResult = await apiPost<LearnerDocument[]>('/learner-profile/actions', {
+      action: 'fetch-learner-documents',
+      learnerId,
+    });
+    const currentDocuments = docResult?.data || [];
 
-    if (fetchError) {
-      return false;
-    }
-
-    const currentDocuments = learner?.documents || [];
-    
-    // Remove document from array
     const updatedDocuments = currentDocuments.filter(
       (doc: LearnerDocument) => doc.url !== documentUrl
     );
 
-    // Update learner record
-    const { error: updateError } = await supabase
-      .from('learners')
-      .update({ documents: updatedDocuments })
-      .eq('id', learnerId);
+    await apiPost<LearnerDocument[]>('/learner-profile/actions', {
+      action: 'update-learner-documents',
+      learnerId,
+      documents: updatedDocuments,
+    });
 
-    if (updateError) {
-      return false;
-    }
-
-    // Delete file from storage
+    const { deleteFile } = await import('@/shared/api/fileUploadService');
     await deleteFile(documentUrl);
 
     return true;
@@ -161,36 +106,23 @@ export const deletelearnerDocument = async (
   }
 };
 
-/**
- * Get document access URL (for viewing)
- */
 export const getlearnerDocumentUrl = (documentUrl: string, mode: 'inline' | 'download' = 'inline'): string => {
+  const { getDocumentUrl } = require('@/shared/api/fileUploadService');
   return getDocumentUrl(documentUrl, mode);
 };
 
-/**
- * Update document metadata
- */
 export const updatelearnerDocument = async (
   learnerId: string,
   documentUrl: string,
   updates: Partial<Pick<LearnerDocument, 'name' | 'type'>>
 ): Promise<boolean> => {
   try {
-    // Get current documents
-    const { data: learner, error: fetchError } = await supabase
-      .from('learners')
-      .select('documents')
-      .eq('id', learnerId)
-      .single();
+    const docResult = await apiPost<LearnerDocument[]>('/learner-profile/actions', {
+      action: 'fetch-learner-documents',
+      learnerId,
+    });
+    const currentDocuments = docResult?.data || [];
 
-    if (fetchError) {
-      return false;
-    }
-
-    const currentDocuments = learner?.documents || [];
-    
-    // Update specific document
     const updatedDocuments = currentDocuments.map((doc: LearnerDocument) => {
       if (doc.url === documentUrl) {
         return { ...doc, ...updates };
@@ -198,15 +130,11 @@ export const updatelearnerDocument = async (
       return doc;
     });
 
-    // Update learner record
-    const { error: updateError } = await supabase
-      .from('learners')
-      .update({ documents: updatedDocuments })
-      .eq('id', learnerId);
-
-    if (updateError) {
-      return false;
-    }
+    await apiPost<LearnerDocument[]>('/learner-profile/actions', {
+      action: 'update-learner-documents',
+      learnerId,
+      documents: updatedDocuments,
+    });
 
     return true;
   } catch (error) {
@@ -214,9 +142,6 @@ export const updatelearnerDocument = async (
   }
 };
 
-/**
- * Get documents by type
- */
 export const getlearnerDocumentsByType = async (
   learnerId: string,
   documentType: LearnerDocument['type']
@@ -225,47 +150,29 @@ export const getlearnerDocumentsByType = async (
   return allDocuments.filter(doc => doc.type === documentType);
 };
 
-/**
- * Validate document before upload
- */
 export const validatelearnerDocument = (
   file: File,
   documentType: LearnerDocument['type']
 ): { valid: boolean; error?: string } => {
-  const maxSize = 10; // 10MB
+  const maxSize = 10;
   const allowedTypes = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
-  
-  // Check file size
+
   if (file.size > maxSize * 1024 * 1024) {
-    return {
-      valid: false,
-      error: `File size must be less than ${maxSize}MB`
-    };
+    return { valid: false, error: `File size must be less than ${maxSize}MB` };
   }
-  
-  // Check file type
+
   const fileExtension = file.name.split('.').pop()?.toLowerCase();
   if (!fileExtension || !allowedTypes.includes(fileExtension)) {
-    return {
-      valid: false,
-      error: `File type must be one of: ${allowedTypes.join(', ')}`
-    };
+    return { valid: false, error: `File type must be one of: ${allowedTypes.join(', ')}` };
   }
-  
-  // Type-specific validations
+
   if (documentType === 'resume' && !['pdf', 'doc', 'docx'].includes(fileExtension)) {
-    return {
-      valid: false,
-      error: 'Resume must be in PDF or Word format'
-    };
+    return { valid: false, error: 'Resume must be in PDF or Word format' };
   }
-  
+
   if (documentType === 'id_proof' && !['pdf', 'jpg', 'jpeg', 'png'].includes(fileExtension)) {
-    return {
-      valid: false,
-      error: 'ID proof must be in PDF or image format'
-    };
+    return { valid: false, error: 'ID proof must be in PDF or image format' };
   }
-  
+
   return { valid: true };
 };

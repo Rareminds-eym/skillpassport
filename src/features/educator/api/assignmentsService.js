@@ -1,205 +1,72 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import storageApiService from '@/shared/api/storageApiService';
 
-/**
- * Educator Assignments Service
- * Handles all database operations for educators to create and manage assignments
- * Uses the assignments and assignment_attachments tables with file upload support
- */
-
-/**
- * Get class IDs assigned to an educator
- * @param {string} educatorId - The UUID of the educator
- * @returns {Promise<Array>} Array of class IDs
- */
 export const getEducatorAssignedClassIds = async (educatorId) => {
   try {
-    const { data, error } = await supabase
-      .from('school_educator_class_assignments')
-      .select('class_id')
-      .eq('educator_id', educatorId);
-
-    if (error) throw error;
-    return (data || []).map(ac => ac.class_id);
+    const res = await apiPost('/educator/actions', { action: 'get-educator-assigned-class-ids', educatorId });
+    return res?.data || [];
   } catch (error) {
     console.error('Error fetching educator assigned classes:', error);
     throw error;
   }
 };
 
-/**
- * Create a new assignment
- * @param {Object} assignmentData - Assignment data
- * @returns {Promise<Object>} Created assignment
- */
 export const createAssignment = async (assignmentData) => {
   try {
-    const { data, error } = await supabase
-      .from('assignments')
-      .insert([
-        {
-          title: assignmentData.title,
-          description: assignmentData.description,
-          instructions: assignmentData.instructions,
-          course_name: assignmentData.course_name,
-          course_code: assignmentData.course_code,
-          educator_id: assignmentData.educator_id,
-          educator_name: assignmentData.educator_name,
-          total_points: assignmentData.total_points || 100,
-          assignment_type: assignmentData.assignment_type,
-          skill_outcomes: assignmentData.skill_outcomes,
-          assign_classes: assignmentData.assign_classes,
-          school_class_id: assignmentData.school_class_id || null,
-          document_pdf: assignmentData.document_pdf,
-          due_date: assignmentData.due_date,
-          available_from: assignmentData.available_from,
-          allow_late_submission: assignmentData.allow_late_submission ?? true
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const res = await apiPost('/educator/actions', { action: 'create-assignment', assignmentData });
+    if (!res?.data) throw new Error('Failed to create assignment');
+    return res.data;
   } catch (error) {
     console.error('Error creating assignment:', error);
     throw error;
   }
 };
 
-/**
- * Create multiple assignments for multiple classes
- * @param {Object} baseAssignmentData - Base assignment data
- * @param {Array<string>} classIds - Array of class UUIDs
- * @returns {Promise<Array>} Created assignments
- */
 export const createAssignmentsForClasses = async (baseAssignmentData, classIds) => {
   try {
-    const assignmentsToInsert = classIds.map(classId => ({
-      title: baseAssignmentData.title,
-      description: baseAssignmentData.description,
-      instructions: baseAssignmentData.instructions,
-      course_name: baseAssignmentData.course_name,
-      course_code: baseAssignmentData.course_code,
-      educator_id: baseAssignmentData.educator_id,
-      educator_name: baseAssignmentData.educator_name,
-      total_points: baseAssignmentData.total_points || 100,
-      assignment_type: baseAssignmentData.assignment_type,
-      skill_outcomes: baseAssignmentData.skill_outcomes,
-      assign_classes: classId,
-      school_class_id: classId,
-      document_pdf: baseAssignmentData.document_pdf,
-      due_date: baseAssignmentData.due_date,
-      available_from: baseAssignmentData.available_from,
-      allow_late_submission: baseAssignmentData.allow_late_submission ?? true
-    }));
-
-    const { data, error } = await supabase
-      .from('assignments')
-      .insert(assignmentsToInsert)
-      .select();
-
-    if (error) throw error;
-    return data || [];
+    const res = await apiPost('/educator/actions', { action: 'create-assignments-for-classes', baseData: baseAssignmentData, classIds });
+    return res?.data || [];
   } catch (error) {
     console.error('Error creating assignments for classes:', error);
     throw error;
   }
 };
 
-/**
- * Get all assignments created by an educator
- * @param {string} educatorId - The UUID of the educator
- * @returns {Promise<Array>} Array of assignments
- */
 export const getAssignmentsByEducator = async (educatorId) => {
   try {
-    // Fetch all assignments created by this educator
-    const { data, error } = await supabase
-      .from('assignments')
-      .select(`
-        *,
-        assignment_attachments (*),
-        school_classes (id, name, grade, section)
-      `)
-      .eq('educator_id', educatorId)
-      .eq('is_deleted', false)
-      .order('created_date', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const res = await apiPost('/educator/actions', { action: 'get-assignments-by-educator', educatorId });
+    return res?.data || [];
   } catch (error) {
     console.error('Error fetching educator assignments:', error);
     throw error;
   }
 };
 
-/**
- * Get a single assignment by ID
- * @param {string} assignmentId - The UUID of the assignment
- * @returns {Promise<Object>} Assignment with attachments
- */
 export const getAssignmentById = async (assignmentId) => {
   try {
-    const { data, error } = await supabase
-      .from('assignments')
-      .select(`
-        *,
-        assignment_attachments (*)
-      `)
-      .eq('assignment_id', assignmentId)
-      .single();
-
-    if (error) throw error;
-    return data;
+    const res = await apiPost('/educator/actions', { action: 'get-assignment-by-id', assignmentId });
+    if (!res?.data) throw new Error('Assignment not found');
+    return res.data;
   } catch (error) {
     console.error('Error fetching assignment:', error);
     throw error;
   }
 };
 
-/**
- * Update an assignment
- * @param {string} assignmentId - The UUID of the assignment
- * @param {Object} updates - Fields to update
- * @returns {Promise<Object>} Updated assignment
- */
 export const updateAssignment = async (assignmentId, updates) => {
   try {
-    const { data, error } = await supabase
-      .from('assignments')
-      .update({
-        ...updates,
-        updated_date: new Date().toISOString()
-      })
-      .eq('assignment_id', assignmentId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const res = await apiPost('/educator/actions', { action: 'update-assignment', assignmentId, updates });
+    if (!res?.data) throw new Error('Failed to update assignment');
+    return res.data;
   } catch (error) {
     console.error('Error updating assignment:', error);
     throw error;
   }
 };
 
-/**
- * Soft delete an assignment
- * @param {string} assignmentId - The UUID of the assignment
- * @returns {Promise<boolean>} Success status
- */
 export const deleteAssignment = async (assignmentId) => {
   try {
-    const { error } = await supabase
-      .from('assignments')
-      .update({
-        is_deleted: true,
-        updated_date: new Date().toISOString()
-      })
-      .eq('assignment_id', assignmentId);
-
-    if (error) throw error;
+    await apiPost('/educator/actions', { action: 'delete-assignment', assignmentId });
     return true;
   } catch (error) {
     console.error('Error deleting assignment:', error);
@@ -207,49 +74,20 @@ export const deleteAssignment = async (assignmentId) => {
   }
 };
 
-/**
- * Add attachment to an assignment
- * @param {string} assignmentId - The UUID of the assignment
- * @param {Object} attachmentData - Attachment details
- * @returns {Promise<Object>} Created attachment
- */
 export const addAssignmentAttachment = async (assignmentId, attachmentData) => {
   try {
-    const { data, error } = await supabase
-      .from('assignment_attachments')
-      .insert([
-        {
-          assignment_id: assignmentId,
-          file_name: attachmentData.file_name,
-          file_type: attachmentData.file_type,
-          file_size: attachmentData.file_size,
-          file_url: attachmentData.file_url
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const res = await apiPost('/educator/actions', { action: 'add-assignment-attachment', assignmentId, attachmentData });
+    if (!res?.data) throw new Error('Failed to add attachment');
+    return res.data;
   } catch (error) {
     console.error('Error adding attachment:', error);
     throw error;
   }
 };
 
-/**
- * Remove attachment from an assignment
- * @param {string} attachmentId - The UUID of the attachment
- * @returns {Promise<boolean>} Success status
- */
 export const removeAssignmentAttachment = async (attachmentId) => {
   try {
-    const { error } = await supabase
-      .from('assignment_attachments')
-      .delete()
-      .eq('attachment_id', attachmentId);
-
-    if (error) throw error;
+    await apiPost('/educator/actions', { action: 'remove-assignment-attachment', attachmentId });
     return true;
   } catch (error) {
     console.error('Error removing attachment:', error);
@@ -257,100 +95,26 @@ export const removeAssignmentAttachment = async (attachmentId) => {
   }
 };
 
-/**
- * Assign assignment to learners
- * @param {string} assignmentId - The UUID of the assignment
- * @param {Array<string>} learnerIds - Array of learner UUIDs
- * @param {Object} defaults - Default values for learner assignments
- * @returns {Promise<Array>} Created learner assignments
- */
 export const assignTolearners = async (assignmentId, learnerIds, defaults = {}) => {
   try {
-    // Get already assigned learners
-    const { data: existingAssignments, error: checkError } = await supabase
-      .from('learner_assignments')
-      .select('learner_id')
-      .eq('assignment_id', assignmentId)
-      .in('learner_id', learnerIds);
-
-    if (checkError) throw checkError;
-
-    const existingLearnerIds = existingAssignments?.map(a => a.learner_id) || [];
-    const newLearnerIds = learnerIds.filter(id => !existingLearnerIds.includes(id));
-
-    if (newLearnerIds.length === 0) {
-      return [];
-    }
-
-    // STEP 1: Convert learners.id → learners.user_id
-    const { data: userIdMappings, error: mapError } = await supabase
-      .from('learners')
-      .select('id, user_id')
-      .in('id', newLearnerIds);
-
-    if (mapError) throw mapError;
-
-    const mappedLearnerIds = userIdMappings.map(s => s.user_id);
-
-    // STEP 2: Create assignment objects
-    const learnerAssignments = mappedLearnerIds.map(uid => ({
-      assignment_id: assignmentId,
-      learner_id: uid,                       // FIXED
-      status: defaults.status || 'todo',
-      priority: defaults.priority || 'medium'
-    }));
-
-    // STEP 3: Insert new rows
-    const { data, error } = await supabase
-      .from('learner_assignments')
-      .insert(learnerAssignments)
-      .select();
-
-    if (error) throw error;
-
-    return data || [];
+    const res = await apiPost('/educator/actions', { action: 'assign-to-learners', assignmentId, learnerIds });
+    return res?.data || [];
   } catch (error) {
     console.error('Error assigning to learners:', error);
     throw error;
   }
 };
 
-
-/**
- * Get all learners assigned to a specific assignment with their submission status and files
- * @param {string} assignmentId - The UUID of the assignment
- * @returns {Promise<Array>} Array of learners with their assignment status and submission files
- */
 export const getAssignmentLearners = async (assignmentId) => {
   try {
-    const { data, error } = await supabase
-      .from('learner_assignments')
-      .select(`
-        *,
-        learners (
-          id,
-          name,
-          email,
-          university,
-          branch_field,
-          college_school_name,
-          registration_number
-        )
-      `)
-      .eq('assignment_id', assignmentId)
-      .eq('is_deleted', false)
-      .order('assigned_date', { ascending: false });
+    const res = await apiPost('/educator/actions', { action: 'get-assignment-learners', assignmentId });
+    const data = res?.data || [];
 
-    if (error) throw error;
-
-    // Get all submission files for this assignment
     const submissionFiles = await getlearnerSubmissionFiles(assignmentId);
 
-    // Flatten the response using actual column names and add submission files
     const flattenedData = data?.map(item => {
       const learner = item.learners;
       const learnerSubmissionFiles = submissionFiles[item.learner_assignment_id] || [];
-
       return {
         ...item,
         learner: {
@@ -373,124 +137,54 @@ export const getAssignmentLearners = async (assignmentId) => {
   }
 };
 
-/**
- * Grade a learner's assignment submission
- * @param {string} learnerAssignmentId - The UUID of the learner_assignment
- * @param {Object} gradingData - Grading details
- * @returns {Promise<Object>} Updated learner assignment
- */
 export const gradeAssignment = async (learnerAssignmentId, gradingData) => {
   try {
-    const { data, error } = await supabase
-      .from('learner_assignments')
-      .update({
-        grade_received: gradingData.grade_received,
-        instructor_feedback: gradingData.instructor_feedback,
-        graded_by: gradingData.graded_by,
-        graded_date: new Date().toISOString(),
-        feedback_date: new Date().toISOString(),
-        status: 'graded',
-        updated_date: new Date().toISOString()
-      })
-      .eq('learner_assignment_id', learnerAssignmentId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const res = await apiPost('/educator/actions', { action: 'grade-assignment', learnerAssignmentId, gradingData });
+    if (!res?.data) throw new Error('Failed to grade assignment');
+    return res.data;
   } catch (error) {
     console.error('Error grading assignment:', error);
     throw error;
   }
 };
 
-/**
- * Get assignment statistics for educator
- * @param {string} assignmentId - The UUID of the assignment
- * @returns {Promise<Object>} Statistics object
- */
 export const getAssignmentStatistics = async (assignmentId) => {
   try {
-    const { data, error } = await supabase
-      .from('learner_assignments')
-      .select('status, grade_percentage, is_late')
-      .eq('assignment_id', assignmentId)
-      .eq('is_deleted', false);
-
-    if (error) throw error;
-
-    const stats = {
-      total: data.length,
-      todo: data.filter(a => a.status === 'todo').length,
-      inProgress: data.filter(a => a.status === 'in-progress').length,
-      submitted: data.filter(a => a.status === 'submitted').length,
-      graded: data.filter(a => a.status === 'graded').length,
-      lateSubmissions: data.filter(a => a.is_late).length,
-      averageGrade: 0
-    };
-
-    // Calculate average grade for graded assignments
-    const gradesArray = data
-      .filter(a => a.grade_percentage !== null)
-      .map(a => a.grade_percentage);
-
-    if (gradesArray.length > 0) {
-      stats.averageGrade = Math.round(
-        gradesArray.reduce((sum, grade) => sum + grade, 0) / gradesArray.length
-      );
-    }
-
-    return stats;
+    const res = await apiPost('/educator/actions', { action: 'get-assignment-statistics', assignmentId });
+    return res?.data || { total: 0, todo: 0, inProgress: 0, submitted: 0, graded: 0, lateSubmissions: 0, averageGrade: 0 };
   } catch (error) {
     console.error('Error fetching assignment statistics:', error);
     throw error;
   }
 };
 
-// =====================================================
-// NEW FILE UPLOAD FUNCTIONS FOR ASSIGNMENT SYSTEM
-// =====================================================
-
-/**
- * Upload instruction file for assignment (Educator files)
- * @param {string} assignmentId - Assignment UUID
- * @param {File} file - File to upload
- * @param {string} token - Auth token
- * @returns {Promise<Object>} Upload result with attachment record
- */
 export const uploadInstructionFile = async (assignmentId, file, token) => {
   try {
     const timestamp = Date.now();
     const filename = `assignments/${assignmentId}/instructions/${timestamp}_${file.name}`;
-    
-    // Upload file to R2 storage
+
     const uploadResult = await storageApiService.uploadFile(file, { filename }, token);
-    
-    // Store the original R2 URL in database (not the proxy URL)
-    // The frontend will convert to proxy URLs when displaying
     const originalR2Url = uploadResult.url;
-    
-    // Save to assignment_attachments table (educator file - no prefix)
-    const { data, error } = await supabase
-      .from('assignment_attachments')
-      .insert({
-        assignment_id: assignmentId,
-        file_name: file.name, // ✅ EDUCATOR FILE (no prefix)
+
+    const res = await apiPost('/educator/actions', {
+      action: 'add-assignment-attachment',
+      assignmentId,
+      attachmentData: {
+        file_name: file.name,
         file_type: file.type,
         file_size: file.size,
-        file_url: originalR2Url // Store original R2 URL, not proxy URL
-      })
-      .select()
-      .single();
-      
-    if (error) throw error;
-    
-    return { 
-      ...uploadResult, 
-      attachment_id: data.attachment_id,
-      file_name: data.file_name,
-      file_type: data.file_type,
-      file_size: data.file_size,
+        file_url: originalR2Url
+      }
+    });
+
+    if (!res?.data) throw new Error('Failed to save attachment record');
+
+    return {
+      ...uploadResult,
+      attachment_id: res.data.attachment_id,
+      file_name: res.data.file_name,
+      file_type: res.data.file_type,
+      file_size: res.data.file_size,
       accessible_url: originalR2Url
     };
   } catch (error) {
@@ -499,13 +193,6 @@ export const uploadInstructionFile = async (assignmentId, file, token) => {
   }
 };
 
-/**
- * Upload multiple instruction files for assignment
- * @param {string} assignmentId - Assignment UUID
- * @param {Array<File>} files - Array of files to upload
- * @param {string} token - Auth token
- * @returns {Promise<Array>} Array of upload results
- */
 export const uploadMultipleInstructionFiles = async (assignmentId, files, token) => {
   try {
     const uploadPromises = files.map(file => uploadInstructionFile(assignmentId, file, token));
@@ -517,31 +204,20 @@ export const uploadMultipleInstructionFiles = async (assignmentId, files, token)
   }
 };
 
-/**
- * Create assignment with staged files (files uploaded after assignment creation)
- * @param {Object} assignmentData - Assignment details
- * @param {Array<File>} instructionFiles - Array of instruction files to upload after creation
- * @param {string} token - Auth token
- * @returns {Promise<Object>} Created assignment with file upload results
- */
 export const createAssignmentWithStagedFiles = async (assignmentData, instructionFiles, token) => {
   try {
-    // Create assignment first
     const assignment = await createAssignment(assignmentData);
-    
-    // Upload instruction files after assignment is created
+
     if (instructionFiles && instructionFiles.length > 0) {
       console.log('Uploading staged files for assignment:', assignment.assignment_id);
       const uploadResults = await uploadMultipleInstructionFiles(
-        assignment.assignment_id, 
-        instructionFiles, 
+        assignment.assignment_id,
+        instructionFiles,
         token
       );
-      
-      // Add file info to assignment object
       assignment.instruction_files = uploadResults;
     }
-    
+
     return assignment;
   } catch (error) {
     console.error('Error creating assignment with staged files:', error);
@@ -549,35 +225,23 @@ export const createAssignmentWithStagedFiles = async (assignmentData, instructio
   }
 };
 
-/**
- * Create multiple assignments for multiple classes with staged files
- * @param {Object} baseAssignmentData - Base assignment data
- * @param {Array<string>} classIds - Array of class UUIDs
- * @param {Array<File>} instructionFiles - Array of instruction files to upload after creation
- * @param {string} token - Auth token
- * @returns {Promise<Array>} Created assignments with file upload results
- */
 export const createAssignmentsForClassesWithStagedFiles = async (baseAssignmentData, classIds, instructionFiles, token) => {
   try {
-    // Create assignments first
     const createdAssignments = await createAssignmentsForClasses(baseAssignmentData, classIds);
-    
-    // Upload instruction files to each assignment
+
     if (instructionFiles && instructionFiles.length > 0) {
       console.log('Uploading staged files for', createdAssignments.length, 'assignments');
-      
+
       for (const assignment of createdAssignments) {
         const uploadResults = await uploadMultipleInstructionFiles(
-          assignment.assignment_id, 
-          instructionFiles, 
+          assignment.assignment_id,
+          instructionFiles,
           token
         );
-        
-        // Add file info to assignment object
         assignment.instruction_files = uploadResults;
       }
     }
-    
+
     return createdAssignments;
   } catch (error) {
     console.error('Error creating assignments with staged files:', error);
@@ -585,59 +249,29 @@ export const createAssignmentsForClassesWithStagedFiles = async (baseAssignmentD
   }
 };
 
-/**
- * Get instruction files for assignment (Educator files only)
- * @param {string} assignmentId - Assignment UUID
- * @returns {Promise<Array>} List of instruction files with accessible URLs
- */
 export const getInstructionFiles = async (assignmentId) => {
   try {
-    const { data, error } = await supabase
-      .from('assignment_attachments')
-      .select('*')
-      .eq('assignment_id', assignmentId)
-      .not('file_name', 'like', 'LEARNER:%') // ✅ Only educator files (no LEARNER: prefix)
-      .order('uploaded_date', { ascending: false });
-      
-    if (error) {
-      throw error;
-    }
-    
-    // Return files as-is - URL conversion is handled in the frontend
-    return data || [];
+    const res = await apiPost('/educator/actions', { action: 'get-assignment-attachments', assignmentId });
+    return res?.data || [];
   } catch (error) {
+    console.error('Error fetching instruction files:', error);
     throw error;
   }
 };
 
-/**
- * Get all learner submission files for an assignment
- * @param {string} assignmentId - Assignment UUID
- * @returns {Promise<Array>} List of learner submission files grouped by learner
- */
 export const getlearnerSubmissionFiles = async (assignmentId) => {
   try {
-    const { data, error } = await supabase
-      .from('assignment_attachments')
-      .select('*')
-      .eq('assignment_id', assignmentId)
-      .like('file_name', 'LEARNER:%') // ✅ Only learner files (with LEARNER: prefix)
-      .order('uploaded_date', { ascending: false });
-      
-    if (error) throw error;
-    
-    // Group files by learner_assignment_id
+    const res = await apiPost('/educator/actions', { action: 'get-assignment-attachments', assignmentId, fileNamePattern: 'LEARNER:%' });
+    const data = res?.data || [];
+
     const groupedFiles = {};
     data?.forEach(file => {
-      // Extract learner_assignment_id from file_name: "LEARNER:sa-uuid-001:filename.pdf"
       const match = file.file_name.match(/^LEARNER:([^:]+):/);
       if (match) {
         const learnerAssignmentId = match[1];
         if (!groupedFiles[learnerAssignmentId]) {
           groupedFiles[learnerAssignmentId] = [];
         }
-        
-        // Add original filename without prefix
         const originalFilename = file.file_name.replace(/^LEARNER:[^:]+:/, '');
         groupedFiles[learnerAssignmentId].push({
           ...file,
@@ -645,7 +279,7 @@ export const getlearnerSubmissionFiles = async (assignmentId) => {
         });
       }
     });
-    
+
     return groupedFiles;
   } catch (error) {
     console.error('Error fetching learner submission files:', error);
@@ -653,60 +287,37 @@ export const getlearnerSubmissionFiles = async (assignmentId) => {
   }
 };
 
-/**
- * Get specific learner's submission files for an assignment
- * @param {string} assignmentId - Assignment UUID
- * @param {string} learnerAssignmentId - Learner assignment UUID
- * @returns {Promise<Array>} List of learner's submission files
- */
 export const getlearnerSubmissionFilesByLearnerId = async (assignmentId, learnerAssignmentId) => {
   try {
-    const { data, error } = await supabase
-      .from('assignment_attachments')
-      .select('*')
-      .eq('assignment_id', assignmentId)
-      .like('file_name', `LEARNER:${learnerAssignmentId}:%`) // ✅ Specific learner's files
-      .order('uploaded_date', { ascending: false });
-      
-    if (error) throw error;
-    
-    // Add original filename without prefix
-    const filesWithOriginalNames = data?.map(file => ({
+    const res = await apiPost('/educator/actions', { action: 'get-assignment-attachments', assignmentId, fileNamePattern: `LEARNER:${learnerAssignmentId}:%` });
+    const data = res?.data || [];
+
+    return data?.map(file => ({
       ...file,
       original_filename: file.file_name.replace(/^LEARNER:[^:]+:/, '')
     })) || [];
-    
-    return filesWithOriginalNames;
   } catch (error) {
     console.error('Error fetching learner submission files by learner ID:', error);
     throw error;
   }
 };
 
-/**
- * Get educator's assignments with statistics and file counts
- * @param {string} educatorId - Educator UUID
- * @returns {Promise<Array>} Assignments with submission stats and file info
- */
 export const getEducatorAssignmentsWithStats = async (educatorId) => {
   try {
     const assignments = await getAssignmentsByEducator(educatorId);
-    
-    // Get statistics for each assignment
+
     const assignmentsWithStats = await Promise.all(
       assignments.map(async (assignment) => {
         const stats = await getAssignmentStatistics(assignment.assignment_id);
-        
-        // Count instruction files (educator files)
+
         const instructionFiles = assignment.assignment_attachments?.filter(
           att => !att.file_name.startsWith('LEARNER:')
         ) || [];
-        
-        // Count submission files (learner files)
+
         const submissionFiles = assignment.assignment_attachments?.filter(
           att => att.file_name.startsWith('LEARNER:')
         ) || [];
-        
+
         return {
           ...assignment,
           stats: {
@@ -720,7 +331,7 @@ export const getEducatorAssignmentsWithStats = async (educatorId) => {
         };
       })
     );
-    
+
     return assignmentsWithStats;
   } catch (error) {
     console.error('Error fetching educator assignments with stats:', error);
@@ -728,25 +339,16 @@ export const getEducatorAssignmentsWithStats = async (educatorId) => {
   }
 };
 
-/**
- * Get assignment submissions with files for educator review
- * @param {string} assignmentId - Assignment UUID
- * @returns {Promise<Array>} List of submissions with learner info and files
- */
 export const getAssignmentSubmissionsWithFiles = async (assignmentId) => {
   try {
-    // Get learner assignments
     const learnerAssignments = await getAssignmentLearners(assignmentId);
-    
-    // Get all submission files grouped by learner
     const submissionFiles = await getlearnerSubmissionFiles(assignmentId);
-    
-    // Combine learner assignments with their files
+
     const submissionsWithFiles = learnerAssignments.map(submission => ({
       ...submission,
       submission_files: submissionFiles[submission.learner_assignment_id] || []
     }));
-    
+
     return submissionsWithFiles;
   } catch (error) {
     console.error('Error fetching assignment submissions with files:', error);
@@ -754,31 +356,15 @@ export const getAssignmentSubmissionsWithFiles = async (assignmentId) => {
   }
 };
 
-/**
- * Delete instruction file
- * @param {string} attachmentId - Attachment UUID
- * @param {string} token - Auth token
- * @returns {Promise<boolean>} Success status
- */
 export const deleteInstructionFile = async (attachmentId, token) => {
   try {
-    // Get file info first
-    const { data: attachment, error: fetchError } = await supabase
-      .from('assignment_attachments')
-      .select('file_url, file_name')
-      .eq('attachment_id', attachmentId)
-      .single();
-      
-    if (fetchError) {
-      throw fetchError;
-    }
-    
-    // Delete from R2 storage using the original R2 URL
-    if (attachment.file_url) {
+    const res = await apiPost('/educator/actions', { action: 'get-attachment-by-id', attachmentId });
+    const attachment = res?.data;
+
+    if (attachment?.file_url) {
       try {
         let originalUrl = attachment.file_url;
-        
-        // If it's a proxy URL, extract the original R2 URL
+
         if (attachment.file_url.includes('/document-access?url=')) {
           const urlParams = new URLSearchParams(attachment.file_url.split('?')[1]);
           const encodedUrl = urlParams.get('url');
@@ -786,33 +372,17 @@ export const deleteInstructionFile = async (attachmentId, token) => {
             originalUrl = decodeURIComponent(encodedUrl);
           }
         }
-        
-        // Use the corrected storageApiService.deleteFile function with original R2 URL
+
         await storageApiService.deleteFile(originalUrl, token);
       } catch (storageError) {
         // Continue with database deletion even if storage deletion fails
       }
     }
-    
-    // Delete from database (always do this regardless of storage deletion)
-    const { error, count } = await supabase
-      .from('assignment_attachments')
-      .delete()
-      .eq('attachment_id', attachmentId);
-      
-    if (error) {
-      throw error;
-    }
-    
-    // Verify deletion by checking if record still exists
-    const { data: verifyData, error: verifyError } = await supabase
-      .from('assignment_attachments')
-      .select('attachment_id')
-      .eq('attachment_id', attachmentId);
-      
+
+    await apiPost('/educator/actions', { action: 'remove-assignment-attachment', attachmentId });
     return true;
   } catch (error) {
+    console.error('Error deleting instruction file:', error);
     throw error;
   }
 };
-

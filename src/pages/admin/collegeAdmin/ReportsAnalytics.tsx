@@ -129,20 +129,18 @@ const ReportsAnalytics: React.FC = () => {
           }
         }
 
-        // Fallback to Supabase auth
         if (user?.id) {
-          const { supabase } = await import('@/shared/api/supabaseClient');
-          
-          // Query organizations table for college
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college')
-            .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
-            .maybeSingle();
-          
-          if (org?.id) {
-            setCollegeId(org.id);
+          const apiModule = await import('@/shared/api/apiClient');
+          const orgResp = await apiModule.apiPost('/college-admin/actions', {
+            action: 'get-org-by-filters',
+            select: 'id',
+            filters: {
+              organization_type: { eq: 'college' },
+              or: { or: `admin_id.eq.${user.id},email.ilike.${user.email}` },
+            },
+          });
+          if (orgResp.success && orgResp.data?.id) {
+            setCollegeId(orgResp.data.id);
           }
         }
       } catch (error) {

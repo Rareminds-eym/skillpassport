@@ -1,8 +1,8 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { useQueries, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/shared/api/supabaseClient';
 import { FunnelRangePreset, getGeographicDistribution, getTopHiringColleges } from '@/features/educator-copilot';
+import { getSSEClient } from '@/shared/api/sseRealtimeClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef } from 'react';
 
 interface UseDiversityDataOptions {
   preset: FunnelRangePreset;
@@ -82,40 +82,39 @@ export const useDiversityData = ({
 
   const [geographicQuery, collegesQuery] = queries;
 
-  // Single WebSocket channel for both datasets
+  // SSE subscriptions for both datasets
   useEffect(() => {
     if (!enabled) return;
 
-    // Use a stable channel name shared between both datasets
-    const channelName = 'diversity-data-realtime';
+    const sseClient = getSSEClient();
+    const unsubscribers: Array<() => void> = [];
 
-    // Check if channel already exists
-    const existingChannel = supabase.getChannels().find(ch => ch.topic === channelName);
-    if (existingChannel) {
-      channelRef.current = existingChannel;
-      return;
-    }
+    // Subscribe to pipeline_candidates changes
+    const unsubPipeline = sseClient.subscribe(
+      'pipeline_candidates',
+      { event: '*' },
+      (event) => {
+        if (event.type === 'change') {
+          invalidateQueries();
+        }
+      }
+    );
+    unsubscribers.push(unsubPipeline);
 
-    // Single subscription for both geographic and colleges data
-    const channel = supabase.channel(channelName)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'pipeline_candidates' },
-        invalidateQueries
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'learners' },
-        invalidateQueries
-      );
-
-    channel.subscribe();
-    channelRef.current = channel;
+    // Subscribe to learners changes
+    const unsubLearners = sseClient.subscribe(
+      'learners',
+      { event: '*' },
+      (event) => {
+        if (event.type === 'change') {
+          invalidateQueries();
+        }
+      }
+    );
+    unsubscribers.push(unsubLearners);
 
     return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      unsubscribers.forEach(unsub => unsub());
     };
   }, [enabled, invalidateQueries]);
 

@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
 import { SchoolClub, SchoolAchievement, SchoolCertificate, SchoolActivity } from '@/features/myclass';
 import { normalizeRelation } from '@/features/myclass';
 import { formatClubName } from '@/features/myclass';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface UseCoCurricularsDataReturn {
   clubs: SchoolClub[];
@@ -38,81 +38,14 @@ export const useOptimizedCoCurricularsData = (userEmail: string | null): UseCoCu
       setError(null);
       setHasFetched(true);
 
-      // Fetch all data in parallel for better performance
-      // Note: Member counts query is independent and can run in parallel
-      const [membershipData, resultsData, certificatesData, allMemberCounts] = await Promise.all([
-        supabase
-          .from('club_memberships')
-          .select(`
-            membership_id,
-            club_id,
-            learner_email,
-            status,
-            enrolled_at,
-            total_sessions_attended,
-            total_sessions_held,
-            attendance_percentage,
-            performance_score,
-            clubs!inner (
-              club_id,
-              name,
-              category,
-              description,
-              meeting_day,
-              meeting_time,
-              location,
-              capacity,
-              is_active
-            )
-          `)
-          .eq('learner_email', userEmail)
-          .eq('status', 'active'),
-        
-        supabase
-          .from('competition_results')
-          .select(`
-            result_id,
-            rank,
-            score,
-            award,
-            performance_notes,
-            competitions!inner (
-              comp_id,
-              name,
-              level,
-              category,
-              competition_date,
-              status
-            )
-          `)
-          .eq('learner_email', userEmail)
-          .order('rank', { ascending: true }),
-        
-        supabase
-          .from('club_certificates')
-          .select(`
-            certificate_id,
-            title,
-            description,
-            certificate_type,
-            issued_date,
-            credential_id,
-            metadata,
-            competitions (
-              name,
-              level,
-              category
-            )
-          `)
-          .eq('learner_email', userEmail)
-          .order('issued_date', { ascending: false }),
-        
-        // Fetch member counts for all active clubs in parallel
-        supabase
-          .from('club_memberships')
-          .select('club_id')
-          .eq('status', 'active')
-      ]);
+      const { data } = await apiPost('/co-curriculars/actions', {
+        action: 'fetch-co-curriculars',
+        userEmail: userEmail,
+      });
+      const membershipData = { data: data?.memberships || [], error: null };
+      const resultsData = { data: data?.results || [], error: null };
+      const certificatesData = { data: data?.certificates || [], error: null };
+      const allMemberCounts = { data: data?.memberCounts || [], error: null };
 
       if (membershipData.error) throw membershipData.error;
 

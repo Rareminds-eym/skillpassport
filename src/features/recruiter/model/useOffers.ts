@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost, apiDelete } from '@/shared/api/apiClient';
 
 import { NotificationType } from "./useNotifications";
 import { createNotification } from '@/features/notifications/api/notificationService';
 
 import { useUser } from '@/shared/model/authStore';
-// -------------------- OFFER TYPES --------------------
+
 export interface Offer {
   id: string;
   inserted_at: string;
@@ -61,110 +61,54 @@ export interface OfferFilters {
 export interface OfferSortOptions {
   field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title' | 'offered_ctc' | 'status' | 'template' | 'response_date';
   direction: 'asc' | 'desc';
-  nullsPosition?: 'first' | 'last'; // Where to place NULL values
+  nullsPosition?: 'first' | 'last';
   secondarySort?: {
     field: 'inserted_at' | 'updated_at' | 'offer_date' | 'expiry_date' | 'candidate_name' | 'job_title';
     direction: 'asc' | 'desc';
   };
 }
 
-// -------------------- HOOK --------------------
+function buildOfferParams(currentFilters?: OfferFilters, currentSort?: OfferSortOptions): string {
+  const params = new URLSearchParams();
+  if (!currentFilters && !currentSort) return '';
+
+  if (currentFilters?.status && currentFilters.status.length > 0) {
+    params.set('status', currentFilters.status.join(','));
+  }
+  if (currentFilters?.candidateName) params.set('candidateName', currentFilters.candidateName);
+  if (currentFilters?.jobTitle) params.set('jobTitle', currentFilters.jobTitle);
+  if (currentFilters?.offerDateFrom) params.set('offerDateFrom', currentFilters.offerDateFrom);
+  if (currentFilters?.offerDateTo) params.set('offerDateTo', currentFilters.offerDateTo);
+  if (currentFilters?.expiryDateFrom) params.set('expiryDateFrom', currentFilters.expiryDateFrom);
+  if (currentFilters?.expiryDateTo) params.set('expiryDateTo', currentFilters.expiryDateTo);
+
+  const sortField = currentSort?.field || 'inserted_at';
+  const sortDir = currentSort?.direction || 'desc';
+  params.set('sortField', sortField);
+  params.set('sortDir', sortDir);
+
+  return params.toString();
+}
+
 export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
   const user = useUser();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch offers with SQL-optimized filtering
   const fetchOffers = async (currentFilters?: OfferFilters, currentSort?: OfferSortOptions) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Start building the query
-      let query = supabase.from("offers").select("*");
-
-      // Apply filters at SQL level for optimization
-      if (currentFilters) {
-        // Status filter (array)
-        if (currentFilters.status && currentFilters.status.length > 0) {
-          query = query.in('status', currentFilters.status);
-        }
-
-        // Candidate name search (case-insensitive)
-        if (currentFilters.candidateName) {
-          query = query.ilike('candidate_name', `%${currentFilters.candidateName}%`);
-        }
-
-        // Job title search (case-insensitive)
-        if (currentFilters.jobTitle) {
-          query = query.ilike('job_title', `%${currentFilters.jobTitle}%`);
-        }
-
-        // Offer date range
-        if (currentFilters.offerDateFrom) {
-          query = query.gte('offer_date', currentFilters.offerDateFrom);
-        }
-        if (currentFilters.offerDateTo) {
-          query = query.lte('offer_date', currentFilters.offerDateTo);
-        }
-
-        // Expiry date range
-        if (currentFilters.expiryDateFrom) {
-          query = query.gte('expiry_date', currentFilters.expiryDateFrom);
-        }
-        if (currentFilters.expiryDateTo) {
-          query = query.lte('expiry_date', currentFilters.expiryDateTo);
-        }
-
-        // Templates filter (array)
-        if (currentFilters.templates && currentFilters.templates.length > 0) {
-          query = query.in('template', currentFilters.templates);
-        }
-
-        // Sent via filter (array)
-        if (currentFilters.sentVia && currentFilters.sentVia.length > 0) {
-          query = query.in('sent_via', currentFilters.sentVia);
-        }
-
-        // Note: CTC range and benefits filtering will be done client-side
-        // as they require parsing string values or array contains operations
-      }
-
-      // Apply sorting with advanced options
-      const sortField = currentSort?.field || 'inserted_at';
-      const sortDirection = currentSort?.direction || 'desc';
-      const nullsPosition = currentSort?.nullsPosition || 'last';
-
-      // Apply primary sort with nulls handling
-      query = query.order(sortField, {
-        ascending: sortDirection === 'asc',
-        nullsFirst: nullsPosition === 'first'
-      });
-
-      // Apply secondary sort for tie-breaking (improves user experience)
-      if (currentSort?.secondarySort) {
-        query = query.order(currentSort.secondarySort.field, {
-          ascending: currentSort.secondarySort.direction === 'asc'
-        });
-      } else {
-        // Default secondary sort by inserted_at for consistent ordering
-        if (sortField !== 'inserted_at') {
-          query = query.order('inserted_at', { ascending: false });
-        }
-      }
-
-      const { data, error: fetchError } = await query;
-
-      if (fetchError) throw fetchError;
-
-      // Client-side filtering for complex conditions
-      let filteredData = data || [];
+      const qs = buildOfferParams(currentFilters, currentSort);
+      const path = `/recruiter/offers${qs ? `?${qs}` : ''}`;
+      const response: any = await apiGet(path);
+      let data: Offer[] = response?.data?.offers ?? [];
 
       if (currentFilters) {
-        // CTC range filtering (client-side due to string parsing)
         if (currentFilters.offeredCtcMin !== undefined || currentFilters.offeredCtcMax !== undefined) {
-          filteredData = filteredData.filter(offer => {
+          data = data.filter(offer => {
             if (!offer.offered_ctc) return false;
             const ctcValue = parseFloat(offer.offered_ctc.replace(/[^\d.]/g, "") || "0");
             if (currentFilters.offeredCtcMin !== undefined && ctcValue < currentFilters.offeredCtcMin) return false;
@@ -172,37 +116,28 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
             return true;
           });
         }
-
-        // Benefits filtering (client-side for array contains)
         if (currentFilters.benefits && currentFilters.benefits.length > 0) {
-          filteredData = filteredData.filter(offer =>
+          data = data.filter(offer =>
             offer.benefits && offer.benefits.some(b => currentFilters.benefits!.includes(b))
           );
         }
       }
 
-      setOffers(filteredData);
+      setOffers(data);
     } catch (err: any) {
-      // Error handled via state
       setError(err.message || "Failed to fetch offers");
     } finally {
       setLoading(false);
     }
   };
 
-  // Create a new offer
   const createOffer = async (offerData: Partial<Offer>) => {
     try {
-      const { data, error: createError } = await supabase
-        .from("offers")
-        .insert([offerData])
-        .select()
-        .single();
-
-      if (createError) throw createError;
+      const response: any = await apiPost('/recruiter/offers', offerData);
+      const data = response?.data?.offer;
+      if (!data) throw new Error('Failed to create offer');
       setOffers((prev) => [data, ...prev]);
 
-      // 🔹 Fire notification
       if (data && user) {
         await createNotification(
           user.email ?? user.id,
@@ -214,28 +149,20 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       return { success: true, data };
     } catch (err: any) {
-      // Error handled via return
       return { success: false, error: err.message || "Failed to create offer" };
     }
   };
 
-  // Update an offer
   const updateOffer = async (id: string, updates: Partial<Offer>) => {
     try {
-      const { data, error: updateError } = await supabase
-        .from("offers")
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (updateError) throw updateError;
+      const response: any = await apiPost('/recruiter/offers', {
+        id, ...updates,
+        updated_at: new Date().toISOString(),
+      });
+      const data = response?.data?.offer;
+      if (!data) throw new Error('Failed to update offer');
       setOffers((prev) => prev.map((o) => (o.id === id ? data : o)));
 
-      // 🔹 Notification per status change
       if (data && user) {
         let type: NotificationType | null = null;
         let title = "";
@@ -262,20 +189,13 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       return { success: true, data };
     } catch (err: any) {
-      // Error handled via return
       return { success: false, error: err.message || "Failed to update offer" };
     }
   };
 
-  // Delete an offer
   const deleteOffer = async (id: string) => {
     try {
-      const { error: deleteError } = await supabase
-        .from("offers")
-        .delete()
-        .eq("id", id);
-      if (deleteError) throw deleteError;
-
+      await apiDelete(`/recruiter/offers?id=${encodeURIComponent(id)}`);
       setOffers((prev) => prev.filter((o) => o.id !== id));
 
       if (user) {
@@ -289,12 +209,10 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       return { success: true };
     } catch (err: any) {
-      // Error handled via return
       return { success: false, error: err.message || "Failed to delete offer" };
     }
   };
 
-  // Withdraw an offer
   const withdrawOffer = async (id: string) => {
     return updateOffer(id, {
       status: "withdrawn",
@@ -302,16 +220,12 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
     });
   };
 
-  // Extend expiry
   const extendOfferExpiry = async (id: string, days: number) => {
     try {
-      const { data: offer, error: fetchError } = await supabase
-        .from("offers")
-        .select("expiry_date, candidate_name")
-        .eq("id", id)
-        .single();
-
-      if (fetchError) throw fetchError;
+      const response: any = await apiGet(`/recruiter/offers?id=${encodeURIComponent(id)}`);
+      const offersList: Offer[] = response?.data?.offers ?? [];
+      const offer = offersList[0];
+      if (!offer) throw new Error('Offer not found');
 
       const currentExpiry = new Date(offer.expiry_date);
       currentExpiry.setDate(currentExpiry.getDate() + days);
@@ -332,12 +246,10 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
 
       return result;
     } catch (err: any) {
-      // Error handled via return
       return { success: false, error: err.message || "Failed to extend offer" };
     }
   };
 
-  // Accept an offer
   const acceptOffer = async (id: string, acceptanceNotes?: string) => {
     return updateOffer(id, {
       status: "accepted",
@@ -346,7 +258,6 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
     });
   };
 
-  // Reject an offer
   const rejectOffer = async (id: string, rejectionNotes?: string) => {
     return updateOffer(id, {
       status: "rejected",
@@ -355,7 +266,6 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
     });
   };
 
-  // Stats
   const stats: OfferStats = useMemo(() => {
     const total = offers.length;
     const pending = offers.filter((o) => o.status === "pending").length;
@@ -368,57 +278,35 @@ export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
     const expiring_soon = offers.filter((o) => {
       if (o.status !== "pending") return false;
       const expiryDate = new Date(o.expiry_date);
-      const diffDays = Math.ceil(
-        (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-      );
+      const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       return diffDays <= 2 && diffDays > 0;
     }).length;
 
     const responded = accepted + rejected;
-    const acceptanceRate =
-      responded > 0 ? Math.round((accepted / responded) * 100) : 0;
+    const acceptanceRate = responded > 0 ? Math.round((accepted / responded) * 100) : 0;
 
     const ctcValues = offers
       .filter((o) => o.offered_ctc)
       .map((o) => parseFloat(o.offered_ctc?.replace(/[^\d.]/g, "") || "0"))
       .filter((v) => v > 0);
 
-    const avgCTC =
-      ctcValues.length > 0
-        ? (ctcValues.reduce((sum, val) => sum + val, 0) / ctcValues.length).toFixed(1)
-        : "0";
+    const avgCTC = ctcValues.length > 0
+      ? (ctcValues.reduce((sum, val) => sum + val, 0) / ctcValues.length).toFixed(1)
+      : "0";
 
-    return {
-      total,
-      pending,
-      accepted,
-      rejected,
-      expired,
-      withdrawn,
-      expiring_soon,
-      acceptanceRate,
-      avgCTC,
-    };
+    return { total, pending, accepted, rejected, expired, withdrawn, expiring_soon, acceptanceRate, avgCTC };
   }, [offers]);
 
-  // Load offers on mount and when filters/sort change
   useEffect(() => {
     fetchOffers(filters, sort);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, sort]);
 
   return {
-    offers,
-    loading,
-    error,
-    stats,
-    createOffer,
-    updateOffer,
-    deleteOffer,
-    withdrawOffer,
-    extendOfferExpiry,
-    acceptOffer,
-    rejectOffer,
+    offers, loading, error, stats,
+    createOffer, updateOffer, deleteOffer,
+    withdrawOffer, extendOfferExpiry,
+    acceptOffer, rejectOffer,
     refreshOffers: fetchOffers,
   };
 };

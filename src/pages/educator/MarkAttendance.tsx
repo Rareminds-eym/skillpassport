@@ -15,7 +15,6 @@ import {
     XMarkIcon,
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MarkAttendance');

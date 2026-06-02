@@ -23,17 +23,11 @@ export const useUsers = (options: UseUsersOptions = {}) => {
     setError(null);
 
     try {
-      const result = await userManagementService.getUsers(options);
-
-      if (result.success) {
-        setUsers(result.data || []);
-      } else {
-        setError(result.error.message);
-        setUsers([]); // Set empty array on error
-      }
+      const data = await userManagementService.getUsers(options);
+      setUsers(data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch users');
-      setUsers([]); // Set empty array on exception
+      setUsers([]);
     }
 
     setLoading(false);
@@ -44,38 +38,33 @@ export const useUsers = (options: UseUsersOptions = {}) => {
   }, [options.role, options.department_id, options.status, options.search]);
 
   const createUser = async (userData: Partial<User>) => {
-    const result = await userManagementService.createUser(userData);
-    if (result.success) {
+    try {
+      const user = await userManagementService.createUser(userData as any);
       await fetchUsers();
-      return { success: true, data: result.data };
+      return { success: true, data: user };
+    } catch (err: any) {
+      return { success: false, error: err.message };
     }
-    return { success: false, error: result.error.message };
   };
 
   const updateUser = async (userId: string, updates: Partial<User>) => {
-    const result = await userManagementService.updateUser(userId, updates);
-    if (result.success) {
+    try {
+      await userManagementService.updateUser(userId, updates as any);
       await fetchUsers();
       return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
     }
-    return { success: false, error: result.error.message };
   };
 
   const deactivateUser = async (userId: string) => {
-    const result = await userManagementService.deactivateUser(userId);
-    if (result.success) {
+    try {
+      await userManagementService.deleteUser(userId);
       await fetchUsers();
       return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
     }
-    return { success: false, error: result.error.message };
-  };
-
-  const resetPassword = async (userId: string) => {
-    const result = await userManagementService.resetPassword(userId);
-    if (result.success) {
-      return { success: true };
-    }
-    return { success: false, error: result.error.message };
   };
 
   return {
@@ -85,7 +74,6 @@ export const useUsers = (options: UseUsersOptions = {}) => {
     createUser,
     updateUser,
     deactivateUser,
-    resetPassword,
     refetch: fetchUsers,
   };
 };

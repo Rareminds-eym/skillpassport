@@ -1,8 +1,46 @@
+import { useLearnerAchievements, useLearnerDataByEmail, useLearnerMessageNotifications, useLearnerUnreadCount } from '@/entities/learner';
+import { isLearner } from '@/entities/learner/lib/learnerType';
+import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
+import {
+  CertificatesEditModal,
+  EducationEditModal,
+  ExperienceEditModal,
+  ProjectsEditModal,
+  SkillsEditModal,
+  TrainingEditModal,
+  useLearnerAIRecommendations,
+  useLearnerAssessment,
+  useLearnerDashboard,
+} from '@/features/learner-profile';
+import { useOpportunities } from '@/features/opportunities';
+import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
+import { useSubscriptionQuery } from '@/features/subscription/model';
+import { apiPost } from '@/shared/api/apiClient';
+import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getLogger } from '@/shared/config/logging';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import {
+  educationData,
+  experienceData,
+  softSkills,
+  suggestions,
+  technicalSkills
+} from "@/shared/lib/test/mockData";
+import { useUserRole } from '@/shared/model/authStore';
+import {
+  Badge, Button, Card, CardContent, CardHeader, CardTitle, DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger, LampContainer
+} from '@/shared/ui';
+import { AchievementsTimeline, AnalyticsView, TrainingRecommendations } from '@/widgets/learner-dashboard';
 import {
   ChartBarIcon,
   LockClosedIcon,
   RectangleStackIcon,
 } from "@heroicons/react/24/outline";
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { motion } from "framer-motion";
 import {
   Award,
   BookOpen,
@@ -14,10 +52,8 @@ import {
   ClipboardList,
   Clock,
   Cpu,
-  Edit,
   ExternalLink,
   Eye,
-  EyeOff,
   Factory,
   FileText,
   Github,
@@ -37,60 +73,12 @@ import {
   Users2,
   X
 } from "lucide-react";
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { motion } from "framer-motion";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Dashboard');
-import {
-  CertificatesEditModal,
-  EducationEditModal,
-  ExperienceEditModal,
-  ProjectsEditModal,
-  SkillsEditModal,
-  TrainingEditModal,
-} from '@/features/learner-profile';
-import { AchievementsTimeline, AnalyticsView, TrainingRecommendations } from '@/widgets/learner-dashboard';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui';
-import { LampContainer } from '@/shared/ui';
-import {
-  educationData,
-  experienceData,
-  softSkills,
-  suggestions,
-  technicalSkills,
-  trainingData,
-} from "@/shared/lib/test/mockData";
-import { useOpportunities } from '@/features/opportunities';
-import {
-  useLearnerProfile,
-  useLearnerPortfolio,
-  useLearnerActivity,
-  useLearnerMessages,
-  useLearnerDashboard,
-  useLearnerAssessment,
-  useLearnerAIRecommendations
-} from "@/features/learner-profile";
-import { useLearnerMessageNotifications, useLearnerUnreadCount, useLearnerDataByEmail } from '@/entities/learner';
-import { apiPost } from '@/shared/api/apiClient';
-import { useLearnerAchievements } from '@/entities/learner';
-import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
-import { supabase } from '@/shared/api/supabaseClient';
-import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
-import { useUserRole } from '@/shared/model/authStore';
-import { useSubscriptionQuery } from '@/features/subscription/model';
-import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
-import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
@@ -1285,42 +1273,39 @@ const LearnerDashboard = () => {
   useEffect(() => {
     if (!userEmail || isViewingOthersProfile) return;
 
-    // Subscribe to real-time changes in opportunities table
-    const channel = supabase
-      .channel("opportunities-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "opportunities",
-        },
-        (payload) => {
+    const sseClient = getSSEClient();
+
+    // Subscribe to INSERT events on opportunities table
+    const unsubscribeInsert = sseClient.subscribe(
+      'opportunities',
+      { event: 'INSERT' },
+      (event) => {
+        if (event.type === 'change') {
           // Refresh opportunities list
           refreshOpportunities();
-
           // Refresh Recent Updates to show the new opportunity
           setTimeout(() => {
             refreshRecentUpdates();
           }, 1000); // Small delay to ensure DB trigger has fired
         }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "opportunities",
-        },
-        (payload) => {
+      }
+    );
+
+    // Subscribe to UPDATE events on opportunities table
+    const unsubscribeUpdate = sseClient.subscribe(
+      'opportunities',
+      { event: 'UPDATE' },
+      (event) => {
+        if (event.type === 'change') {
           refreshOpportunities();
         }
-      )
-      .subscribe();
+      }
+    );
 
-    // Cleanup subscription on unmount
+    // Cleanup subscriptions on unmount
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribeInsert();
+      unsubscribeUpdate();
     };
   }, [userEmail, isViewingOthersProfile]);
 
@@ -1343,9 +1328,7 @@ const LearnerDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
-        const { data, error, count } = await supabase
-          .from("opportunities")
-          .select("*", { count: "exact" });
+        await apiPost('/learner-pages/actions', { action: 'test-supabase-connectivity' });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
@@ -1901,19 +1884,7 @@ const LearnerDashboard = () => {
                         if (!window.confirm('DEV: Are you sure you want to clear your assessment data? This will delete all your assessment results.')) return;
 
                         try {
-                          const { error: resultsError } = await supabase
-                            .from('personal_assessment_results')
-                            .delete()
-                            .eq('learner_id', learnerId);
-
-                          if (resultsError) throw resultsError;
-
-                          const { error: attemptsError } = await supabase
-                            .from('personal_assessment_attempts')
-                            .delete()
-                            .eq('learner_id', learnerId);
-
-                          if (attemptsError) throw attemptsError;
+                          await apiPost('/learner-pages/actions', { action: 'clear-assessment-data', learnerId });
 
                           localStorage.removeItem('assessment_gemini_results');
                           localStorage.removeItem('assessment_section_timings');

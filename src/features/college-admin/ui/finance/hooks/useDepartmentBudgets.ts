@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 
 export interface DepartmentBudget {
   id: string;
@@ -41,24 +42,15 @@ export const useDepartmentBudgets = () => {
         }
       }
 
-      // If not found in localStorage, try Supabase Auth
+      // If not found in localStorage, try API
       const user = useAuthStore.getState().user;
-      if (user) {
-        // Get user role from users table
-        const { data: userRecord } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
+      if (user?.id) {
+        const roleResult = await apiPost('/college-admin/faculty', { action: 'get-user-role', user_id: user.id });
+        const userRecord = roleResult?.data;
 
         if (userRecord?.role === 'college_admin') {
-          // Find college by matching email in organizations table (case-insensitive)
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id, name, email')
-            .eq('organization_type', 'college')
-            .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
-            .maybeSingle();
+          const orgResult = await apiPost('/college-admin/faculty', { action: 'get-organization-by-admin', userId: user.id });
+          const org = orgResult?.data;
 
           if (org?.id) {
             return org.id;
@@ -78,25 +70,13 @@ export const useDepartmentBudgets = () => {
     try {
       setLoading(true);
 
-      // Try to load from department_budgets table (if it exists)
-      const { data, error } = await supabase
-        .from("department_budgets")
-        .select("*")
-        .eq("college_id", collegeId)
-        .order("department_name", { ascending: true });
-
-      if (error && error.code === '42P01') {
-        // Table doesn't exist, create mock data
+      const result = await apiPost('/college-admin/faculty', { action: 'get-department-budgets-by-college', college_id: collegeId });
+      if (!result.success || !Array.isArray(result.data)) {
         await createMockBudgets();
         return;
       }
 
-      if (error) {
-        await createMockBudgets();
-        return;
-      }
-
-      setBudgets(data || []);
+      setBudgets(result.data);
     } catch (err) {
       await createMockBudgets();
     } finally {

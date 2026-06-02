@@ -11,7 +11,7 @@ import {
     AlertCircle,
     CheckCircle,
 } from "lucide-react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import * as clubsService from "@/features/college-admin";
 import * as competitionsService from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';
@@ -44,201 +44,19 @@ export default function LearnerDashboard() {
                     return;
                 }
 
-                // Fetch learner's clubs using proper joins
-                const { data: membershipData, error: membershipError } = await supabase
-                    .from('club_memberships')
-                    .select(`
-                        membership_id,
-                        club_id,
-                        learner_email,
-                        status,
-                        enrolled_at,
-                        total_sessions_attended,
-                        total_sessions_held,
-                        attendance_percentage,
-                        performance_score,
-                        clubs (
-                            club_id,
-                            name,
-                            category,
-                            description,
-                            meeting_day,
-                            meeting_time,
-                            location,
-                            capacity,
-                            is_active
-                        )
-                    `)
-                    .eq('learner_email', userEmail)
-                    .eq('status', 'active');
+                const res = await apiPost('/learner-pages/actions', {
+                    action: 'fetch-clubs-data',
+                    userEmail,
+                });
 
-                if (membershipError) {
-                    logger.error('Error fetching club memberships', membershipError);
-                } else {
-                    logger.info('Learner club memberships loaded', { 
-                        count: membershipData?.length || 0,
-                        membershipData 
-                    });
+                if (res?.data) {
+                    setClubs(res.data.clubs || []);
+                    setMyMemberships(res.data.memberships || []);
+                    setCompetitions(res.data.competitions || []);
+                    setAttendanceData(res.data.attendanceData || {});
+                    setMyAchievementsData(res.data.achievements || []);
+                    setMyCertificates(res.data.certificates || []);
                 }
-
-                // Transform membership data into clubs format
-                const clubsData = (membershipData || []).map(membership => ({
-                    club_id: membership.clubs?.club_id,
-                    name: membership.clubs?.name,
-                    category: membership.clubs?.category,
-                    description: membership.clubs?.description || '',
-                    meeting_day: membership.clubs?.meeting_day,
-                    meeting_time: membership.clubs?.meeting_time,
-                    location: membership.clubs?.location,
-                    is_active: membership.clubs?.is_active,
-                    capacity: membership.clubs?.capacity || 30,
-                    members: [],
-                    // Membership specific data
-                    membership_id: membership.membership_id,
-                    enrolled_at: membership.enrolled_at,
-                    total_sessions_attended: membership.total_sessions_attended,
-                    total_sessions_held: membership.total_sessions_held,
-                    attendance_percentage: membership.attendance_percentage,
-                    performance_score: membership.performance_score
-                }));
-
-                // Store memberships for later use
-                setMyMemberships(membershipData || []);
-
-                // Fetch member count for each club
-                const clubsWithMembers = await Promise.all(
-                    clubsData.map(async (club) => {
-                        // Get member count
-                        const { count: memberCount } = await supabase
-                            .from('club_memberships')
-                            .select('*', { count: 'exact', head: true })
-                            .eq('club_id', club.club_id)
-                            .eq('status', 'active');
-
-                        logger.info('Club member count', { clubName: club.name, memberCount: memberCount || 0 });
-
-                        return {
-                            ...club,
-                            memberCount: memberCount || 0,
-                            members: []
-                        };
-                    })
-                );
-
-                // Get school_id from first membership for competitions
-                const schoolId = membershipData?.[0]?.club_id ? 
-                    await supabase
-                        .from('clubs')
-                        .select('school_id')
-                        .eq('club_id', membershipData[0].club_id)
-                        .single()
-                        .then(res => res.data?.school_id)
-                    : null;
-
-                logger.info('School ID retrieved', { schoolId });
-
-                // Fetch competitions for the learner's school
-                let competitionsData = [];
-                if (schoolId) {
-                    const { data: compsData, error: competitionsError } = await supabase
-                        .from('competitions')
-                        .select('*')
-                        .eq('school_id', schoolId)
-                        .order('competition_date', { ascending: true });
-
-                    if (competitionsError) {
-                        logger.error('Error fetching competitions', competitionsError);
-                    } else {
-                        logger.info('Competitions loaded', { count: compsData?.length || 0 });
-                        competitionsData = compsData || [];
-                    }
-                }
-
-                // Fetch attendance data for each membership
-                const attendanceMap = {};
-                if (membershipData && membershipData.length > 0) {
-                    for (const membership of membershipData) {
-                        const { data: attendanceIds } = await supabase
-                            .from('club_attendance')
-                            .select('attendance_id')
-                            .eq('club_id', membership.club_id);
-
-                        if (attendanceIds && attendanceIds.length > 0) {
-                            const { data: attendanceRecords } = await supabase
-                                .from('club_attendance_records')
-                                .select(`
-                                    *,
-                                    club_attendance (
-                                        session_date,
-                                        session_topic
-                                    )
-                                `)
-                                .eq('learner_email', userEmail)
-                                .in('attendance_id', attendanceIds.map(a => a.attendance_id));
-
-                            attendanceMap[membership.club_id] = attendanceRecords || [];
-                        }
-                    }
-                }
-                setAttendanceData(attendanceMap);
-
-                // Fetch learner's competition results and achievements
-                const { data: resultsData, error: resultsError } = await supabase
-                    .from('competition_results')
-                    .select(`
-                        result_id,
-                        rank,
-                        score,
-                        award,
-                        performance_notes,
-                        competitions (
-                            comp_id,
-                            name,
-                            level,
-                            category,
-                            competition_date,
-                            status
-                        )
-                    `)
-                    .eq('learner_email', userEmail)
-                    .order('rank', { ascending: true });
-
-                if (resultsError) {
-                    logger.error('Error fetching competition results', resultsError);
-                } else {
-                    logger.info('Competition results loaded', { count: resultsData?.length || 0 });
-                    setMyAchievementsData(resultsData || []);
-                }
-
-                // Fetch learner's certificates
-                const { data: certificatesData, error: certificatesError } = await supabase
-                    .from('club_certificates')
-                    .select(`
-                        certificate_id,
-                        title,
-                        description,
-                        certificate_type,
-                        issued_date,
-                        credential_id,
-                        metadata,
-                        competitions (
-                            name,
-                            level,
-                            category
-                        )
-                    `)
-                    .eq('learner_email', userEmail)
-                    .order('issued_date', { ascending: false });
-
-                if (certificatesError) {
-                    logger.error('Error fetching certificates', certificatesError);
-                } else {
-                    logger.info('Certificates loaded', { count: certificatesData?.length || 0 });
-                    setMyCertificates(certificatesData || []);
-                }
-
-                setClubs(clubsWithMembers);
-                setCompetitions(competitionsData);
                 
             } catch (error) {
                 logger.error('Error fetching data', error);

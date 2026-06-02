@@ -52,7 +52,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     // Step 2: Get learner's skills for matching
     const { data: skillsData, error: skillsError } = await supabase
       .from('skills')
-      .select('name, type, proficiency')
+      .select('name, type, proficiency_level')
       .eq('learner_id', learnerId)
       .is('training_id', null);
 

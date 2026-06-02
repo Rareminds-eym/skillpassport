@@ -19,7 +19,7 @@ import {
   EnvelopeIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { createInterview, sendReminder } from '@/features/opportunities';
 import { useUser } from '@/shared/model/authStore';
 import { createNotification } from '@/features/notifications'; // ✅ Import notification service
@@ -129,18 +129,14 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
         overall_rating: overallRating ? parseFloat(overallRating) : null
       };
 
-      // Update interview in Supabase
-      const { error } = await supabase
-        .from('interviews')
-        .update({
-          scorecard: updatedScorecard,
-          status: 'completed',
-          completed_date: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', interview.id);
-
-      if (error) throw error;
+      await apiPost('/recruiter/actions', {
+        action: 'update-interview',
+        id: interview.id,
+        scorecard: updatedScorecard,
+        status: 'completed',
+        completed_date: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
 
       const updatedInterview = {
         ...interview,
@@ -610,17 +606,12 @@ const Interviews = () => {
   const fetchInterviews = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('interviews')
-        .select('*')
-        .order('date', { ascending: true });
+      const result = await apiPost<any>('/recruiter/actions', { action: 'list-interviews' });
 
-      if (error) throw error;
-
-      const formattedData = data?.map(item => ({
+      const formattedData = (result.data || []).map(item => ({
         ...item,
         scorecard: item.scorecard || null
-      })) || [];
+      }));
 
       setInterviews(formattedData);
     } catch (error) {
@@ -637,14 +628,9 @@ const Interviews = () => {
     
     try {
       setCandidatesLoading(true);
-      const { data, error } = await supabase
-        .from('learners')
-        .select('*');
+      const result = await apiPost<any>('/recruiter/actions', { action: 'list-learners' });
 
-      if (error) throw error;
-
-
-      const formattedCandidates = data?.map(candidate => {
+      const formattedCandidates = (result.data || []).map(candidate => {
         const profile = typeof candidate.profile === 'string'
           ? JSON.parse(candidate.profile)
           : candidate.profile;

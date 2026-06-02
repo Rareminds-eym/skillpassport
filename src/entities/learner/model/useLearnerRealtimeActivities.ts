@@ -1,17 +1,10 @@
-/**
- * Learner Real-time Activities Hook
- * Combines real-time activities with recent_updates table data
- */
-
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
+import { getSSEClient } from '@/shared/api/sseRealtimeClient';
 import { getlearnerRecentActivity } from '@/shared/api/learnerActivityService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
-/**
- * Helper — format timestamps into "2 min ago" / "Oct 24" etc.
- */
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return "";
 
@@ -37,11 +30,6 @@ const formatTimestamp = (timestamp) => {
   });
 };
 
-/**
- * Custom hook for learner-specific real-time activity tracking
- * @param {string} learnerEmail - Learner's email address
- * @param {number} limit - Number of activities to fetch (default: 10)
- */
 export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
   const queryClient = useQueryClient();
   const channelRef = useRef(null);
@@ -51,14 +39,12 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
   const [learnerId, setLearnerId] = useState(null);
   const [isResolvingLearner, setIsResolvingLearner] = useState(false);
 
-  // Get email from multiple sources with fallback
   const effectiveEmail = useMemo(() => {
-    // Priority: 1. Passed parameter, 2. localStorage, 3. null
     const email = learnerEmail || localStorage.getItem('userEmail');
     return email;
   }, [learnerEmail]);
 
-  // 1️⃣ Resolve learner ID by email
+  // 1️⃣ Resolve learner ID by email via existing API
   const fetchLearnerIdByEmail = useCallback(async (email) => {
     if (!email) {
       return null;
@@ -66,36 +52,15 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
 
     try {
       setIsResolvingLearner(true);
-
-      // Try multiple methods to find learner
-      let data = null;
-      let error = null;
-
-      // Search by direct email column (learners table has email as a direct column)
-      const result = await supabase
-        .from("learners")
-        .select("id, email, name")
-        .eq("email", email)
-        .maybeSingle();
-
-      if (result.data) {
-        data = result.data;
-      } else {
-        error = result.error;
+      const response = await apiGet(`/learners/data/find-by-email?email=${encodeURIComponent(email)}`);
+      const data = response?.data ?? response;
+      if (data?.id) {
+        setLearnerId(data.id);
+        return data.id;
       }
-
-      if (error) {
-        throw error;
-      }
-
-      if (!data) {
-        setLearnerId(null);
-        return null;
-      }
-
-      setLearnerId(data.id);
-      return data.id;
-    } catch (err) {
+      setLearnerId(null);
+      return null;
+    } catch {
       setLearnerId(null);
       return null;
     } finally {
@@ -103,41 +68,33 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
     }
   }, []);
 
-  // 2️⃣ Fetch activities from recent_updates table by learner_id
+  // 2️⃣ Fetch activities from recent_updates table by learner_id via API
   const fetchRecentUpdatesFromDB = useCallback(async (resolvedLearnerId) => {
     if (!resolvedLearnerId) {
       return [];
     }
 
     try {
-      const { data, error } = await supabase
-        .from("recent_updates")
-        .select("*")
-        .eq("learner_id", resolvedLearnerId)
-        .maybeSingle();
+      const response = await apiGet(`/learners/data/${resolvedLearnerId}/recent_updates`);
+      const data = response?.data ?? response;
+      const updateData = Array.isArray(data) ? data[0] : data;
 
-      if (error) {
-        throw error;
-      }
-
-      if (!data) {
+      if (!updateData) {
         return [];
       }
 
-      // Safely parse JSONB and clean data
       let updatesArray = [];
       try {
         const parsed =
-          typeof data.updates === "string"
-            ? JSON.parse(data.updates)
-            : data.updates;
+          typeof updateData.updates === "string"
+            ? JSON.parse(updateData.updates)
+            : updateData.updates;
 
         updatesArray = (parsed?.updates || []).filter(Boolean);
-      } catch (parseErr) {
+      } catch {
         return [];
       }
 
-      // Format timestamps and add proper structure
       const formattedUpdates = updatesArray.map((u, index) => {
         const realTimestamp =
           u.created_at && u.created_at !== "Just now"
@@ -150,7 +107,7 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
           action: u.action || '',
           candidate: u.candidate || u.learner_name || '',
           details: u.details || u.description || '',
-          message: u.message || '', // Keep the original message from recent_updates
+          message: u.message || '',
           timestamp: realTimestamp,
           formattedTimestamp: formatTimestamp(realTimestamp),
           rawTimestamp: realTimestamp,
@@ -163,7 +120,7 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
       });
 
       return formattedUpdates;
-    } catch (err) {
+    } catch {
       return [];
     }
   }, []);
@@ -177,7 +134,6 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
     }
   }, [effectiveEmail, fetchLearnerIdByEmail]);
 
-  // Fetch activities using React Query with optimized settings
   const query = useQuery({
     queryKey: learnerId ? queryKeys.learner.activities.realtime(learnerId) : ['learner-activities', effectiveEmail, learnerId, limit],
     queryFn: async () => {
@@ -185,17 +141,14 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
         return [];
       }
 
-      // Wait for learner ID resolution
       if (isResolvingLearner) {
         return [];
       }
 
       if (!learnerId) {
-        // Return empty array instead of throwing to prevent React Query errors
         return [];
       }
 
-      // Fetch from both sources in parallel
       const [realtimeResult, recentUpdatesResult] = await Promise.all([
         getlearnerRecentActivity(learnerEmail, limit).catch(err => {
           return { data: [], error: err.message };
@@ -206,9 +159,7 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
       const realtimeActivities = realtimeResult.data || [];
       const recentUpdatesActivities = recentUpdatesResult || [];
 
-      // Combine all sources and sort by timestamp
       const combined = [...recentUpdatesActivities, ...realtimeActivities]
-        // Remove duplicates based on ID
         .filter((activity, index, self) => {
           const isDuplicate = index !== self.findIndex(a => a.id === activity.id);
           return !isDuplicate;
@@ -219,7 +170,6 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
           return timeB - timeA;
         })
         .slice(0, limit)
-        // Ensure all activities have formatted timestamps
         .map(activity => ({
           ...activity,
           formattedTimestamp: activity.formattedTimestamp || formatTimestamp(activity.timestamp || activity.rawTimestamp || activity.created_at)
@@ -227,15 +177,15 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
 
       return combined;
     },
-    enabled: !!effectiveEmail && !isResolvingLearner && !!learnerId, // Only run if email, learner ID are available and not resolving
+    enabled: !!effectiveEmail && !isResolvingLearner && !!learnerId,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
-    staleTime: 30 * 1000, // Consider data fresh for 30 seconds
-    gcTime: 2 * 60 * 1000, // Keep in cache for 2 minutes (reduced from 5)
-    refetchInterval: false, // Disable polling, rely on WebSocket events
+    staleTime: 30 * 1000,
+    gcTime: 2 * 60 * 1000,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
-    retry: 1, // Reduce retries from 2 to 1
-    retryDelay: 2000, // Increase delay between retries
+    retry: 1,
+    retryDelay: 2000,
   });
 
   // 4️⃣ Auto-refresh formatted timestamps every 60s
@@ -262,12 +212,10 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
 
   // Debounced refetch to avoid too many requests
   const debouncedRefetch = useCallback(() => {
-    // Clear existing timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Set new timer for 500ms debounce
     debounceTimerRef.current = setTimeout(() => {
       setLastUpdateTime(Date.now());
       queryClient.invalidateQueries({
@@ -277,103 +225,45 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
     }, 500);
   }, [queryClient, learnerEmail]);
 
-  // Callback to handle real-time changes
   const handleRealtimeChange = useCallback((table, payload) => {
-    // Use debounced refetch instead of immediate
     debouncedRefetch();
   }, [debouncedRefetch]);
 
-  // Set up real-time subscriptions for learner-relevant tables
+  // Set up real-time subscriptions using SSE
   useEffect(() => {
     if (!learnerEmail || !learnerId || isSubscribedRef.current) {
       return;
     }
 
-    const setupRealtimeSubscriptions = async () => {
-      // Create a unique channel for this learner
-      const channelName = `learner-activities-${learnerId}-${Date.now()}`;
-      const channel = supabase.channel(channelName);
+    const sseClient = getSSEClient();
+    const unsubscribers: (() => void)[] = [];
 
-      // Tables to monitor for learner-specific changes
-      const tableSubscriptions = [
-        {
-          table: 'recent_updates',
-          filter: `learner_id=eq.${learnerId}` // Listen for updates to this learner's recent_updates
-        },
-        {
-          table: 'shortlist_candidates',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        {
-          table: 'pipeline_activities',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        {
-          table: 'pipeline_candidates',
-          filter: null // Listen to all changes
-        },
-        {
-          table: 'offers',
-          filter: null // Listen to all changes
-        },
-        {
-          table: 'placements',
-          filter: `learnerId=eq.${learnerId}`
-        }
-      ];
+    const tableSubscriptions = [
+      { table: 'recent_updates', filter: `learner_id=eq.${learnerId}` },
+      { table: 'shortlist_candidates', filter: `learner_id=eq.${learnerId}` },
+      { table: 'pipeline_activities', filter: `learner_id=eq.${learnerId}` },
+      { table: 'pipeline_candidates', filter: null },
+      { table: 'offers', filter: null },
+      { table: 'placements', filter: `learnerId=eq.${learnerId}` }
+    ];
 
-      // Subscribe to changes on each table
-      tableSubscriptions.forEach(({ table, filter }) => {
-        const subscriptionConfig = {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: table,
-        };
-
-        // Add filter if available
-        if (filter) {
-          subscriptionConfig.filter = filter;
-        }
-
-        channel.on(
-          'postgres_changes',
-          subscriptionConfig,
-          (payload) => handleRealtimeChange(table, payload)
-        );
+    tableSubscriptions.forEach(({ table, filter }) => {
+      const config: any = { event: '*' as const };
+      if (filter) config.filter = filter;
+      const unsub = sseClient.subscribe(table, config, () => {
+        handleRealtimeChange(table, {});
       });
+      unsubscribers.push(unsub);
+    });
 
-      // Subscribe to the channel
-      channel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          isSubscribedRef.current = true;
-        } else if (status === 'CHANNEL_ERROR') {
-          isSubscribedRef.current = false;
-        } else if (status === 'TIMED_OUT') {
-          isSubscribedRef.current = false;
-        } else if (status === 'CLOSED') {
-          isSubscribedRef.current = false;
-        }
-      });
+    isSubscribedRef.current = true;
 
-      channelRef.current = channel;
-    };
-
-    setupRealtimeSubscriptions();
-
-    // Cleanup on unmount or email change
     return () => {
-      // Clear debounce timer
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
-
-      // Unsubscribe from WebSocket
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-        isSubscribedRef.current = false;
-      }
+      unsubscribers.forEach(u => u());
+      isSubscribedRef.current = false;
     };
   }, [learnerEmail, learnerId, handleRealtimeChange]);
 
@@ -383,15 +273,12 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,
-    isConnected: isSubscribedRef.current, // Real-time connection status
-    lastUpdateTime, // Timestamp of last update for UI feedback
-    learnerId, // Expose learner ID for other components
+    isConnected: isSubscribedRef.current,
+    lastUpdateTime,
+    learnerId,
   };
 };
 
-/**
- * Hook to manually trigger learner activity refresh
- */
 export const useRefreshlearnerActivities = (learnerEmail) => {
   const queryClient = useQueryClient();
 

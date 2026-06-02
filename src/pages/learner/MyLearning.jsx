@@ -12,7 +12,7 @@ import { useLearnerPortfolio } from "@/features/learner-profile";
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { useLearnerTrainings } from '@/entities/learner';
 import { useLearnerMessageNotifications } from '@/entities/learner';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 import { useUser } from '@/shared/model/authStore';
@@ -254,25 +254,10 @@ const MyLearning = () => {
     
     setIsDeleting(true);
     try {
-      // Delete from certificates table first (if exists)
-      await supabase
-        .from('certificates')
-        .delete()
-        .eq('training_id', deletingItem.id);
-      
-      // Delete from skills table (if exists)
-      await supabase
-        .from('skills')
-        .delete()
-        .eq('training_id', deletingItem.id);
-      
-      // Delete from trainings table
-      const { error } = await supabase
-        .from('trainings')
-        .delete()
-        .eq('id', deletingItem.id);
-      
-      if (error) throw error;
+      await apiPost('/learner-pages/actions', {
+        action: 'delete-training-cascade',
+        trainingId: deletingItem.id,
+      });
       
       // Refresh the list
       await refresh();

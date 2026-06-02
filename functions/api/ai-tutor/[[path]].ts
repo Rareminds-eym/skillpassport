@@ -32,6 +32,7 @@ import { onRequestPost as handleAiTutorFeedback } from './handlers/ai-tutor-feed
 import { onRequestGet as handleAiTutorProgressGet, onRequestPost as handleAiTutorProgressPost } from './handlers/ai-tutor-progress';
 import { onRequestGet as handleGetLearnerType } from './handlers/get-learner-type';
 import { onRequestGet as handleGetGenerationUsage } from './handlers/get-generation-usage';
+import { onRequestPost as handleAiTutorActions } from './handlers/actions';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request } = context;
@@ -97,6 +98,11 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
     if (path === '/progress' && request.method === 'POST') {
       return withAuth(handleAiTutorProgressPost as any)(context);
+    }
+
+    // AI Tutor Actions (authenticated)
+    if (path === '/actions' && request.method === 'POST') {
+      return withAuth(handleAiTutorActions as any)(context);
     }
 
     // 404 for unknown routes

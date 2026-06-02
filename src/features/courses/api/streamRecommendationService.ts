@@ -1,3 +1,4 @@
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { ssoClient } from '@/shared/api/ssoClient';
 
 /**
@@ -8,7 +9,6 @@ import { ssoClient } from '@/shared/api/ssoClient';
  * Uses OpenRouter AI for detailed analysis and personalized recommendations
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 
@@ -77,15 +77,13 @@ const INTEREST_STREAM_MAPPING = {
  * Fetch learner data for stream recommendation
  */
 export const fetchlearnerStreamData = async (learnerId) => {
-  const { data, error } = await supabase
-    .rpc('get_learner_stream_recommendation_data', { p_learner_id: learnerId });
-  
-  if (error) {
+  try {
+    const data = await apiGet(`/courses/stream-recommendation/data?learnerId=${encodeURIComponent(learnerId)}`);
+    return data;
+  } catch (error) {
     logger.error('Error fetching learner data', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
-  
-  return data;
 };
 
 /**
@@ -356,65 +354,28 @@ export const generateStreamRecommendation = async (learnerId) => {
  * Save stream recommendation report to database
  */
 export const saveStreamRecommendationReport = async (recommendation) => {
-  const { data, error } = await supabase
-    .from('stream_recommendation_reports')
-    .insert({
-      learner_id: recommendation.learner_id,
-      academic_year: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1),
-      current_grade: recommendation.current_grade,
-      
-      subject_marks: recommendation.subject_marks,
-      projects_summary: recommendation.projects_summary,
-      experiences_summary: recommendation.experiences_summary,
-      interests: recommendation.interests,
-      hobbies: recommendation.hobbies,
-      
-      science_score: recommendation.science_score,
-      commerce_score: recommendation.commerce_score,
-      arts_score: recommendation.arts_score,
-      
-      science_breakdown: recommendation.science_breakdown,
-      commerce_breakdown: recommendation.commerce_breakdown,
-      arts_breakdown: recommendation.arts_breakdown,
-      
-      recommended_stream: recommendation.recommended_stream,
-      confidence_level: recommendation.confidence_level,
-      alternative_stream: recommendation.alternative_stream,
-      
-      strengths: recommendation.strengths,
-      career_suggestions: recommendation.career_suggestions,
-      recommended_subjects: recommendation.recommended_subjects,
-      
-      ai_model_used: 'rule-based-v1'
-    })
-    .select()
-    .single();
-  
-  if (error) {
+  try {
+    const data = await apiPost('/courses/stream-recommendation', {
+      ...recommendation,
+      ai_model_used: 'rule-based-v1',
+    });
+    return data;
+  } catch (error) {
     logger.error('Error saving report', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
-  
-  return data;
 };
 
 /**
  * Get latest stream recommendation for a learner
  */
 export const getLatestStreamRecommendation = async (learnerId) => {
-  const { data, error } = await supabase
-    .from('stream_recommendation_reports')
-    .select('*')
-    .eq('learner_id', learnerId)
-    .eq('is_latest', true)
-    .single();
-  
-  if (error && error.code !== 'PGRST116') { // Ignore "no rows" error
+  try {
+    return await apiGet(`/courses/stream-recommendation?learnerId=${encodeURIComponent(learnerId)}`);
+  } catch (error) {
     logger.error('Error fetching report', error instanceof Error ? error : new Error(String(error)));
-    throw error;
+    return null;
   }
-  
-  return data;
 };
 
 /**
@@ -617,49 +578,22 @@ export const generateAndSaveAIStreamRecommendation = async (learnerId) => {
   const recommendation = await generateAIStreamRecommendation(learnerId);
   
   // Save to database
-  const { data, error } = await supabase
-    .from('stream_recommendation_reports')
-    .insert({
-      learner_id: recommendation.learner_id,
-      academic_year: new Date().getFullYear() + '-' + (new Date().getFullYear() + 1),
-      current_grade: recommendation.current_grade,
-      
-      subject_marks: recommendation.subject_marks,
-      projects_summary: recommendation.projects_summary,
-      experiences_summary: recommendation.experiences_summary,
-      interests: recommendation.interests,
-      hobbies: recommendation.hobbies,
-      
-      science_score: recommendation.science_score,
-      commerce_score: recommendation.commerce_score,
-      arts_score: recommendation.arts_score,
-      
+  try {
+    const rec = {
+      ...recommendation,
       science_breakdown: recommendation.ai_analysis?.science_analysis ? 
         { analysis: recommendation.ai_analysis.science_analysis } : recommendation.science_breakdown,
       commerce_breakdown: recommendation.ai_analysis?.commerce_analysis ? 
         { analysis: recommendation.ai_analysis.commerce_analysis } : recommendation.commerce_breakdown,
       arts_breakdown: recommendation.ai_analysis?.arts_analysis ? 
         { analysis: recommendation.ai_analysis.arts_analysis } : recommendation.arts_breakdown,
-      
-      recommended_stream: recommendation.recommended_stream,
-      confidence_level: recommendation.confidence_level,
-      alternative_stream: recommendation.alternative_stream,
-      
       ai_analysis: recommendation.personalized_advice,
-      strengths: recommendation.strengths,
-      areas_to_improve: recommendation.areas_to_improve,
-      career_suggestions: recommendation.career_suggestions,
-      recommended_subjects: recommendation.recommended_subjects,
-      
-      ai_model_used: recommendation.ai_model_used
-    })
-    .select()
-    .single();
-  
-  if (error) {
+      ai_model_used: recommendation.ai_model_used,
+    };
+    const data = await apiPost('/courses/stream-recommendation', rec);
+    return { ...recommendation, report_id: data.id };
+  } catch (error) {
     logger.error('Error saving AI report', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
-  
-  return { ...recommendation, report_id: data.id };
 };

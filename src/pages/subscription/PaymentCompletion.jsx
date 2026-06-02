@@ -17,7 +17,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { SubscriptionRouteGuard } from '@/features/subscription';
 import { useSubscription } from '@/features/subscription/model';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { initiateRazorpayPayment } from '@/features/subscription/api';
 
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole, useAuthStore } from '@/shared/model/authStore';
@@ -274,16 +274,11 @@ function PaymentCompletion() {
         }
 
         // Verify user exists in public.users table
-        // Use maybeSingle() to avoid 406 error when user doesn't exist
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id, firstName, lastName, phone, email')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (userError) {
-          console.error('❌ Error fetching user from database:', userError);
-        }
+        const userResult = await apiPost('/subscription/actions', { action: 'get-user-by-id', userId: user.id }).catch(e => {
+          console.error('❌ Error fetching user from database:', e);
+          return null;
+        });
+        const userData = userResult?.data;
 
         if (!userData) {
           if (DEBUG) console.warn('[PaymentCompletion] User not found in database, may need to complete registration');

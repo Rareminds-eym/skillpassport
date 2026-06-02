@@ -380,7 +380,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
     setPaymentError(null);
 
     try {
-      const orderData = await paymentsApiService.createRegistrationOrder({
+      const envelope = await paymentsApiService.createRegistrationOrder({
         amount: REGISTRATION_FEE * 100,
         currency: 'INR',
         planName: `Pre-Registration - ${campaign}`,
@@ -390,6 +390,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         campaign: campaign,
         origin: window.location.origin,
       });
+      const orderData = envelope.data;
 
       const registrationId = orderData.registrationId;
 

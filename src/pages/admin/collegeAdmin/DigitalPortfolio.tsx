@@ -12,7 +12,6 @@ import { useNavigate } from 'react-router-dom';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 import { useUser } from '@/shared/model/authStore';

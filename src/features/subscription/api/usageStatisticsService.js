@@ -16,7 +16,7 @@ const logger = getLogger('usage-statistics');
  */
 export const getUserUsageStatistics = async () => {
   try {
-    const result = await apiGet<{ success: boolean; data: any; error: string | null }>('/payments/usage-statistics');
+    const result = await apiGet('/payments/usage-statistics');
     
     if (!result.success) {
       return { success: false, data: null, error: result.error || 'Failed to fetch usage statistics' };
@@ -42,7 +42,7 @@ export const getUserUsageStatistics = async () => {
  * @param {Object} planData - Current plan data
  * @returns {Object} - Limits object with totals for each metric
  */
-export const getSubscriptionLimits = (planData: any) => {
+export const getSubscriptionLimits = (planData) => {
   // Default limits for free/basic plan
   const defaultLimits = {
     assessments: 50,
@@ -53,16 +53,16 @@ export const getSubscriptionLimits = (planData: any) => {
   if (!planData) return defaultLimits;
 
   // Extract limits from plan data
-  const limits: any = {
+  const limits = {
     assessments: planData.limits?.assessments || 
-                 planData.features?.find((f: any) => f.includes('assessment'))?.match(/\d+/)?.[0] || 
-                 defaultLimits.assessments,
+                   planData.features?.find((f) => f.includes('assessment'))?.match(/\d+/)?.[0] || 
+                   defaultLimits.assessments,
     profileViews: planData.limits?.profileViews || 
-                  planData.features?.find((f: any) => f.includes('view'))?.match(/\d+/)?.[0] || 
-                  defaultLimits.profileViews,
+                   planData.features?.find((f) => f.includes('view'))?.match(/\d+/)?.[0] || 
+                   defaultLimits.profileViews,
     reports: planData.limits?.reports || 
-             planData.features?.find((f: any) => f.includes('report'))?.match(/\d+/)?.[0] || 
-             defaultLimits.reports
+              planData.features?.find((f) => f.includes('report'))?.match(/\d+/)?.[0] || 
+              defaultLimits.reports
   };
 
   // Convert string numbers to integers
@@ -81,7 +81,7 @@ export const getSubscriptionLimits = (planData: any) => {
  * @param {Object} limits - Subscription limits
  * @returns {Object} - Combined usage statistics
  */
-export const combineUsageWithLimits = (usageData: any, limits: any) => {
+export const combineUsageWithLimits = (usageData, limits) => {
   return {
     assessments: {
       used: usageData?.assessments?.used || 0,

@@ -1,6 +1,6 @@
 import { AlertCircle, FileText, IndianRupee, TrendingUp } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { FeeStructureFormModal } from "./components/FeeStructureFormModal";
 import { FeeStructureTab } from "./components/FeeStructureTab";
 import { FeeTrackingTab } from "./components/FeeTrackingTab";
@@ -49,23 +49,14 @@ const SchoolFinanceModule: React.FC = () => {
           }
         }
         
-        // If not found in localStorage, try Supabase Auth
-        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
+        // If not found in localStorage, try API
+        const user = useAuthStore.getState().user;
         if (user) {
-          // Check for school admin by matching email in organizations table
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id, name, email')
-            .eq('organization_type', 'school')
-            .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
-            .maybeSingle();
-          
-          if (org?.id) {
-            setSchoolId(org.id);
+          const schoolResult = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: user.email, user_id: user.id }) as any;
+          if (schoolResult?.school_id) {
+            setSchoolId(schoolResult.school_id);
             return;
           }
-          
-          // Fallback: check user metadata
           if (user.user_metadata?.school_id) {
             setSchoolId(user.user_metadata.school_id);
           }

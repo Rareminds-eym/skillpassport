@@ -1,4 +1,3 @@
-import { supabase } from '@/shared/api/supabaseClient';
 
 // Helper function to get current user ID
 const getCurrentUserId = async (): Promise<string> => {

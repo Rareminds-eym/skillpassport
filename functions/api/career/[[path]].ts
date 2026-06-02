@@ -9,6 +9,16 @@
  * - /api/career/generate-embedding - Generate embeddings for opportunities/learners
  * - /api/career/generate-field-keywords - Generate domain keywords for fields
  * - /api/career/parse-resume - Parse resume text
+ * - /api/career/get-actions - Get grade-appropriate career actions
+ * - /api/career/profile - Get learner profile
+ * - /api/career/opportunities - List all opportunities
+ * - /api/career/skills-demand - Get in-demand skills
+ * - /api/career/readiness-score - Save career readiness score
+ * - /api/career/profile-health - Save profile health analysis
+ * - /api/career/peer-benchmarks - Get peer benchmark data
+ * - /api/career/conversations - List/delete conversations
+ * - /api/career/conversation - Get single conversation
+ * - /api/career/feedback - Get/upsert AI feedback
  */
 
 import type { PagesFunction } from '../../lib/types';
@@ -24,6 +34,12 @@ import { handleGenerateEmbedding } from '../embedding/handlers/generateEmbedding
 import { handleGenerateFieldKeywords } from './handlers/field-keywords';
 import { handleParseResume } from './handlers/parse-resume';
 import { handleGetActions } from './handlers/get-actions';
+import { handleGetProfile } from './handlers/profile';
+import { handleGetOpportunities } from './handlers/opportunities';
+import { handleGetSkillsDemand } from './handlers/skills-demand';
+import { handleSaveReadinessScore, handleSaveProfileHealth, handleGetPeerBenchmarks } from './handlers/analytics';
+import { handleListConversations, handleGetConversation, handleDeleteConversation } from './handlers/conversations';
+import { handleUpsertFeedback, handleGetFeedback } from './handlers/feedback';
 
 // Helper to get OpenRouter API key (uses shared utility)
 export const getOpenRouterKey = (env: any): string | undefined => {
@@ -104,6 +120,48 @@ export const onRequest: PagesFunction = async (context) => {
 
     if (path === '/get-actions' || path === '/actions') {
       return await handleGetActions(env as any, userId, request);
+    }
+
+    if (path === '/profile') {
+      return await handleGetProfile(env as any, userId, request);
+    }
+
+    if (path === '/opportunities') {
+      return await handleGetOpportunities(env as any, request);
+    }
+
+    if (path === '/skills-demand') {
+      return await handleGetSkillsDemand(env as any, request);
+    }
+
+    if (path === '/readiness-score') {
+      return await handleSaveReadinessScore(env as any, userId, request);
+    }
+
+    if (path === '/profile-health') {
+      return await handleSaveProfileHealth(env as any, userId, request);
+    }
+
+    if (path === '/peer-benchmarks') {
+      return await handleGetPeerBenchmarks(env as any, request);
+    }
+
+    if (path === '/conversations') {
+      if (request.method === 'DELETE') {
+        return await handleDeleteConversation(env as any, userId, request);
+      }
+      return await handleListConversations(env as any, userId, request);
+    }
+
+    if (path === '/conversation') {
+      return await handleGetConversation(env as any, userId, request);
+    }
+
+    if (path === '/feedback') {
+      if (request.method === 'GET') {
+        return await handleGetFeedback(env as any, userId, request);
+      }
+      return await handleUpsertFeedback(env as any, userId, request);
     }
 
     return apiError(404, 'NOT_FOUND', 'Not found', request);

@@ -15,8 +15,6 @@ import type {
   SwapRequestStatus 
 } from '@/shared/types/classSwap';
 
-import { supabase } from '@/shared/api/supabaseClient';
-
 import { useUser } from '@/shared/model/authStore';
 
 const logger = getLogger('college-admin:SwapRequestsManagement');

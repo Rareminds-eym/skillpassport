@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
 import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';
 import {

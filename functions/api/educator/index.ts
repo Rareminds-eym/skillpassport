@@ -4,9 +4,14 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError } from '../../lib/response';
+import { apiSuccess, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
+export const onRequest = async (context: any) => {
+  if (context.request.method === 'GET') return onRequestGet(context);
+  return apiMethodNotAllowed();
+};
+
+const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
@@ -21,7 +26,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       .eq('user_id', user.id)
       .single();
 
-    if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+    if (error) return apiDbError(error, context.request);
     return apiSuccess({ educator: data }, context.request);
   }
 
@@ -29,9 +34,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const { data, error } = await supabase
     .from('educators')
     .select('*')
-    .eq('org_id', user.org_id)
     .order('created_at', { ascending: false });
 
-  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  if (error) return apiDbError(error, context.request);
   return apiSuccess({ educators: data }, context.request);
 });

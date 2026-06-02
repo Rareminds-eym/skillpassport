@@ -9,7 +9,7 @@
  */
 
 import { memberInvitationService, OrganizationInvitation } from '@/entities/organization';
-import { supabase } from '@/shared/api';
+import { apiGet } from '@/shared/api/apiClient';
 import { AlertCircle, Building2, Check, Clock, LogIn, RefreshCw, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -94,12 +94,8 @@ export default function AcceptInvitationPage() {
 
   const getOrganizationName = async (orgId: string, _orgType: string): Promise<string> => {
     try {
-      const { data } = await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', orgId)
-        .single();
-      return data?.name || 'Organization';
+      const resp: any = await apiGet(`/organization/handler?action=getOrganizationName&orgId=${orgId}`);
+      return resp.data || 'Organization';
     } catch {
       return 'Organization';
     }

@@ -87,7 +87,7 @@ import {
   highSchoolLearningQuestions,
   highSchoolAptitudeQuestions,
 } from '@/features/assessment/model/questions';
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser } from '@/shared/model/authStore';
 import { useTour } from '@/shared/model/tourStore';
@@ -1131,18 +1131,18 @@ const AssessmentTestPage: React.FC = () => {
 
 
 
-    // FIX 1: Resume adaptive aptitude session if exists
-    if (pendingAttempt.adaptive_aptitude_session_id) {
-      console.log('🔄 [ADAPTIVE RESUME] Found adaptive session ID, attempting to resume:', pendingAttempt.adaptive_aptitude_session_id);
+      // FIX 1: Resume adaptive aptitude session if exists
+      if (pendingAttempt.adaptive_aptitude_session_id) {
+        console.log('🔄 [ADAPTIVE RESUME] Found adaptive session ID, attempting to resume:', pendingAttempt.adaptive_aptitude_session_id);
 
-      // Check if the adaptive session is already completed
-      const { data: adaptiveSession } = await supabase
-        .from('adaptive_aptitude_sessions')
-        .select('status, questions_answered')
-        .eq('id', pendingAttempt.adaptive_aptitude_session_id)
-        .single();
+        // Check if the adaptive session is already completed
+        const sessionResponse: any = await apiPost('/assessment/actions', {
+          action: 'get-adaptive-session-status',
+          sessionId: pendingAttempt.adaptive_aptitude_session_id,
+        });
+        const adaptiveSession = sessionResponse?.data;
 
-      if (adaptiveSession?.status === 'completed') {
+        if (adaptiveSession?.status === 'completed') {
         console.log('✅ [ADAPTIVE RESUME] Adaptive session already completed, skipping resume');
         console.log('✅ [ADAPTIVE RESUME] Will show section complete screen');
         // Don't try to resume - the section is already complete
@@ -1225,11 +1225,11 @@ const AssessmentTestPage: React.FC = () => {
           flow.setCurrentScreen('section_intro');
         } else {
           // Check if the adaptive session is completed
-          const { data: adaptiveSession } = await supabase
-            .from('adaptive_aptitude_sessions')
-            .select('status')
-            .eq('id', pendingAttempt.adaptive_aptitude_session_id)
-            .single();
+          const sessionResponse: any = await apiPost('/assessment/actions', {
+            action: 'get-adaptive-session-status',
+            sessionId: pendingAttempt.adaptive_aptitude_session_id,
+          });
+          const adaptiveSession = sessionResponse?.data;
 
           if (adaptiveSession?.status === 'completed') {
             console.log('✅ [ADAPTIVE RESUME] Adaptive session is completed, showing section complete');
@@ -1677,14 +1677,13 @@ const AssessmentTestPage: React.FC = () => {
 
       if (useDatabase && currentAttempt?.id) {
         try {
-          // Fetch the latest attempt data with all_responses and section_timings
-          const { data: attemptData, error: fetchError } = await supabase
-            .from('personal_assessment_attempts')
-            .select('all_responses, section_timings')
-            .eq('id', currentAttempt.id)
-            .single();
+          const attemptResponse: any = await apiPost('/assessment/actions', {
+            action: 'get-attempt-data',
+            attemptId: currentAttempt.id,
+          });
+          const attemptData = attemptResponse?.data;
 
-          if (!fetchError && attemptData) {
+          if (attemptData) {
             if (attemptData.all_responses) {
               answersToSubmit = attemptData.all_responses;
             } else {

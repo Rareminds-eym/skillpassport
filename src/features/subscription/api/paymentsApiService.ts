@@ -157,7 +157,7 @@ export async function updateEventPaymentStatus({ registrationId, orderId, paymen
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Failed to update payment status');
+    throw new Error(extractErrorMessage(errorData) || 'Failed to update payment status');
   }
 
   return response.json();

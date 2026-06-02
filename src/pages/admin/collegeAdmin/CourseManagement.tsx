@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/shared/api/supabaseClient';
 import { Plus, Edit, Trash2, Search, BookOpen } from 'lucide-react';
 
 

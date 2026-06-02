@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { X, BookOpen, ExternalLink, Search } from 'lucide-react';
 import AddLearningCourseModal from './AddLearningCourseModal';
 import LearningProgressBar from './LearningProgressBar';
@@ -24,97 +24,13 @@ export default function SelectCourseModal({ isOpen, onClose, learnerId, onSucces
   const fetchAvailableCourses = async () => {
     try {
       setLoading(true);
-      
-      // Fetch all active courses
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('course_id, title, code, description, duration, category, university')
-        .eq('status', 'Active')
-        .order('title');
-
-      if (coursesError) throw coursesError;
-
-      // Fetch enrolled course IDs for this learner
-      const { data: enrollmentsData, error: enrollmentsError } = await supabase
-        .from('course_enrollments')
-        .select('course_id')
-        .eq('learner_id', learnerId);
-
-      if (enrollmentsError) throw enrollmentsError;
-
-      const enrolledIds = enrollmentsData?.map(e => e.course_id) || [];
-
-      // Fetch progress data from learner_course_progress table
-      const { data: progressData, error: progressError } = await supabase
-        .from('learner_course_progress')
-        .select('course_id, lesson_id, status')
-        .eq('learner_id', learnerId);
-
-      if (progressError) {
-        console.error('Error fetching progress:', progressError);
-      }
-
-      // Fetch total lessons per course (lessons -> modules -> courses)
-      const { data: courseLessonsData, error: lessonsError } = await supabase
-        .from('course_modules')
-        .select(`
-          course_id,
-          lessons:lessons(lesson_id)
-        `);
-
-      if (lessonsError) {
-        console.error('Error fetching course lessons:', lessonsError);
-      }
-
-      // Build total lessons map per course
-      const totalLessonsMap = {};
-      courseLessonsData?.forEach(module => {
-        if (!totalLessonsMap[module.course_id]) {
-          totalLessonsMap[module.course_id] = 0;
-        }
-        totalLessonsMap[module.course_id] += module.lessons?.length || 0;
+      const data = await apiPost('/learner-dashboard-widgets/actions', {
+        action: 'get-select-course-data',
+        learnerId,
       });
-
-      // Build progress map from learner_course_progress
-      const progressMap = {};
-      const courseProgressTemp = {};
-
-      // Group progress by course_id
-      progressData?.forEach(p => {
-        if (!courseProgressTemp[p.course_id]) {
-          courseProgressTemp[p.course_id] = { completed: 0, total: 0 };
-        }
-        if (p.status === 'completed') {
-          courseProgressTemp[p.course_id].completed++;
-        }
-      });
-
-      // Create final progress map with total lessons from course structure
-      Object.keys(courseProgressTemp).forEach(courseId => {
-        const totalLessons = totalLessonsMap[courseId] || 0;
-        const completedLessons = courseProgressTemp[courseId].completed;
-        
-        progressMap[courseId] = {
-          completedModules: completedLessons,
-          totalModules: totalLessons,
-          status: totalLessons > 0 && completedLessons >= totalLessons ? 'completed' : 'ongoing'
-        };
-      });
-
-      // For enrolled courses without progress data, set default values with total lessons
-      enrolledIds.forEach(courseId => {
-        if (!progressMap[courseId]) {
-          progressMap[courseId] = {
-            completedModules: 0,
-            totalModules: totalLessonsMap[courseId] || 0,
-            status: 'ongoing'
-          };
-        }
-      });
-      
-      setCourses(coursesData || []);
-      setEnrolledCourseIds(enrolledIds);
-      setEnrollmentProgress(progressMap);
+      setCourses(data.courses || []);
+      setEnrolledCourseIds(data.enrolledCourseIds || []);
+      setEnrollmentProgress(data.enrollmentProgress || {});
     } catch (error) {
       console.error('Error fetching courses:', error);
     } finally {
@@ -124,81 +40,15 @@ export default function SelectCourseModal({ isOpen, onClose, learnerId, onSucces
 
   const handleSelectCourse = async (course) => {
     try {
-      // 1. Get module count for this course
-      const { data: modules, error: modulesError } = await supabase
-        .from('course_modules')
-        .select('module_id')
-        .eq('course_id', course.course_id);
-
-      const totalModules = modules?.length || 0;
-
-      // 2. Create enrollment record
-      const { error: enrollError } = await supabase
-        .from('course_enrollments')
-        .insert({
-          learner_id: learnerId,
-          course_id: course.course_id,
-          course_title: course.title,
-          enrolled_at: new Date().toISOString(),
-          status: 'active',
-          progress: 0
-        });
-
-      if (enrollError) throw enrollError;
-
-      // 3. Create training record so it shows in My Learning
-      const { data: training, error: trainingError } = await supabase
-        .from('trainings')
-        .insert({
-          learner_id: learnerId,
-          course_id: course.course_id,
-          title: course.title,
-          organization: course.university || 'Internal Platform',
-          description: course.description,
-          duration: course.duration,
-          status: 'ongoing',
-          completed_modules: 0,
-          total_modules: totalModules,
-          hours_spent: 0,
-          approval_status: 'approved',
-          source: 'internal_course'
-        })
-        .select()
-        .single();
-
-      if (trainingError) {
-        console.error('Error creating training record:', trainingError);
-        // Don't fail the enrollment if training creation fails
-      }
-
-      // 4. Copy course skills to learner's skills
-      if (training) {
-        const { data: courseSkills, error: skillsError } = await supabase
-          .from('course_skills')
-          .select('skill_name, proficiency_level, type')
-          .eq('course_id', course.course_id);
-
-        if (courseSkills && courseSkills.length > 0) {
-          const learnerSkills = courseSkills.map(skill => ({
-            learner_id: learnerId,
-            training_id: training.id,
-            name: skill.skill_name,
-            type: skill.type || 'technical', // Use type from course_skills, default to technical
-            level: 3, // Default intermediate level
-            approval_status: 'approved',
-            enabled: true,
-            verified: true
-          }));
-
-          const { error: insertSkillsError } = await supabase
-            .from('skills')
-            .insert(learnerSkills);
-
-          if (insertSkillsError) {
-            console.error('Error adding skills:', insertSkillsError);
-          }
-        }
-      }
+      await apiPost('/learner-dashboard-widgets/actions', {
+        action: 'enroll-course',
+        learnerId,
+        courseId: course.course_id,
+        courseTitle: course.title,
+        description: course.description,
+        duration: course.duration,
+        university: course.university,
+      });
 
       onSuccess?.();
       onClose();

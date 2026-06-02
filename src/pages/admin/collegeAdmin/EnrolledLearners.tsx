@@ -9,7 +9,6 @@ import {
   ArrowPathIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from '@/shared/api/supabaseClient';
 import { learnerEnrollmentService, type EnrolledLearnerView } from "@/features/learner-profile/api";
 
 import toast from "react-hot-toast";

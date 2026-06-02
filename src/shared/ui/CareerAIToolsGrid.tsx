@@ -23,7 +23,6 @@ import {
   FileCheck,
   MessageSquare
 } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('career-ai-tools-grid');
@@ -91,9 +90,9 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.actions) {
+        if (data.success && data.data?.actions) {
           // Map icon strings to actual icon components
-          const mappedActions = data.actions.map((action: any) => ({
+          const mappedActions = data.data.actions.map((action: any) => ({
             ...action,
             icon: iconMap[action.icon] || Lightbulb,
           }));

@@ -1,130 +1,58 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 class OfferManagementService {
-  /**
-   * Accept a job offer
-   */
   async acceptOffer(applicationId) {
     try {
-      const { data, error } = await supabase
-        .from('applied_jobs')
-        .update({
-          application_status: 'accepted',
-          responded_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', applicationId)
-        .select(`
-          *,
-          opportunity:opportunities(
-            id,
-            job_title,
-            company_name,
-            applications_count
-          )
-        `)
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, data };
+      const response: any = await apiPost('/opportunities', { action: 'accept-offer', id: applicationId });
+      if (response?.error) return { success: false, error: eMsg(response.error) };
+      return { success: true, data: response?.data?.data };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: eMsg(error) };
     }
   }
 
-  /**
-   * Reject a job offer
-   */
   async rejectOffer(applicationId, reason = null) {
     try {
-      const updateData: any = {
-        
-        application_status: 'rejected',
-        responded_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      if (reason) {
-        updateData.notes = reason;
-      }
-
-      const { data, error } = await supabase
-        .from('applied_jobs')
-        .update(updateData)
-        .eq('id', applicationId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, data };
+      const response: any = await apiPost('/opportunities', { action: 'reject-offer', id: applicationId, reason });
+      if (response?.error) return { success: false, error: eMsg(response.error) };
+      return { success: true, data: response?.data?.data };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: eMsg(error) };
     }
   }
 
-  /**
-   * Check if opportunity has available openings
-   */
   async checkOpeningsAvailable(opportunityId) {
     try {
-      const { data, error } = await supabase
-        .from('opportunities')
-        .select('applications_count, status, is_active')
-        .eq('id', opportunityId)
-        .single();
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        hasOpenings: data.applications_count > 0 && data.is_active && data.status !== 'filled'
-      };
+      const response: any = await apiPost('/opportunities', { action: 'check-openings-available', opportunity_id: opportunityId });
+      if (response?.error) return { success: false, error: eMsg(response.error) };
+      return { success: true, hasOpenings: response?.data?.hasOpenings };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: eMsg(error) };
     }
   }
 
-  /**
-   * Get opportunity with openings info
-   */
   async getOpportunityWithOpenings(opportunityId) {
     try {
-      const { data, error } = await supabase
-        .from('opportunities')
-        .select(`
-          *,
-          accepted_count:applied_jobs(count)
-        `)
-        .eq('id', opportunityId)
-        .eq('applied_jobs.application_status', 'accepted')
-        .single();
-
-      if (error) throw error;
-
-      return { success: true, data };
+      const response: any = await apiPost('/opportunities', { action: 'get-opportunity-with-openings', opportunity_id: opportunityId });
+      if (response?.error) return { success: false, error: eMsg(response.error) };
+      return { success: true, data: response?.data?.data };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: eMsg(error) };
     }
   }
 
-  /**
-   * Check if candidate can proceed in pipeline
-   */
   async canProceedInPipeline(applicationId) {
     try {
-      const { data, error } = await supabase.rpc('can_proceed_in_pipeline', {
-        p_application_id: applicationId
-      });
-
-      if (error) throw error;
-
-      return { success: true, canProceed: data };
-    } catch (error) {
-      return { success: false, error: error.message };
+      const response: any = await apiPost('/opportunities', { action: 'can-proceed-pipeline', application_id: applicationId });
+      return { success: true, canProceed: response?.data?.canProceed };
+    } catch (error: any) {
+      return { success: false, error: eMsg(error) };
     }
   }
+}
+
+function eMsg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
 }
 
 export default new OfferManagementService();

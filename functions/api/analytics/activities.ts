@@ -19,7 +19,6 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   let query = supabase
     .from('activities')
     .select('*', { count: 'exact' })
-    .eq('org_id', user.org_id)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 

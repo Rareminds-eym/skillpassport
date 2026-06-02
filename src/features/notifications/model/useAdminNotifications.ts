@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
 import { apiGet, apiPost } from '@/shared/api/apiClient';
+import { getSSEClient } from '@/shared/api/sseRealtimeClient';
 
 export type AdminNotificationType =
   | "training_submitted"
@@ -34,10 +34,6 @@ export type AdminNotification = {
   created_at: string;
 };
 
-function isUUID(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
-
 async function resolveAdminContext(identifier: string): Promise<{
   userId: string | null;
   schoolId: string | null;
@@ -46,67 +42,18 @@ async function resolveAdminContext(identifier: string): Promise<{
 }> {
   if (!identifier) return { userId: null, schoolId: null, collegeId: null, adminType: null };
 
-  let userId = identifier;
-  if (!isUUID(identifier)) {
-    const { data: userData } = await supabase
-      .from("users")
-      .select("id")
-      .ilike("email", identifier)
-      .maybeSingle();
+  const response: any = await apiPost('/notifications', {
+    action: 'resolve-admin-context',
+    identifier,
+  });
 
-    if (!userData?.id) return { userId: null, schoolId: null, collegeId: null, adminType: null };
-    userId = userData.id;
-  }
-
-  const { data: schoolAdmin } = await supabase
-    .from("school_educators")
-    .select("school_id, role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-
-  if (schoolAdmin) {
-    return {
-      userId,
-      schoolId: schoolAdmin.school_id,
-      collegeId: null,
-      adminType: "school_admin"
-    };
-  }
-
-  const { data: collegeAdmin } = await supabase
-    .from("users")
-    .select("id, organizationId")
-    .eq("id", userId)
-    .eq("role", "college_admin")
-    .maybeSingle();
-
-  if (collegeAdmin) {
-    return {
-      userId,
-      schoolId: null,
-      collegeId: collegeAdmin.organizationId,
-      adminType: "college_admin"
-    };
-  }
-
-  const { data: universityAdmin } = await supabase
-    .from("users")
-    .select("id")
-    .eq("id", userId)
-    .eq("role", "university_admin")
-    .maybeSingle();
-
-  if (universityAdmin) {
-    return {
-      userId,
-      schoolId: null,
-      collegeId: null,
-      adminType: "university_admin"
-    };
-  }
-
-  return { userId, schoolId: null, collegeId: null, adminType: null };
+  const data = response?.data ?? response;
+  return {
+    userId: data?.userId ?? null,
+    schoolId: data?.schoolId ?? null,
+    collegeId: data?.collegeId ?? null,
+    adminType: data?.adminType ?? null,
+  };
 }
 
 type UseAdminNotificationsReturn = {
@@ -146,8 +93,7 @@ export function useAdminNotifications(
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
 
   const lastCursorRef = useRef<string | null>(null);
-  const channelRef = useRef<any | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const resolve = async () => {
@@ -193,78 +139,47 @@ export function useAdminNotifications(
 
   useEffect(() => {
     if (!adminContext.userId) return;
-    let isSubscribed = true;
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
 
-    const setupSubscription = () => {
-      if (!isSubscribed) return;
+    const sseClient = getSSEClient();
 
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
+    const unsubInsert = sseClient.subscribe('notifications', {
+      event: 'INSERT',
+      filter: `recipient_id=eq.${adminContext.userId}`,
+    }, (event) => {
+      if (event.type !== 'change') return;
+      const row = event.payload as AdminNotification;
+      if (event.event === 'INSERT') {
+        setItems((prev) => [row, ...prev]);
       }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
+    });
 
-      const channel = supabase
-        .channel(`admin-notifications-${adminContext.userId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "notifications",
-            filter: `recipient_id=eq.${adminContext.userId}`,
-          },
-          (payload) => {
-            const row = payload.new as AdminNotification;
+    const unsubUpdate = sseClient.subscribe('notifications', {
+      event: 'UPDATE',
+      filter: `recipient_id=eq.${adminContext.userId}`,
+    }, (event) => {
+      if (event.type !== 'change') return;
+      const row = event.payload as AdminNotification;
+      setItems((prev) => prev.map((n) => (n.id === row.id ? row : n)));
+    });
 
-            if (payload.eventType === "INSERT") {
-              setItems((prev) => [row, ...prev]);
-            } else if (payload.eventType === "UPDATE") {
-              setItems((prev) =>
-                prev.map((n) => (n.id === row.id ? row : n))
-              );
-            } else if (payload.eventType === "DELETE") {
-              const oldRow = payload.old as AdminNotification;
-              setItems((prev) => prev.filter((n) => n.id !== oldRow.id));
-            }
-          }
-        )
-        .subscribe((status) => {
-          setConnectionStatus(status);
+    const unsubDelete = sseClient.subscribe('notifications', {
+      event: 'DELETE',
+      filter: `recipient_id=eq.${adminContext.userId}`,
+    }, (event) => {
+      if (event.type !== 'change') return;
+      const oldRow = event.payload as AdminNotification;
+      setItems((prev) => prev.filter((n) => n.id !== oldRow.id));
+    });
 
-          if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-            if (isSubscribed && retryCount < MAX_RETRIES) {
-              retryCount++;
-              reconnectTimeoutRef.current = setTimeout(() => {
-                setupSubscription();
-              }, 2000 * retryCount);
-            }
-          } else if (status === "SUBSCRIBED") {
-            retryCount = 0;
-          }
-        });
-
-      channelRef.current = channel;
-    };
-
-    setupSubscription();
+    setConnectionStatus('connected');
+    unsubscribeRef.current = () => { unsubInsert(); unsubUpdate(); unsubDelete(); };
 
     return () => {
-      isSubscribed = false;
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-      setConnectionStatus("disconnected");
+      setConnectionStatus('disconnected');
     };
   }, [adminContext.userId]);
 

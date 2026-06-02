@@ -10,7 +10,6 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
 import { calculateMonthsInGrade, getGradeLevelFromGrade } from '../lib/gradeUtils';
 import { isCollegeLearner as checkIsCollegeLearner } from '@/entities/learner/lib/learnerType';
 import type { GradeLevel } from '../model/types';

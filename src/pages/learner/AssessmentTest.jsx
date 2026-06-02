@@ -66,7 +66,7 @@ import * as assessmentService from '@/features/assessment';
 // Import adaptive aptitude hook for integrated adaptive testing
 import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Import centralized learner type detection
 import { isCollegeLearner as checkIsCollegeLearner } from '@/entities/learner/lib/learnerType';
@@ -170,26 +170,14 @@ const AssessmentTest = () => {
     const { data: learnerGradeData, isLoading: loadinglearnerGrade } = useQuery({
         queryKey: queryKeys.learner.grade.byUser(user?.id, user?.email),
         queryFn: async () => {
-            // First try to get learner by user_id with school_class grade and program name joined
-            let { data: learner, error } = await supabase
-                .from('learners')
-                .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
-                .eq('user_id', user.id)
-                .maybeSingle();
-
-            // If not found by user_id, try by email
-            if (!learner && user.email) {
-                const result = await supabase
-                    .from('learners')
-                    .select('id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)')
-                    .eq('email', user.email)
-                    .maybeSingle();
-                learner = result.data;
-                error = result.error;
-            }
-
-            if (error) throw error;
-            return learner;
+            const res = await apiPost('/learner-pages/actions', {
+                action: 'fetch-learner-by-user-id',
+                userId: user.id,
+                email: user.email,
+                select: 'id, grade, grade_start_date, school_class_id, school_id, university_college_id, program_id, course_name, school_classes:school_class_id(grade, academic_year), program:program_id(name, code)',
+            });
+            if (!res.data) throw new Error('Learner not found');
+            return res.data;
         },
         enabled: !!user?.id && shouldFilterByGrade,
         staleTime: 300000, // 5 minutes - learner grade rarely changes
@@ -1523,31 +1511,34 @@ const AssessmentTest = () => {
         // Handle adaptive aptitude section differently
         if (currentSection?.isAdaptive) {
             if (adaptiveAptitudeAnswer && adaptiveAptitude.currentQuestion) {
-                answer: adaptiveAptitudeAnswer,
+                console.log({
+                    answer: adaptiveAptitudeAnswer,
                     questionId: adaptiveAptitude.currentQuestion?.id,
-                        questionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
-                            sessionId: adaptiveAptitude.session?.id,
-                                currentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
-                                    questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+                    questionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
+                    sessionId: adaptiveAptitude.session?.id,
+                    currentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
+                    questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
                 });
 
             try {
                 // Submit the answer to the adaptive engine (only pass the answer, hook handles timing)
                 const result = await adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer);
 
-                isCorrect: result?.isCorrect,
+                console.log({
+                    isCorrect: result?.isCorrect,
                     testComplete: result?.testComplete,
-                        phaseComplete: result?.phaseComplete,
-                            newDifficulty: result?.newDifficulty,
-                    });
+                    phaseComplete: result?.phaseComplete,
+                    newDifficulty: result?.newDifficulty,
+                });
 
             // Log the updated state after submission
-            newQuestionId: adaptiveAptitude.currentQuestion?.id,
+            console.log({
+                newQuestionId: adaptiveAptitude.currentQuestion?.id,
                 newQuestionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
-                    newQuestionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
-                        newCurrentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
-                            isTestComplete: adaptiveAptitude.isTestComplete,
-                    });
+                newQuestionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
+                newCurrentQuestionIndex: adaptiveAptitude.session?.currentQuestionIndex,
+                isTestComplete: adaptiveAptitude.isTestComplete,
+            });
 
         // Reset for next question
         setAdaptiveAptitudeAnswer(null);
@@ -1562,9 +1553,10 @@ const AssessmentTest = () => {
     } catch (err) {
         setError(`Failed to submit answer: ${err.message}`);
     }
-} else {
-    hasAnswer: !!adaptiveAptitudeAnswer,
-        hasQuestion: !!adaptiveAptitude.currentQuestion,
+    } else {
+                console.log({
+                    hasAnswer: !!adaptiveAptitudeAnswer,
+                    hasQuestion: !!adaptiveAptitude.currentQuestion,
                 });
             }
 return;
@@ -1634,12 +1626,13 @@ const generateCourseRecommendations = (analysisResults) => {
         const bigFive = analysisResults?.bigFive || {};
         // Big Five scores are 0-5 scale
 
-        riasecScores,
+        console.log({
+            riasecScores,
             riasecTopThree,
             aptitudeScores,
             aptitudeTopStrengths,
             bigFive
-    });
+        });
 
     // Calculate match scores for each course
     const courseMatches = allCourses.map(course => {
@@ -1873,26 +1866,21 @@ const handleSubmit = async () => {
                 // Fetch AI aptitude questions if needed
                 const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
                 if (aptitudeAnswerKeys.length > 0) {
+                    const learnerRes = await apiPost('/learner-pages/actions', {
+                        action: 'fetch-learner-id',
+                        userId: user.id,
+                        email: user.email,
+                    });
 
-                    // Get learner record ID
-                    const { data: learner } = await supabase
-                        .from('learners')
-                        .select('id')
-                        .eq('user_id', user.id)
-                        .maybeSingle();
+                    if (learnerRes?.data) {
+                        const qRes = await apiPost('/learner-pages/actions', {
+                            action: 'fetch-ai-questions',
+                            learnerId: learnerRes.data.id,
+                            questionType: 'aptitude',
+                        });
 
-                    if (learner) {
-                        const { data: questionSets } = await supabase
-                            .from('career_assessment_ai_questions')
-                            .select('questions')
-                            .eq('learner_id', learner.id)
-                            .eq('question_type', 'aptitude')
-                            .order('created_at', { ascending: false })
-                            .limit(1)
-                            .maybeSingle();
-
-                        if (questionSets?.questions) {
-                            questionBanks.aptitudeQuestions = questionSets.questions.map(q => ({
+                        if (qRes?.data?.questions) {
+                            questionBanks.aptitudeQuestions = qRes.data.questions.map(q => ({
                                 ...q,
                                 correct: q.correct_answer,
                                 correctAnswer: q.correct_answer,
@@ -1905,26 +1893,21 @@ const handleSubmit = async () => {
                 // Fetch AI knowledge questions if needed
                 const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
                 if (knowledgeAnswerKeys.length > 0) {
+                    const learnerRes = await apiPost('/learner-pages/actions', {
+                        action: 'fetch-learner-id',
+                        userId: user.id,
+                        email: user.email,
+                    });
 
-                    // Get learner record ID
-                    const { data: learner } = await supabase
-                        .from('learners')
-                        .select('id')
-                        .eq('user_id', user.id)
-                        .maybeSingle();
+                    if (learnerRes?.data) {
+                        const qRes = await apiPost('/learner-pages/actions', {
+                            action: 'fetch-ai-questions',
+                            learnerId: learnerRes.data.id,
+                            questionType: 'knowledge',
+                        });
 
-                    if (learner) {
-                        const { data: questionSets } = await supabase
-                            .from('career_assessment_ai_questions')
-                            .select('questions')
-                            .eq('learner_id', learner.id)
-                            .eq('question_type', 'knowledge')
-                            .order('created_at', { ascending: false })
-                            .limit(1)
-                            .maybeSingle();
-
-                        if (questionSets?.questions) {
-                            const aiKnowledgeQuestions = questionSets.questions.map(q => ({
+                        if (qRes?.data?.questions) {
+                            const aiKnowledgeQuestions = qRes.data.questions.map(q => ({
                                 ...q,
                                 correct: q.correct_answer,
                                 correctAnswer: q.correct_answer
@@ -2038,20 +2021,13 @@ const handleSubmit = async () => {
                 const lookupLearnerId = learnerRecordId || user.id;
 
                 try {
-                    const { data: latestAttempt, error: lookupError } = await supabase
-                        .from('personal_assessment_attempts')
-                        .select('id, stream_id, grade_level')
-                        .eq('learner_id', lookupLearnerId)
-                        .eq('status', 'in_progress')
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .single();
+                    const res = await apiPost('/learner-pages/actions', {
+                        action: 'fetch-latest-attempt',
+                        learnerId: lookupLearnerId,
+                    });
 
-                    if (lookupError) {
-                    }
-
-                    if (latestAttempt) {
-                        attemptId = latestAttempt.id;
+                    if (res?.data) {
+                        attemptId = res.data.id;
                     } else {
                         submissionSuccess = false;
                         submissionError = 'No assessment attempt found. Please start a new assessment.';
@@ -2094,10 +2070,11 @@ const handleSubmit = async () => {
                     }
 
                 } catch (dbErr) {
+                    console.log({
                     message: dbErr.message,
-                        code: dbErr.code,
-                            details: dbErr.details,
-                                hint: dbErr.hint
+                    code: dbErr.code,
+                    details: dbErr.details,
+                    hint: dbErr.hint
                 });
                 submissionSuccess = false;
                 submissionError = 'Failed to save results: ' + (dbErr.message || 'Database error');

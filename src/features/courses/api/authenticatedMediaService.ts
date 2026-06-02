@@ -6,7 +6,6 @@ import { ssoClient } from '@/shared/api/ssoClient';
  * Ensures media can only be accessed by enrolled users on their registered device.
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getBrowserFingerprint, getDeviceContext } from '@/shared/lib/fingerprint';
 import { getLogger } from '@/shared/config/logging';
 

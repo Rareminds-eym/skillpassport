@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/shared/api/supabaseClient';
 import * as assessmentService from '../api/assessmentService';
 import { saveRecommendations } from '@/features/courses';
 import { analyzeAssessmentWithGemini, addCourseRecommendations } from '..';

@@ -12,7 +12,7 @@ import React, { useEffect, useState } from "react";
 import toast from 'react-hot-toast';
 
 import { useUserRole } from "@/entities/user";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { timetableSlotsService } from "@/features/school-admin";
 
 
@@ -133,33 +133,18 @@ const TimetableAllocationPage: React.FC = () => {
       } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
 
-      const { data: userData } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+      const userRoleData = await apiPost('/college-admin/school-admin', { action: 'get-user-role', user_id: user.id }) as any;
 
-      if (userData?.role === "school_admin") {
-        const { data: schoolData } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("organization_type", "school")
-          .eq("admin_id", user.id)
-          .maybeSingle();
-
+      if (userRoleData?.role === "school_admin") {
+        const schoolData = await apiPost('/college-admin/school-admin', { action: 'get-school-by-owner', user_id: user.id }) as any;
         if (schoolData?.id) {
           setSchoolId(schoolData.id);
           return;
         }
       }
 
-      if (userData?.role === "school_educator") {
-        const { data: educatorData } = await supabase
-          .from("school_educators")
-          .select("school_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
+      if (userRoleData?.role === "school_educator") {
+        const educatorData = await apiPost('/college-admin/school-admin', { action: 'get-educator-by-email', email: user?.email }) as any;
         if (educatorData?.school_id) {
           setSchoolId(educatorData.school_id);
           return;
@@ -173,85 +158,26 @@ const TimetableAllocationPage: React.FC = () => {
   const loadTeachers = async () => {
     if (!schoolId) return;
 
-    const { data } = await supabase
-      .from("school_educators")
-      .select("id, teacher_id, first_name, last_name")
-      .eq("school_id", schoolId)
-      .eq("account_status", "active")
-      .order("first_name");
-
+    const data = await apiPost('/college-admin/school-admin', { action: 'get-teachers-dropdown', school_id: schoolId }) as any;
     if (data) setTeachers(data);
   };
 
   const loadClasses = async () => {
     if (!schoolId) return;
 
-    const { data } = await supabase
-      .from("school_classes")
-      .select("id, name, grade, section, academic_year")
-      .eq("school_id", schoolId)
-      .eq("account_status", "active")
-      .order("grade")
-      .order("section");
-
+    const data = await apiPost('/college-admin/school-admin', { action: 'get-classes', school_id: schoolId }) as any;
     if (data) setClasses(data);
   };
 
   const loadOrCreateTimetable = async () => {
     const currentYear = new Date().getFullYear();
-    const { data: existing } = await supabase
-      .from("timetables")
-      .select("id")
-      .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-      .eq("status", "draft")
-      .single();
-
-    if (existing) {
-      setTimetableId(existing.id);
-    } else {
-      const { data: newTimetable } = await supabase
-        .from("timetables")
-        .insert({
-          academic_year: `${currentYear}-${currentYear + 1}`,
-          term: "Term 1",
-          start_date: `${currentYear}-06-01`,
-          end_date: `${currentYear}-12-31`,
-          status: "draft",
-        })
-        .select("id")
-        .single();
-
-      if (newTimetable) setTimetableId(newTimetable.id);
-    }
+    const yearStr = `${currentYear}-${currentYear + 1}`;
+    const existing = await apiPost('/college-admin/school-admin', { action: 'get-or-create-timetable', academic_year: yearStr, status: 'draft', term: 'Term 1', start_date: `${currentYear}-06-01`, end_date: `${currentYear}-12-31` }) as any;
+    if (existing?.id) setTimetableId(existing.id);
   };
 
   const loadSlots = async () => {
-    // Load slots for selected teacher AND class combination
-    const { data } = await supabase
-      .from("timetable_slots")
-      .select(
-        `
-        *,
-        school_classes:class_id (
-          id,
-          name,
-          grade,
-          section
-        ),
-        school_educators:educator_id (
-          id,
-          teacher_id,
-          first_name,
-          last_name
-        )
-      `
-      )
-      .eq("timetable_id", timetableId)
-      .eq("educator_id", selectedTeacher)
-      .eq("class_id", selectedClass)
-      .order("day_of_week")
-      .order("period_number");
-
+    const data = await apiPost('/college-admin/school-admin', { action: 'get-timetable-slots', timetable_id: timetableId, educator_id: selectedTeacher, class_id: selectedClass }) as any;
     if (data) {
       const mappedSlots = data.map((slot: any) => ({
         ...slot,
@@ -277,12 +203,7 @@ const TimetableAllocationPage: React.FC = () => {
 
       if (workloadData) setWorkload(workloadData);
 
-      const { data: conflictData } = await supabase
-        .from("timetable_conflicts")
-        .select("*")
-        .eq("timetable_id", timetableId)
-        .eq("teacher_id", selectedTeacher)
-        .eq("resolved", false);
+      const conflictData = await apiPost('/college-admin/school-admin', { action: 'get-timetable-conflicts', timetable_id: timetableId, teacher_id: selectedTeacher }) as any;
 
       if (conflictData) setConflicts(conflictData);
     } catch (error) {
@@ -343,12 +264,7 @@ const TimetableAllocationPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("timetable_slots")
-        .delete()
-        .eq("id", slotId);
-
-      if (error) throw error;
+      await timetableSlotsService.deleteSlot(slotId);
 
       await loadSlots();
       await loadTeacherWorkload();

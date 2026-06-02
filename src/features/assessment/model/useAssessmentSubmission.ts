@@ -12,7 +12,6 @@ import { useNavigate } from 'react-router-dom';
 import { analyzeAssessmentWithGemini } from '../api/geminiAssessmentService';
 // @ts-ignore - JS service without type declarations
 import * as assessmentService from '../api/assessmentService';
-import { supabase } from '@/shared/api/supabaseClient';
 import type { GradeLevel } from '../model/types';
 
 // Import static question banks for fallback

@@ -42,7 +42,6 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
       const { data, error } = await supabase
         .from('license_assignments')
         .select(`*, users_shadow (id, email)`)
-        .eq('organization_id', orgId)
         .order('assigned_at', { ascending: false });
 
       if (error) throw error;

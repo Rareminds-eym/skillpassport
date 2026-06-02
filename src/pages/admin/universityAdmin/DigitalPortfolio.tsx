@@ -11,7 +11,7 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SearchBar } from '@/shared/ui';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 
@@ -223,37 +223,28 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
         }
       }
       
-      // If not in localStorage, check Supabase auth
       if (!universityId) {
-        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
+        const user = useAuthStore.getState().user;
         if (user) {
-          const { data: dbUser } = await supabase
-            .from('users')
-            .select('organizationId')
-            .eq('id', user.id)
-            .single();
-          
-          universityId = dbUser?.organizationId || null;
+          const userResp = await apiPost('/university-admin/actions', {
+            action: 'get-user-by-id',
+            userId: user.id,
+            select: 'organizationId',
+          });
+          universityId = userResp.success ? (userResp.data?.organizationId || null) : null;
         }
       }
 
-      let query = supabase
-        .from('learners')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const learnersResp = await apiPost('/university-admin/actions', {
+        action: 'list-digital-portfolios',
+        select: '*',
+        filters: universityId ? { universityId: { eq: universityId } } : undefined,
+        orderBy: 'created_at',
+        orderDir: 'desc',
+      });
 
-      // Filter by universityId if available
-      if (universityId) {
-        logger.info('Filtering portfolios by universityId:', { universityId });
-        query = query.eq('universityId', universityId);
-      } else {
-        logger.warn('No universityId found for university admin');
-      }
-
-      const { data, error: fetchError } = await query;
-
-      if (fetchError) throw fetchError;
-      setlearners(data || []);
+      if (!learnersResp.success) throw new Error(learnersResp.error?.message || 'Failed to fetch learners');
+      setlearners(learnersResp.data || []);
     } catch (err: any) {
       logger.error('Error fetching learners:', err as Error);
       setError(err?.message || 'Failed to load learners');
@@ -281,32 +272,27 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       }
       
       if (!universityId) {
-        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
+        const user = useAuthStore.getState().user;
         if (user) {
-          const { data: dbUser } = await supabase
-            .from('users')
-            .select('organizationId')
-            .eq('id', user.id)
-            .single();
-          
-          universityId = dbUser?.organizationId || null;
+          const userResp = await apiPost('/university-admin/actions', {
+            action: 'get-user-by-id',
+            userId: user.id,
+            select: 'organizationId',
+          });
+          universityId = userResp.success ? (userResp.data?.organizationId || null) : null;
         }
       }
 
-      // Query organizations table for colleges under this university
-      let query = supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('organization_type', 'college')
-        .order('name');
-
-      // Note: If you need to filter by university, you'll need to add a parent_organization_id column
-      // For now, we'll fetch all colleges
-
-      const { data, error } = await query;
+      const collegesResp = await apiPost('/university-admin/actions', {
+        action: 'list-organizations-by-type',
+        orgType: 'college',
+        select: 'id, name',
+        orderBy: 'name',
+        orderDir: 'asc',
+      });
       
-      if (!error && data) {
-        setColleges(data);
+      if (collegesResp.success && collegesResp.data) {
+        setColleges(collegesResp.data);
       }
     } catch (err) {
       logger.error('Error fetching colleges:', err as Error);

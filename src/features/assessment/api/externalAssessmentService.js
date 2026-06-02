@@ -1,4 +1,3 @@
-import { supabase } from '@/shared/api/supabaseClient';
 
 /**
  * External Assessment Service

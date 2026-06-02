@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/shared/api/supabaseClient';
 import type { FunnelRangePreset } from '@/features/analytics';
-import { getCoursePerformance } from '../api/coursePerformanceService';
+import { getSSEClient } from '@/shared/api/sseRealtimeClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
+import { getCoursePerformance } from '../api/coursePerformanceService';
 
 interface UseCoursePerformanceOptions {
   preset: FunnelRangePreset;
@@ -19,7 +19,7 @@ export const useCoursePerformance = ({
   limit = 4
 }: UseCoursePerformanceOptions) => {
   const queryClient = useQueryClient();
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<any>(null);
 
   const query = useQuery({
     queryKey: queryKeys.courses.performance.byPreset(preset, { startDate, endDate, limit }),
@@ -32,23 +32,31 @@ export const useCoursePerformance = ({
   });
 
   useEffect(() => {
-    const channel = supabase.channel(`course-performance-${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.courses.performance.all });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'learners' }, () => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.courses.performance.all });
-      });
+    const sseClient = getSSEClient();
+    const unsubscribers: Array<() => void> = [];
 
-    channel.subscribe();
-    channelRef.current = channel;
+    // Subscribe to pipeline_candidates changes
+    const unsubPipeline = sseClient.subscribe(
+      'pipeline_candidates',
+      { event: '*' },
+      () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.courses.performance.all });
+      }
+    );
+    unsubscribers.push(unsubPipeline);
+
+    // Subscribe to learners changes
+    const unsubLearners = sseClient.subscribe(
+      'learners',
+      { event: '*' },
+      () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.courses.performance.all });
+      }
+    );
+    unsubscribers.push(unsubLearners);
 
     return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      unsubscribers.forEach(unsub => unsub());
     };
   }, [queryClient]);
 

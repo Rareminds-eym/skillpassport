@@ -1,7 +1,7 @@
 import { AlertCircle, CheckCircle, FileText, Loader2, Upload, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { uploadFile, uploadMultipleFiles, validateFile } from '@/shared/api';
 // @ts-ignore - userApiService is a .js file
@@ -267,18 +267,13 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
 
     // Check for duplicate employee ID
     try {
-      const { data: existingFaculty, error: duplicateCheckError } = await supabase
-        .from("college_lecturers")
-        .select("employeeId")
-        .eq("collegeId", collegeId)
-        .eq("employeeId", formData.employee_id.trim())
-        .maybeSingle();
+      const duplicateResult = await apiPost('/college-admin/faculty', {
+        action: 'check-duplicate-employee-id',
+        college_id: collegeId,
+        employee_id: formData.employee_id.trim(),
+      });
 
-      if (duplicateCheckError) {
-        throw new Error(`Error checking for duplicate employee ID: ${duplicateCheckError.message}`);
-      }
-
-      if (existingFaculty) {
+      if (duplicateResult.data?.exists) {
         setValidationErrors({ employee_id: "This Employee ID already exists in your college" });
         setMessage({ type: "error", text: "Employee ID already exists. Please choose a different ID." });
         setLoading(false);
@@ -367,18 +362,17 @@ const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
       }
 
       // Step 3: Update faculty record with document URLs and additional fields
-      const { error: updateError } = await supabase
-        .from("college_lecturers")
-        .update({
+      try {
+        await apiPost('/college-admin/faculty', {
+          action: 'update-lecturer',
+          id: facultyId,
           subject_expertise: subjects,
           degree_certificate_url: uploadedDegreeUrl,
           id_proof_url: uploadedIdProofUrl,
           experience_letters_url: uploadedExperienceUrls.length > 0 ? uploadedExperienceUrls : [],
-        })
-        .eq('id', facultyId);
-
-      if (updateError) {
-        logger.warn('Failed to update faculty record with documents', updateError);
+        });
+      } catch (err) {
+        logger.warn('Failed to update faculty record with documents', err as Error);
       }
 
       setMessage({

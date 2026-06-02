@@ -14,7 +14,6 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const { data, error } = await supabase
     .from('analytics_speed')
     .select('*')
-    .eq('org_id', user.org_id)
     .order('measured_at', { ascending: false })
     .limit(100);
 

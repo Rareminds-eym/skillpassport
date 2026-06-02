@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { curriculumService } from '@/features/college-admin';
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('use-curriculum');
@@ -297,13 +299,10 @@ export const useCurriculum = (
       }
 
       // Check if user is school_admin - they can auto-approve
-      const { data: { user } } = await curriculumService.getCurrentUser();
-      if (user) {
-        const { data: userData } = await curriculumService.supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
+      const user = useAuthStore.getState().user;
+      if (user?.id) {
+        const result = await apiPost('/college-admin/faculty', { action: 'get-user-role', user_id: user.id });
+        const userData = result?.data;
 
         if (userData?.role === 'school_admin') {
           // School admins can directly approve their own curriculums

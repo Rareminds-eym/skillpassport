@@ -1,201 +1,58 @@
-/**
- * Recommendation Storage
- * Handles saving and retrieving course recommendations from the database.
- */
-
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost, apiPut } from '@/shared/api/apiClient';
 import { getRecommendedCourses } from './recommendationService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('recommendation-storage');
 
-/**
- * Save course recommendations to the database.
- * Creates records in learner_course_recommendations table.
- * 
- * @param {string} learnerId - Learner's user_id
- * @param {Array} recommendations - Array of recommended courses from getRecommendedCourses
- * @param {string} assessmentResultId - ID of the assessment result (optional)
- * @param {string} recommendationType - Type: 'assessment', 'skill_gap', 'career_path', 'manual'
- * @returns {Promise<Array>} - Array of saved recommendation records
- */
 export const saveRecommendations = async (
   learnerId,
   recommendations,
   assessmentResultId = null,
   recommendationType = 'assessment'
 ) => {
-  if (!learnerId || !recommendations || recommendations.length === 0) {
-    return [];
-  }
-
+  if (!learnerId || !recommendations || recommendations.length === 0) return [];
   try {
-    // Prepare records for insertion
-    const records = recommendations.map(rec => ({
-      learner_id: learnerId,
-      course_id: rec.course_id,
-      assessment_result_id: assessmentResultId,
-      relevance_score: rec.relevance_score,
-      match_reasons: rec.match_reasons || [],
-      skill_gaps_addressed: rec.skill_gaps_addressed || [],
-      recommendation_type: recommendationType,
-      status: 'active',
-      recommended_at: new Date().toISOString()
-    }));
-
-    // Upsert to handle duplicates (update if exists)
-    const { data, error } = await supabase
-      .from('learner_course_recommendations')
-      .upsert(records, {
-        onConflict: 'learner_id,course_id,assessment_result_id',
-        ignoreDuplicates: false
-      })
-      .select();
-
-    if (error) {
-      logger.error('Failed to save recommendations', error instanceof Error ? error : new Error(String(error)));
-      throw new Error(`Database error: ${error.message}`);
-    }
-
-    return data || [];
+    return await apiPost<any[]>('/courses/recommendations/save', { learnerId, recommendations, assessmentResultId, recommendationType });
   } catch (error) {
     logger.error('Error saving recommendations', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
 
-/**
- * Get saved recommendations for a learner from the database.
- * 
- * @param {string} learnerId - Learner's user_id
- * @param {Object} options - Query options
- * @param {string} options.status - Filter by status ('active', 'enrolled', 'dismissed', 'completed')
- * @param {string} options.assessmentResultId - Filter by specific assessment result
- * @param {boolean} options.includeCourseDetails - Join with courses table for full details
- * @returns {Promise<Array>} - Array of recommendation records
- */
 export const getSavedRecommendations = async (learnerId, options = {}) => {
-  if (!learnerId) {
-    return [];
-  }
-
+  if (!learnerId) return [];
   try {
-    let query = supabase
-      .from('learner_course_recommendations')
-      .select(`
-        *,
-        course:courses(
-          course_id,
-          title,
-          code,
-          description,
-          duration,
-          category,
-          status
-        )
-      `)
-      .eq('learner_id', learnerId)
-      .order('relevance_score', { ascending: false });
-
-    // Apply filters
-    if (options.status) {
-      query = query.eq('status', options.status);
-    }
-    if (options.assessmentResultId) {
-      query = query.eq('assessment_result_id', options.assessmentResultId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      logger.error('Failed to get saved recommendations', error instanceof Error ? error : new Error(String(error)));
-      throw new Error(`Database error: ${error.message}`);
-    }
-
-    return data || [];
+    const params = new URLSearchParams({ learnerId });
+    if (options.status) params.set('status', options.status);
+    if (options.assessmentResultId) params.set('assessmentResultId', options.assessmentResultId);
+    return await apiGet<any[]>(`/courses/recommendations/saved?${params.toString()}`);
   } catch (error) {
     logger.error('Error getting saved recommendations', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 };
 
-/**
- * Update recommendation status (e.g., when learner enrolls or dismisses).
- * 
- * @param {string} recommendationId - ID of the recommendation record
- * @param {string} status - New status: 'active', 'enrolled', 'dismissed', 'completed'
- * @param {string} dismissedReason - Reason for dismissal (optional)
- * @returns {Promise<Object>} - Updated recommendation record
- */
 export const updateRecommendationStatus = async (recommendationId, status, dismissedReason = null) => {
-  if (!recommendationId || !status) {
-    throw new Error('Recommendation ID and status are required');
-  }
-
+  if (!recommendationId || !status) throw new Error('Recommendation ID and status are required');
   const validStatuses = ['active', 'enrolled', 'dismissed', 'completed'];
-  if (!validStatuses.includes(status)) {
-    throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
-  }
-
+  if (!validStatuses.includes(status)) throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
   try {
-    const updateData = {
-      status,
-      updated_at: new Date().toISOString()
-    };
-
-    if (status === 'dismissed') {
-      updateData.dismissed_at = new Date().toISOString();
-      updateData.dismissed_reason = dismissedReason;
-    }
-
-    const { data, error } = await supabase
-      .from('learner_course_recommendations')
-      .update(updateData)
-      .eq('id', recommendationId)
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Failed to update recommendation status', error instanceof Error ? error : new Error(String(error)));
-      throw new Error(`Database error: ${error.message}`);
-    }
-
-    return data;
+    return await apiPut('/courses/recommendations/status', { id: recommendationId, status, dismissedReason });
   } catch (error) {
     logger.error('Error updating recommendation status', error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 };
 
-/**
- * Get recommendations and save them to the database.
- * Combines getRecommendedCourses with saveRecommendations.
- * 
- * @param {string} learnerId - Learner's user_id
- * @param {Object} assessmentResults - Assessment results from AI analysis
- * @param {string} assessmentResultId - ID of the assessment result record
- * @returns {Promise<Array>} - Array of recommended courses (also saved to DB)
- */
 export const getAndSaveRecommendations = async (learnerId, assessmentResults, assessmentResultId = null) => {
-  if (!learnerId || !assessmentResults) {
-    return [];
-  }
-
+  if (!learnerId || !assessmentResults) return [];
   try {
-    // Get recommendations
     const recommendations = await getRecommendedCourses(assessmentResults);
-    
-    if (recommendations.length === 0) {
-      return [];
-    }
-
-    // Save to database
+    if (recommendations.length === 0) return [];
     await saveRecommendations(learnerId, recommendations, assessmentResultId, 'assessment');
-    
     return recommendations;
   } catch (error) {
     logger.error('Error in getAndSaveRecommendations', error instanceof Error ? error : new Error(String(error)));
-    // Return recommendations even if save fails
     return await getRecommendedCourses(assessmentResults);
   }
 };

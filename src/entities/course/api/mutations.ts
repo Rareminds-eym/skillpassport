@@ -1,112 +1,71 @@
-/**
- * Course Entity - API Mutations
- * Data modification functions for course data
- */
-
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 import type { Course, CourseEnrollment, CourseModule } from '../model/types';
 
-// ============================================================================
-// Course Mutations
-// ============================================================================
-
 export const createCourse = async (courseData: Partial<Course>): Promise<Course> => {
-  const { data, error } = await supabase
-    .from('courses')
-    .insert(courseData)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/course/actions', {
+    action: 'create-course',
+    courseData,
+  });
+  return response?.data;
 };
 
 export const updateCourse = async (
   courseId: string,
   courseData: Partial<Course>
 ): Promise<Course> => {
-  const { data, error } = await supabase
-    .from('courses')
-    .update(courseData)
-    .eq('id', courseId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/course/actions', {
+    action: 'update-course',
+    courseId,
+    courseData,
+  });
+  return response?.data;
 };
-
 
 export const updateCourseStatus = async (
   courseId: string,
   status: string
 ): Promise<Course> => {
-  const { data, error } = await supabase
-    .from('courses')
-    .update({ status })
-    .eq('id', courseId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/course/actions', {
+    action: 'update-course-status',
+    courseId,
+    status,
+  });
+  return response?.data;
 };
-
-// ============================================================================
-// Course Enrollment Mutations
-// ============================================================================
 
 export const enrollInCourse = async (
   userId: string,
   courseId: string
 ): Promise<CourseEnrollment> => {
-  const { data, error } = await supabase
-    .from('course_enrollments')
-    .insert({
-      userId,
-      courseId,
-      enrolledAt: new Date().toISOString(),
-      status: 'active',
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/course/actions', {
+    action: 'enroll-in-course',
+    userId,
+    courseId,
+  });
+  return response?.data;
 };
 
 export const unenrollFromCourse = async (
   userId: string,
   courseId: string
 ): Promise<void> => {
-  const { error } = await supabase
-    .from('course_enrollments')
-    .update({ status: 'dropped' })
-    .eq('userId', userId)
-    .eq('courseId', courseId);
-
-  if (error) throw error;
+  await apiPost('/course/actions', {
+    action: 'unenroll-from-course',
+    userId,
+    courseId,
+  });
 };
 
 export const completeCourse = async (
   userId: string,
   courseId: string
 ): Promise<void> => {
-  const { error } = await supabase
-    .from('course_enrollments')
-    .update({
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-    })
-    .eq('userId', userId)
-    .eq('courseId', courseId);
-
-  if (error) throw error;
+  await apiPost('/course/actions', {
+    action: 'complete-course',
+    userId,
+    courseId,
+  });
 };
-
-// ============================================================================
-// Course Progress Mutations
-// ============================================================================
 
 export const updateCourseProgress = async (
   userId: string,
@@ -117,16 +76,12 @@ export const updateCourseProgress = async (
     progressPercentage: number;
   }
 ): Promise<void> => {
-  const { error } = await supabase
-    .from('course_progress')
-    .upsert({
-      userId,
-      courseId,
-      ...progressData,
-      lastAccessedAt: new Date().toISOString(),
-    });
-
-  if (error) throw error;
+  await apiPost('/course/actions', {
+    action: 'update-course-progress',
+    userId,
+    courseId,
+    ...progressData,
+  });
 };
 
 export const markLessonComplete = async (
@@ -134,54 +89,39 @@ export const markLessonComplete = async (
   courseId: string,
   lessonId: string
 ): Promise<void> => {
-  const { error } = await supabase
-    .from('lesson_completions')
-    .insert({
-      userId,
-      courseId,
-      lessonId,
-      completedAt: new Date().toISOString(),
-    });
-
-  if (error) throw error;
+  await apiPost('/course/actions', {
+    action: 'mark-lesson-complete',
+    userId,
+    courseId,
+    lessonId,
+  });
 };
-
-// ============================================================================
-// Course Module Mutations
-// ============================================================================
 
 export const createCourseModule = async (
   moduleData: Partial<CourseModule>
 ): Promise<CourseModule> => {
-  const { data, error } = await supabase
-    .from('course_modules')
-    .insert(moduleData)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/course/actions', {
+    action: 'create-course-module',
+    moduleData,
+  });
+  return response?.data;
 };
 
 export const updateCourseModule = async (
   moduleId: string,
   moduleData: Partial<CourseModule>
 ): Promise<CourseModule> => {
-  const { data, error } = await supabase
-    .from('course_modules')
-    .update(moduleData)
-    .eq('id', moduleId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/course/actions', {
+    action: 'update-course-module',
+    moduleId,
+    moduleData,
+  });
+  return response?.data;
 };
 
 export const deleteCourseModule = async (moduleId: string): Promise<void> => {
-  const { error } = await supabase
-    .from('course_modules')
-    .delete()
-    .eq('id', moduleId);
-
-  if (error) throw error;
+  await apiPost('/course/actions', {
+    action: 'delete-course-module',
+    moduleId,
+  });
+};

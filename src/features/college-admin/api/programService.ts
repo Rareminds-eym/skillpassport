@@ -1,7 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient'
-import { getLogger } from '@/shared/config/logging'
-
-const logger = getLogger('program-service')
+import { apiPost } from '@/shared/api/apiClient'
 
 export interface ProgramSection {
   id: string
@@ -50,113 +47,17 @@ export interface ProgramLearner {
 type ServiceResponse<T> = { data: T; error: null } | { data: null; error: string }
 
 /**
- * Update learner count in program section
- */
-const updateProgramSectionlearnerCount = async (programId: string, semester: number, section: string): Promise<void> => {
-  try {
-    // Count learners in this specific program, semester, and section
-    const { count, error: countError } = await supabase
-      .from('learners')
-      .select('*', { count: 'exact', head: true })
-      .eq('program_id', programId)
-      .eq('semester', semester)
-      .eq('section', section)
-      .eq('is_deleted', false)
-
-    if (countError) {
-      logger.error('Error counting learners', countError as Error, { programId, semester, section })
-      return
-    }
-
-    // Update the specific program section's current_learners count
-    const { error: updateError } = await supabase
-      .from('program_sections')
-      .update({ 
-        current_learners: count || 0
-      })
-      .eq('program_id', programId)
-      .eq('semester', semester)
-      .eq('section', section)
-
-    if (updateError) {
-      logger.error('Error updating learner count', updateError as Error, { programId, semester, section })
-    }
-  } catch (err) {
-    logger.error('Error in updateProgramSectionlearnerCount', err as Error, { programId, semester, section })
-  }
-}
-
-/**
  * Get program sections assigned to a college lecturer
  */
 export const getCollegeLecturerProgramSections = async (userId: string): Promise<ServiceResponse<ProgramSection[]>> => {
   try {
-    const { data, error } = await supabase
-      .from('program_sections')
-      .select(`
-        *,
-        program:programs(
-          name,
-          code,
-          degree_level,
-          department:departments(
-            name,
-            college_id
-          )
-        )
-      `)
-      .eq('faculty_id', userId)
-      .eq('status', 'active')
-      .order('academic_year', { ascending: false })
-
-    if (error) {
-      logger.error('Error fetching program sections', error as Error, { userId })
-      return { data: null, error: error.message }
+    const response = await apiPost('/college-admin/academic', { action: 'get-lecturer-program-sections', userId });
+    if (!response.success) {
+      return { data: null, error: response.error || 'Unable to fetch program sections' };
     }
-
-    // Fetch college names for departments
-    const sectionsWithCollegeNames = await Promise.all(
-      (data || []).map(async (section: any) => {
-        if (section.program?.department?.college_id) {
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('name')
-            .eq('id', section.program.department.college_id)
-            .maybeSingle();
-          
-          if (orgData && section.program?.department) {
-            section.program.department.college = { name: orgData.name };
-          }
-        }
-        return section;
-      })
-    );
-
-    // Get faculty info from college_lecturers table using user_id
-    if (sectionsWithCollegeNames && sectionsWithCollegeNames.length > 0) {
-      const { data: facultyData } = await supabase
-        .from('college_lecturers')
-        .select('first_name, last_name, email, user_id')
-        .eq('user_id', userId)
-        .single()
-
-      // Add faculty info to each section
-      const sectionsWithFaculty = sectionsWithCollegeNames.map(section => ({
-        ...section,
-        faculty: facultyData ? {
-          first_name: facultyData.first_name,
-          last_name: facultyData.last_name,
-          email: facultyData.email
-        } : null
-      }))
-
-      return { data: sectionsWithFaculty, error: null }
-    }
-
-    return { data: data || [], error: null }
+    return { data: response.data || [], error: null };
   } catch (err: any) {
-    logger.error('Error in getCollegeLecturerProgramSections', err as Error, { userId })
-    return { data: null, error: err?.message || 'Unable to fetch program sections' }
+    return { data: null, error: err?.message || 'Unable to fetch program sections' };
   }
 }
 
@@ -165,22 +66,13 @@ export const getCollegeLecturerProgramSections = async (userId: string): Promise
  */
 export const getCollegeDepartments = async (collegeId: string): Promise<ServiceResponse<any[]>> => {
   try {
-    const { data, error } = await supabase
-      .from('departments')
-      .select('id, name, code')
-      .eq('college_id', collegeId)
-      .eq('status', 'active')
-      .order('name', { ascending: true })
-
-    if (error) {
-      logger.error('Error fetching departments', error as Error, { collegeId })
-      return { data: null, error: error.message }
+    const response = await apiPost('/college-admin/academic', { action: 'get-college-departments', collegeId });
+    if (!response.success) {
+      return { data: null, error: response.error || 'Unable to fetch departments' };
     }
-
-    return { data: data || [], error: null }
+    return { data: response.data || [], error: null };
   } catch (err: any) {
-    logger.error('Error in getCollegeDepartments', err as Error, { collegeId })
-    return { data: null, error: err?.message || 'Unable to fetch departments' }
+    return { data: null, error: err?.message || 'Unable to fetch departments' };
   }
 }
 
@@ -204,87 +96,19 @@ export const createProgramSection = async (
   facultyId: string
 ): Promise<ServiceResponse<ProgramSection>> => {
   try {
-    // First, check if program exists or create it
-    let { data: existingProgram } = await supabase
-      .from('programs')
-      .select('id')
-      .eq('department_id', departmentId)
-      .eq('code', programData.code)
-      .single()
-
-    let programId = existingProgram?.id
-
-    if (!programId) {
-      // Create new program
-      const { data: newProgram, error: programError } = await supabase
-        .from('programs')
-        .insert([{
-          department_id: departmentId,
-          name: programData.name,
-          code: programData.code,
-          degree_level: programData.degree_level,
-          status: 'active'
-        }])
-        .select('id')
-        .single()
-
-      if (programError) {
-        logger.error('Error creating program', programError as Error, { departmentId, programCode: programData.code })
-        return { data: null, error: programError.message }
-      }
-
-      programId = newProgram.id
+    const response = await apiPost('/college-admin/academic', {
+      action: 'create-program-section',
+      departmentId,
+      programData,
+      sectionData,
+      facultyId
+    });
+    if (!response.success) {
+      return { data: null, error: response.error || 'Unable to create program section' };
     }
-
-    // Create program section
-    const { data, error } = await supabase
-      .from('program_sections')
-      .insert([{
-        department_id: departmentId,
-        program_id: programId,
-        semester: sectionData.semester,
-        section: sectionData.section,
-        academic_year: sectionData.academic_year,
-        max_learners: sectionData.max_learners,
-        faculty_id: facultyId, // Assign to the creating lecturer
-        status: sectionData.status
-      }])
-      .select(`
-        *,
-        program:programs(
-          name,
-          code,
-          degree_level,
-          department:departments(
-            name,
-            college_id
-          )
-        )
-      `)
-      .single()
-
-    if (error) {
-      logger.error('Error creating program section', error as Error, { departmentId, semester: sectionData.semester, section: sectionData.section })
-      return { data: null, error: error.message }
-    }
-
-    // Fetch college name from organizations table
-    if (data?.program?.department?.college_id) {
-      const { data: orgData } = await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', data.program.department.college_id)
-        .maybeSingle();
-      
-      if (orgData && data.program?.department) {
-        data.program.department.college = { name: orgData.name };
-      }
-    }
-
-    return { data: data, error: null }
+    return { data: response.data, error: null };
   } catch (err: any) {
-    logger.error('Error in createProgramSection', err as Error, { departmentId, semester: sectionData.semester, section: sectionData.section })
-    return { data: null, error: err?.message || 'Unable to create program section' }
+    return { data: null, error: err?.message || 'Unable to create program section' };
   }
 }
 
@@ -295,23 +119,13 @@ export const unassignLecturerFromProgramSection = async (
   programSectionId: string
 ): Promise<ServiceResponse<boolean>> => {
   try {
-    const { error } = await supabase
-      .from('program_sections')
-      .update({ 
-        faculty_id: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', programSectionId)
-
-    if (error) {
-      logger.error('Error unassigning lecturer from program section', error as Error, { programSectionId })
-      return { data: null, error: error.message }
+    const response = await apiPost('/college-admin/academic', { action: 'unassign-lecturer', programSectionId });
+    if (!response.success) {
+      return { data: null, error: response.error || 'Unable to unassign from program section' };
     }
-
-    return { data: true, error: null }
+    return { data: true, error: null };
   } catch (err: any) {
-    logger.error('Error in unassignLecturerFromProgramSection', err as Error, { programSectionId })
-    return { data: null, error: err?.message || 'Unable to unassign from program section' }
+    return { data: null, error: err?.message || 'Unable to unassign from program section' };
   }
 }
 
@@ -321,189 +135,13 @@ export const unassignLecturerFromProgramSection = async (
  */
 export const getProgramSectionlearners = async (userId: string): Promise<ServiceResponse<any[]>> => {
   try {
-    // First get the program sections assigned to this lecturer (program_id, semester, section)
-    const { data: sections, error: sectionsError } = await supabase
-      .from('program_sections')
-      .select('program_id, semester, section')
-      .eq('faculty_id', userId)
-      .eq('status', 'active')
-
-    if (sectionsError) {
-      logger.error('Error fetching lecturer program sections', sectionsError as Error, { userId })
-      return { data: null, error: sectionsError.message }
+    const response = await apiPost('/college-admin/academic', { action: 'get-program-section-learners', userId });
+    if (!response.success) {
+      return { data: null, error: response.error || 'Unable to fetch learners' };
     }
-
-    if (!sections || sections.length === 0) {
-      return { data: [], error: null }
-    }
-
-    // Build OR conditions for each program section (program_id + semester + section)
-    let query = supabase
-      .from('learners')
-      .select(`
-        id,
-        user_id,
-        learner_id,
-        name,
-        email,
-        contact_number,
-        alternate_number,
-        contact_dial_code,
-        date_of_birth,
-        age,
-        gender,
-        bloodGroup,
-        district_name,
-        university,
-        university_main,
-        branch_field,
-        college_school_name,
-        course_name,
-        registration_number,
-        enrollmentNumber,
-        github_link,
-        linkedin_link,
-        twitter_link,
-        facebook_link,
-        instagram_link,
-        portfolio_link,
-        youtube_link,
-        other_social_links,
-        approval_status,
-        trainer_name,
-        bio,
-        address,
-        city,
-        state,
-        country,
-        pincode,
-        resumeUrl,
-        profilePicture,
-        contactNumber,
-        created_at,
-        createdAt,
-        updated_at,
-        updatedAt,
-        imported_at,
-        school_id,
-        college_id,
-        program_id,
-        semester,
-        section,
-        grade,
-        roll_number,
-        admission_number,
-        currentCgpa,
-        guardianName,
-        guardianPhone,
-        guardianEmail,
-        guardianRelation,
-        enrollmentDate,
-        expectedGraduationDate,
-        learner_type,
-        hobbies,
-        languages,
-        interests,
-        category,
-        quota,
-        metadata,
-        notification_settings,
-        skills!skills_learner_id_fkey(
-          id,
-          name,
-          type,
-          level,
-          description,
-          verified,
-          enabled,
-          approval_status,
-          created_at,
-          updated_at
-        ),
-        projects!projects_learner_id_fkey(
-          id,
-          title,
-          description,
-          status,
-          start_date,
-          end_date,
-          duration,
-          tech_stack,
-          demo_link,
-          github_link,
-          approval_status,
-          certificate_url,
-          video_url,
-          ppt_url,
-          organization,
-          enabled,
-          created_at,
-          updated_at
-        ),
-        certificates!certificates_learner_id_fkey(
-          id,
-          title,
-          issuer,
-          level,
-          credential_id,
-          link,
-          issued_on,
-          description,
-          status,
-          approval_status,
-          document_url,
-          enabled,
-          created_at,
-          updated_at
-        ),
-        experience!experience_learner_id_fkey(
-          id,
-          organization,
-          role,
-          start_date,
-          end_date,
-          duration,
-          verified,
-          approval_status,
-          created_at,
-          updated_at
-        ),
-        trainings!trainings_learner_id_fkey(
-          id,
-          title,
-          organization,
-          start_date,
-          end_date,
-          duration,
-          description,
-          approval_status,
-          created_at,
-          updated_at
-        )
-      `)
-      .eq('is_deleted', false)
-
-    // Apply filtering for each program section combination
-    // Build a complex OR condition: (program_id=X AND semester=Y AND section=Z) OR (program_id=A AND semester=B AND section=C)
-    const orConditions = sections.map(section => 
-      `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
-    ).join(',')
-
-    // Use the or() method to combine all conditions
-    query = query.or(orConditions)
-    query = query.order('name', { ascending: true })
-
-    const { data, error } = await query
-
-    if (error) {
-      logger.error('Error fetching program learners', error as Error, { userId })
-      return { data: null, error: error.message }
-    }
-
-    return { data: data || [], error: null }
+    return { data: response.data || [], error: null };
   } catch (err: any) {
-    logger.error('Error in getProgramSectionlearners', err as Error, { userId })
-    return { data: null, error: err?.message || 'Unable to fetch learners' }
+    return { data: null, error: err?.message || 'Unable to fetch learners' };
   }
 }
 
@@ -512,92 +150,11 @@ export const getProgramSectionlearners = async (userId: string): Promise<Service
  */
 export const getlearnersByProgramSection = async (programSectionId: string): Promise<ServiceResponse<ProgramLearner[]>> => {
   try {
-    // Get the program section details
-    const { data: section, error: sectionError } = await supabase
-      .from('program_sections')
-      .select('program_id, semester, section')
-      .eq('id', programSectionId)
-      .single()
-
-    if (sectionError || !section) {
-      return { data: null, error: 'Program section not found' }
+    const response = await apiPost('/college-admin/academic', { action: 'get-learners-by-section', programSectionId });
+    if (!response.success) {
+      return { data: null, error: response.error || 'Unable to fetch section learners' };
     }
-
-    // Get learners from that specific program, semester, and section
-    const { data, error } = await supabase
-      .from('learners')
-      .select(`
-        id,
-        name,
-        email,
-        city,
-        program_id,
-        semester,
-        section,
-        "enrollmentNumber",
-        contact_number,
-        updated_at
-      `)
-      .eq('program_id', section.program_id)
-      .eq('semester', section.semester)
-      .eq('section', section.section)
-      .eq('is_deleted', false)
-      .order('name', { ascending: true })
-
-    if (error) {
-      logger.error('Error fetching section learners', error as Error, { programSectionId })
-      return { data: null, error: error.message }
-    }
-
-    const learners: ProgramLearner[] = (data || []).map(learner => ({
-      id: learner.id,
-      name: learner.name || 'Unknown',
-      email: learner.email || '',
-      city: learner.city || '',
-      program_id: learner.program_id,
-      semester: learner.semester || 1,
-      enrollment_number: learner.enrollmentNumber || '',
-      contact_number: learner.contact_number || '',
-      progress: 0, // TODO: Calculate actual progress
-      lastActive: learner.updated_at || new Date().toISOString()
-    }))
-
-    return { data: learners, error: null }
-  } catch (err: any) {
-    logger.error('Error in getlearnersByProgramSection', err as Error, { programSectionId })
-    return { data: null, error: err?.message || 'Unable to fetch section learners' }
-  }
-}
-
-/**
- * Get available learners that can be added to a program (learners without program_id)
- */
-export const getAvailablelearnersForProgram = async (collegeId: string): Promise<ServiceResponse<ProgramLearner[]>> => {
-  try {
-    const { data, error } = await supabase
-      .from('learners')
-      .select(`
-        id,
-        name,
-        email,
-        city,
-        program_id,
-        semester,
-        "enrollmentNumber",
-        contact_number,
-        updated_at
-      `)
-      .eq('college_id', collegeId)
-      .is('program_id', null) // Only learners without program assignment
-      .eq('is_deleted', false)
-      .order('name', { ascending: true })
-
-    if (error) {
-      logger.error('Error fetching available learners', error as Error, { collegeId })
-      return { data: null, error: error.message }
-    }
-
-    const learners: ProgramLearner[] = (data || []).map(learner => ({
+    const learners: ProgramLearner[] = (response.data || []).map((learner: any) => ({
       id: learner.id,
       name: learner.name || 'Unknown',
       email: learner.email || '',
@@ -608,12 +165,37 @@ export const getAvailablelearnersForProgram = async (collegeId: string): Promise
       contact_number: learner.contact_number || '',
       progress: 0,
       lastActive: learner.updated_at || new Date().toISOString()
-    }))
-
-    return { data: learners, error: null }
+    }));
+    return { data: learners, error: null };
   } catch (err: any) {
-    logger.error('Error in getAvailablelearnersForProgram', err as Error, { collegeId })
-    return { data: null, error: err?.message || 'Unable to fetch available learners' }
+    return { data: null, error: err?.message || 'Unable to fetch section learners' };
+  }
+}
+
+/**
+ * Get available learners that can be added to a program (learners without program_id)
+ */
+export const getAvailablelearnersForProgram = async (collegeId: string): Promise<ServiceResponse<ProgramLearner[]>> => {
+  try {
+    const response = await apiPost('/college-admin/academic', { action: 'get-available-learners', collegeId });
+    if (!response.success) {
+      return { data: null, error: response.error || 'Unable to fetch available learners' };
+    }
+    const learners: ProgramLearner[] = (response.data || []).map((learner: any) => ({
+      id: learner.id,
+      name: learner.name || 'Unknown',
+      email: learner.email || '',
+      city: learner.city || '',
+      program_id: learner.program_id,
+      semester: learner.semester || 1,
+      enrollment_number: learner.enrollmentNumber || '',
+      contact_number: learner.contact_number || '',
+      progress: 0,
+      lastActive: learner.updated_at || new Date().toISOString()
+    }));
+    return { data: learners, error: null };
+  } catch (err: any) {
+    return { data: null, error: err?.message || 'Unable to fetch available learners' };
   }
 }
 
@@ -627,28 +209,19 @@ export const addlearnerToProgram = async (
   section: string
 ): Promise<ServiceResponse<boolean>> => {
   try {
-    const { error } = await supabase
-      .from('learners')
-      .update({ 
-        program_id: programId,
-        semester: semester,
-        section: section,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', learnerId)
-
-    if (error) {
-      logger.error('Error adding learner to program', error as Error, { learnerId, programId })
-      return { data: null, error: error.message }
+    const response = await apiPost('/college-admin/academic', {
+      action: 'add-learner-to-program',
+      learnerId,
+      programId,
+      semester,
+      section
+    });
+    if (!response.success) {
+      return { data: null, error: response.error || 'Unable to add learner to program' };
     }
-
-    // Update the learner count in program section
-    await updateProgramSectionlearnerCount(programId, semester, section)
-
-    return { data: true, error: null }
+    return { data: true, error: null };
   } catch (err: any) {
-    logger.error('Error in addlearnerToProgram', err as Error, { learnerId, programId })
-    return { data: null, error: err?.message || 'Unable to add learner to program' }
+    return { data: null, error: err?.message || 'Unable to add learner to program' };
   }
 }
 
@@ -657,44 +230,12 @@ export const addlearnerToProgram = async (
  */
 export const removelearnerFromProgram = async (learnerId: string): Promise<ServiceResponse<boolean>> => {
   try {
-    // First get the learner's current program info before removing
-    const { data: learner, error: fetchError } = await supabase
-      .from('learners')
-      .select('program_id, semester, section')
-      .eq('id', learnerId)
-      .single()
-
-    if (fetchError || !learner) {
-      logger.error('Error fetching learner info', fetchError as Error, { learnerId })
-      return { data: null, error: 'Learner not found' }
+    const response = await apiPost('/college-admin/academic', { action: 'remove-learner-from-program', learnerId });
+    if (!response.success) {
+      return { data: null, error: response.error || 'Unable to remove learner from program' };
     }
-
-    const { program_id: oldProgramId, semester: oldSemester, section: oldSection } = learner
-
-    // Remove learner from program
-    const { error } = await supabase
-      .from('learners')
-      .update({ 
-        program_id: null,
-        semester: null,
-        section: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', learnerId)
-
-    if (error) {
-      logger.error('Error removing learner from program', error as Error, { learnerId })
-      return { data: null, error: error.message }
-    }
-
-    // Update the learner count in the old program section
-    if (oldProgramId && oldSemester && oldSection) {
-      await updateProgramSectionlearnerCount(oldProgramId, oldSemester, oldSection)
-    }
-
-    return { data: true, error: null }
+    return { data: true, error: null };
   } catch (err: any) {
-    logger.error('Error in removelearnerFromProgram', err as Error, { learnerId })
-    return { data: null, error: err?.message || 'Unable to remove learner from program' }
+    return { data: null, error: err?.message || 'Unable to remove learner from program' };
   }
 }

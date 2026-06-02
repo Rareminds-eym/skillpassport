@@ -49,6 +49,7 @@ function forbiddenResponse(): Response {
 
 const ENTITY_SYNC_TABLES = new Set([
   'education', 'experience', 'certificates', 'projects', 'trainings', 'skills',
+  'recent_updates',
 ]);
 
 const TABLE_ID_COLUMN: Record<string, string> = {
@@ -58,6 +59,7 @@ const TABLE_ID_COLUMN: Record<string, string> = {
   projects: 'learner_id',
   trainings: 'learner_id',
   skills: 'learner_id',
+  recent_updates: 'learner_id',
 };
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {

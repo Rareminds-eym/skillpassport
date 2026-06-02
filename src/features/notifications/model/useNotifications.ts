@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
 import { apiGet, apiPost } from '@/shared/api/apiClient';
+import { getSSEClient } from '@/shared/api/sseRealtimeClient';
 
 export type NotificationType =
   | "new_opportunity"
@@ -43,45 +43,16 @@ export type Notification = {
   created_at: string;
 };
 
-function isUUID(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
-
 async function resolveUserId(identifier: string): Promise<string | null> {
   if (!identifier) return null;
-  if (isUUID(identifier)) return identifier;
 
-  const { data: learnerData } = await supabase
-    .from("learners")
-    .select("user_id")
-    .ilike("email", identifier)
-    .maybeSingle();
+  const response: any = await apiPost('/notifications', {
+    action: 'resolve-users',
+    identifiers: [identifier],
+  });
 
-  if (learnerData?.user_id) return learnerData.user_id;
-
-  const { data: educatorData } = await supabase
-    .from("school_educators")
-    .select("user_id")
-    .ilike("email", identifier)
-    .maybeSingle();
-
-  if (educatorData?.user_id) return educatorData.user_id;
-
-  const { data: recruiterData } = await supabase
-    .from("recruiters")
-    .select("user_id")
-    .eq("email", identifier)
-    .maybeSingle();
-
-  if (recruiterData?.user_id) return recruiterData.user_id;
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("id")
-    .ilike("email", identifier)
-    .maybeSingle();
-
-  return userData?.id ?? null;
+  const data = response?.data ?? response;
+  return data?.resolved?.[identifier] ?? null;
 }
 
 type UseNotificationsReturn = {
@@ -110,7 +81,6 @@ export function useNotifications(
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
 
   const lastCursorRef = useRef<string | null>(null);
-  const channelRef = useRef<any | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -158,65 +128,33 @@ export function useNotifications(
   useEffect(() => {
     if (!userId) return;
     let isSubscribed = true;
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
 
-    const setupSubscription = () => {
-      if (!isSubscribed) return;
+    const sseClient = getSSEClient();
+    const unsubscribers: Array<() => void> = [];
 
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
+    // Subscribe to notifications changes
+    const unsub = sseClient.subscribe(
+      'notifications',
+      { event: '*', filter: `recipient_id=eq.${userId}` },
+      (event) => {
+        if (event.type === 'change') {
+          const row = event.payload as Notification;
 
-      const channel = supabase
-        .channel(`notifications-${userId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "notifications",
-            filter: `recipient_id=eq.${userId}`,
-          },
-          (payload) => {
-            const row = payload.new as Notification;
-
-            if (payload.eventType === "INSERT") {
-              setItems((prev) => [row, ...prev]);
-            } else if (payload.eventType === "UPDATE") {
-              setItems((prev) =>
-                prev.map((n) => (n.id === row.id ? row : n))
-              );
-            } else if (payload.eventType === "DELETE") {
-              const oldRow = payload.old as Notification;
-              setItems((prev) => prev.filter((n) => n.id !== oldRow.id));
-            }
+          if (event.event === 'INSERT') {
+            setItems((prev) => [row, ...prev]);
+          } else if (event.event === 'UPDATE') {
+            setItems((prev) =>
+              prev.map((n) => (n.id === row.id ? row : n))
+            );
+          } else if (event.event === 'DELETE') {
+            setItems((prev) => prev.filter((n) => n.id !== row.id));
           }
-        )
-        .subscribe((status) => {
-          setConnectionStatus(status);
+        }
+      }
+    );
+    unsubscribers.push(unsub);
 
-          if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-            if (isSubscribed && retryCount < MAX_RETRIES) {
-              retryCount++;
-              reconnectTimeoutRef.current = setTimeout(() => {
-                setupSubscription();
-              }, 2000 * retryCount);
-            }
-          } else if (status === "SUBSCRIBED") {
-            retryCount = 0;
-          }
-        });
-
-      channelRef.current = channel;
-    };
-
-    setupSubscription();
+    setConnectionStatus('SUBSCRIBED');
 
     return () => {
       isSubscribed = false;
@@ -224,11 +162,8 @@ export function useNotifications(
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-      setConnectionStatus("disconnected");
+      unsubscribers.forEach(unsub => unsub());
+      setConnectionStatus('disconnected');
     };
   }, [userId]);
 

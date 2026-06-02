@@ -144,29 +144,32 @@ export const initiateRazorpayPayment = async ({
       isUpgrade,
     });
 
+    // apiSuccess wraps the payload at { success, data: { ... } }, so read from orderData.data.*
+    const payload = orderData.data;
+
     // Check if the backend auto-provisioned a freemium subscription
-    if (orderData.isFreemium && orderData.success) {
+    if (payload?.isFreemium && orderData.success) {
       onSuccess({
         razorpay_payment_id: 'freemium_direct',
         razorpay_order_id: 'freemium_direct',
         razorpay_signature: 'freemium_direct',
         plan,
-        verificationResult: orderData.data,
+        verificationResult: payload,
       });
       return;
     }
 
     // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
-    const razorpayKeyId = orderData.razorpay_key_id || orderData.key;
+    const razorpayKeyId = payload?.razorpay_key_id || payload?.key;
 
     // Razorpay checkout options
     const options = {
       key: razorpayKeyId,
-      amount: orderData.amount,
-      currency: orderData.currency,
+      amount: payload?.amount,
+      currency: payload?.currency,
       name: 'RareMinds Skill Passport',
       description: `${plan.name} Plan - ₹${plan.price}/${plan.duration ?? 'month'}`,
-      order_id: orderData.id,
+      order_id: payload?.id,
       prefill: {
         name: userDetails.name,
         email: userDetails.email,
@@ -214,7 +217,7 @@ export const initiateRazorpayPayment = async ({
             onFailure({
               error_code: 'PAYMENT_CANCELLED',
               error_description: 'Payment was cancelled by user',
-              razorpay_order_id: orderData.id,
+              razorpay_order_id: payload?.id,
             });
           }
         },
@@ -229,7 +232,7 @@ export const initiateRazorpayPayment = async ({
         error_code: response.error?.code || 'PAYMENT_FAILED',
         error_description: response.error?.description || 'Payment failed',
         error_reason: response.error?.reason || '',
-        razorpay_order_id: orderData.id,
+        razorpay_order_id: payload?.id,
         razorpay_payment_id: response.error?.metadata?.payment_id || '',
       });
     });

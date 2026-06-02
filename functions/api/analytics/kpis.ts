@@ -17,7 +17,6 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const { data, error } = await supabase
     .from('analytics_kpis')
     .select('*')
-    .eq('org_id', user.org_id)
     .eq('period', period)
     .order('date', { ascending: false })
     .limit(30);

@@ -1,35 +1,33 @@
+import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
+import { useUser } from '@/features/auth';
+import { courseProgressService, RestoreProgressModal } from '@/features/courses';
+import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
+import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
+import { downloadCertificate, generateCourseCertificate } from '@/features/digital-portfolio';
+import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { getLogger } from '@/shared/config/logging';
+import { Badge, Button, Card, CardContent } from '@/shared/ui';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    Award,
-    BookOpen,
-    CheckCircle,
-    ChevronLeft,
-    ChevronRight,
-    Circle,
-    Clock,
-    FileText,
-    Image,
-    Link as LinkIcon,
-    Menu,
-    Video,
-    X
+  Award,
+  BookOpen,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  Clock,
+  FileText,
+  Image,
+  Link as LinkIcon,
+  Menu,
+  Video,
+  X
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { AITutorPanel, VideoLearningPanel } from '@/features/ai-tutor';
-import { RestoreProgressModal } from '@/features/courses';
-import { Badge, Button, Card, CardContent } from '@/shared/ui';
-import { useUser } from '@/features/auth';
-import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
-import { supabase } from '@/shared/api/supabaseClient';
-import { generateCourseCertificate, downloadCertificate } from '@/features/digital-portfolio';
-import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
-import { courseProgressService } from '@/features/courses';
-import { fileService } from '@/features/courses';
-import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api';
-import { getLogger } from '@/shared/config/logging';
-import { ssoClient } from '@/shared/api/ssoClient';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const logger = getLogger('course-player');
 
@@ -71,12 +69,12 @@ const CoursePlayer = () => {
   const [accumulatedTime, setAccumulatedTime] = useState(0);
   const [positionInitialized, setPositionInitialized] = useState(false);
   const [lessonTimeSpent, setLessonTimeSpent] = useState({}); // Store time for all lessons
-  
+
   // Video progress tracking refs
   const videoRef = useRef(null);
   const videoSaveTimeoutRef = useRef(null);
   const lastSavedVideoPositionRef = useRef(0);
-  
+
   // Video play/pause time tracking (for normal videos only)
   const videoPlayStartTimeRef = useRef(null);
   const videoAutoSaveIntervalRef = useRef(null); // For 30-second auto-save
@@ -142,26 +140,26 @@ const CoursePlayer = () => {
         const savedLessonIndex = enrollResult.data.last_lesson_index || 0;
         const savedLessonId = enrollResult.data.last_lesson_id;
         const savedVideoPosition = enrollResult.data.last_video_position || 0;
-        
+
         console.log('📍 Saved position from enrollment:', {
           moduleIndex: savedModuleIndex,
           lessonIndex: savedLessonIndex,
           lessonId: savedLessonId,
           videoPosition: savedVideoPosition
         });
-        
+
         if (savedModuleIndex > 0 || savedLessonIndex > 0) {
           console.log('📍 Restoring to saved position - Module:', savedModuleIndex, 'Lesson:', savedLessonIndex);
           setCurrentModuleIndex(savedModuleIndex);
           setCurrentLessonIndex(savedLessonIndex);
-          
+
           // Also set the video position ref for when video loads
           if (savedVideoPosition > 0) {
             lastSavedVideoPositionRef.current = Math.max(0, savedVideoPosition - 2);
             console.log('📹 Pre-setting video position from enrollment:', lastSavedVideoPositionRef.current);
           }
         }
-        
+
         // Mark position as initialized after setting the correct indices
         setPositionInitialized(true);
       } else if (!enrollResult.success) {
@@ -189,7 +187,7 @@ const CoursePlayer = () => {
       const lessonsArray = Array.from(completedLessons);
       const result = await courseEnrollmentService.updateProgress(user.email, courseId, lessonsArray);
       console.log('📊 Progress saved:', lessonsArray.length, 'lessons completed');
-      
+
       // Also update the enrollment state with new progress
       if (result.success && result.data) {
         setEnrollment(prev => ({ ...prev, ...result.data }));
@@ -265,7 +263,7 @@ const CoursePlayer = () => {
 
   const handleVideoTimeUpdate = useCallback(() => {
     if (!videoRef.current || !isLearner) return;
-    
+
     const video = videoRef.current;
     const position = video.currentTime;
     const duration = video.duration;
@@ -292,16 +290,16 @@ const CoursePlayer = () => {
 
   const handleVideoPause = useCallback(() => {
     if (!videoRef.current || !isLearner) return;
-    
+
     // Save video position for resume feature
     saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
-    
+
     // For normal videos (not YouTube), save play time
     if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
       const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
       if (playedSeconds > 0) {
         console.log('⏸️ Video paused - played for', playedSeconds, 'seconds');
-        
+
         // Use stored lesson ID instead of getCurrentLesson()
         if (currentLessonId) {
           console.log('💾 Saving time for lesson:', currentLessonId);
@@ -311,7 +309,7 @@ const CoursePlayer = () => {
         }
       }
       videoPlayStartTimeRef.current = null;
-      
+
       // Clear 30-second auto-save interval
       if (videoAutoSaveIntervalRef.current) {
         clearInterval(videoAutoSaveIntervalRef.current);
@@ -320,7 +318,7 @@ const CoursePlayer = () => {
       }
     }
   }, [isLearner, saveVideoPosition, isYouTubeVideo, currentLessonId]);
-  
+
   const handleVideoPlay = useCallback(() => {
     if (!videoRef.current || !isLearner) return;
     console.log('▶️ Play button pressed');
@@ -328,18 +326,18 @@ const CoursePlayer = () => {
 
   const handleVideoPlaying = useCallback(() => {
     if (!videoRef.current || !isLearner) return;
-    
+
     // For normal videos (not YouTube), start tracking play time
     // This fires when video actually starts playing (after buffering)
     if (!isYouTubeVideo) {
       videoPlayStartTimeRef.current = Date.now();
       console.log('▶️ Video actually playing - timer started');
-      
+
       // Start 30-second auto-save interval
       if (videoAutoSaveIntervalRef.current) {
         clearInterval(videoAutoSaveIntervalRef.current);
       }
-      
+
       videoAutoSaveIntervalRef.current = setInterval(() => {
         if (videoPlayStartTimeRef.current && currentLessonId) {
           const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
@@ -351,14 +349,14 @@ const CoursePlayer = () => {
           }
         }
       }, 30000); // 30 seconds
-      
+
       console.log('⏰ Started 30-second auto-save interval');
     }
   }, [isLearner, isYouTubeVideo, currentLessonId]);
 
   const handleVideoWaiting = useCallback(() => {
     if (!videoRef.current || !isLearner || !isYouTubeVideo) return;
-    
+
     // Video is buffering/stuck - pause the timer
     if (videoPlayStartTimeRef.current) {
       const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
@@ -377,13 +375,13 @@ const CoursePlayer = () => {
 
   const handleVideoEnded = useCallback(() => {
     if (!isLearner || !user?.id || !courseId) return;
-    
+
     // For normal videos, save final play time
     if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
       const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
       if (playedSeconds > 0) {
         console.log('⏹️ Video ended - played for', playedSeconds, 'seconds');
-        
+
         // Use stored lesson ID instead of getCurrentLesson()
         if (currentLessonId) {
           console.log('💾 Saving time for lesson:', currentLessonId);
@@ -393,7 +391,7 @@ const CoursePlayer = () => {
         }
       }
       videoPlayStartTimeRef.current = null;
-      
+
       // Clear 30-second auto-save interval
       if (videoAutoSaveIntervalRef.current) {
         clearInterval(videoAutoSaveIntervalRef.current);
@@ -401,7 +399,7 @@ const CoursePlayer = () => {
         console.log('⏹️ Cleared 30-second auto-save interval');
       }
     }
-    
+
     // Mark video as completed
     if (currentLessonId) {
       courseProgressService.markVideoCompleted(user.id, courseId, currentLessonId);
@@ -415,7 +413,7 @@ const CoursePlayer = () => {
     const handleBeforeUnload = () => {
       if (videoRef.current && videoRef.current.currentTime > 0) {
         saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
-        
+
         // For normal videos, save play time if video was playing
         if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
           const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
@@ -429,7 +427,7 @@ const CoursePlayer = () => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && videoRef.current) {
         saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
-        
+
         // For normal videos, save play time if video was playing
         if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
           const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
@@ -480,17 +478,17 @@ const CoursePlayer = () => {
       console.log('📍 Restore point data:', point);
       console.log('📍 Restoring to Module Index:', point.lastModuleIndex, 'Lesson Index:', point.lastLessonIndex);
       console.log('📍 Last Lesson ID:', point.lastLessonId, 'Video Position:', point.lastVideoPosition);
-      
+
       // Set the video position from restore point for immediate use
       if (point.lastVideoPosition > 0) {
         lastSavedVideoPositionRef.current = Math.max(0, point.lastVideoPosition - 2);
         console.log('📹 Set video position from restore point:', lastSavedVideoPositionRef.current);
       }
-      
+
       // Update indices - this will trigger the media fetch effect
       setCurrentModuleIndex(point.lastModuleIndex);
       setCurrentLessonIndex(point.lastLessonIndex);
-      
+
       console.log('📍 Restored to Module', point.lastModuleIndex + 1, 'Lesson', point.lastLessonIndex + 1);
     }
   }, [handleRestore]);
@@ -530,51 +528,36 @@ const CoursePlayer = () => {
     }
 
     try {
-      // Fetch current time from database first
-      const { data: existing, error: fetchError } = await supabase
-        .from('learner_course_progress')
-        .select('time_spent_seconds')
-        .eq('learner_id', user.id)
-        .eq('course_id', courseId)
-        .eq('lesson_id', targetLessonId)
-        .maybeSingle();
+      const existingRes = await apiPost('/learner-pages/actions', {
+        action: 'fetch-course-time',
+        userId: user.id,
+        courseId,
+        lessonId: targetLessonId,
+      });
 
-      if (fetchError) {
-        console.error('Error fetching current time:', fetchError);
-        return;
-      }
-
-      // Calculate total time by adding to database value
-      const currentTimeInDb = existing?.time_spent_seconds || 0;
+      const currentTimeInDb = existingRes?.data?.time_spent_seconds || 0;
       const totalTime = currentTimeInDb + additionalSeconds;
 
       console.log('Saving time:', { additionalSeconds, currentTimeInDb, totalTime, lessonId: targetLessonId });
 
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert({
-          learner_id: user.id,
-          course_id: courseId,
-          lesson_id: targetLessonId,
-          time_spent_seconds: totalTime,
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
+      await apiPost('/learner-pages/actions', {
+        action: 'upsert-course-time',
+        userId: user.id,
+        courseId,
+        lessonId: targetLessonId,
+        timeSpentSeconds: totalTime,
+        lastAccessed: new Date().toISOString(),
+      });
 
-      if (error) {
-        console.error('Error saving time spent:', error);
-      } else {
-        // Update accumulated time state only if this is the current lesson
-        if (targetLessonId === currentLessonId) {
-          setAccumulatedTime(totalTime);
-        }
-        // Also update the lessonTimeSpent map for sidebar display
-        setLessonTimeSpent(prev => ({
-          ...prev,
-          [targetLessonId]: totalTime
-        }));
+      // Update accumulated time state only if this is the current lesson
+      if (targetLessonId === currentLessonId) {
+        setAccumulatedTime(totalTime);
       }
+      // Also update the lessonTimeSpent map for sidebar display
+      setLessonTimeSpent(prev => ({
+        ...prev,
+        [targetLessonId]: totalTime
+      }));
     } catch (error) {
       console.error('Error in saveTimeSpent:', error);
     }
@@ -585,23 +568,12 @@ const CoursePlayer = () => {
     if (!user?.id || !courseId || !isLearner) return;
 
     try {
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert({
-          learner_id: user.id,
-          course_id: courseId,
-          lesson_id: lessonId,
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
-
-      if (error) {
-        console.error('Error marking lesson complete:', error);
-        return;
-      }
+      await apiPost('/learner-pages/actions', {
+        action: 'mark-lesson-completed',
+        userId: user.id,
+        courseId,
+        lessonId,
+      });
 
       // Check if all lessons in the course are now completed
       await checkAndUpdateCourseCompletion();
@@ -639,33 +611,22 @@ const CoursePlayer = () => {
       const totalLessons = course.modules?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 0;
       if (totalLessons === 0) return;
 
-      // Get completed lessons count from database
-      const { count: completedCount, error: countError } = await supabase
-        .from('learner_course_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('learner_id', user.id)
-        .eq('course_id', courseId)
-        .eq('status', 'completed');
+      const countRes = await apiPost('/learner-pages/actions', {
+        action: 'count-completed-lessons',
+        userId: user.id,
+        courseId,
+      });
 
-      if (countError) {
-        console.error('Error checking completion:', countError);
-        return;
-      }
+      const completedCount = countRes?.data?.count || 0;
 
       // If all lessons are completed, update course_enrollments.completed_at
       if (completedCount >= totalLessons) {
-        const { error: updateError } = await supabase
-          .from('course_enrollments')
-          .update({ completed_at: new Date().toISOString() })
-          .eq('learner_id', user.id)
-          .eq('course_id', courseId)
-          .is('completed_at', null); // Only update if not already completed
-
-        if (updateError) {
-          console.error('Error updating course completion:', updateError);
-        } else {
-          console.log('🎉 Course marked as completed!');
-        }
+        await apiPost('/learner-pages/actions', {
+          action: 'update-course-completed-at',
+          userId: user.id,
+          courseId,
+        });
+        console.log('🎉 Course marked as completed!');
       }
     } catch (error) {
       console.error('Error in checkAndUpdateCourseCompletion:', error);
@@ -683,52 +644,40 @@ const CoursePlayer = () => {
     console.log('📚 initializeLessonProgress for lesson:', currentLesson.title, 'ID:', currentLesson.id);
 
     try {
-      // Check if progress record exists
-      const { data: existing, error: fetchError } = await supabase
-        .from('learner_course_progress')
-        .select('*')
-        .eq('learner_id', user.id)
-        .eq('course_id', courseId)
-        .eq('lesson_id', currentLesson.id)
-        .maybeSingle();
+      const existingRes = await apiPost('/learner-pages/actions', {
+        action: 'get-lesson-progress',
+        userId: user.id,
+        courseId,
+        lessonId: currentLesson.id,
+      });
 
-      if (fetchError) {
-        console.error('Error fetching lesson progress:', fetchError);
-        return;
-      }
+      const existing = existingRes?.data;
 
       // If record exists, load accumulated time
       if (existing) {
         setAccumulatedTime(existing.time_spent_seconds || 0);
         console.log('📚 Loaded existing progress for lesson:', currentLesson.title, 'Time:', existing.time_spent_seconds);
 
-        // Update last_accessed
-        await supabase
-          .from('learner_course_progress')
-          .update({
-            last_accessed: new Date().toISOString(),
-            status: existing.status === 'completed' ? 'completed' : 'in_progress'
-          })
-          .eq('id', existing.id);
+        await apiPost('/learner-pages/actions', {
+          action: 'upsert-lesson-progress',
+          userId: user.id,
+          courseId,
+          lessonId: currentLesson.id,
+          status: existing.status === 'completed' ? 'completed' : 'in_progress',
+        });
       } else {
         // Create new progress record
         console.log('📚 Creating new progress record for lesson:', currentLesson.title);
         setAccumulatedTime(0);
-        
-        const { error: insertError } = await supabase
-          .from('learner_course_progress')
-          .insert({
-            learner_id: user.id,
-            course_id: courseId,
-            lesson_id: currentLesson.id,
-            status: 'in_progress',
-            time_spent_seconds: 0,
-            last_accessed: new Date().toISOString()
-          });
-          
-        if (insertError && insertError.code !== '23505') {
-          console.error('Error creating lesson progress:', insertError);
-        }
+
+        await apiPost('/learner-pages/actions', {
+          action: 'upsert-lesson-progress',
+          userId: user.id,
+          courseId,
+          lessonId: currentLesson.id,
+          status: 'in_progress',
+          timeSpentSeconds: 0,
+        });
       }
 
       // Also update the course enrollment's last position
@@ -758,15 +707,15 @@ const CoursePlayer = () => {
       console.log('🎬 Waiting for position to be initialized...');
       return;
     }
-    
+
     if (course && currentModuleIndex !== null && currentLessonIndex !== null) {
       // Get the lesson directly here to avoid stale closure issues
       const module = course.modules?.[currentModuleIndex];
       const lesson = module?.lessons?.[currentLessonIndex];
-      
+
       console.log('🎬 Lesson change detected - Module:', currentModuleIndex, 'Lesson:', currentLessonIndex);
       console.log('🎬 Target lesson:', lesson?.title, 'ID:', lesson?.id);
-      
+
       if (lesson) {
         setCurrentLessonId(lesson.id); // Store lesson ID for video tracking
         fetchLessonMedia(lesson);
@@ -783,7 +732,7 @@ const CoursePlayer = () => {
       console.log('📊 Normal video detected - using play/pause tracking');
       return;
     }
-    
+
     console.log('📊 YouTube video detected - using page-based tracking');
     // Start timer when lesson loads
     setLessonStartTime(Date.now());
@@ -806,7 +755,7 @@ const CoursePlayer = () => {
     if (!isYouTubeVideo) {
       return;
     }
-    
+
     const interval = setInterval(() => {
       if (lessonStartTime) {
         const currentTime = Math.floor((Date.now() - lessonStartTime) / 1000);
@@ -847,7 +796,7 @@ const CoursePlayer = () => {
 
         if (videoResource) {
           console.log('🎬 Found video resource for lesson:', currentLesson.title, 'Resource:', videoResource.name, 'Type:', videoResource.type);
-          
+
           // For YouTube videos, use embed URL directly
           if (videoResource.type === 'youtube' && videoResource.embedUrl) {
             console.log('🎬 Setting YouTube embed URL for lesson:', currentLesson.title);
@@ -856,7 +805,7 @@ const CoursePlayer = () => {
           } else if (videoResource.url) {
             console.log('🎬 Video resource URL for lesson:', currentLesson.title, ':', videoResource.url);
             setIsYouTubeVideo(false); // Mark as normal video
-            
+
             // Check if URL needs authentication
             if (needsAuthentication(videoResource.url)) {
               console.log('🔒 Getting authenticated URL for video');
@@ -865,7 +814,7 @@ const CoursePlayer = () => {
                 courseId,
                 currentLesson.id
               );
-              
+
               if (authUrl) {
                 console.log('🎬 Setting authenticated video URL for lesson:', currentLesson.title);
                 setLessonVideoUrl(authUrl);
@@ -890,7 +839,7 @@ const CoursePlayer = () => {
           const refreshedResources = await Promise.all(
             otherResources.map(async (r) => {
               let url = r.url;
-              
+
               // Get authenticated URL for R2 files
               if (needsAuthentication(r.url) && r.type !== 'youtube' && r.type !== 'link') {
                 try {
@@ -906,7 +855,7 @@ const CoursePlayer = () => {
                   console.log('Could not get authenticated URL for resource:', r.name);
                 }
               }
-              
+
               return {
                 title: r.name,
                 url: url,
@@ -920,8 +869,8 @@ const CoursePlayer = () => {
       }
       // Fallback: Check for old-style video_url field
       else if (currentLesson.video_url &&
-               (currentLesson.video_url.startsWith('http') ||
-                currentLesson.video_url.startsWith('https'))) {
+        (currentLesson.video_url.startsWith('http') ||
+          currentLesson.video_url.startsWith('https'))) {
         setLessonVideoUrl(currentLesson.video_url);
       }
     } catch (error) {
@@ -935,41 +884,22 @@ const CoursePlayer = () => {
     try {
       setLoading(true);
 
-      // Fetch course basic info
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('course_id', courseId)
-        .maybeSingle();
+      const fullRes = await apiPost('/learner-pages/actions', {
+        action: 'fetch-course-full',
+        courseId,
+      });
 
-      if (courseError) throw courseError;
-
+      const courseData = fullRes?.data;
       if (!courseData) {
         navigate(getBackPath());
         return;
       }
 
-      // Fetch modules with lessons and resources
-      const { data: modulesData, error: modulesError } = await supabase
-        .from('course_modules')
-        .select(`
-          *,
-          lessons!fk_module (
-            *,
-            lesson_resources!fk_lesson (*)
-          )
-        `)
-        .eq('course_id', courseId)
-        .order('order_index', { ascending: true });
-
-      if (modulesError) {
-        console.error('Error fetching modules:', modulesError);
-      }
-
-      console.log('Raw modules data from Supabase:', modulesData);
+      const modulesData = courseData.modules || [];
+      console.log('Raw modules data:', modulesData);
 
       // Transform modules data to match expected structure
-      const transformedModules = (modulesData || []).map(module => {
+      const transformedModules = modulesData.map(module => {
         console.log('Processing module:', module.title, 'Raw lessons:', module.lessons);
 
         // Sort lessons by order_index
@@ -1028,12 +958,13 @@ const CoursePlayer = () => {
 
       // Load time spent for all lessons from database (for learners only)
       if (isLearner && user?.id && transformedModules.length > 0) {
-        const { data: progressData } = await supabase
-          .from('learner_course_progress')
-          .select('lesson_id, time_spent_seconds')
-          .eq('learner_id', user.id)
-          .eq('course_id', courseId);
+        const timeRes = await apiPost('/learner-pages/actions', {
+          action: 'fetch-all-lesson-times',
+          userId: user.id,
+          courseId,
+        });
 
+        const progressData = timeRes?.data;
         if (progressData && progressData.length > 0) {
           const timeSpentMap = {};
           progressData.forEach(({ lesson_id, time_spent_seconds }) => {
@@ -1083,7 +1014,7 @@ const CoursePlayer = () => {
           await saveTimeSpent(timeSpent, currentLesson.id);
         }
       }
-      
+
       // Save normal video time (play/pause tracking)
       if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
         const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
@@ -1092,7 +1023,7 @@ const CoursePlayer = () => {
           await saveTimeSpent(playedSeconds, currentLesson.id);
         }
         videoPlayStartTimeRef.current = null;
-        
+
         // Clear auto-save interval
         if (videoAutoSaveIntervalRef.current) {
           clearInterval(videoAutoSaveIntervalRef.current);
@@ -1161,7 +1092,7 @@ const CoursePlayer = () => {
         await saveTimeSpent(playedSeconds, currentLessonId);
       }
       videoPlayStartTimeRef.current = null;
-      
+
       // Clear auto-save interval
       if (videoAutoSaveIntervalRef.current) {
         clearInterval(videoAutoSaveIntervalRef.current);
@@ -1221,7 +1152,7 @@ const CoursePlayer = () => {
         await saveTimeSpent(playedSeconds, currentLessonId);
       }
       videoPlayStartTimeRef.current = null;
-      
+
       // Clear auto-save interval
       if (videoAutoSaveIntervalRef.current) {
         clearInterval(videoAutoSaveIntervalRef.current);
@@ -1265,7 +1196,7 @@ const CoursePlayer = () => {
     if (!course?.modules) return false;
     const currentModule = course.modules[currentModuleIndex];
     return currentLessonIndex < currentModule.lessons.length - 1 ||
-           currentModuleIndex < course.modules.length - 1;
+      currentModuleIndex < course.modules.length - 1;
   };
 
   const canGoPrevious = () => {
@@ -1277,7 +1208,7 @@ const CoursePlayer = () => {
     if (!course?.modules) return false;
     const currentModule = course.modules[currentModuleIndex];
     return currentModuleIndex === course.modules.length - 1 &&
-           currentLessonIndex === currentModule.lessons.length - 1;
+      currentLessonIndex === currentModule.lessons.length - 1;
   };
 
   // Complete the course (called when clicking Complete on last lesson)
@@ -1306,23 +1237,18 @@ const CoursePlayer = () => {
       // Get learner's database ID and user's name from users table
       let learnerRecord;
       try {
-        const { data, error: learnerError } = await supabase
-          .from('learners')
-          .select(`
-            id,
-            learner_id,
-            users!inner(firstName, lastName)
-          `)
-          .eq('user_id', user.id)
-          .single();
+        const learnerRes = await apiPost < any > ('/learner-pages/actions', {
+          action: 'fetch-learner-record',
+          userId: user.id,
+        });
 
-        if (learnerError || !data) {
-          logger.error('Error fetching learner record', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
+        if (!learnerRes?.data) {
+          logger.error('Error fetching learner record');
           toast.error('Failed to fetch learner information. Please try again.');
           return;
         }
-        
-        learnerRecord = data;
+
+        learnerRecord = learnerRes.data;
       } catch (err) {
         logger.error('Unexpected error fetching learner record', err instanceof Error ? err : new Error(String(err)));
         return;
@@ -1330,34 +1256,28 @@ const CoursePlayer = () => {
 
       const learnerId = learnerRecord.id;
       const learnerIdText = learnerRecord.learner_id; // Text field to display on certificate
-      
+
       // Get learner name from users table firstName and lastName with proper null checks
       const firstName = learnerRecord?.users?.firstName || '';
       const lastName = learnerRecord?.users?.lastName || '';
       const learnerName = `${firstName} ${lastName}`.trim() || user?.email?.split('@')[0] || 'Learner';
 
-      const { error } = await supabase
-        .from('course_enrollments')
-        .update({ 
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          progress: 100
-        })
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId);
+      try {
+        await apiPost('/learner-pages/actions', {
+          action: 'complete-course-enrollment',
+          learnerId,
+          courseId,
+        });
 
-      if (error) {
-        logger.error('Error completing course', error instanceof Error ? error : new Error(String(error)));
-      } else {
         logger.info('Course completed successfully');
-        
+
         // Generate certificate for the completed course
         const courseName = course?.title || 'Course';
         const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
         const courseType = course?.course_type || 'course'; // Get course type from database
         const issuedOnDate = course?.issued_on || null; // Get issued_on date for webinars
         const isWebinar = courseType === 'webinar';
-        
+
         logger.info('Generating certificate', { learnerId, courseName, courseType, issuedOnDate, isWebinar });
         const certResult = await generateCourseCertificate(
           learnerId,
@@ -1369,10 +1289,10 @@ const CoursePlayer = () => {
           courseType,
           issuedOnDate
         );
-        
+
         if (certResult.success) {
           logger.info('Certificate generated successfully', { credentialId: certResult.credentialId });
-          
+
           // For webinars, download certificate immediately
           if (isWebinar) {
             try {
@@ -1389,23 +1309,23 @@ const CoursePlayer = () => {
                 position: 'top-right',
               });
               setTimeout(() => {
-                navigate('/learner/my-learning', { 
-                  state: { 
-                    courseCompleted: true, 
+                navigate('/learner/my-learning', {
+                  state: {
+                    courseCompleted: true,
                     courseName,
-                    certificateUrl: certResult.certificateUrl 
-                  } 
+                    certificateUrl: certResult.certificateUrl
+                  }
                 });
               }, 1500);
             }
           } else {
             // For courses, navigate to my learning page with success message
-            navigate('/learner/my-learning', { 
-              state: { 
-                courseCompleted: true, 
+            navigate('/learner/my-learning', {
+              state: {
+                courseCompleted: true,
                 courseName,
-                certificateUrl: certResult.certificateUrl 
-              } 
+                certificateUrl: certResult.certificateUrl
+              }
             });
           }
         } else {
@@ -1413,6 +1333,8 @@ const CoursePlayer = () => {
           // Still navigate even if certificate fails
           navigate('/learner/my-learning');
         }
+      } catch (error) {
+        logger.error('Error in completeCourse', error instanceof Error ? error : new Error(String(error)));
       }
     } catch (error) {
       logger.error('Error in completeCourse', error instanceof Error ? error : new Error(String(error)));
@@ -1556,9 +1478,8 @@ const CoursePlayer = () => {
                             <button
                               key={lessonIndex}
                               onClick={() => goToLesson(moduleIndex, lessonIndex)}
-                              className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
-                                isActive ? 'bg-indigo-50 border-l-4 border-indigo-600' : ''
-                              }`}
+                              className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${isActive ? 'bg-indigo-50 border-l-4 border-indigo-600' : ''
+                                }`}
                             >
                               <div className="flex items-start gap-3">
                                 <div className="mt-0.5">
@@ -1684,7 +1605,7 @@ const CoursePlayer = () => {
                             </video>
                           </div>
                         )}
-                        
+
                         {/* AI Video Learning Panel - Summary, Transcript, Chapters */}
                         {lessonVideoUrl && !lessonVideoUrl.includes('youtube.com') && (
                           <VideoLearningPanel

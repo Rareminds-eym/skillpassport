@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Users, Calendar, MapPin, Clock, Award, Star, Target, BookOpen, Activity } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
 import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('clubs-competitions-tab');
 
@@ -94,7 +94,6 @@ interface ClubsCompetitionsTabProps {
 }
 
 const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, loading }) => {
-  // Use centralized learner type detection
   const isSchoolLearner = checkIsSchoolLearner(learner);
   const isCollegeLearner = checkIsCollegeLearner(learner);
 
@@ -118,119 +117,35 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
       setDataLoading(true);
 
       if (isSchoolLearner) {
-        await Promise.all([
-          fetchClubMemberships(),
-          fetchCompetitionData()
-        ]);
+        const result = await apiPost<any>('/learner-profile/actions', {
+          action: 'fetch-learner-club-event-data',
+          learnerId: learner.id,
+          learnerEmail: learner.email,
+        });
+        if (result?.data) {
+          setClubMemberships(result.data.clubs || []);
+          setCompetitionRegistrations(result.data.competitions || []);
+          setCompetitionResults(result.data.competitionResults || []);
+          setEventRegistrations(result.data.events || []);
+        }
       }
 
       if (isCollegeLearner) {
-        await fetchEventRegistrations();
+        const result = await apiPost<any>('/learner-profile/actions', {
+          action: 'fetch-learner-club-event-data',
+          learnerId: learner.id,
+          learnerEmail: learner.email,
+        });
+        if (result?.data) {
+          setEventRegistrations(result.data.events || []);
+          setCompetitionRegistrations(result.data.competitions || []);
+          setCompetitionResults(result.data.competitionResults || []);
+        }
       }
     } catch (error) {
       logger.error('Error fetching learner activities', error as Error);
     } finally {
       setDataLoading(false);
-    }
-  };
-
-  const fetchClubMemberships = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('club_memberships')
-        .select(`
-          *,
-          club:clubs(*)
-        `)
-        .eq('learner_email', learner.email)
-        .eq('status', 'active');
-
-      if (error) throw error;
-      setClubMemberships(data || []);
-    } catch (error) {
-      logger.error('Error fetching club memberships', error as Error);
-    }
-  };
-
-  const fetchCompetitionData = async () => {
-    try {
-      // Fetch registrations
-      const { data: registrations, error: regError } = await supabase
-        .from('competition_registrations')
-        .select(`
-          *,
-          competition:competitions(*)
-        `)
-        .eq('learner_email', learner.email);
-
-      if (regError) throw regError;
-      setCompetitionRegistrations(registrations || []);
-
-      // Fetch results
-      const { data: results, error: resultError } = await supabase
-        .from('competition_results')
-        .select(`
-          *,
-          competition:competitions(*)
-        `)
-        .eq('learner_email', learner.email);
-
-      if (resultError) throw resultError;
-      setCompetitionResults(results || []);
-    } catch (error) {
-      logger.error('Error fetching competition data', error as Error);
-    }
-  };
-
-  const fetchEventRegistrations = async () => {
-    try {
-      let learnerId = learner.id;
-
-      // If we don't have learner.id but have email, try to find the learner ID
-      if (!learnerId && learner.email) {
-        // Try learners table first
-        const { data: learnerData, error: learnerError } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('email', learner.email)
-          .single();
-
-        if (learnerData?.id) {
-          learnerId = learnerData.id;
-        } else {
-          // If not found in learners table, try learners table
-          const { data: collegelearnerData, error: collegelearnerError } = await supabase
-            .from('learners')
-            .select('id')
-            .eq('email', learner.email)
-            .single();
-
-          if (collegelearnerData?.id) {
-            learnerId = collegelearnerData.id;
-          }
-        }
-      }
-
-      if (!learnerId) {
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('college_event_registrations')
-        .select(`
-          *,
-          event:college_events(*)
-        `)
-        .eq('learner_id', learnerId);
-
-      if (error) {
-        logger.error('Error in event registrations query', error);
-        return;
-      }
-
-      setEventRegistrations(data || []);
-    } catch (error) {
-      logger.error('Error fetching event registrations', error as Error);
     }
   };
 
@@ -298,7 +213,6 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
           <Users className="h-4 w-4 text-blue-600" />
@@ -316,7 +230,6 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
         </div>
       </div>
 
-      {/* Section Tabs */}
       <div className="flex gap-1 p-1 bg-gray-50 rounded-lg">
         {isSchoolLearner && (
           <>
@@ -353,17 +266,11 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
         )}
       </div>
 
-      {/* Content */}
       <div className="space-y-4">
-        {/* Clubs Section */}
         {activeSection === 'clubs' && isSchoolLearner && (
           <>
             {clubMemberships.length === 0 ? (
-              <EmptyState
-                title="No club memberships"
-                description="This learner is not currently enrolled in any clubs."
-                icon={Users}
-              />
+              <EmptyState title="No club memberships" description="This learner is not currently enrolled in any clubs." icon={Users} />
             ) : (
               <div className="space-y-3">
                 {clubMemberships.map((membership) => (
@@ -373,8 +280,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
                         <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${membership.club.category === 'sports' ? 'bg-green-50' :
                             membership.club.category === 'arts' ? 'bg-purple-50' :
                               membership.club.category === 'science' ? 'bg-blue-50' :
-                                membership.club.category === 'robotics' ? 'bg-orange-50' :
-                                  'bg-gray-50'
+                                membership.club.category === 'robotics' ? 'bg-orange-50' : 'bg-gray-50'
                           }`}>
                           {getCategoryIcon(membership.club.category)}
                         </div>
@@ -384,30 +290,21 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${membership.club.category === 'sports' ? 'bg-green-100 text-green-700' :
                                 membership.club.category === 'arts' ? 'bg-purple-100 text-purple-700' :
                                   membership.club.category === 'science' ? 'bg-blue-100 text-blue-700' :
-                                    membership.club.category === 'robotics' ? 'bg-orange-100 text-orange-700' :
-                                      'bg-gray-100 text-gray-700'
+                                    membership.club.category === 'robotics' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'
                               }`}>
                               {membership.club.category}
                             </span>
-                            <span className="text-xs text-gray-500">
-                              Joined {new Date(membership.enrolled_at).toLocaleDateString()}
-                            </span>
+                            <span className="text-xs text-gray-500">Joined {new Date(membership.enrolled_at).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
-
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${membership.status === 'active' ? 'bg-green-50 text-green-700' :
-                          membership.status === 'suspended' ? 'bg-red-50 text-red-700' :
-                            'bg-gray-50 text-gray-700'
+                          membership.status === 'suspended' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'
                         }`}>
                         {membership.status}
                       </span>
                     </div>
-
-                    {membership.club.description && (
-                      <p className="text-sm text-gray-600 mb-3">{membership.club.description}</p>
-                    )}
-
+                    {membership.club.description && <p className="text-sm text-gray-600 mb-3">{membership.club.description}</p>}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         {membership.club.meeting_day && membership.club.meeting_time && (
@@ -423,23 +320,15 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
                           </div>
                         )}
                       </div>
-
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Attendance</span>
-                          <span className="font-medium text-gray-900">
-                            {membership.attendance_percentage}%
-                          </span>
+                          <span className="font-medium text-gray-900">{membership.attendance_percentage}%</span>
                         </div>
                         <div className="w-full bg-gray-100 rounded-full h-1.5">
-                          <div
-                            className="bg-blue-500 h-1.5 rounded-full"
-                            style={{ width: `${membership.attendance_percentage}%` }}
-                          ></div>
+                          <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${membership.attendance_percentage}%` }}></div>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {membership.total_sessions_attended}/{membership.total_sessions_held} sessions
-                        </div>
+                        <div className="text-xs text-gray-500">{membership.total_sessions_attended}/{membership.total_sessions_held} sessions</div>
                       </div>
                     </div>
                   </div>
@@ -449,18 +338,12 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
           </>
         )}
 
-        {/* Competitions Section */}
         {activeSection === 'competitions' && isSchoolLearner && (
           <>
             {competitionRegistrations.length === 0 && competitionResults.length === 0 ? (
-              <EmptyState
-                title="No competition participation"
-                description="This learner has not participated in any competitions yet."
-                icon={Trophy}
-              />
+              <EmptyState title="No competition participation" description="This learner has not participated in any competitions yet." icon={Trophy} />
             ) : (
               <div className="space-y-6">
-                {/* Competition Results */}
                 {competitionResults.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-4">
@@ -481,13 +364,10 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getLevelBadgeColor(result.competition.level)}`}>
                                     {result.competition.level}
                                   </span>
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(result.competition.competition_date).toLocaleDateString()}
-                                  </span>
+                                  <span className="text-xs text-gray-500">{new Date(result.competition.competition_date).toLocaleDateString()}</span>
                                 </div>
                               </div>
                             </div>
-
                             {result.rank && (
                               <div className="text-right">
                                 <div className="text-2xl font-bold text-yellow-600">#{result.rank}</div>
@@ -495,38 +375,19 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
                               </div>
                             )}
                           </div>
-
-                          {result.competition.description && (
-                            <p className="text-sm text-gray-600 mb-3">{result.competition.description}</p>
-                          )}
-
+                          {result.competition.description && <p className="text-sm text-gray-600 mb-3">{result.competition.description}</p>}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4 text-sm text-gray-600">
                               {result.competition.venue && (
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                  <span>{result.competition.venue}</span>
-                                </div>
+                                <div className="flex items-center gap-1"><MapPin className="h-4 w-4" /><span>{result.competition.venue}</span></div>
                               )}
                               {result.score && (
-                                <div className="flex items-center gap-1">
-                                  <Target className="h-4 w-4" />
-                                  <span>Score: {result.score}</span>
-                                </div>
+                                <div className="flex items-center gap-1"><Target className="h-4 w-4" /><span>Score: {result.score}</span></div>
                               )}
                             </div>
-
                             <div className="flex items-center gap-2">
-                              {result.award && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700">
-                                  {result.award}
-                                </span>
-                              )}
-                              {result.certificate_issued && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                                  Certificate
-                                </span>
-                              )}
+                              {result.award && <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-700">{result.award}</span>}
+                              {result.certificate_issued && <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">Certificate</span>}
                             </div>
                           </div>
                         </div>
@@ -534,8 +395,6 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
                     </div>
                   </div>
                 )}
-
-                {/* Competition Registrations */}
                 {competitionRegistrations.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-4">
@@ -556,45 +415,26 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getLevelBadgeColor(registration.competition.level)}`}>
                                     {registration.competition.level}
                                   </span>
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(registration.competition.competition_date).toLocaleDateString()}
-                                  </span>
+                                  <span className="text-xs text-gray-500">{new Date(registration.competition.competition_date).toLocaleDateString()}</span>
                                 </div>
                               </div>
                             </div>
-
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${registration.status === 'confirmed' ? 'bg-green-50 text-green-700' :
                                 registration.status === 'registered' ? 'bg-blue-50 text-blue-700' :
-                                  registration.status === 'withdrawn' ? 'bg-red-50 text-red-700' :
-                                    'bg-gray-50 text-gray-700'
+                                  registration.status === 'withdrawn' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'
                               }`}>
                               {registration.status}
                             </span>
                           </div>
-
-                          {registration.competition.description && (
-                            <p className="text-sm text-gray-600 mb-3">{registration.competition.description}</p>
-                          )}
-
+                          {registration.competition.description && <p className="text-sm text-gray-600 mb-3">{registration.competition.description}</p>}
                           <div className="flex items-center justify-between text-sm text-gray-600">
                             <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                <span>Registered: {new Date(registration.registration_date).toLocaleDateString()}</span>
-                              </div>
+                              <div className="flex items-center gap-1"><Calendar className="h-4 w-4" /><span>Registered: {new Date(registration.registration_date).toLocaleDateString()}</span></div>
                               {registration.competition.venue && (
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="h-4 w-4" />
-                                  <span>{registration.competition.venue}</span>
-                                </div>
+                                <div className="flex items-center gap-1"><MapPin className="h-4 w-4" /><span>{registration.competition.venue}</span></div>
                               )}
                             </div>
-
-                            {registration.team_name && (
-                              <span className="text-xs bg-gray-50 text-gray-700 px-2 py-1 rounded-full">
-                                Team: {registration.team_name}
-                              </span>
-                            )}
+                            {registration.team_name && <span className="text-xs bg-gray-50 text-gray-700 px-2 py-1 rounded-full">Team: {registration.team_name}</span>}
                           </div>
                         </div>
                       ))}
@@ -606,15 +446,10 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
           </>
         )}
 
-        {/* Events Section */}
         {activeSection === 'events' && isCollegeLearner && (
           <>
             {eventRegistrations.length === 0 ? (
-              <EmptyState
-                title="No event registrations"
-                description="This learner has not registered for any college events yet."
-                icon={Calendar}
-              />
+              <EmptyState title="No event registrations" description="This learner has not registered for any college events yet." icon={Calendar} />
             ) : (
               <div className="space-y-3">
                 {eventRegistrations.map((registration) => (
@@ -625,8 +460,7 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
                             registration.event.event_type === 'workshop' ? 'bg-green-50' :
                               registration.event.event_type === 'cultural' ? 'bg-purple-50' :
                                 registration.event.event_type === 'sports' ? 'bg-orange-50' :
-                                  registration.event.event_type === 'placement' ? 'bg-red-50' :
-                                    'bg-gray-50'
+                                  registration.event.event_type === 'placement' ? 'bg-red-50' : 'bg-gray-50'
                           }`}>
                           {getEventTypeIcon(registration.event.event_type)}
                         </div>
@@ -637,65 +471,39 @@ const ClubsCompetitionsTab: React.FC<ClubsCompetitionsTabProps> = ({ learner, lo
                                 registration.event.event_type === 'workshop' ? 'bg-green-100 text-green-700' :
                                   registration.event.event_type === 'cultural' ? 'bg-purple-100 text-purple-700' :
                                     registration.event.event_type === 'sports' ? 'bg-orange-100 text-orange-700' :
-                                      registration.event.event_type === 'placement' ? 'bg-red-100 text-red-700' :
-                                        'bg-gray-100 text-gray-700'
+                                      registration.event.event_type === 'placement' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
                               }`}>
                               {registration.event.event_type}
                             </span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(registration.event.start_date).toLocaleDateString()}
-                            </span>
+                            <span className="text-xs text-gray-500">{new Date(registration.event.start_date).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
-
                       <div className="flex items-center gap-2">
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${registration.event.status === 'published' ? 'bg-green-50 text-green-700' :
                             registration.event.status === 'completed' ? 'bg-blue-50 text-blue-700' :
-                              registration.event.status === 'cancelled' ? 'bg-red-50 text-red-700' :
-                                'bg-gray-50 text-gray-700'
+                              registration.event.status === 'cancelled' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'
                           }`}>
                           {registration.event.status}
                         </span>
-
-                        {registration.attended && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
-                            Attended
-                          </span>
-                        )}
+                        {registration.attended && <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">Attended</span>}
                       </div>
                     </div>
-
-                    {registration.event.description && (
-                      <p className="text-sm text-gray-600 mb-3">{registration.event.description}</p>
-                    )}
-
+                    {registration.event.description && <p className="text-sm text-gray-600 mb-3">{registration.event.description}</p>}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 text-sm text-gray-600">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          <span>
-                            {new Date(registration.event.start_date).toLocaleDateString()} - {new Date(registration.event.end_date).toLocaleDateString()}
-                          </span>
+                          <span>{new Date(registration.event.start_date).toLocaleDateString()} - {new Date(registration.event.end_date).toLocaleDateString()}</span>
                         </div>
-                        {registration.event.venue && (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" />
-                            <span>{registration.event.venue}</span>
-                          </div>
-                        )}
+                        {registration.event.venue && <div className="flex items-center gap-1"><MapPin className="h-4 w-4" /><span>{registration.event.venue}</span></div>}
                       </div>
-
                       <div className="flex items-center gap-3 text-sm">
                         <div className="text-right">
                           <div className="text-xs text-gray-500">Registered</div>
-                          <div className="font-medium text-gray-900">
-                            {new Date(registration.registered_at).toLocaleDateString()}
-                          </div>
+                          <div className="font-medium text-gray-900">{new Date(registration.registered_at).toLocaleDateString()}</div>
                         </div>
-
-                        <div className={`h-2 w-2 rounded-full ${registration.attended ? 'bg-green-500' : 'bg-gray-300'
-                          }`}></div>
+                        <div className={`h-2 w-2 rounded-full ${registration.attended ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                       </div>
                     </div>
                   </div>

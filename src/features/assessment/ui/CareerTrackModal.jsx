@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download, Bell, ChevronRight, Calendar, Loader2 } from 'lucide-react';
 import { useRoleOverview } from '@/entities/user';
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
-import { supabase } from '@/shared/api/supabaseClient';
 import { ssoClient } from '@/shared/api/ssoClient';
 import jsPDF from 'jspdf';
 

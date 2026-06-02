@@ -1,4 +1,3 @@
-import { supabase } from '@/shared/api/supabaseClient';
 
 export const mentorNotesService = {
   async deleteMentorNote(id: string) {

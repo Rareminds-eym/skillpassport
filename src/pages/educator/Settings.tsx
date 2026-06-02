@@ -23,7 +23,6 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useState, useRef, useEffect } from 'react';
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { validateFile, uploadFile, getDocumentUrl } from '@/shared/api';
 import { storageService } from '@/shared/api';
 // @ts-ignore - JSX file without declaration

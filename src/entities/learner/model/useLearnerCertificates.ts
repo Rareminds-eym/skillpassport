@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface Certificate {
   id: string;
@@ -49,18 +49,11 @@ export const useLearnerCertificates = (
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('certificates')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .is('training_id', null)
-        .order('issued_on', { ascending: false });
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'fetch-certificates', learnerId,
+      });
+      const data = result?.data || [];
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Transform data to match UI expectations
       const transformedData: Certificate[] = (data || []).map((item: any) => ({
         id: item.id,
         title: item.title || item.name,
@@ -99,14 +92,5 @@ export const useLearnerCertificates = (
     fetchCertificates();
   }, [learnerId, enabled]);
 
-  const refresh = () => {
-    fetchCertificates();
-  };
-
-  return {
-    certificates,
-    loading,
-    error,
-    refresh
-  };
+  return { certificates, loading, error, refresh: fetchCertificates };
 };

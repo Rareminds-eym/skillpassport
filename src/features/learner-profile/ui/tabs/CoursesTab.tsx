@@ -11,7 +11,7 @@ import {
   IconSparkles, 
   IconBrain
 } from '@tabler/icons-react';
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('courses-tab');
@@ -45,20 +45,14 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, learnerId }) 
       
       setLoadingRecommendations(true);
       try {
-        const { data, error } = await supabase
-          .from('personal_assessment_results')
-          .select('gemini_results')
-          .eq('learner_id', learnerId)
-          .order('created_at', { ascending: false })
-          .limit(1);
+        const response: any = await apiPost('/learners/management', {
+          action: 'get-assessment-recommendations',
+          learnerId,
+        });
+        const results = response?.data ?? [];
 
-        if (error) {
-          logger.error('Error fetching assessment results', error);
-          return;
-        }
-
-        if (data && data.length > 0 && data[0].gemini_results) {
-          const geminiResults = data[0].gemini_results;
+        if (results.length > 0 && results[0].gemini_results) {
+          const geminiResults = results[0].gemini_results;
           
           // Extract top 3 courses from coursesByType based on relevance_score
           const allCourses = [

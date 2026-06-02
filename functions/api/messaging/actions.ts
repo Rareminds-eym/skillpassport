@@ -1,0 +1,774 @@
+import { withAuth, getContextUser } from '../../lib/auth';
+import { getServiceClient } from '../../lib/supabase';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+
+async function convertApplicationId(supabase: any, applicationId: number | string | undefined): Promise<number | undefined> {
+  if (!applicationId) return undefined;
+  if (typeof applicationId === 'string' && applicationId.includes('-')) {
+    const { data } = await supabase.from('applied_jobs').select('id_old').eq('id', applicationId).maybeSingle();
+    return data?.id_old;
+  }
+  return typeof applicationId === 'string' ? parseInt(applicationId) : applicationId;
+}
+
+async function convertOpportunityId(supabase: any, opportunityId: number | string | undefined): Promise<number | undefined> {
+  if (!opportunityId) return undefined;
+  if (typeof opportunityId === 'string' && opportunityId.includes('-')) {
+    const { data } = await supabase.from('opportunities').select('id_old').eq('id', opportunityId).maybeSingle();
+    return data?.id_old;
+  }
+  return typeof opportunityId === 'string' ? parseInt(opportunityId) : opportunityId;
+}
+
+async function fetchEducatorDetailsForConversations(supabase: any, conversations: any[]): Promise<any[]> {
+  if (!conversations || conversations.length === 0) return conversations;
+  const schoolEducatorConvs = conversations.filter((c: any) => c.conversation_type === 'learner_educator');
+  const collegeEducatorConvs = conversations.filter((c: any) => c.conversation_type === 'learner_college_educator');
+
+  if (schoolEducatorConvs.length > 0) {
+    const ids = schoolEducatorConvs.map((c: any) => c.educator_id).filter(Boolean);
+    if (ids.length > 0) {
+      const { data: educators } = await supabase.from('school_educators').select('id, user_id, first_name, last_name, email, phone_number, photo_url').in('id', ids);
+      if (educators) {
+        schoolEducatorConvs.forEach((conv: any) => { const e = educators.find((x: any) => x.id === conv.educator_id); if (e) conv.educator = e; });
+      }
+    }
+  }
+
+  if (collegeEducatorConvs.length > 0) {
+    const ids = collegeEducatorConvs.map((c: any) => c.educator_id).filter(Boolean);
+    if (ids.length > 0) {
+      const { data: lecturers } = await supabase.from('college_lecturers').select('id, user_id, first_name, last_name, email, phone, department, specialization').in('id', ids);
+      if (lecturers) {
+        collegeEducatorConvs.forEach((conv: any) => { const e = lecturers.find((x: any) => x.id === conv.educator_id); if (e) conv.educator = e; });
+      }
+    }
+  }
+
+  return conversations;
+}
+
+async function handleGetOrCreateConversation(supabase: any, params: any): Promise<any> {
+  const { learnerId, recruiterId, applicationId, opportunityId, subject } = params;
+  const applicationIdOld = await convertApplicationId(supabase, applicationId);
+  const opportunityIdOld = await convertOpportunityId(supabase, opportunityId);
+
+  let query = supabase.from('conversations').select('id, status, deleted_by_learner, deleted_by_recruiter, learner_id, recruiter_id, application_id, opportunity_id, subject, created_at, updated_at').eq('learner_id', learnerId).eq('recruiter_id', recruiterId).limit(1);
+  if (applicationIdOld) query = query.eq('application_id', applicationIdOld);
+  const { data: existing, error: fetchError } = await query.maybeSingle();
+
+  if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+  if (existing) {
+    if (existing.deleted_by_learner || existing.deleted_by_recruiter) {
+      const { data: restored, error: restoreError } = await supabase.from('conversations').update({ deleted_by_learner: false, deleted_by_recruiter: false, learner_deleted_at: null, recruiter_deleted_at: null, updated_at: new Date().toISOString() }).eq('id', existing.id).select().maybeSingle();
+      if (restoreError) return existing;
+      return restored;
+    }
+    return existing;
+  }
+
+  const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const { data, error } = await supabase.from('conversations').insert({ id: conversationId, learner_id: learnerId, recruiter_id: recruiterId, application_id: applicationIdOld, opportunity_id: opportunityIdOld, subject: subject, status: 'active' }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function handleGetOrCreateLearnerEducatorConversation(supabase: any, params: any): Promise<any> {
+  const { learnerId, educatorId, classId, subject } = params;
+  let query = supabase.from('conversations').select('id, status, deleted_by_learner, deleted_by_educator, learner_id, educator_id, class_id, subject, created_at, updated_at').eq('learner_id', learnerId).eq('educator_id', educatorId).eq('conversation_type', 'learner_educator').limit(1);
+  if (classId) query = query.eq('class_id', classId);
+  if (subject) query = query.eq('subject', subject);
+  const { data: existing, error: fetchError } = await query.maybeSingle();
+  if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+  if (existing) {
+    if (existing.deleted_by_learner || existing.deleted_by_educator) {
+      const { data: restored, error: restoreError } = await supabase.from('conversations').update({ deleted_by_learner: false, deleted_by_educator: false, learner_deleted_at: null, educator_deleted_at: null, updated_at: new Date().toISOString() }).eq('id', existing.id).select().maybeSingle();
+      if (restoreError) return existing;
+      return restored;
+    }
+    return existing;
+  }
+
+  const conversationId = `conv_se_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const { data, error } = await supabase.from('conversations').insert({ id: conversationId, learner_id: learnerId, educator_id: educatorId, class_id: classId, subject: subject || 'General Discussion', conversation_type: 'learner_educator', status: 'active' }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function handleGetOrCreateLearnerCollegeLecturerConversation(supabase: any, params: any): Promise<any> {
+  const { learnerId, collegeLecturerId, collegeId, programSectionId, subject } = params;
+  let query = supabase.from('conversations').select('id, status, deleted_by_learner, deleted_by_educator, learner_id, educator_id, subject, created_at, updated_at').eq('learner_id', learnerId).eq('educator_id', collegeLecturerId).eq('conversation_type', 'learner_college_educator').limit(1);
+  if (subject) query = query.eq('subject', subject);
+  const { data: existing, error: fetchError } = await query.maybeSingle();
+  if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+  if (existing) {
+    if (existing.deleted_by_learner || existing.deleted_by_educator) {
+      const { data: restored, error: restoreError } = await supabase.from('conversations').update({ deleted_by_learner: false, deleted_by_educator: false, learner_deleted_at: null, educator_deleted_at: null, updated_at: new Date().toISOString() }).eq('id', existing.id).select().maybeSingle();
+      if (restoreError) return existing;
+      return restored;
+    }
+    return existing;
+  }
+
+  const conversationId = `conv_scl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const { data, error } = await supabase.from('conversations').insert({ id: conversationId, learner_id: learnerId, educator_id: collegeLecturerId, college_id: collegeId, program_section_id: programSectionId, subject: subject || 'General Discussion', conversation_type: 'learner_college_educator', status: 'active' }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function handleSendMessage(supabase: any, params: any): Promise<any> {
+  const { conversationId, senderId, senderType, receiverId, receiverType, messageText, applicationId, opportunityId, classId, subject, attachments } = params;
+
+  if (!conversationId || !senderId || !receiverId || !messageText?.trim()) {
+    throw new Error('Missing required fields for message');
+  }
+
+  const applicationIdOld = await convertApplicationId(supabase, applicationId);
+  const opportunityIdOld = await convertOpportunityId(supabase, opportunityId);
+
+  const messageData: any = { conversation_id: conversationId, sender_id: senderId, sender_type: senderType, receiver_id: receiverId, receiver_type: receiverType, message_text: messageText.trim() };
+  if (applicationIdOld) messageData.application_id = applicationIdOld;
+  if (opportunityIdOld) messageData.opportunity_id = opportunityIdOld;
+  if (classId) messageData.class_id = classId;
+  if (subject) messageData.subject = subject;
+  if (attachments && attachments.length > 0) messageData.attachments = attachments;
+
+  const { data, error } = await supabase.from('messages').insert(messageData).select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at').single();
+  if (error) throw error;
+  return data;
+}
+
+async function handleGetConversationMessages(supabase: any, params: any): Promise<any[]> {
+  const { conversationId, limit, offset = 0 } = params;
+  let query = supabase.from('messages').select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at').eq('conversation_id', conversationId).order('created_at', { ascending: true });
+  if (limit) query = query.range(offset, offset + limit - 1);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+async function handleGetUnreadCount(supabase: any, params: any): Promise<number> {
+  const { userId, userType } = params;
+  const { count, error } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('receiver_id', userId).eq('receiver_type', userType).eq('is_read', false);
+  if (error) throw error;
+  return count || 0;
+}
+
+async function handleGetConversationWithLearner(supabase: any, params: any): Promise<any | null> {
+  const { conversationId } = params;
+  const { data, error } = await supabase
+    .from('conversations')
+    .select(`*, learner:learners(id, name, email, contact_number, university, branch_field), application:applied_jobs(id, application_status, applied_at, opportunity:opportunities(id, job_title, company_name, location, employment_type))`)
+    .eq('id', conversationId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function handleArchiveConversation(supabase: any, params: any): Promise<void> {
+  const { conversationId } = params;
+  const { error } = await supabase.from('conversations').update({ status: 'archived', updated_at: new Date().toISOString() }).eq('id', conversationId);
+  if (error) throw error;
+}
+
+async function handleUnarchiveConversation(supabase: any, params: any): Promise<void> {
+  const { conversationId } = params;
+  const { error } = await supabase.from('conversations').update({ status: 'active', updated_at: new Date().toISOString() }).eq('id', conversationId);
+  if (error) throw error;
+}
+
+async function handleGetUserConversations(supabase: any, params: any): Promise<any[]> {
+  const { userId, userType, includeArchived, conversationType } = params;
+  const column = userType === 'learner' ? 'learner_id' : userType === 'recruiter' ? 'recruiter_id' : 'educator_id';
+  const deletedColumn = userType === 'learner' ? 'deleted_by_learner' : userType === 'recruiter' ? 'deleted_by_recruiter' : 'deleted_by_educator';
+
+  let query;
+  if (userType === 'educator') {
+    query = supabase
+      .from('conversations')
+      .select(`id, learner_id, educator_id, class_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, educator_unread_count, created_at, updated_at, deleted_by_educator, learner:learners(id, user_id, email, name, contact_number, university, branch_field), school_class:school_classes(id, name, grade, section)`)
+      .eq(column, userId).eq('conversation_type', 'learner_educator');
+  } else if (userType === 'college_educator') {
+    query = supabase
+      .from('conversations')
+      .select(`id, learner_id, educator_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, educator_unread_count, created_at, updated_at, deleted_by_educator, learner:learners(id, user_id, email, name, contact_number, university, branch_field, program_id, program_section_id)`)
+      .eq(column, userId).eq('conversation_type', 'learner_college_educator');
+  } else if (userType === 'learner') {
+    query = supabase
+      .from('conversations')
+      .select(`id, learner_id, recruiter_id, educator_id, class_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, learner_unread_count, created_at, updated_at, deleted_by_learner, school_id, college_id, recruiter:recruiters(id, name, email, phone), school_class:school_classes(id, name, grade, section), school_organization:organizations!school_id(admin_id), college_organization:organizations!college_id(admin_id)`)
+      .eq(column, userId);
+  } else {
+    query = supabase
+      .from('conversations')
+      .select(`id, learner_id, recruiter_id, educator_id, application_id, opportunity_id, class_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, learner_unread_count, recruiter_unread_count, educator_unread_count, created_at, updated_at, deleted_by_learner, deleted_by_recruiter, deleted_by_educator, learner:learners(id, user_id, email, name, contact_number, university, branch_field), recruiter:recruiters(id, name, email, phone), opportunity:opportunities(id, title, company_name, location, employment_type), application:applied_jobs(id, application_status), school_class:school_classes(id, name, grade, section)`)
+      .eq(column, userId);
+  }
+
+  try {
+    if (userType === 'college_educator') {
+      query = query.eq('deleted_by_educator', false);
+    } else {
+      query = query.eq(deletedColumn, false);
+    }
+  } catch (e) {}
+
+  if (conversationType) query = query.eq('conversation_type', conversationType);
+  if (!includeArchived) query = query.neq('status', 'archived');
+  query = query.order('last_message_at', { ascending: false, nullsFirst: false }).limit(100);
+
+  const { data, error } = await query;
+
+  if (error && (error.message?.includes('deleted_by') || error.code === '42703')) {
+    let retryQuery = supabase
+      .from('conversations')
+      .select(`id, learner_id, recruiter_id, educator_id, application_id, opportunity_id, class_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, learner_unread_count, recruiter_unread_count, educator_unread_count, created_at, updated_at, learner:learners(id, name, email, contact_number, university, branch_field), recruiter:recruiters(id, name, email, phone), opportunity:opportunities(id, title, company_name, location, employment_type), application:applied_jobs(id, application_status), school_class:school_classes(id, name, grade, section)`)
+      .eq(column, userId);
+    if (conversationType) retryQuery = retryQuery.eq('conversation_type', conversationType);
+    if (!includeArchived) retryQuery = retryQuery.neq('status', 'archived');
+    retryQuery = retryQuery.order('last_message_at', { ascending: false, nullsFirst: false }).limit(100);
+
+    const { data: retryData, error: retryError } = await retryQuery;
+    if (retryError) throw retryError;
+    const conversations = retryData || [];
+    if (userType === 'learner' || userType === 'educator' || userType === 'college_educator') {
+      return fetchEducatorDetailsForConversations(supabase, conversations);
+    }
+    return conversations;
+  }
+
+  if (error) throw error;
+  const conversations = data || [];
+  if (userType === 'learner' || userType === 'educator' || userType === 'college_educator') {
+    return fetchEducatorDetailsForConversations(supabase, conversations);
+  }
+  return conversations;
+}
+
+async function handleMarkConversationAsRead(supabase: any, params: any): Promise<void> {
+  const { conversationId, userId } = params;
+  const readAt = new Date().toISOString();
+
+  const [messageResult, conversationResult] = await Promise.allSettled([
+    supabase.from('messages').update({ is_read: true, read_at: readAt }).eq('conversation_id', conversationId).eq('receiver_id', userId).eq('is_read', false).select('id'),
+    supabase.from('conversations').select('learner_id, recruiter_id, educator_id, school_id, college_id, conversation_type').eq('id', conversationId).maybeSingle()
+  ]);
+
+  if (messageResult.status === 'rejected') throw messageResult.reason;
+
+  if (conversationResult.status === 'fulfilled' && conversationResult.value.data) {
+    const conversation = conversationResult.value.data;
+    const isLearner = conversation.learner_id === userId;
+    const isRecruiter = conversation.recruiter_id === userId;
+    const isEducator = conversation.educator_id === userId;
+
+    if (conversation.conversation_type === 'learner_admin') {
+      const { data: schoolAdmin } = await supabase.from('school_educators').select('user_id').eq('user_id', userId).eq('role', 'school_admin').eq('school_id', conversation.school_id).single();
+      if (schoolAdmin) {
+        await supabase.from('conversations').update({ admin_unread_count: 0 }).eq('id', conversationId);
+      } else if (isLearner) {
+        await supabase.from('conversations').update({ learner_unread_count: 0 }).eq('id', conversationId);
+      }
+    } else if (conversation.conversation_type === 'learner_college_admin') {
+      if (conversation.college_id) {
+        const { data: collegeAdmin } = await supabase.from('college_lecturers').select('user_id').eq('user_id', userId).eq('collegeId', conversation.college_id).single();
+        if (collegeAdmin) {
+          await supabase.from('conversations').update({ college_admin_unread_count: 0 }).eq('id', conversationId);
+        } else {
+          const { data: collegeOwner } = await supabase.from('organizations').select('admin_id').eq('id', conversation.college_id).eq('organization_type', 'college').eq('admin_id', userId).single();
+          if (collegeOwner) {
+            await supabase.from('conversations').update({ college_admin_unread_count: 0 }).eq('id', conversationId);
+          } else if (isLearner) {
+            await supabase.from('conversations').update({ learner_unread_count: 0 }).eq('id', conversationId);
+          }
+        }
+      } else {
+        if (isLearner) {
+          await supabase.from('conversations').update({ learner_unread_count: 0 }).eq('id', conversationId);
+        }
+      }
+    } else if (conversation.conversation_type === 'learner_college_educator') {
+      if (isLearner) {
+        await supabase.from('conversations').update({ learner_unread_count: 0 }).eq('id', conversationId);
+      } else {
+        const { data: lecturer } = await supabase.from('college_lecturers').select('id').eq('user_id', userId).single();
+        if (lecturer && conversation.educator_id === lecturer.id) {
+          await supabase.from('conversations').update({ educator_unread_count: 0 }).eq('id', conversationId);
+        }
+      }
+    } else if (conversation.conversation_type === 'college_educator_admin') {
+      const { data: lecturer } = await supabase.from('college_lecturers').select('id').eq('user_id', userId).single();
+      if (lecturer && conversation.educator_id === lecturer.id) {
+        await supabase.from('conversations').update({ educator_unread_count: 0 }).eq('id', conversationId);
+      } else {
+        const { data: collegeOwner } = await supabase.from('organizations').select('admin_id').eq('id', conversation.college_id).eq('organization_type', 'college').eq('admin_id', userId).single();
+        if (collegeOwner) {
+          await supabase.from('conversations').update({ college_admin_unread_count: 0 }).eq('id', conversationId);
+        }
+      }
+    } else {
+      const updateField = isLearner ? 'learner_unread_count' : isRecruiter ? 'recruiter_unread_count' : 'educator_unread_count';
+      await supabase.from('conversations').update({ [updateField]: 0 }).eq('id', conversationId);
+    }
+  }
+}
+
+async function handleDeleteConversationForUser(supabase: any, params: any): Promise<void> {
+  const { conversationId, userId, userType } = params;
+  let deletedColumn: string, deletedAtColumn: string;
+  switch (userType) {
+    case 'learner': deletedColumn = 'deleted_by_learner'; deletedAtColumn = 'learner_deleted_at'; break;
+    case 'recruiter': deletedColumn = 'deleted_by_recruiter'; deletedAtColumn = 'recruiter_deleted_at'; break;
+    case 'educator': case 'college_educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'school_admin': deletedColumn = 'deleted_by_admin'; deletedAtColumn = 'admin_deleted_at'; break;
+    case 'college_admin': deletedColumn = 'deleted_by_college_admin'; deletedAtColumn = 'college_admin_deleted_at'; break;
+    default: throw new Error(`Invalid user type: ${userType}`);
+  }
+  const { error } = await supabase.from('conversations').update({ [deletedColumn]: true, [deletedAtColumn]: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', conversationId);
+  if (error) throw error;
+}
+
+async function handleRestoreConversation(supabase: any, params: any): Promise<void> {
+  const { conversationId, userId, userType } = params;
+  let deletedColumn: string, deletedAtColumn: string;
+  switch (userType) {
+    case 'learner': deletedColumn = 'deleted_by_learner'; deletedAtColumn = 'learner_deleted_at'; break;
+    case 'recruiter': deletedColumn = 'deleted_by_recruiter'; deletedAtColumn = 'recruiter_deleted_at'; break;
+    case 'educator': case 'college_educator': deletedColumn = 'deleted_by_educator'; deletedAtColumn = 'educator_deleted_at'; break;
+    case 'school_admin': deletedColumn = 'deleted_by_admin'; deletedAtColumn = 'admin_deleted_at'; break;
+    case 'college_admin': deletedColumn = 'deleted_by_college_admin'; deletedAtColumn = 'college_admin_deleted_at'; break;
+    default: throw new Error(`Invalid user type: ${userType}`);
+  }
+  const { error } = await supabase.from('conversations').update({ [deletedColumn]: false, [deletedAtColumn]: null, updated_at: new Date().toISOString() }).eq('id', conversationId);
+  if (error) throw error;
+}
+
+async function handlePermanentlyDeleteConversation(supabase: any, params: any): Promise<void> {
+  const { conversationId } = params;
+  const { error } = await supabase.from('conversations').delete().eq('id', conversationId);
+  if (error) throw error;
+}
+
+async function handleSendLearnerEducatorMessage(supabase: any, params: any): Promise<any> {
+  const { conversationId, learnerId, messageText, classId, subject, attachments } = params;
+  const { data: conversation, error: convError } = await supabase.from('conversations').select('educator_id, class_id, subject').eq('id', conversationId).maybeSingle();
+  if (convError && convError.code !== 'PGRST116') throw convError;
+  if (!conversation) throw new Error('Conversation not found');
+  if (!conversation.educator_id) throw new Error('Educator not found in conversation');
+
+  return handleSendMessage(supabase, {
+    conversationId, senderId: learnerId, senderType: 'learner', receiverId: conversation.educator_id, receiverType: 'educator', messageText, applicationId: undefined, opportunityId: undefined, classId: classId || conversation.class_id, subject: subject || conversation.subject, attachments
+  });
+}
+
+async function handleMarkAsRead(supabase: any, params: any): Promise<void> {
+  const { messageId } = params;
+  const { error } = await supabase.from('messages').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', messageId);
+  if (error) throw error;
+}
+
+async function handleGetOrCreateLearnerAdminConversation(supabase: any, params: any): Promise<any> {
+  const { learnerId, schoolId, subject } = params;
+  const { data, error } = await supabase.rpc('get_or_create_learner_admin_conversation', { p_learner_id: learnerId, p_school_id: schoolId, p_subject: subject || 'General Discussion' });
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('Failed to create learner-admin conversation');
+  const conversationId = data[0].conversation_id;
+  const { data: conversation, error: fetchError } = await supabase.from('conversations').select(`*, learner:learners(id, name, email)`).eq('id', conversationId).single();
+  if (fetchError) throw fetchError;
+  return conversation;
+}
+
+async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: any, params: any): Promise<any> {
+  const { learnerId, collegeId, subject } = params;
+  const { data, error } = await supabase.rpc('get_or_create_learner_college_admin_conversation', { p_learner_id: learnerId, p_college_id: collegeId, p_subject: subject || 'General Discussion' });
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('Failed to create learner-college_admin conversation');
+  const conversationId = data[0].conversation_id;
+  const { data: conversation, error: fetchError } = await supabase.from('conversations').select(`*, learner:learners(id, name, email, college_id)`).eq('id', conversationId).single();
+  if (fetchError) throw fetchError;
+
+  if (conversation?.learner?.college_id) {
+    const { data: orgData } = await supabase.from('organizations').select('id, name').eq('id', conversation.learner.college_id).maybeSingle();
+    if (orgData) conversation.college = orgData;
+  }
+  return conversation;
+}
+
+async function handleGetOrCreateEducatorAdminConversation(supabase: any, params: any): Promise<any> {
+  const { educatorId, schoolId, subject } = params;
+  const { data, error } = await supabase.rpc('get_or_create_educator_admin_conversation', { p_educator_id: educatorId, p_school_id: schoolId, p_subject: subject || 'General Discussion' });
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('Failed to create educator-admin conversation');
+  const conversationId = data[0].conversation_id;
+  const { data: conversation, error: fetchError } = await supabase.from('conversations').select('*').eq('id', conversationId).single();
+  if (fetchError) throw fetchError;
+  return conversation;
+}
+
+async function handleGetOrCreateCollegeEducatorAdminConversation(supabase: any, params: any): Promise<any> {
+  const { educatorId, collegeId, subject } = params;
+  const { data, error } = await supabase.rpc('get_or_create_college_educator_admin_conversation', { p_educator_id: educatorId, p_college_id: collegeId, p_subject: subject || 'General Discussion' });
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('Failed to create college educator-admin conversation');
+  const conversationId = data[0].conversation_id;
+  const { data: conversation, error: fetchError } = await supabase.from('conversations').select('*').eq('id', conversationId).single();
+  if (fetchError) throw fetchError;
+  return conversation;
+}
+
+async function handleFetchEducatorDetails(supabase: any, params: any): Promise<any[]> {
+  const { conversations } = params;
+  return fetchEducatorDetailsForConversations(supabase, conversations);
+}
+
+async function handleArchiveConversationForUser(supabase: any, params: any): Promise<void> {
+  const { conversationId, userId, userType } = params;
+  let archiveColumn: string;
+  switch (userType) {
+    case 'learner': archiveColumn = 'archived_by_learner'; break;
+    case 'recruiter': archiveColumn = 'archived_by_recruiter'; break;
+    case 'educator': case 'college_educator': archiveColumn = 'archived_by_educator'; break;
+    case 'school_admin': archiveColumn = 'archived_by_admin'; break;
+    case 'college_admin': archiveColumn = 'archived_by_college_admin'; break;
+    default: throw new Error(`Invalid user type: ${userType}`);
+  }
+  const { error } = await supabase.from('conversations').update({ [archiveColumn]: true, updated_at: new Date().toISOString() }).eq('id', conversationId);
+  if (error) throw error;
+}
+
+async function handleUnarchiveConversationForUser(supabase: any, params: any): Promise<void> {
+  const { conversationId, userId, userType } = params;
+  let archiveColumn: string;
+  switch (userType) {
+    case 'learner': archiveColumn = 'archived_by_learner'; break;
+    case 'recruiter': archiveColumn = 'archived_by_recruiter'; break;
+    case 'educator': case 'college_educator': archiveColumn = 'archived_by_educator'; break;
+    case 'school_admin': archiveColumn = 'archived_by_admin'; break;
+    case 'college_admin': archiveColumn = 'archived_by_college_admin'; break;
+    default: throw new Error(`Invalid user type: ${userType}`);
+  }
+  const { error } = await supabase.from('conversations').update({ [archiveColumn]: false, updated_at: new Date().toISOString() }).eq('id', conversationId);
+  if (error) throw error;
+}
+
+async function handleSearchRecipients(supabase: any, params: any): Promise<any[]> {
+  const { query, type, contextId, contextField } = params;
+  if (!query || !type) return [];
+
+  if (type === 'learners') {
+    const q = supabase.from('learners').select('id, name, email, university, branch_field, grade, section, school_id');
+    if (contextId) q.eq(contextField || 'school_id', contextId);
+    const { data } = await q.or(`name.ilike.%${query}%,email.ilike.%${query}%`).limit(50);
+    return (data || []).map((s: any) => ({ id: s.id, name: s.name, email: s.email, type: 'learner', university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section }));
+  }
+
+  if (type === 'school_educators') {
+    const q = supabase.from('school_educators').select('id, user_id, first_name, last_name, email, photo_url, role').eq('school_id', contextId);
+    const { data } = await q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`).limit(50);
+    return (data || []).map((e: any) => ({ id: e.id, userId: e.user_id, name: `${e.first_name} ${e.last_name}`.trim(), email: e.email, type: 'school_educator', role: e.role }));
+  }
+
+  if (type === 'college_lecturers') {
+    const q = supabase.from('college_lecturers').select('id, user_id, first_name, last_name, email, department, specialization').eq('collegeId', contextId);
+    const { data } = await q.or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`).limit(50);
+    return (data || []).map((l: any) => ({ id: l.id, userId: l.user_id, name: `${l.first_name} ${l.last_name}`.trim(), email: l.email, type: 'college_lecturer', department: l.department }));
+  }
+
+  return [];
+}
+
+async function handleResolveUserContext(supabase: any, params: any): Promise<any> {
+  const { userId, type } = params;
+  if (!userId) return null;
+
+  if (type === 'educator' || !type) {
+    const { data } = await supabase.from('school_educators').select('id, school_id, user_id, email, first_name, last_name').eq('user_id', userId).maybeSingle();
+    if (data) return { ...data, userType: 'school_educator' };
+  }
+
+  if (type === 'college_educator') {
+    const { data } = await supabase.from('college_lecturers').select('id, collegeId, user_id, email, first_name, last_name, department').eq('user_id', userId).maybeSingle();
+    if (data) return { ...data, userType: 'college_educator' };
+  }
+
+  return null;
+}
+
+async function handleFetchLearnerSchool(supabase: any, params: any): Promise<any> {
+  const { learnerId } = params;
+  if (!learnerId) return null;
+  const { data: learner } = await supabase.from('learners').select('school_id').eq('id', learnerId).maybeSingle();
+  if (!learner?.school_id) return null;
+  const { data: org } = await supabase.from('organizations').select('id, name, city, state, organization_type').eq('id', learner.school_id).maybeSingle();
+  return { school_id: learner.school_id, school: org };
+}
+
+async function handleFetchLearnerCollege(supabase: any, params: any): Promise<any> {
+  const { learnerId } = params;
+  if (!learnerId) return null;
+  const { data: learner } = await supabase.from('learners').select('university_college_id, college_id').eq('id', learnerId).maybeSingle();
+  if (!learner) return null;
+  const collegeId = learner.university_college_id || learner.college_id;
+  if (!collegeId) return { college_id: null };
+  const { data: org } = await supabase.from('organizations').select('id, name, city, state, organization_type').eq('id', collegeId).maybeSingle();
+  return { college_id: collegeId, college: org };
+}
+
+async function handleFetchOrganization(supabase: any, params: any): Promise<any> {
+  const { id } = params;
+  if (!id) return null;
+  const { data } = await supabase.from('organizations').select('*').eq('id', id).maybeSingle();
+  return data;
+}
+
+async function handleResolveEducatorByEmail(supabase: any, params: any): Promise<any> {
+  const { email } = params;
+  if (!email) return null;
+  const { data } = await supabase.from('school_educators').select('id, school_id, user_id, email, first_name, last_name, role, phone_number').eq('email', email).maybeSingle();
+  return data;
+}
+
+async function handleResolveEducatorById(supabase: any, params: any): Promise<any> {
+  const { educatorId } = params;
+  if (!educatorId) return null;
+  const { data } = await supabase.from('school_educators').select('id, school_id, user_id, email, first_name, last_name, role, phone_number').eq('id', educatorId).maybeSingle();
+  return data;
+}
+
+async function handleFetchLearnerContext(supabase: any, params: any): Promise<any> {
+  const { learnerId, userId } = params;
+  if (learnerId) {
+    const { data } = await supabase.from('learners').select('id, user_id, school_id, university_college_id, program_section_id, program_id').eq('id', learnerId).maybeSingle();
+    return data;
+  }
+  if (userId) {
+    const { data } = await supabase.from('learners').select('id, user_id, school_id, university_college_id, program_section_id, program_id').eq('user_id', userId).maybeSingle();
+    return data;
+  }
+  return null;
+}
+
+async function handleFetchDepartmentsByCollege(supabase: any, params: any): Promise<any[]> {
+  const { collegeId } = params;
+  if (!collegeId) return [];
+  const { data } = await supabase.from('departments').select('id, name').eq('college_id', collegeId).order('name');
+  return data || [];
+}
+
+async function handleFetchProgramsByDepartments(supabase: any, params: any): Promise<any[]> {
+  const { departmentIds, collegeId } = params;
+  let query = supabase.from('programs').select('id, name, department_id');
+  if (departmentIds?.length) query = query.in('department_id', departmentIds);
+  if (collegeId) query = query.eq('college_id', collegeId);
+  const { data } = await query.order('name');
+  return data || [];
+}
+
+async function handleFetchLearnersByPrograms(supabase: any, params: any): Promise<any[]> {
+  const { programIds, collegeId, limit = 200 } = params;
+  let query = supabase.from('learners').select('id, name, email, university, branch_field, program_id, program_section_id');
+  if (programIds?.length) query = query.in('program_id', programIds);
+  if (collegeId) query = query.eq('university_college_id', collegeId);
+  const { data } = await query.limit(Math.min(limit, 500)).order('name');
+  return data || [];
+}
+
+async function handleFetchRecipients(supabase: any, params: any): Promise<any[]> {
+  const { conversationType, contextId } = params;
+  let data: any[] = [];
+
+  if (conversationType === 'learner-educator' || conversationType === 'admin-educator') {
+    const { data: educatorData, error } = await supabase
+      .from('school_educators')
+      .select('id, user_id, first_name, last_name, email, photo_url, role, subject_expertise')
+      .eq('school_id', contextId)
+      .order('first_name');
+    if (!error && educatorData) {
+      data = educatorData.map((e: any) => ({
+        id: e.id, userId: e.user_id, name: `${e.first_name} ${e.last_name}`, email: e.email,
+        photo_url: e.photo_url, type: 'school_educator', role: e.role,
+        specialization: Array.isArray(e.subject_expertise)
+          ? e.subject_expertise.map((s: any) => s.subject || s).join(', ')
+          : e.subject_expertise,
+      }));
+    }
+  } else if (conversationType === 'admin-learner' || conversationType === 'college-admin-learner') {
+    const { data: learnerData, error } = await supabase
+      .from('learners')
+      .select('id, name, email, university, branch_field, grade, section')
+      .eq(conversationType === 'admin-learner' ? 'school_id' : 'university_college_id', contextId)
+      .order('name');
+    if (!error && learnerData) {
+      data = learnerData.map((s: any) => ({
+        id: s.id, name: s.name || 'Unnamed Learner', email: s.email,
+        university: s.university, branch_field: s.branch_field, grade: s.grade, section: s.section,
+      }));
+    }
+  } else if (conversationType === 'college-lecturer') {
+    const { data: lecturerData, error } = await supabase
+      .from('college_lecturers')
+      .select('id, first_name, last_name, email, department, specialization, user_id')
+      .eq('collegeId', contextId)
+      .order('first_name');
+    if (!error && lecturerData) {
+      data = lecturerData.map((l: any) => ({
+        id: l.id, userId: l.user_id, name: `${l.first_name} ${l.last_name}`, email: l.email,
+        type: 'college_lecturer', department: l.department, specialization: l.specialization,
+      }));
+    }
+  }
+
+  return data;
+}
+
+export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
+  const user = getContextUser(context);
+  const env = context.env as Record<string, string>;
+  const supabase = getServiceClient(env as any);
+  const startTime = Date.now();
+
+  let body: any;
+  try {
+    body = await context.request.json();
+  } catch {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request, { startTime });
+  }
+
+  const { action, ...params } = body;
+  if (!action) {
+    return apiError(400, 'VALIDATION_ERROR', 'Missing action', context.request, { startTime });
+  }
+
+  try {
+    switch (action) {
+      case 'fetch-educator-details':
+        return apiSuccess(await handleFetchEducatorDetails(supabase, params), context.request, { startTime });
+
+      case 'get-or-create-conversation':
+        return apiSuccess(await handleGetOrCreateConversation(supabase, params), context.request, { startTime });
+
+      case 'get-or-create-learner-educator-conversation':
+        return apiSuccess(await handleGetOrCreateLearnerEducatorConversation(supabase, params), context.request, { startTime });
+
+      case 'get-or-create-learner-college-lecturer-conversation':
+        return apiSuccess(await handleGetOrCreateLearnerCollegeLecturerConversation(supabase, params), context.request, { startTime });
+
+      case 'send-message':
+        return apiSuccess(await handleSendMessage(supabase, params), context.request, { startTime });
+
+      case 'send-learner-educator-message':
+        return apiSuccess(await handleSendLearnerEducatorMessage(supabase, params), context.request, { startTime });
+
+      case 'get-conversation-messages':
+        return apiSuccess(await handleGetConversationMessages(supabase, params), context.request, { startTime });
+
+      case 'get-user-conversations':
+        return apiSuccess(await handleGetUserConversations(supabase, params), context.request, { startTime });
+
+      case 'get-unread-count':
+        return apiSuccess(await handleGetUnreadCount(supabase, params), context.request, { startTime });
+
+      case 'get-conversation-with-learner':
+        return apiSuccess(await handleGetConversationWithLearner(supabase, params), context.request, { startTime });
+
+      case 'archive-conversation':
+        await handleArchiveConversation(supabase, params);
+        return apiSuccess({ archived: true }, context.request, { startTime });
+
+      case 'unarchive-conversation':
+        await handleUnarchiveConversation(supabase, params);
+        return apiSuccess({ unarchived: true }, context.request, { startTime });
+
+      case 'mark-as-read':
+        await handleMarkAsRead(supabase, params);
+        return apiSuccess({ read: true }, context.request, { startTime });
+
+      case 'mark-conversation-as-read':
+        await handleMarkConversationAsRead(supabase, params);
+        return apiSuccess({ read: true }, context.request, { startTime });
+
+      case 'get-or-create-learner-admin-conversation':
+        return apiSuccess(await handleGetOrCreateLearnerAdminConversation(supabase, params), context.request, { startTime });
+
+      case 'get-or-create-learner-college-admin-conversation':
+        return apiSuccess(await handleGetOrCreateLearnerCollegeAdminConversation(supabase, params), context.request, { startTime });
+
+      case 'get-or-create-educator-admin-conversation':
+        return apiSuccess(await handleGetOrCreateEducatorAdminConversation(supabase, params), context.request, { startTime });
+
+      case 'get-or-create-college-educator-admin-conversation':
+        return apiSuccess(await handleGetOrCreateCollegeEducatorAdminConversation(supabase, params), context.request, { startTime });
+
+      case 'delete-conversation-for-user':
+        await handleDeleteConversationForUser(supabase, params);
+        return apiSuccess({ deleted: true }, context.request, { startTime });
+
+      case 'restore-conversation':
+        await handleRestoreConversation(supabase, params);
+        return apiSuccess({ restored: true }, context.request, { startTime });
+
+      case 'permanently-delete-conversation':
+        await handlePermanentlyDeleteConversation(supabase, params);
+        return apiSuccess({ permanentlyDeleted: true }, context.request, { startTime });
+
+      case 'archive-conversation-for-user':
+        await handleArchiveConversationForUser(supabase, params);
+        return apiSuccess({ archived: true }, context.request, { startTime });
+
+      case 'unarchive-conversation-for-user':
+        await handleUnarchiveConversationForUser(supabase, params);
+        return apiSuccess({ unarchived: true }, context.request, { startTime });
+
+      case 'fetch-recipients':
+        return apiSuccess(await handleFetchRecipients(supabase, params), context.request, { startTime });
+
+      case 'search-recipients':
+        return apiSuccess(await handleSearchRecipients(supabase, params), context.request, { startTime });
+
+      case 'resolve-user-context':
+        return apiSuccess(await handleResolveUserContext(supabase, params), context.request, { startTime });
+
+      case 'fetch-learner-school':
+        return apiSuccess(await handleFetchLearnerSchool(supabase, params), context.request, { startTime });
+
+      case 'fetch-learner-college':
+        return apiSuccess(await handleFetchLearnerCollege(supabase, params), context.request, { startTime });
+
+      case 'fetch-organization':
+        return apiSuccess(await handleFetchOrganization(supabase, params), context.request, { startTime });
+
+      case 'resolve-educator-by-email':
+        return apiSuccess(await handleResolveEducatorByEmail(supabase, params), context.request, { startTime });
+
+      case 'resolve-educator-by-id':
+        return apiSuccess(await handleResolveEducatorById(supabase, params), context.request, { startTime });
+
+      case 'fetch-learner-context':
+        return apiSuccess(await handleFetchLearnerContext(supabase, params), context.request, { startTime });
+
+      case 'fetch-learner-context-by-user-id':
+        return apiSuccess(await handleFetchLearnerContext(supabase, params), context.request, { startTime });
+
+      case 'fetch-departments-by-college':
+        return apiSuccess(await handleFetchDepartmentsByCollege(supabase, params), context.request, { startTime });
+
+      case 'fetch-programs-by-departments':
+        return apiSuccess(await handleFetchProgramsByDepartments(supabase, params), context.request, { startTime });
+
+      case 'fetch-learners-by-programs':
+        return apiSuccess(await handleFetchLearnersByPrograms(supabase, params), context.request, { startTime });
+
+      default:
+        return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
+    }
+  } catch (error: any) {
+    console.error('[Messaging Actions] Error:', error);
+    return apiDbError(error, context.request, { startTime });
+  }
+});
+
+export const onRequestGet = withAuth(async (context: AuthenticatedContext) => apiMethodNotAllowed(context.request));

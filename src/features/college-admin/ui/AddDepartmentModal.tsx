@@ -1,7 +1,7 @@
 
 import { ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { departmentService } from '@/features/college-admin';
 import { getLogger } from '@/shared/config/logging';
 
@@ -57,15 +57,14 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({
   useEffect(() => {
     if (isOpen && user?.id) {
       const fetchCollegeId = async () => {
-        const { data, error } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'college')
-          .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
+        const result = await apiPost('/college-admin/faculty', {
+          action: 'resolve-user-college',
+          user_id: user.id,
+          email: user.email,
+        });
 
-        if (!error && data) {
-          setCollegeId(data.id);
+        if (result.data?.college_id) {
+          setCollegeId(result.data.college_id);
         }
       };
 

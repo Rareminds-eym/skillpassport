@@ -8,7 +8,6 @@ import { ssoClient } from '@/shared/api/ssoClient';
  * Requirements: Task 65 - Frontend API client
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import {
   Question,
   TestSession,

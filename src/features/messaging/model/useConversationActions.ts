@@ -9,7 +9,7 @@ import { getLogger } from '@/shared/config/logging';
 import { MessageService } from '../../../shared/api/messageService';
 import { messagesKeys } from '@/shared/lib/queryKeys/messages';
 import type { UserRole } from '../api/types';
-import { supabase } from '@/shared/api/supabase';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('UseConversationActions');
 
@@ -62,32 +62,6 @@ export interface UseConversationActionsReturn {
 }
 
 // ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Get the role-specific archive column name
- */
-function getArchiveColumn(userRole: UserRole): string {
-    switch (userRole) {
-        case 'learner':
-            return 'archived_by_learner';
-        case 'recruiter':
-            return 'archived_by_recruiter';
-        case 'educator':
-        case 'college_educator':
-            return 'archived_by_educator';
-        case 'school_admin':
-        case 'university_admin':
-            return 'archived_by_admin';
-        case 'college_admin':
-            return 'archived_by_college_admin';
-        default:
-            throw new Error(`Invalid user role: ${userRole}`);
-    }
-}
-
-// ============================================================================
 // Hook Implementation
 // ============================================================================
 
@@ -118,17 +92,12 @@ export function useConversationActions(
 
     const archiveMutation = useMutation({
         mutationFn: async (conversationId: string) => {
-            const archiveColumn = getArchiveColumn(userRole);
-
-            const { error } = await supabase
-                .from('conversations')
-                .update({
-                    [archiveColumn]: true,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', conversationId);
-
-            if (error) throw error;
+            await apiPost('/messaging/actions', {
+                action: 'archive-conversation-for-user',
+                conversationId,
+                userId,
+                userType: userRole,
+            });
         },
         onSuccess: () => {
             // Invalidate conversations list query
@@ -147,17 +116,12 @@ export function useConversationActions(
 
     const unarchiveMutation = useMutation({
         mutationFn: async (conversationId: string) => {
-            const archiveColumn = getArchiveColumn(userRole);
-
-            const { error } = await supabase
-                .from('conversations')
-                .update({
-                    [archiveColumn]: false,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', conversationId);
-
-            if (error) throw error;
+            await apiPost('/messaging/actions', {
+                action: 'unarchive-conversation-for-user',
+                conversationId,
+                userId,
+                userType: userRole,
+            });
         },
         onSuccess: () => {
             // Invalidate conversations list query

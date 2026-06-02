@@ -12,7 +12,6 @@ import {
   ChevronRight,
   ArrowDownAZ
 } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
 import { motion } from 'framer-motion';
 import { CourseDetailModal } from '@/features/courses';
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
 import toast from 'react-hot-toast';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Small Message Modal Component
 const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
@@ -233,25 +233,7 @@ const NewCollegeAdminEducatorConversationModal = ({
     try {
       console.log('🔍 [NewCollegeAdminEducatorModal] Fetching educators for college:', collegeId);
 
-      const { data: educatorData, error: educatorError } = await supabase
-        .from('college_lecturers')
-        .select(`
-          id,
-          user_id,
-          first_name,
-          last_name,
-          email,
-          department,
-          specialization,
-          phone
-        `)
-        .eq('collegeId', collegeId)
-        .order('first_name', { ascending: true });
-
-      if (educatorError) {
-        console.error('❌ [NewCollegeAdminEducatorModal] Error fetching educators:', educatorError);
-        throw educatorError;
-      }
+      const { data: educatorData } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-lecturer', contextId: collegeId });
 
       console.log('✅ [NewCollegeAdminEducatorModal] Educators loaded:', educatorData?.length || 0);
       setEducators(educatorData || []);

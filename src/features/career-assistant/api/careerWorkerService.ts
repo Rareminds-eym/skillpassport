@@ -3,7 +3,6 @@
  * Calls the Cloudflare Worker for career AI processing
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { careerApiService } from '@/features/counselling';
 import { getLogger } from '@/shared/config/logging';
 

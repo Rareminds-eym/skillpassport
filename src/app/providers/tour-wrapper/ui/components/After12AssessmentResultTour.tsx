@@ -4,7 +4,6 @@ import { getLogger } from '@/shared/config/logging';
 
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
-import { supabase } from '@/shared/api/supabaseClient';
 import { useTour } from '@/shared/model/tourStore';
 
 const logger = getLogger('After12AssessmentResultTour');

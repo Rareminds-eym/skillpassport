@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, GraduationCap, Code, Users, Sparkles } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
 import CourseRecommendationCard from '../CourseRecommendationCard';
 
 /**

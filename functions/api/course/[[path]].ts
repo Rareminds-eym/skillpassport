@@ -18,6 +18,7 @@ import { handleCorsPreflightRequest } from '../../lib/cors';
 import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { withAuth } from '../../lib/auth';
 import { onRequestPost as handleAiVideoSummarizer } from './handlers/ai-video-summarizer';
+import { onRequestPost as handleCourseActions } from './handlers/actions';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request } = context;
@@ -41,6 +42,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         endpoints: [
           'GET /health - Health check',
           'POST /ai-video-summarizer - Video transcription and summary',
+          'POST /actions - Course data CRUD (get-courses, enrollments, progress, modules)',
         ],
         note: 'AI tutor endpoints have been moved to /api/ai-tutor',
       }, request);
@@ -49,6 +51,11 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     // AI Video Summarizer (authenticated)
     if (path === '/ai-video-summarizer' && request.method === 'POST') {
       return withAuth(handleAiVideoSummarizer)(context);
+    }
+
+    // Course actions dispatch
+    if (path === '/actions' && request.method === 'POST') {
+      return handleCourseActions(context);
     }
 
     // 404 for unknown routes
