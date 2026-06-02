@@ -13,6 +13,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
+import { startTokenRefresh, stopTokenRefresh } from '@/shared/services/tokenRefreshService';
 import type { MeResponse, LoginResponse } from '@rareminds-eym/auth-client';
 
 const logger = getLogger('auth-store');
@@ -208,6 +209,8 @@ export const useAuthStore = create<AuthState>()(
           state.role = userData.role ?? pickPrimaryRole(roles);
           Object.assign(state, computeRoleFlags(roles));
         });
+        // Start token refresh service after successful login
+        startTokenRefresh();
         return;
       }
 
@@ -223,10 +226,15 @@ export const useAuthStore = create<AuthState>()(
         state.role = user.role ?? null;
         Object.assign(state, computeRoleFlags(me.roles));
       });
+      // Start token refresh service after successful login
+      startTokenRefresh();
       return res;
     },
 
     logout: async () => {
+      // Stop token refresh service before logout
+      stopTokenRefresh();
+      
       try {
         await ssoClient.logout();
       } catch (err) {
@@ -321,6 +329,8 @@ export const useAuthStore = create<AuthState>()(
             Object.assign(state, computeRoleFlags(me.roles));
             state.loading = false;
           });
+          // Start token refresh service after successful session restoration
+          startTokenRefresh();
         } else {
           // No valid session — clear any stale persisted state
           set((state) => {
@@ -423,6 +433,7 @@ if (typeof window !== 'undefined') {
     const store = useAuthStore.getState();
 
     if (event === 'LOGOUT') {
+      stopTokenRefresh();
       store.setUser(null);
     } else if (event === 'LOGIN' || event === 'REFRESH') {
       try {
@@ -434,6 +445,10 @@ if (typeof window !== 'undefined') {
           role: user.role ?? null,
           ...computeRoleFlags(me.roles),
         });
+        // Ensure token refresh is running after cross-tab login/refresh
+        if (event === 'LOGIN') {
+          startTokenRefresh();
+        }
       } catch {
         // Session expired during rehydration — ignore
       }
