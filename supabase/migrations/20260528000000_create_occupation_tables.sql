@@ -109,21 +109,23 @@ COMMENT ON COLUMN public.occupations_context.domain_id IS 'Foreign key to domain
 
 -- ============================================================================
 -- TABLE 6: occupations_capabilities_master (Junction Table)
--- Links occupations to capabilities_master (one-to-many relationship)
+-- Links each occupation-in-a-domain (occupations_context) to capabilities_master.
+-- Capabilities hang off the domain + occupation pairing, so the SAME occupation can
+-- carry different capabilities in different domains. One context -> many capabilities.
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.occupations_capabilities_master (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  occupation_id UUID NOT NULL REFERENCES public.occupations(id) ON DELETE CASCADE,
+  context_id UUID NOT NULL REFERENCES public.occupations_context(id) ON DELETE CASCADE,
   capability_id UUID NOT NULL REFERENCES public.capabilities_master(id) ON DELETE RESTRICT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_occupation_capability UNIQUE(occupation_id, capability_id)
+  CONSTRAINT unique_context_capability UNIQUE(context_id, capability_id)
 );
 
-CREATE INDEX idx_occ_cap_occupation ON public.occupations_capabilities_master(occupation_id);
+CREATE INDEX idx_occ_cap_context ON public.occupations_capabilities_master(context_id);
 CREATE INDEX idx_occ_cap_capability ON public.occupations_capabilities_master(capability_id);
 
-COMMENT ON TABLE public.occupations_capabilities_master IS 'Junction table linking occupations to capabilities_master (one-to-many: each occupation can have multiple capabilities)';
-COMMENT ON COLUMN public.occupations_capabilities_master.occupation_id IS 'Foreign key to occupations (CASCADE on delete)';
+COMMENT ON TABLE public.occupations_capabilities_master IS 'Junction table linking occupations_context (occupation + domain) to capabilities_master (one-to-many: each occupation+domain context can have multiple capabilities)';
+COMMENT ON COLUMN public.occupations_capabilities_master.context_id IS 'Foreign key to occupations_context i.e. the occupation+domain pairing (CASCADE on delete)';
 COMMENT ON COLUMN public.occupations_capabilities_master.capability_id IS 'Foreign key to capabilities_master (RESTRICT on delete)';
 
 -- ============================================================================
