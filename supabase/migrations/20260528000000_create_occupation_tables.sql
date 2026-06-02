@@ -1,7 +1,7 @@
 -- ============================================================================
--- Migration: Create Occupation Management Tables (Normalized)
+-- Migration: Create Role Management Tables (Normalized)
 -- Date: 2026-05-28
--- Purpose: Create reference and junction tables for occupation/role management
+-- Purpose: Create reference and junction tables for role management
 -- ============================================================================
 
 -- Enable UUID extension
@@ -41,10 +41,10 @@ COMMENT ON COLUMN public.capabilities_master.name IS 'Capability Name: Short nam
 COMMENT ON COLUMN public.capabilities_master.description IS 'Capability Description: Full description of capability requirements (from Capability_Description)';
 
 -- ============================================================================
--- TABLE 4: occupations
--- Main table: occupations with semantic properties (embeddings in separate table)
+-- TABLE 4: roles
+-- Main table: roles with semantic properties (embeddings in separate table)
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS public.occupations (
+CREATE TABLE IF NOT EXISTS public.roles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code VARCHAR(20) UNIQUE NOT NULL,
   name VARCHAR(255) NOT NULL,
@@ -53,16 +53,16 @@ CREATE TABLE IF NOT EXISTS public.occupations (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_occupations_code ON public.occupations(code);
-CREATE INDEX idx_occupations_name ON public.occupations(name);
+CREATE INDEX idx_roles_code ON public.roles(code);
+CREATE INDEX idx_roles_name ON public.roles(name);
 
-COMMENT ON TABLE public.occupations IS 'Base occupation/role definitions (embeddings stored in separate embeddings table)';
-COMMENT ON COLUMN public.occupations.code IS 'Unique occupation code: ROLE-HTT-001, ROLE-EDU-001, ROLE-HR-001, etc.';
-COMMENT ON COLUMN public.occupations.name IS 'Occupation name/title';
+COMMENT ON TABLE public.roles IS 'Base role definitions (embeddings stored in separate embeddings table)';
+COMMENT ON COLUMN public.roles.code IS 'Unique role code: ROLE-HTT-001, ROLE-EDU-001, ROLE-HR-001, etc.';
+COMMENT ON COLUMN public.roles.name IS 'Role name/title';
 
 -- ============================================================================
 -- TABLE 5: embeddings (Generic RAG Embedding Storage - Minimal)
--- Stores semantic embeddings for occupations, capabilities, domains
+-- Stores semantic embeddings for roles, capabilities, domains
 -- Flexible: any entity type can be embedded without schema changes
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.embeddings (
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS public.embeddings (
 );
 
 CREATE INDEX idx_embeddings_entity ON public.embeddings(entity_type, entity_id);
--- NOTE: No ANN (ivfflat/HNSW) index on `embedding` on purpose. With only ~277 occupation
+-- NOTE: No ANN (ivfflat/HNSW) index on `embedding` on purpose. With only ~277 role
 -- vectors, an ivfflat index (lists=100, default probes=1) returns approximate results — a query
 -- often hits one sparse list and gets back only a handful of rows instead of the requested top-K.
 -- Exact brute-force KNN over a few hundred rows is sub-millisecond, so an index hurts correctness
@@ -83,67 +83,67 @@ CREATE INDEX idx_embeddings_entity ON public.embeddings(entity_type, entity_id);
 -- probes raised) only when the embedding set grows large (tens of thousands+).
 -- CREATE INDEX idx_embeddings_embedding ON public.embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
-COMMENT ON TABLE public.embeddings IS 'Generic embedding storage for RAG. Supports occupations, capabilities, domains, and future entity types.';
-COMMENT ON COLUMN public.embeddings.entity_type IS 'Entity type: occupation, capability, domain';
-COMMENT ON COLUMN public.embeddings.entity_id IS 'UUID reference to the entity (occupation_id, capability_id, or domain_id)';
+COMMENT ON TABLE public.embeddings IS 'Generic embedding storage for RAG. Supports roles, capabilities, domains, and future entity types.';
+COMMENT ON COLUMN public.embeddings.entity_type IS 'Entity type: role, capability, domain';
+COMMENT ON COLUMN public.embeddings.entity_id IS 'UUID reference to the entity (role_id, capability_id, or domain_id)';
 COMMENT ON COLUMN public.embeddings.embedding IS 'Semantic embedding vector (1536 dimensions) for similarity search';
 
 -- ============================================================================
--- TABLE 6: occupations_context (Junction Table)
--- Links occupations to domains
+-- TABLE 6: roles_context (Junction Table)
+-- Links roles to domains
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS public.occupations_context (
+CREATE TABLE IF NOT EXISTS public.roles_context (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  occupation_id UUID NOT NULL REFERENCES public.occupations(id) ON DELETE CASCADE,
+  role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
   domain_id UUID NOT NULL REFERENCES public.domains(id) ON DELETE RESTRICT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_occupation_domain UNIQUE(occupation_id, domain_id)
+  CONSTRAINT unique_role_domain UNIQUE(role_id, domain_id)
 );
 
-CREATE INDEX idx_occ_context_occupation ON public.occupations_context(occupation_id);
-CREATE INDEX idx_occ_context_domain ON public.occupations_context(domain_id);
+CREATE INDEX idx_roles_context_role ON public.roles_context(role_id);
+CREATE INDEX idx_roles_context_domain ON public.roles_context(domain_id);
 
-COMMENT ON TABLE public.occupations_context IS 'Junction table linking occupations to domains';
-COMMENT ON COLUMN public.occupations_context.occupation_id IS 'Foreign key to occupations (CASCADE on delete)';
-COMMENT ON COLUMN public.occupations_context.domain_id IS 'Foreign key to domains (RESTRICT on delete)';
+COMMENT ON TABLE public.roles_context IS 'Junction table linking roles to domains';
+COMMENT ON COLUMN public.roles_context.role_id IS 'Foreign key to roles (CASCADE on delete)';
+COMMENT ON COLUMN public.roles_context.domain_id IS 'Foreign key to domains (RESTRICT on delete)';
 
 -- ============================================================================
--- TABLE 6: occupations_capabilities_master (Junction Table)
--- Links each occupation-in-a-domain (occupations_context) to capabilities_master.
--- Capabilities hang off the domain + occupation pairing, so the SAME occupation can
+-- TABLE 6: roles_capabilities_master (Junction Table)
+-- Links each role-in-a-domain (roles_context) to capabilities_master.
+-- Capabilities hang off the domain + role pairing, so the SAME role can
 -- carry different capabilities in different domains. One context -> many capabilities.
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS public.occupations_capabilities_master (
+CREATE TABLE IF NOT EXISTS public.roles_capabilities_master (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  context_id UUID NOT NULL REFERENCES public.occupations_context(id) ON DELETE CASCADE,
+  context_id UUID NOT NULL REFERENCES public.roles_context(id) ON DELETE CASCADE,
   capability_id UUID NOT NULL REFERENCES public.capabilities_master(id) ON DELETE RESTRICT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT unique_context_capability UNIQUE(context_id, capability_id)
 );
 
-CREATE INDEX idx_occ_cap_context ON public.occupations_capabilities_master(context_id);
-CREATE INDEX idx_occ_cap_capability ON public.occupations_capabilities_master(capability_id);
+CREATE INDEX idx_role_cap_context ON public.roles_capabilities_master(context_id);
+CREATE INDEX idx_role_cap_capability ON public.roles_capabilities_master(capability_id);
 
-COMMENT ON TABLE public.occupations_capabilities_master IS 'Junction table linking occupations_context (occupation + domain) to capabilities_master (one-to-many: each occupation+domain context can have multiple capabilities)';
-COMMENT ON COLUMN public.occupations_capabilities_master.context_id IS 'Foreign key to occupations_context i.e. the occupation+domain pairing (CASCADE on delete)';
-COMMENT ON COLUMN public.occupations_capabilities_master.capability_id IS 'Foreign key to capabilities_master (RESTRICT on delete)';
+COMMENT ON TABLE public.roles_capabilities_master IS 'Junction table linking roles_context (role + domain) to capabilities_master (one-to-many: each role+domain context can have multiple capabilities)';
+COMMENT ON COLUMN public.roles_capabilities_master.context_id IS 'Foreign key to roles_context i.e. the role+domain pairing (CASCADE on delete)';
+COMMENT ON COLUMN public.roles_capabilities_master.capability_id IS 'Foreign key to capabilities_master (RESTRICT on delete)';
 
 -- ============================================================================
 -- TABLE 7: riasec_profiles (Separate Junction Table)
--- Links occupations to their RIASEC profile codes (one-to-many relationship)
--- Handles cases where an occupation can have multiple RIASEC profiles (e.g., SC; CIS; SCI)
+-- Links roles to their RIASEC profile codes (one-to-many relationship)
+-- Handles cases where a role can have multiple RIASEC profiles (e.g., SC; CIS; SCI)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.riasec_profiles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  occupation_id UUID NOT NULL REFERENCES public.occupations(id) ON DELETE CASCADE,
+  role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
   profile_code VARCHAR(10) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_occupation_profile UNIQUE(occupation_id, profile_code)
+  CONSTRAINT unique_role_profile UNIQUE(role_id, profile_code)
 );
 
-CREATE INDEX idx_riasec_profiles_occupation ON public.riasec_profiles(occupation_id);
+CREATE INDEX idx_riasec_profiles_role ON public.riasec_profiles(role_id);
 CREATE INDEX idx_riasec_profiles_code ON public.riasec_profiles(profile_code);
 
-COMMENT ON TABLE public.riasec_profiles IS 'Junction table linking occupations to RIASEC profile codes (one-to-many: each occupation can have multiple RIASEC profiles)';
-COMMENT ON COLUMN public.riasec_profiles.occupation_id IS 'Foreign key to occupations (CASCADE on delete)';
+COMMENT ON TABLE public.riasec_profiles IS 'Junction table linking roles to RIASEC profile codes (one-to-many: each role can have multiple RIASEC profiles)';
+COMMENT ON COLUMN public.riasec_profiles.role_id IS 'Foreign key to roles (CASCADE on delete)';
 COMMENT ON COLUMN public.riasec_profiles.profile_code IS 'RIASEC Profile Code: SC, CIS, SCI, RSC, SEC, etc. (can be 1-4 characters)';
