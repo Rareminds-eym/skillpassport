@@ -146,32 +146,29 @@ export const viewCertificate = (certUrl: string): void => {
         const newWindow = window.open(blobUrl, '_blank');
         
         if (!newWindow) {
-          // Popup was blocked - cleanup immediately
-          toast.error('Please allow popups for this site to view the certificate.');
+          // fix: Popup was blocked - cleanup immediately and return
           URL.revokeObjectURL(blobUrl);
-          blobUrl = null;
+          toast.error('Please allow popups for this site to view the certificate.');
           logger.warn('Certificate popup blocked by browser', { urlType: 'data-url-blob' });
           return;
         }
         
-        // Popup succeeded - schedule cleanup after browser has loaded the content
+        // fix: Popup succeeded - schedule cleanup after browser has loaded the content
+        // Keep reference for cleanup
+        const urlToRevoke = blobUrl;
         setTimeout(() => {
-          if (blobUrl) {
-            URL.revokeObjectURL(blobUrl);
-          }
+          URL.revokeObjectURL(urlToRevoke);
         }, 5000);
-        blobUrl = null; // Clear reference to prevent double cleanup in finally block
         return;
         
       } catch (blobError) {
-        logger.error('Error converting data URL to blob', blobError instanceof Error ? blobError : new Error(String(blobError)));
-        toast.error('Error displaying certificate. Please try downloading instead.');
-        return;
-      } finally {
-        // Safety net: ensure blob URL is always cleaned up if not already handled
+        // fix: Clean up blob URL if it was created before error
         if (blobUrl) {
           URL.revokeObjectURL(blobUrl);
         }
+        logger.error('Error converting data URL to blob', blobError instanceof Error ? blobError : new Error(String(blobError)));
+        toast.error('Error displaying certificate. Please try downloading instead.');
+        return;
       }
     }
     
@@ -180,7 +177,7 @@ export const viewCertificate = (certUrl: string): void => {
     
     if (!viewUrl || viewUrl.trim() === '') {
       toast.error('Failed to generate certificate viewing URL. Please try downloading instead.');
-      logger.error('Invalid proxy URL generated', { originalUrl: certUrl });
+      logger.error('Invalid proxy URL generated', new Error('Empty or invalid proxy URL'));
       return;
     }
     

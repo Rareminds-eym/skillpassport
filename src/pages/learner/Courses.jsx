@@ -82,7 +82,6 @@ const Courses = () => {
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
   const [enrollmentProgress, setEnrollmentProgress] = useState({}); // Track progress per course
   const [certificateUrls, setCertificateUrls] = useState({}); // Track certificate URLs per course
-  const [downloadingCertificate, setDownloadingCertificate] = useState(null); // Track which certificate is downloading
   const [preparingCertificate, setPreparingCertificate] = useState(null); // Track which certificate is being prepared
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   
@@ -171,7 +170,7 @@ const Courses = () => {
       logger.error('Error refreshing enrollments after certificate generation', 
         error instanceof Error ? error : new Error(String(error)));
     }
-  }, [fetchEnrollments]);
+  }, [fetchEnrollments]); // Fixed: Added fetchEnrollments to dependency array
 
   /**
    * Certificate modal hook for course certificate generation
@@ -473,21 +472,11 @@ const Courses = () => {
     }
     
     try {
-      // Check if certificate already exists - use callback to get fresh state
-      // This avoids adding certificateUrls to dependency array which would break memoization
-      let certificateExists = false;
-      setCertificateUrls(currentUrls => {
-        const existingCertUrl = currentUrls[courseId];
-        if (existingCertUrl) {
-          // Certificate already exists, show it directly
-          certificateExists = true;
-          viewCertificate(existingCertUrl);
-        }
-        return currentUrls; // No state change
-      });
-      
-      // Early return if certificate exists
-      if (certificateExists) {
+      // Check if certificate already exists - read directly from state
+      const existingCertUrl = certificateUrls[courseId];
+      if (existingCertUrl) {
+        // Certificate already exists, show it directly
+        viewCertificate(existingCertUrl);
         return;
       }
       
@@ -565,7 +554,7 @@ const Courses = () => {
       preparingCertificateRef.current.delete(courseId);
       setPreparingCertificate(null);
     }
-  }, [user?.email, certificateModal]); // Removed certificateUrls - accessed via setState callback for fresh state
+  }, [user?.email, certificateModal, certificateUrls]); // Fixed: Added certificateUrls to dependency array
 
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {

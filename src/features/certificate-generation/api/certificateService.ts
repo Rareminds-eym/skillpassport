@@ -56,14 +56,10 @@ const htmlToImage = async (html: string): Promise<string> => {
   container.style.height = '2551px';
   container.innerHTML = html;
   
-  // Validate container was created successfully
-  if (!container) {
-    throw new Error('Failed to create certificate container element');
-  }
-  
-  document.body.appendChild(container);
-
   try {
+    // fix: Append container to DOM - wrap in try-finally to ensure cleanup
+    document.body.appendChild(container);
+    
     // Dynamically import html2canvas with validation
     const html2canvasModule = await import('html2canvas');
     const html2canvas = html2canvasModule.default;
@@ -133,6 +129,12 @@ const htmlToImage = async (html: string): Promise<string> => {
     }
     
     return dataUrl;
+  } catch (error) {
+    // Ensure cleanup happens even if canvas generation throws
+    if (container.parentNode === document.body) {
+      document.body.removeChild(container);
+    }
+    throw error;
   } finally {
     // Clean up - ensure container is still in DOM before removing
     if (container.parentNode === document.body) {
@@ -373,9 +375,15 @@ const uploadToR2 = async (
   // This prevents issues when user tries to upload immediately after page load
   if (!ssoClient.isInitialized()) {
     logger.warn('SSO client not initialized, initializing now');
-    const { authenticated } = await ssoClient.initSession();
-    if (!authenticated) {
-      throw new Error('Authentication required. Please log in and try again.');
+    try {
+      const { authenticated } = await ssoClient.initSession();
+      if (!authenticated) {
+        throw new Error('Authentication required. Please log in and try again.');
+      }
+    } catch (initError) {
+      const errorMessage = `SSO initialization failed: ${initError instanceof Error ? initError.message : 'Unknown error'}`;
+      logger.error('SSO initialization failed', new Error(errorMessage));
+      throw new Error(errorMessage);
     }
   }
   

@@ -720,10 +720,12 @@ const CoursePlayer = () => {
           },
         });
 
-        if (response.ok) {
-          const streakData = await response.json();
-          console.log('✅ Streak updated:', streakData);
+        if (!response.ok) {
+          throw new Error(`Streak API returned ${response.status}`);
         }
+
+        const streakData = await response.json();
+        console.log('✅ Streak updated:', streakData);
       } catch (streakError) {
         // Don't block lesson completion if streak update fails
         console.error('Error updating streak:', streakError);
