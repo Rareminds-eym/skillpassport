@@ -4,6 +4,8 @@
  */
 
 import { careerApiService } from '@/features/counselling';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('career-worker-service');
@@ -37,19 +39,25 @@ export async function streamCareerChat(
 ): Promise<CareerChatResult> {
   try {
     const user = useAuthStore.getState().user;
-    const sessionError = null;
 
-    if (sessionError || !session) {
-      logger.error('Authentication failed for career AI service', sessionError as Error);
+    if (!user) {
+      logger.error('Authentication failed for career AI service');
       return { success: false, error: 'Please log in to use Career AI' };
     }
 
     let result: CareerChatResult = { success: true };
 
     await new Promise<void>((resolve) => {
+      const token = ssoClient.getAccessToken();
+      if (!token) {
+        logger.error('No access token available for career AI service');
+        result = { success: false, error: 'Authentication failed' };
+        resolve();
+        return;
+      }
       careerApiService.sendCareerChatMessage(
         { conversationId: conversationId || undefined, message, selectedChips },
-        ssoClient.getAccessToken(),
+        token,
         (content) => onChunk(content),
         (data) => {
           const response = data as any;
