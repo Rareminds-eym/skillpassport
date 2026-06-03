@@ -35,7 +35,7 @@ import {
 } from '@/shared/ui';
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { downloadCertificate } from '@/features/digital-portfolio';
+import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';

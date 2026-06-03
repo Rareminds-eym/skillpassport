@@ -31,10 +31,3 @@ export type { ProfileCompletionErrorBoundary } from './ui/shared/ProfileCompleti
 
 // Store exports
 export * from './model/portfolioStore';
-
-// Re-export certificate utility functions from shared layer for backward compatibility
-// These are pure utility functions without business logic
-export {
-  getCertificateProxyUrl,
-  downloadCertificate
-} from '@/shared/lib/utils/certificate-utils';

@@ -168,6 +168,11 @@ export const useCertificateModal = ({
    * Implements AbortController for proper cancellation
    */
   const openModal = useCallback(async (data: CertificateData): Promise<void> => {
+    // Abort any previous fetch operation before creating a new one
+    if (abortFetchRef.current) {
+      abortFetchRef.current();
+    }
+    
     // Create abort controller for this fetch operation
     const abortController = new AbortController();
     abortFetchRef.current = () => abortController.abort();
@@ -278,6 +283,11 @@ export const useCertificateModal = ({
       return;
     }
 
+    // Abort any previous generation operation before creating a new one
+    if (abortGenerateRef.current) {
+      abortGenerateRef.current();
+    }
+    
     // Create abort controller for this generation operation
     const abortController = new AbortController();
     abortGenerateRef.current = () => abortController.abort();

@@ -22,11 +22,10 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from '@/shared/model/authStore';
 import { useLearnerDataById } from '@/entities/learner';
 import { supabase } from "@/shared/api/supabaseClient";
-import { downloadCertificate } from "@/features/digital-portfolio";
+import { downloadCertificate, viewCertificate } from "@/shared/lib/certificateUtils";
 import { checkAssessmentStatus } from "@/features/assessment/api/externalAssessmentService";
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
-import { viewCertificate } from '@/shared/lib/certificateUtils';
 import { useCertificateModal } from '@/features/certificate-generation';
 import { CertificateNameModal } from '@/shared/ui';
 

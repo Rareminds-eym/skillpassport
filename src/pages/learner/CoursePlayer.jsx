@@ -23,7 +23,7 @@ import { Badge, Button, Card, CardContent, CertificateNameModal } from '@/shared
 import { useUser } from '@/features/auth';
 import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
 import { supabase } from '@/shared/api/supabaseClient';
-import { downloadCertificate } from '@/features/digital-portfolio';
+import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
 import { courseProgressService } from '@/features/courses';
 import { fileService } from '@/features/courses';

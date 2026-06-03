@@ -563,4 +563,4 @@ export const generateCourseCertificate = async (
 
 // Re-export utility functions from shared layer for feature-level API consistency
 // These are pure utility functions without business logic specific to certificate generation
-export { downloadCertificate, getCertificateProxyUrl } from '@/shared/lib/utils/certificate-utils';
+export { downloadCertificate, getCertificateProxyUrl } from '@/shared/lib/certificateUtils';

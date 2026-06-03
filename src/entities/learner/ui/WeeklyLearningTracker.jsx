@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { supabase } from '@/shared/api/supabaseClient';
-import { downloadCertificate, getCertificateProxyUrl } from '@/shared/lib/utils/certificate-utils';
+import { downloadCertificate, getCertificateProxyUrl } from '@/shared/lib/certificateUtils';
 import '@/shared/lib/suppressRechartsWarnings'; // Auto-suppress Recharts warnings
 
 // Compact tooltip for chart

@@ -51,7 +51,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
   return `<!doctype html>
 <html>
   <head>
-    <title>Certificate ${certificateType} - ${escapeHtml(data.studentName)}</title>
+    <title>Certificate ${escapeHtml(certificateType)} - ${escapeHtml(data.studentName)}</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=Edge">
@@ -346,7 +346,7 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       <!-- Certificate Title - Absolutely Positioned -->
       <div class="title">
         <p class="certificate">Certificate</p>
-        <p class="text">${certificateType}</p>
+        <p class="text">${escapeHtml(certificateType)}</p>
       </div>
       
       <!-- Skill Ecosystem Logo - Absolutely Positioned -->
@@ -356,9 +356,9 @@ export function generateCertificateHTML(data: CertificateData, baseUrl: string =
       <div class="col-2">
         <p class="text-2">This is to certify that</p>
         <p class="student-name">${escapeHtml(data.studentName.toUpperCase())}</p>
-        <p class="text-3">with Learner Id <strong>${escapeHtml(data.studentId)}</strong><br>${achievementText}</p>
+        <p class="text-3">with Learner Id <strong>${escapeHtml(data.studentId)}</strong><br>${escapeHtml(achievementText)}</p>
         <p class="course-name">${escapeHtml(data.courseName)}</p>
-        <p class="text-4">${dateLabel} <span class="completion-date">${formatDate(data.completionDate)}</span></p>
+        <p class="text-4">${escapeHtml(dateLabel)} <span class="completion-date">${formatDate(data.completionDate)}</span></p>
       </div>
       
       <!-- Footer Signatures - Simplified Structure -->

@@ -1,4 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
+import type { R2Bucket } from '@cloudflare/workers-types';
+
 /**
  * Shared TypeScript types for Cloudflare Pages Functions
  */
