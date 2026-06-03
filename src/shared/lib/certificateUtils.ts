@@ -49,30 +49,33 @@ export const viewCertificate = (certUrl: string): void => {
         const blob = new Blob([u8arr], { type: mime });
         blobUrl = URL.createObjectURL(blob);
         
+        // Attempt to open in new window with proper cleanup
         const newWindow = window.open(blobUrl, '_blank');
         
         if (!newWindow) {
+          // Popup was blocked - cleanup immediately
           toast.error('Please allow popups for this site to view the certificate.');
-          // Cleanup immediately if popup was blocked
           URL.revokeObjectURL(blobUrl);
           blobUrl = null;
-        } else {
-          // Cleanup after a delay if popup succeeded
-          setTimeout(() => {
-            if (blobUrl) {
-              URL.revokeObjectURL(blobUrl);
-            }
-          }, 5000);
-          blobUrl = null; // Clear reference so finally block doesn't double-revoke
+          logger.warn('Certificate popup blocked by browser', { urlType: 'data-url-blob' });
+          return;
         }
         
+        // Popup succeeded - schedule cleanup after browser has loaded the content
+        setTimeout(() => {
+          if (blobUrl) {
+            URL.revokeObjectURL(blobUrl);
+          }
+        }, 5000);
+        blobUrl = null; // Clear reference to prevent double cleanup in finally block
         return;
+        
       } catch (blobError) {
         logger.error('Error converting data URL to blob', blobError instanceof Error ? blobError : new Error(String(blobError)));
         toast.error('Error displaying certificate. Please try downloading instead.');
         return;
       } finally {
-        // Ensure blob URL is always cleaned up if not already handled
+        // Safety net: ensure blob URL is always cleaned up if not already handled
         if (blobUrl) {
           URL.revokeObjectURL(blobUrl);
         }
@@ -84,14 +87,23 @@ export const viewCertificate = (certUrl: string): void => {
     
     if (!viewUrl || viewUrl.trim() === '') {
       toast.error('Failed to generate certificate viewing URL. Please try downloading instead.');
+      logger.error('Invalid proxy URL generated', { originalUrl: certUrl });
       return;
     }
     
+    // Attempt to open proxy URL in new window
     const newWindow = window.open(viewUrl, '_blank');
     
     if (!newWindow) {
+      // Popup was blocked - provide user feedback
       toast.error('Please allow popups for this site to view the certificate.');
+      logger.warn('Certificate popup blocked by browser', { urlType: 'proxy-url' });
+      return;
     }
+    
+    // Popup succeeded - no cleanup needed for regular URLs
+    logger.info('Certificate opened successfully', { urlType: 'proxy-url' });
+    
   } catch (error) {
     logger.error('Error opening certificate', error instanceof Error ? error : new Error(String(error)));
     toast.error('Error opening certificate. Please try downloading instead.');

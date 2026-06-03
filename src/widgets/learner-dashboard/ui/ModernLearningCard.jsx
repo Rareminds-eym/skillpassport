@@ -68,9 +68,10 @@ const ModernLearningCard = ({
   // Certificate modal hook
   const certificateModal = useCertificateModal({
     user,
-    onSuccess: async ({ certificateUrl: newCertUrl }) => {
+    onSuccess: ({ certificateUrl: newCertUrl }) => {
+      // Update certificate URL state when generation succeeds
+      // Success toast is already shown by the hook
       setCertificateUrl(newCertUrl);
-      toast.success('Certificate generated successfully!');
     }
   });
 
@@ -228,6 +229,7 @@ const ModernLearningCard = ({
    * 
    * Generation Flow:
    * - Prepare certificate data from item props
+   * - Fetch fresh learner data using user email (not SSO ID)
    * - Validate required data (learnerData.id and course_id)
    * - Guard check ensures modal is initialized
    * - Open modal with pre-filled certificate information
@@ -255,39 +257,63 @@ const ModernLearningCard = ({
     const courseType = item.course_type === 'webinar' ? 'webinar' : 'course';
     const issuedOnDate = courseType === 'webinar' ? item.issued_on : null;
     
-    // Validate required data
-    if (!learnerData?.id || !item.course_id) {
-      toast.error('Missing required information');
-      return;
-    }
-    
-    /**
-     * Guard check: Ensure certificate modal is properly initialized
-     * 
-     * Prevents runtime errors if:
-     * - The useCertificateModal hook failed to initialize
-     * - Component unmounted during async operation
-     * - Hook returned undefined/null due to error
-     * 
-     * Logs error with context for debugging
-     */
-    if (!certificateModal?.openModal) {
-      logger.error('Certificate modal not initialized', { certificateModal });
-      toast.error('Certificate modal is not available. Please refresh the page.');
+    // Validate user email is available
+    if (!user?.email) {
+      toast.error('User email not found');
       return;
     }
 
+    // Validate course ID is available
+    if (!item.course_id) {
+      toast.error('Course ID not found');
+      return;
+    }
+    
     try {
-      // Open certificate modal with all required data
+      // Fetch fresh learner data from database using email (not SSO ID)
+      const { data: freshLearnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('id, learner_id, name, email')
+        .eq('email', user.email)
+        .maybeSingle();
+      
+      if (learnerError) {
+        logger.error('Error fetching learner data', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
+        toast.error('Failed to fetch learner information');
+        return;
+      }
+      
+      if (!freshLearnerData) {
+        toast.error('Learner profile not found. Please complete your profile first.');
+        return;
+      }
+    
+      /**
+       * Guard check: Ensure certificate modal is properly initialized
+       * 
+       * Prevents runtime errors if:
+       * - The useCertificateModal hook failed to initialize
+       * - Component unmounted during async operation
+       * - Hook returned undefined/null due to error
+       * 
+       * Logs error with context for debugging
+       */
+      if (!certificateModal?.openModal) {
+        logger.error('Certificate modal not initialized', { certificateModal });
+        toast.error('Certificate modal is not available. Please refresh the page.');
+        return;
+      }
+      
+      // Open certificate modal with all required data using fresh learner data
       await certificateModal.openModal({
-        learnerId: learnerData.id,
-        learnerIdText: learnerData.learner_id || null,
+        learnerId: freshLearnerData.id,
+        learnerIdText: freshLearnerData.learner_id || null,
         courseName,
         educatorName,
         courseType,
         issuedOnDate,
         courseId: item.course_id,
-        prefillName: learnerData?.name || ''
+        prefillName: freshLearnerData.name || ''
       });
     } catch (error) {
       /**

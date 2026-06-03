@@ -55,11 +55,23 @@ const htmlToImage = async (html: string): Promise<string> => {
   container.style.width = '3579px'; // Match certificate dimensions
   container.style.height = '2551px';
   container.innerHTML = html;
+  
+  // Validate container was created successfully
+  if (!container) {
+    throw new Error('Failed to create certificate container element');
+  }
+  
   document.body.appendChild(container);
 
   try {
-    // Dynamically import html2canvas
-    const html2canvas = (await import('html2canvas')).default;
+    // Dynamically import html2canvas with validation
+    const html2canvasModule = await import('html2canvas');
+    const html2canvas = html2canvasModule.default;
+    
+    // Validate html2canvas imported successfully
+    if (!html2canvas || typeof html2canvas !== 'function') {
+      throw new Error('Failed to load html2canvas library');
+    }
     
     // Wait for images to load with proper error handling
     const images = container.querySelectorAll('img');
@@ -101,11 +113,31 @@ const htmlToImage = async (html: string): Promise<string> => {
       width: 3579,
       height: 2551
     });
+    
+    // Validate canvas was generated successfully
+    if (!canvas) {
+      throw new Error('html2canvas failed to generate canvas element');
+    }
+    
+    // Validate canvas has valid dimensions
+    if (canvas.width === 0 || canvas.height === 0) {
+      throw new Error(`Invalid canvas dimensions: ${canvas.width}x${canvas.height}`);
+    }
 
-    return canvas.toDataURL('image/png', 1.0);
+    // Convert to data URL
+    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    
+    // Validate data URL was generated
+    if (!dataUrl || !dataUrl.startsWith('data:image/png')) {
+      throw new Error('Failed to generate valid image data URL');
+    }
+    
+    return dataUrl;
   } finally {
-    // Clean up
-    document.body.removeChild(container);
+    // Clean up - ensure container is still in DOM before removing
+    if (container.parentNode === document.body) {
+      document.body.removeChild(container);
+    }
   }
 };
 
@@ -321,6 +353,12 @@ const dataURLtoBlob = (dataURL: string): Blob => {
   return new Blob([array], { type: mime });
 };
 
+/**
+ * Upload certificate blob to R2 storage
+ * Handles authentication by leveraging ssoClient.fetch() which automatically:
+ * - Includes JWT token in Authorization header
+ * - Refreshes token on 401 and retries once
+ */
 const uploadToR2 = async (
   blob: Blob,
   learnerId: string,
@@ -331,41 +369,41 @@ const uploadToR2 = async (
   
   logger.info('Starting R2 upload', { filename, blobSize: blob.size });
   
+  // Ensure ssoClient has been initialized (initSession was called)
+  // This prevents issues when user tries to upload immediately after page load
+  if (!ssoClient.isInitialized()) {
+    logger.warn('SSO client not initialized, initializing now');
+    const { authenticated } = await ssoClient.initSession();
+    if (!authenticated) {
+      throw new Error('Authentication required. Please log in and try again.');
+    }
+  }
+  
   const formData = new FormData();
   formData.append('file', blob, `${credentialId}.png`);
   formData.append('filename', filename);
-  formData.append('context', 'certificate'); // Add context for file size validation
+  formData.append('context', 'certificate');
 
-  logger.info('Sending upload request to storage API');
-
+  // ssoClient.fetch() handles:
+  // 1. Adding Authorization header with JWT token
+  // 2. Auto-retry on 401 with token refresh
+  // 3. Session expiry handling
   const response = await ssoClient.fetch(`${STORAGE_API_URL}/upload`, {
     method: 'POST',
     body: formData,
-    headers: {
-      'x-upload-context': 'certificate', // Signal unauthenticated certificate upload
-    },
   });
-
-  logger.info('Upload response received', { status: response.status, ok: response.ok });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({})) as UploadErrorResponse;
     const errorMessage = `Upload failed (${response.status}): ${errorData.error || response.statusText}`;
-    const error = new Error(errorMessage);
-    logger.error('Upload failed', error, { status: response.status, errorData });
-    throw error;
+    logger.error('Upload failed', new Error(errorMessage), { status: response.status, errorData });
+    throw new Error(errorMessage);
   }
 
   const responseData: UploadSuccessResponse = await response.json();
-  logger.info('Upload successful', { responseData });
+  logger.info('Upload successful', { key: responseData.key });
 
-  // Use the actual key returned from the upload response
-  // The upload handler generates its own unique key in format: uploads/{userId}/{timestamp}-{uuid}.{ext}
-  const actualKey = responseData.key;
-  
-  // Return proxy URL with the actual key from R2
-  const proxyUrl = `${STORAGE_API_URL}/course-certificate?key=${encodeURIComponent(actualKey)}`;
-  logger.info('Generated proxy URL', { proxyUrl, actualKey });
+  const proxyUrl = `${STORAGE_API_URL}/course-certificate?key=${encodeURIComponent(responseData.key)}`;
   
   return proxyUrl;
 };

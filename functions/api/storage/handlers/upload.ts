@@ -174,8 +174,8 @@ import {
   validateSVGContent,
 } from '../utils/file-validator';
 import { validateFileSizeBackend } from '../utils/file-size-validator';
-import { getFileSizeLimit, type UploadContext } from '../config/fileSizeLimits';
-import { UNAUTHENTICATED_UPLOAD_CONTEXTS, VALID_UPLOAD_CONTEXTS } from '../config/uploadContexts';
+import { getFileSizeLimit } from '../config/fileSizeLimits';
+import { VALID_UPLOAD_CONTEXTS } from '../config/uploadContexts';
 import { getLogger } from '../../../../src/shared/config/logging';
 
 const logger = getLogger('storage-upload');
@@ -279,28 +279,25 @@ export const handleUpload: PagesFunction = async (context) => {
       }, 400);
     }
 
-    // Determine if authentication is required for this context
-    const requiresAuth = !UNAUTHENTICATED_UPLOAD_CONTEXTS.includes(uploadContext as UploadContext);
-    
-    // Require authentication for contexts that need it
-    if (requiresAuth && !authenticatedContext.user) {
-      logger.warn('Authentication required for upload context', { context: uploadContext });
+    // SECURITY: Require authentication for all uploads
+    // All uploads go through JWT authentication middleware in [[path]].ts
+    // The /upload endpoint is NOT in PUBLIC_ENDPOINTS list
+    if (!authenticatedContext.user) {
+      logger.warn('Authentication required for upload', { context: uploadContext });
       return createAuthenticationError('/upload', 'missing_token');
     }
 
     // SECURITY: Defense-in-depth against header spoofing
-    // Verify header and body context match for all requests (authenticated and unauthenticated)
-    // This prevents attackers from setting x-upload-context in header that differs from body
+    // Verify header and body context match if header is present
+    // This prevents malicious clients from sending mismatched contexts
+    // Example attack: header says 'profile_photo' (5MB limit) but body says 'course_video' (100MB limit)
     const headerContext = request.headers.get('x-upload-context');
-    
-    // Only validate header/body match if header is present
-    // (header is optional, but if provided must match body)
     if (headerContext && headerContext !== uploadContext) {
       logger.error('Context mismatch between header and body', new Error('Spoofing attempt'), {
         headerContext,
         bodyContext: uploadContext,
-        authenticated: !!authenticatedContext.user,
-        userId: authenticatedContext.user?.id,
+        authenticated: true,
+        userId: authenticatedContext.user.id,
         timestamp: new Date().toISOString()
       });
       return jsonResponse({ 
@@ -308,36 +305,15 @@ export const handleUpload: PagesFunction = async (context) => {
         message: 'Header and body context must match'
       }, 400);
     }
-    
-    // Additional validation for unauthenticated requests
-    if (!authenticatedContext.user) {
-      // For unauthenticated requests, context must be in allowed list
-      if (!UNAUTHENTICATED_UPLOAD_CONTEXTS.includes(
-        uploadContext as (typeof UNAUTHENTICATED_UPLOAD_CONTEXTS)[number]
-      )) {
-        logger.error('Forbidden upload context for unauthenticated request', new Error('Context not allowed'), {
-          context: uploadContext,
-          allowedContexts: UNAUTHENTICATED_UPLOAD_CONTEXTS,
-          timestamp: new Date().toISOString()
-        });
-        return createAuthenticationError('/upload', 'forbidden_context');
-      }
-      
-      logger.info('Unauthenticated upload validated', { 
-        context: uploadContext,
-        headerMatch: !headerContext || headerContext === uploadContext 
-      });
-    } else {
-      logger.info('Authenticated upload validated', { 
-        context: uploadContext,
-        userId: authenticatedContext.user.id,
-        headerMatch: !headerContext || headerContext === uploadContext 
-      });
-    }
 
-    // For unauthenticated certificate uploads, generate a unique system identifier
-    // This maintains audit trail while avoiding confusion with real user IDs
-    const userId = authenticatedContext.user?.id || `system-cert-${Date.now()}-${crypto.randomUUID().substring(0, 8)}`;
+    logger.info('Authenticated upload validated', { 
+      context: uploadContext,
+      userId: authenticatedContext.user.id,
+      headerMatch: !headerContext || headerContext === uploadContext 
+    });
+
+    // Use authenticated user ID
+    const userId = authenticatedContext.user.id;
 
     // Validate required fields
     if (!file) {

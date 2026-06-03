@@ -83,6 +83,12 @@ const CoursePlayer = () => {
    * 3. Circular dependency causes stale closures
    */
   const closeModalRef = useRef(null);
+  const navigationTimerRef = useRef();
+
+  // Cleanup navigation timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(navigationTimerRef.current);
+  }, []);
   
   /**
    * Certificate modal hook for course completion certificate generation.
@@ -105,25 +111,28 @@ const CoursePlayer = () => {
       try {
         const isWebinar = courseType === 'webinar';
         
-        // Close modal using ref to avoid circular dependency
-        // Use optional chaining for safety in case ref is not yet populated
-        closeModalRef.current?.();
-        
         if (isWebinar) {
           try {
             await downloadCertificate(certificateUrl, courseName);
+            
+            // Close modal after async operation completes
+            closeModalRef.current?.();
+            
             logger.info('Webinar certificate downloaded successfully');
-            toast.success(`Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
-            setTimeout(() => {
+            toast.success(`🎉 Congratulations! You have completed the webinar "${courseName}". Your certificate has been downloaded.`);
+            navigationTimerRef.current = setTimeout(() => {
               navigate('/learner/courses');
             }, 1500);
           } catch (downloadError) {
+            // Close modal after async operation completes (error branch)
+            closeModalRef.current?.();
+            
             logger.error('Failed to download webinar certificate', downloadError instanceof Error ? downloadError : new Error(String(downloadError)));
             toast.error('Certificate generated but download failed. You can download it from My Learning page.', {
               duration: 4000,
               position: 'top-right',
             });
-            setTimeout(() => {
+            navigationTimerRef.current = setTimeout(() => {
               navigate('/learner/my-learning', {
                 state: {
                   courseCompleted: true,
@@ -134,8 +143,11 @@ const CoursePlayer = () => {
             }, 1500);
           }
         } else {
+          // Close modal before toast for non-webinar case
+          closeModalRef.current?.();
+          
           toast.success(`🎉 Congratulations! You have completed "${courseName}". Your certificate is ready!`);
-          setTimeout(() => {
+          navigationTimerRef.current = setTimeout(() => {
             navigate('/learner/my-learning', {
               state: {
                 courseCompleted: true,
@@ -149,7 +161,7 @@ const CoursePlayer = () => {
         logger.error('Error in certificate success handler', error instanceof Error ? error : new Error(String(error)));
         toast.error('Something went wrong after course completion. Please check My Learning.');
       }
-    }, [navigate]) // downloadCertificate and logger are stable imports, navigate is the only reactive dependency
+    }, [navigate, downloadCertificate])
   });
   
   /**
@@ -699,8 +711,9 @@ const CoursePlayer = () => {
       // Update learner streak after completing lesson
       try {
         const { getApiUrl } = await import('@/shared/api/apiUtils');
+        const { ssoClient } = await import('@/shared/api/ssoClient');
         const STREAK_API_URL = getApiUrl('streak');
-        const response = await fetch(`${STREAK_API_URL}/${user.id}/complete`, {
+        const response = await ssoClient.fetch(`${STREAK_API_URL}/${user.id}/complete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

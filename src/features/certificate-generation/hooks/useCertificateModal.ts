@@ -1,21 +1,26 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { 
   fetchLearnerName, 
   generateCertificateWithNameUpdate,
   type User,
-  type CertificateGenerationParams 
+  type CertificateGenerationParams,
+  type CourseType,
 } from '../api/certificateLearnerService';
 import { downloadCertificate } from '../api/certificateService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('useCertificateModal');
 
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
 interface CertificateData {
   courseId: string;
   courseName: string;
   educatorName: string;
-  courseType: 'course' | 'webinar';
+  courseType: CourseType;
   issuedOnDate?: string;
   learnerId: string;
   learnerIdText: string;
@@ -26,13 +31,13 @@ interface CertificateResult {
   certificateUrl: string;
   credentialId: string;
   courseName: string;
-  courseType: string;
+  courseType: CourseType;
   courseId: string;
 }
 
 interface UseCertificateModalOptions {
   user?: User;
-  onSuccess?: (result: CertificateResult) => void;
+  onSuccess?: (result: CertificateResult) => void | Promise<void>;
   onError?: (error: Error) => void;
 }
 
@@ -40,6 +45,7 @@ interface UseCertificateModalReturn {
   showModal: boolean;
   fullName: string;
   isGenerating: boolean;
+  isLoadingName: boolean;
   pendingData: CertificateData | null;
   generatedUrl: string | null;
   showConfirmation: boolean;
@@ -53,173 +59,217 @@ interface UseCertificateModalReturn {
   downloadGeneratedCertificate: () => Promise<void>;
 }
 
+// ============================================================================
+// MODULE-SCOPE HELPERS
+// ============================================================================
+
+/**
+ * Validate name input - pure function with no dependencies
+ */
+function validateName(name: string): string | null {
+  const trimmedName = name.trim();
+  
+  if (!trimmedName) {
+    return 'Please enter your full name';
+  }
+  
+  if (trimmedName.length < 2) {
+    return 'Name must be at least 2 characters';
+  }
+  
+  if (trimmedName.length > 100) {
+    return 'Name must be less than 100 characters';
+  }
+  
+  // Check if name contains at least one letter
+  if (!/[a-zA-Z]/.test(trimmedName)) {
+    return 'Name must contain at least one letter';
+  }
+  
+  // Security: Reject names with HTML/script tags or suspicious patterns
+  const suspiciousPatterns = [
+    /<script/i,
+    /<\/script/i,
+    /<iframe/i,
+    /javascript:/i,
+    /onerror=/i,
+    /onload=/i,
+    /<img/i,
+    /<svg/i,
+  ];
+  
+  if (suspiciousPatterns.some(pattern => pattern.test(trimmedName))) {
+    return 'Name contains invalid characters';
+  }
+  
+  return null;
+}
+
+/**
+ * Safely call onError callback with error handling
+ */
+function callSafeOnError(
+  onError: ((e: Error) => void) | undefined,
+  err: Error,
+  loggerInstance: typeof logger
+): void {
+  if (!onError) return;
+  try {
+    onError(err);
+  } catch (cbErr) {
+    loggerInstance.error(
+      'Error in onError callback',
+      cbErr instanceof Error ? cbErr : new Error(String(cbErr))
+    );
+  }
+}
+
+// ============================================================================
+// HOOK IMPLEMENTATION
+// ============================================================================
+
 /**
  * Custom hook for managing certificate generation modal state and logic
  */
-export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificateModalOptions = {}): UseCertificateModalReturn => {
+export const useCertificateModal = ({ 
+  user, 
+  onSuccess, 
+  onError 
+}: UseCertificateModalOptions = {}): UseCertificateModalReturn => {
   const [showModal, setShowModal] = useState(false);
   const [fullName, setFullName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingName, setIsLoadingName] = useState(false);
   const [pendingData, setPendingData] = useState<CertificateData | null>(null);
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [validationError, setValidationError] = useState('');
   
-  // Ref to track if component is mounted - prevents state updates after unmount
-  const isMountedRef = useRef(true);
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
+  // Store abort functions for cleanup
+  const abortFetchRef = useRef<(() => void) | null>(null);
+  const abortGenerateRef = useRef<(() => void) | null>(null);
+
+  /**
+   * Validate name and set error state
+   * @returns true if valid, false if invalid
+   */
+  const validateAndSet = useCallback((name: string): boolean => {
+    const error = validateName(name);
+    if (error) {
+      setValidationError(error);
+      toast.error(error);
+      return false;
+    }
+    return true;
   }, []);
 
   /**
-   * Fetch learner name from database
-   */
-  const fetchName = async (): Promise<string> => {
-    if (!user?.id && !user?.email) return '';
-    
-    try {
-      return await fetchLearnerName(user);
-    } catch (error) {
-      logger.error('Error fetching learner name in openModal', error instanceof Error ? error : new Error(String(error)));
-      // Use email fallback if fetching fails
-      return user?.email?.split('@')[0] || '';
-    }
-  };
-
-  /**
    * Open modal with pre-filled data
-   * Implements proper cancellation to prevent memory leaks from async operations
+   * Implements AbortController for proper cancellation
    */
-  const openModal = async (data: CertificateData): Promise<void> => {
+  const openModal = useCallback(async (data: CertificateData): Promise<void> => {
+    // Create abort controller for this fetch operation
+    const abortController = new AbortController();
+    abortFetchRef.current = () => abortController.abort();
+
     setPendingData(data);
-    
-    // Reset state immediately
     setGeneratedUrl(null);
     setShowConfirmation(false);
     setValidationError('');
+    setIsLoadingName(true);
     
     try {
       // Fetch name from database if not provided
-      const nameToUse = data.prefillName || (await fetchName());
+      const nameToUse = data.prefillName || (await fetchLearnerName(user, abortController.signal));
       
-      // Only update state if component is still mounted
-      if (isMountedRef.current) {
-        setFullName(nameToUse);
-        setShowModal(true);
+      // Check if aborted
+      if (abortController.signal.aborted) {
+        setIsLoadingName(false);
+        return;
       }
+      
+      setFullName(nameToUse);
+      setIsLoadingName(false);
+      setShowModal(true);
     } catch (error) {
-      logger.error('Error fetching learner name in openModal', error instanceof Error ? error : new Error(String(error)));
-      
-      // Only update state if component is still mounted
-      if (isMountedRef.current) {
-        // Use email fallback if fetching fails
-        setFullName(user?.email?.split('@')[0] || '');
-        setShowModal(true);
+      // Check if aborted
+      if (abortController.signal.aborted) {
+        setIsLoadingName(false);
+        return;
       }
+
+      logger.error(
+        'Error fetching learner name in openModal',
+        error instanceof Error ? error : new Error(String(error))
+      );
+      
+      setFullName('');
+      setIsLoadingName(false);
+      setShowModal(true);
     }
-  };
+  }, [user]);
 
   /**
    * Close modal and reset state
+   * Aborts any pending fetch operations
    */
-  const closeModal = (): void => {
+  const closeModal = useCallback((): void => {
+    // Abort any pending fetch
+    if (abortFetchRef.current) {
+      abortFetchRef.current();
+      abortFetchRef.current = null;
+    }
+    
+    // Abort any pending certificate generation
+    if (abortGenerateRef.current) {
+      abortGenerateRef.current();
+      abortGenerateRef.current = null;
+    }
+    
     setShowModal(false);
     setShowConfirmation(false);
     setPendingData(null);
     setFullName('');
     setGeneratedUrl(null);
     setValidationError('');
-  };
-
-  /**
-   * Validate name input
-   */
-  const validateName = (name: string): string | null => {
-    const trimmedName = name.trim();
-    
-    if (!trimmedName) {
-      return 'Please enter your full name';
-    }
-    
-    if (trimmedName.length < 2) {
-      return 'Name must be at least 2 characters';
-    }
-    
-    if (trimmedName.length > 100) {
-      return 'Name must be less than 100 characters';
-    }
-    
-    // Check if name contains at least one letter
-    if (!/[a-zA-Z]/.test(trimmedName)) {
-      return 'Name must contain at least one letter';
-    }
-    
-    // Security: Reject names with HTML/script tags or suspicious patterns
-    const suspiciousPatterns = [
-      /<script/i,
-      /<\/script/i,
-      /<iframe/i,
-      /javascript:/i,
-      /onerror=/i,
-      /onload=/i,
-      /<img/i,
-      /<svg/i,
-    ];
-    
-    if (suspiciousPatterns.some(pattern => pattern.test(trimmedName))) {
-      return 'Name contains invalid characters';
-    }
-    
-    return null;
-  };
+    setIsLoadingName(false);
+  }, []);
 
   /**
    * Handle name change with validation
    */
-  const handleNameChange = (name: string): void => {
+  const handleNameChange = useCallback((name: string): void => {
     setFullName(name);
-    // Clear validation error when user types
-    if (validationError) {
-      setValidationError('');
-    }
-  };
+    // Clear validation error when user types (functional updater to avoid dependency)
+    setValidationError(prev => prev ? '' : prev);
+  }, []);
 
   /**
    * Show confirmation dialog
    */
-  const showConfirmationDialog = (): void => {
-    const error = validateName(fullName);
-    if (error) {
-      setValidationError(error);
-      toast.error(error);
+  const showConfirmationDialog = useCallback((): void => {
+    if (!validateAndSet(fullName)) {
       return;
     }
     
     setShowConfirmation(true);
-  };
+  }, [fullName, validateAndSet]);
 
   /**
    * Cancel confirmation and go back to edit
    */
-  const cancelConfirmation = (): void => {
+  const cancelConfirmation = useCallback((): void => {
     setShowConfirmation(false);
-  };
+  }, []);
 
   /**
    * Generate certificate with current data (called after confirmation)
-   * Implements comprehensive error handling and type safety
+   * Implements AbortController and comprehensive error handling
    */
-  const generateCertificate = async (): Promise<void> => {
+  const generateCertificate = useCallback(async (): Promise<void> => {
     const trimmedName = fullName.trim();
-    const error = validateName(trimmedName);
     
-    if (error) {
-      setValidationError(error);
-      toast.error(error);
+    if (!validateAndSet(trimmedName)) {
       return;
     }
 
@@ -228,10 +278,14 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
       return;
     }
 
-    setIsGenerating(true);
-    setShowConfirmation(false);
+    // Create abort controller for this generation operation
+    const abortController = new AbortController();
+    abortGenerateRef.current = () => abortController.abort();
 
     try {
+      setIsGenerating(true);
+      setShowConfirmation(false);
+
       const {
         learnerId,
         learnerIdText,
@@ -255,108 +309,76 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
       };
 
       // Delegate to features layer for business logic
-      const result = await generateCertificateWithNameUpdate(user, params);
+      const result = await generateCertificateWithNameUpdate(
+        user, 
+        params, 
+        abortController.signal
+      );
 
-      // Only proceed if component is still mounted
-      if (!isMountedRef.current) {
-        logger.warn('Component unmounted during certificate generation');
+      // Check if aborted
+      if (abortController.signal.aborted) {
         return;
       }
 
       // Show warning if name update failed but certificate generation succeeded
-      if (result.nameUpdateFailed && result.success) {
+      if (result.success && result.nameUpdateFailed) {
         toast.error('Warning: Your name was not saved. The certificate will still be generated.');
       }
 
-      // Comprehensive validation of result object with proper type guards
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response from certificate generation service: result is not an object');
-      }
-
-      // Check for success response
-      if ('success' in result && result.success === true) {
-        // Validate required success fields exist and have correct types
-        if (!('certificateUrl' in result) || typeof result.certificateUrl !== 'string') {
-          throw new Error('Invalid success response: certificateUrl is missing or invalid');
-        }
+      // Handle success
+      if (result.success) {
+        logger.info('Certificate generated successfully', { credentialId: result.credentialId });
         
-        if (!result.certificateUrl || result.certificateUrl.trim().length === 0) {
-          throw new Error('Invalid success response: certificateUrl is empty');
-        }
-        
-        if (!('credentialId' in result) || typeof result.credentialId !== 'string') {
-          throw new Error('Invalid success response: credentialId is missing or invalid');
-        }
-        
-        // Safe to use values now - validation complete
-        const certificateUrl = result.certificateUrl;
-        const credentialId = result.credentialId;
-        
-        logger.info('Certificate generated successfully', { credentialId });
-        setGeneratedUrl(certificateUrl);
+        setGeneratedUrl(result.certificateUrl);
         toast.success('Certificate generated successfully!');
         
+        // Handle onSuccess callback - await if it returns a promise
         if (onSuccess) {
-          onSuccess({
-            certificateUrl,
-            credentialId,
-            courseName,
-            courseType,
-            courseId
-          });
+          try {
+            await Promise.resolve(onSuccess({
+              certificateUrl: result.certificateUrl,
+              credentialId: result.credentialId,
+              courseName,
+              courseType,
+              courseId
+            }));
+          } catch (callbackError) {
+            // Log callback errors but don't fail the certificate generation
+            logger.error(
+              'Error in onSuccess callback',
+              callbackError instanceof Error ? callbackError : new Error(String(callbackError))
+            );
+          }
         }
         
         return;
       }
       
-      // Check for error response
-      if ('success' in result && result.success === false) {
-        const errorMessage = ('error' in result && typeof result.error === 'string' && result.error.length > 0) 
-          ? result.error 
-          : 'Certificate generation failed';
-        const errorObj = new Error(errorMessage);
-        logger.error('Certificate generation failed', errorObj);
-        toast.error(errorMessage);
-        
-        if (onError) {
-          onError(errorObj);
-        }
-        
-        return;
-      }
+      // Handle error response
+      const errorObj = new Error(result.error);
+      logger.error('Certificate generation failed', errorObj);
+      toast.error(result.error);
       
-      // Unexpected response structure - neither success nor error
-      throw new Error(
-        'Unexpected response structure from certificate generation service: ' +
-        `missing or invalid 'success' field. Response keys: ${Object.keys(result).join(', ')}`
-      );
+      callSafeOnError(onError, errorObj, logger);
       
     } catch (error) {
-      // Only show error if component is still mounted
-      if (!isMountedRef.current) {
-        logger.warn('Component unmounted during error handling');
-        return;
-      }
-      
       const errorObj = error instanceof Error ? error : new Error(String(error));
       logger.error('Error generating certificate', errorObj);
       toast.error(error instanceof Error ? error.message : 'An error occurred while generating the certificate');
       
-      if (onError) {
-        onError(errorObj);
-      }
+      callSafeOnError(onError, errorObj, logger);
     } finally {
-      // Only update state if component is still mounted
-      if (isMountedRef.current) {
+      // Check if aborted before updating state
+      if (!abortController.signal.aborted) {
         setIsGenerating(false);
       }
     }
-  };
+  }, [fullName, pendingData, user, onSuccess, onError, validateAndSet]);
 
   /**
    * Download the generated certificate
    */
-  const downloadGeneratedCertificate = async (): Promise<void> => {
+  const downloadGeneratedCertificate = useCallback(async (): Promise<void> => {
     if (!generatedUrl || !pendingData?.courseName) return;
     
     try {
@@ -367,13 +389,14 @@ export const useCertificateModal = ({ user, onSuccess, onError }: UseCertificate
       logger.error('Error downloading certificate', errorObj);
       toast.error('Failed to download certificate');
     }
-  };
+  }, [generatedUrl, pendingData]);
 
   return {
     // State
     showModal,
     fullName,
     isGenerating,
+    isLoadingName,
     pendingData,
     generatedUrl,
     showConfirmation,

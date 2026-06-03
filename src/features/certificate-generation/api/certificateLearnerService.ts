@@ -10,7 +10,7 @@
 
 import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { generateCourseCertificate, type CertificateResult } from './certificateService';
+import { generateCourseCertificate } from './certificateService';
 
 const logger = getLogger('certificate-learner-service');
 
@@ -19,6 +19,8 @@ export interface User {
   email?: string;
 }
 
+export type CourseType = 'course' | 'webinar';
+
 export interface CertificateGenerationParams {
   learnerId: string;
   learnerName: string;
@@ -26,19 +28,25 @@ export interface CertificateGenerationParams {
   courseId: string;
   courseName: string;
   educatorName: string;
-  courseType: 'course' | 'webinar';
+  courseType: CourseType;
   issuedOnDate?: string;
 }
 
 /**
  * Fetch learner name from database
  * @param user User object with id or email
+ * @param signal Optional AbortSignal for cancellation
  * @returns Learner name or email username as fallback
  */
-export async function fetchLearnerName(user: User): Promise<string> {
+export async function fetchLearnerName(user: User | undefined, signal?: AbortSignal): Promise<string> {
   if (!user?.id && !user?.email) return '';
   
   try {
+    // Check if aborted before starting
+    if (signal?.aborted) {
+      return '';
+    }
+
     // Try to fetch from learners table using user_id or email
     let query = supabase
       .from('learners')
@@ -51,6 +59,11 @@ export async function fetchLearnerName(user: User): Promise<string> {
     }
     
     const { data, error } = await query.maybeSingle();
+    
+    // Check if aborted after fetch
+    if (signal?.aborted) {
+      return '';
+    }
     
     if (!error && data?.name) {
       return data.name;
@@ -72,12 +85,18 @@ export async function fetchLearnerName(user: User): Promise<string> {
  * 
  * @param user User object with id or email
  * @param fullName Full name to update
+ * @param signal Optional AbortSignal for cancellation
  * @returns Success status
  */
-export async function updateLearnerName(user: User, fullName: string): Promise<boolean> {
+export async function updateLearnerName(user: User, fullName: string, signal?: AbortSignal): Promise<boolean> {
   if (!user?.id && !user?.email) return false;
   
   try {
+    // Check if aborted before starting
+    if (signal?.aborted) {
+      return false;
+    }
+
     // Update learners table
     let learnerQuery = supabase
       .from('learners')
@@ -90,6 +109,11 @@ export async function updateLearnerName(user: User, fullName: string): Promise<b
     }
     
     const { error: learnerUpdateError } = await learnerQuery;
+    
+    // Check if aborted after first DB write
+    if (signal?.aborted) {
+      return false;
+    }
     
     if (learnerUpdateError) {
       logger.error('Failed to update learner name', learnerUpdateError);
@@ -124,6 +148,10 @@ export async function updateLearnerName(user: User, fullName: string): Promise<b
   }
 }
 
+export type CertificateServiceResult =
+  | { success: true; certificateUrl: string; credentialId: string; nameUpdateFailed?: boolean }
+  | { success: false; error: string };
+
 /**
  * Generate certificate with user name update
  * Orchestrates the full certificate generation flow:
@@ -133,12 +161,14 @@ export async function updateLearnerName(user: User, fullName: string): Promise<b
  * 
  * @param user User object for name updates
  * @param params Certificate generation parameters
+ * @param signal Optional AbortSignal for cancellation
  * @returns Certificate generation result
  */
 export async function generateCertificateWithNameUpdate(
   user: User | undefined,
-  params: CertificateGenerationParams
-): Promise<CertificateResult & { nameUpdateFailed?: boolean }> {
+  params: CertificateGenerationParams,
+  signal?: AbortSignal
+): Promise<CertificateServiceResult> {
   const {
     learnerId,
     learnerName,
@@ -150,11 +180,19 @@ export async function generateCertificateWithNameUpdate(
     issuedOnDate
   } = params;
   
+  // Check if aborted before starting
+  if (signal?.aborted) {
+    return {
+      success: false,
+      error: 'Operation was cancelled'
+    };
+  }
+
   let nameUpdateFailed = false;
   
   // Update user name in database if user object is provided
   if (user?.id || user?.email) {
-    const nameUpdated = await updateLearnerName(user, learnerName);
+    const nameUpdated = await updateLearnerName(user, learnerName, signal);
     if (!nameUpdated) {
       nameUpdateFailed = true;
       logger.warn('Name update failed but continuing with certificate generation', {
@@ -164,6 +202,14 @@ export async function generateCertificateWithNameUpdate(
     }
   }
   
+  // Check if aborted after name update
+  if (signal?.aborted) {
+    return {
+      success: false,
+      error: 'Operation was cancelled'
+    };
+  }
+
   // Generate certificate
   logger.info('Generating certificate', { 
     learnerId, 
@@ -184,8 +230,26 @@ export async function generateCertificateWithNameUpdate(
     issuedOnDate
   );
   
-  return {
-    ...result,
-    nameUpdateFailed
-  };
+  // Check if aborted after certificate generation
+  if (signal?.aborted) {
+    return {
+      success: false,
+      error: 'Operation was cancelled'
+    };
+  }
+
+  // Transform CertificateResult to CertificateServiceResult
+  if (result.success && result.certificateUrl) {
+    return {
+      success: true,
+      certificateUrl: result.certificateUrl,
+      credentialId: result.credentialId,
+      nameUpdateFailed
+    };
+  } else {
+    return {
+      success: false,
+      error: result.error || 'Certificate generation failed'
+    };
+  }
 }
