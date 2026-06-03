@@ -721,10 +721,18 @@ const CoursePlayer = () => {
         });
 
         if (!response.ok) {
-          throw new Error(`Streak API returned ${response.status}`);
+          let errorBody = "";
+          try {
+            errorBody = await response.text(); // Safely read error body
+          } catch (_) {
+            // Ignore if body can't be read
+          }
+          throw new Error(
+            `Streak API returned ${response.status}: ${errorBody}`
+          );
         }
 
-        const streakData = await response.json();
+        const streakData = await response.json(); // Safe — only runs when ok
         console.log('✅ Streak updated:', streakData);
       } catch (streakError) {
         // Don't block lesson completion if streak update fails

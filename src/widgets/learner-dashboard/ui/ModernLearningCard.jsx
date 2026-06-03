@@ -958,6 +958,7 @@ const ModernLearningCard = ({
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDownloadCertificate(e);
+                            setShowDropdown(false);
                           }}
                           disabled={isDownloading}
                           className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
@@ -1115,6 +1116,7 @@ const ModernLearningCard = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDownloadCertificate(e);
+                          setShowDropdown(false);
                         }}
                         disabled={isDownloading}
                         className={`flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors ${
