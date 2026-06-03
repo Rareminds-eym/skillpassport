@@ -3,6 +3,7 @@ export { BoltStyleChat } from './BoltStyleChat';
 export { Button, buttonVariants } from './ButtonNew';
 export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './Card';
 export { CareerPathConnector, CareerPathEffect } from './CareerPathEffect';
+export { CertificateNameModal } from './CertificateNameModal';
 export { default as ConfirmationModal } from './ConfirmationModal';
 export { FeatureCard } from './FeatureCard';
 export { Label } from './Label';
