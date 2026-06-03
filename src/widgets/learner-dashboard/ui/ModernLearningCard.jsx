@@ -17,7 +17,7 @@ import {
     Users,
     Zap
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from '@/shared/model/authStore';
 import { useLearnerDataById } from '@/entities/learner';
@@ -64,14 +64,17 @@ const ModernLearningCard = ({
   // Use useLearnerDataById with user.id (SSO ID)
   const { learnerData } = useLearnerDataById(user?.id, false);
   
-  // Certificate modal hook
+  // Certificate modal hook with memoized callback
+  const handleCertificateSuccess = useCallback(({ certificateUrl: newCertUrl }) => {
+    // Update certificate URL state when generation succeeds
+    // Success toast is already shown by the hook
+    setCertificateUrl(newCertUrl);
+  }, []);
+
   const certificateModal = useCertificateModal({
-    user,
-    onSuccess: ({ certificateUrl: newCertUrl }) => {
-      // Update certificate URL state when generation succeeds
-      // Success toast is already shown by the hook
-      setCertificateUrl(newCertUrl);
-    }
+    userId: user?.id,
+    userEmail: user?.email,
+    onSuccess: handleCertificateSuccess
   });
 
   // Check if this is a course enrollment (started from course player)

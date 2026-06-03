@@ -106,7 +106,8 @@ const CoursePlayer = () => {
    *    - Navigates to appropriate page
    */
   const certificateModal = useCertificateModal({
-    user,
+    userId: user?.id,
+    userEmail: user?.email,
     onSuccess: useCallback(async ({ certificateUrl, courseName, courseType }) => {
       try {
         const isWebinar = courseType === 'webinar';
@@ -161,7 +162,7 @@ const CoursePlayer = () => {
         logger.error('Error in certificate success handler', error instanceof Error ? error : new Error(String(error)));
         toast.error('Something went wrong after course completion. Please check My Learning.');
       }
-    }, [navigate, downloadCertificate])
+    }, [navigate])
   });
   
   /**

@@ -66,35 +66,48 @@ export const getCertificateProxyUrl = (
  * Download a certificate file to the user's device.
  */
 export const downloadCertificate = async (certificateUrl: string, courseName: string): Promise<void> => {
-    const STORAGE_API_URL = getApiUrl('storage');
+    try {
+        const STORAGE_API_URL = getApiUrl('storage');
 
-    if (certificateUrl.startsWith('data:')) {
+        if (certificateUrl.startsWith('data:')) {
+            const link = document.createElement('a');
+            link.href = certificateUrl;
+            link.download = `${courseName.replace(/[^a-z0-9]/gi, '_')}_Certificate.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            return;
+        }
+
+        let downloadUrl = certificateUrl;
+        if (!certificateUrl.includes('/course-certificate')) {
+            downloadUrl = `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}`;
+        }
+
+        const response = await fetch(downloadUrl);
+        if (!response.ok) {
+            const errorMsg = `Download failed: ${response.status}`;
+            logger.error('Certificate download failed', new Error(errorMsg), { 
+                status: response.status,
+                statusText: response.statusText 
+            });
+            throw new Error(errorMsg);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = certificateUrl;
+        link.href = url;
         link.download = `${courseName.replace(/[^a-z0-9]/gi, '_')}_Certificate.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        return;
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        logger.error('Certificate download failed', errorObj);
+        throw errorObj;
     }
-
-    let downloadUrl = certificateUrl;
-    if (!certificateUrl.includes('/course-certificate')) {
-        downloadUrl = `${STORAGE_API_URL}/course-certificate?url=${encodeURIComponent(certificateUrl)}`;
-    }
-
-    const response = await fetch(downloadUrl);
-    if (!response.ok) throw new Error(`Download failed: ${response.status}`);
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${courseName.replace(/[^a-z0-9]/gi, '_')}_Certificate.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
 };
 
 /**

@@ -186,7 +186,8 @@ const Courses = () => {
    * - Triggers fetchEnrollments to sync with database
    */
   const certificateModal = useCertificateModal({
-    user,
+    userId: user?.id,
+    userEmail: user?.email,
     onSuccess: handleCertificateSuccess
   });
 
