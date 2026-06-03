@@ -1,29 +1,15 @@
 /**
  * Storage API - Pages Function
- * Handles R2 storage operations
- *
- * Endpoints:
- * - POST /upload - Upload file to R2
- * - POST /delete - Delete file from R2
- * - POST /presigned - Generate presigned URL for upload
- * - POST /confirm - Confirm upload completion
- * - POST /get-url, /get-file-url - Get file URL from key
- * - GET /document-access - Proxy document access (LEGACY - NO AUTH)
- * - POST /signed-url - Generate signed URL for document
- * - POST /signed-urls - Batch generate signed URLs
- * - POST /get-authenticated-url - Generate authenticated URL (SECURE)
- * - GET /media-proxy - Proxy authenticated media (SECURE)
- * - POST /upload-payment-receipt - Upload payment receipt PDF
- * - GET /payment-receipt - Get payment receipt
- * - GET /course-certificate - Get course certificate
- * - POST /extract-content - Extract text from PDF resources
- * - GET /files/:courseId/:lessonId - List files in lesson
+ * Handles R2 storage operations with JWT authentication
  */
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import { jsonResponse } from '../../../src/functions-lib';
 import { authenticateUser, AuthResult } from '../shared/auth';
 import { createAuthenticationError } from './utils/error-handling';
+import { getLogger } from '../../../src/shared/config/logging';
+
+const logger = getLogger('storage-api');
 
 // Import all handlers
 import { handleUpload } from './handlers/upload';
@@ -37,17 +23,6 @@ import { handleExtractContent } from './handlers/extract-content';
 import { handleListFiles } from './handlers/list-files';
 import { handleGetAuthenticatedUrl } from './handlers/get-authenticated-url';
 import { handleMediaProxy } from './handlers/media-proxy';
-
-// Define public endpoints that don't require JWT authentication
-// Note: /media-proxy uses token-based auth in URL params, not JWT
-const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content', '/media-proxy'];
-
-/**
- * Check if the given path is a public endpoint
- */
-function isPublicEndpoint(path: string): boolean {
-  return PUBLIC_ENDPOINTS.includes(path);
-}
 
 // Extended context type with authentication
 export interface AuthenticatedContext {
@@ -65,65 +40,60 @@ export interface AuthenticatedContext {
 export const onRequest: PagesFunction = async (context) => {
   const { request, env } = context;
 
-  // Handle CORS preflight
+  // Handle CORS preflight - allow all origins, JWT auth via Authorization header
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type, x-client-info, apikey, x-upload-context',
+        'Access-Control-Max-Age': '86400',
+      }
+    });
   }
 
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/storage', '');
 
   try {
-    // Create authenticated context
-    let authenticatedContext: AuthenticatedContext = { ...context };
-
-    // Check if endpoint requires authentication
-    if (!isPublicEndpoint(path)) {
-      // Attempt authentication for protected endpoints
-      const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
-      
-      if (!authResult) {
-        // Authentication failed - return 401 with standardized error
-        return createAuthenticationError(path, 'missing_token');
-      }
-
-      // Attach user context to the request
-      authenticatedContext = {
-        ...context,
-        user: authResult.user,
-        supabase: authResult.supabase,
-        supabaseAdmin: authResult.supabaseAdmin,
-      };
-    }
-
-    // Health check
+    // Health check endpoint
     if (!path || path === '/') {
       if (request.method === 'GET') {
         return jsonResponse({
           status: 'ok',
           service: 'storage-api',
-          endpoints: [
-            '/upload',
-            '/delete',
-            '/presigned',
-            '/confirm',
-            '/get-url',
-            '/get-file-url',
-            '/document-access (LEGACY)',
-            '/signed-url',
-            '/signed-urls',
-            '/get-authenticated-url (SECURE)',
-            '/media-proxy (SECURE)',
-            '/upload-payment-receipt',
-            '/payment-receipt',
-            '/course-certificate',
-            '/extract-content',
-            '/files/:courseId/:lessonId',
-          ],
+          version: '2.0',
           timestamp: new Date().toISOString(),
         });
       }
     }
+
+    // Public endpoint: course certificates are shareable credentials
+    if (path === '/course-certificate') {
+      return handleCourseCertificate(context);
+    }
+
+    // Token-based auth endpoint: media proxy uses signed tokens
+    if (path === '/media-proxy') {
+      return handleMediaProxy(context);
+    }
+
+    // All other endpoints require JWT authentication
+    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
+    
+    if (!authResult) {
+      logger.warn('Authentication required', { path, method: request.method });
+      return createAuthenticationError(path, 'missing_token');
+    }
+
+    // Create authenticated context with proper typing
+    const authenticatedContext: AuthenticatedContext = {
+      ...context,
+      user: authResult.user,
+      supabase: authResult.supabase,
+      supabaseAdmin: authResult.supabaseAdmin,
+    };
 
     // Check for /files/:courseId/:lessonId pattern
     const filesMatch = path.match(/^\/files\/([^\/]+)\/([^\/]+)$/);
@@ -132,86 +102,62 @@ export const onRequest: PagesFunction = async (context) => {
       return handleListFiles({
         ...authenticatedContext,
         params: { courseId, lessonId },
-      } as any);
+      } as Parameters<typeof handleListFiles>[0]);
     }
 
-    // Route to handlers based on path
+    // Route to authenticated handlers
     switch (path) {
       case '/upload':
-        return handleUpload(authenticatedContext as any);
+        return handleUpload(authenticatedContext as Parameters<typeof handleUpload>[0]);
 
       case '/delete':
-        return handleDelete(authenticatedContext as any);
+        return handleDelete(authenticatedContext as Parameters<typeof handleDelete>[0]);
 
       case '/presigned':
-        return handlePresigned(authenticatedContext as any);
+        return handlePresigned(authenticatedContext as Parameters<typeof handlePresigned>[0]);
 
       case '/confirm':
-        return handleConfirm(authenticatedContext as any);
+        return handleConfirm(authenticatedContext as Parameters<typeof handleConfirm>[0]);
 
       case '/get-url':
       case '/get-file-url':
-        return handleGetFileUrl(authenticatedContext as any);
+        return handleGetFileUrl(authenticatedContext as Parameters<typeof handleGetFileUrl>[0]);
 
       case '/document-access':
-        return handleDocumentAccess(authenticatedContext as any);
+        return handleDocumentAccess(authenticatedContext as Parameters<typeof handleDocumentAccess>[0]);
 
       case '/signed-url':
-        return handleSignedUrl(authenticatedContext as any);
+        return handleSignedUrl(authenticatedContext as Parameters<typeof handleSignedUrl>[0]);
 
       case '/signed-urls':
-        return handleSignedUrls(authenticatedContext as any);
+        return handleSignedUrls(authenticatedContext as Parameters<typeof handleSignedUrls>[0]);
 
       case '/upload-payment-receipt':
-        return handleUploadPaymentReceipt(authenticatedContext as any);
+        return handleUploadPaymentReceipt(authenticatedContext as Parameters<typeof handleUploadPaymentReceipt>[0]);
 
       case '/payment-receipt/presigned':
-        return handleGetPaymentReceiptPresigned(authenticatedContext as any);
+        return handleGetPaymentReceiptPresigned(authenticatedContext as Parameters<typeof handleGetPaymentReceiptPresigned>[0]);
 
       case '/payment-receipt':
-        return handleGetPaymentReceipt(authenticatedContext as any);
-
-      case '/course-certificate':
-        return handleCourseCertificate(authenticatedContext as any);
+        return handleGetPaymentReceipt(authenticatedContext as Parameters<typeof handleGetPaymentReceipt>[0]);
 
       case '/extract-content':
-        return handleExtractContent(authenticatedContext as any);
+        return handleExtractContent(authenticatedContext as Parameters<typeof handleExtractContent>[0]);
 
       case '/get-authenticated-url':
-        return handleGetAuthenticatedUrl(context);
-
-      case '/media-proxy':
-        return handleMediaProxy(context);
+        return handleGetAuthenticatedUrl(authenticatedContext as Parameters<typeof handleGetAuthenticatedUrl>[0]);
 
       default:
         return jsonResponse(
           {
-            error: 'Not found',
-            availableEndpoints: [
-              '/upload',
-              '/delete',
-              '/presigned',
-              '/confirm',
-              '/get-url',
-              '/get-file-url',
-              '/document-access (LEGACY)',
-              '/signed-url',
-              '/signed-urls',
-              '/get-authenticated-url (SECURE)',
-              '/media-proxy (SECURE)',
-              '/upload-payment-receipt',
-              '/payment-receipt',
-              '/payment-receipt/presigned',
-              '/course-certificate',
-              '/extract-content',
-              '/files/:courseId/:lessonId',
-            ],
+            error: 'Endpoint not found',
+            path,
           },
           404
         );
     }
   } catch (error) {
-    console.error('Storage API Error:', error);
+    logger.error('Storage API Error', error instanceof Error ? error : new Error(String(error)));
     return jsonResponse(
       {
         error: (error as Error).message || 'Internal server error',
