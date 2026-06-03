@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import {
     ArrowDownAZ,
+    Award,
     BookOpen,
     CheckCircle,
     ChevronLeft,
@@ -17,7 +18,7 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchBar } from '@/shared/ui';
+import { SearchBar, CertificateNameModal } from '@/shared/ui';
 import { CourseDetailModal } from '@/features/courses';
 import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
 import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
@@ -33,12 +34,14 @@ import {
 } from '@/shared/ui';
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';
+import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 import { getLogger } from '@/shared/config/logging';
 import toast from 'react-hot-toast';
+import { useCertificateModal } from '@/features/certificate-generation';
+import { viewCertificate } from '@/shared/lib/certificateUtils';
 
 import { useUser } from '@/shared/model/authStore';
 
@@ -78,7 +81,7 @@ const Courses = () => {
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
   const [enrollmentProgress, setEnrollmentProgress] = useState({}); // Track progress per course
   const [certificateUrls, setCertificateUrls] = useState({}); // Track certificate URLs per course
-  const [downloadingCertificate, setDownloadingCertificate] = useState(null); // Track which certificate is downloading
+  const [preparingCertificate, setPreparingCertificate] = useState(null); // Track which certificate is being prepared
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   
   // Refs to prevent duplicate fetches and track initialization
@@ -86,6 +89,7 @@ const Courses = () => {
   const hasFetchedCoursesRef = useRef(false);
   const hasFetchedEnrollmentsRef = useRef(false);
   const userEmailRef = useRef(user?.email);
+  const preparingCertificateRef = useRef(new Set()); // Track certificates currently being prepared
   
   // Helper function to check if user has access to a course
   const canAccessCourse = useCallback((course) => {
@@ -102,6 +106,89 @@ const Courses = () => {
     
     return userPlanLevel >= coursePlanLevel;
   }, [userPlan]);
+
+  // Memoized callback for fetching enrollments
+  const fetchEnrollments = useCallback(async () => {
+    const email = userEmailRef.current;
+    if (!email) return;
+    
+    try {
+      const result = await courseEnrollmentService.getlearnerEnrollments(email);
+      if (result.success && result.data) {
+        const enrolledIds = new Set(result.data.map(enrollment => enrollment.course_id));
+        setEnrolledCourseIds(enrolledIds);
+        
+        // Track progress and certificate URLs for each enrolled course
+        const progressMap = {};
+        const certUrls = {};
+        result.data.forEach(enrollment => {
+          progressMap[enrollment.course_id] = {
+            progress: enrollment.progress || 0,
+            lastModuleIndex: enrollment.last_module_index || 0,
+            lastLessonIndex: enrollment.last_lesson_index || 0,
+            status: enrollment.status
+          };
+          // Track certificate URL if available
+          if (enrollment.certificate_url) {
+            certUrls[enrollment.course_id] = enrollment.certificate_url;
+          }
+        });
+        setEnrollmentProgress(progressMap);
+        setCertificateUrls(certUrls);
+        
+      }
+    } catch (error) {
+      logger.error('Error fetching enrollments', error);
+    }
+  }, []);
+
+  /**
+   * Certificate success handler - memoized to prevent unnecessary re-renders
+   * 
+   * Flow:
+   * 1. Updates local state with new certificate URL for instant UI feedback
+   * 2. Refreshes enrollments to sync with database
+   * 
+   * @param {Object} result - Certificate generation result
+   * @param {string} result.certificateUrl - Generated certificate URL
+   * @param {string} result.courseId - Course ID
+   */
+  const handleCertificateSuccess = useCallback(async ({ certificateUrl, courseId }) => {
+    // Update local state with new certificate URL for immediate UI update
+    if (courseId) {
+      setCertificateUrls(prev => ({
+        ...prev,
+        [courseId]: certificateUrl
+      }));
+    }
+    
+    // Refresh enrollments to get updated certificate URL from database
+    try {
+      await fetchEnrollments();
+    } catch (error) {
+      logger.error('Error refreshing enrollments after certificate generation', 
+        error instanceof Error ? error : new Error(String(error)));
+    }
+  }, [fetchEnrollments]); // Fixed: Added fetchEnrollments to dependency array
+
+  /**
+   * Certificate modal hook for course certificate generation
+   * 
+   * Flow:
+   * 1. User clicks "Get Certificate" on completed course
+   * 2. handleGetCertificate fetches fresh learner data
+   * 3. Opens modal with pre-filled certificate information
+   * 4. User enters/confirms name and generates certificate
+   * 5. onSuccess callback updates local state and refreshes enrollments
+   * 
+   * State Updates:
+   * - certificateUrls: Updates with new certificate URL for instant UI feedback
+   * - Triggers fetchEnrollments to sync with database
+   */
+  const certificateModal = useCertificateModal({
+    user,
+    onSuccess: handleCertificateSuccess
+  });
 
   // Handle window resize for responsive pagination
   useEffect(() => {
@@ -122,7 +209,8 @@ const Courses = () => {
       hasFetchedCoursesRef.current = true;
       fetchCourses();
     }
-  }, []); // Empty dependency array - fetch once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Fetch courses when search, filter, sort, or page changes
   useEffect(() => {
@@ -130,7 +218,8 @@ const Courses = () => {
     if (hasFetchedCoursesRef.current) {
       fetchCourses();
     }
-  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch, learnerGrade, learnerBranch]);
 
   // Fetch learner grade and branch for filtering
   useEffect(() => {
@@ -148,11 +237,8 @@ const Courses = () => {
           setlearnerGrade(data.grade);
           setlearnerBranch(data.branch_field);
           
-          // Re-fetch courses with proper filtering once learner info is available
-          // Only if courses have already been fetched once
-          if (hasFetchedCoursesRef.current) {
-            fetchCourses();
-          }
+          // Note: No need to manually call fetchCourses() here
+          // The filter-watching useEffect will automatically trigger when learnerGrade/learnerBranch change
         }
       } catch (error) {
         logger.error('Error fetching learner info', error);
@@ -172,6 +258,8 @@ const Courses = () => {
       hasFetchedEnrollmentsRef.current = true;
       fetchEnrollments();
     }
+    // fetchEnrollments is stable (empty deps), so not needed in dependency array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
   const fetchCourses = useCallback(async () => {
@@ -318,40 +406,6 @@ const Courses = () => {
     }
   }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters, currentPage, learnerGrade, learnerBranch, filterByBranch]);
 
-  const fetchEnrollments = useCallback(async () => {
-    const email = userEmailRef.current;
-    if (!email) return;
-    
-    try {
-      const result = await courseEnrollmentService.getlearnerEnrollments(email);
-      if (result.success && result.data) {
-        const enrolledIds = new Set(result.data.map(enrollment => enrollment.course_id));
-        setEnrolledCourseIds(enrolledIds);
-        
-        // Track progress and certificate URLs for each enrolled course
-        const progressMap = {};
-        const certUrls = {};
-        result.data.forEach(enrollment => {
-          progressMap[enrollment.course_id] = {
-            progress: enrollment.progress || 0,
-            lastModuleIndex: enrollment.last_module_index || 0,
-            lastLessonIndex: enrollment.last_lesson_index || 0,
-            status: enrollment.status
-          };
-          // Track certificate URL if available
-          if (enrollment.certificate_url) {
-            certUrls[enrollment.course_id] = enrollment.certificate_url;
-          }
-        });
-        setEnrollmentProgress(progressMap);
-        setCertificateUrls(certUrls);
-        
-      }
-    } catch (error) {
-      logger.error('Error fetching enrollments', error);
-    }
-  }, []);
-
   // Check if course has resumable progress
   const hasResumableProgress = (courseId) => {
     const progress = enrollmentProgress[courseId];
@@ -370,110 +424,136 @@ const Courses = () => {
     return progress?.progress || 0;
   };
 
-  // Get certificate URL for a course
+  /**
+   * Get certificate URL for a course from local state
+   * 
+   * @param {string} courseId - Course ID to look up
+   * @returns {string|null} Certificate URL or null if not available
+   */
   const getCertificateUrl = (courseId) => {
     return certificateUrls[courseId] || null;
   };
 
-  // Handle view certificate
-  const handleViewCertificate = (courseId, courseName, e) => {
+  /**
+   * Handle "Get Certificate" button click
+   * 
+   * Race Condition Protection:
+   * - Uses ref-based guard to prevent duplicate simultaneous calls
+   * - Tracks loading state per certificate
+   * - Early returns if already processing
+   * 
+   * Two scenarios:
+   * 1. Certificate exists: View it directly using viewCertificate utility
+   * 2. Certificate doesn't exist: Open modal to generate new certificate
+   * 
+   * Generation Flow:
+   * - Check if already preparing this certificate (guard)
+   * - Set loading state
+   * - Fetch fresh learner data from database
+   * - Prepare certificate parameters (name, educator, course type, etc.)
+   * - Guard check ensures modal is initialized
+   * - Open modal with pre-filled data
+   * - User confirms name and generates certificate
+   * 
+   * @param {Object} course - Course object containing course_id, title, educator_name, course_type, issued_on
+   * @param {Event} e - Click event (for stopPropagation)
+   */
+  const handleGetCertificate = useCallback(async (course, e) => {
     e?.stopPropagation();
-    const certUrl = getCertificateUrl(courseId);
     
-    if (!certUrl) {
+    const courseId = course.course_id;
+    const courseName = course.title;
+    
+    // Race condition guard: Prevent duplicate calls for the same certificate
+    if (preparingCertificateRef.current.has(courseId)) {
+      logger.warn('Certificate preparation already in progress for course', { courseId });
       return;
     }
-
+    
     try {
-      // Special handling for data URLs (base64 encoded images)
-      // Browser security prevents opening data URLs directly in new tabs
-      if (certUrl.startsWith('data:')) {
-        try {
-          // Convert data URL to blob with proper validation
-          const arr = certUrl.split(',');
-          
-          // Validate data URL format
-          if (arr.length < 2) {
-            throw new Error('Invalid data URL: missing base64 content');
-          }
-          
-          const mimeMatch = arr[0].match(/:(.*?);/);
-          if (!mimeMatch || !mimeMatch[1]) {
-            throw new Error('Invalid data URL format: missing MIME type');
-          }
-          const mime = mimeMatch[1];
-          
-          // Decode base64 with error handling
-          let bstr;
-          try {
-            bstr = atob(arr[1]);
-          } catch (decodeError) {
-            throw new Error('Invalid base64 encoding in data URL');
-          }
-          
-          let n = bstr.length;
-          const u8arr = new Uint8Array(n);
-          while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
-          }
-          const blob = new Blob([u8arr], { type: mime });
-          const blobUrl = URL.createObjectURL(blob);
-          
-          const newWindow = window.open(blobUrl, '_blank');
-          
-          if (!newWindow) {
-            toast.error('Please allow popups for this site to view the certificate.');
-            // Revoke immediately if window didn't open
-            URL.revokeObjectURL(blobUrl);
-          } else {
-            // Revoke after a reasonable delay to allow browser to load the blob
-            setTimeout(() => {
-              URL.revokeObjectURL(blobUrl);
-            }, 5000);
-          }
-          
-          return; // Exit early for data URLs
-        } catch (blobError) {
-          logger.error('Error converting data URL to blob', blobError instanceof Error ? blobError : new Error(String(blobError)));
-          toast.error('Error displaying certificate. Please try downloading instead.');
-          return;
-        }
-      }
-      
-      // For non-data URLs, use the proxy URL
-      const viewUrl = getCertificateProxyUrl(certUrl, 'inline');
-      
-      if (!viewUrl || viewUrl.trim() === '') {
-        toast.error('Failed to generate certificate viewing URL. Please try downloading instead.');
+      // Check if certificate already exists - read directly from state
+      const existingCertUrl = certificateUrls[courseId];
+      if (existingCertUrl) {
+        // Certificate already exists, show it directly
+        viewCertificate(existingCertUrl);
         return;
       }
       
-      const newWindow = window.open(viewUrl, '_blank');
+      // Mark this certificate as being prepared
+      preparingCertificateRef.current.add(courseId);
+      setPreparingCertificate(courseId);
       
-      if (!newWindow) {
-        toast.error('Please allow popups for this site to view the certificate.');
+      // Get learner data - fetch fresh from database
+      if (!user?.email) {
+        toast.error('User email not found');
+        return;
       }
+      
+      const { data: learnerData, error: learnerError } = await supabase
+        .from('learners')
+        .select('id, learner_id, name, email')
+        .eq('email', user.email)
+        .maybeSingle();
+      
+      if (learnerError) {
+        logger.error('Error fetching learner data', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
+        toast.error('Failed to fetch learner information');
+        return;
+      }
+      
+      if (!learnerData) {
+        toast.error('Learner profile not found. Please complete your profile first.');
+        return;
+      }
+      
+      /**
+       * Prepare certificate data for modal
+       * 
+       * Data includes:
+       * - educatorName: Instructor name or default
+       * - courseType: 'webinar' or 'course'
+       * - issuedOnDate: Only for webinars, null for courses
+       */
+      const educatorName = course.educator_name || 'Course Instructor';
+      const courseType = course.course_type === 'webinar' ? 'webinar' : 'course';
+      const issuedOnDate = courseType === 'webinar' ? course.issued_on : null;
+      
+      /**
+       * Guard check: Ensure certificate modal is properly initialized
+       * 
+       * Prevents runtime errors if:
+       * - Hook failed to initialize
+       * - Component unmounted during async operation
+       * - Hook returned undefined due to error
+       * 
+       * Logs detailed error context for debugging
+       */
+      if (!certificateModal?.openModal) {
+        logger.error('Certificate modal not initialized', { certificateModal });
+        toast.error('Certificate modal is not available. Please refresh the page.');
+        return;
+      }
+      
+      // Open certificate modal with all required data
+      await certificateModal.openModal({
+        learnerId: learnerData.id,
+        learnerIdText: learnerData.learner_id,
+        courseName,
+        educatorName,
+        courseType,
+        issuedOnDate,
+        courseId,
+        prefillName: learnerData.name || ''
+      });
     } catch (error) {
-      logger.error('Error opening certificate', error instanceof Error ? error : new Error(String(error)));
-      toast.error('Error opening certificate. Please try downloading instead.');
-    }
-  };
-
-  // Handle download certificate
-  const handleDownloadCertificate = async (courseId, courseName, e) => {
-    e?.stopPropagation();
-    const certUrl = getCertificateUrl(courseId);
-    if (!certUrl) return;
-    
-    setDownloadingCertificate(courseId);
-    try {
-      await downloadCertificate(certUrl, courseName);
-    } catch (error) {
-      logger.error('Error downloading certificate', error);
+      logger.error('Error preparing certificate modal', error instanceof Error ? error : new Error(String(error)));
+      toast.error('Failed to prepare certificate generation');
     } finally {
-      setDownloadingCertificate(null);
+      // Always clean up loading state
+      preparingCertificateRef.current.delete(courseId);
+      setPreparingCertificate(null);
     }
-  };
+  }, [user?.email, certificateModal, certificateUrls]); // Fixed: Added certificateUrls to dependency array
 
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {
@@ -613,6 +693,25 @@ const Courses = () => {
         onStartCourse={handleStartCourse}
         enrollmentProgress={enrollmentProgress}
       />
+      
+      {/* Certificate Generation Modal */}
+      <CertificateNameModal
+        isOpen={certificateModal.showModal}
+        onClose={certificateModal.closeModal}
+        fullName={certificateModal.fullName}
+        onFullNameChange={certificateModal.setFullName}
+        onConfirm={certificateModal.showConfirmationDialog}
+        onGenerate={certificateModal.generateCertificate}
+        isGenerating={certificateModal.isGenerating}
+        showConfirmation={certificateModal.showConfirmation}
+        onCancelConfirmation={certificateModal.cancelConfirmation}
+        validationError={certificateModal.validationError}
+        generatedCertificateUrl={certificateModal.generatedUrl}
+        onView={() => viewCertificate(certificateModal.generatedUrl)}
+        onDownload={certificateModal.downloadGeneratedCertificate}
+        courseName={certificateModal.pendingData?.courseName}
+      />
+      
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
           {/* Initial Loading State - Full Page Loader */}
@@ -1089,32 +1188,23 @@ const Courses = () => {
                         >
                           View Course
                         </Button>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={(e) => handleViewCertificate(course.course_id, course.title, e)}
-                            disabled={!getCertificateUrl(course.course_id)}
-                            className={`flex-1 flex items-center justify-center gap-2 ${
-                              getCertificateUrl(course.course_id)
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            }`}
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Certificate
-                          </Button>
-                          <Button
-                            onClick={(e) => handleDownloadCertificate(course.course_id, course.title, e)}
-                            disabled={!getCertificateUrl(course.course_id) || downloadingCertificate === course.course_id}
-                            className={`flex-1 flex items-center justify-center gap-2 ${
-                              getCertificateUrl(course.course_id) && downloadingCertificate !== course.course_id
-                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            }`}
-                          >
-                            <Download className={`w-4 h-4 ${downloadingCertificate === course.course_id ? 'animate-bounce' : ''}`} />
-                            {downloadingCertificate === course.course_id ? '...' : 'Download'}
-                          </Button>
-                        </div>
+                        <Button
+                          onClick={(e) => handleGetCertificate(course, e)}
+                          disabled={preparingCertificate === course.course_id}
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {preparingCertificate === course.course_id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Preparing...
+                            </>
+                          ) : (
+                            <>
+                              <Award className="w-4 h-4" />
+                              {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
+                            </>
+                          )}
+                        </Button>
                       </div>
                     ) : (
                       <Button
@@ -1284,28 +1374,21 @@ const Courses = () => {
                               View Course
                             </Button>
                             <Button
-                              onClick={(e) => handleViewCertificate(course.course_id, course.title, e)}
-                              disabled={!getCertificateUrl(course.course_id)}
-                              className={`flex items-center gap-2 ${
-                                getCertificateUrl(course.course_id)
-                                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              }`}
+                              onClick={(e) => handleGetCertificate(course, e)}
+                              disabled={preparingCertificate === course.course_id}
+                              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <Eye className="w-4 h-4" />
-                              View Certificate
-                            </Button>
-                            <Button
-                              onClick={(e) => handleDownloadCertificate(course.course_id, course.title, e)}
-                              disabled={!getCertificateUrl(course.course_id) || downloadingCertificate === course.course_id}
-                              className={`flex items-center gap-2 ${
-                                getCertificateUrl(course.course_id) && downloadingCertificate !== course.course_id
-                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              }`}
-                            >
-                              <Download className={`w-4 h-4 ${downloadingCertificate === course.course_id ? 'animate-bounce' : ''}`} />
-                              {downloadingCertificate === course.course_id ? '...' : 'Download'}
+                              {preparingCertificate === course.course_id ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  Preparing...
+                                </>
+                              ) : (
+                                <>
+                                  <Award className="w-4 h-4" />
+                                  {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
+                                </>
+                              )}
                             </Button>
                           </div>
                         ) : (
