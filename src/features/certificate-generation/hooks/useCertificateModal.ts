@@ -36,7 +36,8 @@ interface CertificateResult {
 }
 
 interface UseCertificateModalOptions {
-  user?: User;
+  userId?: string;
+  userEmail?: string;
   onSuccess?: (result: CertificateResult) => void | Promise<void>;
   onError?: (error: Error) => void;
 }
@@ -132,7 +133,8 @@ function callSafeOnError(
  * Custom hook for managing certificate generation modal state and logic
  */
 export const useCertificateModal = ({ 
-  user, 
+  userId,
+  userEmail,
   onSuccess, 
   onError 
 }: UseCertificateModalOptions = {}): UseCertificateModalReturn => {
@@ -148,6 +150,20 @@ export const useCertificateModal = ({
   // Store abort functions for cleanup
   const abortFetchRef = useRef<(() => void) | null>(null);
   const abortGenerateRef = useRef<(() => void) | null>(null);
+  
+  // Store latest callbacks in refs to avoid stale closures
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  
+  // Update refs when callbacks change
+  // This ensures we always call the latest version without recreating dependent functions
+  onSuccessRef.current = onSuccess;
+  onErrorRef.current = onError;
+
+  // Construct user object from primitives for backward compatibility with service layer
+  const user: User | undefined = userId || userEmail 
+    ? { id: userId, email: userEmail }
+    : undefined;
 
   /**
    * Validate name and set error state
@@ -212,7 +228,7 @@ export const useCertificateModal = ({
       setIsLoadingName(false);
       setShowModal(true);
     }
-  }, [user]);
+  }, [userId, userEmail]);
 
   /**
    * Close modal and reset state
@@ -348,9 +364,9 @@ export const useCertificateModal = ({
         toast.success('Certificate generated successfully!');
         
         // Handle onSuccess callback - await if it returns a promise
-        if (onSuccess) {
+        if (onSuccessRef.current) {
           try {
-            await Promise.resolve(onSuccess({
+            await Promise.resolve(onSuccessRef.current({
               certificateUrl: result.certificateUrl,
               credentialId: result.credentialId,
               courseName,
@@ -374,14 +390,14 @@ export const useCertificateModal = ({
       logger.error('Certificate generation failed', errorObj);
       toast.error(result.error);
       
-      callSafeOnError(onError, errorObj, logger);
+      callSafeOnError(onErrorRef.current, errorObj, logger);
       
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       logger.error('Error generating certificate', errorObj);
       toast.error(error instanceof Error ? error.message : 'An error occurred while generating the certificate');
       
-      callSafeOnError(onError, errorObj, logger);
+      callSafeOnError(onErrorRef.current, errorObj, logger);
     } finally {
       // Only reset isGenerating if we actually started the operation and it wasn't aborted
       // This prevents leaving the component in a generating state indefinitely
@@ -389,7 +405,7 @@ export const useCertificateModal = ({
         setIsGenerating(false);
       }
     }
-  }, [fullName, pendingData, user, onSuccess, onError, validateAndSet]);
+  }, [fullName, pendingData, userId, userEmail, validateAndSet]);
 
   /**
    * Download the generated certificate
