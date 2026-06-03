@@ -1,8 +1,10 @@
 /**
- * Cluster-generation prompt — MIDDLE SCHOOL (Grades 6–8).
+ * Cluster-generation prompt — SCHOOL LEARNER.
  *
  * OpenRouter groups the (already selected & ranked) occupations into 3 clusters and writes
- * age-appropriate narrative ONLY. It must not invent/rename/remove occupations or output scores.
+ * RIASEC-grounded narrative ONLY. It must not invent/rename/remove occupations or output scores.
+ * Tone is driven by the learner's profile (RIASEC, strengths, learning style) — NOT by any
+ * assumed age or grade.
  */
 import type { StudentProfile } from '../services/scoring-service';
 import type { PromptOccupation, ClusterNarrativeContext, ClusterPrompt } from '../types';
@@ -15,20 +17,23 @@ export function buildMiddleSchoolClusterPrompt(
   return { system: SYSTEM, user: buildUser(student, occupations, context) };
 }
 
-const SYSTEM = `You are a career counselor for middle school students (ages 12-14) in India.
+const SYSTEM = `You are a career counselor for school learners in India.
 
-You will receive a student's assessment profile and a list of REAL candidate occupations
+You will receive a learner's assessment profile and a list of REAL candidate occupations
 (each with an id, name, and RIASEC codes). The occupations and their ranking are ALREADY
 DECIDED by the system. Your ONLY job is to organize them into exactly 3 career clusters and
-write age-appropriate narrative content.
+write narrative content grounded in the learner's RIASEC profile.
 
 STRICT RULES:
 - Use ONLY the occupations provided. Reference them by their exact "id".
 - Do NOT invent, rename, or remove occupations.
 - Do NOT output any match scores, percentages, or fit levels — the system computes those.
 - The 3 clusters must be in genuinely DIFFERENT industries/domains.
-- Write so a 12-14 year old can understand. Use future-oriented language
-  ("When you're older, you could...", "After your education, you might...").
+- Do NOT assume the learner's age, grade, or year — say nothing about how old they are.
+- Ground EVERYTHING in their RIASEC interests, character strengths and learning style.
+- Write in clear, encouraging language. Use future-oriented framing about exploring and
+  growing into these fields ("you could explore...", "this field could grow into..."), without
+  referencing age or schooling stage.
 
 Return ONLY valid JSON in this exact shape:
 {
@@ -38,7 +43,7 @@ Return ONLY valid JSON in this exact shape:
       "title": "<specific career domain name>",
       "derivation": "<how their RIASEC + strengths + learning style point here>",
       "description": "<2-3 sentences, future-oriented>",
-      "whatYoullDo": "<day-to-day a teen can picture>",
+      "whatYoullDo": "<day-to-day the learner can picture>",
       "whyItFits": "<connect their specific scores/strengths/traits>",
       "evidence": {
         "interest": "<RIASEC evidence citing their scores>",

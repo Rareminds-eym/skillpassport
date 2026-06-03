@@ -1,26 +1,31 @@
 /**
  * Embedding Client
- * Single source of truth for calling the embedding worker
- * 
- * This is the ONLY place that should make HTTP calls to the embedding worker.
- * All other code should use this client.
+ * Single source of truth for calling the embedding worker.
+ *
+ * This is the ONLY place that should call the embedding worker. All other code
+ * should use this client.
+ *
+ * Transport: Cloudflare Service Binding RPC (env.EMBEDDING_SERVICE), not HTTP.
+ * The binding routes worker-to-worker inside Cloudflare's network — zero added
+ * latency, no Bearer token. See lib/embeddingBinding.ts.
  */
 
-import { EmbeddingResponse, EmbeddingError } from '../types';
+import { EmbeddingError } from '../types';
 import { EMBEDDING_CONFIG, EMBEDDING_TASK_TYPES } from '../config/constants';
+import { getEmbeddingWorker, type EmbeddingWorkerEnv } from '../lib/embeddingBinding';
 
 /**
- * Call the embedding worker to generate embedding from text
- * 
- * @param text - Text to generate embedding for
- * @param env - Environment variables (must contain EMBEDDING_API_URL)
- * @param taskType - Type of embedding task (default: RETRIEVAL_DOCUMENT)
- * @returns Embedding vector
- * @throws EmbeddingError on failure
+ * Call the embedding worker to generate an embedding from text.
+ *
+ * @param text - Text to generate an embedding for.
+ * @param env - Pages Functions environment (must contain the EMBEDDING_SERVICE binding).
+ * @param taskType - Type of embedding task (default: RETRIEVAL_DOCUMENT).
+ * @returns Embedding vector.
+ * @throws EmbeddingError on validation failure, RPC failure, or invalid response.
  */
 export async function callEmbeddingWorker(
   text: string,
-  env: Record<string, string>,
+  env: Record<string, unknown>,
   taskType: string = EMBEDDING_TASK_TYPES.RETRIEVAL_DOCUMENT
 ): Promise<number[]> {
   // Validate input
@@ -31,77 +36,31 @@ export async function callEmbeddingWorker(
     );
   }
 
-  // Get API configuration - only use backend environment variables
-  const embeddingApiUrl = env.EMBEDDING_API_URL;
-  const embeddingApiKey = env.EMBEDDING_API_KEY;
-
-  if (!embeddingApiUrl) {
-    throw new EmbeddingError(
-      'EMBEDDING_API_URL environment variable is required',
-      'API_ERROR',
-      { missingVar: 'EMBEDDING_API_URL' }
-    );
-  }
-
   // Truncate text if needed
-  const truncatedText = text.length > EMBEDDING_CONFIG.MAX_TEXT_LENGTH 
-    ? text.slice(0, EMBEDDING_CONFIG.MAX_TEXT_LENGTH) 
+  const truncatedText = text.length > EMBEDDING_CONFIG.MAX_TEXT_LENGTH
+    ? text.slice(0, EMBEDDING_CONFIG.MAX_TEXT_LENGTH)
     : text;
-  
+
   if (text.length > EMBEDDING_CONFIG.MAX_TEXT_LENGTH) {
     console.warn(`[EmbeddingClient] Text truncated from ${text.length} to ${EMBEDDING_CONFIG.MAX_TEXT_LENGTH} chars`);
   }
 
-  // Prepare headers
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  
-  if (embeddingApiKey) {
-    headers['Authorization'] = `Bearer ${embeddingApiKey}`;
-  }
-  
   try {
-    // Call embedding worker
-    const response = await fetch(`${embeddingApiUrl}/embeddings/text`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        input: truncatedText,
-        task_type: taskType,
-      }),
-    });
+    // Resolve the typed RPC binding (throws if not configured).
+    const worker = getEmbeddingWorker(env as EmbeddingWorkerEnv);
 
-    if (!response.ok) {
-      let errorText: string;
-      try {
-        errorText = await response.text();
-      } catch (textError) {
-        const textErrorMsg = textError instanceof Error ? textError.message : 'Unknown read error';
-        errorText = `[Response body unreadable: ${textErrorMsg}]`;
-        console.error(`[EmbeddingClient] Failed to read error response body (status ${response.status}):`, textErrorMsg);
-      }
-      throw new EmbeddingError(
-        `Embedding worker returned ${response.status}: ${errorText}`,
-        'API_ERROR',
-        { status: response.status, body: errorText }
-      );
-    }
-
-    const data = await response.json() as EmbeddingResponse;
+    // Call embedding worker via service binding RPC.
+    const data = await worker.embedText(truncatedText, taskType);
 
     // Validate response
-    if (!data.success || !data.embedding || !Array.isArray(data.embedding) || data.embedding.length === 0) {
+    if (!data || !Array.isArray(data.embedding) || data.embedding.length === 0) {
       throw new EmbeddingError(
         'Invalid embedding response from worker',
         'INVALID_RESPONSE',
         { response: data }
       );
     }
-    
-    // Log success
-    console.log(`[EmbeddingClient] Generated ${data.dimensions}-dim embedding using ${data.model || 'embedding worker'}`);
-    
+
     return data.embedding;
 
   } catch (error) {
@@ -110,27 +69,16 @@ export async function callEmbeddingWorker(
       throw error;
     }
 
-    // Wrap other errors
+    // RPC methods throw Errors prefixed with a stable "CODE: message" format.
+    // Map the validation prefix back to our INVALID_TEXT code; everything else
+    // is surfaced as a generic API error.
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const code = errorMessage.startsWith('INVALID_INPUT:') ? 'INVALID_TEXT' : 'API_ERROR';
+
     throw new EmbeddingError(
       `Failed to call embedding worker: ${errorMessage}`,
-      'API_ERROR',
+      code,
       { originalError: error }
     );
   }
-}
-
-/**
- * Get embedding API configuration from environment
- * Helper function for consistent config extraction
- * Only uses backend environment variables (no VITE_ prefix)
- */
-export function getEmbeddingConfig(env: Record<string, string>): {
-  apiUrl: string | undefined;
-  apiKey: string | undefined;
-} {
-  return {
-    apiUrl: env.EMBEDDING_API_URL,
-    apiKey: env.EMBEDDING_API_KEY,
-  };
 }

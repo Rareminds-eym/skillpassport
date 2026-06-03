@@ -3,6 +3,8 @@
  * Shared TypeScript types for Cloudflare Pages Functions
  */
 
+import type { EmbeddingWorkerBinding } from '../../functions/api/embedding/lib/embeddingBinding';
+
 /**
  * Standard environment variables available to all Pages Functions
  */
@@ -27,8 +29,8 @@ export interface PagesEnv {
   RAZORPAY_KEY_ID?: string;
 
   // Embedding Worker configuration
-  EMBEDDING_API_URL?: string;
-  EMBEDDING_API_KEY?: string;
+  /** Cloudflare Service Binding to the embedding worker (embedding-api). */
+  EMBEDDING_SERVICE?: EmbeddingWorkerBinding;
 
   // Email Worker configuration
   EMAIL_API_URL?: string;

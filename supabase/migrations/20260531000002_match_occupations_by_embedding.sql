@@ -25,20 +25,18 @@ RETURNS TABLE (
 LANGUAGE sql
 STABLE
 AS $$
+  -- v2 schema: roles carry a single RIASEC code string (e.g. 'ESC') instead of the
+  -- dropped riasec_profiles table. occupation_codes is returned as a 1-element array to
+  -- preserve the function's output contract for the Holland-hexagon Interest Fit calc.
   SELECT
     o.id,
     o.code,
     o.name,
-    codes.arr,
+    ARRAY[o.riasec_code_string]::varchar(10)[],
     1 - (e.embedding <=> query_embedding::vector) AS similarity
   FROM public.embeddings e
   JOIN public.occupations o
     ON o.id = e.entity_id AND o.is_active = TRUE
-  LEFT JOIN LATERAL (
-    SELECT array_agg(DISTINCT rp.profile_code ORDER BY rp.profile_code) AS arr
-    FROM public.riasec_profiles rp
-    WHERE rp.occupation_id = o.id
-  ) codes ON TRUE
   WHERE e.entity_type = 'occupation'
   ORDER BY e.embedding <=> query_embedding::vector  -- cosine distance asc = most similar first
   LIMIT match_count;

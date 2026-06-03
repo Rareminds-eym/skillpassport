@@ -612,7 +612,7 @@ export async function analyzeCollege(
     // Step 18: Generate career clusters (deterministic 5-component scoring + RAG re-rank +
     // OpenRouter narrative). The RAG query is the structured signals + the synthesis
     // profileNarrative. Then merge synthesis sections + careerFit into gemini_results. Non-fatal.
-    let careerFit: { clusters: unknown[]; specificOptions?: unknown } | null = null;
+    let careerFit: { clusters: unknown[]; specificOptions?: unknown; overallSummary?: string } | null = null;
     try {
       careerFit = await generateCollegeCareerClusters(
         supabase,
@@ -626,12 +626,22 @@ export async function analyzeCollege(
       //  - profileNarrative (no column)
       // skillGap / roadmap / finalNote / overallSummary / employability_readiness /
       // knowledge live in their own columns — do NOT duplicate them here.
+      // The cluster call also returns a capstone overallSummary that names the real best-fit
+      // cluster (the synthesis summary, written before clusters existed, could only guess a
+      // direction). Prefer it and overwrite the column. Keep it out of the stored careerFit.
+      const clusterSummary = careerFit?.overallSummary;
+      const careerFitForStorage = careerFit
+        ? { clusters: careerFit.clusters, specificOptions: careerFit.specificOptions }
+        : null;
+
       const mergedGemini: Record<string, unknown> = {};
       if (synthesis?.profileNarrative) mergedGemini.profileNarrative = synthesis.profileNarrative;
-      if (careerFit) mergedGemini.careerFit = careerFit;
+      if (careerFitForStorage) mergedGemini.careerFit = careerFitForStorage;
+      const geminiUpdate: Record<string, unknown> = { gemini_results: mergedGemini };
+      if (clusterSummary) geminiUpdate.overall_summary = clusterSummary;
       const { error: geminiUpdateError } = await supabase
         .from('personal_assessment_results')
-        .update({ gemini_results: mergedGemini })
+        .update(geminiUpdate)
         .eq('attempt_id', attemptId);
       if (geminiUpdateError) {
         console.error('[ANALYZE-COLLEGE] Failed to store gemini_results:', geminiUpdateError.message);

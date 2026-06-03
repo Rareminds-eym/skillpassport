@@ -52,9 +52,12 @@ const CANDIDATE_POOL_SIZE = 50;
  * last-resort fallback, not first.
  */
 const CLUSTER_GENERATION_CONFIG = {
-  models: ['meta-llama/llama-3.3-70b-instruct', 'openai/gpt-4o-mini'],
+  // gpt-4o-mini primary (matches production): strong instruction-following keeps the cluster
+  // narrative + overallSummary concise and rule-compliant; gemini-2.0-flash is a cheap fallback.
+  // Low temperature (0.1) for consistent, non-verbose output.
+  models: ['openai/gpt-4o-mini', 'google/gemini-2.0-flash-001'],
   maxTokens: 3500,
-  temperature: 0.3,
+  temperature: 0.1,
 };
 
 /** Fit band thresholds derived from a cluster's computed matchScore. */
@@ -88,7 +91,7 @@ export function generateMiddleSchoolCareerClusters(
   student: StudentProfile,
   env: Record<string, string>,
   context: ClusterNarrativeContext = {}
-): Promise<{ clusters: unknown[]; specificOptions?: unknown } | null> {
+): Promise<{ clusters: unknown[]; specificOptions?: unknown; overallSummary?: string } | null> {
   return generateCareerClusters(supabase, student, env, context, 'middle');
 }
 
@@ -101,7 +104,7 @@ export function generateCollegeCareerClusters(
   student: StudentProfile,
   env: Record<string, string>,
   context: ClusterNarrativeContext = {}
-): Promise<{ clusters: unknown[]; specificOptions?: unknown } | null> {
+): Promise<{ clusters: unknown[]; specificOptions?: unknown; overallSummary?: string } | null> {
   return generateCareerClusters(supabase, student, env, context, 'college');
 }
 
@@ -120,7 +123,7 @@ async function generateCareerClusters(
   env: Record<string, string>,
   context: ClusterNarrativeContext,
   gradeLevel: GradeLevel
-): Promise<{ clusters: unknown[]; specificOptions?: unknown } | null> {
+): Promise<{ clusters: unknown[]; specificOptions?: unknown; overallSummary?: string } | null> {
   const riasecCode = (student.riasec_code || '').slice(0, 3);
   if (!riasecCode) {
     console.warn('[CLUSTER-GEN] No RIASEC code — skipping cluster generation');
@@ -185,6 +188,11 @@ async function generateCareerClusters(
     return null;
   }
   const specificOptions = sanitizeSpecificOptions(parsed?.specificOptions || parsed?.careerFit?.specificOptions);
+  // Capstone summary written in the SAME call as the clusters, so it can name the real best-fit
+  // direction (cluster 1) instead of a vague skill. Used to overwrite the synthesis summary.
+  const overallSummary = typeof parsed?.overallSummary === 'string' && parsed.overallSummary.trim()
+    ? parsed.overallSummary.trim()
+    : undefined;
 
   // 5. DETERMINISTIC: validate occupations, compute cluster scores + fit bands, inject.
   const scoreById = new Map(topN.map((o) => [o.occupation_id, o]));
@@ -202,7 +210,7 @@ async function generateCareerClusters(
     scores: clusters.map((c) => c.matchScore),
   });
 
-  return { clusters, specificOptions };
+  return { clusters, specificOptions, overallSummary };
 }
 
 /**
@@ -340,9 +348,9 @@ async function retrieveByEmbedding(
 
 
 /**
- * Populate each occupation's `domain` from occupations_context -> domains.
- * Mutates the passed array in place. Occupations with multiple domains use the first;
- * occupations with none stay 'Unknown'. Failures are non-fatal (diversification just
+ * Populate each occupation's `domain` from role_domains -> domains (v2 schema).
+ * Mutates the passed array in place. Roles with multiple domains use the first;
+ * roles with none stay 'Unknown'. Failures are non-fatal (diversification just
  * falls back to treating everything as one domain).
  */
 async function attachDomains(supabase: any, occupations: ScoredOccupation[]): Promise<void> {
@@ -350,21 +358,21 @@ async function attachDomains(supabase: any, occupations: ScoredOccupation[]): Pr
   if (ids.length === 0) return;
 
   const { data, error } = await supabase
-    .from('occupations_context')
-    .select('occupation_id, domains(name)')
-    .in('occupation_id', ids);
+    .from('role_domains')
+    .select('role_id, domains(name)')
+    .in('role_id', ids);
 
   if (error) {
     console.error('[CLUSTER-GEN] attachDomains failed (non-fatal):', error.message);
     return;
   }
 
-  // First domain wins per occupation.
+  // First domain wins per role.
   const domainByOcc = new Map<string, string>();
   for (const row of data || []) {
     const name = (row as any).domains?.name;
-    if (name && !domainByOcc.has((row as any).occupation_id)) {
-      domainByOcc.set((row as any).occupation_id, name);
+    if (name && !domainByOcc.has((row as any).role_id)) {
+      domainByOcc.set((row as any).role_id, name);
     }
   }
   for (const o of occupations) {

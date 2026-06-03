@@ -1,5 +1,7 @@
 // Career API Types
 
+import type { EmbeddingWorkerBinding } from '../embedding/lib/embeddingBinding';
+
 export interface ChatRequest {
   conversationId?: string;
   message: string;
@@ -192,6 +194,6 @@ export interface Env {
   VITE_OPENROUTER_API_KEY?: string;
   VITE_SUPABASE_URL?: string;
   VITE_SUPABASE_ANON_KEY?: string;
-  EMBEDDING_API_URL?: string;
-  VITE_EMBEDDING_API_URL?: string;
+  /** Cloudflare Service Binding to the embedding worker (embedding-api). */
+  EMBEDDING_SERVICE?: EmbeddingWorkerBinding;
 }

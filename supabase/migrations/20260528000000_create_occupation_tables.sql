@@ -1,149 +1,175 @@
 -- ============================================================================
--- Migration: Create Role Management Tables (Normalized)
+-- Migration: Create Occupation / RIASEC Role Tables (Normalized, v2)
 -- Date: 2026-05-28
--- Purpose: Create reference and junction tables for role management
+-- Purpose: Reference + junction tables for the HTT RIASEC role -> capability ->
+--          ordered 6-month plan flow.
+-- Source of truth: HTT_RIASEC_ROLE_BY_ROLE_FINAL_COMPLETED_ORDERED.xlsx
+-- Schema matches: Task/2026-06-02_embedding-service-binding/roles-er-diagram-v2.md
+--
+-- Flow: Learner RIASEC -> match score on roles -> suitable role ->
+--       role_domains (context) -> ordered role_capability_sequence (courses) -> 6-month plan.
+-- Capabilities are NOT recommended directly from RIASEC; the role recommends, the
+-- role-capability sequence builds the plan.
 -- ============================================================================
 
--- Enable UUID extension
+-- Extensions: uuid-ossp for UUIDs, vector for embeddings
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "vector";
 
 -- ============================================================================
--- TABLE 1: domains
--- Reference table for 7 hospitality domains
+-- TABLE 1: domains  (7 HTT domains, D01..D07)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.domains (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code VARCHAR(3) UNIQUE NOT NULL,
-  name VARCHAR(255) UNIQUE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code        VARCHAR(3) UNIQUE NOT NULL,
+  name        VARCHAR(255) UNIQUE NOT NULL,
+  description TEXT,
+  created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_domains_code ON public.domains(code);
-COMMENT ON TABLE public.domains IS 'Hospitality domains: Customer Service, Accommodation, Food & Beverage, Transport, Travel Booking, Destination Management, Safety & Compliance';
+COMMENT ON TABLE public.domains IS '7 HTT domains (D01..D07): Customer Service, Accommodation, Food & Beverage, Transport, Travel Booking, Destination, Safety & Compliance';
 
 -- ============================================================================
--- TABLE 3: capabilities_master
--- Reference table for 27 capability definitions with name and description
--- Maps to: Hospitality_Travel_Tourism_RIASEC_Role_Capability corrected.xlsx (Sheet 2: Capabilities Master)
+-- TABLE 2: capability_master  (27 canonical capabilities, IND-CAP-01..27)
+-- Intrinsic attributes only (shared across all roles that use the capability).
+-- Role-specific usage (order, priority, level, duration) lives in role_capability_sequence.
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS public.capabilities_master (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code VARCHAR(10) UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS public.capability_master (
+  id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code               VARCHAR(12) UNIQUE NOT NULL,
+  name               TEXT NOT NULL,
+  description        TEXT NOT NULL,
+  master_sequence    INTEGER UNIQUE,                       -- canonical catalog sort key 1..27; NOT learner order
+  capability_status  VARCHAR(20),                          -- Core / Important / Supporting
+  primary_riasec     TEXT[],                               -- explanatory only; does NOT feed match score
+  secondary_riasec   TEXT[],
+  work_style_demands TEXT,
+  created_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_capabilities_master_code ON public.capabilities_master(code);
-COMMENT ON TABLE public.capabilities_master IS 'Capability Master: 27 capability definitions with name and description';
-COMMENT ON COLUMN public.capabilities_master.code IS 'Capability ID: IND-CAP-01, IND-CAP-02, etc. (from Capability_ID)';
-COMMENT ON COLUMN public.capabilities_master.name IS 'Capability Name: Short name for the capability';
-COMMENT ON COLUMN public.capabilities_master.description IS 'Capability Description: Full description of capability requirements (from Capability_Description)';
+CREATE INDEX idx_capability_master_code ON public.capability_master(code);
+COMMENT ON TABLE public.capability_master IS '27 canonical capabilities. RIASEC fields are explanatory only (capabilities are not recommended from RIASEC).';
+COMMENT ON COLUMN public.capability_master.master_sequence IS 'Canonical catalog order 1..27. NOT the learner/plan order (that is role_capability_sequence.sequence_step). Stage buckets = ceil(master_sequence/9).';
 
 -- ============================================================================
--- TABLE 4: roles
--- Main table: roles with semantic properties (embeddings in separate table)
+-- TABLE 3: occupations  (86 roles; RIASEC + match-score weights live here)
+-- NOTE: named `occupations`, NOT `roles`, because public.roles already exists
+-- (RBAC roles table from 20260526000000_schema.sql). Avoids the name collision.
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS public.roles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code VARCHAR(20) UNIQUE NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS public.occupations (
+  id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code                  VARCHAR(20) UNIQUE NOT NULL,
+  name                  VARCHAR(255) NOT NULL,
+  description           TEXT,
+  primary_riasec        CHAR(1),                            -- R/I/A/S/E/C
+  secondary_riasec      CHAR(1),
+  tertiary_riasec       CHAR(1),
+  riasec_code_string    VARCHAR(3),                         -- e.g. 'ESC'
+  primary_weight        NUMERIC(3,2) NOT NULL DEFAULT 0.50, -- 0-1 scale
+  secondary_weight      NUMERIC(3,2) NOT NULL DEFAULT 0.30,
+  tertiary_weight       NUMERIC(3,2) NOT NULL DEFAULT 0.20,
+  riasec_reason         TEXT,                               -- EMBEDDING SOURCE (unique per role)
+  observable_behaviours TEXT,
+  work_context_summary  TEXT,                               -- domain-level descriptive tag (only 7 distinct); NOT embedding text
+  estimated_plan_weeks  INTEGER,
+  fitment_category      TEXT[],                             -- nullable (79/86 filled)
+  fitment_confidence    TEXT[],                             -- parallel to fitment_category
+  is_active             BOOLEAN DEFAULT TRUE,
+  created_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT chk_primary_riasec   CHECK (primary_riasec   IN ('R','I','A','S','E','C')),
+  CONSTRAINT chk_secondary_riasec CHECK (secondary_riasec IN ('R','I','A','S','E','C')),
+  CONSTRAINT chk_tertiary_riasec  CHECK (tertiary_riasec  IN ('R','I','A','S','E','C')),
+  CONSTRAINT chk_weights_sum      CHECK (primary_weight + secondary_weight + tertiary_weight = 1.0)
 );
 
-CREATE INDEX idx_roles_code ON public.roles(code);
-CREATE INDEX idx_roles_name ON public.roles(name);
-
-COMMENT ON TABLE public.roles IS 'Base role definitions (embeddings stored in separate embeddings table)';
-COMMENT ON COLUMN public.roles.code IS 'Unique role code: ROLE-HTT-001, ROLE-EDU-001, ROLE-HR-001, etc.';
-COMMENT ON COLUMN public.roles.name IS 'Role name/title';
+CREATE INDEX idx_occupations_code ON public.occupations(code);
+CREATE INDEX idx_occupations_riasec ON public.occupations(primary_riasec, secondary_riasec, tertiary_riasec);
+COMMENT ON TABLE public.occupations IS '86 HTT roles (table named occupations to avoid collision with RBAC public.roles). RIASEC letters + 0-1 weights drive the match score. riasec_reason is the embedding source.';
+COMMENT ON COLUMN public.occupations.riasec_reason IS 'Per-row unique text (86/86) used as the embedding source for RAG. work_context_summary is NOT used (only 7 distinct).';
+COMMENT ON COLUMN public.occupations.primary_weight IS 'Match-score weight, 0-1 scale. The three weights are checked to sum to 1.0. Authoritative set 0.50/0.30/0.20.';
 
 -- ============================================================================
--- TABLE 5: embeddings (Generic RAG Embedding Storage - Minimal)
--- Stores semantic embeddings for roles, capabilities, domains
--- Flexible: any entity type can be embedded without schema changes
+-- TABLE 4: capability_skills  (188 skills; each belongs to exactly 1 capability)
+-- NOTE: named `capability_skills`, NOT `skills`, because public.skills already exists.
+-- Domain is reachable via capability (verified 188/188), so not stored here.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.capability_skills (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code          VARCHAR(12) UNIQUE NOT NULL,
+  capability_id UUID NOT NULL REFERENCES public.capability_master(id) ON DELETE RESTRICT,
+  name          TEXT NOT NULL,
+  description   TEXT,
+  skill_type    VARCHAR(50),                                -- Documentation / Coordination / ...
+  created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_capability_skills_code ON public.capability_skills(code);
+CREATE INDEX idx_capability_skills_capability ON public.capability_skills(capability_id);
+COMMENT ON TABLE public.capability_skills IS '188 skills, each mapped to exactly one capability (1:1 verified). Named capability_skills to avoid collision with public.skills. Domain derives via capability.';
+
+-- ============================================================================
+-- TABLE 5: role_domains  (M:N context label: which domains a role touches)
+-- 15 roles span >1 domain. This pairing is a plain label; it does NOT own capabilities.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.role_domains (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  role_id    UUID NOT NULL REFERENCES public.occupations(id) ON DELETE CASCADE,  -- FK to occupations
+  domain_id  UUID NOT NULL REFERENCES public.domains(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_role_domain UNIQUE(role_id, domain_id)
+);
+
+CREATE INDEX idx_role_domains_role ON public.role_domains(role_id);
+CREATE INDEX idx_role_domains_domain ON public.role_domains(domain_id);
+COMMENT ON TABLE public.role_domains IS 'M:N role<->domain context label. Multi-domain combined cells (e.g. "D06; D01") are split into separate rows on load.';
+
+-- ============================================================================
+-- TABLE 6: role_capability_sequence  (the ordered 6-month learning plan)
+-- Hangs off a single role_domains context (Option A: multi-domain roles attach
+-- their plan to the primary/first-listed domain). One ordered plan per role.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.role_capability_sequence (
+  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  role_domain_id      UUID NOT NULL REFERENCES public.role_domains(id) ON DELETE CASCADE,
+  capability_id       UUID NOT NULL REFERENCES public.capability_master(id) ON DELETE RESTRICT,
+  sequence_step       INTEGER NOT NULL,                     -- 1..N order within the plan
+  capability_priority VARCHAR(20),                          -- Core / Important / Supporting
+  required_level      VARCHAR(4),                           -- L1 / L2 / L3
+  duration_weeks      INTEGER,
+  cumulative_weeks    INTEGER,
+  plan_phase          VARCHAR(40),                          -- Month 1-2 / 3-4 / 5-6
+  created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_context_step       UNIQUE(role_domain_id, sequence_step),
+  CONSTRAINT unique_context_capability UNIQUE(role_domain_id, capability_id),
+  CONSTRAINT chk_required_level CHECK (required_level IN ('L1','L2','L3'))
+);
+
+CREATE INDEX idx_rcs_context ON public.role_capability_sequence(role_domain_id);
+CREATE INDEX idx_rcs_capability ON public.role_capability_sequence(capability_id);
+CREATE INDEX idx_rcs_order ON public.role_capability_sequence(role_domain_id, sequence_step);
+COMMENT ON TABLE public.role_capability_sequence IS 'Ordered role learning plan. FK to role_domains guarantees every step runs in a real (role+domain) context. Sort by sequence_step to build the 6-month plan.';
+COMMENT ON COLUMN public.role_capability_sequence.role_domain_id IS 'FK to role_domains (the role+domain context). Replaces separate role_id+domain_id; enforces the pair exists.';
+
+-- ============================================================================
+-- TABLE 7: embeddings  (generic RAG vector storage)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.embeddings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  entity_type VARCHAR(50) NOT NULL,
-  entity_id UUID NOT NULL,
-  embedding vector(1536),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  entity_type VARCHAR(50) NOT NULL,                         -- 'occupation' (extensible)
+  entity_id   UUID NOT NULL,
+  embedding   vector(1536),
+  created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT unique_entity_embedding UNIQUE(entity_type, entity_id)
 );
 
 CREATE INDEX idx_embeddings_entity ON public.embeddings(entity_type, entity_id);
--- NOTE: No ANN (ivfflat/HNSW) index on `embedding` on purpose. With only ~277 role
--- vectors, an ivfflat index (lists=100, default probes=1) returns approximate results — a query
--- often hits one sparse list and gets back only a handful of rows instead of the requested top-K.
--- Exact brute-force KNN over a few hundred rows is sub-millisecond, so an index hurts correctness
--- with no speed benefit. Reintroduce an ANN index (HNSW, or ivfflat with lists ~= sqrt(rows) and
--- probes raised) only when the embedding set grows large (tens of thousands+).
+-- NOTE: No ANN (ivfflat/HNSW) index on `embedding` on purpose. With only ~86 role
+-- vectors, an approximate index hurts correctness with no speed benefit. Exact brute-force
+-- KNN over a few hundred rows is sub-millisecond. Reintroduce an ANN index (HNSW, or ivfflat
+-- with lists ~= sqrt(rows)) only when the embedding set grows to tens of thousands+.
 -- CREATE INDEX idx_embeddings_embedding ON public.embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
-COMMENT ON TABLE public.embeddings IS 'Generic embedding storage for RAG. Supports roles, capabilities, domains, and future entity types.';
-COMMENT ON COLUMN public.embeddings.entity_type IS 'Entity type: role, capability, domain';
-COMMENT ON COLUMN public.embeddings.entity_id IS 'UUID reference to the entity (role_id, capability_id, or domain_id)';
-COMMENT ON COLUMN public.embeddings.embedding IS 'Semantic embedding vector (1536 dimensions) for similarity search';
-
--- ============================================================================
--- TABLE 6: roles_context (Junction Table)
--- Links roles to domains
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.roles_context (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
-  domain_id UUID NOT NULL REFERENCES public.domains(id) ON DELETE RESTRICT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_role_domain UNIQUE(role_id, domain_id)
-);
-
-CREATE INDEX idx_roles_context_role ON public.roles_context(role_id);
-CREATE INDEX idx_roles_context_domain ON public.roles_context(domain_id);
-
-COMMENT ON TABLE public.roles_context IS 'Junction table linking roles to domains';
-COMMENT ON COLUMN public.roles_context.role_id IS 'Foreign key to roles (CASCADE on delete)';
-COMMENT ON COLUMN public.roles_context.domain_id IS 'Foreign key to domains (RESTRICT on delete)';
-
--- ============================================================================
--- TABLE 6: roles_capabilities_master (Junction Table)
--- Links each role-in-a-domain (roles_context) to capabilities_master.
--- Capabilities hang off the domain + role pairing, so the SAME role can
--- carry different capabilities in different domains. One context -> many capabilities.
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.roles_capabilities_master (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  context_id UUID NOT NULL REFERENCES public.roles_context(id) ON DELETE CASCADE,
-  capability_id UUID NOT NULL REFERENCES public.capabilities_master(id) ON DELETE RESTRICT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_context_capability UNIQUE(context_id, capability_id)
-);
-
-CREATE INDEX idx_role_cap_context ON public.roles_capabilities_master(context_id);
-CREATE INDEX idx_role_cap_capability ON public.roles_capabilities_master(capability_id);
-
-COMMENT ON TABLE public.roles_capabilities_master IS 'Junction table linking roles_context (role + domain) to capabilities_master (one-to-many: each role+domain context can have multiple capabilities)';
-COMMENT ON COLUMN public.roles_capabilities_master.context_id IS 'Foreign key to roles_context i.e. the role+domain pairing (CASCADE on delete)';
-COMMENT ON COLUMN public.roles_capabilities_master.capability_id IS 'Foreign key to capabilities_master (RESTRICT on delete)';
-
--- ============================================================================
--- TABLE 7: riasec_profiles (Separate Junction Table)
--- Links roles to their RIASEC profile codes (one-to-many relationship)
--- Handles cases where a role can have multiple RIASEC profiles (e.g., SC; CIS; SCI)
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.riasec_profiles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
-  profile_code VARCHAR(10) NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_role_profile UNIQUE(role_id, profile_code)
-);
-
-CREATE INDEX idx_riasec_profiles_role ON public.riasec_profiles(role_id);
-CREATE INDEX idx_riasec_profiles_code ON public.riasec_profiles(profile_code);
-
-COMMENT ON TABLE public.riasec_profiles IS 'Junction table linking roles to RIASEC profile codes (one-to-many: each role can have multiple RIASEC profiles)';
-COMMENT ON COLUMN public.riasec_profiles.role_id IS 'Foreign key to roles (CASCADE on delete)';
-COMMENT ON COLUMN public.riasec_profiles.profile_code IS 'RIASEC Profile Code: SC, CIS, SCI, RSC, SEC, etc. (can be 1-4 characters)';
+COMMENT ON TABLE public.embeddings IS 'Generic embedding storage for RAG. entity_type=''occupation'' uses occupations.riasec_reason-based document as source text.';
+COMMENT ON COLUMN public.embeddings.entity_id IS 'UUID of the embedded entity (e.g. occupations.id when entity_type=''occupation'').';

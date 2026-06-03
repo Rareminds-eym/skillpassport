@@ -61,13 +61,21 @@ Return ONLY valid JSON in this exact shape:
     "highFit": [{ "name": "<role from cluster 1>", "salary": { "min": <LPA number>, "max": <LPA number> } }],
     "mediumFit": [{ "name": "<role from cluster 2>", "salary": { "min": <LPA number>, "max": <LPA number> } }],
     "exploreLater": [{ "name": "<role from cluster 3>", "salary": { "min": <LPA number>, "max": <LPA number> } }]
-  }
+  },
+  "overallSummary": "<A tight 2-3 sentence SYNTHESIS of this learner — see overallSummary RULES below>"
 }
 
 specificOptions RULES:
 - Group the concrete job titles by cluster: cluster 1's roles → highFit, cluster 2 → mediumFit, cluster 3 → exploreLater.
 - Use 2-3 roles per group, drawn from that cluster's entry/mid roles.
-- "salary" is an APPROXIMATE entry-to-early-career range in INR LPA (lakhs per annum) for India; integers, min < max.`;
+- "salary" is an APPROXIMATE entry-to-early-career range in INR LPA (lakhs per annum) for India; integers, min < max.
+
+overallSummary RULES (a professional SYNTHESIS, not advice):
+- 2-3 sentences, ~45-60 words, third person ("The learner...").
+- It is a SUMMARY of who this learner is and where they fit — NOT a to-do list or pitch.
+- Cover, woven naturally into prose: (a) their defining interests/strengths, (b) the best-fit direction using cluster 1's actual field, (c) the one main area to develop.
+- BANNED: salary/pay/LPA, any numbers or scores, "should", "consider", "with the right skills/experience", "internships/volunteer", and other advice filler. Describe, don't instruct.
+- Model (style only, do NOT copy): "The learner, studying Hospitality & Hotel Management, brings strong people skills and a creative, organized streak that suit rural and community-based tourism work. Communication is their main area to strengthen as they move toward guest-facing and coordination roles."`;
 
 function buildUser(
   student: StudentProfile,

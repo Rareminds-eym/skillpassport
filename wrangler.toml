@@ -29,6 +29,14 @@ binding = "SSO_SERVICE"
 service = "sso-api"
 entrypoint = "SsoWorker"
 
+# Embedding worker — vector embeddings via RPC (WorkerEntrypoint), zero-latency,
+# no Bearer token needed. Replaces the old EMBEDDING_API_URL HTTP fetch path.
+# Local dev: npx wrangler pages dev ./dist --service EMBEDDING_SERVICE=embedding-api
+[[services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api"
+entrypoint = "EmbeddingService"
+
 # ============================================================================
 # ENVIRONMENT VARIABLES
 # ============================================================================
@@ -50,8 +58,9 @@ SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Pages Functions)
 EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
-EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
+# Note: the embedding worker is now reached via the EMBEDDING_SERVICE service
+# binding (see [[services]] above), not an HTTP URL.
 
 
 
@@ -76,7 +85,6 @@ VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Frontend)
 VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
-VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
 
 # Analytics 
@@ -97,8 +105,9 @@ VITE_GTM_ID = "GTM-M2N3952J"
 # - CLOUDFLARE_R2_ACCESS_KEY_ID
 # - CLOUDFLARE_R2_SECRET_ACCESS_KEY
 # - EMAIL_API_KEY
-# - EMBEDDING_API_KEY
 # - OPENROUTER_API_KEY (optional, for AI features)
+# Note: EMBEDDING_API_KEY is no longer needed — the embedding worker is reached
+# via the EMBEDDING_SERVICE service binding (trusted worker-to-worker RPC).
 # - CLAUDE_API_KEY (optional, for AI features)
 # - GEMINI_API_KEY (optional, for AI features)
 # - SIGNING_SECRET (optional, for media access tokens)

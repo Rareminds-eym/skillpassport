@@ -19,10 +19,9 @@ PAYMENTS_API_URL=http://localhost:9003
 
 
 # ==================== EMBEDDING WORKER CONFIGURATION ====================
-# URL of the embedding worker (standalone Cloudflare Worker on port 9002)
-EMBEDDING_API_URL=http://localhost:9002
-# Optional API key for authenticating requests to the embedding worker
-EMBEDDING_API_KEY=your_embedding_api_key_here
+# The embedding worker is reached via the EMBEDDING_SERVICE service binding
+# (RPC), not an HTTP URL or API key. No .dev.vars entry needed.
+# Local dev: npx wrangler pages dev ./dist --service EMBEDDING_SERVICE=embedding-api
 
 
 # ==================== EMAIL WORKER CONFIGURATION ====================
