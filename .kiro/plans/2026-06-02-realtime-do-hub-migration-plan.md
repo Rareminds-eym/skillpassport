@@ -1,113 +1,71 @@
-# Realtime DO Hub Migration Plan
+# Realtime DO Hub Migration Plan (V8 - Hibernation-Safe, Production-Ready)
 
-**Date**: 2026-06-02
+**Date**: 2026-06-03
 **Status**: Draft
 **Author**: AI-assisted
 
 ## Problem Summary
 
-The current `/api/realtime-stream` implementation uses **polling disguised as SSE**. Every 2 seconds the backend queries Supabase for changes across 19 tables. This causes:
+The current `/api/realtime-stream` implementation uses **polling disguised as SSE**. Every 2 seconds the backend queries Supabase for changes across 19 tables. This causes high DB load, artificial reconnect thrashes, and in-memory state loss on worker evictions.
 
-- **~12 DB queries per 25s connection window per user** — multiplied by every browser tab
-- **Artificial 25s connection limit** forces reconnect thrashes (cold-start, auth, every 25s)
-- **3 tables poll uselessly** (`shortlist_candidates`, `pipeline_activities`, `placements` have no `updated_at` column)
-- **In-memory state lost on reconnect** — broadcast/presence broken across Worker instances
-- **985 lines of custom code** `(sseRealtimeClient.ts 357 + realtimeService.ts 362 + index.ts 266)` to replace what should be simple
+## Target Architecture: Partitioned Hash Ring DO Hub
 
-## Target Architecture: DO Hub
+> [!CAUTION]
+> **Why V8 is Required (9 Flaws Found in V7)**
+> 1. **CRITICAL — Presence State Lost on Hibernation**: V7 stored presence in an in-memory `Map`. Cloudflare's WebSocket Hibernation API evicts the DO from memory between messages. When it wakes, the `Map` is empty. ALL presence data silently vanishes. **V8 Fix**: Store presence in a SQLite `presence` table. Reconstruct in-memory cache from SQLite + WebSocket attachments on wake.
+> 2. **CRITICAL — Missing `fetch()` on WorkerEntrypoint**: Rule 7.3.2 says "entrypoints without a named handler are not supported." V7 had no `fetch()` method. Deployment would fail. **V8 Fix**: Added required `fetch()` stub.
+> 3. **CRITICAL — `userId` Never Reaches the DO**: V7 passed the original client `Request` (URL: `/api/realtime-stream`) to `stub.fetch(request)`. The DO extracted `userId` from the URL and got `null`. Every user was `'unknown'`. **V8 Fix**: Construct a new `Request` with `userId` in the query string before forwarding to the DO.
+> 4. **HIGH — Presence Echo Storm**: V7 processed presence locally AND queued it. The Queue fanned out to ALL 10 partitions INCLUDING the originator. The originator processed it twice, causing duplicate broadcasts. **V8 Fix**: Added `sourcePartitionId` to Queue messages. Queue consumer skips the originating partition.
+> 5. **HIGH — DurableObject Missing `<Env>` Generic**: `extends DurableObject` without `<Env>` makes `this.env` untyped. **V8 Fix**: `extends DurableObject<Env>`.
+> 6. **MEDIUM — Truncated SQL Pseudocode**: The `subscribe` handler had `'INSERT OR IGNORE INTO subscriptions...'` as literal pseudocode. **V8 Fix**: Full SQL statement.
+> 7. **MEDIUM — Incomplete Observability Config**: Rule 7.8 requires `logs` and `traces`. **V8 Fix**: Full observability block.
+> 8. **MEDIUM — Missing Testing Plan**: Rule 7.9 requires 80% test coverage. **V8 Fix**: Added verification plan.
+> 9. **LOW — Missing `wrangler types`**: Rule 7.1.3 says never hand-write Env. **V8 Fix**: Added to checklist.
 
-```
-                    ┌──────────────────────────────────────────────────────┐
-                    │              Durable Object: RealtimeHub             │
-                    │                                                      │
-                    │  ┌──────────────┐  ┌───────────┐  ┌──────────────┐  │
-Client SSE ────────►│  │ SSE Writers   │  │ Broadcast │  │   Presence   │  │
-(1 per tab)         │  │ Map<connId,   │  │   Buffer  │  │    State     │  │
-                    │  │  Writer>      │  │ (in-mem)  │  │ (in-mem)     │  │
-                    │  └──────┬───────┘  └─────┬─────┘  └──────┬───────┘  │
-                    │         │                │               │          │
-                    │         ▼                ▼               ▼          │
-                    │  ┌──────────────────────────────────────────────┐   │
-                    │  │           Subscription Matcher               │   │
-                    │  │  connId → [{table, event, filter}, ...]      │   │
-                    │  │  (SQLite for reconnect recovery)             │   │
-                    │  └──────────────────────────────────────────────┘   │
-                    └──────────────────────────────────────────────────────┘
-
-     Pages Function routes POST actions to DO via stub.fetch()
-
-     Mutation Endpoints ──► notifyRealtime() helper ──► DO /publish
-     Frontend POST ───────► DO /broadcast, /presence
-```
-
-### Key Changes
-
-| Current | Target |
-|---------|--------|
-| Polling DB every 2s | Push-based: mutation endpoints call `DO.publish()` |
-| SSE connection dies at 25s | SSE lives as long as client is connected |
-| In-memory state in Worker (lost constantly) | State in DO (persistent across reconnects) |
-| 266 lines custom polling logic | DO ~150 lines, SSE proxy function ~50 lines |
-| 19 tables polled independently | Only changed data pushed to relevant connections |
-| No reconnect replay | SQLite-backed subscriptions, event replay |
-
-### DO Identity Model
-
-**One DO instance** (`idFromName("realtime-global")`) for the entire app. The DO handles:
-
-- All SSE connections (via `TransformStream` writers)
-- Subscription matching (which connection wants which table/event/filter)
-- Broadcast fan-out
-- Presence state
-
-**Why one DO, not 19 (one per table)?**
-
-- 500-1000 req/sec capacity per DO is sufficient for this app
-- Subscriptions can share a single SQLite DB inside the DO
-- Simpler deployment and management
-- One WebSocket to Supabase Realtime (if we add that later)
-
-**Why not need Supabase Realtime WebSocket in the DO?**
-
-Because the DO is **publish-based**, not poll-based. Mutation endpoints call `DO.publish(table, event, payload)` after writing to Supabase. No WebSocket to Supabase needed. This keeps all Supabase communication in API endpoints (as required), while the DO is purely a realtime fan-out hub.
-
-### Connection Lifecycle
+### Architecture Diagram
 
 ```
-1. Frontend: GET /api/realtime-stream (no query params — connects first)
-2. Pages Function: auth → get DO stub → DO.connect(request.signal) → TransformStream
-3. DO stores writer in Map<connId, Writer>
-4. DO stores subscription in SQLite: INSERT INTO subscriptions (conn_id, table, event, filter)
-5. When mutation happens: api endpoint writes to Supabase, then notifyRealtime(table, event, record)
-6. notifyRealtime POSTs to DO /publish with {table, event, payload}
-7. DO looks up matching subscriptions, writes to matching SSE writers
-8. Client disconnects: request.signal fires → DO removes writer + deletes SQLite subscriptions
+                    ┌────────────────────────────────────────────────────────┐
+                    │  Durable Object: RealtimeHub (10 Partitions)           │
+                    │  idFromName('partition-0') to ('partition-9')          │
+Client WebSocket ──►│  ┌─────────────────┐  ┌───────────┐  ┌──────────────┐  │
+(Hashed by userId)  │  │ WS Hibernation  │  │ Broadcast │  │  Presence    │  │
+                    │  │ API             │  │   Buffer  │  │  (SQLite!)   │  │
+                    │  └────────┬────────┘  └─────┬─────┘  └──────┬───────┘  │
+                    │           │                 │               │          │
+                    │           ▼                 ▼               ▼          │
+                    │  ┌────────────────────────────────────────────────┐    │
+                    │  │             Subscription Matcher               │    │
+                    │  │   SQLite (storage.sql) for Subscriptions       │    │
+                    │  └────────────────────────────────────────────────┘    │
+                    └─────────┬───────────────▲──────────────────────────────┘
+    (Forward WS Broadcasts)   │               │ (DO RPC: stub.publishBatch)
+                              ▼               │
+                    ┌─────────────────────────┴──────────────────────────────┐
+                    │               Cloudflare Queue                         │
+                    │  (Fans out to 9 OTHER partitions, skips originator)    │
+                    └─────────────────────────▲──────────────────────────────┘
+                                              │ env.QUEUE.send(event)
+                                              │
+    Mutation Endpoints ──► notifyRealtime() helper (Fire to Queue)
 ```
 
 ---
 
 ## File-by-File Migration Plan
 
-### Phase 1: Core DO + Pages Function (Week 1)
+### Phase 1: Core DO + Queue + Worker
 
-#### 1.1 Create `realtime-worker/` (new Worker project)
+#### 1.1 Create `realtime-worker/`
 
-**Location**: `skillpassport/realtime-worker/` (sibling to `skillpassport/functions/`)
-
-**Files to create**:
-
-| File | Purpose |
-|------|---------|
-| `realtime-worker/wrangler.jsonc` | DO Worker config with SQLite |
-| `realtime-worker/src/index.ts` | Worker entry point exporting DO namespace |
-| `realtime-worker/src/realtime-hub.ts` | `RealtimeHub` DO class (~200 lines) |
+**Location**: `realtime-worker/` (At the workspace root, alongside `email-worker` and `sso-worker`)
 
 **`realtime-worker/wrangler.jsonc`**:
-```json
+```jsonc
 {
   "name": "realtime-worker",
   "main": "src/index.ts",
-  "compatibility_date": "2026-06-02",
+  "compatibility_date": "2026-06-03",
   "compatibility_flags": ["nodejs_compat"],
   "durable_objects": {
     "bindings": [
@@ -116,354 +74,439 @@ Because the DO is **publish-based**, not poll-based. Mutation endpoints call `DO
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["RealtimeHub"] }
-  ]
+  ],
+  "queues": {
+    "producers": [
+      { "queue": "realtime-events-queue", "binding": "REALTIME_EVENTS_QUEUE" }
+    ],
+    "consumers": [
+      {
+        "queue": "realtime-events-queue",
+        "max_batch_size": 100,
+        "max_batch_timeout": 1
+      }
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  }
 }
 ```
 
 **`realtime-worker/src/index.ts`**:
 ```typescript
+import { WorkerEntrypoint } from 'cloudflare:workers';
 import { RealtimeHub } from './realtime-hub';
-
 export { RealtimeHub };
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    const id = env.REALTIME_HUB.idFromName('realtime-global');
-    const stub = env.REALTIME_HUB.get(id);
+const TOTAL_PARTITIONS = 10;
 
-    // Route to DO. The DO's fetch() handles /connect, /publish, /broadcast, /presence
-    return stub.fetch(request);
-  },
-};
+function getPartitionId(userId: string): number {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = Math.imul(31, hash) + userId.charCodeAt(i) | 0;
+  }
+  return Math.abs(hash) % TOTAL_PARTITIONS;
+}
+
+export default class RealtimeWorker extends WorkerEntrypoint<Env> {
+  // REQUIRED by Rule 7.3.2: entrypoints must have a named handler
+  async fetch(): Promise<Response> {
+    return new Response('Use RPC methods', { status: 404 });
+  }
+
+  // True RPC Method: invoked by Pages Service Binding
+  async upgradeWebSocket(userId: string, request: Request): Promise<Response> {
+    const partitionId = getPartitionId(userId);
+    const id = this.env.REALTIME_HUB.idFromName(`partition-${partitionId}`);
+    const stub = this.env.REALTIME_HUB.get(id);
+
+    // FIX: Construct a new Request with userId in URL (original has no userId param)
+    const doUrl = new URL('http://do/connect');
+    doUrl.searchParams.set('userId', userId);
+    doUrl.searchParams.set('partitionId', String(partitionId));
+    return stub.fetch(new Request(doUrl.toString(), { headers: request.headers }));
+  }
+
+  // Queue Consumer: Fan-out to partitions via DO RPC, skipping source
+  async queue(batch: MessageBatch<any>): Promise<void> {
+    // Group events by whether they are internal (from a DO) or external (from API)
+    const externalEvents: any[] = [];
+    const internalBySource = new Map<number, any[]>();
+
+    for (const msg of batch.messages) {
+      const { event, sourcePartitionId } = msg.body;
+      if (sourcePartitionId !== undefined) {
+        // Internal event: skip the originator partition
+        if (!internalBySource.has(sourcePartitionId)) internalBySource.set(sourcePartitionId, []);
+        internalBySource.get(sourcePartitionId)!.push(event);
+      } else {
+        externalEvents.push(event);
+      }
+    }
+
+    const promises: Promise<void>[] = [];
+
+    // External events (DB mutations): fan out to ALL 10 partitions
+    if (externalEvents.length > 0) {
+      for (let i = 0; i < TOTAL_PARTITIONS; i++) {
+        const id = this.env.REALTIME_HUB.idFromName(`partition-${i}`);
+        promises.push(
+          this.env.REALTIME_HUB.get(id).publishBatch(externalEvents).catch(err => {
+            console.error(JSON.stringify({ message: `Partition ${i} publish failed`, error: String(err) }));
+          })
+        );
+      }
+    }
+
+    // Internal events (WS broadcasts/presence): fan out to OTHER 9 partitions
+    for (const [sourceId, events] of internalBySource) {
+      for (let i = 0; i < TOTAL_PARTITIONS; i++) {
+        if (i === sourceId) continue; // Skip originator!
+        const id = this.env.REALTIME_HUB.idFromName(`partition-${i}`);
+        promises.push(
+          this.env.REALTIME_HUB.get(id).publishBatch(events).catch(err => {
+            console.error(JSON.stringify({ message: `Partition ${i} internal publish failed`, error: String(err) }));
+          })
+        );
+      }
+    }
+
+    await Promise.allSettled(promises);
+  }
+}
 ```
 
-**`realtime-worker/src/realtime-hub.ts`** — Core DO class:
-
+**`realtime-worker/src/realtime-hub.ts`**:
 ```typescript
 import { DurableObject } from 'cloudflare:workers';
 
-interface Subscription {
-  connId: string;
-  table: string;
-  event: string;
-  filter?: string;
+interface Attachment {
+  wsId: string;
+  userId: string;
+  partitionId: number;
 }
 
-interface SseWriter {
-  writer: WritableStreamDefaultWriter<Uint8Array>;
-  encoder: TextEncoder;
-  connId: string;
+interface PresenceInfo {
+  userId: string;
+  userName: string;
+  userType: string;
+  status: string;
+  lastSeen: string;
+  conversationId?: string;
 }
 
-export class RealtimeHub extends DurableObject {
-  private writers = new Map<string, SseWriter>();
-  private presenceState = new Map<string, Map<string, any>>();
+// FIX: Generic <Env> so this.env is typed
+export class RealtimeHub extends DurableObject<Env> {
+  private partitionId: number = -1; // Set on first fetch
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.blockConcurrencyWhile(async () => {
+      // Subscriptions table
       this.ctx.storage.sql.exec(`
         CREATE TABLE IF NOT EXISTS subscriptions (
-          conn_id TEXT NOT NULL,
+          ws_id TEXT NOT NULL,
           table_name TEXT NOT NULL,
           event TEXT NOT NULL DEFAULT '*',
           filter TEXT,
-          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-          PRIMARY KEY (conn_id, table_name, event, filter)
+          PRIMARY KEY (ws_id, table_name, event, filter)
+        )
+      `);
+      // FIX: Presence in SQLite to survive hibernation
+      this.ctx.storage.sql.exec(`
+        CREATE TABLE IF NOT EXISTS presence (
+          channel TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          user_name TEXT NOT NULL DEFAULT '',
+          user_type TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'online',
+          last_seen TEXT NOT NULL,
+          conversation_id TEXT,
+          PRIMARY KEY (channel, user_id)
         )
       `);
     });
   }
 
-  // Called by Pages Function to start SSE stream
-  async handleConnect(request: Request): Promise<Response> {
-    const connId = crypto.randomUUID();
-    const { readable, writable } = new TransformStream<Uint8Array>();
-    const writer = writable.getWriter();
-    const encoder = new TextEncoder();
-    
-    this.writers.set(connId, { writer, encoder, connId });
-    
-    // Send connected event
-    writer.write(encoder.encode(
-      `data: ${JSON.stringify({ type: 'connected', connId })}\n\n`
-    ));
-
-    // Cleanup on disconnect
-    request.signal.addEventListener('abort', () => {
-      this.removeConnection(connId);
-    });
-
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
-    });
+  // ---- RPC Method (called by Queue Consumer via Worker) ----
+  async publishBatch(events: any[]) {
+    for (const event of events) {
+      switch (event.type) {
+        case '__INTERNAL_WS_BROADCAST':
+          this.broadcastChannel(event.channel, event.eventType, event.payload, event.from);
+          break;
+        case '__INTERNAL_WS_PRESENCE_JOIN':
+          this.sqlJoinPresence(event.channel, event.info);
+          this.syncPresence(event.channel);
+          break;
+        case '__INTERNAL_WS_PRESENCE_LEAVE':
+          this.sqlLeavePresence(event.channel, event.userId);
+          this.syncPresence(event.channel);
+          break;
+        case '__INTERNAL_WS_PRESENCE_HEARTBEAT':
+          this.sqlUpdateHeartbeat(event.channel, event.userId, event.status);
+          break;
+        default:
+          this.broadcastToSubscribers(event); // Database change events
+      }
+    }
   }
 
-  // Called by Pages Function to subscribe a connection to a table
-  async handleSubscribe(connId: string, table: string, event: string, filter?: string): Promise<void> {
-    this.ctx.storage.sql.exec(
-      `INSERT OR IGNORE INTO subscriptions (conn_id, table_name, event, filter) VALUES (?, ?, ?, ?)`,
-      connId, table, event, filter || null
-    );
+  // ---- WebSocket Lifecycle ----
+  async fetch(request: Request): Promise<Response> {
+    if (request.headers.get('Upgrade') !== 'websocket') {
+      return new Response('Not found', { status: 404 });
+    }
+
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+
+    const url = new URL(request.url);
+    const userId = url.searchParams.get('userId') || 'unknown';
+    const partitionId = parseInt(url.searchParams.get('partitionId') || '0', 10);
+    this.partitionId = partitionId;
+    const wsId = crypto.randomUUID();
+
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({ wsId, userId, partitionId } satisfies Attachment);
+    server.send(JSON.stringify({ type: 'connected', connId: wsId }));
+
+    return new Response(null, { status: 101, webSocket: client });
   }
 
-  // Called by notifyRealtime() helper when data changes
-  async handlePublish(table: string, event: string, payload: any): Promise<void> {
-    const encoder = new TextEncoder();
-    const data = `data: ${JSON.stringify({ type: 'change', table, event, payload, timestamp: new Date().toISOString() })}\n\n`;
-    const encoded = encoder.encode(data);
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
+    const data = JSON.parse(message as string);
+    const attachment = ws.deserializeAttachment() as Attachment;
+    this.partitionId = attachment.partitionId;
 
-    // Find matching subscriptions
-    const cursor = this.ctx.storage.sql.exec(
-      `SELECT conn_id, filter FROM subscriptions WHERE table_name = ? AND (event = ? OR event = '*')`,
-      table, event
-    );
-
-    for (const row of cursor) {
-      const writer = this.writers.get(row.conn_id as string);
-      if (!writer) {
-        // Stale subscription — clean up
+    switch (data.action) {
+      case 'subscribe':
+        // FIX: Full SQL, not pseudocode
         this.ctx.storage.sql.exec(
-          `DELETE FROM subscriptions WHERE conn_id = ?`, row.conn_id
+          `INSERT OR IGNORE INTO subscriptions (ws_id, table_name, event, filter) VALUES (?, ?, ?, ?)`,
+          attachment.wsId, data.table, data.event || '*', data.filter || null
         );
-        continue;
+        break;
+
+      case 'send-broadcast':
+        // Process locally
+        this.broadcastChannel(data.channel, data.eventType, data.payload, attachment.userId);
+        // FIX: Include sourcePartitionId to prevent echo storm
+        this.env.REALTIME_EVENTS_QUEUE.send({
+          sourcePartitionId: this.partitionId,
+          event: { type: '__INTERNAL_WS_BROADCAST', channel: data.channel, eventType: data.eventType, payload: data.payload, from: attachment.userId }
+        });
+        break;
+
+      case 'join-presence': {
+        const info: PresenceInfo = {
+          userId: attachment.userId,
+          userName: data.userName || '',
+          userType: data.userType || '',
+          status: data.status || 'online',
+          lastSeen: new Date().toISOString(),
+          conversationId: data.conversationId
+        };
+        this.sqlJoinPresence(data.channel, info);
+        this.syncPresence(data.channel);
+        this.env.REALTIME_EVENTS_QUEUE.send({
+          sourcePartitionId: this.partitionId,
+          event: { type: '__INTERNAL_WS_PRESENCE_JOIN', channel: data.channel, info }
+        });
+        break;
       }
 
-      // Filter matching: format is "column=operator.value" (e.g. "conversation_id=eq.abc123")
+      case 'heartbeat':
+        this.sqlUpdateHeartbeat(data.channel, attachment.userId, data.status);
+        this.env.REALTIME_EVENTS_QUEUE.send({
+          sourcePartitionId: this.partitionId,
+          event: { type: '__INTERNAL_WS_PRESENCE_HEARTBEAT', channel: data.channel, userId: attachment.userId, status: data.status }
+        });
+        break;
+
+      case 'leave-presence':
+        this.sqlLeavePresence(data.channel, attachment.userId);
+        this.syncPresence(data.channel);
+        this.env.REALTIME_EVENTS_QUEUE.send({
+          sourcePartitionId: this.partitionId,
+          event: { type: '__INTERNAL_WS_PRESENCE_LEAVE', channel: data.channel, userId: attachment.userId }
+        });
+        break;
+    }
+  }
+
+  async webSocketClose(ws: WebSocket) {
+    const attachment = ws.deserializeAttachment() as Attachment;
+    this.partitionId = attachment.partitionId;
+
+    // Clean subscriptions
+    this.ctx.storage.sql.exec(`DELETE FROM subscriptions WHERE ws_id = ?`, attachment.wsId);
+
+    // Clean presence from ALL channels this user was in
+    const channels = this.ctx.storage.sql.exec(
+      `SELECT DISTINCT channel FROM presence WHERE user_id = ?`, attachment.userId
+    ).toArray();
+
+    for (const row of channels) {
+      const channel = row.channel as string;
+      this.sqlLeavePresence(channel, attachment.userId);
+      this.syncPresence(channel);
+      this.env.REALTIME_EVENTS_QUEUE.send({
+        sourcePartitionId: this.partitionId,
+        event: { type: '__INTERNAL_WS_PRESENCE_LEAVE', channel, userId: attachment.userId }
+      });
+    }
+  }
+
+  // ---- SQLite Presence (Hibernation-Safe) ----
+  private sqlJoinPresence(channel: string, info: PresenceInfo) {
+    this.ctx.storage.sql.exec(
+      `INSERT OR REPLACE INTO presence (channel, user_id, user_name, user_type, status, last_seen, conversation_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      channel, info.userId, info.userName, info.userType, info.status, info.lastSeen, info.conversationId || null
+    );
+  }
+
+  private sqlLeavePresence(channel: string, userId: string) {
+    this.ctx.storage.sql.exec(`DELETE FROM presence WHERE channel = ? AND user_id = ?`, channel, userId);
+  }
+
+  private sqlUpdateHeartbeat(channel: string, userId: string, status?: string) {
+    this.ctx.storage.sql.exec(
+      `UPDATE presence SET last_seen = ?, status = COALESCE(?, status) WHERE channel = ? AND user_id = ?`,
+      new Date().toISOString(), status || null, channel, userId
+    );
+  }
+
+  private syncPresence(channelName: string) {
+    const staleTimeout = 120_000;
+    const cutoff = new Date(Date.now() - staleTimeout).toISOString();
+
+    // Prune stale entries
+    this.ctx.storage.sql.exec(`DELETE FROM presence WHERE channel = ? AND last_seen < ?`, channelName, cutoff);
+
+    // Read active entries
+    const rows = this.ctx.storage.sql.exec(
+      `SELECT user_id, user_name, user_type, status, last_seen, conversation_id FROM presence WHERE channel = ?`,
+      channelName
+    ).toArray();
+
+    const users: PresenceInfo[] = rows.map(r => ({
+      userId: r.user_id as string,
+      userName: r.user_name as string,
+      userType: r.user_type as string,
+      status: r.status as string,
+      lastSeen: r.last_seen as string,
+      conversationId: r.conversation_id as string | undefined,
+    }));
+
+    const data = JSON.stringify({ type: 'presence_sync', channel: channelName, users, timestamp: new Date().toISOString() });
+    this.sendToSubscribers(`__presence:${channelName}`, '*', null, data);
+  }
+
+  // ---- Broadcasters ----
+  private broadcastChannel(channel: string, eventType: string, payload: any, from: string) {
+    const data = JSON.stringify({ type: 'broadcast', channel, eventType, payload, from, timestamp: new Date().toISOString() });
+    this.sendToSubscribers(`__broadcast:${channel}`, '*', null, data);
+  }
+
+  private broadcastToSubscribers(event: any) {
+    const data = JSON.stringify({ type: 'change', table: event.table, event: event.type, payload: event.payload, timestamp: new Date().toISOString() });
+    this.sendToSubscribers(event.table, event.type, event.payload, data);
+  }
+
+  private sendToSubscribers(targetTable: string, targetType: string, payload: any | null, jsonString: string) {
+    const cursor = this.ctx.storage.sql.exec(
+      `SELECT ws_id, filter FROM subscriptions WHERE table_name = ? AND (event = ? OR event = '*')`,
+      targetTable, targetType
+    );
+
+    const activeSockets = this.ctx.getWebSockets();
+    const wsMap = new Map(activeSockets.map(ws => [(ws.deserializeAttachment() as Attachment).wsId, ws]));
+
+    for (const row of cursor) {
       const filter = row.filter as string | null;
-      if (filter) {
+      if (filter && payload) {
         const eqIdx = filter.indexOf('=');
         if (eqIdx > 0) {
           const col = filter.substring(0, eqIdx);
           const raw = filter.substring(eqIdx + 1);
-          const dotIdx = raw.indexOf('.');
-          const cleanVal = dotIdx >= 0 ? raw.substring(dotIdx + 1) : raw;
+          const cleanVal = raw.includes('.') ? raw.split('.')[1] : raw;
           if (col && cleanVal && payload[col] != cleanVal) continue;
         }
       }
-
-      try {
-        writer.writer.write(encoded).catch(() => this.removeConnection(row.conn_id as string));
-      } catch {
-        this.removeConnection(row.conn_id as string);
-      }
+      wsMap.get(row.ws_id as string)?.send(jsonString);
     }
-  }
-
-  // Broadcast: POST /broadcast { channel, eventType, payload, from }
-  async handleBroadcast(channel: string, eventType: string, payload: any, from: string): Promise<void> {
-    const encoder = new TextEncoder();
-    const data = `data: ${JSON.stringify({
-      type: 'broadcast', channel, eventType, payload, from, timestamp: new Date().toISOString()
-    })}\n\n`;
-    const encoded = encoder.encode(data);
-
-    const cursor = this.ctx.storage.sql.exec(
-      `SELECT conn_id FROM subscriptions WHERE table_name = ?`,
-      `__broadcast:${channel}`
-    );
-
-    for (const row of cursor) {
-      const writer = this.writers.get(row.conn_id as string);
-      if (writer) {
-        try { writer.writer.write(encoded); } catch { this.removeConnection(row.conn_id as string); }
-      }
-    }
-  }
-
-  // Presence
-  async handleJoinPresence(channel: string, userId: string, info: any): Promise<void> {
-    if (!this.presenceState.has(channel)) {
-      this.presenceState.set(channel, new Map());
-    }
-    this.presenceState.get(channel)!.set(userId, { ...info, lastSeen: new Date().toISOString() });
-    this.broadcastPresenceSync(channel);
-  }
-
-  async handleLeavePresence(channel: string, userId: string): Promise<void> {
-    this.presenceState.get(channel)?.delete(userId);
-    this.broadcastPresenceSync(channel);
-  }
-
-  private async broadcastPresenceSync(channel: string): Promise<void> {
-    const users = Array.from(this.presenceState.get(channel)?.values() || []);
-    const encoder = new TextEncoder();
-    const data = `data: ${JSON.stringify({ type: 'presence_sync', channel, users, timestamp: new Date().toISOString() })}\n\n`;
-    const encoded = encoder.encode(data);
-
-    const cursor = this.ctx.storage.sql.exec(
-      `SELECT conn_id FROM subscriptions WHERE table_name = ?`,
-      `__presence:${channel}`
-    );
-
-    for (const row of cursor) {
-      const writer = this.writers.get(row.conn_id as string);
-      if (writer) {
-        try { writer.writer.write(encoded); } catch { this.removeConnection(row.conn_id as string); }
-      }
-    }
-  }
-
-  // Subscribe to broadcast channel (special __broadcast:channel subscription)
-  async handleSubscribeBroadcast(connId: string, channel: string): Promise<void> {
-    this.ctx.storage.sql.exec(
-      `INSERT OR IGNORE INTO subscriptions (conn_id, table_name, event, filter) VALUES (?, ?, '*', NULL)`,
-      connId, `__broadcast:${channel}`
-    );
-  }
-
-  // Subscribe to presence channel (special __presence:channel subscription)
-  async handleSubscribePresence(connId: string, channel: string): Promise<void> {
-    this.ctx.storage.sql.exec(
-      `INSERT OR IGNORE INTO subscriptions (conn_id, table_name, event, filter) VALUES (?, ?, '*', NULL)`,
-      connId, `__presence:${channel}`
-    );
-
-    // Send initial presence state
-    const users = Array.from(this.presenceState.get(channel)?.values() || []);
-    const writer = this.writers.get(connId);
-    if (writer) {
-      const encoder = new TextEncoder();
-      writer.writer.write(encoder.encode(
-        `data: ${JSON.stringify({ type: 'presence_sync', channel, users, timestamp: new Date().toISOString() })}\n\n`
-      ));
-    }
-  }
-
-  async handleUnsubscribe(connId: string): Promise<void> {
-    this.removeConnection(connId);
-  }
-
-  async fetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    const path = url.pathname;
-
-    if (request.method === 'GET' && path === '/connect') {
-      return this.handleConnect(request);
-    }
-
-    if (request.method === 'POST') {
-      const body: any = await request.json().catch(() => ({}));
-      const { action, connId } = body;
-
-      switch (action) {
-        case 'subscribe':
-          await this.handleSubscribe(connId, body.table, body.event, body.filter);
-          return new Response(JSON.stringify({ ok: true }));
-        case 'subscribe-broadcast':
-          await this.handleSubscribeBroadcast(connId, body.channel);
-          return new Response(JSON.stringify({ ok: true }));
-        case 'subscribe-presence':
-          await this.handleSubscribePresence(connId, body.channel);
-          return new Response(JSON.stringify({ ok: true }));
-        case 'publish':
-          await this.handlePublish(body.table, body.event, body.payload);
-          return new Response(JSON.stringify({ ok: true }));
-        case 'broadcast':
-          await this.handleBroadcast(body.channel, body.eventType, body.payload, body.from);
-          return new Response(JSON.stringify({ ok: true }));
-        case 'join-presence':
-          await this.handleJoinPresence(body.channel, body.userId, body);
-          return new Response(JSON.stringify({ ok: true }));
-        case 'leave-presence':
-          await this.handleLeavePresence(body.channel, body.userId);
-          return new Response(JSON.stringify({ ok: true }));
-        case 'disconnect':
-          await this.handleUnsubscribe(connId);
-          return new Response(JSON.stringify({ ok: true }));
-        default:
-          return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400 });
-      }
-    }
-
-    return new Response('Not found', { status: 404 });
-  }
-
-  private removeConnection(connId: string): void {
-    const writer = this.writers.get(connId);
-    if (writer) {
-      writer.writer.close().catch(() => {});
-      this.writers.delete(connId);
-    }
-    this.ctx.storage.sql.exec(`DELETE FROM subscriptions WHERE conn_id = ?`, connId);
   }
 }
 ```
 
-#### 1.2 Update Pages Function: `/api/realtime-stream/index.ts`
+#### 1.2 Update Pages Config & Pages Function
 
-**Replaces**: The current 266-line polling implementation with a ~50-line proxy to the DO.
-
-```typescript
-import { withAuth, getContextUser } from '../../lib/auth';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-
-interface Env {
-  REALTIME_HUB: DurableObjectNamespace;
-}
-
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const env = context.env as any as Env;
-  const id = env.REALTIME_HUB.idFromName('realtime-global');
-  const stub = env.REALTIME_HUB.get(id);
-
-  // Forward to DO, passing the auth'd user context
-  return stub.fetch(new Request('http://do/connect', {
-    signal: context.request.signal,
-  }));
-});
-
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const env = context.env as any as Env;
-  const id = env.REALTIME_HUB.idFromName('realtime-global');
-  const stub = env.REALTIME_HUB.get(id);
-
-  // Forward POST to DO
-  return stub.fetch(new Request('http://do/', {
-    method: 'POST',
-    body: context.request.body,
-    headers: { 'Content-Type': 'application/json' },
-  }));
-});
-```
-
-#### 1.3 Add DO binding to `wrangler.toml`
-
-```toml
-[[durable_objects.bindings]]
-name = "REALTIME_HUB"
-class_name = "RealtimeHub"
-script_name = "realtime-worker"
-```
-
-#### 1.4 Update `package.json` with dev commands
-
-Add a conv script to run both the DO Worker and Pages dev simultaneously:
-
-```json
+**`skillpassport/wrangler.jsonc`** (Add these bindings):
+```jsonc
 {
-  "scripts": {
-    "realtime:dev": "cd realtime-worker && npx wrangler dev",
-    "pages:dev": "npx wrangler pages dev dist --compatibility-date=2026-06-02 --port=8788 --do REALTIME_HUB=RealtimeHub@realtime-worker --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api"
-  }
+  // ... existing config ...
+  "queues": {
+    "producers": [
+      { "queue": "realtime-events-queue", "binding": "REALTIME_EVENTS_QUEUE" }
+    ]
+  },
+  "services": [
+    { "binding": "REALTIME_WORKER", "service": "realtime-worker" }
+  ]
 }
 ```
 
-#### 1.5 Create `notifyRealtime()` helper
+**`skillpassport/functions/api/realtime-stream/index.ts`**:
+```typescript
+import { verifyJWT } from '@rareminds-eym/auth-core';
+import { ensureAuthInitialized } from '../../lib/auth';
+
+export const onRequestGet = async (context: EventContext<any, any, any>) => {
+  const request = context.request;
+
+  if (request.headers.get('Upgrade') !== 'websocket') {
+    return new Response('Expected Upgrade: websocket', { status: 426 });
+  }
+
+  // Extract JWT from Sec-WebSocket-Protocol subprotocols
+  const protocols = request.headers.get('Sec-WebSocket-Protocol')?.split(',').map(p => p.trim()) || [];
+  const tokenIndex = protocols.indexOf('access_token');
+  if (tokenIndex === -1 || tokenIndex + 1 >= protocols.length) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  const token = protocols[tokenIndex + 1];
+
+  let userId = 'unknown';
+  try {
+    ensureAuthInitialized(context.env);
+    const decoded = await verifyJWT(token);
+    userId = decoded.sub;
+  } catch (err) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
+  // Forward via True RPC Service Binding (Rule 7.3.2)
+  const response = await context.env.REALTIME_WORKER.upgradeWebSocket(userId, request);
+
+  const newResponse = new Response(response.body, response);
+  newResponse.headers.set('Sec-WebSocket-Protocol', 'access_token');
+  return newResponse;
+};
+```
+
+#### 1.3 `notifyRealtime()` (Queue Producer)
 
 **Location**: `functions/lib/realtime.ts`
 
 ```typescript
 /**
- * Called by mutation endpoints after they write to Supabase.
- * Pushes a change event to the RealtimeHub DO for SSE fan-out.
- * Best-effort: realtime should never break the mutation.
+ * Fire-and-forget realtime notification via Queue.
+ * No routing keys needed — the Queue Consumer fans out to all partitions.
  */
 export async function notifyRealtime(
   env: any,
@@ -472,217 +515,136 @@ export async function notifyRealtime(
   payload: Record<string, any>
 ): Promise<void> {
   try {
-    const id = env.REALTIME_HUB.idFromName('realtime-global');
-    const stub = env.REALTIME_HUB.get(id);
-    await stub.fetch('http://do/', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'publish', table, event, payload }),
-      headers: { 'Content-Type': 'application/json' },
+    await env.REALTIME_EVENTS_QUEUE.send({
+      // No sourcePartitionId = external event = fan out to ALL 10 partitions
+      event: { table, type: event, payload }
     });
   } catch (err) {
-    // Best-effort: realtime notifications should never break the mutation
-    console.error(`notifyRealtime failed for ${table}.${event}:`, err);
+    console.error(JSON.stringify({ message: `Failed to queue realtime event`, table, error: String(err) }));
   }
 }
 ```
 
 ---
 
-### Phase 2: Frontend SDK Migration (Week 2)
+### Phase 2: Frontend SDK Migration
 
-#### 2.1 Rewrite `sseRealtimeClient.ts` (357 lines → ~150 lines)
-
-Keep the fetch+reader approach (needed for auth via `ssoClient` — `EventSource` doesn't support custom headers). Simplify to: connect → get `connId` from first event → POST subscriptions → read loop.
+#### 2.1 Rewrite to `wsRealtimeClient.ts`
 
 ```typescript
-export class SSERealtimeClient {
-  private connId: string | null = null;
-  private handlers = new Map<string, Set<(event: any) => void>>();
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
-  private disconnected = false;
-  private activeReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+import { ssoClient } from './ssoClient';
 
-  async connect(): Promise<void> {
-    this.disconnected = false;
-    this.reconnectAttempts = 0;
+export class WSRealtimeClient {
+  private ws: WebSocket | null = null;
+  private handlers = new Map<string, Set<Function>>();
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
-    // Step 1: Open SSE connection
-    const response = await ssoClient.fetch('/api/realtime-stream');
-    if (!response.body) throw new Error('No response body');
-    const reader = response.body.getReader();
-    this.activeReader = reader;
+  connect(): void {
+    // getAccessToken() is synchronous — returns string | null
+    const token = ssoClient.getAccessToken();
+    if (!token) throw new Error('Not authenticated');
 
-    // Step 2: Read initial 'connected' event to get connId
-    const { value } = await reader.read();
-    const text = new TextDecoder().decode(value);
-    const match = text.match(/data: (.*)/);
-    if (match) {
-      const event = JSON.parse(match[1]);
-      this.connId = event.connId;
-    }
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    this.ws = new WebSocket(
+      `${protocol}//${window.location.host}/api/realtime-stream`,
+      ['access_token', token]
+    );
 
-    // Step 3: Start read loop (dispatches events to handlers)
-    this.readLoop(reader);
+    this.ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      this.dispatchEvent(data);
+    };
+
+    this.ws.onclose = () => {
+      this.stopHeartbeat();
+    };
   }
 
-  /** Subscribe to a table change — sends connId + subscription via POST */
-  async subscribe(
-    table: string,
-    config: Omit<SSESubscriptionConfig, 'table'>,
-    handler: SSEEventHandler
-  ): Promise<() => void> {
-    // Register handler locally
-    this.addHandler(table, config.event || '*', handler);
-
-    // Subscribe via POST to DO
-    await apiPost('/realtime-stream', {
-      action: 'subscribe',
-      connId: this.connId,
-      table,
-      ...config,
-    });
-
-    return () => this.unsubscribe(table, config.event || '*', handler);
+  subscribe(table: string, event: string = '*', filter?: string) {
+    this.ws?.send(JSON.stringify({ action: 'subscribe', table, event, filter }));
   }
 
-  subscribeToBroadcast(channel: string, handler: SSEEventHandler): Promise<() => void> {
-    return this.subscribe(`__broadcast:${channel}`, { type: 'broadcast' }, handler);
+  sendBroadcast(channel: string, eventType: string, payload: any) {
+    this.ws?.send(JSON.stringify({ action: 'send-broadcast', channel, eventType, payload }));
   }
 
-  subscribeToPresence(channel: string, handler: SSEEventHandler): Promise<() => void> {
-    return this.subscribe(`__presence:${channel}`, { type: 'presence' }, handler);
+  joinPresence(channel: string, userName: string, userType: string, conversationId?: string) {
+    this.ws?.send(JSON.stringify({ action: 'join-presence', channel, userName, userType, conversationId }));
+    this.startHeartbeat(channel);
   }
 
-  // ... readLoop, dispatchEvent, scheduleReconnect, disconnect
+  leavePresence(channel: string) {
+    this.ws?.send(JSON.stringify({ action: 'leave-presence', channel }));
+    this.stopHeartbeat();
+  }
+
+  sendHeartbeat(channel: string, status: string = 'online') {
+    this.ws?.send(JSON.stringify({ action: 'heartbeat', channel, status }));
+  }
+
+  private startHeartbeat(channel: string) {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => this.sendHeartbeat(channel), 30_000);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) { clearInterval(this.heartbeatInterval); this.heartbeatInterval = null; }
+  }
+
+  private dispatchEvent(data: any) {
+    const key = data.type === 'change' ? `${data.table}:${data.event}` : `${data.type}:${data.channel}`;
+    this.handlers.get(key)?.forEach(fn => fn(data));
+    this.handlers.get('*')?.forEach(fn => fn(data));
+  }
+
+  on(key: string, handler: Function) {
+    if (!this.handlers.has(key)) this.handlers.set(key, new Set());
+    this.handlers.get(key)!.add(handler);
+  }
+
+  disconnect() {
+    this.stopHeartbeat();
+    this.ws?.close();
+    this.ws = null;
+  }
 }
 ```
 
-#### 2.2 Rewrite `realtimeService.ts` (362 lines → ~80 lines)
-
-Simplify to just use the new SSERealtimeClient directly.
-
-#### 2.3 Add `notifyRealtime()` calls to all mutation endpoints
-
-Every API endpoint that mutates data (INSERT/UPDATE/DELETE) needs to call `notifyRealtime()` after the Supabase write.
-
-**Mutation endpoints to update** (from audit):
-
-| Endpoint | Tables Mutated | Events |
-|----------|---------------|--------|
-| `functions/api/messaging/actions.ts` | `messages`, `conversations` | INSERT, UPDATE |
-| `functions/api/notifications.ts` | `notifications` | INSERT |
-| `functions/api/learner-activity/actions.ts` | `recent_updates` | INSERT |
-| `functions/api/college-admin/[[path]].ts` | `learners`, `assessments` | INSERT, UPDATE |
-| `functions/api/recruiter/offers.ts` | `offers` | INSERT, UPDATE |
-| `functions/api/college-admin/admissions.ts` | `admissions` | INSERT |
-| `functions/api/college-admin/marks.ts` | `marks` | INSERT |
-| `functions/api/educator/index.ts` | `educators` | INSERT, UPDATE |
-| `functions/api/courses/[[path]].ts` | `course_enrollments`, `learner_course_progress` | INSERT, UPDATE |
-| `functions/api/pipeline/**` | `pipeline_candidates`, `pipeline_activities`, `interviews` | INSERT, UPDATE |
-| `functions/api/shortlists/**` | `shortlists`, `shortlist_candidates` | INSERT, UPDATE, DELETE |
-| `functions/api/placements/**` | `placements` | INSERT, UPDATE |
-
 ---
-
-### Phase 3: Consumer Migration (Week 2-3)
-
-#### 3.1 Migration Pattern for Hooks
-
-**Before** (current):
-```typescript
-// useLearnerMessages.ts
-useEffect(() => {
-  const unsub = getSSEClient().subscribe('messages', { event: 'INSERT', filter: `conversation_id=eq.${conversationId}` }, handler);
-  return unsub;
-}, [conversationId]);
-```
-
-**After** (new):
-```typescript
-// useLearnerMessages.ts
-useEffect(() => {
-  const unsub = getSSEClient().subscribe('messages', { event: 'INSERT', filter: `conversation_id=${conversationId}` }, handler);
-  return unsub;
-}, [conversationId]);
-```
-
-The API remains the same at the hook level. Only the underlying transport changes.
-
-#### 3.2 No client-side changes needed for hooks
-
-All 25+ consumer hooks use `getSSEClient().subscribe()` or `RealtimeService.*`. Since we maintain the same public API, the migration is transparent to consumers. Only the internal implementation of `sseRealtimeClient.ts` and `realtimeService.ts` changes.
-
-#### 3.3 Clean up deprecated files
-
-- `functions/api/realtime-stream/state.ts` — delete (moved to DO)
-- `src/shared/api/realtimeClient.ts` — delete stub
-
----
-
-### Phase 4: Cleanup & Verification (Week 3)
-
-#### 4.1 Remove polling code
-
-- Delete the old `queryChanges()` function in `realtime-stream/index.ts`
-- Remove `POLL_INTERVAL_MS`, `MAX_CONNECTION_MS` constants
-- Remove `warnedTables` set
-
-#### 4.2 Remove in-memory state
-
-- Remove `broadcastBuffer`, `presenceState`, `presenceVersion` from old state.ts
-- All state now lives in the DO
-
-#### 4.3 Add `updated_at` columns to missing tables (optional)
-
-If desired, add `updated_at` columns to `shortlist_candidates`, `pipeline_activities`, `placements` so if any future query needs them, they work.
-
-#### 4.4 Verification checklist
-
-- [ ] SSE connection opens once, stays open until tab closes (no 25s reconnect)
-- [ ] `notifyRealtime()` fires on all mutation endpoints
-- [ ] Broadcast (typing indicators) works through DO
-- [ ] Presence (online status) works through DO
-- [ ] All 19 tables' change events arrive at subscribed frontend hooks
-- [ ] Reconnect after network drop re-establishes subscriptions
-- [ ] DO SQLite subscription cleanup on disconnect
-- [ ] `wrangler pages dev --do REALTIME_HUB=...` works locally
-- [ ] Deploy to production with DO Worker + Pages Function
-
----
-
-## Effort Estimate
-
-| Phase | Files | Estimated Effort |
-|-------|-------|-----------------|
-| Phase 1: Core DO + Pages Function | 5 new, 2 modified | 2-3 days |
-| Phase 2: Frontend SDK | 2 rewritten, 1 new | 1-2 days |
-| Phase 3: Consumer migration | ~15 files modified | 2-3 days |
-| Phase 4: Cleanup & verification | ~5 files | 1 day |
-| **Total** | **~30 files** | **6-9 days** |
 
 ## Rollout Strategy
 
-1. **Deploy `realtime-worker` DO first** (no breaking changes, old code still works)
-2. **Update `wrangler.toml`** with DO binding
-3. **Deploy updated Pages Function** (starts using DO for new connections)
-4. **Add `notifyRealtime()` calls to mutation endpoints** (gradually, one at a time)
-5. **Deploy frontend SDK** (ships with new `sseRealtimeClient.ts`)
-6. **Delete old polling/state code** after verification
+> [!IMPORTANT]
+> **DEPLOYMENT RULE**: Absolutely NOTHING will be deployed to the production environment without the explicit, final permission of the user. All testing will occur locally or in a preview/staging environment first.
 
-Each step is independently deployable and backward-compatible.
+1. **Create Cloudflare Queue** (`realtime-events-queue`).
+2. **Deploy `realtime-worker`** with 10 DO Partitions.
+3. **Update Pages Config** to bind the Queue and Worker.
+4. **Deploy Pages Function** to route WebSockets via Service Binding.
+5. **Deploy Frontend SDK** using WebSocket.
 
 ---
 
-## Benefits Summary
+## Verification Plan
 
-| Metric | Current | After DO Hub | Improvement |
-|--------|---------|-------------|-------------|
-| DB queries per user session | ~12 per 25s per tab | 0 (push-based) | ∞ |
-| Connection lifetime | 25s (artificial limit) | Indefinite | ∞ |
-| Reconnect overhead | Every 25s (cold-start, auth) | Only on real network drop | ~100x reduction |
-| Broadcast reliability | Lost on Worker eviction | Persistent in DO | Guaranteed |
-| Presence reliability | Lost on Worker eviction | Persistent in DO | Guaranteed |
-| Code to maintain | 985 lines | ~400 lines | 60% reduction |
-| Missing updated_at tables | Silent failures | N/A (push-based) | Eliminated |
-| Satisfies "stay in Functions" | Yes (but poorly) | Yes (properly) | ✅ |
+### Build Steps
+```bash
+cd realtime-worker
+npx wrangler types          # Rule 7.1.3: Generate Env types
+npx tsc --noEmit             # TypeScript compilation
+npx vitest run               # Unit tests (target 80% coverage per Rule 7.9)
+```
+
+### Test Cases
+- **Unit**: `publishBatch` correctly routes internal vs external events.
+- **Unit**: `sqlJoinPresence` / `sqlLeavePresence` persist to SQLite.
+- **Unit**: `syncPresence` prunes stale entries (lastSeen > 2 min).
+- **Unit**: `sendToSubscribers` correctly filters by subscription match.
+- **Integration**: WebSocket connect → subscribe → receive change event.
+- **Integration**: Presence join on Partition 3 → Queue → Partition 7 receives sync.
+- **Integration**: Echo storm prevention: originator does NOT double-process.
+
+### Manual Verification
+- Run `npx wrangler dev` locally for `realtime-worker`.
+- Run `npm run pages:dev` for `skillpassport`.
+- Connect via browser WebSocket console and verify events flow.
