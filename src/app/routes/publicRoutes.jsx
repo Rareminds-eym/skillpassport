@@ -87,7 +87,6 @@ const UnifiedSignup = lazy(() => import("@/pages/auth/UnifiedSignup"));
 const UnifiedForgotPassword = lazy(() => import("@/features/auth/ui/UnifiedForgotPassword"));
 const PasswordReset = lazy(() => import("@/features/auth/ui/PasswordReset"));
 const TokenPasswordReset = lazy(() => import("@/pages/auth/TokenPasswordReset"));
-const ResetPassword = lazy(() => import("@/features/auth/ui/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));
 const AcceptInvite = lazy(() => import("@/pages/auth/AcceptInvite"));
 const SignupRecruiter = lazy(() =>
@@ -156,7 +155,7 @@ export const publicRoutes = [
     <Route path="/signup" element={<UnifiedSignup />} />
     <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
     <Route path="/password-reset" element={<TokenPasswordReset />} />
-    <Route path="/reset-password" element={<ResetPassword />} />
+    <Route path="/reset-password" element={<TokenPasswordReset />} />
     <Route path="/verify-email" element={<VerifyEmail />} />
     <Route path="/invite/accept" element={<AcceptInvite />} />
 

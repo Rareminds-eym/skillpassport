@@ -1,6 +1,8 @@
 /**
  * Centralized Email Service
  * Single source of truth for all email operations via email-worker
+ * 
+ * Supports both service binding (preferred) and HTTP (fallback)
  */
 
 import type { PagesEnv } from '../../src/functions-lib/types';
@@ -25,22 +27,68 @@ export interface EmailResult {
 }
 
 /**
- * Send email via email-worker
- * @throws Error if EMAIL_API_URL or EMAIL_API_KEY is not configured
+ * Send email via email-worker using service binding (preferred) or HTTP (fallback)
+ * @throws Error if EMAIL_SERVICE binding and EMAIL_API_URL are not configured
  */
 export async function sendEmail(
   env: PagesEnv,
   payload: EmailPayload
 ): Promise<EmailResult> {
-  // Validate environment
-  if (!env.EMAIL_API_URL) {
-    throw new Error('EMAIL_API_URL environment variable is not configured');
+  // Try service binding first (fast, type-safe)
+  if (env.EMAIL_SERVICE) {
+    try {
+      apiLogger.info('Sending email via service binding');
+      
+      const response = await env.EMAIL_SERVICE.fetch(
+        new Request('https://internal/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Api-Key': env.EMAIL_API_KEY || 'service-binding',
+          },
+          body: JSON.stringify({
+            to: payload.to,
+            subject: payload.subject,
+            html: payload.html,
+            text: payload.text || '',
+            from: payload.from || FROM_EMAIL,
+            fromName: payload.fromName || FROM_NAME,
+          }),
+        })
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        apiLogger.error('Email service binding error', new Error(`HTTP ${response.status}: ${errorText}`));
+        
+        // Don't throw, fall through to HTTP fallback
+      } else {
+        const result = await response.json();
+        apiLogger.info('Email sent successfully via service binding', { result });
+        
+        return {
+          success: true,
+          messageId: result.messageId || result.id,
+        };
+      }
+    } catch (error) {
+      apiLogger.warn('Service binding failed, falling back to HTTP', error as Error);
+      // Fall through to HTTP
+    }
   }
+
+  // Fallback to HTTP if service binding not available or failed
+  if (!env.EMAIL_API_URL) {
+    throw new Error('Neither EMAIL_SERVICE binding nor EMAIL_API_URL is configured');
+  }
+  
   if (!env.EMAIL_API_KEY) {
     throw new Error('EMAIL_API_KEY environment variable is not configured');
   }
 
   try {
+    apiLogger.info('Sending email via HTTP (fallback)');
+    
     const response = await fetch(`${env.EMAIL_API_URL}/send`, {
       method: 'POST',
       headers: {
@@ -67,7 +115,7 @@ export async function sendEmail(
     }
 
     const result = await response.json();
-    apiLogger.info('Email sent successfully', { result });
+    apiLogger.info('Email sent successfully via HTTP', { result });
     
     return {
       success: true,
@@ -104,11 +152,11 @@ export async function sendEmailSafe(
  * @throws Error if required environment variables are missing
  */
 export function validateEmailEnv(env: PagesEnv): void {
-  if (!env.EMAIL_API_URL) {
-    throw new Error('Missing required environment variable: EMAIL_API_URL');
+  if (!env.EMAIL_SERVICE && !env.EMAIL_API_URL) {
+    throw new Error('Missing required: EMAIL_SERVICE binding or EMAIL_API_URL');
   }
-  if (!env.EMAIL_API_KEY) {
-    throw new Error('Missing required environment variable: EMAIL_API_KEY');
+  if (!env.EMAIL_SERVICE && !env.EMAIL_API_KEY) {
+    throw new Error('Missing required environment variable: EMAIL_API_KEY (when using HTTP)');
   }
 }
 
@@ -116,5 +164,5 @@ export function validateEmailEnv(env: PagesEnv): void {
  * Check if email environment is configured (non-throwing)
  */
 export function isEmailConfigured(env: PagesEnv): boolean {
-  return !!(env.EMAIL_API_URL && env.EMAIL_API_KEY);
+  return !!(env.EMAIL_SERVICE || (env.EMAIL_API_URL && env.EMAIL_API_KEY));
 }
