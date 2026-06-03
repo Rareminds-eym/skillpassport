@@ -289,11 +289,16 @@ export const useCertificateModal = ({
     }
     
     // Create abort controller for this generation operation
+    // Declare at top level to ensure it's accessible in finally block
     const abortController = new AbortController();
     abortGenerateRef.current = () => abortController.abort();
+    
+    // Track whether we've started the async operation
+    let asyncOperationStarted = false;
 
     try {
       setIsGenerating(true);
+      asyncOperationStarted = true;
       setShowConfirmation(false);
 
       const {
@@ -378,8 +383,9 @@ export const useCertificateModal = ({
       
       callSafeOnError(onError, errorObj, logger);
     } finally {
-      // Check if aborted before updating state
-      if (!abortController.signal.aborted) {
+      // Only reset isGenerating if we actually started the operation and it wasn't aborted
+      // This prevents leaving the component in a generating state indefinitely
+      if (asyncOperationStarted && !abortController.signal.aborted) {
         setIsGenerating(false);
       }
     }

@@ -5,6 +5,7 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib';
+import { corsHeaders } from '../../../src/functions-lib/cors';
 import { authenticateUser, AuthResult } from '../shared/auth';
 import { createAuthenticationError } from './utils/error-handling';
 import { getLogger } from '../../../src/shared/config/logging';
@@ -45,10 +46,10 @@ export const onRequest: PagesFunction = async (context) => {
     return new Response(null, {
       status: 204,
       headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Authorization, Content-Type, x-client-info, apikey, x-upload-context',
+        ...corsHeaders,
         'Access-Control-Max-Age': '86400',
+        // Storage API specific headers
+        'Access-Control-Allow-Headers': 'Authorization, Content-Type, x-client-info, apikey, x-upload-context',
       }
     });
   }

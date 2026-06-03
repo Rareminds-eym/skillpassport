@@ -12,6 +12,9 @@ const logger = getLogger('certificate-service');
 
 const STORAGE_API_URL = getApiUrl('storage');
 
+// SSO initialization lock to prevent race conditions
+let ssoInitializationPromise: Promise<{ authenticated: boolean }> | null = null;
+
 // Type definitions for API responses
 interface UploadErrorResponse {
   error?: string;
@@ -240,17 +243,41 @@ const uploadToR2 = async (
   
   // Ensure ssoClient has been initialized (initSession was called)
   // This prevents issues when user tries to upload immediately after page load
+  // Use a lock to prevent race conditions from concurrent uploads
   if (!ssoClient.isInitialized()) {
     logger.warn('SSO client not initialized, initializing now');
-    try {
-      const { authenticated } = await ssoClient.initSession();
-      if (!authenticated) {
-        throw new Error('Authentication required. Please log in and try again.');
+    
+    // If another upload is already initializing, wait for it
+    if (ssoInitializationPromise) {
+      logger.info('SSO initialization already in progress, waiting for completion');
+      try {
+        const result = await ssoInitializationPromise;
+        if (!result.authenticated) {
+          throw new Error('Authentication required. Please log in and try again.');
+        }
+      } catch (initError) {
+        const errorMessage = `SSO initialization failed: ${initError instanceof Error ? initError.message : 'Unknown error'}`;
+        logger.error('Waiting for SSO initialization failed', new Error(errorMessage));
+        throw new Error(errorMessage);
       }
-    } catch (initError) {
-      const errorMessage = `SSO initialization failed: ${initError instanceof Error ? initError.message : 'Unknown error'}`;
-      logger.error('SSO initialization failed', new Error(errorMessage));
-      throw new Error(errorMessage);
+    } else {
+      // This is the first concurrent call, create the initialization promise
+      ssoInitializationPromise = ssoClient.initSession();
+      
+      try {
+        const { authenticated } = await ssoInitializationPromise;
+        if (!authenticated) {
+          throw new Error('Authentication required. Please log in and try again.');
+        }
+      } catch (initError) {
+        const errorMessage = `SSO initialization failed: ${initError instanceof Error ? initError.message : 'Unknown error'}`;
+        logger.error('SSO initialization failed', new Error(errorMessage));
+        throw new Error(errorMessage);
+      } finally {
+        // Clear the promise after completion (success or failure)
+        // This allows retries if initialization failed
+        ssoInitializationPromise = null;
+      }
     }
   }
   
