@@ -3,37 +3,59 @@ import { Award, CheckCircle, Clock, Download, Eye, X, Edit3 } from 'lucide-react
 import { Button } from '@/shared/ui';
 
 /**
- * CertificateNameModal - Pure UI Component
+ * CertificateNameModal - Pure Presentational UI Component
  * 
- * FSD Layer: shared/ui
+ * FSD Layer: shared/ui ✅
  * 
- * This is a reusable, presentation-only modal component with no business logic.
- * All business logic (API calls, state management) is handled by the consuming feature.
+ * This is a PURE presentational component with NO business logic:
+ * - No API calls
+ * - No direct state management
+ * - No feature-specific business rules
+ * - Only UI rendering and callback invocation
  * 
- * Used by: @/features/certificate-generation
+ * All business logic is handled by the consuming feature via props:
+ * - Certificate generation → @/features/certificate-generation
+ * - State management → useCertificateModal hook
+ * - API calls → certificateService
  * 
- * Props are completely controlled by parent - this component only renders UI
- * and calls provided callbacks.
+ * This component is fully controlled by parent props and only handles:
+ * 1. Rendering modal UI states
+ * 2. Form input handling (name input)
+ * 3. Calling parent-provided callbacks
+ * 
+ * Prop Validation: TypeScript interface provides compile-time validation.
+ * Optional props have safe defaults in component implementation.
  */
 
 export interface CertificateNameModalProps {
+  // Required props - modal control
   isOpen: boolean;
   onClose: () => void;
+  
+  // Required props - name handling
   fullName: string;
   onFullNameChange: (name: string) => void;
   onConfirm: () => void;
   onGenerate: () => void;
-  isGenerating?: boolean;
-  showConfirmation?: boolean;
+  
+  // Optional props - state flags (have safe defaults)
+  isGenerating?: boolean;           // Default: false
+  showConfirmation?: boolean;       // Default: false
+  
+  // Optional props - error and result handling
+  validationError?: string;         // Default: '' (empty)
+  generatedCertificateUrl?: string | null;  // Default: null
+  
+  // Required props - action callbacks
   onCancelConfirmation: () => void;
-  validationError?: string;
-  generatedCertificateUrl?: string | null;
   onView: () => void;
   onDownload: () => void;
 }
 
 /**
  * Reusable Certificate Name Modal Component
+ * 
+ * Handles safe defaults for optional props internally
  */
 export const CertificateNameModal = ({
   isOpen,
@@ -42,11 +64,11 @@ export const CertificateNameModal = ({
   onFullNameChange,
   onConfirm,
   onGenerate,
-  isGenerating = false,
-  showConfirmation = false,
+  isGenerating = false,              // ✅ Default: false
+  showConfirmation = false,          // ✅ Default: false
   onCancelConfirmation,
-  validationError = '',
-  generatedCertificateUrl = null,
+  validationError = '',              // ✅ Default: empty string
+  generatedCertificateUrl = null,    // ✅ Default: null
   onView,
   onDownload,
 }: CertificateNameModalProps) => {

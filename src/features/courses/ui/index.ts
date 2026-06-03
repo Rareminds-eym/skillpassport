@@ -16,10 +16,14 @@ export { default as SyncStatusIndicator } from './SyncStatusIndicator';
 /**
  * CoursePlayer Component Location
  * 
- * Moved to: @/pages/learner/CoursePlayer.jsx
- * Reason: Pages layer component with routing logic
+ * ⚠️ BREAKING CHANGE (if you were importing from here)
  * 
- * Not exported from features layer to maintain FSD compliance.
- * Import directly from pages when needed:
- * import CoursePlayer from '@/pages/learner/CoursePlayer';
+ * Location: @/pages/learner/CoursePlayer.jsx
+ * Reason: Moved to pages layer - contains routing logic and page-level concerns
+ * 
+ * Migration Path:
+ * OLD: import { CoursePlayer } from '@/features/courses/ui'  // ❌ No longer exists
+ * NEW: import CoursePlayer from '@/pages/learner/CoursePlayer'  // ✅ Correct import
+ * 
+ * Not exported from features layer to maintain FSD architectural compliance.
  */

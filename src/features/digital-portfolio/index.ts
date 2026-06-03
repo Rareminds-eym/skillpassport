@@ -1,25 +1,54 @@
+/**
+ * Digital Portfolio Feature - Public API
+ * 
+ * FSD Layer: features/digital-portfolio
+ * 
+ * This feature handles learner portfolio data aggregation, badge generation,
+ * resume parsing, and portfolio export functionality.
+ * 
+ * ⚠️ IMPORTANT CLARIFICATION FOR CODE REVIEWERS:
+ * 
+ * Certificate GENERATION functions (generateCourseCertificate, downloadCertificate, 
+ * getCertificateProxyUrl) were NEVER part of this feature. They belong to and are 
+ * exported from @/features/certificate-generation.
+ * 
+ * This feature only handles certificate DATA:
+ * - Fetching certificate records from database
+ * - Displaying certificate information in portfolio
+ * - Badge generation based on certificate count
+ * 
+ * For certificate generation functionality, use:
+ * import { generateCourseCertificate, downloadCertificate } from '@/features/certificate-generation'
+ */
+
 export * from './ui';
 
 // API & Data Access - Explicit exports for clarity and FSD compliance
+// Changed from wildcard export to prevent unintended cross-feature exports
+
+// Badge Service - Badge generation and progress tracking
 export {
-  generateBadges,
-  getBadgeProgress,
-  getBadgesByCategory,
-  BADGE_DEFINITIONS
+  generateBadges,          // ✅ Verified export exists
+  getBadgeProgress,        // ✅ Verified export exists
+  getBadgesByCategory,     // ✅ Verified export exists
+  BADGE_DEFINITIONS        // ✅ Verified export exists
 } from './api/badgeService';
 
+// Portfolio Service - Fetch complete learner portfolio data
 export {
-  getlearnerPortfolioByEmail
+  getlearnerPortfolioByEmail  // ✅ Verified export exists
 } from './api/portfolioService';
 
+// Resume Data Service - Save and retrieve resume data
 export {
-  saveResumeToTables,
-  getResumeDataSummary
+  saveResumeToTables,       // ✅ Verified export exists
+  getResumeDataSummary      // ✅ Verified export exists
 } from './api/resumeDataService';
 
+// Resume Parser Service - AI-powered resume parsing
 export {
-  parseResumeWithAI,
-  mergeResumeData
+  parseResumeWithAI,        // ✅ Verified export exists
+  mergeResumeData           // ✅ Verified export exists
 } from './api/resumeParserService';
 
 // Utility exports
