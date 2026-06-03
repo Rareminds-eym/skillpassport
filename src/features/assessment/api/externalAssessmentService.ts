@@ -5,15 +5,101 @@ import { supabase } from '@/shared/api/supabaseClient';
  * Handles external course assessment attempts
  */
 
+type AssessmentStatus = 'not_started' | 'in_progress' | 'completed';
+type AssessmentLevel = 'Beginner' | 'Intermediate' | 'Advanced';
+type Difficulty = 'easy' | 'medium' | 'hard';
+
+interface Question {
+  id: number | string;
+  question?: string;
+  text?: string;
+  options?: string[];
+  correct_answer?: string;
+  correctAnswer?: string;
+  difficulty?: string;
+  type?: string;
+  skill_tag?: string;
+  [key: string]: unknown;
+}
+
+interface Answer {
+  question_id: number | string;
+  selected_answer: string | null;
+  is_correct: boolean | null;
+  time_taken: number;
+}
+
+interface AssessmentAttempt {
+  id: string;
+  learner_id: string;
+  course_name: string;
+  course_id?: string | null;
+  assessment_level: string;
+  total_questions: number;
+  questions: Question[];
+  learner_answers: Answer[];
+  current_question_index: number;
+  status: AssessmentStatus;
+  time_remaining: number;
+  started_at: string;
+  last_activity_at?: string;
+  completed_at?: string;
+  score?: number;
+  correct_answers?: number;
+  time_taken?: number;
+  difficulty_breakdown?: DifficultyBreakdown;
+  [key: string]: unknown;
+}
+
+interface DifficultyBreakdown {
+  easy: { total: number; correct: number; percentage: number };
+  medium: { total: number; correct: number; percentage: number };
+  hard: { total: number; correct: number; percentage: number };
+}
+
+interface StatusResult {
+  status: AssessmentStatus;
+  attempt: AssessmentAttempt | null;
+}
+
+interface OperationResult {
+  success: boolean;
+  data?: AssessmentAttempt | null;
+  error?: string | null;
+  score?: number | null;
+}
+
+interface CreateAttemptData {
+  learnerId: string;
+  courseName: string;
+  courseId?: string | null;
+  assessmentLevel: AssessmentLevel;
+  questions: Question[];
+}
+
+interface SaveAttemptData {
+  learnerId: string;
+  courseName: string;
+  courseId?: string | null;
+  assessmentLevel: AssessmentLevel;
+  questions: Question[];
+  learnerAnswers: Answer[];
+  score: number;
+  correctAnswers: number;
+  timeTaken: number;
+  difficultyBreakdown: DifficultyBreakdown;
+  startedAt: string;
+  completedAt: string;
+}
+
 /**
  * Check if learner has already completed or has in-progress assessment
- * @param {string} learnerId - Learner UUID
- * @param {string} courseName - Course name
- * @returns {Promise<{status: string, attempt: object|null}>}
  */
-export async function checkAssessmentStatus(learnerId, courseName) {
+export async function checkAssessmentStatus(
+  learnerId: string,
+  courseName: string
+): Promise<StatusResult> {
   try {
-    // Use maybeSingle() instead of single() to avoid 406 error when no rows exist
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .select('*')
@@ -36,12 +122,12 @@ export async function checkAssessmentStatus(learnerId, courseName) {
       current_question_index: data.current_question_index,
       time_remaining: data.time_remaining,
       last_activity_at: data.last_activity_at,
-      answeredCount: data.learner_answers?.filter(a => a.selected_answer !== null).length
+      answeredCount: data.learner_answers?.filter((a: Answer) => a.selected_answer !== null).length
     });
 
     return {
-      status: data.status, // 'in_progress' or 'completed'
-      attempt: data
+      status: data.status as AssessmentStatus,
+      attempt: data as AssessmentAttempt
     };
   } catch (error) {
     console.error('Error checking assessment status:', error);
@@ -51,10 +137,10 @@ export async function checkAssessmentStatus(learnerId, courseName) {
 
 /**
  * Create new assessment attempt (save questions on first load)
- * @param {object} attemptData - Initial assessment data
- * @returns {Promise<{success: boolean, data: object|null, error: string|null}>}
  */
-export async function createAssessmentAttempt(attemptData) {
+export async function createAssessmentAttempt(
+  attemptData: CreateAttemptData
+): Promise<OperationResult> {
   try {
     const {
       learnerId,
@@ -64,8 +150,7 @@ export async function createAssessmentAttempt(attemptData) {
       questions
     } = attemptData;
 
-    // Initialize empty answers array
-    const emptyAnswers = questions.map((q, idx) => ({
+    const emptyAnswers: Answer[] = questions.map((q) => ({
       question_id: q.id,
       selected_answer: null,
       is_correct: null,
@@ -84,7 +169,7 @@ export async function createAssessmentAttempt(attemptData) {
         learner_answers: emptyAnswers,
         current_question_index: 0,
         status: 'in_progress',
-        time_remaining: 900, // 15 minutes
+        time_remaining: 900,
         started_at: new Date().toISOString()
       })
       .select()
@@ -103,29 +188,30 @@ export async function createAssessmentAttempt(attemptData) {
 
     return {
       success: true,
-      data: data,
+      data: data as AssessmentAttempt,
       error: null
     };
   } catch (error) {
-    console.error('Error creating assessment attempt:', error);
+    const err = error as Error;
+    console.error('Error creating assessment attempt:', err);
     return {
       success: false,
       data: null,
-      error: error.message || 'Failed to create assessment attempt'
+      error: err.message || 'Failed to create assessment attempt'
     };
   }
 }
 
 /**
  * Update assessment progress (save answer and move forward)
- * @param {string} attemptId - Attempt UUID
- * @param {number} questionIndex - Index of question being answered (0-based)
- * @param {string} answer - Selected answer
- * @param {number} timeRemaining - Seconds remaining
- * @param {number} resumeFromIndex - Index to resume from (optional, defaults to questionIndex + 1)
- * @returns {Promise<{success: boolean}>}
  */
-export async function updateAssessmentProgress(attemptId, questionIndex, answer, timeRemaining, resumeFromIndex = null) {
+export async function updateAssessmentProgress(
+  attemptId: string,
+  questionIndex: number,
+  answer: string,
+  timeRemaining: number,
+  resumeFromIndex: number | null = null
+): Promise<OperationResult> {
   const resumeIndex = resumeFromIndex !== null ? resumeFromIndex : questionIndex + 1;
   
   console.log('📡 updateAssessmentProgress called:', {
@@ -137,7 +223,6 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
   });
 
   try {
-    // First, get current attempt to update answers array
     console.log('📡 Fetching current attempt from database...');
     const { data: currentAttempt, error: fetchError } = await supabase
       .from('external_assessment_attempts')
@@ -155,11 +240,9 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
       questionsCount: currentAttempt.questions?.length
     });
 
-    // Update the answer for the question at questionIndex
     const updatedAnswers = [...currentAttempt.learner_answers];
     const question = currentAttempt.questions[questionIndex];
     
-    // Check correct answer - handle both formats
     const correctAnswer = question.correct_answer || question.correctAnswer;
     
     updatedAnswers[questionIndex] = {
@@ -174,12 +257,11 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
       resumeFromIndex: resumeIndex
     });
     
-    // Update database - save where user should resume from
     const { error: updateError } = await supabase
       .from('external_assessment_attempts')
       .update({
         learner_answers: updatedAnswers,
-        current_question_index: resumeIndex, // Save where to resume from
+        current_question_index: resumeIndex,
         time_remaining: timeRemaining,
         last_activity_at: new Date().toISOString()
       })
@@ -196,20 +278,20 @@ export async function updateAssessmentProgress(attemptId, questionIndex, answer,
     });
     return { success: true };
   } catch (error) {
-    console.error('❌ Error updating assessment progress:', error);
-    return { success: false, error: error.message };
+    const err = error as Error;
+    console.error('❌ Error updating assessment progress:', err);
+    return { success: false, error: err.message };
   }
 }
 
 /**
  * Complete assessment and calculate score
- * @param {string} attemptId - Attempt UUID
- * @param {number} timeTaken - Total time in seconds
- * @returns {Promise<{success: boolean, score: number|null}>}
  */
-export async function completeAssessment(attemptId, timeTaken) {
+export async function completeAssessment(
+  attemptId: string,
+  timeTaken: number
+): Promise<OperationResult> {
   try {
-    // Get current attempt
     const { data: attempt, error: fetchError } = await supabase
       .from('external_assessment_attempts')
       .select('*')
@@ -218,37 +300,35 @@ export async function completeAssessment(attemptId, timeTaken) {
 
     if (fetchError) throw fetchError;
 
-    // Calculate score
-    const correctCount = attempt.learner_answers.filter(a => a.is_correct).length;
-    const score = Math.round((correctCount / attempt.total_questions) * 100);
+    const typedAttempt = attempt as AssessmentAttempt;
+    const correctCount = typedAttempt.learner_answers.filter((a) => a.is_correct).length;
+    const score = Math.round((correctCount / typedAttempt.total_questions) * 100);
 
-    // Calculate difficulty breakdown
-    const breakdown = {
+    const breakdown: DifficultyBreakdown = {
       easy: { total: 0, correct: 0, percentage: 0 },
       medium: { total: 0, correct: 0, percentage: 0 },
       hard: { total: 0, correct: 0, percentage: 0 }
     };
 
-    attempt.questions.forEach((q, idx) => {
-      const difficulty = q.difficulty;
+    typedAttempt.questions.forEach((q, idx) => {
+      const difficulty = q.difficulty as Difficulty;
       if (breakdown[difficulty]) {
         breakdown[difficulty].total++;
-        if (attempt.learner_answers[idx]?.is_correct) {
+        if (typedAttempt.learner_answers[idx]?.is_correct) {
           breakdown[difficulty].correct++;
         }
       }
     });
 
-    // Calculate percentages
-    Object.keys(breakdown).forEach(key => {
-      if (breakdown[key].total > 0) {
-        breakdown[key].percentage = Math.round(
-          (breakdown[key].correct / breakdown[key].total) * 100
+    Object.keys(breakdown).forEach((key) => {
+      const diff = key as Difficulty;
+      if (breakdown[diff].total > 0) {
+        breakdown[diff].percentage = Math.round(
+          (breakdown[diff].correct / breakdown[diff].total) * 100
         );
       }
     });
 
-    // Update to completed
     const { error: updateError } = await supabase
       .from('external_assessment_attempts')
       .update({
@@ -272,10 +352,10 @@ export async function completeAssessment(attemptId, timeTaken) {
 
 /**
  * Save assessment attempt to database
- * @param {object} attemptData - Assessment attempt data
- * @returns {Promise<{success: boolean, data: object|null, error: string|null}>}
  */
-export async function saveAssessmentAttempt(attemptData) {
+export async function saveAssessmentAttempt(
+  attemptData: SaveAttemptData
+): Promise<OperationResult> {
   try {
     const {
       learnerId,
@@ -313,7 +393,6 @@ export async function saveAssessmentAttempt(attemptData) {
       .single();
 
     if (error) {
-      // Check if it's a duplicate attempt
       if (error.code === '23505') {
         return {
           success: false,
@@ -326,25 +405,24 @@ export async function saveAssessmentAttempt(attemptData) {
 
     return {
       success: true,
-      data: data,
+      data: data as AssessmentAttempt,
       error: null
     };
   } catch (error) {
-    console.error('Error saving assessment attempt:', error);
+    const err = error as Error;
+    console.error('Error saving assessment attempt:', err);
     return {
       success: false,
       data: null,
-      error: error.message || 'Failed to save assessment attempt'
+      error: err.message || 'Failed to save assessment attempt'
     };
   }
 }
 
 /**
  * Get learner's assessment history
- * @param {string} learnerId - Learner UUID
- * @returns {Promise<Array>}
  */
-export async function getAssessmentHistory(learnerId) {
+export async function getAssessmentHistory(learnerId: string): Promise<AssessmentAttempt[]> {
   try {
     const { data, error } = await supabase
       .from('external_assessment_attempts')
@@ -354,7 +432,7 @@ export async function getAssessmentHistory(learnerId) {
 
     if (error) throw error;
 
-    return data || [];
+    return (data || []) as AssessmentAttempt[];
   } catch (error) {
     console.error('Error fetching assessment history:', error);
     return [];
@@ -363,13 +441,12 @@ export async function getAssessmentHistory(learnerId) {
 
 /**
  * Get assessment attempt by course
- * @param {string} learnerId - Learner UUID
- * @param {string} courseName - Course name
- * @returns {Promise<object|null>}
  */
-export async function getAssessmentByCourse(learnerId, courseName) {
+export async function getAssessmentByCourse(
+  learnerId: string,
+  courseName: string
+): Promise<AssessmentAttempt | null> {
   try {
-    // Use maybeSingle() instead of single() to avoid 406 error when no rows exist
     const { data, error } = await supabase
       .from('external_assessment_attempts')
       .select('*')
@@ -381,7 +458,7 @@ export async function getAssessmentByCourse(learnerId, courseName) {
       throw error;
     }
 
-    return data || null;
+    return (data as AssessmentAttempt) || null;
   } catch (error) {
     console.error('Error fetching assessment:', error);
     return null;

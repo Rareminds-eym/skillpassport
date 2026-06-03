@@ -7,11 +7,65 @@ import { ssoClient } from '@/shared/api/ssoClient';
  */
 
 import { prepareAssessmentData, validateResults } from '../lib/assessmentDataPrep.js';
-import { addCourseRecommendations } from './courseIntegrationService.js';
-
+import { addCourseRecommendations } from './courseIntegrationService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('gemini-api-service');
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type ProgressStage = 'preparing' | 'sending' | 'analyzing' | 'processing' | 'courses' | 'saving' | 'complete' | 'error';
+
+interface AssessmentData {
+  gradeLevel: string;
+  stream: string;
+  learnerContext?: unknown;
+  adaptiveAptitudeResults?: unknown;
+  riasecAnswers?: Record<string, unknown>;
+  bigFiveAnswers?: Record<string, unknown>;
+  aptitudeScores?: unknown;
+  [key: string]: unknown;
+}
+
+interface QuestionBanks {
+  riasecQuestions?: unknown[];
+  aptitudeQuestions?: unknown[];
+  bigFiveQuestions?: unknown[];
+  workValuesQuestions?: unknown[];
+  employabilityQuestions?: unknown[];
+  streamKnowledgeQuestions?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface AssessmentResults {
+  streamRecommendation?: unknown;
+  careerFit?: {
+    clusters?: Array<{ title: string; fit: string; matchScore: number }>;
+  };
+  _metadata?: {
+    seed?: string;
+    model?: string;
+    deterministic?: boolean;
+    failureDetails?: Array<{ model: string; status?: string; error: string }>;
+  };
+  [key: string]: unknown;
+}
+
+interface ApiResponse {
+  success: boolean;
+  data?: AssessmentResults;
+  error?: string;
+  details?: string;
+}
+
+// Extend Window interface for setAnalysisProgress
+declare global {
+  interface Window {
+    setAnalysisProgress?: (stage: ProgressStage, message?: string) => void;
+  }
+}
 
 // ============================================================================
 // PROGRESS TRACKING
@@ -19,10 +73,8 @@ const logger = getLogger('gemini-api-service');
 
 /**
  * Update analysis progress (for UI feedback)
- * @param {string} stage - Current stage: 'preparing' | 'sending' | 'analyzing' | 'processing' | 'courses' | 'saving' | 'complete' | 'error'
- * @param {string} message - Optional message to display
  */
-export const updateProgress = (stage, message) => {
+export const updateProgress = (stage: ProgressStage, message?: string): void => {
   if (typeof window !== 'undefined' && window.setAnalysisProgress) {
     window.setAnalysisProgress(stage, message);
   }
@@ -35,11 +87,8 @@ export const updateProgress = (stage, message) => {
 /**
  * Call OpenRouter API via Cloudflare Worker for assessment analysis
  * The worker handles prompt building based on grade level
- * 
- * @param {Object} assessmentData - The prepared assessment data
- * @returns {Promise<Object>} - The analyzed results from AI
  */
-export const callOpenRouterAssessment = async (assessmentData) => {
+export const callOpenRouterAssessment = async (assessmentData: AssessmentData): Promise<AssessmentResults> => {
   logger.info('[FRONTEND] === CALLING ANALYZE-ASSESSMENT API ===');
   logger.info('[FRONTEND] Assessment data:', {
     gradeLevel: assessmentData.gradeLevel,
@@ -56,7 +105,6 @@ export const callOpenRouterAssessment = async (assessmentData) => {
 
   // Get auth token (via SSO, not Supabase auth which is disabled)
   updateProgress('sending', 'Authenticating...');
-  const user = useAuthStore.getState().user;
   const token = ssoClient.getAccessToken();
 
   if (!token) {
@@ -82,7 +130,7 @@ export const callOpenRouterAssessment = async (assessmentData) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        },
+      },
       body: JSON.stringify(requestBody)
     });
 
@@ -104,7 +152,7 @@ export const callOpenRouterAssessment = async (assessmentData) => {
         aptitudeScores: JSON.stringify(assessmentData.aptitudeScores)
       });
       
-      let errorData;
+      let errorData: { error?: string; details?: string };
       try {
         errorData = JSON.parse(errorText);
       } catch {
@@ -116,7 +164,7 @@ export const callOpenRouterAssessment = async (assessmentData) => {
 
     updateProgress('processing', 'Processing AI results...');
 
-    const result = await response.json();
+    const result: ApiResponse = await response.json();
     logger.info('📦 API Response:', { success: result.success, hasData: !!result.data, error: result.error });
 
     if (!result.success || !result.data) {
@@ -152,9 +200,10 @@ export const callOpenRouterAssessment = async (assessmentData) => {
     
     return result.data;
   } catch (error) {
+    const err = error as Error;
     logger.error('❌ === ASSESSMENT API CALL EXCEPTION ===', {
-      errorMessage: error.message,
-      errorStack: error.stack,
+      errorMessage: err.message,
+      errorStack: err.stack,
       gradeLevel: assessmentData.gradeLevel,
       stream: assessmentData.stream,
       riasecAnswers: Object.keys(assessmentData.riasecAnswers || {}).length,
@@ -162,7 +211,7 @@ export const callOpenRouterAssessment = async (assessmentData) => {
       aptitudeScores: JSON.stringify(assessmentData.aptitudeScores)
     });
     
-    updateProgress('error', error.message);
+    updateProgress('error', err.message);
     throw error;
   }
 };
@@ -170,29 +219,18 @@ export const callOpenRouterAssessment = async (assessmentData) => {
 /**
  * Main assessment analysis function
  * Orchestrates the entire assessment analysis pipeline
- * 
- * @param {Object} answers - Raw assessment answers
- * @param {string} stream - Learner's stream/program
- * @param {Object} questionBanks - Question banks for all sections
- * @param {Object} sectionTimings - Time spent on each section
- * @param {string} gradeLevel - Learner's grade level
- * @param {Object} preCalculatedScores - Pre-calculated scores (optional)
- * @param {string} learnerId - Learner ID for course recommendations
- * @param {Object} learnerContext - Additional learner context
- * @param {Object} adaptiveResults - Adaptive aptitude results
- * @returns {Promise<Object>} - AI-analyzed results with course recommendations
  */
 export const analyzeAssessmentWithOpenRouter = async (
-  answers, 
-  stream, 
-  questionBanks, 
-  sectionTimings = {}, 
-  gradeLevel = 'after12', 
-  preCalculatedScores = null, 
-  learnerId = null, 
-  learnerContext = {}, 
-  adaptiveResults = null
-) => {
+  answers: unknown, 
+  stream: string, 
+  questionBanks: QuestionBanks, 
+  sectionTimings: Record<string, unknown> = {}, 
+  gradeLevel: string = 'after12', 
+  preCalculatedScores: unknown = null, 
+  learnerId: string | null = null, 
+  learnerContext: Record<string, unknown> = {}, 
+  adaptiveResults: unknown = null
+): Promise<AssessmentResults> => {
   logger.info('=== analyzeAssessmentWithGemini START ===', {
     gradeLevel,
     stream,
@@ -225,14 +263,7 @@ export const analyzeAssessmentWithOpenRouter = async (
     );
 
     // Call the Cloudflare Worker (handles prompt building and AI call)
-    let parsedResults = await callOpenRouterAssessment(assessmentData);
-
-    // Validate stream recommendation for After 10th learners
-    if (gradeLevel === 'after10' && parsedResults.streamRecommendation) {
-      logger.info('🎯 Validating After 10th stream recommendation with rule-based engine...', {
-        ruleBasedStreams: calculateStreamRecommendations(parsedResults).map(s => s.stream)
-      });
-    }
+    const parsedResults = await callOpenRouterAssessment(assessmentData);
 
     // Validate the results
     const { isValid, missingFields } = validateResults(parsedResults);
@@ -253,9 +284,10 @@ export const analyzeAssessmentWithOpenRouter = async (
     return parsedResults;
 
   } catch (error) {
-    logger.error('❌ Assessment analysis failed:', { error: error.message });
-    updateProgress('error', error.message);
-    throw new Error(`Assessment analysis failed: ${error.message}. Please try again.`);
+    const err = error as Error;
+    logger.error('❌ Assessment analysis failed:', { error: err.message });
+    updateProgress('error', err.message);
+    throw new Error(`Assessment analysis failed: ${err.message}. Please try again.`);
   }
 };
 

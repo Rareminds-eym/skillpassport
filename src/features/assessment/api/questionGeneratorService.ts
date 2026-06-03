@@ -1,476 +1,404 @@
 /**
- * Question Generator Service
- * 
- * Generates adaptive aptitude test questions using Cloudflare Pages Function.
- * Handles question generation for all test phases with caching support.
- * 
- * Requirements: 4.1, 4.2, 1.4, 6.1, 2.5, 6.2, 3.1, 3.2, 7.1
+ * Question Generator Module
+ * Handles AI-based question generation for aptitude and knowledge assessments
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
-import { getApiUrl } from '@/shared/api/apiUtils';
-import {
-  Question,
-  GradeLevel,
-  TestPhase,
-  DifficultyLevel,
-  Subtag,
-  ALL_SUBTAGS,
-} from '@/shared/types/adaptiveAptitude';
+import { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from '../lib/streamPrompts.js';
+import { normalizeStreamId } from '../lib/streamUtils.js';
+import { validateQuestionBatch } from '../lib/questionValidator.js';
+import { classifyError, getUserErrorMessage, handleAPIError, handleNetworkError } from '../lib/assessmentErrors.js';
+import { getSavedQuestionsForLearner, saveAptitudeQuestions, saveKnowledgeQuestions } from './assessmentRepository';
 
-// =============================================================================
-// CLOUDFLARE PAGES FUNCTION API CONFIGURATION
-// =============================================================================
+type QuestionType = 'aptitude' | 'knowledge';
+type GradeLevel = 'after10' | 'after12' | 'higher_secondary' | 'college' | 'middle' | 'highschool';
 
-const API_URL = getApiUrl('question-generation');
-
-/**
- * Makes a request to the Cloudflare Pages Function API
- */
-async function callWorkerAPI<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
-  const url = `${API_URL}${endpoint}`;
-  console.log(`📡 [QuestionGeneratorService] Calling Pages Function API: ${url}`);
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-    console.error('❌ [QuestionGeneratorService] Worker API error:', response.status, errorData);
-    throw new Error((errorData as { error?: string }).error || `API request failed: ${response.status}`);
-  }
-
-  return response.json() as Promise<T>;
+interface Question {
+  id: number | string;
+  text?: string;
+  question?: string;
+  options?: string[];
+  correct_answer?: string;
+  correctAnswer?: string;
+  difficulty?: string;
+  skill_tag?: string;
+  subtag?: string;
+  [key: string]: unknown;
 }
 
-// =============================================================================
-// TYPES
-// =============================================================================
+interface StreamInfo {
+  name: string;
+  topics: string[];
+}
 
-/**
- * Options for generating questions
- */
-export interface QuestionGenerationOptions {
-  gradeLevel: GradeLevel;
-  phase: TestPhase;
-  difficulty?: DifficultyLevel;
-  subtag?: Subtag;
-  count?: number;
-  excludeQuestionIds?: string[];
-  excludeQuestionTexts?: string[];  // Add support for excluding by question text
+interface ApiResponse {
+  questions?: Question[];
+  cached?: boolean;
+  [key: string]: unknown;
+}
+
+interface ValidationResult {
+  valid: Question[];
+  invalid: Question[];
+  needsMore: boolean;
+}
+
+interface ErrorInfo {
+  shouldRetry: boolean;
+  delay: number;
+  message: string;
 }
 
 /**
- * Result of question generation
+ * Generate questions with validation and retry logic
+ * NOTE: This function is currently not used but kept for potential future use
  */
-export interface QuestionGenerationResult {
-  questions: Question[];
-  fromCache: boolean;
-  generatedCount: number;
-  cachedCount: number;
-}
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
-
-/**
- * Generates a unique question ID
- */
-function generateQuestionId(
-  gradeLevel: GradeLevel,
-  phase: TestPhase,
-  difficulty: DifficultyLevel,
-  subtag: Subtag
-): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
-  return `${gradeLevel}_${phase}_d${difficulty}_${subtag}_${timestamp}_${random}`;
-}
-
-
-// =============================================================================
-// CACHING FUNCTIONS
-// =============================================================================
-
-/**
- * Retrieves cached questions from the database
- * Requirements: 7.1
- */
-async function getCachedQuestions(
-  gradeLevel: GradeLevel,
-  phase: TestPhase,
-  difficulty?: DifficultyLevel,
-  subtag?: Subtag,
-  limit: number = 10,
-  excludeIds: string[] = []
+export async function generateWithValidation(
+  generatorFn: () => Promise<Question[]>,
+  questionType: QuestionType,
+  expectedCount: number,
+  maxRetries: number = 3
 ): Promise<Question[]> {
-  let query = supabase
-    .from('adaptive_aptitude_questions_cache')
-    .select('*')
-    .eq('grade_level', gradeLevel)
-    .eq('phase', phase)
-    .eq('is_active', true);
-
-  if (difficulty !== undefined) {
-    query = query.eq('difficulty', difficulty);
-  }
-
-  if (subtag !== undefined) {
-    query = query.eq('subtag', subtag);
-  }
-
-  if (excludeIds.length > 0) {
-    query = query.not('question_id', 'in', `(${excludeIds.join(',')})`);
-  }
-
-  query = query.order('usage_count', { ascending: true }).limit(limit);
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error fetching cached questions:', error);
-    return [];
-  }
-
-  if (!data || data.length === 0) {
-    return [];
-  }
-
-  return data.map((record) => ({
-    id: record.question_id,
-    text: record.text,
-    options: record.options as Question['options'],
-    correctAnswer: record.correct_answer as Question['correctAnswer'],
-    difficulty: record.difficulty as DifficultyLevel,
-    subtag: record.subtag as Subtag,
-    gradeLevel: record.grade_level as GradeLevel,
-    phase: record.phase as TestPhase,
-    explanation: record.explanation || undefined,
-    createdAt: record.created_at,
-  }));
-}
-
-/**
- * Saves questions to the cache
- * Requirements: 7.1
- */
-async function cacheQuestions(questions: Question[]): Promise<void> {
-  if (questions.length === 0) return;
-
-  const records = questions.map((q) => ({
-    question_id: q.id,
-    text: q.text,
-    options: q.options,
-    correct_answer: q.correctAnswer,
-    difficulty: q.difficulty,
-    subtag: q.subtag,
-    grade_level: q.gradeLevel,
-    phase: q.phase,
-    explanation: q.explanation || null,
-  }));
-
-  const { error } = await supabase
-    .from('adaptive_aptitude_questions_cache')
-    .upsert(records, { onConflict: 'question_id' });
-
-  if (error) {
-    console.error('Error caching questions:', error);
-  }
-}
-
-/**
- * Updates usage count for questions
- */
-async function updateQuestionUsage(questionIds: string[]): Promise<void> {
-  for (const questionId of questionIds) {
+  let allValidQuestions: Question[] = [];
+  let attempt = 0;
+  
+  while (attempt < maxRetries && allValidQuestions.length < expectedCount) {
+    attempt++;
+    console.log(`📦 Generation attempt ${attempt}/${maxRetries} for ${questionType}`);
+    
     try {
-      await supabase.rpc('update_question_usage', { p_question_id: questionId });
-    } catch {
-      // Ignore errors - usage tracking is non-critical
+      const questions = await generatorFn();
+      
+      if (!questions || questions.length === 0) {
+        console.warn(`⚠️ No questions returned on attempt ${attempt}`);
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        }
+        break;
+      }
+      
+      const validation = validateQuestionBatch(questions, questionType, expectedCount - allValidQuestions.length);
+      allValidQuestions = [...allValidQuestions, ...validation.valid];
+      
+      console.log(`✅ Attempt ${attempt}: ${validation.valid.length} valid questions (total: ${allValidQuestions.length}/${expectedCount})`);
+      
+      if (!validation.needsMore) {
+        break;
+      }
+      
+      if (attempt < maxRetries) {
+        const needed = expectedCount - allValidQuestions.length;
+        console.log(`⏳ Need ${needed} more questions, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      }
+    } catch (error) {
+      console.error(`❌ Error on attempt ${attempt}:`, error);
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      }
     }
   }
+  
+  if (allValidQuestions.length < expectedCount) {
+    console.warn(`⚠️ Only generated ${allValidQuestions.length}/${expectedCount} valid questions after ${attempt} attempts`);
+  }
+  
+  return allValidQuestions.slice(0, expectedCount);
 }
 
-// =============================================================================
-// DIAGNOSTIC SCREENER GENERATION (via Cloudflare Worker)
-// =============================================================================
-
 /**
- * Generates questions for the Diagnostic Screener phase via Cloudflare Worker
- * Requirements: 1.4, 6.1
- * 
- * - Generates 6 questions: 2 Easy (1-2), 2 Medium (3), 2 Hard (4-5)
- * - Ensures at least 3 different subtags
- * - Prevents consecutive same-subtag questions
+ * Generate Stream Knowledge questions using AI
+ * If learnerId provided, saves questions for resume functionality
  */
-export async function generateDiagnosticScreenerQuestions(
-  gradeLevel: GradeLevel,
-  excludeQuestionIds: string[] = [],
-  excludeQuestionTexts: string[] = []
-): Promise<QuestionGenerationResult> {
-  console.log('🎯 [QuestionGeneratorService] generateDiagnosticScreenerQuestions called:', { gradeLevel });
-  const startTime = Date.now();
+export async function generateStreamKnowledgeQuestions(
+  streamId: string,
+  questionCount: number = 20,
+  learnerId: string | null = null,
+  attemptId: string | null = null,
+  gradeLevel: GradeLevel | null = null
+): Promise<Question[] | null> {
+  const isCollegeLearner = gradeLevel === 'college' || gradeLevel === 'higher_secondary';
   
-  const result = await callWorkerAPI<QuestionGenerationResult>('/generate/diagnostic', {
-    gradeLevel,
-    excludeQuestionIds,
-    excludeQuestionTexts,
-  });
+  let effectiveStreamId: string;
+  let effectiveStreamName: string;
+  let effectiveTopics: string[] | null;
   
-  const elapsed = Date.now() - startTime;
-  console.log(`✅ [QuestionGeneratorService] Generated ${result.questions.length} questions in ${elapsed}ms (via Worker)`);
-  
-  return result;
-}
-
-// =============================================================================
-// ADAPTIVE CORE GENERATION (via Cloudflare Worker)
-// =============================================================================
-
-/**
- * Generates questions for the Adaptive Core Loop phase via Cloudflare Worker
- * Requirements: 2.5, 6.2
- * 
- * - Generates 8-11 questions with adaptive difficulty
- * - Maintains subtag balance (no more than 2 consecutive same subtag)
- * - Limits consecutive difficulty jumps in same direction to 2
- */
-export async function generateAdaptiveCoreQuestions(
-  gradeLevel: GradeLevel,
-  startingDifficulty: DifficultyLevel,
-  count: number = 10,
-  excludeQuestionIds: string[] = [],
-  excludeQuestionTexts: string[] = [],
-  learnerCourse?: string | null
-): Promise<QuestionGenerationResult> {
-  console.log('🎯 [QuestionGeneratorService] generateAdaptiveCoreQuestions called:', { gradeLevel, startingDifficulty, count, learnerCourse });
-  const startTime = Date.now();
-  
-  const result = await callWorkerAPI<QuestionGenerationResult>('/generate/adaptive', {
-    gradeLevel,
-    startingDifficulty,
-    count,
-    excludeQuestionIds,
-    excludeQuestionTexts,
-    learnerCourse,
-  });
-  
-  const elapsed = Date.now() - startTime;
-  console.log(`✅ [QuestionGeneratorService] Generated ${result.questions.length} questions in ${elapsed}ms (via Worker)`);
-  
-  return result;
-}
-
-// =============================================================================
-// STABILITY CONFIRMATION GENERATION (via Cloudflare Worker)
-// =============================================================================
-
-/**
- * Generates questions for the Stability Confirmation phase via Cloudflare Worker
- * Requirements: 3.1, 3.2
- * 
- * - Generates 4-6 questions within ±1 of provisional band
- * - Includes at least one near-boundary item
- * - Mixes data and logic formats
- */
-export async function generateStabilityConfirmationQuestions(
-  gradeLevel: GradeLevel,
-  provisionalBand: DifficultyLevel,
-  count: number = 4,
-  excludeQuestionIds: string[] = [],
-  excludeQuestionTexts: string[] = []
-): Promise<QuestionGenerationResult> {
-  console.log('🎯 [QuestionGeneratorService] generateStabilityConfirmationQuestions called:', { gradeLevel, provisionalBand, count });
-  const startTime = Date.now();
-  
-  const result = await callWorkerAPI<QuestionGenerationResult>('/generate/stability', {
-    gradeLevel,
-    provisionalBand,
-    count,
-    excludeQuestionIds,
-    excludeQuestionTexts,
-  });
-  
-  const elapsed = Date.now() - startTime;
-  console.log(`✅ [QuestionGeneratorService] Generated ${result.questions.length} questions in ${elapsed}ms (via Worker)`);
-  
-  return result;
-}
-
-// =============================================================================
-// SINGLE QUESTION GENERATION (for dynamic adaptive core)
-// =============================================================================
-
-/**
- * Generates a single question via Cloudflare Worker
- * Used during adaptive core phase for dynamic question generation based on current difficulty
- */
-export async function generateSingleQuestion(
-  gradeLevel: GradeLevel,
-  phase: TestPhase,
-  difficulty: DifficultyLevel,
-  subtag: Subtag,
-  excludeQuestionIds: string[] = [],
-  excludeQuestionTexts: string[] = []
-): Promise<QuestionGenerationResult> {
-  console.log('🎯 [QuestionGeneratorService] generateSingleQuestion called:', { gradeLevel, phase, difficulty, subtag });
-  const startTime = Date.now();
-  
-  const result = await callWorkerAPI<QuestionGenerationResult>('/generate/single', {
-    gradeLevel,
-    phase,
-    difficulty,
-    subtag,
-    excludeQuestionIds,
-    excludeQuestionTexts,
-  });
-  
-  const elapsed = Date.now() - startTime;
-  console.log(`✅ [QuestionGeneratorService] Generated single question in ${elapsed}ms (via Worker)`);
-  
-  return result;
-}
-
-// =============================================================================
-// MAIN GENERATION FUNCTION
-// =============================================================================
-
-/**
- * Main function to generate questions based on options
- * Requirements: 7.1
- */
-export async function generateQuestions(
-  options: QuestionGenerationOptions
-): Promise<QuestionGenerationResult> {
-  const { gradeLevel, phase, difficulty, subtag, count = 1, excludeQuestionIds = [], excludeQuestionTexts = [] } = options;
-
-  // If specific difficulty and subtag provided, generate single question
-  if (difficulty !== undefined && subtag !== undefined) {
-    return generateSingleQuestion(gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts);
+  if (isCollegeLearner) {
+    effectiveStreamId = streamId;
+    effectiveStreamName = streamId;
+    effectiveTopics = null;
+    console.log(`🎓 ${gradeLevel === 'higher_secondary' ? 'Higher Secondary (11th/12th)' : 'College'} learner - generating knowledge questions for: ${streamId}`);
+  } else {
+    const normalizedStreamId = normalizeStreamId(streamId);
+    const streamInfo = STREAM_KNOWLEDGE_PROMPTS[normalizedStreamId] as StreamInfo | undefined;
+    
+    if (!streamInfo) {
+      console.error('Unknown stream:', streamId, '(normalized:', normalizedStreamId, ')');
+      return null;
+    }
+    
+    effectiveStreamId = normalizedStreamId;
+    effectiveStreamName = streamInfo.name;
+    effectiveTopics = streamInfo.topics;
+    console.log('🎯 Generating knowledge questions for:', effectiveStreamName, '(stream:', effectiveStreamId, ')');
+    console.log('📚 Stream topics:', effectiveTopics);
   }
 
-  // Phase-specific generation
-  switch (phase) {
-    case 'diagnostic_screener':
-      return generateDiagnosticScreenerQuestions(gradeLevel, excludeQuestionIds, excludeQuestionTexts);
-    
-    case 'adaptive_core':
-      return generateAdaptiveCoreQuestions(
-        gradeLevel,
-        difficulty || 3,
-        count,
-        excludeQuestionIds,
-        excludeQuestionTexts
+  if (learnerId) {
+    const saved = await getSavedQuestionsForLearner(learnerId, effectiveStreamId, 'knowledge');
+    if (saved) {
+      console.log('✅ Using saved knowledge questions for learner');
+      return saved;
+    }
+  }
+
+  const { getApiUrl } = await import('@/shared/api/apiUtils');
+  const apiUrl = getApiUrl('question-generation');
+  const maxRetries = 3;
+  const requestCount = Math.ceil(questionCount * 1.4);
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📡 Calling Knowledge API (attempt ${attempt}/${maxRetries}) - requesting ${requestCount} to get ${questionCount} valid`);
+      
+      const response = await fetch(`${apiUrl}/career-assessment/generate-knowledge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          streamId: effectiveStreamId,
+          streamName: effectiveStreamName,
+          topics: effectiveTopics,
+          questionCount: requestCount,
+          learnerId,
+          attemptId,
+          gradeLevel,
+          isCollegeLearner
+        })
+      });
+
+      if (!response.ok) {
+        const errorInfo = await handleAPIError(response, attempt, maxRetries);
+        const errorText = await response.text();
+        console.error(`❌ API Error Response (attempt ${attempt}):`, errorText);
+        console.log(`ℹ️ ${errorInfo.message}`);
+        
+        if (errorInfo.shouldRetry) {
+          await new Promise(resolve => setTimeout(resolve, errorInfo.delay));
+          continue;
+        } else {
+          return null;
+        }
+      }
+
+      const data: ApiResponse = await response.json();
+      
+      if (!data || !data.questions) {
+        const errorType = classifyError(new Error('Invalid API response'));
+        console.error(`❌ Invalid API response (attempt ${attempt}): missing questions array`);
+        console.log(`ℹ️ ${getUserErrorMessage(errorType)}`);
+        
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        }
+        return null;
+      }
+      
+      console.log('✅ Knowledge questions generated:', data.questions?.length || 0);
+      
+      const validation = validateQuestionBatch(data.questions, 'knowledge', questionCount);
+      let validQuestions = validation.valid;
+      
+      if (validation.invalid.length > 0) {
+        console.warn(`⚠️ Filtered out ${validation.invalid.length} invalid knowledge questions`);
+      }
+      
+      const beforeDuplicateRemoval = validQuestions.length;
+      validQuestions = validQuestions.filter((q, index, self) =>
+        index === self.findIndex((t) => (t.text || t.question) === (q.text || q.question))
       );
-    
-    case 'stability_confirmation':
-      return generateStabilityConfirmationQuestions(
-        gradeLevel,
-        difficulty || 3,
-        count,
-        excludeQuestionIds,
-        excludeQuestionTexts
-      );
-    
-    default:
-      throw new Error(`Unknown phase: ${phase}`);
+      
+      if (beforeDuplicateRemoval > validQuestions.length) {
+        console.warn(`⚠️ Removed ${beforeDuplicateRemoval - validQuestions.length} duplicate knowledge questions`);
+      }
+      
+      if (validQuestions.length < questionCount) {
+        console.warn(`⚠️ Insufficient questions: ${validQuestions.length}/${questionCount} knowledge questions`);
+        
+        if (attempt < maxRetries) {
+          console.log(`🔄 Retrying to get exactly ${questionCount} knowledge questions (attempt ${attempt + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        } else {
+          console.error(`❌ Failed to get exactly ${questionCount} knowledge questions after ${maxRetries} attempts. Got ${validQuestions.length}.`);
+          return null;
+        }
+      }
+      
+      if (validQuestions.length > questionCount) {
+        console.log(`✂️ Trimming ${validQuestions.length} questions down to exactly ${questionCount}`);
+        validQuestions = validQuestions.slice(0, questionCount);
+      }
+      
+      console.log(`✅ Validation passed: Exactly ${questionCount} valid unique knowledge questions`);
+      
+      if (validQuestions.length > 0 && learnerId && !data.cached) {
+        console.log('💾 Saving knowledge questions to database...');
+        await saveKnowledgeQuestions(learnerId, effectiveStreamId, attemptId, validQuestions, gradeLevel);
+      }
+      
+      return validQuestions;
+    } catch (error) {
+      const errorInfo = handleNetworkError(error, attempt, maxRetries);
+      console.log(`ℹ️ ${errorInfo.message}`);
+      
+      if (errorInfo.shouldRetry) {
+        await new Promise(resolve => setTimeout(resolve, errorInfo.delay));
+      } else {
+        return null;
+      }
+    }
   }
+  
+  return null;
 }
-
-// =============================================================================
-// QUESTION GENERATOR SERVICE CLASS
-// =============================================================================
 
 /**
- * QuestionGeneratorService class providing all question generation functionality
+ * Generate Aptitude questions using AI
+ * If learnerId provided, saves questions for resume functionality
  */
-export class QuestionGeneratorService {
-  /**
-   * Generates questions for the Diagnostic Screener phase
-   * Requirements: 1.4, 6.1
-   */
-  static async generateDiagnosticScreenerQuestions(
-    gradeLevel: GradeLevel,
-    excludeQuestionIds?: string[],
-    excludeQuestionTexts?: string[]
-  ): Promise<QuestionGenerationResult> {
-    return generateDiagnosticScreenerQuestions(gradeLevel, excludeQuestionIds, excludeQuestionTexts);
+export async function generateAptitudeQuestions(
+  streamId: string,
+  questionCount: number = 50,
+  learnerId: string | null = null,
+  attemptId: string | null = null,
+  gradeLevel: GradeLevel | null = null
+): Promise<Question[] | null> {
+  if (learnerId) {
+    const saved = await getSavedQuestionsForLearner(learnerId, streamId, 'aptitude');
+    if (saved && saved.length > 0) {
+      console.log(`✅ RESUME: Using saved aptitude questions for learner: ${saved.length} questions`);
+      return saved;
+    }
   }
 
-  /**
-   * Generates questions for the Adaptive Core Loop phase
-   * Requirements: 2.5, 6.2
-   */
-  static async generateAdaptiveCoreQuestions(
-    gradeLevel: GradeLevel,
-    startingDifficulty: DifficultyLevel,
-    count?: number,
-    excludeQuestionIds?: string[],
-    excludeQuestionTexts?: string[],
-    learnerCourse?: string | null
-  ): Promise<QuestionGenerationResult> {
-    return generateAdaptiveCoreQuestions(gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts, learnerCourse);
-  }
+  console.log('🎯 Generating aptitude questions for stream:', streamId, 'gradeLevel:', gradeLevel);
 
-  /**
-   * Generates questions for the Stability Confirmation phase
-   * Requirements: 3.1, 3.2
-   */
-  static async generateStabilityConfirmationQuestions(
-    gradeLevel: GradeLevel,
-    provisionalBand: DifficultyLevel,
-    count?: number,
-    excludeQuestionIds?: string[],
-    excludeQuestionTexts?: string[]
-  ): Promise<QuestionGenerationResult> {
-    return generateStabilityConfirmationQuestions(gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts);
-  }
+  const { getApiUrl } = await import('@/shared/api/apiUtils');
+  const apiUrl = getApiUrl('question-generation');
+  const maxRetries = 3;
+  const questionsPerCategory = Math.ceil(questionCount / APTITUDE_CATEGORIES.length);
+  
+  let allValidQuestions: Question[] = [];
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const questionsNeeded = questionCount - allValidQuestions.length;
+      
+      if (questionsNeeded <= 0) {
+        console.log(`✅ Already have ${allValidQuestions.length} valid questions, no need to retry`);
+        break;
+      }
+      
+      console.log(`📡 Calling API (attempt ${attempt}/${maxRetries}) - Need ${questionsNeeded} more questions`);
+      
+      const response = await fetch(`${apiUrl}/career-assessment/generate-aptitude`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          streamId,
+          questionsPerCategory,
+          learnerId,
+          attemptId,
+          gradeLevel
+        })
+      });
 
-  /**
-   * Generates questions based on options
-   * Requirements: 7.1
-   */
-  static async generateQuestions(
-    options: QuestionGenerationOptions
-  ): Promise<QuestionGenerationResult> {
-    return generateQuestions(options);
-  }
+      if (!response.ok) {
+        const errorInfo = await handleAPIError(response, attempt, maxRetries);
+        const errorText = await response.text();
+        console.error(`❌ API Error (attempt ${attempt}):`, errorText.substring(0, 200));
+        console.log(`ℹ️ ${errorInfo.message}`);
+        
+        if (errorInfo.shouldRetry) {
+          await new Promise(resolve => setTimeout(resolve, errorInfo.delay));
+          continue;
+        } else {
+          return null;
+        }
+      }
 
-  /**
-   * Gets cached questions from the database
-   * Requirements: 7.1
-   */
-  static async getCachedQuestions(
-    gradeLevel: GradeLevel,
-    phase: TestPhase,
-    difficulty?: DifficultyLevel,
-    subtag?: Subtag,
-    limit?: number,
-    excludeIds?: string[]
-  ): Promise<Question[]> {
-    return getCachedQuestions(gradeLevel, phase, difficulty, subtag, limit, excludeIds);
+      const data: ApiResponse = await response.json();
+      
+      if (!data || !data.questions) {
+        const errorType = classifyError(new Error('Invalid API response'));
+        console.error(`❌ Invalid API response (attempt ${attempt}): missing questions array`);
+        console.log(`ℹ️ ${getUserErrorMessage(errorType)}`);
+        
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+          continue;
+        }
+        return null;
+      }
+      
+      console.log('✅ Aptitude questions generated:', data.questions?.length || 0);
+      
+      const validation = validateQuestionBatch(data.questions, 'aptitude', questionCount);
+      const newValidQuestions = validation.valid;
+      allValidQuestions = [...allValidQuestions, ...newValidQuestions];
+      
+      allValidQuestions = allValidQuestions.filter((q, index, self) =>
+        index === self.findIndex((t) => (t.text || t.question) === (q.text || q.question))
+      );
+      
+      console.log(`📊 Validation: ${newValidQuestions.length} new valid, ${validation.invalid.length} invalid`);
+      console.log(`📊 Total accumulated: ${allValidQuestions.length}/${questionCount} questions`);
+      
+      if (allValidQuestions.length >= questionCount) {
+        const finalQuestions = allValidQuestions.slice(0, questionCount);
+        console.log(`✅ Success! Have ${finalQuestions.length} valid questions`);
+        
+        if (finalQuestions.length > 0 && learnerId && !data.cached) {
+          console.log('💾 Saving questions to database...');
+          await saveAptitudeQuestions(learnerId, streamId, attemptId, finalQuestions, gradeLevel);
+        }
+        
+        return finalQuestions;
+      }
+      
+      if (attempt < maxRetries) {
+        const needed = questionCount - allValidQuestions.length;
+        console.log(`🔄 Need ${needed} more questions, retrying (attempt ${attempt + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        continue;
+      }
+      
+      const threshold = Math.floor(questionCount * 0.9);
+      if (allValidQuestions.length >= threshold) {
+        console.warn(`⚠️ Only have ${allValidQuestions.length}/${questionCount} questions, but accepting (above 90% threshold)`);
+        
+        if (allValidQuestions.length > 0 && learnerId && !data.cached) {
+          console.log('💾 Saving questions to database...');
+          await saveAptitudeQuestions(learnerId, streamId, attemptId, allValidQuestions, gradeLevel);
+        }
+        
+        return allValidQuestions;
+      }
+      
+      console.error(`❌ Failed to get enough questions after ${maxRetries} attempts. Got ${allValidQuestions.length}/${questionCount}.`);
+      return null;
+    } catch (error) {
+      const errorInfo = handleNetworkError(error, attempt, maxRetries);
+      console.log(`ℹ️ ${errorInfo.message}`);
+      
+      if (errorInfo.shouldRetry) {
+        await new Promise(resolve => setTimeout(resolve, errorInfo.delay));
+      } else {
+        return null;
+      }
+    }
   }
-
-  /**
-   * Caches questions to the database
-   * Requirements: 7.1
-   */
-  static async cacheQuestions(questions: Question[]): Promise<void> {
-    return cacheQuestions(questions);
-  }
-
-  /**
-   * Updates usage count for questions
-   */
-  static async updateQuestionUsage(questionIds: string[]): Promise<void> {
-    return updateQuestionUsage(questionIds);
-  }
+  
+  return null;
 }
-
-export default QuestionGeneratorService;

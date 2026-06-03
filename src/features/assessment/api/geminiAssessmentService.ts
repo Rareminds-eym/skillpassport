@@ -19,8 +19,10 @@ import { calculateKnowledgeWithGemini } from '../lib/scoringEngine.js';
 export const analyzeAssessmentWithGemini = analyzeAssessmentWithOpenRouter;
 
 // Default export for backward compatibility
-export default {
+const geminiAssessmentService = {
   analyzeAssessmentWithOpenRouter,
   analyzeAssessmentWithGemini: analyzeAssessmentWithOpenRouter,
   calculateKnowledgeWithGemini
 };
+
+export default geminiAssessmentService;

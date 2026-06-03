@@ -23,6 +23,11 @@ import { abandonHandler } from './handlers/abandon';
 import { checkInProgressHandler } from './handlers/check-in-progress';
 import { analyzeHandler } from './handlers/analyze';
 import { resultHandler } from './handlers/result';
+import {
+  handleGetSavedQuestions,
+  handleSaveQuestions,
+  handleClearQuestions,
+} from './handlers/questions';
 
 /**
  * POST handler - Routes POST requests to appropriate handlers
@@ -44,6 +49,10 @@ export const onRequestPost = withAuth(async (context: any) => {
       return abandonHandler(context);
     } else if (path === '/analyze') {
       return analyzeHandler(context);
+    } else if (path === '/questions/save') {
+      return handleSaveQuestions(context.request, context);
+    } else if (path === '/questions/clear') {
+      return handleClearQuestions(context.request, context);
     } else {
       return apiNotFound(`Assessment endpoint not found: ${path}`, context.request);
     }
@@ -69,6 +78,8 @@ export const onRequestGet = withAuth(async (context: any) => {
       return checkInProgressHandler(context);
     } else if (path === '/result') {
       return resultHandler(context);
+    } else if (path === '/questions/saved') {
+      return handleGetSavedQuestions(context.request, context);
     } else {
       return apiNotFound(`Assessment endpoint not found: ${path}`, context.request);
     }

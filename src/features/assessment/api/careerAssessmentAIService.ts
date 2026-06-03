@@ -26,7 +26,7 @@ export {
   saveAptitudeQuestions, 
   saveKnowledgeQuestions, 
   clearSavedQuestionsForLearner 
-} from './assessmentRepository.js';
+} from './assessmentRepository';
 export { 
   generateWithValidation, 
   generateStreamKnowledgeQuestions, 
@@ -35,8 +35,28 @@ export {
 
 import { normalizeStreamId } from '../lib/streamUtils.js';
 import { generateAptitudeQuestions, generateStreamKnowledgeQuestions } from './questionGeneratorService.js';
-import { getSavedQuestionsForLearner, clearSavedQuestionsForLearner } from './assessmentRepository.js';
+import { getSavedQuestionsForLearner, clearSavedQuestionsForLearner } from './assessmentRepository';
 import { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from '../lib/streamPrompts.js';
+
+type GradeLevel = 'after10' | 'after12' | 'higher_secondary' | 'college' | 'middle' | 'highschool';
+
+interface Question {
+  id: number | string;
+  text?: string;
+  question?: string;
+  options?: string[];
+  correct_answer?: string;
+  correctAnswer?: string;
+  difficulty?: string;
+  skill_tag?: string;
+  subtag?: string;
+  [key: string]: unknown;
+}
+
+interface AssessmentQuestions {
+  aptitude: Question[] | null;
+  knowledge: Question[] | null;
+}
 
 /**
  * Load questions for career assessment
@@ -44,8 +64,14 @@ import { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from '../lib/streamProm
  * - Otherwise generates fresh AI questions and saves them
  * - Main entry point for assessment question loading
  */
-export async function loadCareerAssessmentQuestions(streamId, gradeLevel, learnerId = null, attemptId = null, learnerCourse = null) {
-  const questions = {
+export async function loadCareerAssessmentQuestions(
+  streamId: string,
+  gradeLevel: GradeLevel,
+  learnerId: string | null = null,
+  attemptId: string | null = null,
+  learnerCourse: string | null = null
+): Promise<AssessmentQuestions> {
+  const questions: AssessmentQuestions = {
     aptitude: null,
     knowledge: null
   };
@@ -104,7 +130,8 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, learne
           console.log('ℹ️ RESUME: No saved questions found - will generate fresh questions');
         }
       } catch (error) {
-        console.warn('⚠️ RESUME: Error checking saved questions, will generate fresh:', error.message);
+        const err = error as Error;
+        console.warn('⚠️ RESUME: Error checking saved questions, will generate fresh:', err.message);
       }
     }
     
