@@ -1,22 +1,39 @@
 export * from './ui';
 
-// API & Data Access
-export * from './api';
+// API & Data Access - Explicit exports for clarity and FSD compliance
+export {
+  generateBadges,
+  getBadgeProgress,
+  getBadgesByCategory,
+  BADGE_DEFINITIONS
+} from './api/badgeService';
+
+export {
+  getlearnerPortfolioByEmail
+} from './api/portfolioService';
+
+export {
+  saveResumeToTables,
+  getResumeDataSummary
+} from './api/resumeDataService';
+
+export {
+  parseResumeWithAI,
+  mergeResumeData
+} from './api/resumeParserService';
+
+// Utility exports
 export { exportAsPDF } from './lib/exportppUtils';
 export { copyToClipboard } from './lib/exportppUtils';
-export { saveResumeToTables } from './api/resumeDataService';
 export { exportAsJSON } from './lib/exportppUtils';
 export { generateQRCode } from './lib/exportppUtils';
 export { generateShareableLink } from './lib/exportppUtils';
-export { getlearnerPortfolioByEmail } from './api/portfolioService';
-export { parseResumeWithAI } from './api/resumeParserService';
 export { downloadQRCode } from './lib/exportppUtils';
-export { getBadgeProgress } from './api/badgeService';
-export { generateBadges } from './api/badgeService';
-export { mergeResumeData } from './api/resumeParserService';
 export { exportResume } from './lib/exportppUtils';
 export { sharePortfolio } from './lib/exportppUtils';
 export { exportAsHTML } from './lib/exportppUtils';
+
+// Type exports
 export type { default as ThemeToggle } from './ui/shared/ThemeToggle';
 export type { default as CompactResumeDashboard } from './ui/portfolio/layouts/CompactResumeDashboard';
 export type { default as JourneyMapLayout } from './ui/portfolio/layouts/JourneyMapLayout';

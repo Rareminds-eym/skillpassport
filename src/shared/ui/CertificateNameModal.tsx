@@ -2,6 +2,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Award, CheckCircle, Clock, Download, Eye, X, Edit3 } from 'lucide-react';
 import { Button } from '@/shared/ui';
 
+/**
+ * CertificateNameModal - Pure UI Component
+ * 
+ * FSD Layer: shared/ui
+ * 
+ * This is a reusable, presentation-only modal component with no business logic.
+ * All business logic (API calls, state management) is handled by the consuming feature.
+ * 
+ * Used by: @/features/certificate-generation
+ * 
+ * Props are completely controlled by parent - this component only renders UI
+ * and calls provided callbacks.
+ */
+
 export interface CertificateNameModalProps {
   isOpen: boolean;
   onClose: () => void;
