@@ -1,8 +1,8 @@
 /**
  * Assessment Validation Utilities
- * 
+ *
  * Validates and corrects assessment results to ensure data quality
- * 
+ *
  * @module features/assessment/assessment-result/utils/assessmentValidation
  */
 
@@ -12,43 +12,43 @@
 
 /**
  * Validates and corrects RIASEC topThree to ensure it's sorted by score
- * 
+ *
  * Issue: AI sometimes returns topThree in wrong order (e.g., CEA when CES is correct)
  * Solution: Re-sort based on actual scores
- * 
- * @param {Object} riasec - RIASEC results object with scores and topThree
- * @param {Object} geminiResults - Optional gemini_results object for fallback _originalScores
- * @returns {Object} - Corrected RIASEC object
+ *
+ * @param riasec - RIASEC results object with scores and topThree
+ * @param geminiResults - Optional gemini_results object for fallback _originalScores
+ * @returns Corrected RIASEC object
  */
-export const validateRiasecTopThree = (riasec, geminiResults = null) => {
+export const validateRiasecTopThree = (riasec: any, geminiResults: any = null): any => {
   if (!riasec?.scores) return riasec;
 
   // 🔧 CRITICAL FIX: Use _originalScores if main scores are all zeros
   // Check BOTH riasec._originalScores AND gemini_results.riasec._originalScores
   let scores = riasec.scores;
-  const allZeros = Object.values(scores).every(score => score === 0);
-  
+  const allZeros = Object.values(scores).every((score: any) => score === 0);
+
   if (allZeros) {
-    const originalScores = riasec._originalScores || 
-                          geminiResults?.riasec?._originalScores || 
+    const originalScores = riasec._originalScores ||
+                          geminiResults?.riasec?._originalScores ||
                           {};
     const hasOriginalScores = Object.keys(originalScores).length > 0 &&
-      Object.values(originalScores).some(score => score > 0);
-    
+      Object.values(originalScores).some((score: any) => score > 0);
+
     if (hasOriginalScores) {
       console.log('🔧 validateRiasecTopThree: Using _originalScores instead of zeros');
       console.log('   Found at:', riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
       scores = originalScores;
     }
   }
-  
+
   // Sort all RIASEC types by score in descending order
   const sortedTypes = Object.entries(scores)
-    .sort(([, a], [, b]) => b - a)
+    .sort(([, a]: [string, any], [, b]: [string, any]) => b - a)
     .map(([type]) => type);
 
   // Handle edge case: if all scores are 0, return empty arrays
-  const hasAnyScore = Object.values(scores).some(score => score > 0);
+  const hasAnyScore = Object.values(scores).some((score: any) => score > 0);
   if (!hasAnyScore) {
     console.warn('⚠️ All RIASEC scores are 0 - returning empty topThree');
     return {
@@ -62,7 +62,7 @@ export const validateRiasecTopThree = (riasec, geminiResults = null) => {
   }
 
   // Get top 3, but only include types with non-zero scores
-  const nonZeroTypes = sortedTypes.filter(type => scores[type] > 0);
+  const nonZeroTypes = sortedTypes.filter((type: string) => scores[type] > 0);
   const correctTopThree = nonZeroTypes.slice(0, 3);
   const correctCode = correctTopThree.join('');
 
@@ -94,18 +94,18 @@ export const validateRiasecTopThree = (riasec, geminiResults = null) => {
 
 /**
  * Detects if aptitude answers show suspicious patterns indicating invalid responses
- * 
+ *
  * Patterns detected:
  * 1. All same answer (e.g., all "B")
  * 2. Sequential pattern (A, B, C, D, A, B, C, D...)
  * 3. Too fast completion (< 2 seconds per question average)
- * 
- * @param {Object} aptitudeAnswers - Aptitude answers by category
- * @param {Object} sectionTimings - Time spent on each section
- * @returns {Object} - Pattern detection results
+ *
+ * @param aptitudeAnswers - Aptitude answers by category
+ * @param sectionTimings - Time spent on each section
+ * @returns Pattern detection results
  */
-export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => {
-  const results = {
+export const detectAptitudePatterns = (aptitudeAnswers: any, sectionTimings: any = {}): any => {
+  const results: any = {
     isValid: true,
     patterns: [],
     warnings: [],
@@ -115,20 +115,20 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
   if (!aptitudeAnswers) return results;
 
   // Flatten all aptitude answers
-  const allAnswers = [];
-  const categoryAnswers = {};
+  const allAnswers: any[] = [];
+  const categoryAnswers: Record<string, any[]> = {};
 
   // Process each category
-  ['verbal', 'numerical', 'abstract', 'spatial', 'clerical'].forEach(category => {
+  ['verbal', 'numerical', 'abstract', 'spatial', 'clerical'].forEach((category: string) => {
     const answers = aptitudeAnswers[category] || [];
-    categoryAnswers[category] = answers.map(a => a.learnerAnswer || a.answer || a);
+    categoryAnswers[category] = answers.map((a: any) => a.learnerAnswer || a.answer || a);
     allAnswers.push(...categoryAnswers[category]);
   });
 
   if (allAnswers.length === 0) return results;
 
   // Pattern 1: All same answer
-  const uniqueAnswers = [...new Set(allAnswers.filter(a => a !== null && a !== undefined))];
+  const uniqueAnswers = [...new Set(allAnswers.filter((a: any) => a !== null && a !== undefined))];
   if (uniqueAnswers.length === 1 && allAnswers.length >= 10) {
     results.isValid = false;
     results.patterns.push({
@@ -145,9 +145,9 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
   // Pattern 2: Check each category for same answer
   Object.entries(categoryAnswers).forEach(([category, answers]) => {
     if (answers.length >= 5) {
-      const uniqueInCategory = [...new Set(answers.filter(a => a !== null && a !== undefined))];
+      const uniqueInCategory = [...new Set(answers.filter((a: any) => a !== null && a !== undefined))];
       const allSame = uniqueInCategory.length === 1;
-      const percentSame = answers.filter(a => a === answers[0]).length / answers.length;
+      const percentSame = answers.filter((a: any) => a === answers[0]).length / answers.length;
 
       results.categories[category] = {
         totalAnswers: answers.length,
@@ -176,7 +176,7 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
       description: sequentialPattern.description,
       severity: 'high'
     });
-    if (!results.warnings.some(w => w.includes('invalid'))) {
+    if (!results.warnings.some((w: string) => w.includes('invalid'))) {
       results.warnings.push(
         'Aptitude responses show a sequential pattern, suggesting random clicking.'
       );
@@ -186,7 +186,7 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
   // Pattern 4: Too fast completion
   const aptitudeTime = sectionTimings.aptitude?.seconds || sectionTimings.aptitude || 0;
   const avgTimePerQuestion = aptitudeTime / Math.max(allAnswers.length, 1);
-  
+
   if (aptitudeTime > 0 && avgTimePerQuestion < 2 && allAnswers.length >= 10) {
     results.patterns.push({
       type: 'too_fast',
@@ -200,7 +200,7 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
   }
 
   // Update overall validity
-  if (results.patterns.some(p => p.severity === 'critical')) {
+  if (results.patterns.some((p: any) => p.severity === 'critical')) {
     results.isValid = false;
   }
 
@@ -210,7 +210,7 @@ export const detectAptitudePatterns = (aptitudeAnswers, sectionTimings = {}) => 
 /**
  * Detect sequential patterns like A, B, C, D, A, B, C, D...
  */
-const detectSequentialPattern = (answers) => {
+const detectSequentialPattern = (answers: any[]): { isSequential: boolean; description?: string } => {
   if (answers.length < 8) return { isSequential: false };
 
   // Check for common sequential patterns
@@ -246,17 +246,21 @@ const detectSequentialPattern = (answers) => {
 
 /**
  * Validates and corrects assessment results
- * 
- * @param {Object} results - Full assessment results from AI
- * @param {Object} rawAnswers - Raw answers from the assessment
- * @param {Object} sectionTimings - Time spent on each section
- * @returns {Object} - Validated and corrected results with warnings
+ *
+ * @param results - Full assessment results from AI
+ * @param rawAnswers - Raw answers from the assessment
+ * @param sectionTimings - Time spent on each section
+ * @returns Validated and corrected results with warnings
  */
-export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimings = {}) => {
+export const validateAssessmentResults = (
+  results: any,
+  rawAnswers: any = {},
+  sectionTimings: any = {}
+): any => {
   if (!results) return { results: null, warnings: [], isValid: false };
 
-  const warnings = [];
-  let correctedResults = { ...results };
+  const warnings: any[] = [];
+  let correctedResults: any = { ...results };
 
   // 🔧 CRITICAL FIX: Preserve adaptive aptitude results if they exist
   // These might be in results or in rawAnswers
@@ -274,7 +278,7 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
   if (results.riasec) {
     const validatedRiasec = validateRiasecTopThree(results.riasec, results.gemini_results);
     correctedResults.riasec = validatedRiasec;
-    
+
     if (!validatedRiasec._wasCorrect) {
       warnings.push({
         type: 'riasec_correction',
@@ -286,7 +290,7 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
 
   // 2. Detect aptitude patterns
   const aptitudePatterns = detectAptitudePatterns(rawAnswers.aptitude, sectionTimings);
-  
+
   if (!aptitudePatterns.isValid) {
     warnings.push({
       type: 'aptitude_invalid',
@@ -307,7 +311,7 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
   // 3. Validate stream recommendation for after10 learners
   if (results.streamRecommendation?.isAfter10) {
     const streamRec = results.streamRecommendation;
-    
+
     // Check if recommendation is based on invalid aptitude data
     if (!aptitudePatterns.isValid) {
       warnings.push({
@@ -328,7 +332,7 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
   return {
     results: correctedResults,
     warnings,
-    isValid: warnings.filter(w => w.severity === 'critical').length === 0,
+    isValid: warnings.filter((w: any) => w.severity === 'critical').length === 0,
     aptitudeValidation: aptitudePatterns
   };
 };

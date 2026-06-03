@@ -3,16 +3,29 @@
  * Validates question structure and quality for career assessments
  */
 
+export interface QuestionValidationResult {
+  isValid: boolean;
+  errors: string[];
+  autoFixed: boolean;
+}
+
+export interface QuestionBatchValidationResult {
+  valid: any[];
+  invalid: Array<{ question: any; errors: string[] }>;
+  needsMore: boolean;
+  autoFixedCount: number;
+}
+
 /**
  * Validate a generated question meets quality standards
- * @param {Object} question - Question object to validate
- * @param {string} questionType - 'aptitude' or 'knowledge'
- * @returns {Object} { isValid: boolean, errors: string[] }
+ * @param question - Question object to validate
+ * @param questionType - 'aptitude' or 'knowledge'
+ * @returns { isValid, errors }
  */
-export function validateQuestion(question, questionType) {
-  const errors = [];
-  const autoFixes = [];
-  
+export function validateQuestion(question: any, questionType: string): QuestionValidationResult {
+  const errors: string[] = [];
+  const autoFixes: string[] = [];
+
   // Auto-fix: Normalize question text field
   if (!question.text && question.question) {
     question.text = question.question;
@@ -20,14 +33,14 @@ export function validateQuestion(question, questionType) {
   } else if (question.text && !question.question) {
     question.question = question.text;
   }
-  
+
   // Check required fields
   if (!question.text && !question.question) {
     errors.push('Missing question text');
   }
-  
+
   const questionText = question.text || question.question || '';
-  
+
   // More lenient text length validation - only reject if critically short or absurdly long
   if (questionText.length < 5) {
     errors.push(`Question text too short: ${questionText.length} characters`);
@@ -37,7 +50,7 @@ export function validateQuestion(question, questionType) {
     // Warn but don't reject
     autoFixes.push(`Question text is short (${questionText.length} chars) but acceptable`);
   }
-  
+
   // Check options
   if (!question.options || !Array.isArray(question.options)) {
     errors.push('Missing or invalid options array');
@@ -45,26 +58,26 @@ export function validateQuestion(question, questionType) {
     // Clerical questions have 2 options (Same/Different), all others have 4
     // Check by category/subtype OR by detecting Same/Different options
     const hasSameDifferentOptions = question.options.length === 2 &&
-      question.options.some(opt => String(opt).trim().toLowerCase() === 'same') &&
-      question.options.some(opt => String(opt).trim().toLowerCase() === 'different');
-    
-    const isClericalQuestion = question.subtype === 'clerical' || 
+      question.options.some((opt: any) => String(opt).trim().toLowerCase() === 'same') &&
+      question.options.some((opt: any) => String(opt).trim().toLowerCase() === 'different');
+
+    const isClericalQuestion = question.subtype === 'clerical' ||
                                question.category === 'clerical' ||
                                question.skill_tag === 'clerical_speed' ||
                                hasSameDifferentOptions;
-    
+
     // Auto-fix: If we detect Same/Different options, mark as clerical
     if (hasSameDifferentOptions && !question.category) {
       question.category = 'clerical';
     }
-    
+
     const expectedOptions = isClericalQuestion ? 2 : 4;
-    
+
     if (question.options.length !== expectedOptions) {
       errors.push(`Expected ${expectedOptions} options, got ${question.options.length}`);
     }
   }
-  
+
   // Check correct answer
   let correctAnswer = question.correct || question.correct_answer;
   if (!correctAnswer) {
@@ -73,18 +86,18 @@ export function validateQuestion(question, questionType) {
     // Check if this is a clerical question (2 options: Same/Different)
     // Check by category/subtype OR by detecting Same/Different options
     const hasSameDifferentOptions = question.options && question.options.length === 2 &&
-      question.options.some(opt => String(opt).trim().toLowerCase() === 'same') &&
-      question.options.some(opt => String(opt).trim().toLowerCase() === 'different');
-    
-    const isClericalQuestion = question.subtype === 'clerical' || 
+      question.options.some((opt: any) => String(opt).trim().toLowerCase() === 'same') &&
+      question.options.some((opt: any) => String(opt).trim().toLowerCase() === 'different');
+
+    const isClericalQuestion = question.subtype === 'clerical' ||
                                question.category === 'clerical' ||
                                question.skill_tag === 'clerical_speed' ||
                                hasSameDifferentOptions;
-    
+
     if (isClericalQuestion) {
       // Clerical questions use "Same" or "Different"
       const normalized = String(correctAnswer).trim().toLowerCase();
-      
+
       // Handle various formats: "Same", "Different", "Option A", "Option B", "A", "B"
       if (normalized === 'same' || normalized === 'different') {
         // Already in correct format
@@ -126,18 +139,18 @@ export function validateQuestion(question, questionType) {
       // First try to extract letter from formats like "Option B", "B)", "b", etc.
       const normalized = String(correctAnswer).trim().toUpperCase();
       const letterMatch = normalized.match(/[ABCD]/);
-      
+
       if (letterMatch) {
         // Found a letter, use it
         question.correct = letterMatch[0];
       } else if (question.options && Array.isArray(question.options)) {
         // AI returned the actual answer text, match it against options
         const answerText = String(correctAnswer).trim();
-        const optionIndex = question.options.findIndex(opt => {
+        const optionIndex = question.options.findIndex((opt: any) => {
           const optText = String(opt).trim();
           return optText === answerText || optText.toLowerCase() === answerText.toLowerCase();
         });
-        
+
         if (optionIndex !== -1 && optionIndex < 4) {
           // Convert index to letter (0->A, 1->B, 2->C, 3->D)
           question.correct = String.fromCharCode(65 + optionIndex);
@@ -149,7 +162,7 @@ export function validateQuestion(question, questionType) {
       }
     }
   }
-  
+
   // Check type/subtype for categorization
   if (questionType === 'aptitude' && !question.subtype && !question.category) {
     // Auto-fix: Try to infer category from other fields
@@ -174,12 +187,12 @@ export function validateQuestion(question, questionType) {
       autoFixes.push('Assigned default category "verbal" (no category info found)');
     }
   }
-  
+
   // Log auto-fixes if any
   if (autoFixes.length > 0) {
     console.log(`🔧 Auto-fixed question ${question.id || 'unknown'}:`, autoFixes);
   }
-  
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -189,17 +202,21 @@ export function validateQuestion(question, questionType) {
 
 /**
  * Validate and filter a batch of questions
- * @param {Array} questions - Array of questions to validate
- * @param {string} questionType - 'aptitude' or 'knowledge'
- * @param {number} expectedCount - Expected number of questions
- * @returns {Object} { valid: Array, invalid: Array, needsMore: boolean }
+ * @param questions - Array of questions to validate
+ * @param questionType - 'aptitude' or 'knowledge'
+ * @param expectedCount - Expected number of questions
+ * @returns { valid, invalid, needsMore }
  */
-export function validateQuestionBatch(questions, questionType, expectedCount) {
-  const valid = [];
-  const invalid = [];
+export function validateQuestionBatch(
+  questions: any[],
+  questionType: string,
+  expectedCount: number
+): QuestionBatchValidationResult {
+  const valid: any[] = [];
+  const invalid: Array<{ question: any; errors: string[] }> = [];
   let autoFixedCount = 0;
-  
-  questions.forEach((q, idx) => {
+
+  questions.forEach((q: any, idx: number) => {
     const validation = validateQuestion(q, questionType);
     if (validation.isValid) {
       valid.push(q);
@@ -215,16 +232,16 @@ export function validateQuestionBatch(questions, questionType, expectedCount) {
       invalid.push({ question: q, errors: validation.errors });
     }
   });
-  
+
   const needsMore = valid.length < expectedCount;
-  
+
   console.log(`📊 Validation results: ${valid.length}/${expectedCount} valid, ${invalid.length} invalid${autoFixedCount > 0 ? `, ${autoFixedCount} auto-fixed` : ''}`);
-  
+
   if (invalid.length > 0) {
     console.warn(`⚠️ ${invalid.length} questions failed validation. Common issues:`);
-    const errorCounts = {};
+    const errorCounts: Record<string, number> = {};
     invalid.forEach(({ errors }) => {
-      errors.forEach(err => {
+      errors.forEach((err: string) => {
         errorCounts[err] = (errorCounts[err] || 0) + 1;
       });
     });
@@ -232,6 +249,6 @@ export function validateQuestionBatch(questions, questionType, expectedCount) {
       console.warn(`   - ${error}: ${count} questions`);
     });
   }
-  
+
   return { valid, invalid, needsMore, autoFixedCount };
 }

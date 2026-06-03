@@ -1,7 +1,7 @@
 /**
  * Assessment Data Preparation Service
  * Handles data transformation and validation for AI analysis
- * 
+ *
  * @version 2.1.0
  */
 
@@ -16,11 +16,11 @@ const logger = getLogger('assessment-data-prep');
 
 /**
  * Validate that all required fields are present in the AI response
- * @param {Object} results - Parsed results from AI
- * @returns {Object} - { isValid: boolean, missingFields: string[] }
+ * @param results - Parsed results from AI
+ * @returns { isValid, missingFields }
  */
-export const validateResults = (results) => {
-  const missingFields = [];
+export const validateResults = (results: any): { isValid: boolean; missingFields: string[] } => {
+  const missingFields: string[] = [];
 
   // Core sections
   if (!results.riasec?.topThree?.length) missingFields.push('riasec.topThree');
@@ -30,14 +30,14 @@ export const validateResults = (results) => {
   if (!results.workValues?.topThree?.length) missingFields.push('workValues.topThree');
   if (!results.employability?.strengthAreas?.length) missingFields.push('employability');
   if (!results.knowledge || typeof results.knowledge.score === 'undefined') missingFields.push('knowledge');
-  
+
   // Career fit (critical)
   if (!results.careerFit?.clusters?.length) missingFields.push('careerFit.clusters');
-  
+
   // Skill gap and roadmap
   if (!results.skillGap?.priorityA?.length) missingFields.push('skillGap');
   if (!results.roadmap?.projects?.length) missingFields.push('roadmap');
-  
+
   // Summary sections
   if (!results.finalNote?.advantage) missingFields.push('finalNote');
   if (!results.profileSnapshot?.aptitudeStrengths?.length) missingFields.push('profileSnapshot.aptitudeStrengths');
@@ -57,7 +57,7 @@ export const validateResults = (results) => {
 /**
  * Format seconds to readable time string
  */
-export const formatTimeForPrompt = (seconds) => {
+export const formatTimeForPrompt = (seconds: number | null | undefined): string => {
   if (!seconds || seconds <= 0) return 'Not recorded';
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -67,17 +67,17 @@ export const formatTimeForPrompt = (seconds) => {
 };
 /**
  * GRADE LEVEL TO SECTION PREFIX MAPPING
- * 
+ *
  * This constant documents the complete mapping between grade levels and database section prefixes.
  * Each grade level uses different assessment sections stored in personal_assessment_sections table.
- * 
+ *
  * Grade Level Categories:
  * - Middle School (grades 6-8): Simplified assessment with age-appropriate sections
  * - High School (grades 9-10): Simplified assessment with career exploration focus
  * - Higher Secondary (grades 11-12): Comprehensive assessment with standard sections
  * - After 10th/After 12th/College: Comprehensive assessment with standard sections
  */
-const GRADE_LEVEL_MAPPINGS = {
+const GRADE_LEVEL_MAPPINGS: Record<string, Record<string, string>> = {
   'middle': {
     riasec: 'middle_interest_explorer',      // Simplified interest assessment for middle school
     bigfive: 'middle_strengths_character',   // Character strengths assessment
@@ -127,38 +127,39 @@ const GRADE_LEVEL_MAPPINGS = {
     employability: 'employability'
   }
 };
+void GRADE_LEVEL_MAPPINGS;
 /**
  * Get section prefix based on grade level
- * 
+ *
  * Maps base section names to their database section prefixes according to grade level.
  * This is critical for correct answer extraction from the database.
- * 
- * @param {string} baseSection - The base section name ('riasec', 'bigfive', 'aptitude', 'knowledge', 'values', 'employability')
- * @param {string} gradeLevel - The learner's grade level ('middle', 'highschool', 'higher_secondary', 'after10', 'after12', 'college')
- * @returns {string} The database section prefix to use for answer extraction
- * 
+ *
+ * @param baseSection - The base section name ('riasec', 'bigfive', 'aptitude', 'knowledge', 'values', 'employability')
+ * @param gradeLevel - The learner's grade level ('middle', 'highschool', 'higher_secondary', 'after10', 'after12', 'college')
+ * @returns The database section prefix to use for answer extraction
+ *
  * Examples:
  * - getSectionPrefix('riasec', 'middle') → 'middle_interest_explorer'
  * - getSectionPrefix('riasec', 'highschool') → 'hs_interest_explorer'
  * - getSectionPrefix('riasec', 'higher_secondary') → 'riasec' (no prefix)
  * - getSectionPrefix('riasec', 'college') → 'riasec' (no prefix)
- * 
+ *
  * Exported for testing
  */
-export const getSectionPrefix = (baseSection, gradeLevel) => {
+export const getSectionPrefix = (baseSection: string, gradeLevel: string): string => {
   // Middle school (grades 6-8) uses simplified sections with 'middle_' prefix
   if (gradeLevel === 'middle') {
-    const middleSchoolMap = {
+    const middleSchoolMap: Record<string, string> = {
       'riasec': 'middle_interest_explorer',
       'bigfive': 'middle_strengths_character',
       'knowledge': 'middle_learning_preferences'
     };
     return middleSchoolMap[baseSection] || baseSection;
-  } 
-  
+  }
+
   // High school (grades 9-10) uses simplified sections with 'hs_' prefix
   else if (gradeLevel === 'highschool') {
-    const highSchoolMap = {
+    const highSchoolMap: Record<string, string> = {
       'riasec': 'hs_interest_explorer',
       'bigfive': 'hs_strengths_character',
       'aptitude': 'hs_aptitude_sampling',
@@ -166,7 +167,7 @@ export const getSectionPrefix = (baseSection, gradeLevel) => {
     };
     return highSchoolMap[baseSection] || baseSection;
   }
-  
+
   // Higher secondary (grades 11-12) uses comprehensive sections with standard names (no prefix)
   // This is the FIX for the bug: explicitly handle 'higher_secondary' to return base section
   else if (gradeLevel === 'higher_secondary') {
@@ -174,19 +175,28 @@ export const getSectionPrefix = (baseSection, gradeLevel) => {
     // 'riasec' → 'riasec', 'bigfive' → 'bigfive', 'aptitude' → 'aptitude', etc.
     return baseSection;
   }
-  
+
   // After10, after12, college use comprehensive sections with standard names (no prefix)
   // Default case: return base section without modification
   return baseSection;
 };
-export const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null, learnerContext = {}, adaptiveResults = null) => {
-  const { 
-    riasecQuestions, 
-    aptitudeQuestions, 
-    bigFiveQuestions, 
-    workValuesQuestions, 
-    employabilityQuestions, 
-    streamKnowledgeQuestions 
+export const prepareAssessmentData = (
+  answers: any,
+  stream: string,
+  questionBanks: any,
+  sectionTimings: any = {},
+  gradeLevel: string = 'after12',
+  preCalculatedScores: any = null,
+  learnerContext: any = {},
+  adaptiveResults: any = null
+): any => {
+  const {
+    riasecQuestions,
+    aptitudeQuestions,
+    bigFiveQuestions,
+    workValuesQuestions,
+    employabilityQuestions,
+    streamKnowledgeQuestions
   } = questionBanks;
 
   // Extract adaptive results if not provided
@@ -197,24 +207,25 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
   logger.info('=== prepareAssessmentData EXTRACTION START ===', { gradeLevel, stream });
 
   // Extract answers by section
-  const riasecAnswers = {};
-  const bigFiveAnswers = {};
-  const workValuesAnswers = {};
-  const employabilityAnswers = { selfRating: {}, sjt: [] };
-  const knowledgeAnswers = {};
-  const aptitudeAnswers = { verbal: [], numerical: [], abstract: [], spatial: [], clerical: [] };
+  const riasecAnswers: Record<string, any> = {};
+  const bigFiveAnswers: Record<string, any> = {};
+  const workValuesAnswers: Record<string, any> = {};
+  const employabilityAnswers: { selfRating: Record<string, any>; sjt: any[] } = { selfRating: {}, sjt: [] };
+  const knowledgeAnswers: Record<string, any> = {};
+  const aptitudeAnswers: Record<string, any[]> = { verbal: [], numerical: [], abstract: [], spatial: [], clerical: [] };
 
   const riasecPrefix = getSectionPrefix('riasec', gradeLevel);
   const bigFivePrefix = getSectionPrefix('bigfive', gradeLevel);
   const aptitudePrefix = getSectionPrefix('aptitude', gradeLevel);
   const knowledgePrefix = getSectionPrefix('knowledge', gradeLevel);
+  void aptitudePrefix;
 
   // Extract RIASEC answers
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${riasecPrefix}_`)) {
       const questionId = key.replace(`${riasecPrefix}_`, '');
-      const question = riasecQuestions?.find(q => q.id === questionId);
-      
+      const question = riasecQuestions?.find((q: any) => q.id === questionId);
+
       if (question) {
         riasecAnswers[questionId] = {
           questionId,
@@ -234,8 +245,8 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${bigFivePrefix}_`)) {
       const questionId = key.replace(`${bigFivePrefix}_`, '');
-      const question = bigFiveQuestions?.find(q => q.id === questionId);
-      
+      const question = bigFiveQuestions?.find((q: any) => q.id === questionId);
+
       if (question) {
         bigFiveAnswers[questionId] = { question: question.text, answer: value };
       }
@@ -248,8 +259,8 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith('values_')) {
       const questionId = key.replace('values_', '');
-      const question = workValuesQuestions?.find(q => q.id === questionId);
-      
+      const question = workValuesQuestions?.find((q: any) => q.id === questionId);
+
       if (question) {
         workValuesAnswers[questionId] = { question: question.text, answer: value };
       }
@@ -263,8 +274,8 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith(`${knowledgePrefix}_`)) {
       const questionId = key.replace(`${knowledgePrefix}_`, '');
-      const question = streamQuestions.find(q => q.id === questionId);
-      
+      const question = streamQuestions.find((q: any) => q.id === questionId);
+
       if (question) {
         const isCorrect = value === (question.correct_answer || question.correctAnswer || question.correct);
         knowledgeAnswers[questionId] = {
@@ -280,7 +291,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
   logger.info('Knowledge answers extracted:', { count: Object.keys(knowledgeAnswers).length });
 
   // Calculate timing metrics
-  const timingData = {
+  const timingData: any = {
     riasec: {
       seconds: sectionTimings.riasec || 0,
       formatted: formatTimeForPrompt(sectionTimings.riasec),
@@ -311,7 +322,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
       formatted: formatTimeForPrompt(sectionTimings.knowledge),
       questionsCount: streamQuestions.length
     },
-    totalTime: Object.values(sectionTimings).reduce((sum, t) => sum + (t || 0), 0)
+    totalTime: Object.values(sectionTimings).reduce((sum: number, t: any) => sum + (t || 0), 0)
   };
   timingData.totalFormatted = formatTimeForPrompt(timingData.totalTime);
 
@@ -339,3 +350,4 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
     }
   };
 };
+void calculateStreamRecommendations;

@@ -4,8 +4,13 @@
  * College/higher_secondary learners use dynamic AI topic generation
  */
 
+export interface StreamKnowledgePrompt {
+  name: string;
+  topics: string[];
+}
+
 // Stream-specific prompts for knowledge questions
-export const STREAM_KNOWLEDGE_PROMPTS = {
+export const STREAM_KNOWLEDGE_PROMPTS: Record<string, StreamKnowledgePrompt> = {
   // ═══════════════════════════════════════════════════════════════════════════
   // CATEGORY-LEVEL STREAMS (After 12th - Science/Commerce/Arts selection)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -18,10 +23,10 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
     topics: ['Accounting principles', 'Business law', 'Economics', 'Financial management', 'Marketing basics', 'Business statistics']
   },
   arts: {
-    name: 'Arts & Humanities',
-    topics: ['Critical thinking', 'Communication skills', 'Social sciences', 'Cultural studies', 'Research methods', 'Analytical writing']
+    name: 'Arts/Humanities General',
+    topics: ['English Literature', 'History concepts', 'Geography basics', 'Critical thinking', 'Communication skills', 'Cultural studies']
   },
-  
+
   // ═══════════════════════════════════════════════════════════════════════════
   // AFTER 10TH STREAMS (11th/12th Class - PCMB, PCMS, PCM, PCB, Commerce, Arts)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -61,11 +66,7 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
     name: 'Arts with Economics',
     topics: ['Economics fundamentals', 'Political Science basics', 'English Literature', 'Public policy', 'International relations', 'Governance']
   },
-  'arts': {
-    name: 'Arts/Humanities General',
-    topics: ['English Literature', 'History concepts', 'Geography basics', 'Critical thinking', 'Communication skills', 'Cultural studies']
-  },
-  
+
   // ═══════════════════════════════════════════════════════════════════════════
   // GENERIC/FALLBACK STREAMS (used for normalization only, topics not accessed)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -167,8 +168,14 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   }
 };
 
+export interface AptitudeCategory {
+  id: string;
+  name: string;
+  description: string;
+}
+
 // Aptitude categories
-export const APTITUDE_CATEGORIES = [
+export const APTITUDE_CATEGORIES: AptitudeCategory[] = [
   { id: 'verbal', name: 'Verbal Reasoning', description: 'Language comprehension, vocabulary, analogies' },
   { id: 'numerical', name: 'Numerical Ability', description: 'Mathematical reasoning, data interpretation' },
   { id: 'logical', name: 'Logical Reasoning', description: 'Pattern recognition, deductive reasoning' },

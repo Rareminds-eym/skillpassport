@@ -2,10 +2,10 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * ADVANCED AI-POWERED COURSE RECOMMENDATION ENGINE v2.0
  * ═══════════════════════════════════════════════════════════════════════════════
- * 
+ *
  * A sophisticated multi-dimensional analysis system that performs deep micro-level
  * profiling of learners to generate highly accurate, personalized recommendations.
- * 
+ *
  * ARCHITECTURE:
  * ┌─────────────────────────────────────────────────────────────────────────────┐
  * │                        LEARNER PROFILE ANALYZER                             │
@@ -17,7 +17,7 @@
  * │  Layer 5: Cross-Domain Synergy Detection                                    │
  * │  Layer 6: Future Potential Prediction                                       │
  * └─────────────────────────────────────────────────────────────────────────────┘
- * 
+ *
  * SCORING WEIGHTS (Adaptive based on data availability):
  * - Interest Alignment (RIASEC)      : 20% base → up to 35% if strong signal
  * - Academic Performance             : 25% base → up to 40% if comprehensive data
@@ -39,15 +39,15 @@
  * - commerce_maths → commerce
  * - ANIMATION → null (not a valid stream)
  */
-const extractStreamCategory = (stream) => {
+const extractStreamCategory = (stream: string | null | undefined): string | null => {
   if (!stream) return null;
   const normalized = stream.toLowerCase().trim();
-  
+
   // Direct category matches
   if (normalized === 'science' || normalized === 'commerce' || normalized === 'arts') {
     return normalized;
   }
-  
+
   // Extract category from stream variants
   if (normalized.startsWith('science_') || ['pcmb', 'pcms', 'pcm', 'pcb'].includes(normalized)) {
     return 'science';
@@ -58,7 +58,7 @@ const extractStreamCategory = (stream) => {
   if (normalized.startsWith('arts_') || normalized === 'humanities') {
     return 'arts';
   }
-  
+
   // Not a valid stream category
   return null;
 };
@@ -68,7 +68,7 @@ const extractStreamCategory = (stream) => {
  * Valid categories: science, commerce, arts, and their variants (pcmb, pcms, etc.)
  * Invalid: ANIMATION, B.Sc, BBA, etc. (specific program names)
  */
-const isValidStreamCategory = (stream) => {
+export const isValidStreamCategory = (stream: string | null | undefined): boolean => {
   return extractStreamCategory(stream) !== null;
 };
 
@@ -76,7 +76,7 @@ const isValidStreamCategory = (stream) => {
 // COMPREHENSIVE COURSE KNOWLEDGE BASE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const COURSE_KNOWLEDGE_BASE = {
+export const COURSE_KNOWLEDGE_BASE: Record<string, any> = {
   bsc: {
     name: "B.Sc (Physics/Chemistry/Biology/Maths)",
     stream: "science",
@@ -222,16 +222,16 @@ export const DEGREE_PROGRAMS = [
 // LAYER 1: INTEREST DNA ANALYZER (Deep RIASEC Analysis)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const analyzeInterestDNA = (riasecScores) => {
+const analyzeInterestDNA = (riasecScores: Record<string, number> | null | undefined): any => {
   if (!riasecScores || Object.keys(riasecScores).length === 0) {
     return { hasData: false, normalizedScores: {}, dominantTypes: [], strengthLevel: 0 };
   }
-  const total = Object.values(riasecScores).reduce((sum, v) => sum + (v || 0), 0);
+  const total = Object.values(riasecScores).reduce((sum: number, v: any) => sum + (v || 0), 0);
   if (total === 0) return { hasData: false, normalizedScores: {}, dominantTypes: [], strengthLevel: 0 };
 
   const maxPossible = Math.max(...Object.values(riasecScores), 1);
-  const normalizedScores = {};
-  Object.entries(riasecScores).forEach(([type, score]) => {
+  const normalizedScores: Record<string, number> = {};
+  Object.entries(riasecScores).forEach(([type, score]: [string, any]) => {
     normalizedScores[type] = Math.round(((score || 0) / maxPossible) * 100);
   });
 
@@ -248,32 +248,32 @@ const analyzeInterestDNA = (riasecScores) => {
 // LAYER 2: ACADEMIC INTELLIGENCE PROFILER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const profileAcademicIntelligence = (marks) => {
+const profileAcademicIntelligence = (marks: any[]): any => {
   if (!marks || marks.length === 0) {
     return { hasData: false, subjectScores: {}, streamAffinity: { science: 0, commerce: 0, arts: 0 }, academicStrength: 0, topSubjects: [] };
   }
 
-  const subjectScores = {};
-  const streamScores = { science: [], commerce: [], arts: [] };
-  const streamMap = {
+  const subjectScores: Record<string, number> = {};
+  const streamScores: Record<string, number[]> = { science: [], commerce: [], arts: [] };
+  const streamMap: Record<string, string[]> = {
     science: ["physics", "phy", "chemistry", "chem", "biology", "bio", "mathematics", "maths", "math", "science", "computer", "cs", "it", "zoology", "botany"],
     commerce: ["accountancy", "accounts", "accounting", "economics", "eco", "commerce", "business", "finance", "taxation", "management"],
     arts: ["english", "eng", "history", "hist", "political", "civics", "sociology", "psychology", "philosophy", "geography", "hindi", "literature"]
   };
 
-  marks.forEach((mark) => {
+  marks.forEach((mark: any) => {
     const subjectName = (mark.curriculum_subjects?.name || mark.subject_name || mark.subject_id || "").toLowerCase().trim();
     if (!subjectName) return;
     const percentage = mark.percentage || (mark.marks_obtained && mark.total_marks ? (mark.marks_obtained / mark.total_marks) * 100 : 0);
     if (percentage > 0) {
       if (!subjectScores[subjectName] || subjectScores[subjectName] < percentage) subjectScores[subjectName] = percentage;
       Object.entries(streamMap).forEach(([stream, subjects]) => {
-        if (subjects.some((s) => subjectName.includes(s))) streamScores[stream].push(percentage);
+        if (subjects.some((s: string) => subjectName.includes(s))) streamScores[stream].push(percentage);
       });
     }
   });
 
-  const streamAffinity = {};
+  const streamAffinity: Record<string, number> = {};
   Object.entries(streamScores).forEach(([stream, scores]) => {
     streamAffinity[stream] = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   });
@@ -291,16 +291,16 @@ const profileAcademicIntelligence = (marks) => {
 // LAYER 3: SKILL SIGNATURE EXTRACTOR (Project Analysis)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const extractSkillSignature = (projects) => {
+const extractSkillSignature = (projects: any[]): any => {
   if (!projects || projects.length === 0) {
     return { hasData: false, domains: [], technologies: [], complexityScore: 0, practicalExperience: 0 };
   }
 
-  const domainCounts = {};
-  const technologies = new Set();
+  const domainCounts: Record<string, number> = {};
+  const technologies = new Set<string>();
   let totalComplexity = 0;
 
-  const domainPatterns = {
+  const domainPatterns: Record<string, RegExp> = {
     technology: /\b(software|app|web|mobile|python|java|react|node|database|api|machine learning|ai|ml|backend|frontend|fullstack|coding|programming)\b/gi,
     business: /\b(startup|entrepreneur|business|marketing|sales|strategy|consulting|venture|product|growth)\b/gi,
     research: /\b(research|experiment|scientific|hypothesis|thesis|publication|analysis|survey|data)\b/gi,
@@ -312,7 +312,7 @@ const extractSkillSignature = (projects) => {
 
   const techPatterns = /\b(python|java|javascript|react|node|angular|vue|sql|mongodb|aws|azure|docker|tensorflow|pytorch|pandas|excel|tableau|figma|photoshop)\b/gi;
 
-  projects.forEach((project) => {
+  projects.forEach((project: any) => {
     const text = `${project.title || ""} ${project.description || ""}`.toLowerCase();
     let projectComplexity = 0;
 
@@ -325,9 +325,9 @@ const extractSkillSignature = (projects) => {
     });
 
     const techMatches = text.match(techPatterns) || [];
-    techMatches.forEach((tech) => technologies.add(tech.toLowerCase()));
+    techMatches.forEach((tech: string) => technologies.add(tech.toLowerCase()));
     if (project.tech_stack && Array.isArray(project.tech_stack)) {
-      project.tech_stack.forEach((tech) => technologies.add(tech.toLowerCase()));
+      project.tech_stack.forEach((tech: string) => technologies.add(tech.toLowerCase()));
     }
     totalComplexity += Math.min(projectComplexity, 20);
   });
@@ -343,17 +343,17 @@ const extractSkillSignature = (projects) => {
 // LAYER 4: EXPERIENCE PATTERN RECOGNIZER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const recognizeExperiencePatterns = (experiences) => {
+const recognizeExperiencePatterns = (experiences: any[]): any => {
   if (!experiences || experiences.length === 0) {
     return { hasData: false, experienceTypes: [], verifiedCount: 0, professionalReadiness: 0, careerSignals: [] };
   }
 
-  const typeCounts = {};
+  const typeCounts: Record<string, number> = {};
   let verifiedCount = 0;
   let totalMonths = 0;
-  const careerSignals = new Set();
+  const careerSignals = new Set<string>();
 
-  const typePatterns = {
+  const typePatterns: Record<string, RegExp> = {
     technology: /\b(tech|software|it|developer|engineer|programmer|data|analyst|web|app)\b/gi,
     business: /\b(business|marketing|sales|management|executive|consultant|strategy)\b/gi,
     research: /\b(research|lab|scientist|analyst|academic|university)\b/gi,
@@ -364,7 +364,7 @@ const recognizeExperiencePatterns = (experiences) => {
     legal: /\b(legal|law|court|advocate|paralegal|lawyer)\b/gi
   };
 
-  experiences.forEach((exp) => {
+  experiences.forEach((exp: any) => {
     const text = `${exp.organization || ""} ${exp.role || ""} ${exp.description || ""}`.toLowerCase();
     Object.entries(typePatterns).forEach(([type, pattern]) => {
       const matches = (text.match(pattern) || []).length;
@@ -390,16 +390,22 @@ const recognizeExperiencePatterns = (experiences) => {
 // LAYER 5: CROSS-DOMAIN SYNERGY DETECTOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const detectCrossDomainSynergy = (interestDNA, academicProfile, skillSignature, experiencePattern, courseProfile) => {
+const detectCrossDomainSynergy = (
+  interestDNA: any,
+  academicProfile: any,
+  skillSignature: any,
+  experiencePattern: any,
+  courseProfile: any
+): any => {
   let synergyScore = 0;
-  const synergyFactors = [];
+  const synergyFactors: string[] = [];
 
   // Check if multiple factors align with the course
   const alignmentCount = [
-    interestDNA.hasData && interestDNA.dominantTypes.some(t => courseProfile.riasec.primary.includes(t)),
+    interestDNA.hasData && interestDNA.dominantTypes.some((t: string) => courseProfile.riasec.primary.includes(t)),
     academicProfile.hasData && academicProfile.dominantStream === courseProfile.stream,
-    skillSignature.hasData && skillSignature.domains.some(d => courseProfile.keywords.high.some(k => d.includes(k) || k.includes(d))),
-    experiencePattern.hasData && experiencePattern.experienceTypes.some(t => courseProfile.stream === 'science' ? ['technology', 'research'].includes(t) : courseProfile.stream === 'commerce' ? ['business', 'finance'].includes(t) : ['creative', 'social'].includes(t))
+    skillSignature.hasData && skillSignature.domains.some((d: string) => courseProfile.keywords.high.some((k: string) => d.includes(k) || k.includes(d))),
+    experiencePattern.hasData && experiencePattern.experienceTypes.some((t: string) => courseProfile.stream === 'science' ? ['technology', 'research'].includes(t) : courseProfile.stream === 'commerce' ? ['business', 'finance'].includes(t) : ['creative', 'social'].includes(t))
   ].filter(Boolean).length;
 
   if (alignmentCount >= 3) {
@@ -431,16 +437,16 @@ const detectCrossDomainSynergy = (interestDNA, academicProfile, skillSignature, 
 // LAYER 6: FUTURE POTENTIAL PREDICTOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const predictFuturePotential = (courseProfile, skillSignature, academicProfile) => {
+const predictFuturePotential = (courseProfile: any, skillSignature: any, academicProfile: any): any => {
   let futureScore = 0;
-  const futureFactors = [];
+  const futureFactors: string[] = [];
 
   // Base future relevance from course profile
   futureScore += (courseProfile.futureRelevance || 0.7) * 10;
 
   // Bonus for emerging tech skills
   const emergingTech = ['ai', 'ml', 'machine learning', 'python', 'data', 'cloud', 'react', 'node'];
-  const hasEmergingTech = skillSignature.technologies.some(t => emergingTech.some(e => t.includes(e)));
+  const hasEmergingTech = skillSignature.technologies.some((t: string) => emergingTech.some((e) => t.includes(e)));
   if (hasEmergingTech) {
     futureScore += 5;
     futureFactors.push("Emerging technology skills");
@@ -465,24 +471,31 @@ const predictFuturePotential = (courseProfile, skillSignature, academicProfile) 
 // MAIN SCORING ENGINE - Calculates comprehensive match scores
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicProfile, skillSignature, experiencePattern) => {
+const calculateDetailedScore = (
+  courseId: string,
+  courseProfile: any,
+  interestDNA: any,
+  academicProfile: any,
+  skillSignature: any,
+  experiencePattern: any
+): any => {
   let totalScore = 0;
-  const matchReasons = [];
-  const scoreBreakdown = {};
+  const matchReasons: string[] = [];
+  const scoreBreakdown: Record<string, number> = {};
 
   // ═══════════════════════════════════════════════════════════════════════════
   // INTEREST ALIGNMENT SCORE (Base: 20%, Max: 30%)
   // ═══════════════════════════════════════════════════════════════════════════
   let interestScore = 0;
   if (interestDNA.hasData) {
-    const primaryMatch = interestDNA.dominantTypes.filter(t => courseProfile.riasec.primary.includes(t)).length;
-    const secondaryMatch = interestDNA.dominantTypes.filter(t => courseProfile.riasec.secondary.includes(t)).length;
-    
+    const primaryMatch = interestDNA.dominantTypes.filter((t: string) => courseProfile.riasec.primary.includes(t)).length;
+    const secondaryMatch = interestDNA.dominantTypes.filter((t: string) => courseProfile.riasec.secondary.includes(t)).length;
+
     interestScore = primaryMatch * 12 + secondaryMatch * 6;
     interestScore = Math.min(30, interestScore * (1 + interestDNA.strengthLevel / 200));
-    
+
     if (primaryMatch > 0) {
-      const matchedTypes = interestDNA.dominantTypes.filter(t => courseProfile.riasec.primary.includes(t));
+      const matchedTypes = interestDNA.dominantTypes.filter((t: string) => courseProfile.riasec.primary.includes(t));
       matchReasons.push(`Strong ${matchedTypes.join(', ')} interests align perfectly`);
     }
   }
@@ -502,11 +515,11 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
 
     // Subject-specific scoring
     let subjectMatchScore = 0;
-    let matchedSubjects = [];
-    Object.entries(courseProfile.subjects.core).forEach(([subject, weight]) => {
+    let matchedSubjects: Array<{ name: string; score: number }> = [];
+    Object.entries(courseProfile.subjects.core).forEach(([subject, weight]: [string, any]) => {
       const aliases = [subject, ...(courseProfile.subjects.aliases || [])];
-      Object.entries(academicProfile.subjectScores).forEach(([learnerSubject, score]) => {
-        if (aliases.some(a => learnerSubject.includes(a))) {
+      Object.entries(academicProfile.subjectScores).forEach(([learnerSubject, score]: [string, any]) => {
+        if (aliases.some((a: string) => learnerSubject.includes(a))) {
           const contribution = (score / 100) * weight * 20;
           subjectMatchScore += contribution;
           if (score >= 70) matchedSubjects.push({ name: learnerSubject, score: Math.round(score) });
@@ -533,9 +546,9 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
   let projectScore = 0;
   if (skillSignature.hasData) {
     // Domain relevance
-    const relevantDomains = skillSignature.domains.filter(d => {
+    const relevantDomains = skillSignature.domains.filter((d: string) => {
       const keywords = [...(courseProfile.keywords.high || []), ...(courseProfile.keywords.medium || [])];
-      return keywords.some(k => d.includes(k) || k.includes(d));
+      return keywords.some((k: string) => d.includes(k) || k.includes(d));
     });
 
     if (relevantDomains.length > 0) {
@@ -567,12 +580,12 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
   let experienceScore = 0;
   if (experiencePattern.hasData) {
     // Type relevance mapping
-    const streamTypeMap = {
+    const streamTypeMap: Record<string, string[]> = {
       science: ['technology', 'research', 'healthcare'],
       commerce: ['business', 'finance', 'creative'],
       arts: ['creative', 'social', 'legal']
     };
-    const relevantTypes = experiencePattern.experienceTypes.filter(t => 
+    const relevantTypes = experiencePattern.experienceTypes.filter((t: string) =>
       (streamTypeMap[courseProfile.stream] || []).includes(t)
     );
 
@@ -598,7 +611,7 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
   const synergy = detectCrossDomainSynergy(interestDNA, academicProfile, skillSignature, experiencePattern, courseProfile);
   scoreBreakdown.synergy = synergy.synergyScore;
   totalScore += synergy.synergyScore;
-  synergy.synergyFactors.forEach(f => matchReasons.push(f));
+  synergy.synergyFactors.forEach((f: string) => matchReasons.push(f));
 
   // ═══════════════════════════════════════════════════════════════════════════
   // FUTURE POTENTIAL BONUS (Max: 10%)
@@ -613,10 +626,10 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
   // ═══════════════════════════════════════════════════════════════════════════
   // FINAL SCORE CALCULATION
   // ═══════════════════════════════════════════════════════════════════════════
-  
+
   // Remove minimum threshold to show accurate scores
   const finalScore = Math.min(100, Math.max(0, Math.round(totalScore)));
-  
+
   // Determine match level with more granularity
   let matchLevel = 'Low';
   let matchEmoji = '📊';
@@ -631,7 +644,7 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
 
   // Add career paths for good matches
   if (finalScore >= 65 && courseProfile.careerPaths) {
-    const topCareers = courseProfile.careerPaths.slice(0, 2).map(c => c.role).join(', ');
+    const topCareers = courseProfile.careerPaths.slice(0, 2).map((c: any) => c.role).join(', ');
     matchReasons.push(`Careers: ${topCareers}`);
   }
 
@@ -641,7 +654,7 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
     matchEmoji,
     reasons: matchReasons.slice(0, 4), // Top 4 reasons
     scoreBreakdown,
-    careerPaths: courseProfile.careerPaths?.map(c => c.role) || []
+    careerPaths: courseProfile.careerPaths?.map((c: any) => c.role) || []
   };
 };
 
@@ -652,23 +665,28 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
 /**
  * Main function: Calculate comprehensive match scores for course recommendations
  * Uses multi-layer AI-like analysis for accurate, personalized recommendations
- * 
- * @param {Array} courseRecommendations - List of courses to score
- * @param {Object} riasecScores - RIASEC scores {R, I, A, S, E, C}
- * @param {Object} academicData - {subjectMarks, projects, experiences, education, learnerStream}
- * @param {String} learnerStream - Optional: Filter by learner's stream (science/commerce/arts)
- * @returns {Array} Sorted courses with match scores, reasons, and career paths
+ *
+ * @param courseRecommendations - List of courses to score
+ * @param riasecScores - RIASEC scores {R, I, A, S, E, C}
+ * @param academicData - {subjectMarks, projects, experiences, education, learnerStream}
+ * @param learnerStream - Optional: Filter by learner's stream (science/commerce/arts)
+ * @returns Sorted courses with match scores, reasons, and career paths
  */
-export const calculateCourseMatchScores = (courseRecommendations, riasecScores, academicData = {}, learnerStream = null) => {
+export const calculateCourseMatchScores = (
+  courseRecommendations: any[],
+  riasecScores: Record<string, number> | null | undefined,
+  academicData: any = {},
+  learnerStream: string | null = null
+): any[] => {
   if (!courseRecommendations || courseRecommendations.length === 0) return courseRecommendations || [];
 
-  const { subjectMarks = [], projects = [], experiences = [], education = [], _assessmentResults } = academicData;
-  
+  const { subjectMarks = [], projects = [], experiences = [], _assessmentResults } = academicData;
+
   // STREAM FILTERING: If learner has a specific stream (from after10 assessment), filter courses
   let filteredCourses = courseRecommendations;
   if (learnerStream) {
     const normalizedStream = learnerStream.toLowerCase().trim();
-    
+
     // Skip filtering if stream is invalid/placeholder
     if (normalizedStream === 'n/a' || normalizedStream === '—' || normalizedStream === '') {
       // skip filtering
@@ -678,7 +696,7 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
       const streamCategory = extractStreamCategory(normalizedStream);
 
       if (streamCategory) {
-        filteredCourses = courseRecommendations.filter(course => {
+        filteredCourses = courseRecommendations.filter((course: any) => {
           const courseId = course.courseId?.toLowerCase() || '';
           const courseProfile = COURSE_KNOWLEDGE_BASE[courseId];
           if (!courseProfile) return true; // Keep unknown courses
@@ -697,35 +715,35 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
   // ═══════════════════════════════════════════════════════════════════════════
   // STEP 1: Deep Profile Analysis (All Layers)
   // ═══════════════════════════════════════════════════════════════════════════
-  
+
   // ENHANCED: Prioritize assessment results if profile data is missing
   const hasAssessmentResults = _assessmentResults?.riasec?.scores && Object.keys(_assessmentResults.riasec.scores).length > 0;
-  
+
   // Use assessment RIASEC scores if no riasecScores parameter provided
-  const effectiveRiasecScores = (riasecScores && Object.keys(riasecScores).length > 0) 
-    ? riasecScores 
+  const effectiveRiasecScores = (riasecScores && Object.keys(riasecScores).length > 0)
+    ? riasecScores
     : (hasAssessmentResults ? _assessmentResults.riasec.scores : {});
-  
+
   // Check if we have ANY valid RIASEC data (non-zero scores)
-  const hasValidRiasecData = effectiveRiasecScores && Object.values(effectiveRiasecScores).some(score => score > 0);
-  
+  const hasValidRiasecData = effectiveRiasecScores && Object.values(effectiveRiasecScores).some((score: any) => score > 0);
+
   // If no valid RIASEC data, return empty array - don't show fallback recommendations
   if (!hasValidRiasecData) {
     return [];
   }
-  
+
   const interestDNA = analyzeInterestDNA(effectiveRiasecScores);
   const academicProfile = profileAcademicIntelligence(subjectMarks);
   const skillSignature = extractSkillSignature(projects);
   const experiencePattern = recognizeExperiencePatterns(experiences);
 
   // ENHANCED: Use assessment aptitude/knowledge for academic profile if missing
-  const enhancedAcademicProfile = academicProfile.hasData ? academicProfile : 
+  const enhancedAcademicProfile = academicProfile.hasData ? academicProfile :
     (hasAssessmentResults && _assessmentResults.aptitude ? {
       hasData: true,
       dominantStream: _assessmentResults.knowledge?.dominantArea || 'general',
       // Combine aptitude overall score with knowledge score for better accuracy
-      academicStrength: _assessmentResults.knowledge?.score 
+      academicStrength: _assessmentResults.knowledge?.score
         ? Math.round((_assessmentResults.aptitude.overallScore + _assessmentResults.knowledge.score) / 2)
         : _assessmentResults.aptitude.overallScore || 50,
       // Convert aptitude scores to subject scores for matching
@@ -741,17 +759,17 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
         spatial: _assessmentResults.aptitude.scores.spatial?.percentage || 0,
         // Estimate science subjects from logical/numerical + knowledge score boost
         physics: Math.round(
-          (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.6 + 
+          (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.6 +
           (_assessmentResults.aptitude.scores.numerical?.percentage || 0) * 0.3 +
           (_assessmentResults.knowledge?.score || 0) * 0.1
         ),
         chemistry: Math.round(
-          (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.5 + 
+          (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.5 +
           (_assessmentResults.aptitude.scores.numerical?.percentage || 0) * 0.4 +
           (_assessmentResults.knowledge?.score || 0) * 0.1
         ),
         biology: Math.round(
-          (_assessmentResults.aptitude.scores.verbal?.percentage || 0) * 0.4 + 
+          (_assessmentResults.aptitude.scores.verbal?.percentage || 0) * 0.4 +
           (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.4 +
           (_assessmentResults.knowledge?.score || 0) * 0.2
         ),
@@ -761,22 +779,22 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
       streamAffinity: {
         // Boost stream affinity with knowledge score
         science: Math.round(
-          ((_assessmentResults.aptitude.scores?.numerical?.percentage || 0) + 
+          ((_assessmentResults.aptitude.scores?.numerical?.percentage || 0) +
            (_assessmentResults.aptitude.scores?.logical?.percentage || 0)) / 2 * 0.7 +
           (_assessmentResults.knowledge?.score || 0) * 0.3
         ),
         commerce: Math.round(
-          ((_assessmentResults.aptitude.scores?.numerical?.percentage || 0) + 
+          ((_assessmentResults.aptitude.scores?.numerical?.percentage || 0) +
            (_assessmentResults.aptitude.scores?.verbal?.percentage || 0)) / 2 * 0.7 +
           (_assessmentResults.knowledge?.score || 0) * 0.3
         ),
         arts: Math.round(
-          ((_assessmentResults.aptitude.scores?.verbal?.percentage || 0) + 
+          ((_assessmentResults.aptitude.scores?.verbal?.percentage || 0) +
            (_assessmentResults.aptitude.scores?.spatial?.percentage || 0)) / 2 * 0.7 +
           (_assessmentResults.knowledge?.score || 0) * 0.3
         )
       },
-      topSubjects: _assessmentResults.aptitude.topStrengths?.map((strength, idx) => ({
+      topSubjects: _assessmentResults.aptitude.topStrengths?.map((strength: string) => ({
         name: strength,
         score: _assessmentResults.aptitude.scores?.[strength]?.percentage || 0
       })) || [],
@@ -788,10 +806,10 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
   // ═══════════════════════════════════════════════════════════════════════════
   // STEP 3: Calculate Scores for Each Course
   // ═══════════════════════════════════════════════════════════════════════════
-  const scoredCourses = filteredCourses.map(course => {
+  const scoredCourses = filteredCourses.map((course: any) => {
     const courseId = course.courseId?.toLowerCase() || '';
     const courseProfile = COURSE_KNOWLEDGE_BASE[courseId];
-    
+
     if (!courseProfile) {
       // Fallback for unknown courses
       return {
@@ -827,7 +845,7 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
   // ═══════════════════════════════════════════════════════════════════════════
   // STEP 4: Sort by Match Score and Return
   // ═══════════════════════════════════════════════════════════════════════════
-  const sortedCourses = scoredCourses.sort((a, b) => b.matchScore - a.matchScore);
+  const sortedCourses = scoredCourses.sort((a: any, b: any) => b.matchScore - a.matchScore);
   return sortedCourses;
 };
 

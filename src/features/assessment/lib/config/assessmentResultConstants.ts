@@ -3,7 +3,7 @@
  * Shared constants for the assessment result page
  */
 
-export const RIASEC_NAMES = {
+export const RIASEC_NAMES: Record<string, string> = {
     R: 'Realistic',
     I: 'Investigative',
     A: 'Artistic',
@@ -12,7 +12,7 @@ export const RIASEC_NAMES = {
     C: 'Conventional'
 };
 
-export const RIASEC_COLORS = {
+export const RIASEC_COLORS: Record<string, string> = {
     R: '#ef4444',
     I: '#8b5cf6',
     A: '#f59e0b',
@@ -21,7 +21,7 @@ export const RIASEC_COLORS = {
     C: '#6366f1'
 };
 
-export const TRAIT_NAMES = {
+export const TRAIT_NAMES: Record<string, string> = {
     O: 'Openness',
     C: 'Conscientiousness',
     E: 'Extraversion',
@@ -29,7 +29,7 @@ export const TRAIT_NAMES = {
     N: 'Neuroticism'
 };
 
-export const TRAIT_COLORS = {
+export const TRAIT_COLORS: Record<string, string> = {
     O: '#8b5cf6',
     C: '#10b981',
     E: '#f59e0b',
@@ -40,7 +40,7 @@ export const TRAIT_COLORS = {
 export const PRINT_STYLES = `
 /* Screen styles - hide print view visually but keep in DOM for JS access */
 @media screen {
-    .print-view { 
+    .print-view {
         position: absolute !important;
         left: -9999px !important;
         top: -9999px !important;
@@ -50,13 +50,13 @@ export const PRINT_STYLES = `
         visibility: visible !important;
         display: block !important;
     }
-    
+
     /* Hide watermarks on screen */
     .print-only-watermark {
         display: none !important;
         visibility: hidden !important;
     }
-    
+
     /* Hide print footer on screen - it has position:fixed which escapes parent positioning */
     .print-footer {
         display: none !important;
@@ -71,12 +71,12 @@ export const PRINT_STYLES = `
         size: A4 portrait;
         margin: 0;
     }
-    
+
     /* Reset everything */
     *, *::before, *::after {
         box-sizing: border-box;
     }
-    
+
     body, html {
         margin: 0 !important;
         padding: 0 !important;
@@ -86,19 +86,19 @@ export const PRINT_STYLES = `
         print-color-adjust: exact !important;
         color-adjust: exact !important;
     }
-    
+
     /* Hide web view completely */
-    .web-view { 
-        display: none !important; 
+    .web-view {
+        display: none !important;
         visibility: hidden !important;
         height: 0 !important;
         overflow: hidden !important;
         position: absolute !important;
         left: -9999px !important;
     }
-    
+
     /* Show print view */
-    .print-view { 
+    .print-view {
         display: block !important;
         visibility: visible !important;
         position: static !important;
@@ -112,20 +112,20 @@ export const PRINT_STYLES = `
         top: 0 !important;
         padding: 12mm 15mm 25mm 15mm !important;
     }
-    
+
     /* Ensure print-view content is visible */
     .print-view * {
         visibility: visible !important;
         opacity: 1 !important;
     }
-    
+
     /* Ensure print-view divs are visible */
     .print-view > div {
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
     }
-    
+
     /* Ensure root containers are visible */
     #root, #__next, body > div {
         display: block !important;
@@ -133,7 +133,7 @@ export const PRINT_STYLES = `
         overflow: visible !important;
         height: auto !important;
     }
-    
+
     /* Hide ALL non-print elements - comprehensive list */
     header, footer, nav, aside,
     .sticky, [class*="sticky"],
@@ -152,7 +152,7 @@ export const PRINT_STYLES = `
         display: none !important;
         visibility: hidden !important;
     }
-    
+
     /* Specifically target fixed position elements */
     div[style*="position: fixed"],
     div[style*="position:fixed"],
@@ -160,13 +160,13 @@ export const PRINT_STYLES = `
         display: none !important;
         position: static !important;
     }
-    
+
     /* Page breaks - let content flow naturally */
     .print-view > div {
         page-break-inside: auto;
         page-break-after: auto;
     }
-    
+
     /* Print Footer - appears on every page */
     .print-footer {
         position: fixed;
@@ -179,59 +179,59 @@ export const PRINT_STYLES = `
         font-size: 8px;
         z-index: 9999;
     }
-    
+
     /* Add padding to content to avoid footer overlap */
     .print-content {
         padding-bottom: 60px;
     }
-    
+
     /* Show watermarks only in print */
     .print-only-watermark {
         display: block !important;
         visibility: visible !important;
     }
-    
+
     /* Watermark styling - Logo based */
     .print-view img[alt*="Watermark"] {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    
+
     /* Ensure backgrounds print */
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    
+
     /* Table styling for print */
     table {
         border-collapse: collapse !important;
         width: 100% !important;
         page-break-inside: avoid !important;
     }
-    
+
     th, td {
         border: 1px solid #e2e8f0 !important;
     }
-    
+
     tr {
         page-break-inside: avoid !important;
     }
-    
+
     /* Prevent page breaks inside important elements */
-    div[style*="background"], 
+    div[style*="background"],
     div[style*="border"],
     .card, .box, .summary {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
     }
-    
+
     /* Prevent orphans and widows */
     p, h1, h2, h3, h4, h5, h6 {
         orphans: 3;
         widows: 3;
     }
-    
+
     h1, h2, h3, h4, h5, h6 {
         page-break-after: avoid;
     }

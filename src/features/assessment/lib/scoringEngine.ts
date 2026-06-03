@@ -1,7 +1,7 @@
 /**
  * Scoring Engine Service
  * Handles score calculations for assessment components
- * 
+ *
  * @version 2.1.0
  */
 
@@ -12,12 +12,12 @@ const logger = getLogger('scoring-engine');
 /**
  * Calculate aptitude score from answers
  */
-export const calculateAptitudeScore = (answers) => {
+export const calculateAptitudeScore = (answers: any[]): Record<string, any> => {
   if (answers.length === 0) return { correct: 0, total: 0 };
 
   // Rating questions (high school)
   if (answers[0]?.rating !== undefined) {
-    const avgRating = answers.reduce((sum, a) => sum + (a.rating || 0), 0) / answers.length;
+    const avgRating = answers.reduce((sum: number, a: any) => sum + (a.rating || 0), 0) / answers.length;
     const percentage = (avgRating / 4) * 100;
     return {
       averageRating: avgRating,
@@ -25,18 +25,18 @@ export const calculateAptitudeScore = (answers) => {
       percentage: Math.round(percentage)
     };
   }
-  
+
   // MCQ questions (college/after10/after12)
-  const correctCount = answers.filter(a => a.isCorrect === true).length;
-  const scoredCount = answers.filter(a => a.isCorrect !== null && a.isCorrect !== undefined).length;
-  
+  const correctCount = answers.filter((a: any) => a.isCorrect === true).length;
+  const scoredCount = answers.filter((a: any) => a.isCorrect !== null && a.isCorrect !== undefined).length;
+
   if (scoredCount < answers.length) {
     logger.warn(`⚠️ ${answers.length - scoredCount} answers could not be scored (missing correct answer data)`, {
       unscored: answers.length - scoredCount,
       total: answers.length
     });
   }
-  
+
   return {
     correct: correctCount,
     total: answers.length,
@@ -48,16 +48,19 @@ export const calculateAptitudeScore = (answers) => {
 /**
  * Calculate knowledge score from answers (legacy function)
  */
-export const calculateKnowledgeWithGemini = async (answers, questions) => {
+export const calculateKnowledgeWithGemini = async (
+  answers: Record<string, any>,
+  questions: any[]
+): Promise<Record<string, any>> => {
   let correct = 0;
   let total = 0;
-  const incorrectTopics = [];
-  const correctTopics = [];
+  const incorrectTopics: string[] = [];
+  const correctTopics: string[] = [];
 
   Object.entries(answers).forEach(([key, value]) => {
     if (key.startsWith('knowledge_')) {
       const questionId = key.replace('knowledge_', '');
-      const question = questions.find(q => q.id === questionId);
+      const question = questions.find((q: any) => q.id === questionId);
 
       if (question) {
         total++;

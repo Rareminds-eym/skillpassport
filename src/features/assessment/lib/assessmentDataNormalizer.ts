@@ -1,20 +1,20 @@
 /**
  * Assessment Data Normalizer
- * 
+ *
  * Fixes data inconsistencies in assessment results where scores may be stored
  * in different locations due to backend processing variations.
- * 
+ *
  * Primary Issue: RIASEC scores stored as zeros in top-level but correct values
  * exist in gemini_results._originalScores
  */
 
 /**
  * Normalize RIASEC scores from assessment results
- * 
- * @param {Object} results - Raw assessment results from database
- * @returns {Object} - Normalized results with correct RIASEC scores
+ *
+ * @param results - Raw assessment results from database
+ * @returns Normalized results with correct RIASEC scores
  */
-export const normalizeAssessmentResults = (results) => {
+export const normalizeAssessmentResults = (results: any): any => {
     if (!results) {
         console.log('⚠️ Normalizer: No results provided');
         return null;
@@ -42,11 +42,11 @@ export const normalizeAssessmentResults = (results) => {
         const percentages = normalized.gemini_results.riasec.percentages || {};
 
         // Check if top-level scores are all zeros
-        const allZeros = Object.values(topLevelScores).every(score => score === 0);
+        const allZeros = Object.values(topLevelScores).every((score: any) => score === 0);
 
         // Check if we have valid original scores
         const hasOriginalScores = Object.keys(originalScores).length > 0 &&
-            Object.values(originalScores).some(score => score > 0);
+            Object.values(originalScores).some((score: any) => score > 0);
 
         console.log('🔍 Normalization check:', {
             allZeros,
@@ -59,10 +59,10 @@ export const normalizeAssessmentResults = (results) => {
             console.log('🔧 Normalizing RIASEC scores from gemini_results._originalScores');
             console.log('   Before:', topLevelScores);
             console.log('   After:', originalScores);
-            
+
             // Use original scores
             normalized.riasec.scores = { ...originalScores };
-            
+
             // CRITICAL: Preserve _originalScores at riasec level for PDF components
             normalized.riasec._originalScores = { ...originalScores };
 
@@ -70,7 +70,7 @@ export const normalizeAssessmentResults = (results) => {
             const maxScore = normalized.gemini_results.riasec.maxScore || 24;
             if (Object.keys(percentages).length === 0) {
                 normalized.riasec.percentages = {};
-                Object.entries(originalScores).forEach(([code, score]) => {
+                Object.entries(originalScores).forEach(([code, score]: [string, any]) => {
                     normalized.riasec.percentages[code] = Math.round((score / maxScore) * 100);
                 });
             } else {
@@ -147,7 +147,7 @@ export const normalizeAssessmentResults = (results) => {
     // Priority 1: Use top-level aptitude_scores column (most reliable)
     // Priority 2: Use gemini_results.aptitude._originalScores
     // Priority 3: Use gemini_results.aptitude.scores (may be zeros)
-    
+
     // Check if we have aptitude_scores at top level (from database column)
     if (normalized.aptitude_scores && !normalized.aptitude) {
         console.log('🔧 Creating aptitude object from aptitude_scores column');
@@ -155,7 +155,7 @@ export const normalizeAssessmentResults = (results) => {
             scores: normalized.aptitude_scores
         };
     }
-    
+
     // If aptitude exists but has zero scores, try to fix from _originalScores or aptitude_scores
     if (normalized.aptitude || normalized.gemini_results?.aptitude) {
         const topLevelScores = normalized.aptitude?.scores || {};
@@ -164,7 +164,7 @@ export const normalizeAssessmentResults = (results) => {
 
         // Check if top-level scores are all zeros or empty
         const hasNoScores = Object.keys(topLevelScores).length === 0 ||
-            Object.values(topLevelScores).every(score => {
+            Object.values(topLevelScores).every((score: any) => {
                 if (typeof score === 'object') {
                     return (score.correct === 0 && score.total === 0) || score.percentage === 0;
                 }
@@ -173,7 +173,7 @@ export const normalizeAssessmentResults = (results) => {
 
         // Check if we have valid original scores
         const hasOriginalScores = Object.keys(originalScores).length > 0 &&
-            Object.values(originalScores).some(score => {
+            Object.values(originalScores).some((score: any) => {
                 if (typeof score === 'object') {
                     return score.percentage > 0 || score.correct > 0;
                 }
@@ -182,7 +182,7 @@ export const normalizeAssessmentResults = (results) => {
 
         // Check if we have valid aptitude_scores column data
         const hasAptitudeScoresColumn = Object.keys(aptitudeScoresColumn).length > 0 &&
-            Object.values(aptitudeScoresColumn).some(score => {
+            Object.values(aptitudeScoresColumn).some((score: any) => {
                 if (typeof score === 'object') {
                     return score.percentage > 0 || score.correct > 0;
                 }
@@ -204,7 +204,7 @@ export const normalizeAssessmentResults = (results) => {
                 console.log('🔧 Normalizing aptitude scores from aptitude_scores column');
                 console.log('   Before:', JSON.stringify(topLevelScores));
                 console.log('   After:', JSON.stringify(aptitudeScoresColumn));
-                
+
                 if (!normalized.aptitude) {
                     normalized.aptitude = {};
                 }
@@ -216,7 +216,7 @@ export const normalizeAssessmentResults = (results) => {
                 console.log('🔧 Normalizing aptitude scores from gemini_results.aptitude._originalScores');
                 console.log('   Before:', JSON.stringify(topLevelScores));
                 console.log('   After:', JSON.stringify(originalScores));
-                
+
                 if (!normalized.aptitude) {
                     normalized.aptitude = {};
                 }
@@ -233,15 +233,18 @@ export const normalizeAssessmentResults = (results) => {
 
 /**
  * Calculate RIASEC percentages from scores
- * 
- * @param {Object} scores - RIASEC scores object {A: 14, S: 12, ...}
- * @param {number} maxScore - Maximum possible score per dimension (default: 24)
- * @returns {Object} - Percentages object {A: 70, S: 60, ...}
+ *
+ * @param scores - RIASEC scores object {A: 14, S: 12, ...}
+ * @param maxScore - Maximum possible score per dimension (default: 24)
+ * @returns Percentages object {A: 70, S: 60, ...}
  */
-export const calculateRIASECPercentages = (scores, maxScore = 24) => {
+export const calculateRIASECPercentages = (
+    scores: Record<string, number> | null | undefined,
+    maxScore: number = 24
+): Record<string, number> => {
     if (!scores || typeof scores !== 'object') return {};
 
-    const percentages = {};
+    const percentages: Record<string, number> = {};
     Object.entries(scores).forEach(([code, score]) => {
         percentages[code] = Math.round((score / maxScore) * 100);
     });
@@ -251,11 +254,11 @@ export const calculateRIASECPercentages = (scores, maxScore = 24) => {
 
 /**
  * Get performance label based on percentage
- * 
- * @param {number} percentage - Score percentage (0-100)
- * @returns {string} - Performance label
+ *
+ * @param percentage - Score percentage (0-100)
+ * @returns Performance label
  */
-export const getPerformanceLabel = (percentage) => {
+export const getPerformanceLabel = (percentage: number): string => {
     if (percentage >= 70) return 'Excellent';
     if (percentage >= 40) return 'Good';
     return 'Needs Improvement';
@@ -263,11 +266,11 @@ export const getPerformanceLabel = (percentage) => {
 
 /**
  * Get color configuration based on percentage
- * 
- * @param {number} percentage - Score percentage (0-100)
- * @returns {Object} - Color configuration object
+ *
+ * @param percentage - Score percentage (0-100)
+ * @returns Color configuration object
  */
-export const getScoreColor = (percentage) => {
+export const getScoreColor = (percentage: number): Record<string, string> => {
     if (percentage >= 70) {
         return {
             bg: 'bg-green-500',
@@ -303,12 +306,16 @@ export const getScoreColor = (percentage) => {
 
 /**
  * Validate assessment results structure
- * 
- * @param {Object} results - Assessment results to validate
- * @returns {Object} - Validation result {valid: boolean, errors: string[]}
+ *
+ * @param results - Assessment results to validate
+ * @returns Validation result {valid, errors}
  */
-export const validateAssessmentResults = (results) => {
-    const errors = [];
+export const validateAssessmentResults = (results: any): {
+    valid: boolean;
+    errors: string[];
+    hasGeminiFallback?: boolean;
+} => {
+    const errors: string[] = [];
 
     if (!results) {
         errors.push('Results object is null or undefined');

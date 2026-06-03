@@ -2,7 +2,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  * STREAM RECOMMENDATION ENGINE FOR AFTER 10TH LEARNERS
  * ═══════════════════════════════════════════════════════════════════════════════
- * 
+ *
  * Uses the same multi-dimensional analysis as courseMatchingEngine to recommend
  * the best 11th/12th stream (Science/Commerce/Arts) based on:
  * - Subject marks and academic performance
@@ -15,7 +15,7 @@
 // STREAM KNOWLEDGE BASE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const STREAM_KNOWLEDGE_BASE = {
+const STREAM_KNOWLEDGE_BASE: Record<string, any> = {
   pcmb: {
     name: "Science (PCMB)",
     displayName: "PCMB (Physics, Chemistry, Maths, Biology)",
@@ -148,16 +148,16 @@ const STREAM_KNOWLEDGE_BASE = {
 // LAYER 1: INTEREST DNA ANALYZER (Deep RIASEC Analysis)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const analyzeInterestDNA = (riasecScores) => {
+const analyzeInterestDNA = (riasecScores: Record<string, number> | null | undefined): any => {
   if (!riasecScores || Object.keys(riasecScores).length === 0) {
     return { hasData: false, normalizedScores: {}, dominantTypes: [], strengthLevel: 0 };
   }
-  const total = Object.values(riasecScores).reduce((sum, v) => sum + (v || 0), 0);
+  const total = Object.values(riasecScores).reduce((sum: number, v: any) => sum + (v || 0), 0);
   if (total === 0) return { hasData: false, normalizedScores: {}, dominantTypes: [], strengthLevel: 0 };
 
   const maxPossible = Math.max(...Object.values(riasecScores), 1);
-  const normalizedScores = {};
-  Object.entries(riasecScores).forEach(([type, score]) => {
+  const normalizedScores: Record<string, number> = {};
+  Object.entries(riasecScores).forEach(([type, score]: [string, any]) => {
     normalizedScores[type] = Math.round(((score || 0) / maxPossible) * 100);
   });
 
@@ -174,32 +174,32 @@ const analyzeInterestDNA = (riasecScores) => {
 // LAYER 2: ACADEMIC INTELLIGENCE PROFILER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const profileAcademicIntelligence = (marks) => {
+const profileAcademicIntelligence = (marks: any[]): any => {
   if (!marks || marks.length === 0) {
     return { hasData: false, subjectScores: {}, streamAffinity: { science: 0, commerce: 0, arts: 0 }, academicStrength: 0, topSubjects: [] };
   }
 
-  const subjectScores = {};
-  const streamScores = { science: [], commerce: [], arts: [] };
-  const streamMap = {
+  const subjectScores: Record<string, number> = {};
+  const streamScores: Record<string, number[]> = { science: [], commerce: [], arts: [] };
+  const streamMap: Record<string, string[]> = {
     science: ["physics", "phy", "chemistry", "chem", "biology", "bio", "mathematics", "maths", "math", "science", "computer", "cs", "it"],
     commerce: ["accountancy", "accounts", "accounting", "economics", "eco", "commerce", "business", "finance"],
     arts: ["english", "eng", "history", "hist", "political", "civics", "sociology", "psychology", "geography", "hindi", "literature"]
   };
 
-  marks.forEach((mark) => {
+  marks.forEach((mark: any) => {
     const subjectName = (mark.curriculum_subjects?.name || mark.subject_name || mark.subject_id || "").toLowerCase().trim();
     if (!subjectName) return;
     const percentage = mark.percentage || (mark.marks_obtained && mark.total_marks ? (mark.marks_obtained / mark.total_marks) * 100 : 0);
     if (percentage > 0) {
       if (!subjectScores[subjectName] || subjectScores[subjectName] < percentage) subjectScores[subjectName] = percentage;
       Object.entries(streamMap).forEach(([stream, subjects]) => {
-        if (subjects.some((s) => subjectName.includes(s))) streamScores[stream].push(percentage);
+        if (subjects.some((s: string) => subjectName.includes(s))) streamScores[stream].push(percentage);
       });
     }
   });
 
-  const streamAffinity = {};
+  const streamAffinity: Record<string, number> = {};
   Object.entries(streamScores).forEach(([stream, scores]) => {
     streamAffinity[stream] = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   });
@@ -217,15 +217,15 @@ const profileAcademicIntelligence = (marks) => {
 // LAYER 3: PROJECT ANALYSIS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const analyzeProjects = (projects) => {
+const analyzeProjects = (projects: any[]): any => {
   if (!projects || projects.length === 0) {
     return { hasData: false, domains: [], technologies: [], projectCount: 0 };
   }
 
-  const domainCounts = {};
-  const technologies = new Set();
+  const domainCounts: Record<string, number> = {};
+  const technologies = new Set<string>();
 
-  const domainPatterns = {
+  const domainPatterns: Record<string, RegExp> = {
     technology: /\b(software|app|web|mobile|python|java|react|coding|programming|computer|robot)\b/gi,
     business: /\b(startup|entrepreneur|business|marketing|sales|strategy)\b/gi,
     research: /\b(research|experiment|scientific|hypothesis|lab|data)\b/gi,
@@ -234,14 +234,14 @@ const analyzeProjects = (projects) => {
     medical: /\b(medical|health|clinical|patient|biology)\b/gi
   };
 
-  projects.forEach((project) => {
+  projects.forEach((project: any) => {
     const text = `${project.title || ""} ${project.description || ""}`.toLowerCase();
     Object.entries(domainPatterns).forEach(([domain, pattern]) => {
       const matches = (text.match(pattern) || []).length;
       if (matches > 0) domainCounts[domain] = (domainCounts[domain] || 0) + matches;
     });
     if (project.tech_stack && Array.isArray(project.tech_stack)) {
-      project.tech_stack.forEach((tech) => technologies.add(tech.toLowerCase()));
+      project.tech_stack.forEach((tech: string) => technologies.add(tech.toLowerCase()));
     }
   });
 
@@ -253,15 +253,15 @@ const analyzeProjects = (projects) => {
 // LAYER 4: EXPERIENCE ANALYSIS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const analyzeExperiences = (experiences) => {
+const analyzeExperiences = (experiences: any[]): any => {
   if (!experiences || experiences.length === 0) {
     return { hasData: false, experienceTypes: [], verifiedCount: 0 };
   }
 
-  const typeCounts = {};
+  const typeCounts: Record<string, number> = {};
   let verifiedCount = 0;
 
-  const typePatterns = {
+  const typePatterns: Record<string, RegExp> = {
     technology: /\b(tech|software|it|developer|coding|computer)\b/gi,
     business: /\b(business|marketing|sales|management)\b/gi,
     research: /\b(research|lab|scientist|academic)\b/gi,
@@ -270,7 +270,7 @@ const analyzeExperiences = (experiences) => {
     medical: /\b(hospital|clinic|medical|health)\b/gi
   };
 
-  experiences.forEach((exp) => {
+  experiences.forEach((exp: any) => {
     const text = `${exp.organization || ""} ${exp.role || ""}`.toLowerCase();
     Object.entries(typePatterns).forEach(([type, pattern]) => {
       const matches = (text.match(pattern) || []).length;
@@ -286,18 +286,25 @@ const analyzeExperiences = (experiences) => {
 // MAIN SCORING ENGINE - Calculate stream match scores
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProfile, projectAnalysis, experienceAnalysis) => {
+const calculateStreamScore = (
+  streamId: string,
+  streamProfile: any,
+  interestDNA: any,
+  academicProfile: any,
+  projectAnalysis: any,
+  experienceAnalysis: any
+): any => {
   let totalScore = 0;
-  const matchReasons = [];
-  const scoreBreakdown = {};
+  const matchReasons: string[] = [];
+  const scoreBreakdown: Record<string, number> = {};
 
   // ═══════════════════════════════════════════════════════════════════════════
   // INTEREST ALIGNMENT SCORE (25%)
   // ═══════════════════════════════════════════════════════════════════════════
   let interestScore = 0;
   if (interestDNA.hasData) {
-    const primaryMatch = interestDNA.dominantTypes.filter(t => streamProfile.riasec.primary.includes(t)).length;
-    const secondaryMatch = interestDNA.dominantTypes.filter(t => streamProfile.riasec.secondary.includes(t)).length;
+    const primaryMatch = interestDNA.dominantTypes.filter((t: string) => streamProfile.riasec.primary.includes(t)).length;
+    const secondaryMatch = interestDNA.dominantTypes.filter((t: string) => streamProfile.riasec.secondary.includes(t)).length;
     interestScore = primaryMatch * 12 + secondaryMatch * 6;
     interestScore = Math.min(25, interestScore);
     if (primaryMatch > 0) {
@@ -320,10 +327,10 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
 
     // Subject-specific scoring
     let subjectMatchScore = 0;
-    Object.entries(streamProfile.subjects.core).forEach(([subject, weight]) => {
+    Object.entries(streamProfile.subjects.core).forEach(([subject, weight]: [string, any]) => {
       const aliases = [subject, ...(streamProfile.subjects.aliases || [])];
-      Object.entries(academicProfile.subjectScores).forEach(([learnerSubject, score]) => {
-        if (aliases.some(a => learnerSubject.includes(a))) {
+      Object.entries(academicProfile.subjectScores).forEach(([learnerSubject, score]: [string, any]) => {
+        if (aliases.some((a: string) => learnerSubject.includes(a))) {
           subjectMatchScore += (score / 100) * weight * 20;
         }
       });
@@ -346,12 +353,12 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
   // ═══════════════════════════════════════════════════════════════════════════
   let projectScore = 0;
   if (projectAnalysis.hasData) {
-    const streamDomainMap = {
+    const streamDomainMap: Record<string, string[]> = {
       Science: ['technology', 'research', 'medical'],
       Commerce: ['business'],
       Arts: ['creative', 'social']
     };
-    const relevantDomains = projectAnalysis.domains.filter(d => 
+    const relevantDomains = projectAnalysis.domains.filter((d: string) =>
       (streamDomainMap[streamProfile.category] || []).includes(d)
     );
     if (relevantDomains.length > 0) {
@@ -368,12 +375,12 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
   // ═══════════════════════════════════════════════════════════════════════════
   let experienceScore = 0;
   if (experienceAnalysis.hasData) {
-    const streamExpMap = {
+    const streamExpMap: Record<string, string[]> = {
       Science: ['technology', 'research', 'medical'],
       Commerce: ['business'],
       Arts: ['creative', 'social']
     };
-    const relevantTypes = experienceAnalysis.experienceTypes.filter(t => 
+    const relevantTypes = experienceAnalysis.experienceTypes.filter((t: string) =>
       (streamExpMap[streamProfile.category] || []).includes(t)
     );
     if (relevantTypes.length > 0) {
@@ -391,7 +398,7 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
   // FINAL SCORE
   // ═══════════════════════════════════════════════════════════════════════════
   const finalScore = Math.min(98, Math.max(20, Math.round(totalScore)));
-  
+
   let matchLevel = 'Low';
   if (finalScore >= 80) matchLevel = 'High';
   else if (finalScore >= 60) matchLevel = 'Medium';
@@ -417,14 +424,14 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
 
 /**
  * Calculate stream recommendations for after 10th learners
- * @param {Object} assessmentResults - RIASEC and other assessment results
- * @param {Object} academicData - Subject marks, projects, experiences
- * @returns {Object} Stream recommendations with scores
+ * @param assessmentResults - RIASEC and other assessment results
+ * @param academicData - Subject marks, projects, experiences
+ * @returns Stream recommendations with scores
  */
-export const calculateStreamRecommendations = (assessmentResults, academicData = {}) => {
+export const calculateStreamRecommendations = (assessmentResults: any, academicData: any = {}): any => {
   // Extract RIASEC scores
   const riasecScores = assessmentResults?.riasec?.scores || {};
-  
+
   // Analyze all dimensions
   const interestDNA = analyzeInterestDNA(riasecScores);
   const academicProfile = profileAcademicIntelligence(academicData.subjectMarks || []);
@@ -432,7 +439,7 @@ export const calculateStreamRecommendations = (assessmentResults, academicData =
   const experienceAnalysis = analyzeExperiences(academicData.experiences || []);
 
   // Calculate scores for all streams
-  const streamScores = [];
+  const streamScores: any[] = [];
   Object.entries(STREAM_KNOWLEDGE_BASE).forEach(([streamId, streamProfile]) => {
     const score = calculateStreamScore(streamId, streamProfile, interestDNA, academicProfile, projectAnalysis, experienceAnalysis);
     streamScores.push(score);
@@ -451,13 +458,13 @@ export const calculateStreamRecommendations = (assessmentResults, academicData =
     streamFit: topRecommendation?.matchLevel || 'Medium',
     confidenceScore: topRecommendation?.matchScore || 50,
     reasoning: {
-      interests: topRecommendation?.reasons?.find(r => r.includes('interest')) || `Based on your RIASEC profile`,
-      aptitude: topRecommendation?.reasons?.find(r => r.includes('Strong') || r.includes('subject')) || `Based on your academic performance`,
-      personality: topRecommendation?.reasons?.find(r => r.includes('project') || r.includes('experience')) || `Based on your activities`
+      interests: topRecommendation?.reasons?.find((r: string) => r.includes('interest')) || `Based on your RIASEC profile`,
+      aptitude: topRecommendation?.reasons?.find((r: string) => r.includes('Strong') || r.includes('subject')) || `Based on your academic performance`,
+      personality: topRecommendation?.reasons?.find((r: string) => r.includes('project') || r.includes('experience')) || `Based on your activities`
     },
     scoreBasedAnalysis: {
       riasecTop3: interestDNA.dominantTypes || [],
-      strongAptitudes: academicProfile.topSubjects?.slice(0, 2).map(s => `${s.name} (${s.score}%)`) || [],
+      strongAptitudes: academicProfile.topSubjects?.slice(0, 2).map((s: any) => `${s.name} (${s.score}%)`) || [],
       matchingPattern: `${topRecommendation?.category || 'Science'} stream alignment`
     },
     alternativeStream: alternativeRecommendation?.streamName || null,
@@ -477,8 +484,8 @@ export const calculateStreamRecommendations = (assessmentResults, academicData =
 };
 
 // Helper functions
-const getSubjectsForStream = (streamId) => {
-  const subjectMap = {
+const getSubjectsForStream = (streamId: string | undefined): string[] => {
+  const subjectMap: Record<string, string[]> = {
     pcmb: ['Physics', 'Chemistry', 'Mathematics', 'Biology'],
     pcms: ['Physics', 'Chemistry', 'Mathematics', 'Computer Science'],
     pcm: ['Physics', 'Chemistry', 'Mathematics'],
@@ -489,16 +496,16 @@ const getSubjectsForStream = (streamId) => {
     arts_economics: ['Economics', 'English', 'Political Science', 'History'],
     arts: ['English', 'History', 'Political Science', 'Geography']
   };
-  return subjectMap[streamId] || ['Core Subjects'];
+  return (streamId && subjectMap[streamId]) || ['Core Subjects'];
 };
 
-const getCollegeTypesForStream = (category) => {
-  const collegeMap = {
+const getCollegeTypesForStream = (category: string | undefined): string[] => {
+  const collegeMap: Record<string, string[]> = {
     Science: ['IITs', 'NITs', 'Medical Colleges', 'Science Universities'],
     Commerce: ['Top Commerce Colleges', 'Business Schools', 'CA Institutes'],
     Arts: ['Central Universities', 'Law Schools', 'Mass Communication Institutes']
   };
-  return collegeMap[category] || ['Universities'];
+  return (category && collegeMap[category]) || ['Universities'];
 };
 
 export default { calculateStreamRecommendations, STREAM_KNOWLEDGE_BASE };
