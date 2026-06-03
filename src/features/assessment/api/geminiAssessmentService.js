@@ -6,14 +6,14 @@
  */
 
 // Export all functions from split modules
-export * from './assessment/geminiApiService.js';
-export * from './assessment/assessmentDataPrep.js';
-export * from './assessment/scoringEngine.js';
-export * from './assessment/courseIntegration.js';
+export * from './geminiApiService.js';
+export * from '../lib/assessmentDataPrep.js';
+export * from '../lib/scoringEngine.js';
+export * from './courseIntegrationService.js';
 
 // Import main functions for legacy aliases
-import { analyzeAssessmentWithOpenRouter } from './assessment/geminiApiService.js';
-import { calculateKnowledgeWithGemini } from './assessment/scoringEngine.js';
+import { analyzeAssessmentWithOpenRouter } from './geminiApiService.js';
+import { calculateKnowledgeWithGemini } from '../lib/scoringEngine.js';
 
 // Legacy aliases for backward compatibility
 export const analyzeAssessmentWithGemini = analyzeAssessmentWithOpenRouter;

@@ -217,7 +217,7 @@ export { getInProgressAttempt } from './api/assessmentService';
 export { workValuesQuestions } from './model/questions/index';
 export { getLatestResult } from './api/assessmentService';
 export { default as transformAssessmentResults } from './api/assessmentResultTransformer';
-export { addCourseRecommendations } from './api/assessment/courseIntegration';
+export { addCourseRecommendations } from './api/courseIntegrationService';
 export { strengthsRatingScale } from './model/questions/middleSchoolQuestions';
 export { default as getModuleQuestionIndex } from './model/questions/aptitudeQuestions';
 export { getCurrentEmployabilityModule } from './model/questions/employabilityQuestions';

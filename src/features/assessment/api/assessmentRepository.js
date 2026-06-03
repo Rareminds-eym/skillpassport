@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { handleDatabaseError } from './assessmentErrors.js';
+import { handleDatabaseError } from '../lib/assessmentErrors.js';
 
 /**
  * Get saved questions for a learner (for resume functionality)

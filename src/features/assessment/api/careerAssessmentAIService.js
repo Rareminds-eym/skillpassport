@@ -8,9 +8,9 @@
  */
 
 // Export all public APIs from modules
-export { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from './assessment/streamPrompts.js';
-export { normalizeStreamId, getFallbackKnowledgeQuestions } from './assessment/streamUtils.js';
-export { validateQuestion, validateQuestionBatch } from './assessment/questionValidator.js';
+export { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from '../lib/streamPrompts.js';
+export { normalizeStreamId, getFallbackKnowledgeQuestions } from '../lib/streamUtils.js';
+export { validateQuestion, validateQuestionBatch } from '../lib/questionValidator.js';
 export { 
   QuestionGenerationError, 
   ERROR_MESSAGES, 
@@ -20,23 +20,23 @@ export {
   handleNetworkError, 
   handleDatabaseError, 
   handleInsufficientQuestions 
-} from './assessment/assessmentErrors.js';
+} from '../lib/assessmentErrors.js';
 export { 
   getSavedQuestionsForLearner, 
   saveAptitudeQuestions, 
   saveKnowledgeQuestions, 
   clearSavedQuestionsForLearner 
-} from './assessment/assessmentRepository.js';
+} from './assessmentRepository.js';
 export { 
   generateWithValidation, 
   generateStreamKnowledgeQuestions, 
   generateAptitudeQuestions 
-} from './assessment/questionGenerator.js';
+} from './questionGeneratorService.js';
 
-import { normalizeStreamId } from './assessment/streamUtils.js';
-import { generateAptitudeQuestions, generateStreamKnowledgeQuestions } from './assessment/questionGenerator.js';
-import { getSavedQuestionsForLearner, clearSavedQuestionsForLearner } from './assessment/assessmentRepository.js';
-import { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from './assessment/streamPrompts.js';
+import { normalizeStreamId } from '../lib/streamUtils.js';
+import { generateAptitudeQuestions, generateStreamKnowledgeQuestions } from './questionGeneratorService.js';
+import { getSavedQuestionsForLearner, clearSavedQuestionsForLearner } from './assessmentRepository.js';
+import { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from '../lib/streamPrompts.js';
 
 /**
  * Load questions for career assessment
