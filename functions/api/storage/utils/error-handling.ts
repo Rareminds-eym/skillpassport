@@ -27,7 +27,8 @@ export type AuthFailureReason =
   | 'missing_token'
   | 'invalid_token'
   | 'expired_token'
-  | 'malformed_token';
+  | 'malformed_token'
+  | 'forbidden_context';
 
 /**
  * Authorization failure reasons
