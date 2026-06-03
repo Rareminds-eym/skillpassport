@@ -64,11 +64,11 @@ const ModernLearningCard = ({
   // Use useLearnerDataById with user.id (SSO ID)
   const { learnerData } = useLearnerDataById(user?.id, false);
   
-  // Certificate modal hook with memoized callback
+  // ✅ Consistent with the rest of the file
   const handleCertificateSuccess = useCallback(({ certificateUrl: newCertUrl }) => {
-    // Update certificate URL state when generation succeeds
-    // Success toast is already shown by the hook
-    setCertificateUrl(newCertUrl);
+    if (newCertUrl && newCertUrl.trim() !== '') {
+      setCertificateUrl(newCertUrl);
+    }
   }, []);
 
   const certificateModal = useCertificateModal({
@@ -450,12 +450,28 @@ const ModernLearningCard = ({
     </button>
   );
 
-  const renderListCompletedStatus = (label = "Completed") => (
-    <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
-      <CheckCircle className="w-4 h-4" />
-      <span>{label}</span>
-    </div>
-  );
+  const renderListCompletedStatus = (label = "Completed") => {
+    // For internal courses without certificate, show "Get Certificate" button
+    if (isInternalCourse && !certificateUrl) {
+      return (
+        <button
+          onClick={handleGetCertificate}
+          className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
+        >
+          <Award className="w-4 h-4" />
+          <span>Get Certificate</span>
+        </button>
+      );
+    }
+    
+    // Default completed status badge
+    return (
+      <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
+        <CheckCircle className="w-4 h-4" />
+        <span>{label}</span>
+      </div>
+    );
+  };
 
   const renderListOngoingStatus = () => (
     <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600">
@@ -547,14 +563,31 @@ const ModernLearningCard = ({
     </button>
   );
 
-  // Helper function to render completed status
-  const renderCompletedStatus = (label = "Completed") => (
-    <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
-      <CheckCircle className="w-4 sm:w-5 h-4 sm:h-5" />
-      <span className="hidden xs:inline">{label}</span>
-      <span className="xs:hidden">Completed</span>
-    </div>
-  );
+  // Helper function to render completed status or Get Certificate button
+  const renderCompletedStatus = (label = "Completed") => {
+    // For internal courses without certificate, show "Get Certificate" button
+    if (isInternalCourse && !certificateUrl) {
+      return (
+        <button
+          onClick={handleGetCertificate}
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
+        >
+          <Award className="w-4 sm:w-5 h-4 sm:h-5" />
+          <span className="hidden xs:inline">Get Certificate</span>
+          <span className="xs:hidden">Get Cert</span>
+        </button>
+      );
+    }
+    
+    // Default completed status badge
+    return (
+      <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
+        <CheckCircle className="w-4 sm:w-5 h-4 sm:h-5" />
+        <span className="hidden xs:inline">{label}</span>
+        <span className="xs:hidden">Completed</span>
+      </div>
+    );
+  };
 
   // Helper function to render ongoing status
   const renderOngoingStatus = () => (

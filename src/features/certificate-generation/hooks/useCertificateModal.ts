@@ -228,7 +228,7 @@ export const useCertificateModal = ({
       setIsLoadingName(false);
       setShowModal(true);
     }
-  }, [userId, userEmail, user]);
+  }, [userId, userEmail]);
 
   /**
    * Close modal and reset state
@@ -405,7 +405,7 @@ export const useCertificateModal = ({
         setIsGenerating(false);
       }
     }
-  }, [fullName, pendingData, userId, userEmail, user, validateAndSet]);
+  }, [fullName, pendingData, userId, userEmail, validateAndSet]);
 
   /**
    * Download the generated certificate
