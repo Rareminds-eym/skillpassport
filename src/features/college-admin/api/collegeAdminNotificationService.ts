@@ -5,7 +5,7 @@
  */
 
 import { apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 /**
  * Get all notifications for a college admin
@@ -204,15 +204,15 @@ export async function rejectProject(projectId, rejectorId, notes = '') {
 
 /**
  * Subscribe to real-time notifications (unified system)
- * Uses SSE client via getSSEClient()
+ * Uses WebSocket client via getWSClient()
  * @param {string} collegeId - College's UUID
  * @param {Function} callback - Callback function for new notifications
  * @returns {Function} Unsubscribe function
  */
 export function subscribeToNotifications(collegeId, callback) {
-  const sseClient = getSSEClient();
+  const wsClient = getWSClient();
   
-  const unsub = sseClient.subscribe(
+  const unsub = wsClient.subscribe(
     'training_notifications',
     { event: 'INSERT', filter: `college_id=eq.${collegeId}` },
     (event) => {

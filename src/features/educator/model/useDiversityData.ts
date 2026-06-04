@@ -1,5 +1,5 @@
 import { FunnelRangePreset, getGeographicDistribution, getTopHiringColleges } from '@/features/educator-copilot';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef } from 'react';
@@ -82,15 +82,15 @@ export const useDiversityData = ({
 
   const [geographicQuery, collegesQuery] = queries;
 
-  // SSE subscriptions for both datasets
+  // WebSocket subscriptions for both datasets
   useEffect(() => {
     if (!enabled) return;
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to pipeline_candidates changes
-    const unsubPipeline = sseClient.subscribe(
+    const unsubPipeline = wsClient.subscribe(
       'pipeline_candidates',
       { event: '*' },
       (event) => {
@@ -102,7 +102,7 @@ export const useDiversityData = ({
     unsubscribers.push(unsubPipeline);
 
     // Subscribe to learners changes
-    const unsubLearners = sseClient.subscribe(
+    const unsubLearners = wsClient.subscribe(
       'learners',
       { event: '*' },
       (event) => {

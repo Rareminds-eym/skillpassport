@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import type { FunnelRangePreset } from '@/shared/types';
 
 interface UseCoursePerformanceOptions {
@@ -32,11 +32,11 @@ export const useCoursePerformance = ({
   });
 
   useEffect(() => {
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to pipeline_candidates changes
-    const unsubCandidates = sseClient.subscribe(
+    const unsubCandidates = wsClient.subscribe(
       'pipeline_candidates',
       { event: '*' },
       () => {
@@ -46,7 +46,7 @@ export const useCoursePerformance = ({
     unsubscribers.push(unsubCandidates);
 
     // Subscribe to learners changes
-    const unsubLearners = sseClient.subscribe(
+    const unsubLearners = wsClient.subscribe(
       'learners',
       { event: '*' },
       () => {

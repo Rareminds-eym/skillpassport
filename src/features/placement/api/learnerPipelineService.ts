@@ -1,5 +1,5 @@
 import { apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-pipeline');
@@ -73,13 +73,13 @@ export class LearnerPipelineService {
   }
 
   static subscribeToPipelineUpdates(learnerId, onUpdate) {
-    const sseClient = getSSEClient();
-    const unsub1 = sseClient.subscribe('pipeline_candidates', {
+    const wsClient = getWSClient();
+    const unsub1 = wsClient.subscribe('pipeline_candidates', {
       event: '*',
       filter: `learner_id=eq.${learnerId}`,
     }, (event) => { if (event.type === 'change') onUpdate(event); });
 
-    const unsub2 = sseClient.subscribe('pipeline_activities', {
+    const unsub2 = wsClient.subscribe('pipeline_activities', {
       event: 'INSERT',
     }, async (event) => {
       if (event.type !== 'change') return;
@@ -93,7 +93,7 @@ export class LearnerPipelineService {
       }
     });
 
-    const unsub3 = sseClient.subscribe('interviews', {
+    const unsub3 = wsClient.subscribe('interviews', {
       event: '*',
       filter: `learner_id=eq.${learnerId}`,
     }, (event) => { if (event.type === 'change') onUpdate(event); });

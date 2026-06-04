@@ -1,6 +1,6 @@
 import { curriculumApprovalService, curriculumChangeRequestService, type CurriculumApprovalDashboard } from '@/features/college-admin';
 import { apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getLogger } from '@/shared/config/logging';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import {
@@ -163,11 +163,11 @@ const SyllabusApproval: React.FC = () => {
   useEffect(() => {
     if (!universityId) return;
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to college_curriculums changes for this university
-    const unsubCurriculum = sseClient.subscribe(
+    const unsubCurriculum = wsClient.subscribe(
       'college_curriculums',
       { event: '*', filter: `university_id=eq.${universityId}` },
       (event) => {
@@ -229,9 +229,9 @@ const SyllabusApproval: React.FC = () => {
   useEffect(() => {
     if (!universityId) return;
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
 
-    const unsubNotifications = sseClient.subscribe(
+    const unsubNotifications = wsClient.subscribe(
       'notifications',
       { event: 'INSERT', filter: `type=eq.approval_required` },
       (event) => {

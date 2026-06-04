@@ -1,4 +1,4 @@
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -25,11 +25,11 @@ export const useRealtimeProgress = (learnerId, courseId, options = {}) => {
   useEffect(() => {
     if (!enabled || !learnerId || !courseId) return;
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to learner_course_progress changes
-    const unsubProgress = sseClient.subscribe(
+    const unsubProgress = wsClient.subscribe(
       'learner_course_progress',
       { event: '*', filter: `learner_id=eq.${learnerId}` },
       (event) => {
@@ -50,7 +50,7 @@ export const useRealtimeProgress = (learnerId, courseId, options = {}) => {
     unsubscribers.push(unsubProgress);
 
     // Subscribe to enrollment changes
-    const unsubEnrollment = sseClient.subscribe(
+    const unsubEnrollment = wsClient.subscribe(
       'course_enrollments',
       { event: '*', filter: `learner_id=eq.${learnerId}` },
       (event) => {

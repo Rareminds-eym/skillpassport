@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import toast from 'react-hot-toast';
 import { MessageSquare, X } from 'lucide-react';
 import type { Message, UserRole } from '../api/types';
@@ -22,8 +22,8 @@ export const useMessageNotifications = ({
 
     let unsubscribe: (() => void) | null = null;
 
-    const sseClient = getSSEClient();
-    unsubscribe = sseClient.subscribe('messages', {
+    const wsClient = getWSClient();
+    unsubscribe = wsClient.subscribe('messages', {
       event: 'INSERT',
       filter: `receiver_id=eq.${userId}`,
     }, (event) => {

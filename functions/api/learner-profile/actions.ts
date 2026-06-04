@@ -2,6 +2,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { notifyRealtime } from '../../lib/realtime';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -459,14 +460,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           sent_at: new Date().toISOString(),
         }).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
+        context.waitUntil(notifyRealtime(env as any, 'messages', 'INSERT', data));
         return apiSuccess(data, context.request, { startTime });
       }
 
       case 'update-conversation-last-message': {
         const { conversationId } = params;
         if (!conversationId) return apiError(400, 'VALIDATION_ERROR', 'Missing conversationId', context.request, { startTime });
-        const { error } = await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
+        const lastMessageAt = new Date().toISOString();
+        const { error } = await supabase.from('conversations').update({ last_message_at: lastMessageAt }).eq('id', conversationId);
         if (error) return apiDbError(error, context.request, { startTime });
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'UPDATE', { id: conversationId, last_message_at: lastMessageAt }));
         return apiSuccess({ updated: true }, context.request, { startTime });
       }
 
@@ -475,6 +479,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!conversationData) return apiError(400, 'VALIDATION_ERROR', 'Missing conversationData', context.request, { startTime });
         const { data, error } = await supabase.from('conversations').insert(conversationData).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'INSERT', data));
         return apiSuccess(data, context.request, { startTime });
       }
 
@@ -980,6 +985,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           subject: subject || null,
         }).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
+        context.waitUntil(notifyRealtime(env as any, 'messages', 'INSERT', data));
         return apiSuccess(data, context.request, { startTime });
       }
 

@@ -4,7 +4,7 @@
  */
 
 import { apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 export class LearnerNotificationService {
   static async getlearnerNotifications(learnerId, options = {}) {
@@ -83,7 +83,7 @@ export class LearnerNotificationService {
   }
 
   static subscribeToNotifications(learnerId, onNotification) {
-    const sseClient = getSSEClient();
+    const sseClient = getWSClient();
     const unsubscribers = [];
 
     // Subscribe to INSERT events

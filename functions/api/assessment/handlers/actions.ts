@@ -2,6 +2,7 @@ import { withAuth } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
+import { notifyRealtime } from '../../../lib/realtime';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -315,7 +316,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             college: 'College',
           };
           const gradeLabel = gradeLabels[gradeLevel] || gradeLevel;
-          await supabase.from('notifications').insert({
+          const { data: insertedNotification, error: notifError } = await supabase.from('notifications').insert({
             recipient_id: learnerData.user_id,
             type: 'assessment_completed',
             title: 'Career Assessment Completed',
@@ -323,7 +324,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             assessment_id: attemptId,
             read: false,
             created_at: new Date().toISOString(),
-          });
+          }).select().single();
+          
+          if (!notifError && insertedNotification) {
+            context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', insertedNotification));
+          }
         }
 
         return apiSuccess(results, context.request, { startTime });

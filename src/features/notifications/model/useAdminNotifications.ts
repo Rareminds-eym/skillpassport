@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 export type AdminNotificationType =
   | "training_submitted"
@@ -140,9 +140,9 @@ export function useAdminNotifications(
   useEffect(() => {
     if (!adminContext.userId) return;
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
 
-    const unsubInsert = sseClient.subscribe('notifications', {
+    const unsubInsert = wsClient.subscribe('notifications', {
       event: 'INSERT',
       filter: `recipient_id=eq.${adminContext.userId}`,
     }, (event) => {
@@ -153,7 +153,7 @@ export function useAdminNotifications(
       }
     });
 
-    const unsubUpdate = sseClient.subscribe('notifications', {
+    const unsubUpdate = wsClient.subscribe('notifications', {
       event: 'UPDATE',
       filter: `recipient_id=eq.${adminContext.userId}`,
     }, (event) => {
@@ -162,7 +162,7 @@ export function useAdminNotifications(
       setItems((prev) => prev.map((n) => (n.id === row.id ? row : n)));
     });
 
-    const unsubDelete = sseClient.subscribe('notifications', {
+    const unsubDelete = wsClient.subscribe('notifications', {
       event: 'DELETE',
       filter: `recipient_id=eq.${adminContext.userId}`,
     }, (event) => {

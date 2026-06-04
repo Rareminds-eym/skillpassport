@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 // Import the college-adapted curriculum builder UI
 import { CollegeCurriculumBuilderUI, curriculumApprovalService, curriculumService, type CurriculumOutcome, type CurriculumUnit } from '@/features/college-admin';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 /**
  * CollegeCurriculumBuilder - Curriculum management for college admins
@@ -111,11 +111,11 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
   useEffect(() => {
     if (!curriculumId) return; // Only subscribe when we have a specific curriculum
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to college_curriculums changes for this specific curriculum
-    const unsubCurriculum = sseClient.subscribe(
+    const unsubCurriculum = wsClient.subscribe(
       'college_curriculums',
       { event: '*', filter: `id=eq.${curriculumId}` },
       (event) => {
@@ -136,7 +136,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
     unsubscribers.push(unsubCurriculum);
 
     // Subscribe to curriculum_units changes for this curriculum
-    const unsubUnits = sseClient.subscribe(
+    const unsubUnits = wsClient.subscribe(
       'curriculum_units',
       { event: '*', filter: `curriculum_id=eq.${curriculumId}` },
       (event) => {
@@ -157,7 +157,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
     unsubscribers.push(unsubUnits);
 
     // Subscribe to curriculum_learning_outcomes changes for this curriculum
-    const unsubOutcomes = sseClient.subscribe(
+    const unsubOutcomes = wsClient.subscribe(
       'curriculum_learning_outcomes',
       { event: '*', filter: `curriculum_id=eq.${curriculumId}` },
       (event) => {

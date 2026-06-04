@@ -1,5 +1,5 @@
 import { FunnelRangePreset, getGeographicDistribution } from '@/features/educator-copilot';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef } from 'react';
@@ -52,11 +52,11 @@ export const useGeographicDistribution = ({
   useEffect(() => {
     if (!enabled) return;
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to pipeline_candidates changes
-    const unsubPipeline = sseClient.subscribe(
+    const unsubPipeline = wsClient.subscribe(
       'pipeline_candidates',
       { event: '*' },
       (event) => {
@@ -68,7 +68,7 @@ export const useGeographicDistribution = ({
     unsubscribers.push(unsubPipeline);
 
     // Subscribe to learners changes
-    const unsubLearners = sseClient.subscribe(
+    const unsubLearners = wsClient.subscribe(
       'learners',
       { event: '*' },
       (event) => {

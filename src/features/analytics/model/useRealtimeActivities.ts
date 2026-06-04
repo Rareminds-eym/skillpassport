@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useCallback } from 'react';
 import { apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getRecentActivity } from '@/features/analytics/api/dashboardService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { getLogger } from '@/shared/config/logging';
@@ -61,7 +61,7 @@ export const useRealtimeActivities = (limit = 15) => {
   useEffect(() => {
     if (isSubscribedRef.current) return;
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     const tables = [
@@ -70,7 +70,7 @@ export const useRealtimeActivities = (limit = 15) => {
     ];
 
     tables.forEach((table) => {
-      const unsub = sseClient.subscribe(
+      const unsub = wsClient.subscribe(
         table,
         { event: '*' },
         (event) => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 export type NotificationType =
   | "new_opportunity"
@@ -129,11 +129,11 @@ export function useNotifications(
     if (!userId) return;
     let isSubscribed = true;
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to notifications changes
-    const unsub = sseClient.subscribe(
+    const unsub = wsClient.subscribe(
       'notifications',
       { event: '*', filter: `recipient_id=eq.${userId}` },
       (event) => {

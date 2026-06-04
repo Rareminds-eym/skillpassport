@@ -1,5 +1,5 @@
 import { apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('message-service');
@@ -497,14 +497,14 @@ export class MessageService {
   }
 
   /**
-   * Subscribe to new messages in a conversation (real-time via SSE)
+   * Subscribe to new messages in a conversation (real-time via WebSocket)
    */
-  static subscribeToConversation(
+  static subscribeToConversationMessages(
     conversationId: string,
     onMessage: (message: Message) => void
   ): () => void {
-    const sseClient = getSSEClient();
-    return sseClient.subscribe('messages', {
+    const wsClient = getWSClient();
+    return wsClient.subscribe('messages', {
       event: 'INSERT',
       filter: `conversation_id=eq.${conversationId}`,
     }, (event) => {
@@ -515,14 +515,14 @@ export class MessageService {
   }
 
   /**
-   * Subscribe to all messages for a user (real-time via SSE)
+   * Subscribe to all messages for a user (real-time via WebSocket)
    */
   static subscribeToUserMessages(
     userId: string,
     onMessage: (message: Message) => void
   ): () => void {
-    const sseClient = getSSEClient();
-    return sseClient.subscribe('messages', {
+    const wsClient = getWSClient();
+    return wsClient.subscribe('messages', {
       event: 'INSERT',
       filter: `receiver_id=eq.${userId}`,
     }, (event) => {
@@ -551,7 +551,7 @@ export class MessageService {
   }
 
   /**
-   * Subscribe to conversation list updates (real-time via SSE)
+   * Subscribe to conversation list updates (real-time via WebSocket)
    * Listens for changes in unread counts, new messages, etc.
    */
   static subscribeToUserConversations(
@@ -582,8 +582,8 @@ export class MessageService {
         throw new Error(`Invalid user type: ${userType}`);
     }
 
-    const sseClient = getSSEClient();
-    const unsubUpdate = sseClient.subscribe('conversations', {
+    const wsClient = getWSClient();
+    const unsubUpdate = wsClient.subscribe('conversations', {
       event: 'UPDATE',
       filter,
     }, (event) => {
@@ -591,7 +591,7 @@ export class MessageService {
         onUpdate(event.payload as Conversation);
       }
     });
-    const unsubInsert = sseClient.subscribe('conversations', {
+    const unsubInsert = wsClient.subscribe('conversations', {
       event: 'INSERT',
       filter,
     }, (event) => {

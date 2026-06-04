@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import toast from 'react-hot-toast';
 import { MessageSquare, X, User, Briefcase } from 'lucide-react';
 import { getLogger } from '@/shared/config/logging';
@@ -60,8 +60,8 @@ export const useLearnerMessageNotifications = ({
   useEffect(() => {
     if (!learnerId || !enabled) return;
 
-    const sseClient = getSSEClient();
-    const unsub = sseClient.subscribe('messages', {
+    const wsClient = getWSClient();
+    const unsub = wsClient.subscribe('messages', {
       event: 'INSERT',
       filter: `receiver_id=eq.${learnerId}`
     }, (event) => {

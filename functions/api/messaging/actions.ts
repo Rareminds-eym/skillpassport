@@ -2,6 +2,7 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { notifyRealtime } from '../../lib/realtime';
 
 async function convertApplicationId(supabase: any, applicationId: number | string | undefined): Promise<number | undefined> {
   if (!applicationId) return undefined;
@@ -648,20 +649,35 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'fetch-educator-details':
         return apiSuccess(await handleFetchEducatorDetails(supabase, params), context.request, { startTime });
 
-      case 'get-or-create-conversation':
-        return apiSuccess(await handleGetOrCreateConversation(supabase, params), context.request, { startTime });
+      case 'get-or-create-conversation': {
+        const convData = await handleGetOrCreateConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'INSERT', convData));
+        return apiSuccess(convData, context.request, { startTime });
+      }
 
-      case 'get-or-create-learner-educator-conversation':
-        return apiSuccess(await handleGetOrCreateLearnerEducatorConversation(supabase, params), context.request, { startTime });
+      case 'get-or-create-learner-educator-conversation': {
+        const convData = await handleGetOrCreateLearnerEducatorConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'INSERT', convData));
+        return apiSuccess(convData, context.request, { startTime });
+      }
 
-      case 'get-or-create-learner-college-lecturer-conversation':
-        return apiSuccess(await handleGetOrCreateLearnerCollegeLecturerConversation(supabase, params), context.request, { startTime });
+      case 'get-or-create-learner-college-lecturer-conversation': {
+        const convData = await handleGetOrCreateLearnerCollegeLecturerConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'INSERT', convData));
+        return apiSuccess(convData, context.request, { startTime });
+      }
 
-      case 'send-message':
-        return apiSuccess(await handleSendMessage(supabase, params), context.request, { startTime });
+      case 'send-message': {
+        const msgData = await handleSendMessage(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'messages', 'INSERT', msgData));
+        return apiSuccess(msgData, context.request, { startTime });
+      }
 
-      case 'send-learner-educator-message':
-        return apiSuccess(await handleSendLearnerEducatorMessage(supabase, params), context.request, { startTime });
+      case 'send-learner-educator-message': {
+        const msgData = await handleSendLearnerEducatorMessage(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'messages', 'INSERT', msgData));
+        return apiSuccess(msgData, context.request, { startTime });
+      }
 
       case 'get-conversation-messages':
         return apiSuccess(await handleGetConversationMessages(supabase, params), context.request, { startTime });
@@ -675,53 +691,83 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'get-conversation-with-learner':
         return apiSuccess(await handleGetConversationWithLearner(supabase, params), context.request, { startTime });
 
-      case 'archive-conversation':
+      case 'archive-conversation': {
         await handleArchiveConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'UPDATE', { id: params.conversationId, status: 'archived' }));
         return apiSuccess({ archived: true }, context.request, { startTime });
+      }
 
-      case 'unarchive-conversation':
+      case 'unarchive-conversation': {
         await handleUnarchiveConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'UPDATE', { id: params.conversationId, status: 'active' }));
         return apiSuccess({ unarchived: true }, context.request, { startTime });
+      }
 
-      case 'mark-as-read':
+      case 'mark-as-read': {
         await handleMarkAsRead(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'messages', 'UPDATE', { id: params.messageId, is_read: true }));
         return apiSuccess({ read: true }, context.request, { startTime });
+      }
 
-      case 'mark-conversation-as-read':
+      case 'mark-conversation-as-read': {
         await handleMarkConversationAsRead(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'UPDATE', { id: params.conversationId, is_read: true }));
         return apiSuccess({ read: true }, context.request, { startTime });
+      }
 
-      case 'get-or-create-learner-admin-conversation':
-        return apiSuccess(await handleGetOrCreateLearnerAdminConversation(supabase, params), context.request, { startTime });
+      case 'get-or-create-learner-admin-conversation': {
+        const convData = await handleGetOrCreateLearnerAdminConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'INSERT', convData));
+        return apiSuccess(convData, context.request, { startTime });
+      }
 
-      case 'get-or-create-learner-college-admin-conversation':
-        return apiSuccess(await handleGetOrCreateLearnerCollegeAdminConversation(supabase, params), context.request, { startTime });
+      case 'get-or-create-learner-college-admin-conversation': {
+        const convData = await handleGetOrCreateLearnerCollegeAdminConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'INSERT', convData));
+        return apiSuccess(convData, context.request, { startTime });
+      }
 
-      case 'get-or-create-educator-admin-conversation':
-        return apiSuccess(await handleGetOrCreateEducatorAdminConversation(supabase, params), context.request, { startTime });
+      case 'get-or-create-educator-admin-conversation': {
+        const convData = await handleGetOrCreateEducatorAdminConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'INSERT', convData));
+        return apiSuccess(convData, context.request, { startTime });
+      }
 
-      case 'get-or-create-college-educator-admin-conversation':
-        return apiSuccess(await handleGetOrCreateCollegeEducatorAdminConversation(supabase, params), context.request, { startTime });
+      case 'get-or-create-college-educator-admin-conversation': {
+        const convData = await handleGetOrCreateCollegeEducatorAdminConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'INSERT', convData));
+        return apiSuccess(convData, context.request, { startTime });
+      }
 
-      case 'delete-conversation-for-user':
+      case 'delete-conversation-for-user': {
         await handleDeleteConversationForUser(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'UPDATE', { id: params.conversationId }));
         return apiSuccess({ deleted: true }, context.request, { startTime });
+      }
 
-      case 'restore-conversation':
+      case 'restore-conversation': {
         await handleRestoreConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'UPDATE', { id: params.conversationId }));
         return apiSuccess({ restored: true }, context.request, { startTime });
+      }
 
-      case 'permanently-delete-conversation':
+      case 'permanently-delete-conversation': {
         await handlePermanentlyDeleteConversation(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'DELETE', { id: params.conversationId }));
         return apiSuccess({ permanentlyDeleted: true }, context.request, { startTime });
+      }
 
-      case 'archive-conversation-for-user':
+      case 'archive-conversation-for-user': {
         await handleArchiveConversationForUser(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'UPDATE', { id: params.conversationId }));
         return apiSuccess({ archived: true }, context.request, { startTime });
+      }
 
-      case 'unarchive-conversation-for-user':
+      case 'unarchive-conversation-for-user': {
         await handleUnarchiveConversationForUser(supabase, params);
+        context.waitUntil(notifyRealtime(env as any, 'conversations', 'UPDATE', { id: params.conversationId }));
         return apiSuccess({ unarchived: true }, context.request, { startTime });
+      }
 
       case 'fetch-recipients':
         return apiSuccess(await handleFetchRecipients(supabase, params), context.request, { startTime });

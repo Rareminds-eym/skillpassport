@@ -4,7 +4,7 @@
  */
 
 import { apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 export class LearnerPipelineService {
   /**
@@ -117,7 +117,7 @@ export class LearnerPipelineService {
    * @returns {Function} Unsubscribe function
    */
   static subscribeToPipelineUpdates(learnerId, onUpdate) {
-    const sseClient = getSSEClient();
+    const sseClient = getWSClient();
     const unsubscribers = [];
 
     // Subscribe to pipeline_candidates changes for this learner

@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-notification');
@@ -104,11 +104,11 @@ export class LearnerNotificationService {
   }
 
   static subscribeToNotifications(learnerId: string, onNotification: (notification: any) => void) {
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to INSERT events
-    const unsubInsert = sseClient.subscribe(
+    const unsubInsert = wsClient.subscribe(
       'notifications',
       { event: 'INSERT', filter: `recipient_id=eq.${learnerId}` },
       (event) => {
@@ -120,7 +120,7 @@ export class LearnerNotificationService {
     unsubscribers.push(unsubInsert);
 
     // Subscribe to UPDATE events
-    const unsubUpdate = sseClient.subscribe(
+    const unsubUpdate = wsClient.subscribe(
       'notifications',
       { event: 'UPDATE', filter: `recipient_id=eq.${learnerId}` },
       (event) => {

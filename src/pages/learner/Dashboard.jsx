@@ -16,7 +16,7 @@ import { useOpportunities } from '@/features/opportunities';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { useSubscriptionQuery } from '@/features/subscription/model';
 import { apiPost } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getLogger } from '@/shared/config/logging';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import {
@@ -1273,7 +1273,7 @@ const LearnerDashboard = () => {
   useEffect(() => {
     if (!userEmail || isViewingOthersProfile) return;
 
-    const sseClient = getSSEClient();
+    const sseClient = getWSClient();
 
     // Subscribe to INSERT events on opportunities table
     const unsubscribeInsert = sseClient.subscribe(

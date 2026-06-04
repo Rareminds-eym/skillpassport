@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiGet } from '@/shared/api/apiClient';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getlearnerRecentActivity } from '@/shared/api/learnerActivityService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
@@ -229,13 +229,13 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
     debouncedRefetch();
   }, [debouncedRefetch]);
 
-  // Set up real-time subscriptions using SSE
+  // Set up real-time subscriptions using WebSocket
   useEffect(() => {
     if (!learnerEmail || !learnerId || isSubscribedRef.current) {
       return;
     }
 
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: (() => void)[] = [];
 
     const tableSubscriptions = [
@@ -250,7 +250,7 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
     tableSubscriptions.forEach(({ table, filter }) => {
       const config: any = { event: '*' as const };
       if (filter) config.filter = filter;
-      const unsub = sseClient.subscribe(table, config, () => {
+      const unsub = wsClient.subscribe(table, config, () => {
         handleRealtimeChange(table, {});
       });
       unsubscribers.push(unsub);

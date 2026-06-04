@@ -2,6 +2,7 @@ import { withAuth } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError } from '../../lib/response';
+import { notifyRealtime } from '../../lib/realtime';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -782,7 +783,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request, { startTime });
         const { data: learners } = await supabase.from('learners').select('user_id').eq('school_id', schoolId);
         if (learners?.length) {
-          const { error } = await supabase.from('notifications').insert(
+          const { data: insertedNotifications, error } = await supabase.from('notifications').insert(
             learners.map((l: any) => ({
               recipient_id: l.user_id, type,
               title: type === 'course_added' ? `New Course: ${courseTitle}` : `Course Updated: ${courseTitle}`,
@@ -791,8 +792,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
                 : `${educatorName} has updated the course "${courseTitle}"`,
               read: false,
             }))
-          );
+          ).select();
           if (error) return apiDbError(error, context.request, { startTime });
+          
+          if (insertedNotifications) {
+            insertedNotifications.forEach(notification => context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', notification)));
+          }
         }
         return apiSuccess({ sent: true }, context.request, { startTime });
       }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import type { FunnelRangePreset } from '@/features/educator-copilot';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
@@ -24,11 +24,11 @@ export const useSpeedAnalytics = ({ preset, startDate, endDate }: UseSpeedAnalyt
   });
 
   useEffect(() => {
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     const unsubscribers: Array<() => void> = [];
 
     // Subscribe to pipeline_activities changes
-    const unsubActivities = sseClient.subscribe(
+    const unsubActivities = wsClient.subscribe(
       'pipeline_activities',
       { event: '*' },
       () => {
@@ -38,7 +38,7 @@ export const useSpeedAnalytics = ({ preset, startDate, endDate }: UseSpeedAnalyt
     unsubscribers.push(unsubActivities);
 
     // Subscribe to pipeline_candidates changes
-    const unsubCandidates = sseClient.subscribe(
+    const unsubCandidates = wsClient.subscribe(
       'pipeline_candidates',
       { event: '*' },
       () => {

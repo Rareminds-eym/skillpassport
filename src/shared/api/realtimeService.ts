@@ -1,5 +1,10 @@
-import { apiPost } from './apiClient';
-import { getSSEClient, type SSEEvent } from './sseRealtimeClient';
+/**
+ * Realtime Service — WebSocket Edition (V8)
+ *
+ * Provides broadcast channels, typing indicators, notification broadcasts,
+ * and presence channels over a persistent WebSocket connection.
+ */
+import { getWSClient, type WSEvent } from './wsRealtimeClient';
 
 export interface UserPresence {
   userId: string;
@@ -49,7 +54,6 @@ interface PresenceSubscription {
   onLeave?: PresenceHandler;
   onSync?: PresenceSyncHandler;
   lastKnownUsers: Map<string, OnlineUser>;
-  heartbeatInterval?: ReturnType<typeof setInterval>;
 }
 
 const subscriptions = new Map<string, SubscriptionEntry>();
@@ -70,8 +74,8 @@ export class RealtimeService {
   ): Promise<{ unsubscribe: () => void }> {
     cleanupSubscription(channelName);
 
-    const sse = getSSEClient();
-    const unsub = sse.subscribeToBroadcast(channelName, (event: SSEEvent) => {
+    const ws = getWSClient();
+    const unsub = ws.subscribeToBroadcast(channelName, (event: WSEvent) => {
       if (event.type === 'broadcast') {
         const msg: BroadcastMessage = {
           type: (event.eventType || 'custom') as BroadcastMessage['type'],
@@ -92,12 +96,8 @@ export class RealtimeService {
     message: BroadcastMessage
   ): Promise<'ok' | 'timed out' | 'rate limited'> {
     try {
-      await apiPost('/realtime-stream', {
-        action: 'send-broadcast',
-        channel: channelName,
-        eventType: message.type,
-        payload: message.payload,
-      });
+      const ws = getWSClient();
+      ws.sendBroadcast(channelName, message.type, message.payload);
       return 'ok';
     } catch {
       return 'timed out';
@@ -112,12 +112,8 @@ export class RealtimeService {
   ): Promise<'ok' | 'timed out' | 'rate limited'> {
     const channelName = `conversation:${conversationId}`;
     try {
-      await apiPost('/realtime-stream', {
-        action: 'send-broadcast',
-        channel: channelName,
-        eventType: 'typing',
-        payload: { userId, userName, conversationId, isTyping },
-      });
+      const ws = getWSClient();
+      ws.sendBroadcast(channelName, 'typing', { userId, userName, conversationId, isTyping });
       return 'ok';
     } catch {
       return 'timed out';
@@ -131,8 +127,8 @@ export class RealtimeService {
     const channelName = `conversation:${conversationId}`;
     cleanupSubscription(channelName);
 
-    const sse = getSSEClient();
-    const unsub = sse.subscribeToBroadcast(channelName, (event: SSEEvent) => {
+    const ws = getWSClient();
+    const unsub = ws.subscribeToBroadcast(channelName, (event: WSEvent) => {
       if (event.type === 'broadcast' && event.eventType === 'typing') {
         onTyping(event.payload as TypingIndicator);
       }
@@ -148,12 +144,8 @@ export class RealtimeService {
   ): Promise<'ok' | 'timed out' | 'rate limited'> {
     const channelName = `user-notifications:${userId}`;
     try {
-      await apiPost('/realtime-stream', {
-        action: 'send-broadcast',
-        channel: channelName,
-        eventType: 'notification',
-        payload: notification,
-      });
+      const ws = getWSClient();
+      ws.sendBroadcast(channelName, 'notification', notification);
       return 'ok';
     } catch {
       return 'timed out';
@@ -167,8 +159,8 @@ export class RealtimeService {
     const channelName = `user-notifications:${userId}`;
     cleanupSubscription(channelName);
 
-    const sse = getSSEClient();
-    const unsub = sse.subscribeToBroadcast(channelName, (event: SSEEvent) => {
+    const ws = getWSClient();
+    const unsub = ws.subscribeToBroadcast(channelName, (event: WSEvent) => {
       if (event.type === 'broadcast' && event.eventType === 'notification') {
         onNotification(event.payload);
       }
@@ -198,36 +190,24 @@ export class RealtimeService {
     };
     presenceSubscriptions.set(channelName, ps);
 
-    try {
-      await apiPost('/realtime-stream', {
-        action: 'join-presence',
-        channel: channelName,
-        userId: userPresence.userId,
-        userName: userPresence.userName,
-        userType: userPresence.userType,
-        status: ps.currentStatus,
-        conversationId: userPresence.conversationId,
-      });
-    } catch {
-      // Best-effort join
-    }
+    const ws = getWSClient();
 
-    const sse = getSSEClient();
-    const unsub = sse.subscribeToPresence(channelName, (event: SSEEvent) => {
+    // Join presence channel (handles heartbeat internally)
+    ws.joinPresence(
+      channelName,
+      userPresence.userName,
+      userPresence.userType,
+      userPresence.status,
+      userPresence.conversationId
+    );
+
+    // Subscribe to presence sync events
+    const unsub = ws.subscribeToPresence(channelName, (event: WSEvent) => {
       if (event.type !== 'presence_sync') return;
       handlePresenceSync(ps, event);
     });
 
     subscriptions.set(channelName, { type: 'presence', channelName, unsubscribe: unsub });
-
-    ps.heartbeatInterval = setInterval(() => {
-      apiPost('/realtime-stream', {
-        action: 'heartbeat',
-        channel: channelName,
-        userId: ps.userId,
-        status: ps.currentStatus,
-      }).catch(() => {});
-    }, 30000);
 
     return { unsubscribe: () => this.unsubscribe(channelName) };
   }
@@ -243,12 +223,8 @@ export class RealtimeService {
     }
 
     try {
-      await apiPost('/realtime-stream', {
-        action: 'heartbeat',
-        channel: channelName,
-        userId,
-        status,
-      });
+      const ws = getWSClient();
+      ws.sendHeartbeat(channelName, status);
     } catch {
       // Best-effort
     }
@@ -267,17 +243,11 @@ export class RealtimeService {
   static async unsubscribe(channelName: string): Promise<void> {
     const ps = presenceSubscriptions.get(channelName);
     if (ps) {
-      if (ps.heartbeatInterval) {
-        clearInterval(ps.heartbeatInterval);
-      }
       presenceSubscriptions.delete(channelName);
 
       try {
-        await apiPost('/realtime-stream', {
-          action: 'leave-presence',
-          channel: channelName,
-          userId: ps.userId,
-        });
+        const ws = getWSClient();
+        ws.leavePresence(channelName);
       } catch {}
     }
 
@@ -285,17 +255,11 @@ export class RealtimeService {
   }
 
   static async unsubscribeAll(): Promise<void> {
+    const ws = getWSClient();
+
     for (const [channelName] of presenceSubscriptions) {
-      const ps = presenceSubscriptions.get(channelName);
-      if (ps?.heartbeatInterval) {
-        clearInterval(ps.heartbeatInterval);
-      }
       try {
-        await apiPost('/realtime-stream', {
-          action: 'leave-presence',
-          channel: channelName,
-          userId: ps!.userId,
-        });
+        ws.leavePresence(channelName);
       } catch {}
     }
     presenceSubscriptions.clear();
@@ -303,6 +267,8 @@ export class RealtimeService {
     for (const [channelName] of subscriptions) {
       cleanupSubscription(channelName);
     }
+
+    ws.disconnect();
   }
 
   static getChannel(channelName: string): { unsubscribe: () => void } | undefined {
@@ -322,7 +288,7 @@ export class RealtimeService {
   }
 }
 
-function handlePresenceSync(ps: PresenceSubscription, event: SSEEvent): void {
+function handlePresenceSync(ps: PresenceSubscription, event: WSEvent): void {
   if (event.type !== 'presence_sync') return;
 
   const incomingUsers = (event.users || []).reduce((map, u) => {

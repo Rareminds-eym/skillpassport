@@ -2,6 +2,7 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError } from '../../lib/response';
+import { notifyRealtime } from '../../lib/realtime';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   getContextUser(context);
@@ -31,6 +32,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .select()
           .single();
         if (error) throw error;
+        context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', data));
         return apiSuccess(data, context.request);
       }
 
@@ -44,14 +46,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .maybeSingle();
         if (!schoolAdmin?.user_id) return apiSuccess(null, context.request);
 
-        const { error } = await supabase.from('notifications').insert({
+        const { data, error } = await supabase.from('notifications').insert({
           recipient_id: schoolAdmin.user_id,
           type: 'training_submitted',
           title: 'New Training Submitted',
           message: `${learner_name} submitted "${training_title}" for approval`,
           read: false,
-        });
+        }).select().single();
         if (error) throw error;
+        context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', data));
         return apiSuccess(null, context.request);
       }
 
@@ -65,14 +68,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .maybeSingle();
         if (!schoolAdmin?.user_id) return apiSuccess(null, context.request);
 
-        const { error } = await supabase.from('notifications').insert({
+        const { data, error } = await supabase.from('notifications').insert({
           recipient_id: schoolAdmin.user_id,
           type: 'experience_submitted',
           title: 'New Experience Submitted',
           message: `${learner_name} submitted "${experience_title}" for approval`,
           read: false,
-        });
+        }).select().single();
         if (error) throw error;
+        context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', data));
         return apiSuccess(null, context.request);
       }
 
@@ -86,14 +90,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .maybeSingle();
         if (!schoolAdmin?.user_id) return apiSuccess(null, context.request);
 
-        const { error } = await supabase.from('notifications').insert({
+        const { data, error } = await supabase.from('notifications').insert({
           recipient_id: schoolAdmin.user_id,
           type: 'project_submitted',
           title: 'New Project Submitted',
           message: `${learner_name} submitted "${project_title}" for approval`,
           read: false,
-        });
+        }).select().single();
         if (error) throw error;
+        context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', data));
         return apiSuccess(null, context.request);
       }
 
@@ -107,14 +112,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .maybeSingle();
         if (!collegeAdmin?.id) return apiSuccess(null, context.request);
 
-        const { error } = await supabase.from('notifications').insert({
+        const { data, error } = await supabase.from('notifications').insert({
           recipient_id: collegeAdmin.id,
           type,
           title,
           message: message || '',
           read: false,
-        });
+        }).select().single();
         if (error) throw error;
+        context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', data));
         return apiSuccess(null, context.request);
       }
 
@@ -135,14 +141,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           ? `Your ${type.split('_')[0]} "${item_title}" has been approved`
           : `Your ${type.split('_')[0]} "${item_title}" was rejected${notes ? `: ${notes}` : ''}`;
 
-        const { error } = await supabase.from('notifications').insert({
+        const { data, error } = await supabase.from('notifications').insert({
           recipient_id: learner.user_id,
           type,
           title: notifTitle,
           message: notifMessage,
           read: false,
-        });
+        }).select().single();
         if (error) throw error;
+        context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', data));
         return apiSuccess(null, context.request);
       }
 
@@ -183,8 +190,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }));
 
         if (notifications.length > 0) {
-          const { error } = await supabase.from('notifications').insert(notifications);
+          const { data, error } = await supabase.from('notifications').insert(notifications).select();
           if (error) throw error;
+          if (data) {
+            data.forEach(notification => context.waitUntil(notifyRealtime(env as any, 'notifications', 'INSERT', notification)));
+          }
         }
         return apiSuccess(null, context.request);
       }

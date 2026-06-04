@@ -1,6 +1,6 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 const logger = getLogger('school-admin-notification');
 
@@ -198,9 +198,9 @@ export class SchoolAdminNotificationService {
   }
 
   static subscribeToNotifications(schoolId: string, callback: (notification: any) => void) {
-    const sseClient = getSSEClient();
+    const wsClient = getWSClient();
     
-    const unsub = sseClient.subscribe(
+    const unsub = wsClient.subscribe(
       'training_notifications',
       { event: 'INSERT', filter: `school_id=eq.${schoolId}` },
       (event) => {

@@ -3,7 +3,7 @@ import { MessageService, Message } from '@/features/messaging';
 import { useMessageStore } from '@/shared/model/useMessageStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/shared/lib/queryKeys';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 export interface UseLearnerMessagesOptions {
   learnerId: string | null;
@@ -120,8 +120,8 @@ export const useLearnerMessages = ({
   useEffect(() => {
     if (!conversationId || !enabled || !enableRealtime) return;
 
-    const sseClient = getSSEClient();
-    const unsubInsert = sseClient.subscribe('messages', {
+    const wsClient = getWSClient();
+    const unsubInsert = wsClient.subscribe('messages', {
       event: 'INSERT',
       filter: `conversation_id=eq.${conversationId}`
     }, (event) => {
@@ -135,7 +135,7 @@ export const useLearnerMessages = ({
       }
     });
 
-    const unsubUpdate = sseClient.subscribe('messages', {
+    const unsubUpdate = wsClient.subscribe('messages', {
       event: 'UPDATE',
       filter: `conversation_id=eq.${conversationId}`
     }, (event) => {
@@ -154,15 +154,15 @@ export const useLearnerMessages = ({
   useEffect(() => {
     if (!learnerId || !enabled || !enableRealtime) return;
 
-    const sseClient = getSSEClient();
-    const unsubInsert = sseClient.subscribe('messages', {
+    const wsClient = getWSClient();
+    const unsubInsert = wsClient.subscribe('messages', {
       event: 'INSERT',
       filter: `receiver_id=eq.${learnerId}`
     }, () => {
       incrementUnreadCount();
     });
 
-    const unsubUpdate = sseClient.subscribe('messages', {
+    const unsubUpdate = wsClient.subscribe('messages', {
       event: 'UPDATE',
       filter: `receiver_id=eq.${learnerId}`
     }, (event) => {
@@ -183,8 +183,8 @@ export const useLearnerMessages = ({
   useEffect(() => {
     if (!learnerId || !enabled || !enableRealtime) return;
 
-    const sseClient = getSSEClient();
-    const unsubUpdate = sseClient.subscribe('conversations', {
+    const wsClient = getWSClient();
+    const unsubUpdate = wsClient.subscribe('conversations', {
       event: 'UPDATE',
       filter: `learner_id=eq.${learnerId}`
     }, (event) => {
@@ -198,7 +198,7 @@ export const useLearnerMessages = ({
       }
     });
 
-    const unsubInsert = sseClient.subscribe('conversations', {
+    const unsubInsert = wsClient.subscribe('conversations', {
       event: 'INSERT',
       filter: `learner_id=eq.${learnerId}`
     }, () => {

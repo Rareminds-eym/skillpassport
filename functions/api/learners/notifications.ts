@@ -2,6 +2,7 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError } from '../../lib/response';
+import { notifyRealtime } from '../../lib/realtime';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
@@ -57,17 +58,24 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .select()
           .single();
         if (error) return apiError(500, 'DB_ERROR', error.message, context.request, { startTime });
+        if (data) {
+          context.waitUntil(notifyRealtime(env as any, 'learner_notifications', 'UPDATE', data));
+        }
         return apiSuccess({ success: !!data }, context.request, { startTime });
       }
 
       case 'mark-all-as-read': {
         const { learnerId } = params;
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('learner_notifications')
           .update({ is_read: true, read_at: new Date().toISOString() })
           .eq('learner_id', learnerId)
-          .eq('is_read', false);
+          .eq('is_read', false)
+          .select();
         if (error) return apiError(500, 'DB_ERROR', error.message, context.request, { startTime });
+        if (data) {
+          data.forEach((notification: any) => context.waitUntil(notifyRealtime(env as any, 'learner_notifications', 'UPDATE', notification)));
+        }
         return apiSuccess({ success: true }, context.request, { startTime });
       }
 
@@ -88,6 +96,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .select()
           .single();
         if (error) return apiError(500, 'DB_ERROR', error.message, context.request, { startTime });
+        context.waitUntil(notifyRealtime(env as any, 'learner_notifications', 'INSERT', insertData));
         return apiSuccess({ data: insertData }, context.request, { startTime });
       }
 
@@ -99,6 +108,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .eq('id', notificationId)
           .eq('learner_id', learnerId);
         if (error) return apiError(500, 'DB_ERROR', error.message, context.request, { startTime });
+        context.waitUntil(notifyRealtime(env as any, 'learner_notifications', 'DELETE', { id: notificationId }));
         return apiSuccess({ success: true }, context.request, { startTime });
       }
 

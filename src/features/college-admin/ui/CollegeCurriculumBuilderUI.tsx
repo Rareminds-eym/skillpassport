@@ -23,7 +23,7 @@ import { KPICard } from '@/features/analytics';
 import toast from "react-hot-toast";
 import { curriculumApprovalService } from '@/features/college-admin';
 import { curriculumChangeRequestService } from '@/features/college-admin';
-import { getSSEClient } from '@/shared/api/sseRealtimeClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin:CollegeCurriculumBuilderUI');
@@ -1269,8 +1269,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     // Set up real-time subscription for curriculum changes
     let unsubscribe: (() => void) | null = null;
     if (props.curriculumId) {
-      const sseClient = getSSEClient();
-      unsubscribe = sseClient.subscribe('college_curriculums', {
+      const wsClient = getWSClient();
+      unsubscribe = wsClient.subscribe('college_curriculums', {
         event: 'UPDATE',
         filter: `id=eq.${props.curriculumId}`,
       }, (event) => {
