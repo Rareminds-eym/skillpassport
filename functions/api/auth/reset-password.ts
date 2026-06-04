@@ -21,7 +21,11 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     // Parse request body
     let body: ResetPasswordRequest;
     try {
-      body = await request.json() as ResetPasswordRequest;
+      const parsed = await request.json();
+      if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('Invalid payload');
+      }
+      body = parsed as ResetPasswordRequest;
     } catch (error) {
       apiLogger.error('Invalid JSON in reset password request', error as Error);
       return jsonResponse({ 
@@ -71,7 +75,12 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     );
 
     if (!ssoResponse.ok) {
-      const errorText = await ssoResponse.text().catch(() => 'Unknown error');
+      let errorText = 'Unknown error';
+      try {
+        errorText = await ssoResponse.text();
+      } catch (e) {
+        apiLogger.error('Failed to read error response', e as Error);
+      }
       apiLogger.error('SSO Worker reset password failed', new Error(errorText));
       
       // Parse error message from SSO Worker
@@ -89,13 +98,18 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       }, ssoResponse.status);
     }
 
-    const ssoData = await ssoResponse.json() as { reset: boolean };
+    const ssoData = await ssoResponse.json();
+    if (typeof ssoData !== 'object' || ssoData === null) {
+      throw new Error('Invalid SSO response');
+    }
 
     apiLogger.info('Password reset completed successfully');
 
     return jsonResponse({
       success: true,
-      reset: ssoData.reset || true,
+      reset: (ssoData && typeof ssoData === 'object' && 'reset' in ssoData && typeof ssoData.reset === 'boolean') 
+        ? ssoData.reset 
+        : true,
       message: 'Password reset successfully'
     });
 

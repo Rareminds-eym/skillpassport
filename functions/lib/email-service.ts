@@ -24,11 +24,6 @@ export interface EmailResult {
   error?: string;
 }
 
-interface EmailServiceResponse {
-  messageId?: string;
-  id?: string;
-}
-
 /**
  * Send email via email-worker using service binding
  * @throws Error if EMAIL_SERVICE binding is not configured
@@ -54,11 +49,18 @@ export async function sendEmail(
       fromName: payload.fromName || FROM_NAME,
     });
 
+    // Validate the result structure
+    if (!result || typeof result !== 'object') {
+      throw new Error('Invalid email service response');
+    }
+
     apiLogger.info('Email sent successfully via service binding RPC', { result });
     
     return {
       success: true,
-      messageId: result.messageId,
+      messageId: (result && typeof result === 'object' && 'messageId' in result && typeof result.messageId === 'string') 
+        ? result.messageId 
+        : undefined,
     };
   } catch (error) {
     apiLogger.error('Failed to send email', error as Error);

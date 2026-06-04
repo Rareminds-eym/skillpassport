@@ -99,13 +99,17 @@ const PasswordReset = () => {
         body: JSON.stringify({ action: 'send', email: state.email })
       });
 
-      const result = await response.json() as ApiResponse;
+      const result = await response.json();
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response format');
+      }
+      const apiResult = result as ApiResponse;
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !apiResult.success) {
         setState(prev => ({
           ...prev,
           loading: false,
-          error: result.error || 'Failed to send reset code'
+          error: apiResult.error || 'Failed to send reset code'
         }));
         return;
       }
@@ -170,13 +174,17 @@ const PasswordReset = () => {
         })
       });
 
-      const result = await response.json() as ApiResponse;
+      const result = await response.json();
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response format');
+      }
+      const apiResult = result as ApiResponse;
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !apiResult.success) {
         setState(prev => ({
           ...prev,
           loading: false,
-          error: result.error || 'Invalid or expired verification code'
+          error: apiResult.error || 'Invalid or expired verification code'
         }));
         return;
       }
@@ -209,13 +217,17 @@ const PasswordReset = () => {
         body: JSON.stringify({ action: 'send', email: state.email })
       });
 
-      const result = await response.json() as ApiResponse;
+      const result = await response.json();
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response format');
+      }
+      const apiResult = result as ApiResponse;
 
-      if (!response.ok || !result.success) {
+      if (!response.ok || !apiResult.success) {
         setState(prev => ({
           ...prev,
           loading: false,
-          error: result.error || 'Failed to resend code'
+          error: apiResult.error || 'Failed to resend code'
         }));
         return;
       }

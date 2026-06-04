@@ -32,7 +32,11 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     // Parse request body
     let body: VerificationEmailRequest;
     try {
-      body = await request.json() as VerificationEmailRequest;
+      const parsed = await request.json();
+      if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('Invalid payload');
+      }
+      body = parsed as VerificationEmailRequest;
     } catch (error) {
       apiLogger.error('Invalid JSON in verification email request', error as Error);
       return jsonResponse({ 
@@ -56,8 +60,8 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       }, 400);
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Validate email format with more robust regex
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     if (!emailRegex.test(body.to)) {
       return jsonResponse({
         success: false,
@@ -66,8 +70,8 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     }
 
     apiLogger.info('Processing email verification request', {
-      to: body.to,
-      verifyUrl: body.verifyUrl.substring(0, 50) + '...' // Log partial URL for debugging
+      to: body.to
+      // Note: verifyUrl not logged for security reasons
     });
 
     // Generate beautiful HTML email

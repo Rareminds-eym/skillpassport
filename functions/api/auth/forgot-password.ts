@@ -21,7 +21,11 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     // Parse request body
     let body: ForgotPasswordRequest;
     try {
-      body = await request.json() as ForgotPasswordRequest;
+      const parsed = await request.json();
+      if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('Invalid payload');
+      }
+      body = parsed as ForgotPasswordRequest;
     } catch (error) {
       apiLogger.error('Invalid JSON in forgot password request', error as Error);
       return jsonResponse({ 
@@ -38,8 +42,8 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       }, 400);
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Validate email format with more robust regex
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     if (!emailRegex.test(body.email)) {
       return jsonResponse({
         success: false,
@@ -76,7 +80,12 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     );
 
     if (!ssoResponse.ok) {
-      const errorText = await ssoResponse.text().catch(() => 'Unknown error');
+      let errorText = 'Unknown error';
+      try {
+        errorText = await ssoResponse.text();
+      } catch (e) {
+        apiLogger.error('Failed to read error response', e as Error);
+      }
       apiLogger.error('SSO Worker forgot password failed', new Error(errorText));
       
       return jsonResponse({
@@ -85,7 +94,10 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       }, ssoResponse.status);
     }
 
-    const ssoData = await ssoResponse.json() as { message: string };
+    const ssoData = await ssoResponse.json();
+    if (typeof ssoData !== 'object' || ssoData === null) {
+      throw new Error('Invalid SSO response');
+    }
 
     apiLogger.info('Password reset request processed successfully', {
       email: body.email
@@ -93,7 +105,9 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
     return jsonResponse({
       success: true,
-      message: ssoData.message || 'If an account exists, a reset email has been sent.'
+      message: (ssoData && typeof ssoData === 'object' && 'message' in ssoData && typeof ssoData.message === 'string') 
+        ? ssoData.message 
+        : 'If an account exists, a reset email has been sent.'
     });
 
   } catch (error) {

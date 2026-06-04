@@ -1324,8 +1324,8 @@ export function generateEmailVerificationHtml(data: EmailVerificationData): stri
     }
     .title {
       font-size: 24px;
-      font-weight: 400;
-      color: #666666;
+      font-weight: 600;
+      color: #1f2937;
       margin: 0 0 8px 0;
     }
     .brand {
