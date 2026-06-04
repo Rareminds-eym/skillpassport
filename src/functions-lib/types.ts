@@ -33,6 +33,23 @@ export interface PagesEnv {
   // Email Worker configuration
   EMAIL_API_URL?: string;
   EMAIL_API_KEY?: string;
+  /** Cloudflare Service Binding to the Email worker */
+  EMAIL_SERVICE?: {
+    sendEmail(payload: {
+      to: string | string[];
+      subject: string;
+      html: string;
+      text?: string;
+      from?: string;
+      fromName?: string;
+    }): Promise<{
+      success: boolean;
+      messageId?: string;
+      customMessageId?: string;
+      recipient?: string | string[];
+      timestamp?: string;
+    }>;
+  };
   ADMIN_EMAIL?: string;
 
   // App configuration

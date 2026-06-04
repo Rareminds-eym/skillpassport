@@ -18,7 +18,6 @@ const ALLOWED_ORIGINS = [
   // Production domains from environment variables
   'https://skillpassport.rareminds.in',
   'https://app.skillpassport.rareminds.in',
-  'https://api.rareminds.email', // SSO worker production
 ];
 
 /**
