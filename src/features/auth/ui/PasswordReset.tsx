@@ -12,7 +12,6 @@ import {
   Clock,
   RefreshCw
 } from 'lucide-react';
-import { sendPasswordResetOTP, verifyOTPAndResetPassword } from '@/features/auth/api';
 
 interface PasswordResetState {
   step: 'email' | 'otp' | 'success';
@@ -26,6 +25,12 @@ interface PasswordResetState {
   showConfirmPassword: boolean;
   timeLeft: number;
   canResend: boolean;
+}
+
+interface ApiResponse {
+  success: boolean;
+  error?: string;
+  message?: string;
 }
 
 const PasswordReset = () => {
@@ -88,9 +93,15 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const result = await sendPasswordResetOTP(state.email);
+      const response = await fetch('/api/user/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send', email: state.email })
+      });
 
-      if (!result.success) {
+      const result = await response.json() as ApiResponse;
+
+      if (!response.ok || !result.success) {
         setState(prev => ({
           ...prev,
           loading: false,
@@ -148,9 +159,20 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const result = await verifyOTPAndResetPassword(state.email, state.otp, state.newPassword);
+      const response = await fetch('/api/user/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'reset-password', 
+          email: state.email, 
+          otp: state.otp, 
+          newPassword: state.newPassword 
+        })
+      });
 
-      if (!result.success) {
+      const result = await response.json() as ApiResponse;
+
+      if (!response.ok || !result.success) {
         setState(prev => ({
           ...prev,
           loading: false,
@@ -181,9 +203,15 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const result = await sendPasswordResetOTP(state.email);
+      const response = await fetch('/api/user/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send', email: state.email })
+      });
 
-      if (!result.success) {
+      const result = await response.json() as ApiResponse;
+
+      if (!response.ok || !result.success) {
         setState(prev => ({
           ...prev,
           loading: false,
