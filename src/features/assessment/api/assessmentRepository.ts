@@ -33,15 +33,9 @@ export async function getSavedQuestionsForLearner(
   questionType: QuestionType
 ): Promise<Question[] | null> {
   if (!learnerId) {
-    console.log('⚠️ getSavedQuestionsForLearner: No learnerId provided');
     return null;
   }
 
-  console.log(`🔍 Checking for cached ${questionType} questions:`, {
-    learner_id: learnerId,
-    stream_id: streamId,
-    question_type: questionType,
-  });
 
   try {
     const API_URL = getApiUrl('assessment');
@@ -70,11 +64,9 @@ export async function getSavedQuestionsForLearner(
     const data = await response.json();
 
     if (!data.success || !data.questions) {
-      console.log(`ℹ️ No cached ${questionType} questions found for learner ${learnerId}`);
       return null;
     }
 
-    console.log(`✅ Cache HIT: Found ${data.questions.length} saved ${questionType} questions`);
     return data.questions;
   } catch (err) {
     const error = err as Error;
@@ -98,18 +90,8 @@ export async function saveAptitudeQuestions(
   gradeLevel: GradeLevel | null = null
 ): Promise<boolean> {
   if (!learnerId) {
-    console.log('⚠️ No learnerId provided, skipping save');
     return false;
   }
-
-  console.log(
-    `💾 [Frontend] Saving ${questions.length} aptitude questions for learner:`,
-    learnerId,
-    'stream:',
-    streamId,
-    'grade:',
-    gradeLevel
-  );
 
   try {
     const API_URL = getApiUrl('assessment');
@@ -147,7 +129,6 @@ export async function saveAptitudeQuestions(
       return false;
     }
 
-    console.log('✅ [Frontend] Aptitude questions saved successfully');
     return true;
   } catch (err) {
     const error = err as Error;
@@ -169,18 +150,8 @@ export async function saveKnowledgeQuestions(
   gradeLevel: GradeLevel | null = null
 ): Promise<boolean> {
   if (!learnerId) {
-    console.log('⚠️ No learnerId provided, skipping knowledge save');
     return false;
   }
-
-  console.log(
-    `💾 [Frontend] Saving ${questions.length} knowledge questions for learner:`,
-    learnerId,
-    'stream:',
-    streamId,
-    'grade:',
-    gradeLevel
-  );
 
   try {
     const API_URL = getApiUrl('assessment');
@@ -218,7 +189,6 @@ export async function saveKnowledgeQuestions(
       return false;
     }
 
-    console.log('✅ [Frontend] Knowledge questions saved successfully');
     return true;
   } catch (err) {
     const error = err as Error;
@@ -259,7 +229,6 @@ export async function clearSavedQuestionsForLearner(
       return;
     }
 
-    console.log('✅ Cleared saved questions for learner:', learnerId);
   } catch (err) {
     const error = err as Error;
     console.warn('Error clearing saved questions:', error.message);

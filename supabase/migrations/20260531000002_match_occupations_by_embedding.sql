@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION match_occupations_by_embedding(
 )
 RETURNS TABLE (
   occupation_id uuid,
-  occupation_code varchar(20),
+  occupation_code varchar(24),   -- matches occupations.code (widened for industry prefixes e.g. DAI-ROLE-001)
   occupation_name varchar(255),
   occupation_codes varchar(10)[],
   similarity double precision

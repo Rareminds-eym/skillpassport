@@ -21,7 +21,7 @@ CREATE EXTENSION IF NOT EXISTS "vector";
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.domains (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code        VARCHAR(3) UNIQUE NOT NULL,
+  code        VARCHAR(16) UNIQUE NOT NULL,   -- e.g. 'D01' (HTT) or 'HR-D01' (industry-prefixed)
   name        VARCHAR(255) UNIQUE NOT NULL,
   description TEXT,
   created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -37,7 +37,7 @@ COMMENT ON TABLE public.domains IS '7 HTT domains (D01..D07): Customer Service, 
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.capability_master (
   id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code               VARCHAR(12) UNIQUE NOT NULL,
+  code               VARCHAR(20) UNIQUE NOT NULL,   -- e.g. 'IND-CAP-01' (HTT) or 'HR-IND-CAP-01'
   name               TEXT NOT NULL,
   description        TEXT NOT NULL,
   master_sequence    INTEGER UNIQUE,                       -- canonical catalog sort key 1..27; NOT learner order
@@ -59,36 +59,27 @@ COMMENT ON COLUMN public.capability_master.master_sequence IS 'Canonical catalog
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.occupations (
   id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code                  VARCHAR(20) UNIQUE NOT NULL,
+  code                  VARCHAR(24) UNIQUE NOT NULL,   -- e.g. 'HTT-ROLE-001', 'HR-ROLE-001'
   name                  VARCHAR(255) NOT NULL,
   description           TEXT,
   primary_riasec        CHAR(1),                            -- R/I/A/S/E/C
   secondary_riasec      CHAR(1),
   tertiary_riasec       CHAR(1),
   riasec_code_string    VARCHAR(3),                         -- e.g. 'ESC'
-  primary_weight        NUMERIC(3,2) NOT NULL DEFAULT 0.50, -- 0-1 scale
-  secondary_weight      NUMERIC(3,2) NOT NULL DEFAULT 0.30,
-  tertiary_weight       NUMERIC(3,2) NOT NULL DEFAULT 0.20,
   riasec_reason         TEXT,                               -- EMBEDDING SOURCE (unique per role)
   observable_behaviours TEXT,
-  work_context_summary  TEXT,                               -- domain-level descriptive tag (only 7 distinct); NOT embedding text
-  estimated_plan_weeks  INTEGER,
-  fitment_category      TEXT[],                             -- nullable (79/86 filled)
-  fitment_confidence    TEXT[],                             -- parallel to fitment_category
   is_active             BOOLEAN DEFAULT TRUE,
   created_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT chk_primary_riasec   CHECK (primary_riasec   IN ('R','I','A','S','E','C')),
   CONSTRAINT chk_secondary_riasec CHECK (secondary_riasec IN ('R','I','A','S','E','C')),
-  CONSTRAINT chk_tertiary_riasec  CHECK (tertiary_riasec  IN ('R','I','A','S','E','C')),
-  CONSTRAINT chk_weights_sum      CHECK (primary_weight + secondary_weight + tertiary_weight = 1.0)
+  CONSTRAINT chk_tertiary_riasec  CHECK (tertiary_riasec  IN ('R','I','A','S','E','C'))
 );
 
 CREATE INDEX idx_occupations_code ON public.occupations(code);
 CREATE INDEX idx_occupations_riasec ON public.occupations(primary_riasec, secondary_riasec, tertiary_riasec);
-COMMENT ON TABLE public.occupations IS '86 HTT roles (table named occupations to avoid collision with RBAC public.roles). RIASEC letters + 0-1 weights drive the match score. riasec_reason is the embedding source.';
-COMMENT ON COLUMN public.occupations.riasec_reason IS 'Per-row unique text (86/86) used as the embedding source for RAG. work_context_summary is NOT used (only 7 distinct).';
-COMMENT ON COLUMN public.occupations.primary_weight IS 'Match-score weight, 0-1 scale. The three weights are checked to sum to 1.0. Authoritative set 0.50/0.30/0.20.';
+COMMENT ON TABLE public.occupations IS '86 HTT roles (table named occupations to avoid collision with RBAC public.roles). riasec_code_string drives the Holland-hexagon match score; riasec_reason is the embedding source.';
+COMMENT ON COLUMN public.occupations.riasec_reason IS 'Per-row unique text (86/86) used as the embedding source for RAG.';
 
 -- ============================================================================
 -- TABLE 4: capability_skills  (188 skills; each belongs to exactly 1 capability)
@@ -97,7 +88,7 @@ COMMENT ON COLUMN public.occupations.primary_weight IS 'Match-score weight, 0-1 
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.capability_skills (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code          VARCHAR(12) UNIQUE NOT NULL,
+  code          VARCHAR(20) UNIQUE NOT NULL,   -- e.g. 'IND-SK-001' (HTT) or 'HR-IND-SK-001'
   capability_id UUID NOT NULL REFERENCES public.capability_master(id) ON DELETE RESTRICT,
   name          TEXT NOT NULL,
   description   TEXT,
