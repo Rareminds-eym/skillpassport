@@ -41,7 +41,6 @@ export { default as useAIQuestions } from './useAIQuestions';
 export { default as useAssessmentProgress } from './useAssessmentProgress';
 
 // Assessment results hook
-// @ts-expect-error - JS file without type declarations
 export { useAssessmentResults } from './useAssessmentResults';
 
 // Assessment recommendations hook
