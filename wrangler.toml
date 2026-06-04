@@ -29,6 +29,13 @@ binding = "SSO_SERVICE"
 service = "sso-api"
 entrypoint = "SsoWorker"
 
+# Email worker — centralized email service, zero-latency internal routing
+# RPC-style binding (WorkerEntrypoint) for typed method calls
+[[services]]
+binding = "EMAIL_SERVICE"
+service = "shared-email-api"
+entrypoint = "EmailService"
+
 # ============================================================================
 # ENVIRONMENT VARIABLES
 # ============================================================================

@@ -4,6 +4,8 @@
  * 
  * Endpoints:
  * - POST /api/email/send or / - Generic email sending
+ * - POST /api/email/verification - Email verification emails
+ * - POST /api/email/password-reset - Password reset emails
  * - POST /api/email/invitation - Organization invitation emails
  * - POST /api/email/countdown - Single countdown email
  * - POST /api/email/send-bulk-countdown - Bulk countdown emails
@@ -45,6 +47,8 @@ export const onRequest: PagesFunction = async (context) => {
           service: 'email-api',
           endpoints: [
             '/send',
+            '/verification',
+            '/password-reset',
             '/invitation',
             '/countdown',
             '/send-bulk-countdown',
@@ -82,7 +86,9 @@ export const onRequest: PagesFunction = async (context) => {
       }, 400);
     }
 
-    // Routes that don't need Supabase
+    // Note: /verification and /password-reset are handled by direct endpoint files
+    // (password-reset.ts and verification.ts in the same directory)
+    
     if (path === '/event-confirmation') {
       return await handleEventConfirmation(body, env);
     }
