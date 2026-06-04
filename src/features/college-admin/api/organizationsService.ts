@@ -1,15 +1,9 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export const organizationsService = {
   async getCollegeOrganization(userId: string, userEmail: string) {
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('organization_type', 'college')
-      .or(`admin_id.eq.${userId},email.eq.${userEmail}`)
-      .maybeSingle();
-    
-    if (error) throw error;
-    return data;
+    const result = await apiPost('/college-admin/faculty', { action: 'get-college-organization', user_id: userId, email: userEmail });
+    if (!result.success) throw new Error(result.error || 'Failed to get college organization');
+    return result.data;
   }
 };

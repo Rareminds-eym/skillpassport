@@ -11,8 +11,7 @@ import { useNavigate } from 'react-router-dom';
 // @ts-ignore - JS service without type declarations
 import { analyzeAssessmentWithGemini } from '../api/geminiAssessmentService';
 // @ts-ignore - JS service without type declarations
-import * as assessmentService from '../api/assessmentService';
-import { supabase } from '@/shared/api/supabaseClient';
+import * as assessmentService from '../api/assessmentApiService';
 import type { GradeLevel } from '../model/types';
 import { useAssessmentStore } from './assessmentStore';
 

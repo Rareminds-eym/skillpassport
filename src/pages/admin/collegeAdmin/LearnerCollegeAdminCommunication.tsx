@@ -27,7 +27,6 @@ import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educato
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/shared/lib/hooks';
-import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService, Conversation } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
 

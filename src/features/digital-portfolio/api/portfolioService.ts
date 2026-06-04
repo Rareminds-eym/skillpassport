@@ -14,7 +14,7 @@
  * - university_colleges (college information)
  */
 
-import { supabase } from "@/shared/api/supabaseClient";
+import { apiPost } from "@/shared/api/apiClient";
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('PortfolioService');
@@ -26,169 +26,32 @@ const logger = getLogger('PortfolioService');
  */
 export const getlearnerPortfolioByEmail = async (email) => {
   try {
-    // First, get the learner record to get their user_id
-    const { data: learner, error: learnerError } = await supabase
-      .from('learners')
-      .select(`
-        *,
-        school:organizations!learners_school_id_fkey (
-          id,
-          name,
-          code,
-          city,
-          state,
-          organization_type
-        ),
-        college:organizations!learners_college_id_fkey (
-          id,
-          name,
-          code,
-          city,
-          state,
-          organization_type
-        ),
-        universityInfo:organizations!learners_universityid_fkey (
-          id,
-          name,
-          code,
-          state,
-          city,
-          website,
-          organization_type
-        ),
-        university_colleges:university_college_id (
-          id,
-          name,
-          code,
-          university:organizations!university_colleges_university_id_fkey (
-            id,
-            name,
-            state,
-            city,
-            organization_type
-          )
-        )
-      `)
-      .eq('email', email)
-      .maybeSingle();
+    const response: any = await apiPost('/college-admin/digital-portfolio', {
+      action: 'get-portfolio-by-email',
+      email,
+    });
 
-    if (learnerError) {
-      return { success: false, error: learnerError.message };
+    if (!response?.success || !response?.data) {
+      return { success: false, error: response?.error?.message || 'Failed to fetch portfolio data' };
     }
 
-    if (!learner) {
-      return { success: false, error: 'Learner not found' };
-    }
+    const { learner, skills, trainings, projects, certificates, education, experience } = response.data;
 
-    // If school relationship didn't load but school_id exists, fetch it separately
-    if (learner.school_id && !learner.school) {
-      const { data: schoolData, error: schoolError } = await supabase
-        .from('organizations')
-        .select('id, name, code, city, state, organization_type')
-        .eq('id', learner.school_id)
-        .single();
-      
-      if (!schoolError && schoolData) {
-        learner.school = schoolData;
-      }
-    }
-
-    // If college relationship didn't load but college_id exists, fetch it separately
-    if (learner.college_id && !learner.college) {
-      const { data: collegeData, error: collegeError } = await supabase
-        .from('organizations')
-        .select('id, name, code, city, state, organization_type')
-        .eq('id', learner.college_id)
-        .single();
-      
-      if (!collegeError && collegeData) {
-        learner.college = collegeData;
-      }
-    }
-
-    const userId = learner.id;
-
-    // Fetch all related data in parallel for performance
-    const [
-      skillsResult,
-      trainingsResult,
-      projectsResult,
-      certificatesResult,
-      educationResult,
-      experienceResult
-    ] = await Promise.all([
-      // Skills (both technical and soft)
-      supabase
-        .from('skills')
-        .select('*')
-        .eq('learner_id', userId)
-        .in('approval_status', ['verified', 'approved'])
-        .eq('enabled', true)
-        .order('created_at', { ascending: false }),
-
-      
-      // Trainings
-      supabase
-        .from('trainings')
-        .select('*')
-        .eq('learner_id', userId)
-        .eq('enabled', true)
-        .in('approval_status', ['verified', 'approved'])
-        .order('start_date', { ascending: false }),
-      
-      // Projects
-      supabase
-        .from('projects')
-        .select('*')
-        .eq('learner_id', userId)
-        .eq('enabled', true)
-        .in('approval_status', ['verified', 'approved'])
-        .order('start_date', { ascending: false }),
-      
-      // Certificates
-      supabase
-        .from('certificates')
-        .select('*')
-        .eq('learner_id', userId)
-        .eq('enabled', true)
-        .in('approval_status', ['verified', 'approved'])
-        .order('issued_on', { ascending: false }),
-      
-      // Education
-      supabase
-        .from('education')
-        .select('*')
-        .eq('learner_id', userId)
-        .eq('enabled', true)
-        .in('approval_status', ['verified', 'approved'])
-        .order('year_of_passing', { ascending: false }),
-      
-      // Experience
-      supabase
-        .from('experience')
-        .select('*')
-        .eq('learner_id', userId)
-        .eq('enabled', true)
-        .in('approval_status', ['verified', 'approved'])
-        .order('start_date', { ascending: false })
-    ]);
-
-    // Transform the data to match the Learner type interface
     const portfolioData = transformToPortfolioFormat(
       learner,
-      skillsResult.data || [],
-      trainingsResult.data || [],
-      projectsResult.data || [],
-      certificatesResult.data || [],
-      educationResult.data || [],
-      experienceResult.data || []
+      skills || [],
+      trainings || [],
+      projects || [],
+      certificates || [],
+      education || [],
+      experience || []
     );
 
     return { success: true, data: portfolioData };
 
   } catch (error) {
     logger.error('Exception in getlearnerPortfolioByEmail', error as Error);
-    return { success: false, error: error.message };
+    return { success: false, error: (error as any)?.message || 'Unknown error' };
   }
 };
 

@@ -11,7 +11,7 @@
  */
 
 import { AwsClient } from 'aws4fetch';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 /**
  * R2 object metadata returned from list operations
@@ -292,8 +292,7 @@ export class R2Client {
    */
   async generatePresignedUrl(
     key: string,
-    contentType: string,
-    expiresIn: number = 3600
+    contentType: string
   ): Promise<{ url: string; headers: Record<string, string> }> {
     // Check if S3 API is configured before attempting to generate presigned URL
     if (this.endpoint === 'https://r2-binding-only.r2.cloudflarestorage.com') {

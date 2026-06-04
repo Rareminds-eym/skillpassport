@@ -9,31 +9,42 @@ import {
   MoreHorizontal,
   Clock
 } from 'lucide-react';
-import { Conversation } from "@/features/career-assistant/hooks/useCareerConversations";
 import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
 
 import { formatConversationDate, getConversationGroup } from '@/features/career-assistant';
 import { LoadingSpinner } from './LoadingSpinner';
-import { useCareerAssistant } from '@/features/career-assistant/model/careerAssistantStore';
 import {
   INITIAL_VISIBLE_CONVERSATIONS,
   CONVERSATION_PRELOAD_MARGIN,
   CONVERSATION_ITEM_HEIGHT,
 } from '../constants';
+import { Conversation } from "@/features/career-assistant/hooks/useCareerConversations";
 
-export const ConversationSidebar: React.FC = () => {
-  const {
-    conversations,
-    currentConversationId,
-    onSelectConversation,
-    onNewConversation,
-    onDeleteConversation,
-    sidebarCollapsed,
-    onToggleSidebar,
-    conversationsLoading,
-    hasMore,
-    onLoadMore,
-  } = useCareerAssistant();
+interface ConversationSidebarProps {
+  conversations: Conversation[];
+  currentConversationId: string | null;
+  onSelectConversation: (id: string) => void;
+  onNewConversation: () => void;
+  onDeleteConversation: (id: string) => void;
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
+  conversationsLoading: boolean;
+  hasMore: boolean;
+  onLoadMore: () => void;
+}
+
+export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
+  conversations,
+  currentConversationId,
+  onSelectConversation,
+  onNewConversation,
+  onDeleteConversation,
+  sidebarCollapsed,
+  onToggleSidebar,
+  conversationsLoading,
+  hasMore,
+  onLoadMore,
+}) => {
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);

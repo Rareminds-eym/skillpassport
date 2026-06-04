@@ -8,7 +8,7 @@ import {
   UserIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 
 export interface ShortlistFilters {
   dateRange: {
@@ -80,20 +80,10 @@ const AdvancedShortlistFilters: React.FC<AdvancedShortlistFiltersProps> = ({ fil
       setLoadingTags(true);
       setLoadingCreators(true);
       try {
-        const [{ data: tagRows, error: tagErr }, { data: creatorRows, error: creatorErr }] = await Promise.all([
-          supabase.from('shortlists').select('tags').not('tags', 'is', null),
-          supabase.from('shortlists').select('created_by').not('created_by', 'is', null)
-        ]);
-        if (!tagErr && tagRows) {
-          const tagsSet = new Set<string>();
-          tagRows.forEach((r: any) => {
-            (r.tags || []).forEach((t: string) => tagsSet.add(t));
-          });
-          setAvailableTags(Array.from(tagsSet).sort((a, b) => a.localeCompare(b)));
-        }
-        if (!creatorErr && creatorRows) {
-          const creators = Array.from(new Set(creatorRows.map((r: any) => r.created_by).filter(Boolean)));
-          setAvailableCreators(creators.sort((a: string, b: string) => String(a).localeCompare(String(b))));
+        const response: any = await apiGet('/college-admin/recruiter-pipeline?action=shortlist-tags-creators');
+        if (response?.data) {
+          setAvailableTags(response.data.tags || []);
+          setAvailableCreators(response.data.createdBy || []);
         }
       } finally {
         setLoadingTags(false);

@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState, useRef } from 'react';
-import toast from 'react-hot-toast';
 import { FeatureGate } from '@/features/subscription';
 import { ConfirmationModal } from '@/shared/ui';
+import React, { useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 
 // Import the college-adapted curriculum builder UI
-import { CollegeCurriculumBuilderUI } from '@/features/college-admin';
-import { curriculumService, type CurriculumUnit, type CurriculumOutcome } from '@/features/college-admin';
-import { curriculumApprovalService } from '@/features/college-admin';
-import { supabase } from '@/shared/api/supabaseClient';
+import { CollegeCurriculumBuilderUI, curriculumApprovalService, curriculumService, type CurriculumOutcome, type CurriculumUnit } from '@/features/college-admin';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 /**
  * CollegeCurriculumBuilder - Curriculum management for college admins
@@ -23,7 +21,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
   const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Configuration data from database
   const [courses, setCourses] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -37,14 +35,14 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
   const [units, setUnits] = useState<CurriculumUnit[]>([]);
   const [learningOutcomes, setLearningOutcomes] = useState<CurriculumOutcome[]>([]);
   const [status, setStatus] = useState<"draft" | "approved" | "published" | "pending_approval" | "rejected">("draft");
-  
+
   // UI state
   const [loading, setLoading] = useState(false);
-  
+
   // Real-time subscription refs
   const subscriptionRef = useRef<any>(null);
   const [isRealTimeConnected, setIsRealTimeConnected] = useState(false);
-  
+
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -58,7 +56,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
     type: 'deleteUnit',
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   // Load configuration data on mount
@@ -113,109 +111,78 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
   useEffect(() => {
     if (!curriculumId) return; // Only subscribe when we have a specific curriculum
 
-    const setupRealTimeSubscription = () => {
-      // Clean up existing subscription
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
+    const wsClient = getWSClient();
+    const unsubscribers: Array<() => void> = [];
+
+    // Subscribe to college_curriculums changes for this specific curriculum
+    const unsubCurriculum = wsClient.subscribe(
+      'college_curriculums',
+      { event: '*', filter: `id=eq.${curriculumId}` },
+      (event) => {
+        if (event.type === 'change') {
+          // Auto-refresh curriculum data when changes are detected
+          loadExistingCurriculum();
+
+          // Show a subtle notification
+          if (event.event === 'UPDATE') {
+            toast.success('Curriculum updated', {
+              duration: 2000,
+              icon: '🔔'
+            });
+          }
+        }
       }
+    );
+    unsubscribers.push(unsubCurriculum);
 
-      // Create new subscription for the specific curriculum and its related tables
-      const channel = supabase
-        .channel(`curriculum-live-${curriculumId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-            schema: 'public',
-            table: 'college_curriculums',
-            filter: `id=eq.${curriculumId}` // Only listen to changes for this specific curriculum
-          },
-          (payload) => {
-            logger.info('🔄 Real-time curriculum change detected:', { value: payload });
-            
-            // Auto-refresh curriculum data when changes are detected
-            loadExistingCurriculum();
+    // Subscribe to curriculum_units changes for this curriculum
+    const unsubUnits = wsClient.subscribe(
+      'curriculum_units',
+      { event: '*', filter: `curriculum_id=eq.${curriculumId}` },
+      (event) => {
+        if (event.type === 'change') {
+          // Refresh curriculum data when units change
+          loadExistingCurriculum();
 
-            // Show a subtle notification
-            if (payload.eventType === 'UPDATE') {
-              toast.success('Curriculum updated', {
-                duration: 2000,
-                icon: '🔔'
-              });
-            }
+          if (event.event === 'INSERT') {
+            toast.success('New unit added', { duration: 2000, icon: '📚' });
+          } else if (event.event === 'UPDATE') {
+            toast.success('Unit updated', { duration: 2000, icon: '📝' });
+          } else if (event.event === 'DELETE') {
+            toast.success('Unit removed', { duration: 2000, icon: '🗑️' });
           }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'curriculum_units',
-            filter: `curriculum_id=eq.${curriculumId}` // Listen to unit changes for current curriculum
-          },
-          (payload) => {
-            logger.info('🔄 Real-time unit change detected:', { value: payload });
-            
-            // Refresh curriculum data when units change
-            loadExistingCurriculum();
-            
-            if (payload.eventType === 'INSERT') {
-              toast.success('New unit added', { duration: 2000, icon: '📚' });
-            } else if (payload.eventType === 'UPDATE') {
-              toast.success('Unit updated', { duration: 2000, icon: '📝' });
-            } else if (payload.eventType === 'DELETE') {
-              toast.success('Unit removed', { duration: 2000, icon: '🗑️' });
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'curriculum_learning_outcomes',
-            filter: `curriculum_id=eq.${curriculumId}` // Listen to outcome changes for current curriculum
-          },
-          (payload) => {
-            logger.info('🔄 Real-time outcome change detected:', { value: payload });
-            
-            // Refresh curriculum data when outcomes change
-            loadExistingCurriculum();
-            
-            if (payload.eventType === 'INSERT') {
-              toast.success('New learning outcome added', { duration: 2000, icon: '🎯' });
-            } else if (payload.eventType === 'UPDATE') {
-              toast.success('Learning outcome updated', { duration: 2000, icon: '✏️' });
-            } else if (payload.eventType === 'DELETE') {
-              toast.success('Learning outcome removed', { duration: 2000, icon: '🗑️' });
-            }
-          }
-        )
-        .subscribe((status) => {
-          logger.info('🔌 Real-time subscription status:', { value: status });
-          setIsRealTimeConnected(status === 'SUBSCRIBED');
-          
-          if (status === 'SUBSCRIBED') {
-            logger.info('✅ Real-time updates enabled for curriculum changes');
-          } else if (status === 'CHANNEL_ERROR') {
-            logger.error('❌ Real-time subscription error');
-            // Retry connection after 5 seconds
-            setTimeout(setupRealTimeSubscription, 5000);
-          }
-        });
+        }
+      }
+    );
+    unsubscribers.push(unsubUnits);
 
-      subscriptionRef.current = channel;
-    };
+    // Subscribe to curriculum_learning_outcomes changes for this curriculum
+    const unsubOutcomes = wsClient.subscribe(
+      'curriculum_learning_outcomes',
+      { event: '*', filter: `curriculum_id=eq.${curriculumId}` },
+      (event) => {
+        if (event.type === 'change') {
+          // Refresh curriculum data when outcomes change
+          loadExistingCurriculum();
 
-    setupRealTimeSubscription();
+          if (event.event === 'INSERT') {
+            toast.success('New learning outcome added', { duration: 2000, icon: '🎯' });
+          } else if (event.event === 'UPDATE') {
+            toast.success('Learning outcome updated', { duration: 2000, icon: '✏️' });
+          } else if (event.event === 'DELETE') {
+            toast.success('Learning outcome removed', { duration: 2000, icon: '🗑️' });
+          }
+        }
+      }
+    );
+    unsubscribers.push(unsubOutcomes);
+
+    // Set connected state
+    setIsRealTimeConnected(true);
 
     // Cleanup on unmount or curriculum change
     return () => {
-      if (subscriptionRef.current) {
-        logger.info('🔌 Cleaning up real-time subscription');
-        supabase.removeChannel(subscriptionRef.current);
-        subscriptionRef.current = null;
-      }
+      unsubscribers.forEach(unsub => unsub());
       setIsRealTimeConnected(false);
     };
   }, [curriculumId]);
@@ -243,14 +210,14 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       // Load academic years
       const years = curriculumService.getAcademicYears();
       setAcademicYears(years);
-      
+
       // Auto-select current academic year
       const currentYear = years.find(year => {
         const startYear = parseInt(year.split('-')[0]);
         const now = new Date();
         const currentYearNum = now.getFullYear();
         const currentMonth = now.getMonth() + 1; // 0-based to 1-based
-        
+
         // Academic year typically starts in July/August
         if (currentMonth >= 7) {
           return startYear === currentYearNum;
@@ -258,7 +225,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
           return startYear === currentYearNum - 1;
         }
       });
-      
+
       if (currentYear) {
         setSelectedAcademicYear(currentYear);
       }
@@ -360,35 +327,37 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
 
       if (result.success && result.data && result.data.length > 0) {
         logger.info(`Found ${result.data.length} existing curriculum(s)`);
-        
+
         // Load existing curriculum (prioritize published/approved over draft)
         const sortedCurriculums = result.data.sort((a, b) => {
-          const statusPriority: Record<string, number> = { 
-            'published': 3, 
-            'approved': 2, 
-            'pending_approval': 1, 
-            'draft': 0 
+          const statusPriority: Record<string, number> = {
+            'published': 3,
+            'approved': 2,
+            'pending_approval': 1,
+            'draft': 0
           };
           return (statusPriority[b.status] || 0) - (statusPriority[a.status] || 0);
         });
-        
+
         const existingCurriculum = sortedCurriculums[0];
         logger.info(`Loading curriculum with status: ${existingCurriculum.status}`);
-        
+
         const detailResult = await curriculumService.getCurriculumById(existingCurriculum.id);
         if (detailResult.success && detailResult.data) {
           setCurriculumId(detailResult.data.id);
           setUnits(detailResult.data.units);
           setLearningOutcomes(detailResult.data.outcomes);
           setStatus(detailResult.data.status);
-          
-          logger.info(`✅ Curriculum loaded successfully:`, { value: {
-            id: detailResult.data.id,
-            status: detailResult.data.status,
-            unitsCount: detailResult.data.units.length,
-            outcomesCount: detailResult.data.outcomes.length,
-          } });
-          
+
+          logger.info(`✅ Curriculum loaded successfully:`, {
+            value: {
+              id: detailResult.data.id,
+              status: detailResult.data.status,
+              unitsCount: detailResult.data.units.length,
+              outcomesCount: detailResult.data.outcomes.length,
+            }
+          });
+
           toast.success(`Existing curriculum loaded (${detailResult.data.status})`);
         } else {
           logger.error('❌ Failed to load curriculum details:', detailResult.error as Error);
@@ -537,7 +506,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
     const unit = units.find(u => u.id === id);
     const unitName = unit?.name || 'this unit';
     const outcomeCount = learningOutcomes.filter(lo => lo.unit_id === id).length;
-    
+
     setConfirmModal({
       isOpen: true,
       type: 'deleteUnit',
@@ -554,7 +523,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       if (result.success) {
         setUnits(prev => prev.filter(u => u.id !== id));
         setLearningOutcomes(prev => prev.filter(lo => lo.unit_id !== id));
-        
+
         // If curriculum was approved or published, move to draft for re-approval
         if (status === "approved" || status === "published") {
           setStatus("draft");
@@ -642,7 +611,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
   const handleDeleteOutcome = async (id: string) => {
     const outcome = learningOutcomes.find(lo => lo.id === id);
     const outcomeText = outcome?.outcome_text?.substring(0, 50) || 'this learning outcome';
-    
+
     setConfirmModal({
       isOpen: true,
       type: 'deleteOutcome',
@@ -658,7 +627,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       const result = await curriculumService.deleteOutcome(id);
       if (result.success) {
         setLearningOutcomes(prev => prev.filter(lo => lo.id !== id));
-        
+
         // If curriculum was approved or published, move to draft for re-approval
         if (status === "approved" || status === "published") {
           setStatus("draft");
@@ -684,13 +653,13 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       toast.error('No curriculum to save');
       return;
     }
-    
+
     // Check if there's actually content to save
     if (units.length === 0 && learningOutcomes.length === 0) {
       toast.error('Add units and learning outcomes before saving');
       return;
     }
-    
+
     try {
       // Data is already saved when units/outcomes are added, so this is just a confirmation
       toast.success('Draft saved successfully - all changes are automatically saved');
@@ -702,7 +671,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
 
   const handleApprove = async () => {
     if (!curriculumId) return;
-    
+
     setConfirmModal({
       isOpen: true,
       type: 'approve',
@@ -714,7 +683,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
 
   const confirmApprove = async () => {
     if (!curriculumId) return;
-    
+
     try {
       const result = await curriculumService.approveCurriculum(curriculumId);
       if (result.success) {
@@ -767,7 +736,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
 
   const confirmPublish = async () => {
     if (!curriculumId) return;
-    
+
     try {
       const result = await curriculumService.publishCurriculum(curriculumId);
       if (result.success) {
@@ -791,12 +760,12 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         // Optionally redirect to the new curriculum or reload current data
         if (result.data) {
           // If the cloned curriculum is for the same context, reload it
-          const isSameContext = 
+          const isSameContext =
             targetData.academic_year === selectedAcademicYear &&
             (!targetData.department_id || targetData.department_id === selectedDepartment) &&
             (!targetData.program_id || targetData.program_id === selectedProgram) &&
             (!targetData.semester || targetData.semester.toString() === selectedSemester);
-          
+
           if (isSameContext) {
             // Reload the current curriculum data
             loadExistingCurriculum();
@@ -823,7 +792,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       toast.error('No curriculum to export. Please add some units first.');
       return;
     }
-    
+
     try {
       if (format === 'pdf') {
         // Use the same PDF export service as school curriculum builder
@@ -889,7 +858,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       if (result.success && result.data) {
         if (format === 'csv' && result.data.format === 'csv') {
           // Handle CSV export
-          const csvContent = result.data.content.map((row: any[]) => 
+          const csvContent = result.data.content.map((row: any[]) =>
             row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
           ).join('\n');
 
@@ -1011,9 +980,9 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         type={confirmModal.type === 'deleteUnit' || confirmModal.type === 'deleteOutcome' ? 'danger' : 'warning'}
         confirmText={
           confirmModal.type === 'deleteUnit' ? 'Delete Unit' :
-          confirmModal.type === 'deleteOutcome' ? 'Delete Outcome' :
-          confirmModal.type === 'approve' ? 'Approve' :
-          confirmModal.type === 'publish' ? 'Publish' : 'Confirm'
+            confirmModal.type === 'deleteOutcome' ? 'Delete Outcome' :
+              confirmModal.type === 'approve' ? 'Approve' :
+                confirmModal.type === 'publish' ? 'Publish' : 'Confirm'
         }
         cancelText="Cancel"
       />

@@ -4,7 +4,6 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { useLearnerProfile } from '@/features/learner-profile';
-import { supabase } from '@/shared/api/supabaseClient';
 import { useClassInfo } from '../model/useClassInfo';
 import { useOverviewData } from '../model/useOverviewData';
 import { useAssignmentsData } from '../model/useAssignmentsData';

@@ -22,7 +22,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-import { supabase } from '@/shared/api/supabaseClient';
 import * as clubsService from "@/features/college-admin";
 import * as competitionsService from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';

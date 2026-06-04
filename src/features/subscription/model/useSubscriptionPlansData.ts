@@ -26,6 +26,13 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function extractErrorMessage(err) {
+  if (!err) return null;
+  if (typeof err === 'string') return err;
+  if (typeof err?.message === 'string') return err.message;
+  return null;
+}
+
 /**
  * Fetch subscription plans from the Cloudflare Worker.
  *
@@ -87,19 +94,19 @@ export function useSubscriptionPlansData(options = {}) {
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
           throw new Error(
-            errData.error || `HTTP ${response.status}: Failed to fetch plans`
+            extractErrorMessage(errData.error) || `HTTP ${response.status}: Failed to fetch plans`
           );
         }
 
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'API returned unsuccessful response');
+          throw new Error(extractErrorMessage(data.error) || 'API returned unsuccessful response');
         }
 
         if (!isMounted.current) return;
 
-        const fetchedPlans = data.plans || [];
+        const fetchedPlans = data.data?.plans ?? [];
         setPlans(fetchedPlans);
         setLoading(false);
         return fetchedPlans;
@@ -169,18 +176,19 @@ export function useSubscriptionPlan(planCode) {
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP ${response.status}`);
+          throw new Error(extractErrorMessage(errData.error) || `HTTP ${response.status}`);
         }
 
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch plan');
+          throw new Error(extractErrorMessage(data.error) || 'Failed to fetch plan');
         }
 
         if (!cancelled) {
-          setPlan(data.plan);
-          setFeatures(data.plan?.detailedFeatures || []);
+          const planData = data.data?.plan;
+          setPlan(planData);
+          setFeatures(planData?.detailedFeatures || []);
         }
       } catch (err) {
         if (!cancelled) {
@@ -223,18 +231,18 @@ export function useSubscriptionFeaturesComparison() {
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP ${response.status}`);
+          throw new Error(extractErrorMessage(errData.error) || `HTTP ${response.status}`);
         }
 
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch features comparison');
+          throw new Error(extractErrorMessage(data.error) || 'Failed to fetch features comparison');
         }
 
         if (!cancelled) {
-          setPlans(data.plans || []);
-          setComparison(data.comparison || []);
+          setPlans(data.data?.plans ?? []);
+          setComparison(data.data?.comparison ?? []);
         }
       } catch (err) {
         if (!cancelled) {

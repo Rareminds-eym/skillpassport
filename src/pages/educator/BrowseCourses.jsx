@@ -12,7 +12,7 @@ import {
   ChevronRight,
   ArrowDownAZ
 } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { motion } from 'framer-motion';
 import { CourseDetailModal } from '@/features/courses';
 import { getLogger } from '@/shared/config/logging';
@@ -54,26 +54,33 @@ const BrowseCourses = () => {
 
       // Fetch courses with status Active or Upcoming (learners shouldn't see Drafts)
       // Also exclude deleted courses
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .in('status', ['Active', 'Upcoming'])
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+      const coursesResult = await apiPost<any>('/educator/actions', {
+        action: 'list-courses',
+        select: '*',
+        filters: {
+          status: { in: ['Active', 'Upcoming'] },
+          deleted_at: { is: null }
+        },
+        orderBy: 'created_at',
+        orderDir: 'desc'
+      });
 
-      if (error) throw error;
+      if (!coursesResult?.data) throw new Error('Failed to fetch courses');
+      const data = coursesResult.data;
 
       // Get unique educator IDs to fetch their names from users table
       const educatorIds = [...new Set((data || []).map(c => c.educator_id).filter(Boolean))];
       
       let educatorMap = {};
       if (educatorIds.length > 0) {
-        const { data: educators } = await supabase
-          .from('users')
-          .select('id, firstName, lastName')
-          .in('id', educatorIds);
+        const usersResult = await apiPost<any>('/educator/actions', {
+          action: 'get-user-by-id',
+          ids: educatorIds,
+          select: 'id, firstName, lastName'
+        });
         
-        if (educators) {
+        const educators = usersResult?.data || [];
+        if (educators.length > 0) {
           educatorMap = educators.reduce((acc, edu) => {
             acc[edu.id] = `${edu.firstName || ''} ${edu.lastName || ''}`.trim();
             return acc;

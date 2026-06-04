@@ -34,7 +34,21 @@ entrypoint = "PaymentService"
 [[services]]
 binding = "SSO_SERVICE"
 service = "sso-api"
-entrypoint = "SsoWorker"
+
+# Realtime worker — WebSocket hub, zero-latency internal routing
+# RPC-style binding (WorkerEntrypoint) for WebSocket upgrade delegation
+[[services]]
+binding = "REALTIME_WORKER"
+service = "realtime-worker"
+
+# ============================================================================
+# QUEUE PRODUCER — Realtime Events
+# ============================================================================
+# Sends DB mutation events to the realtime-events-queue for fan-out
+# to all Durable Object partitions in the realtime-worker.
+[[queues.producers]]
+binding = "REALTIME_EVENTS_QUEUE"
+queue = "realtime-events-queue"
 
 # ============================================================================
 # ENVIRONMENT VARIABLES

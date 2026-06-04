@@ -1,5 +1,5 @@
-import { supabase } from '@/shared/api/supabaseClient';
 import { careerApiService } from '@/features/counselling';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ai-recommendation-service');
@@ -91,16 +91,10 @@ class AIRecommendationService {
   async generateOpportunityEmbedding(opportunityId) {
     try {
 
-      // Get opportunity details
-      const { data: opp, error: fetchError } = await supabase
-        .from('opportunities')
-        .select('*')
-        .eq('id', opportunityId)
-        .maybeSingle();
-
-      if (fetchError || !opp) {
-        throw new Error('Opportunity not found');
-      }
+      // Get opportunity details from API
+      const oppRes = await apiPost('/ai-tutor/actions', { action: 'get-opportunity', opportunity_id: opportunityId });
+      const opp = oppRes?.data;
+      if (!opp) throw new Error('Opportunity not found');
 
       // Create text representation
       const text = [
@@ -145,15 +139,9 @@ class AIRecommendationService {
     try {
 
       // Get learner details
-      const { data: learner, error: fetchError } = await supabase
-        .from('learners')
-        .select('*')
-        .eq('id', learnerId)
-        .maybeSingle();
-
-      if (fetchError || !learner) {
-        throw new Error('Learner not found');
-      }
+      const learnerRes = await apiPost('/ai-tutor/actions', { action: 'get-learner', learner_id: learnerId });
+      const learner = learnerRes?.data;
+      if (!learner) throw new Error('Learner not found');
 
       // Create text representation
       const text = [
@@ -192,21 +180,11 @@ class AIRecommendationService {
    */
   async trackInteraction(learnerId, opportunityId, action) {
     try {
-      const { error } = await supabase
-        .from('opportunity_interactions')
-        .upsert({
-          learner_id: learnerId,
-          opportunity_id: opportunityId,
-          action
-        }, {
-          onConflict: 'learner_id,opportunity_id,action'
-        });
-
-      if (error) throw error;
+      await apiPost('/ai-tutor/actions', { action: 'track-interaction', learner_id: learnerId, opportunity_id: opportunityId, interaction_type: action });
 
       // Increment view count if viewing
       if (action === 'view') {
-        await supabase.rpc('increment_views', { opp_id: opportunityId });
+        await apiPost('/ai-tutor/actions', { action: 'increment-views', opp_id: opportunityId });
       }
 
       // Invalidate cache on apply/dismiss
@@ -247,13 +225,8 @@ class AIRecommendationService {
   async generateAllOpportunityEmbeddings() {
     try {
 
-      const { data: opportunities, error } = await supabase
-        .from('opportunities')
-        .select('id')
-        .is('embedding', null)
-        .eq('is_active', true);
-
-      if (error) throw error;
+      const opportunitiesRes = await apiPost('/ai-tutor/actions', { action: 'get-opportunities-without-embedding' });
+      const opportunities = opportunitiesRes?.data || [];
 
 
       const results = [];
@@ -282,15 +255,7 @@ class AIRecommendationService {
   async updateLearnerProfile(learnerId, profileData) {
     try {
       // Update profile
-      const { error: updateError } = await supabase
-        .from('learners')
-        .upsert({
-          id: learnerId,
-          ...profileData,
-          updated_at: new Date().toISOString()
-        });
-
-      if (updateError) throw updateError;
+      await apiPost('/ai-tutor/actions', { action: 'update-learner-profile', learner_id: learnerId, ...profileData });
 
       // Regenerate embedding
       await this.generatelearnerEmbedding(learnerId);

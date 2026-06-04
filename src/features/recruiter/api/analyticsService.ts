@@ -1,5 +1,4 @@
 // Analytics API Service
-import { supabase } from '@/shared/api/supabaseClient';
 import type { AnalyticsFilters, DiversityMetric, GeographicLocation, TopCollege } from '../model/types';
 
 /**

@@ -10,7 +10,7 @@
  * - Ownership check via JWT user_id
  */
 
-import { withAuth } from '../../../lib/auth';
+import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
@@ -34,6 +34,8 @@ export async function handleCancelAddon(context: AuthenticatedContext): Promise<
 
     const { entitlementId } = validation.data;
     const supabase = getServiceClient(env);
+    const user = getContextUser(context);
+    const userId = user.id;
 
     const { data, error } = await supabase
       .from('user_entitlements')
@@ -44,7 +46,7 @@ export async function handleCancelAddon(context: AuthenticatedContext): Promise<
         updated_at: new Date().toISOString(),
       })
       .eq('id', entitlementId)
-      .eq('user_id', context.data.user.sub)  // Ownership check
+      .eq('user_id', userId)  // Ownership check
       .select()
       .single();
 

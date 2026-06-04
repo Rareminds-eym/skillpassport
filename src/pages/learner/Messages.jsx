@@ -38,7 +38,7 @@ import { useLearnerEducatorConversations, useLearnerEducatorMessages } from '@/e
 import { useLearnerAdminConversations, useCreateLearnerAdminConversation, useLearnerAdminMessages } from '@/entities/learner';
 import { useLearnerCollegeAdminConversations, useCreateLearnerCollegeAdminConversation, useLearnerCollegeAdminMessages } from '@/entities/learner';
 import { useTypingIndicator } from '@/features/messaging';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { MessageService } from '@/features/messaging';
 
 import { useUser } from '@/shared/model/authStore';
@@ -343,16 +343,14 @@ const Messages = () => {
     // Dynamic lookup for school admin
     if (conversation.conversation_type === 'learner_admin' && conversation.school_id) {
       try {
-        const { data: schoolOrg } = await supabase
-          .from('organizations')
-          .select('admin_id')
-          .eq('id', conversation.school_id)
-          .eq('organization_type', 'school')
-          .single();
+        const schoolOrg = await apiPost('/learner-pages/actions', {
+          action: 'fetch-school-org-admin',
+          schoolId: conversation.school_id,
+        });
 
-        if (schoolOrg?.admin_id) {
-          logger.info('Found school admin dynamically', { adminId: schoolOrg.admin_id });
-          return schoolOrg.admin_id;
+        if (schoolOrg?.data?.admin_id) {
+          logger.info('Found school admin dynamically', { adminId: schoolOrg.data.admin_id });
+          return schoolOrg.data.admin_id;
         }
       } catch (error) {
         logger.error('Error fetching school admin', error);
@@ -362,16 +360,14 @@ const Messages = () => {
     // Dynamic lookup for college admin
     if (conversation.conversation_type === 'learner_college_admin' && conversation.college_id) {
       try {
-        const { data: collegeOrg } = await supabase
-          .from('organizations')
-          .select('admin_id')
-          .eq('id', conversation.college_id)
-          .eq('organization_type', 'college')
-          .single();
+        const collegeOrg = await apiPost('/learner-pages/actions', {
+          action: 'fetch-college-org-admin',
+          collegeId: conversation.college_id,
+        });
 
-        if (collegeOrg?.admin_id) {
-          logger.info('Found college admin dynamically', { adminId: collegeOrg.admin_id });
-          return collegeOrg.admin_id;
+        if (collegeOrg?.data?.admin_id) {
+          logger.info('Found college admin dynamically', { adminId: collegeOrg.data.admin_id });
+          return collegeOrg.data.admin_id;
         }
       } catch (error) {
         logger.error('Error fetching college admin', error);
@@ -977,14 +973,12 @@ const Messages = () => {
         } else if (activeTab === 'admin') {
           // Send message to school admin
           // Get a school admin from the school to send the message to
-          const { data: schoolAdmin } = await supabase
-            .from('school_educators')
-            .select('id, user_id')
-            .eq('school_id', currentChat.schoolId)
-            .eq('role', 'school_admin')
-            .limit(1)
-            .single();
+          const schoolAdminRes = await apiPost('/learner-pages/actions', {
+            action: 'fetch-school-admin-educator',
+            schoolId: currentChat.schoolId,
+          });
 
+          const schoolAdmin = schoolAdminRes?.data;
           if (schoolAdmin) {
             await sendMessage({
               senderId: learnerId,
@@ -1004,25 +998,23 @@ const Messages = () => {
         } else if (activeTab === 'college_admin') {
           // Send message to college admin
           // Get a college admin from the college to send the message to
-          const { data: collegeAdmin } = await supabase
-            .from('college_lecturers')
-            .select('id, user_id, userId')
-            .or(`collegeId.eq.${currentChat.collegeId},college_id.eq.${currentChat.collegeId}`)
-            .limit(1)
-            .single();
+          const collegeAdminRes = await apiPost('/learner-pages/actions', {
+            action: 'fetch-college-admin',
+            collegeId: currentChat.collegeId,
+          });
 
           let adminUserId = null;
+          const collegeAdmin = collegeAdminRes?.data;
           if (collegeAdmin) {
             adminUserId = collegeAdmin.user_id || collegeAdmin.userId;
           } else {
             // Fallback: check if user is college owner in organizations table
-            const { data: ownerData } = await supabase
-              .from('organizations')
-              .select('admin_id')
-              .eq('id', currentChat.collegeId)
-              .eq('organization_type', 'college')
-              .single();
+            const ownerRes = await apiPost('/learner-pages/actions', {
+              action: 'fetch-college-org-admin',
+              collegeId: currentChat.collegeId,
+            });
 
+            const ownerData = ownerRes?.data;
             if (ownerData) {
               adminUserId = ownerData.admin_id;
             }
@@ -2035,14 +2027,12 @@ const Messages = () => {
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
               // Get a school admin from the school to send the message to
-              const { data: schoolAdmin } = await supabase
-                .from('school_educators')
-                .select('id, user_id')
-                .eq('school_id', schoolId)
-                .eq('role', 'school_admin')
-                .limit(1)
-                .single();
+              const schoolAdminRes = await apiPost('/learner-pages/actions', {
+                action: 'fetch-school-admin-educator',
+                schoolId,
+              });
 
+              const schoolAdmin = schoolAdminRes?.data;
               if (schoolAdmin) {
                 await MessageService.sendMessage(
                   conversation.id,
@@ -2115,25 +2105,23 @@ const Messages = () => {
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
               // Get a college admin from the college to send the message to
-              const { data: collegeAdmin } = await supabase
-                .from('college_lecturers')
-                .select('id, user_id, userId')
-                .or(`collegeId.eq.${collegeId},college_id.eq.${collegeId}`)
-                .limit(1)
-                .single();
+              const collegeAdminRes = await apiPost('/learner-pages/actions', {
+                action: 'fetch-college-admin',
+                collegeId,
+              });
 
               let adminUserId = null;
+              const collegeAdmin = collegeAdminRes?.data;
               if (collegeAdmin) {
                 adminUserId = collegeAdmin.user_id || collegeAdmin.userId;
               } else {
                 // Fallback: check if user is college owner in organizations table
-                const { data: ownerData } = await supabase
-                  .from('organizations')
-                  .select('admin_id')
-                  .eq('id', collegeId)
-                  .eq('organization_type', 'college')
-                  .single();
+                const ownerRes = await apiPost('/learner-pages/actions', {
+                  action: 'fetch-college-org-admin',
+                  collegeId,
+                });
 
+                const ownerData = ownerRes?.data;
                 if (ownerData) {
                   adminUserId = ownerData.admin_id;
                 }

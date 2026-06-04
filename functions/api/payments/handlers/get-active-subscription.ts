@@ -10,19 +10,19 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
 
 export async function handleGetActiveSubscription(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
     const supabase = getServiceClient(env);
-    const userId = user.sub;
+    const userId = user.id;
 
     // =========================================================================
     // STEP 1: Check for organization license assignment FIRST
@@ -99,7 +99,6 @@ export async function handleGetActiveSubscription(context: AuthenticatedContext)
     // =========================================================================
     // STEP 2: Check for individual subscription via subscription_cache
     // =========================================================================
-    const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('subscription_cache')
       .select('*')

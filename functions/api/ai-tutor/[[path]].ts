@@ -22,8 +22,9 @@
  * - POST /progress - Update lesson progress (authenticated)
  */
 
-import { jsonResponse } from '../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { apiSuccess, apiError } from '../../lib/response';
+import { handleCorsPreflightRequest } from '../../lib/cors';
+import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { withAuth } from '../../lib/auth';
 import { handleAiTutorSuggestions } from './handlers/ai-tutor-suggestions';
 import { handleAiTutorChat } from './handlers/ai-tutor-chat';
@@ -31,19 +32,14 @@ import { onRequestPost as handleAiTutorFeedback } from './handlers/ai-tutor-feed
 import { onRequestGet as handleAiTutorProgressGet, onRequestPost as handleAiTutorProgressPost } from './handlers/ai-tutor-progress';
 import { onRequestGet as handleGetLearnerType } from './handlers/get-learner-type';
 import { onRequestGet as handleGetGenerationUsage } from './handlers/get-generation-usage';
+import { onRequestPost as handleAiTutorActions } from './handlers/actions';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request } = context;
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      },
-    });
+    return handleCorsPreflightRequest(request);
   }
 
   const url = new URL(request.url);
@@ -52,7 +48,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   try {
     // Health check
     if ((path === '' || path === '/' || path === '/health') && request.method === 'GET') {
-      return jsonResponse({
+      return apiSuccess({
         status: 'ok',
         service: 'ai-tutor-api',
         version: '1.0.0',
@@ -67,64 +63,53 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           'GET /progress - Get progress',
           'POST /progress - Update progress',
         ],
-      });
+      }, request);
     }
 
     // Get Learner Type (authenticated)
     if (path === '/learner-type' && request.method === 'GET') {
-      return withAuth(handleGetLearnerType)(context);
+      return withAuth(handleGetLearnerType as any)(context);
     }
 
     // Get Generation Usage (authenticated)
     if (path === '/generation-usage' && request.method === 'GET') {
-      return withAuth(handleGetGenerationUsage)(context);
+      return withAuth(handleGetGenerationUsage as any)(context);
     }
 
     // AI Tutor Suggestions (authenticated)
     if (path === '/suggestions' && request.method === 'POST') {
-      return withAuth(handleAiTutorSuggestions)(context);
+      return withAuth(handleAiTutorSuggestions as any)(context);
     }
 
     // AI Tutor Chat (authenticated)
     if (path === '/chat' && request.method === 'POST') {
-      return withAuth(handleAiTutorChat)(context);
+      return withAuth(handleAiTutorChat as any)(context);
     }
 
     // AI Tutor Feedback (authenticated)
     if (path === '/feedback' && request.method === 'POST') {
-      return withAuth(handleAiTutorFeedback)(context);
+      return withAuth(handleAiTutorFeedback as any)(context);
     }
 
     // AI Tutor Progress (authenticated)
     if (path === '/progress' && request.method === 'GET') {
-      return withAuth(handleAiTutorProgressGet)(context);
+      return withAuth(handleAiTutorProgressGet as any)(context);
     }
 
     if (path === '/progress' && request.method === 'POST') {
-      return withAuth(handleAiTutorProgressPost)(context);
+      return withAuth(handleAiTutorProgressPost as any)(context);
+    }
+
+    // AI Tutor Actions (authenticated)
+    if (path === '/actions' && request.method === 'POST') {
+      return withAuth(handleAiTutorActions as any)(context);
     }
 
     // 404 for unknown routes
-    return jsonResponse(
-      {
-        error: 'Not found',
-        message: 'Unknown endpoint',
-        availableEndpoints: [
-          'GET /health - Health check',
-          'GET /learner-type - Get learner type for role detection',
-          'GET /generation-usage - Get worksheet/lesson plan generation usage',
-          'POST /suggestions - Generate suggested questions',
-          'POST /chat - AI tutor chat (streaming)',
-          'POST /feedback - Submit feedback',
-          'GET /progress - Get progress',
-          'POST /progress - Update progress',
-        ],
-      },
-      404
-    );
+    return apiError(404, 'NOT_FOUND', 'Unknown endpoint', request);
   } catch (error: unknown) {
     console.error('❌ Error in ai-tutor-api:', error);
     const message = error instanceof Error ? error.message : 'Internal server error';
-    return jsonResponse({ error: message }, 500);
+    return apiError(500, 'INTERNAL_ERROR', message, request);
   }
 };

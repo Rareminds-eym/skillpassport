@@ -7,11 +7,12 @@
  * GET /api/storage/media-proxy?token={authToken}
  */
 
+import { apiError } from '../../../lib/response';
 import { validateFileKey } from '../utils/course-authorization';
 import { validateMediaToken } from '../utils/token-crypto';
 import { R2Client } from '../utils/r2-client';
 import { validateDeviceFingerprint, validateReferer } from '../utils/fingerprint-validator';
-import { generateDeviceMismatchPage, generateTokenExpiredPage, generateUnauthorizedPage } from '../utils/error-pages';
+import { generateDeviceMismatchPage } from '../utils/error-pages';
 
 type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
 
@@ -20,10 +21,7 @@ type PagesFunction = (context: { request: Request; env: any }) => Promise<Respon
  */
 export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
   if (request.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
@@ -31,40 +29,22 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
     const token = url.searchParams.get('token');
 
     if (!token) {
-      return new Response(
-        JSON.stringify({ error: 'Authentication token required' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(401, 'UNAUTHORIZED', 'Authentication token required', request);
     }
 
     // Validate token
     const signingSecret = env.SIGNING_SECRET;
     if (!signingSecret) {
       console.error('[MediaProxy] SIGNING_SECRET not configured');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Server configuration error', request);
     }
 
     const validation = await validateMediaToken(token, signingSecret);
     if (!validation.valid || !validation.payload) {
-      return new Response(
-        JSON.stringify({ error: validation.error || 'Invalid or expired session' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(401, 'UNAUTHORIZED', validation.error || 'Invalid or expired session', request);
     }
 
-    const { userId, courseId, lessonId, fileKey, fingerprint, userAgent: tokenUserAgent, sessionId: tokenSessionId } = validation.payload;
+    const { courseId, lessonId, fileKey, fingerprint, userAgent: tokenUserAgent } = validation.payload;
 
     // Fingerprint and User-Agent validation
     const requestFingerprint = url.searchParams.get('fp');
@@ -72,24 +52,12 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
 
     if (!fingerprint || !tokenUserAgent) {
       console.error('[MediaProxy] Token missing security data');
-      return new Response(
-        JSON.stringify({ error: 'Invalid token - security validation required' }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(403, 'FORBIDDEN', 'Invalid token - security validation required', request);
     }
 
     if (!requestFingerprint) {
       console.error('[MediaProxy] Request missing fingerprint');
-      return new Response(
-        JSON.stringify({ error: 'Device verification required' }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(403, 'FORBIDDEN', 'Device verification required', request);
     }
 
     const deviceValidation = validateDeviceFingerprint(
@@ -114,23 +82,11 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
     
     const refererValidation = validateReferer(referer, allowedDomains);
     if (!refererValidation.valid) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid request origin',
-          details: refererValidation.reason 
-        }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(403, 'FORBIDDEN', 'Invalid request origin', request);
     }
 
     if (!validateFileKey(fileKey, courseId, lessonId)) {
-      return new Response(JSON.stringify({ error: 'Invalid file access' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError(403, 'FORBIDDEN', 'Invalid file access', request);
     }
 
     const r2Client = new R2Client(env);
@@ -140,10 +96,7 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
     const r2Response = await r2Client.getObject(fileKey, range || undefined);
 
     if (!r2Response.ok) {
-      return new Response(JSON.stringify({ error: 'File not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError(404, 'NOT_FOUND', 'File not found', request);
     }
 
     // Extract filename and headers
@@ -187,15 +140,6 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
     });
   } catch (error) {
     console.error('[MediaProxy] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to proxy media',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };

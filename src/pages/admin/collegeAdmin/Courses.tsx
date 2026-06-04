@@ -25,7 +25,6 @@ import {
 } from '@/features/educator';
 import toast from 'react-hot-toast';
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';

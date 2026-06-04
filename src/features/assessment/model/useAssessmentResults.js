@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/shared/api/supabaseClient';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
-import * as assessmentService from '../api/assessmentService';
+import * as assessmentService from '../api/assessmentApiService';
 import { saveRecommendations } from '@/features/courses';
 import { analyzeAssessmentWithGemini, addCourseRecommendations } from '..';
 import { validateAssessmentResults } from '../lib/assessmentValidation';

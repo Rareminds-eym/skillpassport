@@ -28,7 +28,6 @@ import { CourseCard } from '@/features/courses';
 import { CourseFilters } from '@/features/courses';
 import { CreateCourseModal } from '@/features/courses';
 import { CourseDetailDrawer } from '@/features/courses';
-import { supabase } from '@/shared/api/supabaseClient';
 
 import {
   getCoursesByEducator,

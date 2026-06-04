@@ -76,7 +76,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -98,7 +98,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -119,7 +119,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.fileKey).toMatch(/^payment_pdf\/john_doe_123_user-456\/payment-123_\d+\.pdf$/);
@@ -135,7 +135,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('pdfBase64, paymentId, and userId are required');
@@ -151,7 +151,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('pdfBase64, paymentId, and userId are required');
@@ -167,7 +167,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('pdfBase64, paymentId, and userId are required');
@@ -184,7 +184,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Invalid base64 data');
@@ -198,7 +198,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Invalid JSON body');
@@ -210,7 +210,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(405);
       expect(data.error).toBe('Method not allowed');
@@ -229,7 +229,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleUploadPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to upload payment receipt');
@@ -291,7 +291,7 @@ describe('Payment Receipt Handlers', () => {
       const request = new Request('http://localhost/payment-receipt');
 
       const response = await handleGetPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('File key or URL is required');
@@ -303,7 +303,7 @@ describe('Payment Receipt Handlers', () => {
       });
 
       const response = await handleGetPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(405);
       expect(data.error).toBe('Method not allowed');
@@ -317,7 +317,7 @@ describe('Payment Receipt Handlers', () => {
       );
 
       const response = await handleGetPaymentReceipt({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(404);
       expect(data.error).toBe('Receipt not found or access denied');

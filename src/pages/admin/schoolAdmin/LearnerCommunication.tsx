@@ -18,7 +18,6 @@ import {
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { MessageService, Conversation } from '@/features/messaging';
-import { supabase } from '@/shared/api/supabaseClient';
 import { useAdminMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
 import { useRealtimePresence } from '@/shared/lib/hooks';

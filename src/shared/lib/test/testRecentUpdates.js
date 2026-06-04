@@ -1,4 +1,3 @@
-import { supabase } from '@/shared/api/supabaseClient';
 
 /**
  * Test utility to verify recent updates functionality

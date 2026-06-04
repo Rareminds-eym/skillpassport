@@ -1,58 +1,23 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { NotificationType } from '@/features/notifications';
 
-// ✅ helper to check UUID
 function isUUID(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 
-// ✅ Resolve user ID from email or UUID
 async function resolveUserId(identifier: string): Promise<string | null> {
   if (!identifier) return null;
   if (isUUID(identifier)) return identifier;
 
-  // Try educators first
-  const { data: educatorData } = await supabase
-    .from("school_educators")
-    .select("user_id")
-    .ilike("email", identifier)
-    .maybeSingle();
+  const response: any = await apiPost('/notifications', {
+    action: 'resolve-users',
+    identifiers: [identifier],
+  });
 
-  if (educatorData?.user_id) return educatorData.user_id;
-
-  // Try learners
-  const { data: learnerData } = await supabase
-    .from("learners")
-    .select("user_id")
-    .ilike("email", identifier)
-    .maybeSingle();
-
-  if (learnerData?.user_id) return learnerData.user_id;
-
-  // Try recruiters
- // Try recruiters
-const { data: recruiterData } = await supabase
-  .from("recruiters")
-  .select("user_id")
-  .ilike("email", identifier)
-  .maybeSingle();
-
-if (recruiterData?.user_id) return recruiterData.user_id;
-
-
-
-  // Try users (admins)
-  const { data: userData } = await supabase
-    .from("users")
-    .select("id")
-    .ilike("email", identifier)
-    .maybeSingle();
-
-  return userData?.id ?? null;
+  const data = response?.data ?? response;
+  return data?.resolved?.[identifier] ?? null;
 }
 
-// ✅ Universal notification creator
 export async function createNotification(
   recipientIdentifier: string,
   type: NotificationType,
@@ -61,37 +26,27 @@ export async function createNotification(
 ) {
   try {
     const recipientId = await resolveUserId(recipientIdentifier);
-
     if (!recipientId) {
-      return { success: false, error: "Recipient not found" };
+      return { success: false, error: 'Recipient not found' };
     }
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert([
-        {
-          recipient_id: recipientId,
-          type,
-          title,
-          message,
-          read: false,
-          created_at: new Date().toISOString(),
-        },
-      ])
-      .select();
+    const response: any = await apiPost('/notifications', {
+      action: 'create',
+      recipient_id: recipientId,
+      type,
+      title,
+      message,
+    });
 
-    if (error) throw error;
-
-    return { success: true, data };
+    return { success: true, data: response?.data ?? response };
   } catch (err: any) {
     return {
       success: false,
-      error: err.message || "Failed to create notification",
+      error: err.message || 'Failed to create notification',
     };
   }
 }
 
-// ✅ Batch notification creator (for multiple recipients)
 export async function createBatchNotifications(
   recipientIdentifiers: string[],
   notificationType: NotificationType,
@@ -99,44 +54,54 @@ export async function createBatchNotifications(
   message: string
 ) {
   try {
-    const notifications = [];
+    const response: any = await apiPost('/notifications', {
+      action: 'resolve-users',
+      identifiers: recipientIdentifiers,
+    });
 
-    for (const identifier of recipientIdentifiers) {
-      const recipientId = await resolveUserId(identifier);
+    const data = response?.data ?? response;
+    const resolved = data?.resolved ?? {};
+    const notifications: Array<{
+      recipient_id: string;
+      type: NotificationType;
+      title: string;
+      message: string;
+    }> = [];
 
-      if (recipientId) {
+    for (const [identifier, userId] of Object.entries(resolved)) {
+      if (userId) {
         notifications.push({
-          recipient_id: recipientId,
+          recipient_id: userId as string,
           type: notificationType,
           title,
           message,
-          read: false,
-          created_at: new Date().toISOString(),
         });
       }
     }
 
     if (notifications.length === 0) {
-      return { success: false, error: "No valid recipients found" };
+      return { success: false, error: 'No valid recipients found' };
     }
 
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert(notifications)
-      .select();
+    const batchResponse: any = await apiPost('/notifications', {
+      action: 'create-batch',
+      notifications,
+    });
 
-    if (error) throw error;
-
-    return { success: true, data, count: notifications.length };
+    const batchData = batchResponse?.data ?? batchResponse;
+    return {
+      success: true,
+      data: batchData?.data,
+      count: notifications.length,
+    };
   } catch (err: any) {
     return {
       success: false,
-      error: err.message || "Failed to create batch notifications",
+      error: err.message || 'Failed to create batch notifications',
     };
   }
 }
 
-// ✅ Legacy support aliases for backward compatibility
 export async function createRecruiterNotification(
   recruiterIdentifier: string,
   type: NotificationType,

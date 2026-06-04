@@ -1,10 +1,12 @@
-import { withAuth } from '../../../lib/auth';
+import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleOrganizationQueries(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
-  const userId = context.data.user.sub;
+  const user = getContextUser(context);
+  const userId = user.id;
   const url = new URL(context.request.url);
   const action = url.searchParams.get('action');
   const orgId = url.searchParams.get('orgId');
@@ -33,18 +35,17 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
         },
       } : null;
 
-      return new Response(JSON.stringify({ success: true, data: shaped, error: null }), { status: 200 });
+      return apiSuccess(shaped, context.request);
     }
 
     if (action === 'getOrganizationMembers' && orgId) {
       const { data, error } = await supabase
         .from('license_assignments')
         .select(`*, users_shadow (id, email)`)
-        .eq('organization_id', orgId)
         .order('assigned_at', { ascending: false });
 
       if (error) throw error;
-      return new Response(JSON.stringify({ success: true, data: data || [], error: null }), { status: 200 });
+      return apiSuccess(data || [], context.request);
     }
 
     if (action === 'getUserLicenseAssignment') {
@@ -83,15 +84,12 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
         }
       }
 
-      return new Response(JSON.stringify({ success: true, data: shaped, error: null }), { status: 200 });
+      return apiSuccess(shaped, context.request);
     }
 
-    return new Response(JSON.stringify({ success: false, error: 'Invalid action' }), { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid action', context.request);
   } catch (error) {
     console.error('[OrganizationQueries] Error:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 200 }
-    );
+    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

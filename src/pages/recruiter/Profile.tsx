@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 import { useUser } from '@/shared/model/authStore';
@@ -61,16 +61,11 @@ const RecruiterProfile: React.FC = () => {
     const fetchRecruiter = async () => {
       if (!user?.email) return;
       setLoading(true);
-      const { data, error } = await supabase
-        .from("recruiters")
-        .select("*")
-        .eq("email", user.email)
-        .maybeSingle();
-
-      if (error) {
-        logger.error("❌ Error fetching recruiter", error);
-      } else {
-        setRecruiter(data);
+      try {
+        const result = await apiPost<any>('/recruiter/actions', { action: 'get-recruiter-profile', email: user.email });
+        setRecruiter(result.data);
+      } catch (err) {
+        logger.error("❌ Error fetching recruiter", err as Error);
       }
       setLoading(false);
     };

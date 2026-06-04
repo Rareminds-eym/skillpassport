@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Small Message Modal Component
 const MessageModal = ({ learner, isOpen, onClose, onSend, isLoading }) => {
@@ -220,16 +220,7 @@ const NewLearnerConversationModal = ({ isOpen, onClose, schoolId, onConversation
   const fetchlearners = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('learners')
-        .select('id, name, email, contact_number, university, branch_field, grade, section')
-        .eq('school_id', schoolId)
-        .order('name', { ascending: true });
-
-      const { data, error } = await query.limit(50); // Limit to 50 results for performance
-
-      if (error) throw error;
-
+      const { data } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'admin-learner', contextId: schoolId });
       setlearners(data || []);
     } catch (error) {
       console.error('Error fetching learners:', error);

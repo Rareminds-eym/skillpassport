@@ -31,7 +31,6 @@ import {
 
 // Import assignment card interface
 import { Assignment } from '@/features/myclass';
-import { supabase } from '@/shared/api/supabaseClient';
 
 import { useUser } from '@/shared/model/authStore';
 type CollegeTabType = 'overview' | 'classmates' | 'assignments';

@@ -12,7 +12,7 @@ const mockIn = vi.fn();
 const mockUpdate = vi.fn();
 const mockFrom = vi.fn();
 
-vi.mock('../../../../../src/functions-lib/supabase', () => ({
+vi.mock('../../../../../lib/supabase', () => ({
   createSupabaseClient: vi.fn(() => ({
     from: mockFrom,
   })),
@@ -81,13 +81,13 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.processed).toBe(1);
       expect(data.results).toHaveLength(1);
-      expect(data.results[0].status).toBe('success');
-      expect(data.results[0].resourceId).toBe('res-123');
+      expect((data.results as Array<Record<string, unknown>>)[0].status).toBe('success');
+      expect((data.results as Array<Record<string, unknown>>)[0].resourceId).toBe('res-123');
       expect(mockFrom).toHaveBeenCalledWith('lesson_resources');
       expect(mockSelect).toHaveBeenCalledWith('*');
     });
@@ -119,13 +119,13 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.processed).toBe(2);
       expect(data.results).toHaveLength(2);
-      expect(data.results[0].status).toBe('success');
-      expect(data.results[1].status).toBe('success');
+      expect((data.results as Array<Record<string, unknown>>)[0].status).toBe('success');
+      expect((data.results as Array<Record<string, unknown>>)[1].status).toBe('success');
       expect(mockIn).toHaveBeenCalledWith('resource_id', ['res-1', 'res-2']);
     });
 
@@ -151,7 +151,7 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.processed).toBe(1);
@@ -184,13 +184,13 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.processed).toBe(2);
-      expect(data.results[0].status).toBe('skipped');
-      expect(data.results[0].reason).toContain('video');
-      expect(data.results[1].status).toBe('success');
+      expect((data.results as Array<Record<string, unknown>>)[0].status).toBe('skipped');
+      expect((data.results as Array<Record<string, unknown>>)[0].reason).toContain('video');
+      expect((data.results as Array<Record<string, unknown>>)[1].status).toBe('success');
     });
 
     it('should handle PDF download failures', async () => {
@@ -216,11 +216,11 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
-      expect(data.results[0].status).toBe('error');
-      expect(data.results[0].error).toContain('Failed to download');
+      expect((data.results as Array<Record<string, unknown>>)[0].status).toBe('error');
+      expect((data.results as Array<Record<string, unknown>>)[0].error).toContain('Failed to download');
     });
 
     it('should handle database update failures', async () => {
@@ -245,11 +245,11 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
-      expect(data.results[0].status).toBe('error');
-      expect(data.results[0].error).toContain('Failed to update');
+      expect((data.results as Array<Record<string, unknown>>)[0].status).toBe('error');
+      expect((data.results as Array<Record<string, unknown>>)[0].error).toContain('Failed to update');
     });
 
     it('should reject request without required parameters', async () => {
@@ -259,7 +259,7 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Provide resourceId, resourceIds, or lessonId');
@@ -272,7 +272,7 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Provide resourceId, resourceIds, or lessonId');
@@ -286,7 +286,7 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Invalid JSON body');
@@ -298,7 +298,7 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(405);
       expect(data.error).toBe('Method not allowed');
@@ -314,7 +314,7 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(404);
       expect(data.error).toBe('Resources not found');
@@ -331,7 +331,7 @@ describe('Extract Content Handler', () => {
       });
 
       const response = await handleExtractContent({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to extract content');

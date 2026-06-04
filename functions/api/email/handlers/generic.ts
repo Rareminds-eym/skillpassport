@@ -4,9 +4,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import type { GenericEmailRequest } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { apiLogger } from '../../../lib/logger';
 import { sendEmail } from '../../../lib/email-service';
 
@@ -18,10 +18,7 @@ export async function handleGenericEmail(
   const { to, subject, html, text, from, fromName } = body;
 
   if (!to || !subject || !html) {
-    return jsonResponse({
-      success: false,
-      error: 'Missing required fields: to, subject, html'
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: to, subject, html');
   }
 
   try {
@@ -40,8 +37,7 @@ export async function handleGenericEmail(
 
     apiLogger.info('Generic email sent via email-worker', { to, subject, messageId: result.messageId });
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: 'Email sent successfully',
       data: { messageId: result.messageId }
     });
@@ -55,9 +51,6 @@ export async function handleGenericEmail(
     
     apiLogger.error('Error sending email', errorObject);
     
-    return jsonResponse({
-      success: false,
-      error: errorMessage
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', errorMessage);
   }
 }

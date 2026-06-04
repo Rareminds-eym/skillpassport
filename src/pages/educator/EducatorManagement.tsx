@@ -11,7 +11,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('EducatorManagement');
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 
 interface SchoolEducator {
   id: string;
@@ -67,13 +67,15 @@ const EducatorManagement = () => {
   const loadEducators = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('school_educators')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const result = await apiPost<any>('/educator/actions', {
+        action: 'list-school-educators',
+        select: '*',
+        orderBy: 'created_at',
+        orderDir: 'desc'
+      });
 
-      if (error) throw error;
-      setEducators(data || []);
+      if (!result?.data) throw new Error('Failed to fetch educators');
+      setEducators(result.data || []);
     } catch (error) {
       logger.error('Error loading educators:', error);
     } finally {
@@ -83,14 +85,14 @@ const EducatorManagement = () => {
 
   const loadSchools = async () => {
     try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('organization_type', 'school')
-        .limit(100);
+      const result = await apiPost<any>('/educator/actions', {
+        action: 'list-organizations',
+        select: 'id, name',
+        filters: { organization_type: 'school' }
+      });
 
-      if (error) throw error;
-      setSchools(data || []);
+      if (!result?.data) throw new Error('Failed to fetch schools');
+      setSchools(result.data || []);
     } catch (error) {
       logger.error('Error loading schools:', error);
     }
@@ -98,9 +100,8 @@ const EducatorManagement = () => {
 
   const loadUsers = async () => {
     try {
-      const { data, error } = await supabase.from('users').select('*').in('role', ['educator', 'school_admin']);
-      if (error) throw error;
-      setUsers(data?.users || []);
+      const response: any = await apiGet('/user/list?role=educator,school_admin');
+      setUsers(response?.data?.users || []);
     } catch (error) {
       logger.error('Error loading users:', error);
     }
@@ -152,27 +153,21 @@ const EducatorManagement = () => {
       delete cleanData.updated_at;
 
       if (editingId) {
-        const { data, error } = await supabase
-          .from('school_educators')
-          .update(cleanData)
-          .eq('id', editingId)
-          .select();
+        const { data } = await apiPost<any>('/educator/actions', {
+          action: 'update-school-educator',
+          id: editingId,
+          values: cleanData
+        });
 
-        if (error) {
-          throw new Error(`Update failed: ${error.message}`);
-        }
-        if (!data || data.length === 0) {
+        if (!data) {
           throw new Error('Update returned no data. Record may not exist.');
         }
       } else {
-        const { data, error } = await supabase
-          .from('school_educators')
-          .insert([cleanData])
-          .select();
+        const { data } = await apiPost<any>('/educator/actions', {
+          action: 'create-school-educator',
+          values: cleanData
+        });
 
-        if (error) {
-          throw new Error(`Insert failed: ${error.message}`);
-        }
         if (!data || data.length === 0) {
           throw new Error('Insert returned no data.');
         }
@@ -192,12 +187,12 @@ const EducatorManagement = () => {
     if (!confirm('Are you sure you want to delete this educator?')) return;
 
     try {
-      const { error } = await supabase
-        .from('school_educators')
-        .delete()
-        .eq('id', id);
+      const delResult = await apiPost<any>('/educator/actions', {
+        action: 'delete-school-educator',
+        id
+      });
 
-      if (error) throw error;
+      if (!delResult?.data) throw new Error('Failed to delete educator');
       loadEducators();
     } catch (error) {
       logger.error('Error deleting educator:', error);

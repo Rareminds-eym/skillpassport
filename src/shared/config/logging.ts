@@ -1,4 +1,3 @@
-import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Logging Configuration for Organization Subscription Management
  * 
@@ -53,7 +52,7 @@ class Logger {
    */
   private shouldLog(level: LogLevel): boolean {
     // In production, hide debug logs
-    if (typeof import.meta.env !== 'undefined' && import.meta.env.PROD) {
+    if (typeof import.meta !== 'undefined' && (import.meta as unknown as Record<string, unknown>).env && (import.meta as any).env.PROD) {
       return level !== 'debug';
     }
     // In development, show all logs
@@ -108,7 +107,7 @@ class Logger {
     }
 
     // Send to log aggregation service in production
-    if (typeof import.meta.env !== 'undefined' && import.meta.env.PROD) {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.PROD) {
       this.sendToAggregator(entry);
     }
   }

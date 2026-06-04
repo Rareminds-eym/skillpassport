@@ -3,7 +3,7 @@ import { ArrowRight, BookOpen, Clock, Download, Eye, Filter, Flame, GraduationCa
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { downloadCertificate, getCertificateProxyUrl } from '@/shared/lib/certificateUtils';
 import '@/shared/lib/suppressRechartsWarnings'; // Auto-suppress Recharts warnings
 
@@ -429,30 +429,19 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
         const user = useAuthStore.getState().user;
         if (!user) return;
 
-        const { data: streakData } = await supabase
-          .from('learner_streaks')
-          .select('current_streak, longest_streak')
-          .eq('learner_id', user.id)
-          .single();
-
-        const { data: progressData } = await supabase
-          .from('learner_course_progress')
-          .select('time_spent_seconds, status')
-          .eq('learner_id', user.id);
-
-        const { data: enrollmentData } = await supabase
-          .from('course_enrollments')
-          .select('completed_at')
-          .eq('learner_id', user.id)
-          .not('completed_at', 'is', null);
+        const result = await apiPost('/learner-profile/actions', {
+          action: 'fetch-achievement-stats', userId: user.id,
+        });
+        const d = result?.data || {};
 
         const MAX_SECONDS_PER_LESSON = 3600;
-        const totalTimeMinutes = (progressData || []).reduce((sum, p) => sum + Math.min(p.time_spent_seconds || 0, MAX_SECONDS_PER_LESSON), 0) / 60;
-        const completedLessons = (progressData || []).filter(p => p.status === 'completed').length;
-        const completedCourses = (enrollmentData || []).length;
+        const progressData = d.timeProgress || [];
+        const totalTimeMinutes = progressData.reduce((sum, p) => sum + Math.min(p.time_spent_seconds || 0, MAX_SECONDS_PER_LESSON), 0) / 60;
+        const completedLessons = progressData.filter(p => p.status === 'completed').length;
+        const completedCourses = (d.completedEnrollments || []).length;
 
         setAchievementData({
-          currentStreak: streakData?.current_streak || statsCurrentStreak,
+          currentStreak: d.currentStreak || statsCurrentStreak,
           totalTimeMinutes: Math.round(totalTimeMinutes),
           completedLessons,
           completedCourses
@@ -583,15 +572,13 @@ const CompactCourseCard = ({ course, onClick }) => {
         const user = useAuthStore.getState().user;
         if (!user) return;
 
-        const { data: enrollment } = await supabase
-          .from('course_enrollments')
-          .select('certificate_url')
-          .eq('learner_id', user.id)
-          .eq('course_id', course.courseId)
-          .single();
+        const result = await apiPost('/learner-profile/actions', {
+          action: 'fetch-certificate-url', userId: user.id, courseId: course.courseId,
+        });
+        const url = result?.data;
 
-        if (enrollment?.certificate_url) {
-          setCertificateUrl(enrollment.certificate_url);
+        if (url) {
+          setCertificateUrl(url);
         }
       } catch (error) {
         console.error('Error fetching certificate URL:', error);
@@ -897,14 +884,16 @@ const WeeklyLearningTracker = () => {
 
       const weekDates = getCurrentWeek();
 
-      // Fetch all data in parallel with single queries (no N+1)
-      const [
-        { data: progressData, error: progressError },
-        { data: enrollments, error: enrollmentsError }
-      ] = await Promise.all([
-        supabase.from('learner_course_progress').select('*').eq('learner_id', user.id),
-        supabase.from('course_enrollments').select('*').eq('learner_id', user.id)
+      // Fetch all data in parallel via API (no N+1)
+      const [progressRes, enrollmentsRes] = await Promise.all([
+        apiPost('/learners/management', { action: 'get-learner-progress', learnerId: user.id }),
+        apiPost('/learners/management', { action: 'get-learner-enrollments', learnerId: user.id })
       ]);
+
+      const progressData = progressRes?.data ?? [];
+      const enrollments = enrollmentsRes?.data ?? [];
+      const progressError = progressRes?.error;
+      const enrollmentsError = enrollmentsRes?.error;
 
       // Debug logging
       console.log('📊 WeeklyLearningTracker - Fetched enrollments:', {
@@ -918,46 +907,28 @@ const WeeklyLearningTracker = () => {
       // Get all course IDs from enrollments and fetch course titles separately
       const courseIds = (enrollments || []).map(e => e.course_id).filter(Boolean);
 
-      // Fetch course titles
+      // Fetch course titles, course modules, and lesson counts via API
       let courseTitles = {};
-      if (courseIds.length > 0) {
-        const { data: coursesData } = await supabase
-          .from('courses')
-          .select('course_id, title')
-          .in('course_id', courseIds);
+      let allModules = [];
+      let lessonCounts = {};
 
-        (coursesData || []).forEach(course => {
+      if (courseIds.length > 0) {
+        const [titlesRes, modulesRes] = await Promise.all([
+          apiPost('/learner-profile/actions', { action: 'fetch-courses-by-ids', courseIds }),
+          apiPost('/learner-profile/actions', { action: 'fetch-course-modules-by-course-ids', courseIds }),
+        ]);
+
+        (titlesRes?.data || []).forEach(course => {
           courseTitles[course.course_id] = course.title;
         });
-      }
 
-      console.log('📊 WeeklyLearningTracker - Course titles:', courseTitles);
+        allModules = modulesRes?.data || [];
 
-      // Batch fetch all modules for all courses in one query
-      let allModules = [];
-      if (courseIds.length > 0) {
-        const { data: modulesData } = await supabase
-          .from('course_modules')
-          .select('module_id, course_id')
-          .in('course_id', courseIds);
-        allModules = modulesData || [];
-      }
-
-      // Get all module IDs
-      const moduleIds = allModules.map(m => m.module_id);
-
-      // Batch fetch lesson counts per module in one query
-      let lessonCounts = {};
-      if (moduleIds.length > 0) {
-        const { data: lessonsData } = await supabase
-          .from('lessons')
-          .select('module_id')
-          .in('module_id', moduleIds);
-
-        // Count lessons per module
-        (lessonsData || []).forEach(lesson => {
-          lessonCounts[lesson.module_id] = (lessonCounts[lesson.module_id] || 0) + 1;
-        });
+        const moduleIds = allModules.map(m => m.module_id);
+        if (moduleIds.length > 0) {
+          const countsRes = await apiPost('/learner-profile/actions', { action: 'fetch-lesson-counts-by-module-ids', moduleIds });
+          lessonCounts = countsRes?.data || {};
+        }
       }
 
       // Calculate course progress using the batched data

@@ -31,7 +31,7 @@ import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal, ConversationModal } from '@/features/messaging';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import NewCollegeEducatorAdminConversationModal from '@/features/messaging/ui/modals/NewCollegeEducatorAdminConversationModal';
 import NewCollegeLecturerConversationModal from '@/features/messaging/ui/modals/NewCollegeLecturerConversationModal';
 import { getLogger } from '@/shared/config/logging';
@@ -88,18 +88,18 @@ const CollegeLecturerMessages = () => {
     queryFn: async () => {
       if (!userId) return null;
       logger.info('🔍 Querying college lecturer details with user_id:', userId);
-      const { data, error } = await supabase
-        .from('college_lecturers')
-        .select('id, collegeId, first_name, last_name, email, department, specialization')
-        .eq('user_id', userId)
-        .single();
+      const result = await apiPost<any>('/educator/actions', {
+        action: 'get-college-lecturer-by-user-id',
+        userId,
+        select: 'id, collegeId, first_name, last_name, email, department, specialization'
+      });
 
-      if (error) {
-        logger.error('❌ Error fetching college lecturer details:', error);
-        throw error;
+      if (!result?.data) {
+        logger.error('❌ Error fetching college lecturer details');
+        throw new Error('College lecturer not found');
       }
-      logger.info('✅ College lecturer details found:', data);
-      return data;
+      logger.info('✅ College lecturer details found:', result.data);
+      return result.data;
     },
     enabled: !!userId,
   });
@@ -113,15 +113,15 @@ const CollegeLecturerMessages = () => {
     queryFn: async () => {
       if (!collegeId) return null;
 
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('id, name, admin_id')
-        .eq('id', collegeId)
-        .eq('organization_type', 'college')
-        .single();
+      const orgResult = await apiPost<any>('/educator/actions', {
+        action: 'get-organization-by-id',
+        id: collegeId,
+        select: 'id, name, admin_id'
+      });
 
-      if (error) {
-        logger.error('❌ Error fetching college admin ID:', error);
+      const data = orgResult?.data;
+      if (!data) {
+        logger.error('❌ Error fetching college admin ID');
         return null;
       }
 

@@ -179,41 +179,7 @@ function buildValidationRulesSection(): string {
 `;
 }
 
-/**
- * Generate deterministic but varied match scores based on answersHash
- * This ensures same learner gets same scores, but different learners get different scores
- */
-function generateMatchScores(answersHash: number): { track1: number; track2: number; track3: number } {
-  // Use answersHash as seed for deterministic randomization
-  const seed = Math.abs(answersHash);
-  
-  // Generate pseudo-random values based on seed
-  const random1 = ((seed * 9301 + 49297) % 233280) / 233280;
-  const random2 = ((seed * 9307 + 49299) % 233282) / 233282;
-  const random3 = ((seed * 9311 + 49301) % 233284) / 233284;
-  
-  // Track 1: 90-97% base, ±1 variation
-  const track1Base = 90 + Math.floor(random1 * 8); // 90-97
-  const track1Variation = Math.floor(random2 * 3) - 1; // -1, 0, or 1
-  const track1 = Math.max(90, Math.min(97, track1Base + track1Variation));
-  
-  // Track 2: 79-89% base, ±1 variation
-  const track2Base = 79 + Math.floor(random2 * 11); // 79-89
-  const track2Variation = Math.floor(random3 * 3) - 1; // -1, 0, or 1
-  const track2 = Math.max(79, Math.min(89, track2Base + track2Variation));
-  
-  // Track 3: 61-78% base, ±1 variation
-  const track3Base = 61 + Math.floor(random3 * 18); // 61-78
-  const track3Variation = Math.floor(random1 * 3) - 1; // -1, 0, or 1
-  const track3 = Math.max(61, Math.min(78, track3Base + track3Variation));
-  
-  return { track1, track2, track3 };
-}
-
 export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: number): string {
-  // Generate deterministic match scores for this learner
-  const matchScores = generateMatchScores(answersHash);
-  
   // Pre-process adaptive results for efficiency
   const adaptiveSection = assessmentData.adaptiveAptitudeResults
     ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)

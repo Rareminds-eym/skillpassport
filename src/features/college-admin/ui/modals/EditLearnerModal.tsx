@@ -3,7 +3,7 @@ import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { updateLearner } from '@/features/learner-profile/api';
 import { Country, State, City } from 'country-state-city';
 import pincodes from 'indian-pincodes';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('edit-learner-modal');
@@ -375,76 +375,46 @@ const EditLearnerModal: React.FC<EditlearnerModalProps> = ({
         try {
           // Fetch university from universityId
           if (learner.universityId) {
-            const { data: univData, error: univError } = await supabase
-              .from('organizations')
-              .select('name')
-              .eq('id', learner.universityId)
-              .single();
-
-            if (!univError && univData) {
-              universityName = univData.name;
+            const result = await apiPost('/college-admin/faculty', { action: 'get-organization', id: learner.universityId });
+            if (result?.data?.name) {
+              universityName = result.data.name;
             }
           }
 
           // Fetch college from college_id
           if (learner.college_id) {
-            const { data: collegeData, error: collegeError } = await supabase
-              .from('organizations')
-              .select('name')
-              .eq('id', learner.college_id)
-              .single();
-
-            if (!collegeError && collegeData) {
-              collegeName = collegeData.name;
+            const result = await apiPost('/college-admin/faculty', { action: 'get-organization', id: learner.college_id });
+            if (result?.data?.name) {
+              collegeName = result.data.name;
             }
           }
 
           // Fetch school from school_id
           if (learner.school_id) {
-            const { data: schoolData, error: schoolError } = await supabase
-              .from('organizations')
-              .select('name')
-              .eq('id', learner.school_id)
-              .single();
-
-            if (!schoolError && schoolData) {
-              collegeName = schoolData.name;
+            const result = await apiPost('/college-admin/faculty', { action: 'get-organization', id: learner.school_id });
+            if (result?.data?.name) {
+              collegeName = result.data.name;
             }
           }
 
           // Fetch program details if program_id exists
           if (learner.program_id) {
-            const { data: programData, error: programError } = await supabase
-              .from('programs')
-              .select('name, department')
-              .eq('id', learner.program_id)
-              .single();
-
-            if (!programError && programData) {
-              courseName = programData.name;
-              if (programData.department) {
-                branchName = programData.department;
+            const result = await apiPost('/college-admin/academic', { action: 'get-program', id: learner.program_id });
+            if (result?.data) {
+              courseName = result.data.name;
+              if (result.data.department) {
+                branchName = result.data.department;
               }
             }
           }
 
           // Fetch program section details if program_section_id exists
           if (learner.program_section_id) {
-            const { data: sectionData, error: sectionError } = await supabase
-              .from('program_sections')
-              .select(`
-                section_name,
-                programs!inner(name, department)
-              `)
-              .eq('id', learner.program_section_id)
-              .single();
-
-            if (!sectionError && sectionData) {
-              if (sectionData.programs) {
-                courseName = sectionData.programs.name;
-                if (sectionData.programs.department) {
-                  branchName = sectionData.programs.department;
-                }
+            const result = await apiPost('/college-admin/academic', { action: 'get-program-section', id: learner.program_section_id });
+            if (result?.data?.program) {
+              courseName = result.data.program.name;
+              if (result.data.program.department) {
+                branchName = result.data.program.department;
               }
             }
           }

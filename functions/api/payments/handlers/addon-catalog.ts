@@ -1,5 +1,6 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { ssoFetch } from '../../../lib/sso-client';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 // Cloudflare Service Bindings require a full URL for the Fetch API, 
 // but the hostname is ignored by the internal router.
@@ -21,22 +22,22 @@ export async function handleAddonCatalog(context: AuthenticatedContext): Promise
       if (!ssoResponse.ok) throw new Error(`SSO Worker error: ${ssoResponse.status}`);
       
       const { bundles } = await ssoResponse.json() as { bundles: Record<string, unknown>[] };
-      return new Response(JSON.stringify({ success: true, data: bundles }), { status: 200 });
+      return apiSuccess(bundles, context.request);
     }
 
     if (action === 'calculateBundleSavings') {
       const bundleId = url.searchParams.get('bundleId');
-      if (!bundleId) return new Response(JSON.stringify({ success: false, error: 'Bundle ID required' }), { status: 400 });
+      if (!bundleId) return apiError(400, 'VALIDATION_ERROR', 'Bundle ID required', context.request);
       
       const bundlesResp = await ssoFetch(env, new Request(`${INTERNAL_SSO_HOST}/api/bundles`, { method: 'GET' }));
       if (!bundlesResp.ok) throw new Error(`SSO Worker bundles error: ${bundlesResp.status}`);
       const { bundles } = await bundlesResp.json() as { bundles: Record<string, unknown>[] };
       
       const bundle = bundles.find(b => b.id === bundleId);
-      if (!bundle) return new Response(JSON.stringify({ success: false, error: 'BUNDLE_NOT_FOUND' }), { status: 404 });
+      if (!bundle) return apiError(404, 'NOT_FOUND', 'BUNDLE_NOT_FOUND', context.request);
       
       const featureKeys = (bundle.feature_keys as string[]) || [];
-      if (featureKeys.length === 0) return new Response(JSON.stringify({ success: true, data: { totalIndividual: 0, bundlePrice: bundle.monthly_price, savings: 0 } }), { status: 200 });
+      if (featureKeys.length === 0) return apiSuccess({ totalIndividual: 0, bundlePrice: bundle.monthly_price, savings: 0 }, context.request);
       
       const addonsResp = await ssoFetch(env, new Request(`${INTERNAL_SSO_HOST}/api/addon-catalog`, { method: 'GET' }));
       if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
@@ -48,16 +49,13 @@ export async function handleAddonCatalog(context: AuthenticatedContext): Promise
       const bundlePrice = parseFloat(bundle.monthly_price as string) ?? 0;
       const savings = totalIndividual > bundlePrice ? totalIndividual - bundlePrice : 0;
       
-      return new Response(JSON.stringify({ success: true, data: { totalIndividual, bundlePrice, savings } }), { status: 200 });
+      return apiSuccess({ totalIndividual, bundlePrice, savings }, context.request);
     }
 
-    return new Response(JSON.stringify({ success: false, error: 'Invalid action or missing params' }), { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid action or missing params', context.request);
   } catch (error) {
     console.error('[AddonCatalog] Error:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500 }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }
 

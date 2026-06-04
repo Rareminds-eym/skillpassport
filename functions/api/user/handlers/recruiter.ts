@@ -4,9 +4,9 @@
  * - Recruiter signup (joins existing company)
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import type { RecruiterAdminSignupRequest, RecruiterSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
 import {
@@ -30,20 +30,20 @@ export async function handleRecruiterAdminSignup(request: Request, env: PagesEnv
     const requiredFields = ['email', 'password', 'companyName', 'companyCode', 'hrName'];
     for (const field of requiredFields) {
       if (!body[field as keyof RecruiterAdminSignupRequest]) {
-        return jsonResponse({ error: `Missing required field: ${field}` }, 400);
+        return apiError(400, 'VALIDATION_ERROR', `Missing required field: ${field}`, request);
       }
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters', request);
     }
 
     if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An account with this email already exists', request);
     }
 
     const { data: existingCompany } = await supabaseAdmin
@@ -53,7 +53,7 @@ export async function handleRecruiterAdminSignup(request: Request, env: PagesEnv
       .maybeSingle();
 
     if (existingCompany) {
-      return jsonResponse({ error: 'Company code already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Company code already exists', request);
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -69,7 +69,7 @@ export async function handleRecruiterAdminSignup(request: Request, env: PagesEnv
 
     if (authError || !authUser.user) {
       console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', authError?.message || 'Failed to create account', request);
     }
 
     const userId = authUser.user.id;
@@ -156,8 +156,7 @@ export async function handleRecruiterAdminSignup(request: Request, env: PagesEnv
         `<strong>Company:</strong> ${body.companyName}`
       );
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'Recruiter admin account created successfully! Please check your email for login details.',
         data: {
           userId,
@@ -167,7 +166,7 @@ export async function handleRecruiterAdminSignup(request: Request, env: PagesEnv
           email: body.email,
           role: 'recruiter_admin',
         },
-      });
+      }, request);
     } catch (error) {
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
@@ -175,10 +174,7 @@ export async function handleRecruiterAdminSignup(request: Request, env: PagesEnv
     }
   } catch (error) {
     console.error('Recruiter admin signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create recruiter admin account' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create recruiter admin account', request);
   }
 }
 
@@ -193,22 +189,19 @@ export async function handleRecruiterSignup(request: Request, env: PagesEnv): Pr
     const body = (await request.json()) as RecruiterSignupRequest;
 
     if (!body.email || !body.password || !body.firstName || !body.lastName || !body.companyId) {
-      return jsonResponse(
-        { error: 'Missing required fields: email, password, firstName, lastName, companyId' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: email, password, firstName, lastName, companyId', request);
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters', request);
     }
 
     if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An account with this email already exists', request);
     }
 
     const { data: company, error: companyError } = await supabaseAdmin
@@ -218,7 +211,7 @@ export async function handleRecruiterSignup(request: Request, env: PagesEnv): Pr
       .single();
 
     if (companyError || !company) {
-      return jsonResponse({ error: 'Invalid company selected' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid company selected', request);
     }
 
     // Check if recruiter already exists
@@ -229,7 +222,7 @@ export async function handleRecruiterSignup(request: Request, env: PagesEnv): Pr
       .maybeSingle();
 
     if (existingRecruiter) {
-      return jsonResponse({ error: 'A recruiter with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'A recruiter with this email already exists', request);
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -248,7 +241,7 @@ export async function handleRecruiterSignup(request: Request, env: PagesEnv): Pr
 
     if (authError || !authUser.user) {
       console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', authError?.message || 'Failed to create account', request);
     }
 
     const userId = authUser.user.id;
@@ -312,8 +305,7 @@ export async function handleRecruiterSignup(request: Request, env: PagesEnv): Pr
         `<strong>Company:</strong> ${company.name}`
       );
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'Recruiter account created successfully!',
         data: {
           userId,
@@ -324,7 +316,7 @@ export async function handleRecruiterSignup(request: Request, env: PagesEnv): Pr
           companyName: company.name,
           role: 'recruiter',
         },
-      });
+      }, request);
     } catch (error) {
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
@@ -332,9 +324,6 @@ export async function handleRecruiterSignup(request: Request, env: PagesEnv): Pr
     }
   } catch (error) {
     console.error('Recruiter signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create recruiter account' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create recruiter account', request);
   }
 }

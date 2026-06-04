@@ -14,7 +14,6 @@ import {
   ClockIcon,
 } from "@heroicons/react/24/outline";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
 
 import { getLogger } from '@/shared/config/logging';
 import { useMentorAllocation } from '@/features/college-admin/model/useMentorAllocation';

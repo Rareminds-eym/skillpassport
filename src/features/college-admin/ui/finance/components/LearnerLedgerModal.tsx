@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { X, CheckCircle, Clock } from "lucide-react";
 import { LearnerFeeSummary, FeePayment, PaymentStatus } from '@/features/learner-profile/model';
-import { supabase } from "@/shared/api/supabaseClient";
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-ledger-modal');
@@ -34,13 +34,11 @@ export const LearnerLedgerModal: React.FC<Props> = ({ isOpen, onClose, learner }
     if (!learner) return;
     setLoadingPayments(true);
     try {
-      const { data, error } = await supabase
-        .from("fee_payments")
-        .select("*")
-        .eq("learner_id", learner.learner_id)
-        .order("payment_date", { ascending: false });
-      if (error) throw error;
-      setPayments(data || []);
+      const result = await apiPost('/college-admin/finance', {
+        action: 'get-fee-payments',
+        learner_id: learner.learner_id,
+      });
+      setPayments(result.data || []);
     } catch (err) {
       logger.error("Failed to load payments", err instanceof Error ? err : new Error(String(err)));
     } finally {

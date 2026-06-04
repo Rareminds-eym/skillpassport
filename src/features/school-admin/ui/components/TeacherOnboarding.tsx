@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import RoleDebugger from '@/features/debug/ui/RoleDebugger';
 
 import { useUserRole } from "@/entities/user";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { storageService } from '@/shared/api';
 import { createTeacher } from '@/features/educator-copilot';
 import { validateDocument } from "@/entities/user/lib/teacherValidation";
@@ -425,29 +425,10 @@ const TeacherOnboardingPage: React.FC = () => {
         throw new Error("User not authenticated. Please log in again.");
       }
 
-      // Get school_id from school_educators table using email
-      const { data: educatorData, error: educatorError } = await supabase
-        .from("school_educators")
-        .select("school_id, user_id")
-        .eq("email", userEmail)
-        .maybeSingle();
-
-      let schoolId = educatorData?.school_id;
-
-      // If not found in school_educators, check organizations table
-      if (!schoolId) {
-        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-        const { data: schoolData } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("organization_type", "school")
-          .or(`admin_id.eq.${user?.id},email.eq.${userEmail}`)
-          .maybeSingle();
-
-        if (schoolData?.id) {
-          schoolId = schoolData.id;
-        }
-      }
+      // Get school_id via API
+      const currUser = useAuthStore.getState().user;
+      const schoolResult = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: userEmail, user_id: currUser?.id }) as any;
+      let schoolId = schoolResult?.school_id;
 
       if (!schoolId) {
         throw new Error("School ID not found. Please ensure you're logged in as a school admin.");
@@ -516,21 +497,16 @@ const TeacherOnboardingPage: React.FC = () => {
         }
       }
 
-      // Step 3: Update teacher record with document URLs (if any were uploaded)
+      // Step 3: Update teacher record with document URLs via API (if any were uploaded)
       if (documentUrls.degreeUrl || documentUrls.idProofUrl || documentUrls.experienceUrls.length > 0) {
         try {
-          const { error: updateError } = await supabase
-            .from("school_educators")
-            .update({
-              degree_certificate_url: documentUrls.degreeUrl,
-              id_proof_url: documentUrls.idProofUrl,
-              experience_letters_url: documentUrls.experienceUrls.length > 0 ? documentUrls.experienceUrls : null,
-            })
-            .eq('id', teacherId);
-
-          if (updateError) {
-            throw updateError;
-          }
+          await apiPost('/college-admin/school-admin', {
+            action: 'update-teacher-document-urls',
+            teacher_id: teacherId,
+            degree_certificate_url: documentUrls.degreeUrl,
+            id_proof_url: documentUrls.idProofUrl,
+            experience_letters_url: documentUrls.experienceUrls.length > 0 ? documentUrls.experienceUrls : null,
+          });
         } catch (updateError) {
           logger.error('Failed to update teacher record with document URLs', updateError as Error);
           throw updateError;

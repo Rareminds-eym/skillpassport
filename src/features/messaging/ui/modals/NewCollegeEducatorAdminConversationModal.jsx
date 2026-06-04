@@ -6,8 +6,8 @@ import {
   ChatBubbleLeftRightIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/shared/api/supabaseClient';
 import toast from 'react-hot-toast';
+import { apiPost } from '@/shared/api/apiClient';
 
 /**
  * Modal for college educators to start conversations with college admins
@@ -49,17 +49,7 @@ const NewCollegeEducatorAdminConversationModal = ({
       try {
         console.log('🔍 [NewCollegeEducatorAdminModal] Fetching college info for:', collegeId);
 
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('id, name, admin_id')
-          .eq('id', collegeId)
-          .eq('organization_type', 'college')
-          .single();
-
-        if (orgError) {
-          console.error('❌ [NewCollegeEducatorAdminModal] Error fetching college:', orgError);
-          throw orgError;
-        }
+        const { data: orgData } = await apiPost('/messaging/actions', { action: 'fetch-organization', id: collegeId });
 
         console.log('✅ [NewCollegeEducatorAdminModal] College info loaded:', orgData);
         setCollegeInfo(orgData);

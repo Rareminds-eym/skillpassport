@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('puter-demo');
@@ -442,24 +443,13 @@ const PuterDemo = () => {
     const fetchTables = async () => {
       setLoadingTables(true);
       try {
-        const tablesToFetch = [
-          { name: 'learners', query: supabase.from('learners').select('id, name, email, college_school_name, grade').limit(5) },
-          { name: 'courses', query: supabase.from('courses').select('course_id, title, code, status, duration').limit(5) },
-          { name: 'opportunities', query: supabase.from('opportunities').select('id, title, company_name, employment_type, location').limit(5) },
-        ];
-
-        const results: TableData[] = [];
-        for (const table of tablesToFetch) {
-          const { data, error } = await table.query;
-          if (!error && data) {
-            results.push({
-              name: table.name,
-              count: data.length,
-              sample: data,
-              columns: data.length > 0 ? Object.keys(data[0]) : [],
-            });
-          }
-        }
+        const result = await apiPost('/explorer/actions', { action: 'table-samples' });
+        const tablesData = result?.data as Record<string, any> | undefined;
+        const results: TableData[] = tablesData
+          ? Object.entries(tablesData).map(([name, info]: [string, any]) => ({
+              name, count: info.count, sample: info.sample, columns: info.columns,
+            }))
+          : [];
         setTables(results);
       } catch (error) {
         logger.error('Error fetching tables', error as Error);

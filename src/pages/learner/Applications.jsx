@@ -25,7 +25,7 @@ import {
 import { learnerPipelineService as LearnerPipelineService } from '@/features/learner-profile/api';
 import { MessageService } from '@/features/messaging';
 import { useMessageNotifications } from '@/features/messaging/model/useMessageNotifications';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useLearnerDataByEmail } from '@/entities/learner';
 
@@ -808,14 +808,10 @@ const Applications = () => {
                                 // Fetch recruiter data to display name and email properly
                                 let recruiterData = null;
                                 try {
-                                  const { data: recruiter } = await supabase
-                                    .from('recruiters')
-                                    .select('id, email, name, phone')
-                                    .eq('id', app.recruiterId)
-                                    .single();
+                                  const res = await apiPost<any>('/learner-pages/actions', { action: 'fetch-recruiter', recruiterId: app.recruiterId });
 
-                                  recruiterData = recruiter;
-                                  logger.info('Recruiter data fetched', { recruiterName: recruiter?.name || recruiter?.email });
+                                  recruiterData = res.data;
+                                  logger.info('Recruiter data fetched', { recruiterName: res.data?.name || res.data?.email });
                                 } catch (err) {
                                   logger.warn('Could not fetch recruiter data', err);
                                 }

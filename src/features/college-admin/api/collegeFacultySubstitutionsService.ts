@@ -1,11 +1,8 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export const collegeFacultySubstitutionsService = {
   async createSubstitutions(substitutionEntries: any[]) {
-    const { error } = await supabase
-      .from('college_faculty_substitutions')
-      .insert(substitutionEntries);
-    
-    if (error) throw error;
+    const result = await apiPost('/college-admin/faculty', { action: 'create-substitutions', entries: substitutionEntries });
+    if (!result.success) throw new Error(result.error || 'Failed to create substitutions');
   }
 };

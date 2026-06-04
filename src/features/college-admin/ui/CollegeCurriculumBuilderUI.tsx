@@ -23,7 +23,7 @@ import { KPICard } from '@/features/analytics';
 import toast from "react-hot-toast";
 import { curriculumApprovalService } from '@/features/college-admin';
 import { curriculumChangeRequestService } from '@/features/college-admin';
-import { supabase } from '@/shared/api/supabaseClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin:CollegeCurriculumBuilderUI');
@@ -1267,55 +1267,39 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     }, 5000); // Refresh every 5 seconds instead of 10
 
     // Set up real-time subscription for curriculum changes
-    let subscription: any = null;
+    let unsubscribe: (() => void) | null = null;
     if (props.curriculumId) {
-      subscription = supabase
-        .channel(`curriculum-changes-${props.curriculumId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'college_curriculums',
-            filter: `id=eq.${props.curriculumId}`
-          },
-          (payload) => {
-            setIsAutoRefreshing(true);
-            fetchPendingChanges();
-            setTimeout(() => setIsAutoRefreshing(false), 1000);
-            
-            // Check if changes were approved and refresh curriculum data
-            if (payload.new?.pending_changes && payload.old?.pending_changes) {
-              const oldChanges = payload.old.pending_changes || [];
-              const newChanges = payload.new.pending_changes || [];
-              
-              if (newChanges.length < oldChanges.length) {
-                // Changes were approved - refresh the entire curriculum data
-                // Call parent refresh function if available
-                if (props.onRefreshCurriculum) {
-                  props.onRefreshCurriculum();
-                } else {
-                  // Fallback: reload the page to get fresh data
-                  window.location.reload();
-                }
-                
-                toast.success('✅ Changes approved and applied!', {
-                  duration: 4000,
-                  icon: '🎉'
-                });
-              }
-            }
+      const wsClient = getWSClient();
+      unsubscribe = wsClient.subscribe('college_curriculums', {
+        event: 'UPDATE',
+        filter: `id=eq.${props.curriculumId}`,
+      }, (event) => {
+        if (event.type !== 'change') return;
+        setIsAutoRefreshing(true);
+        fetchPendingChanges();
+        setTimeout(() => setIsAutoRefreshing(false), 1000);
+        
+        // Check if changes were approved and refresh curriculum data
+        const payload = event.payload;
+        if (payload?.pending_changes) {
+          // Changes may have been approved - refresh
+          if (props.onRefreshCurriculum) {
+            props.onRefreshCurriculum();
+          } else {
+            window.location.reload();
           }
-        )
-        .subscribe();
+          toast.success('✅ Changes approved and applied!', {
+            duration: 4000,
+            icon: '🎉'
+          });
+        }
+      });
     }
 
     // Cleanup function
     return () => {
       clearInterval(refreshInterval);
-      if (subscription) {
-        supabase.removeChannel(subscription);
-      }
+      if (unsubscribe) unsubscribe();
     };
   }, [props.curriculumId, status, props.onRefreshCurriculum]);
 

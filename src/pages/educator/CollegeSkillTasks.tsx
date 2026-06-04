@@ -11,7 +11,6 @@ import {
   MoreVertical,
   Trash2
 } from "lucide-react";
-import { supabase } from '@/shared/api/supabaseClient';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import toast from "react-hot-toast";
 import * as collegeAssignmentService from "@/features/college-admin";

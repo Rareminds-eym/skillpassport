@@ -1,7 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('CompanyService');
+import { apiPost, apiGet } from '@/shared/api/apiClient';
 
 export interface Company {
   id: string;
@@ -22,8 +19,8 @@ export interface Company {
   contactPersonDesignation?: string;
   contactPersonEmail?: string;
   contactPersonPhone?: string;
-  accountStatus?: 'pending' | 'approved' | 'rejected' | 'active' | 'inactive' | 'suspended' | 'blacklisted';
-  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  accountStatus?: string;
+  approvalStatus?: string;
   createdAt?: string;
   updatedAt?: string;
   metadata?: any;
@@ -60,26 +57,14 @@ export interface CompanyFormData {
 }
 
 class CompanyService {
-  // Fetch all companies
   async getAllCompanies(): Promise<Company[]> {
     try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .order('createdAt', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      return data || [];
-    } catch (error) {
-      logger.error("Failed to fetch companies", error as Error);
-      throw error;
+      return await apiPost<Company[]>('/recruiter-copilot', { action: 'companies-get-all' });
+    } catch {
+      return [];
     }
   }
 
-  // Fetch companies with filters
   async getFilteredCompanies(filters: {
     searchTerm?: string;
     industry?: string;
@@ -87,218 +72,56 @@ class CompanyService {
     accountStatus?: string;
   }): Promise<Company[]> {
     try {
-      let query = supabase
-        .from('companies')
-        .select('*');
-
-      // Apply search filter
-      if (filters.searchTerm) {
-        query = query.or(`name.ilike.%${filters.searchTerm}%,code.ilike.%${filters.searchTerm}%,industry.ilike.%${filters.searchTerm}%`);
-      }
-
-      // Apply industry filter
-      if (filters.industry) {
-        query = query.eq('industry', filters.industry);
-      }
-
-      // Apply company size filter
-      if (filters.companySize) {
-        query = query.eq('companySize', filters.companySize);
-      }
-
-      // Apply status filter
-      if (filters.accountStatus) {
-        query = query.eq('accountStatus', filters.accountStatus);
-      }
-
-      query = query.order('createdAt', { ascending: false });
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      return data || [];
-    } catch (error) {
-
-      logger.error("Failed to fetch filtered companies", error as Error);
-      throw error;
+      return await apiPost<Company[]>('/recruiter-copilot', {
+        action: 'companies-get-filtered',
+        search_term: filters.searchTerm,
+        industry: filters.industry,
+        company_size: filters.companySize,
+        account_status: filters.accountStatus,
+      });
+    } catch {
+      return [];
     }
   }
 
-  // Add new company
   async addCompany(companyData: CompanyFormData): Promise<Company> {
-    try {
-      const newCompany = {
-        name: companyData.name,
-        code: companyData.code,
-        industry: companyData.industry,
-        companySize: companyData.companySize,
-        establishedYear: companyData.establishedYear ? parseInt(companyData.establishedYear) : null,
-        hqAddress: companyData.hqAddress,
-        hqCity: companyData.hqCity,
-        hqState: companyData.hqState,
-        hqCountry: companyData.hqCountry,
-        hqPincode: companyData.hqPincode,
-        phone: companyData.phone,
-        email: companyData.email,
-        website: companyData.website,
-        contactPersonName: companyData.contactPersonName,
-        contactPersonDesignation: companyData.contactPersonDesignation,
-        contactPersonEmail: companyData.contactPersonEmail,
-        contactPersonPhone: companyData.contactPersonPhone,
-        accountStatus: 'pending' as const,
-        approvalStatus: 'pending' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        totalBranches: 0,
-        totalRecruiters: 0,
-        hqRecruiters: 0,
-        branchRecruiters: 0,
-        metadata: {
-          companyDescription: companyData.companyDescription || '',
-          specialRequirements: companyData.specialRequirements || '',
-          registrationDate: new Date().toISOString()
-        }
-      };
-
-      const { data, error } = await supabase
-        .from('companies')
-        .insert([newCompany])
-        .select()
-        .single();
-
-      if (error) {
-        // Error handled
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      logger.error("Failed to add company", error as Error);
-      throw error;
-    }
+    return await apiPost<Company>('/recruiter-copilot', {
+      action: 'companies-add',
+      ...companyData,
+    });
   }
 
-  // Update company
   async updateCompany(id: string, companyData: Partial<CompanyFormData>): Promise<Company> {
-    try {
-      // Separate metadata fields from regular fields
-      const { companyDescription, specialRequirements, ...regularFields } = companyData;
-
-      const updateData: any = {
-        ...regularFields,
-        updatedAt: new Date().toISOString()
-      };
-
-      // Convert establishedYear to number if provided
-      if (companyData.establishedYear) {
-        updateData.establishedYear = parseInt(companyData.establishedYear);
-      }
-
-      // Handle metadata fields properly
-      if (companyDescription !== undefined || specialRequirements !== undefined) {
-        // First get the current metadata
-        const { data: currentCompany } = await supabase
-          .from('companies')
-          .select('metadata')
-          .eq('id', id)
-          .single();
-
-        const currentMetadata = currentCompany?.metadata || {};
-
-        updateData.metadata = {
-          ...currentMetadata,
-          ...(companyDescription !== undefined && { companyDescription }),
-          ...(specialRequirements !== undefined && { specialRequirements })
-        };
-      }
-
-      const { data, error } = await supabase
-        .from('companies')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        // Error handled
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      logger.error("Failed to update company", error as Error);
-      throw error;
-    }
+    return await apiPost<Company>('/recruiter-copilot', {
+      action: 'companies-update',
+      id,
+      ...companyData,
+    });
   }
 
-  // Update company status
   async updateCompanyStatus(id: string, status: string): Promise<Company> {
-    try {
-      const { data, error } = await supabase
-        .from('companies')
-        .update({
-          accountStatus: status,
-          updatedAt: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        // Error handled
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      logger.error("Failed to update company status", error as Error);
-      throw error;
-    }
+    return await apiPost<Company>('/recruiter-copilot', {
+      action: 'companies-update-status',
+      id,
+      status,
+    });
   }
 
-  // Delete company
   async deleteCompany(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('companies')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        // Error handled
-        throw error;
-      }
-    } catch (error) {
-      logger.error("Failed to delete company", error as Error);
-      throw error;
-    }
+    await apiPost('/recruiter-copilot', { action: 'companies-delete', id });
   }
 
-  // Get company by ID
   async getCompanyById(id: string): Promise<Company | null> {
     try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        // Error handled
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      logger.error("Failed to fetch company by ID", error as Error);
-      throw error;
+      return await apiPost<Company | null>('/recruiter-copilot', {
+        action: 'companies-get-by-id',
+        id,
+      });
+    } catch {
+      return null;
     }
   }
 
-  // Get companies statistics
   async getCompaniesStats(): Promise<{
     total: number;
     active: number;
@@ -310,36 +133,26 @@ class CompanyService {
     blacklisted: number;
   }> {
     try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('accountStatus');
-
-      if (error) {
-        // Error handled
-        throw error;
-      }
+      const data = await apiPost<any[]>('/recruiter-copilot', { action: 'companies-stats' });
 
       const stats = {
         total: data?.length || 0,
-        active: 0,
-        pending: 0,
-        approved: 0,
-        rejected: 0,
-        inactive: 0,
-        suspended: 0,
-        blacklisted: 0
+        active: 0, pending: 0, approved: 0,
+        rejected: 0, inactive: 0, suspended: 0, blacklisted: 0,
       };
 
-      data?.forEach(company => {
+      data?.forEach((company: any) => {
         if (company.accountStatus) {
           stats[company.accountStatus as keyof typeof stats]++;
         }
       });
 
       return stats;
-    } catch (error) {
-      logger.error("Failed to fetch companies statistics", error as Error);
-      throw error;
+    } catch {
+      return {
+        total: 0, active: 0, pending: 0, approved: 0,
+        rejected: 0, inactive: 0, suspended: 0, blacklisted: 0,
+      };
     }
   }
 }

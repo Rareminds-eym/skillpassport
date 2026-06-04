@@ -129,7 +129,8 @@ export function getAuthHeaders(token?: string): Record<string, string> {
   };
 
   if (token) {
-      }
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   return headers;
 }

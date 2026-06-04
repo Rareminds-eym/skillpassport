@@ -64,17 +64,17 @@ describe('List Files Handler', () => {
       const params = { courseId: 'course-1', lessonId: 'lesson-1' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data).toHaveLength(2);
-      expect(data.data[0].key).toBe('courses/course-1/lessons/lesson-1/file1.pdf');
-      expect(data.data[0].url).toBe(
+      expect((data.data as Array<Record<string, unknown>>)[0].key).toBe('courses/course-1/lessons/lesson-1/file1.pdf');
+      expect((data.data as Array<Record<string, unknown>>)[0].url).toBe(
         'https://pub-test.r2.dev/courses/course-1/lessons/lesson-1/file1.pdf'
       );
-      expect(data.data[0].size).toBe('1024');
-      expect(data.data[0].lastModified).toBe('2024-01-01T00:00:00.000Z');
+      expect((data.data as Array<Record<string, unknown>>)[0].size).toBe('1024');
+      expect((data.data as Array<Record<string, unknown>>)[0].lastModified).toBe('2024-01-01T00:00:00.000Z');
       expect(mockList).toHaveBeenCalledWith('courses/course-1/lessons/lesson-1/');
     });
 
@@ -85,7 +85,7 @@ describe('List Files Handler', () => {
       const params = { courseId: 'course-1', lessonId: 'lesson-1' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -97,7 +97,6 @@ describe('List Files Handler', () => {
       const params = { courseId: 'course-abc', lessonId: 'lesson-xyz' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
 
       expect(response.status).toBe(200);
       expect(mockList).toHaveBeenCalledWith('courses/course-abc/lessons/lesson-xyz/');
@@ -117,11 +116,11 @@ describe('List Files Handler', () => {
       const params = { courseId: 'c1', lessonId: 'l1' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
-      expect(data.data[0].size).toBe('12345');
-      expect(data.data[0].lastModified).toBe('2024-12-25T10:30:00.000Z');
+      expect((data.data as Array<Record<string, unknown>>)[0].size).toBe('12345');
+      expect((data.data as Array<Record<string, unknown>>)[0].lastModified).toBe('2024-12-25T10:30:00.000Z');
     });
 
     it('should reject request without courseId', async () => {
@@ -129,7 +128,7 @@ describe('List Files Handler', () => {
       const params = { courseId: '', lessonId: 'lesson-1' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('courseId and lessonId are required');
@@ -140,7 +139,7 @@ describe('List Files Handler', () => {
       const params = { courseId: 'course-1', lessonId: '' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('courseId and lessonId are required');
@@ -153,7 +152,7 @@ describe('List Files Handler', () => {
       const params = { courseId: 'course-1', lessonId: 'lesson-1' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(405);
       expect(data.error).toBe('Method not allowed');
@@ -166,7 +165,7 @@ describe('List Files Handler', () => {
       const params = { courseId: 'course-1', lessonId: 'lesson-1' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to list files');
@@ -180,7 +179,7 @@ describe('List Files Handler', () => {
       const params = { courseId: 'course-1', lessonId: 'lesson-1' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to list files');
@@ -201,10 +200,10 @@ describe('List Files Handler', () => {
       const params = { courseId: 'c1', lessonId: 'l1' };
 
       const response = await handleListFiles({ request, env: mockEnv, params } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
-      expect(data.data[0].key).toBe('courses/c1/lessons/l1/file with spaces.pdf');
+      expect((data.data as Array<Record<string, unknown>>)[0].key).toBe('courses/c1/lessons/l1/file with spaces.pdf');
     });
 
     it('should remove malformed XML test as R2Client handles parsing', async () => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('recent-updates-hook');
@@ -40,20 +40,12 @@ export const useRecentUpdates = () => {
   // 1️⃣ Resolve learner ID by email
   const fetchLearnerIdByEmail = async (email) => {
     try {
-
-      const { data, error } = await supabase
-        .from("learners")
-        .select("id, profile")
-        .eq("profile->>email", email)
-        .maybeSingle();
-
-      if (error) throw error;
-
+      const response = await apiPost('/user/actions', { action: 'get-learner-by-email', email });
+      const data = response?.data?.learner;
       if (!data) {
         setLearnerId(null);
         return null;
       }
-
       setLearnerId(data.id);
       return data.id;
     } catch (err) {
@@ -73,13 +65,8 @@ export const useRecentUpdates = () => {
     try {
       setLoading(true);
 
-      const { data, error: updatesError } = await supabase
-        .from("recent_updates")
-        .select("*")
-        .eq("learner_id", resolvedId)
-        .maybeSingle();
-
-      if (updatesError) throw updatesError;
+      const response = await apiPost('/user/actions', { action: 'get-recent-updates', learnerId: resolvedId });
+      const data = response?.data?.recentUpdates;
 
       if (!data) {
         setRecentUpdates([]);

@@ -11,9 +11,9 @@
  * - Requires authentication (protected by withAuth middleware)
  */
 
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesFunction, PagesEnv } from '../../../lib/types';
 import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
 
 /**
@@ -59,7 +59,7 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context)
   const { request, env } = context;
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
@@ -70,13 +70,13 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context)
     try {
       body = await request.json();
     } catch {
-      return jsonResponse({ error: 'Invalid JSON body' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', request);
     }
 
     const { lessonId } = body;
 
     if (!lessonId) {
-      return jsonResponse({ error: 'Missing required field: lessonId' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required field: lessonId', request);
     }
 
     // Fetch lesson with module info
@@ -88,13 +88,13 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context)
 
     if (lessonError) {
       console.error('❌ Lesson fetch error:', lessonError);
-      return jsonResponse({ error: 'Database error fetching lesson' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Database error fetching lesson', request);
     }
 
     if (!lesson) {
       // Graceful degradation: return default questions if lesson not found
       console.warn(`⚠️ Lesson not found: ${lessonId}, returning default questions`);
-      return jsonResponse({
+      return apiSuccess({
         questions: [
           "What are the key concepts in this lesson?",
           "Can you explain the main points?",
@@ -102,7 +102,7 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context)
         ],
         lessonId,
         lessonTitle: 'Unknown Lesson'
-      });
+      }, request);
     }
 
     // Get module title
@@ -118,11 +118,11 @@ export const handleAiTutorSuggestions: PagesFunction<PagesEnv> = async (context)
     const { openRouter: openRouterKey } = getAPIKeys(env);
     if (!openRouterKey) {
       console.log('⚠️ OpenRouter API key not configured, returning default questions');
-      return jsonResponse({
+      return apiSuccess({
         questions: getDefaultQuestions(lesson.title),
         lessonId,
         lessonTitle: lesson.title
-      });
+      }, request);
     }
 
     // Build prompt for AI
@@ -174,16 +174,16 @@ Return ONLY a JSON array of question strings, like:
       questions = getDefaultQuestions(lesson.title);
     }
 
-    return jsonResponse({
+    return apiSuccess({
       questions,
       lessonId,
       lessonTitle: lesson.title
-    });
+    }, request);
 
   } catch (error: any) {
     console.error('❌ AI Tutor Suggestions error:', error);
     // Final fallback: return generic default questions
-    return jsonResponse({
+    return apiSuccess({
       questions: [
         "What are the key concepts in this lesson?",
         "Can you explain the main points?",
@@ -191,6 +191,6 @@ Return ONLY a JSON array of question strings, like:
       ],
       lessonId: 'unknown',
       lessonTitle: 'Unknown Lesson'
-    });
+    }, request);
   }
 };

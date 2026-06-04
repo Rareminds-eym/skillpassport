@@ -3,7 +3,7 @@
  * Single source of truth for all email operations via email-worker
  */
 
-import type { PagesEnv } from '../../src/functions-lib/types';
+import type { PagesEnv } from './types';
 import { apiLogger } from './logger';
 
 const FROM_EMAIL = 'noreply@rareminds.in';
@@ -66,12 +66,12 @@ export async function sendEmail(
       };
     }
 
-    const result = await response.json();
-    apiLogger.info('Email sent successfully', { result });
+    const body = (await response.json()) as Record<string, unknown>;
+    apiLogger.info('Email sent successfully', { body });
     
     return {
       success: true,
-      messageId: result.messageId || result.id,
+      messageId: String(body.messageId || body.id || ''),
     };
   } catch (error) {
     apiLogger.error('Failed to send email', error as Error);

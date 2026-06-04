@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardContent,
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import ReactApexChart from 'react-apexcharts';
 import {
@@ -88,3 +85,6 @@ const UnifiedDashboard = () => {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+};
+
+export default UnifiedDashboard;

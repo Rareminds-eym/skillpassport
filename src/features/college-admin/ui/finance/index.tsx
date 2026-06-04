@@ -1,6 +1,6 @@
 import { AlertCircle, FileText, IndianRupee, TrendingUp } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { DepartmentBudgetsTab } from "./components/DepartmentBudgetsTab";
 import { ExpenditureReportsTab } from "./components/ExpenditureReportsTab";
@@ -53,23 +53,16 @@ const FinanceModule: React.FC = () => {
           }
         }
 
-        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
+        const user = useAuthStore.getState().user;
         if (user) {
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id, name, email')
-            .eq('organization_type', 'college')
-            .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
-            .maybeSingle();
+          const result = await apiPost('/college-admin/faculty', {
+            action: 'resolve-user-college',
+            user_id: user.id,
+            email: user.email,
+          });
 
-          if (org?.id) {
-            setCollegeId(org.id);
-            return;
-          }
-
-          const { data: lecturer } = await supabase.from("college_lecturers").select("collegeId").or(`userId.eq.${user.id},user_id.eq.${user.id}`).single();
-          if (lecturer?.collegeId) {
-            setCollegeId(lecturer.collegeId);
+          if (result.data?.college_id) {
+            setCollegeId(result.data.college_id);
             return;
           }
 

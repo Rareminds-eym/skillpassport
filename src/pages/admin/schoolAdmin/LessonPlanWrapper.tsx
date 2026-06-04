@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import LessonPlan from "./LessonPlan";
 import { useLessonPlans, useSubjectsAndClasses } from '@/features/educator-copilot/model/useLessonPlans';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser } from '@/shared/model/authStore';
 /**
@@ -28,26 +28,12 @@ const LessonPlanWrapper: React.FC = () => {
         }
       } catch { /* ignore */ }
 
-      // Check school_educators table
-      const { data: educator } = await supabase
-        .from('school_educators')
-        .select('school_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (educator?.school_id) { setSchoolId(educator.school_id); setResolving(false); return; }
-
-      // Check organizations table
-      const userEmail = user.email || localStorage.getItem('userEmail');
-      if (userEmail) {
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'school')
-          .or(`admin_id.eq.${user.id},email.eq.${userEmail}`)
-          .maybeSingle();
-
-        if (org?.id) { setSchoolId(org.id); setResolving(false); return; }
+      // Look up school_id via API
+      const resp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId', storedUser: localStorage.getItem('user') });
+      if (resp.data?.schoolId) {
+        setSchoolId(resp.data.schoolId);
+        setResolving(false);
+        return;
       }
 
       setResolving(false);

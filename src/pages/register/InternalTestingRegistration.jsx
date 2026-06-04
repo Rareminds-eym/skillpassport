@@ -21,7 +21,7 @@ import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { signupLearner } from '@/entities/user/api/userApiService';
-import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
   (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
@@ -48,7 +48,7 @@ const validateForm = (form) => {
 };
 
 const sendOTPEmail = async (email, otp, name) => {
-  const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
+  const response = await ssoClient.fetch(`${EMAIL_API_URL}/event-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, otp, name }),
@@ -60,7 +60,7 @@ const sendOTPEmail = async (email, otp, name) => {
 
 const submitRegistration = async (formData) => {
   // Submit to your backend API for storing test registrations
-  const response = await fetch(`${EMAIL_API_URL}/test-registration`, {
+  const response = await ssoClient.fetch(`${EMAIL_API_URL}/test-registration`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(formData),

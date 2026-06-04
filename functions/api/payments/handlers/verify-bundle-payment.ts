@@ -12,14 +12,16 @@
  * 2. Pages Function creates bundle purchase record in DB (worker has no DB access)
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoRecordTransaction, ssoRecordBundlePurchase } from '../../../lib/sso-client';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleVerifyBundlePayment(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
@@ -28,33 +30,17 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     // Validate required fields for Razorpay verification
     if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required',
-          },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required', context.request);
     }
 
     // Validate bundle details
     if (!body.bundle_id) {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'bundle_id is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'bundle_id is required', context.request);
     }
 
     // Step 1: Call payment-worker via RPC to verify HMAC signature
@@ -66,12 +52,7 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
     );
 
     if (!body.billing_period || typeof body.billing_period !== 'string') {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'billing_period is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
     const priceAtPurchase = typeof body.amount === 'number' ? body.amount / 100 : 0;
@@ -80,7 +61,7 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
     // Step 2: Record purchase in Auth DB via SSO Worker RPC
     try {
       await ssoRecordBundlePurchase(env, {
-        user_id: user.sub,
+        user_id: user.id,
         bundle_id: body.bundle_id as string,
         billing_period: billingPeriod,
         price_at_purchase: priceAtPurchase,
@@ -99,7 +80,7 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
     else endDate.setMonth(endDate.getMonth() + 1);
 
     const { data: entitlement, error: entError } = await supabase.from('user_entitlements').insert({
-      user_id: user.sub,
+      user_id: user.id,
       bundle_id: body.bundle_id as string,
       status: 'active',
       billing_period: billingPeriod,
@@ -116,7 +97,7 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
     // Record transaction in auth DB (non-blocking)
     try {
       await ssoRecordTransaction(env, {
-        user_id: user.sub,
+        user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
         amount: priceAtPurchase,
@@ -129,21 +110,9 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
       console.error('[VerifyBundlePayment] Transaction recording in auth DB failed:', txError);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      ...verifyResult,
-      purchase_created: true,
-      purchase: entitlement ? {
-        id: entitlement.id,
-        bundle_id: entitlement.bundle_id,
-        status: entitlement.status,
-      } : null,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ ...verifyResult, purchase_created: true, purchase: entitlement ? { id: entitlement.id, bundle_id: entitlement.bundle_id, status: entitlement.status } : null }, context.request);
   } catch (error) {
     console.error('[VerifyBundlePayment] Error:', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

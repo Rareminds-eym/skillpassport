@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Sparkles, Save, Send, AlertTriangle, Building2, Filter } from "lucide-react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface Department {
   id: string;
@@ -114,111 +114,62 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
   const loadDepartments = async () => {
     if (!collegeId) return;
 
-    const { data } = await supabase
-      .from("departments")
-      .select("id, name, code")
-      .eq("college_id", collegeId)
-      .eq("status", "active")
-      .order("name");
-    
-    if (data) setDepartments(data);
+    try {
+      const response = await apiPost('/college-admin/academic', { action: 'get-mapping-departments', college_id: collegeId });
+      if (response.data) setDepartments(response.data);
+    } catch {}
   };
 
   const loadFaculty = async () => {
     if (!collegeId) return;
 
-    // Load faculty with their department assignments
-    const { data: lecturers } = await supabase
-      .from("college_lecturers")
-      .select("id, employeeId, first_name, last_name")
-      .eq("collegeId", collegeId)
-      .eq("accountStatus", "active")
-      .order("first_name");
-    
-    if (lecturers) {
-      // Get department assignments for each faculty
-      const { data: assignments } = await supabase
-        .from("department_faculty_assignments")
-        .select("lecturer_id, department_id, is_hod")
-        .eq("is_active", true);
-      
-      const facultyWithDept = lecturers.map(f => {
-        const assignment = assignments?.find(a => a.lecturer_id === f.id);
-        return {
-          ...f,
-          department_id: assignment?.department_id || null,
-          is_hod: assignment?.is_hod || false
-        };
-      });
-      
-      setFaculty(facultyWithDept);
-      setFilteredFaculty(facultyWithDept);
-    }
+    try {
+      const response = await apiPost('/college-admin/faculty', { action: 'get-faculty-with-departments', college_id: collegeId });
+      if (response.data) {
+        setFaculty(response.data);
+        setFilteredFaculty(response.data);
+      }
+    } catch {}
   };
 
   const loadClasses = async () => {
     if (!collegeId) return;
 
-    const { data } = await supabase
-      .from("college_classes")
-      .select("id, name, grade, section, department_id")
-      .eq("college_id", collegeId)
-      .eq("status", "active")
-      .order("grade")
-      .order("section");
-    
-    if (data) {
-      setClasses(data);
-      setFilteredClasses(data);
-    }
+    try {
+      const response = await apiPost('/college-admin/classes', { action: 'get-college-classes', college_id: collegeId });
+      if (response.data) {
+        setClasses(response.data);
+        setFilteredClasses(response.data);
+      }
+    } catch {}
   };
 
   const loadOrCreateTimetable = async () => {
-    const currentYear = new Date().getFullYear();
-    const { data: existing } = await supabase
-      .from("college_timetables")
-      .select("id, status")
-      .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-      .eq("college_id", collegeId)
-      .single();
+    if (!collegeId) return;
 
-    if (existing) {
-      setTimetableId(existing.id);
-      setPublishStatus(existing.status);
-    } else {
-      const { data: newTimetable } = await supabase
-        .from("college_timetables")
-        .insert({
-          college_id: collegeId,
-          academic_year: `${currentYear}-${currentYear + 1}`,
-          term: "Term 1",
-          start_date: `${currentYear}-06-01`,
-          end_date: `${currentYear}-12-31`,
-          status: "draft",
-        })
-        .select("id")
-        .single();
-      
-      if (newTimetable) setTimetableId(newTimetable.id);
-    }
+    try {
+      const response = await apiPost('/college-admin/classes', { action: 'get-or-create-timetable', college_id: collegeId });
+      if (response.data) {
+        setTimetableId(response.data.id);
+        setPublishStatus(response.data.status);
+      }
+    } catch {}
   };
 
   const loadAllSlots = async () => {
-    const { data } = await supabase
-      .from("college_timetable_slots")
-      .select("*")
-      .eq("timetable_id", timetableId)
-      .order("day_of_week")
-      .order("period_number");
-    
-    if (data) {
-      const slotsWithNames = data.map(slot => ({
-        ...slot,
-        faculty_name: getFacultyName(slot.educator_id),
-        class_name: getClassName(slot.class_id)
-      }));
-      setAllSlots(slotsWithNames);
-    }
+    if (!timetableId) return;
+
+    try {
+      const response = await apiPost('/college-admin/classes', { action: 'get-timetable-slots', timetable_id: timetableId });
+      if (response.data) {
+        const slotsWithNames = response.data.map((slot: any) => ({
+          ...slot,
+          faculty_name: getFacultyName(slot.educator_id),
+          class_name: getClassName(slot.class_id)
+        }));
+        setAllSlots(slotsWithNames);
+      }
+    } catch {}
   };
 
   const getFacultyName = (facultyId: string) => {
@@ -267,21 +218,20 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
     try {
       const [startTime, endTime] = timeSlots[selectedCell.period - 1].split("-");
       
-      const { error } = await supabase
-        .from("college_timetable_slots")
-        .insert({
-          timetable_id: timetableId,
-          educator_id: newSlot.faculty_id,
-          class_id: newSlot.class_id,
-          day_of_week: selectedCell.day,
-          period_number: selectedCell.period,
-          start_time: startTime,
-          end_time: endTime,
-          subject_name: newSlot.subject_name,
-          room_number: newSlot.room_number || `R${selectedCell.period}`,
-        });
+      const response = await apiPost('/college-admin/classes', {
+        action: 'create-timetable-slot',
+        timetable_id: timetableId,
+        educator_id: newSlot.faculty_id,
+        class_id: newSlot.class_id,
+        day_of_week: selectedCell.day,
+        period_number: selectedCell.period,
+        start_time: startTime,
+        end_time: endTime,
+        subject_name: newSlot.subject_name,
+        room_number: newSlot.room_number || `R${selectedCell.period}`,
+      });
 
-      if (error) throw error;
+      if (!response.success) throw new Error(response.error || 'Failed to create slot');
       
       await loadAllSlots();
       setShowAddModal(false);
@@ -298,12 +248,9 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("college_timetable_slots")
-        .delete()
-        .eq("id", slotId);
+      const response = await apiPost('/college-admin/classes', { action: 'delete-timetable-slot', slot_id: slotId });
 
-      if (error) throw error;
+      if (!response.success) throw new Error(response.error || 'Failed to delete slot');
       
       await loadAllSlots();
     } catch (error: any) {
@@ -318,12 +265,9 @@ const FacultyTimetable: React.FC<FacultyTimetableProps> = ({ collegeId }) => {
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("college_timetables")
-        .update({ status: "published" })
-        .eq("id", timetableId);
+      const response = await apiPost('/college-admin/classes', { action: 'publish-timetable', timetableId });
 
-      if (error) throw error;
+      if (!response.success) throw new Error(response.error || 'Failed to publish timetable');
       
       setPublishStatus("published");
       alert("Timetable published successfully!");

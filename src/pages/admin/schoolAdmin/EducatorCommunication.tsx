@@ -22,7 +22,6 @@ import {
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import MessageService, { Conversation } from '@/features/messaging';
-import { supabase } from '@/shared/api/supabaseClient';
 import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
 

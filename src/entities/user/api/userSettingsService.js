@@ -3,7 +3,7 @@
  * Handles notification and privacy settings using the user_settings table
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('user-settings');
@@ -15,57 +15,8 @@ const logger = getLogger('user-settings');
  */
 export const getUserSettings = async (userId) => {
   try {
-    // Try to get existing settings
-    let { data, error } = await supabase
-      .from('user_settings')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (error && error.code !== 'PGRST116') {
-      logger.error('Error fetching user settings', error, { userId });
-      return { success: false, error: error.message };
-    }
-
-    // If no settings exist, create default ones
-    if (!data) {
-      const defaultSettings = {
-        user_id: userId,
-        notification_preferences: {
-          emailNotifications: true,
-          applicationUpdates: true,
-          newOpportunities: true,
-          recruitingMessages: true,
-          weeklyDigest: false,
-          monthlyReport: false,
-        },
-        privacy_settings: {
-          profileVisibility: 'public',
-          showEmail: false,
-          showPhone: false,
-          showLocation: true,
-          allowRecruiterContact: true,
-          showInTalentPool: true,
-        },
-        ui_preferences: {},
-        communication_preferences: {},
-      };
-
-      const { data: newSettings, error: createError } = await supabase
-        .from('user_settings')
-        .insert(defaultSettings)
-        .select()
-        .single();
-
-      if (createError) {
-        logger.error('Error creating user settings', createError, { userId });
-        return { success: false, error: createError.message };
-      }
-
-      data = newSettings;
-    }
-
-    return { success: true, data };
+    const response = await apiPost('/user/actions', { action: 'get-user-settings', userId });
+    return { success: true, data: response?.data };
   } catch (err) {
     logger.error('getUserSettings exception', err);
     return { success: false, error: err.message };
@@ -80,27 +31,13 @@ export const getUserSettings = async (userId) => {
  */
 export const updateNotificationPreferences = async (userId, preferences) => {
   try {
-    // First ensure settings exist
     await getUserSettings(userId);
-
-    // Update notification preferences
-    const { data, error } = await supabase
-      .from('user_settings')
-      .update({
-        notification_preferences: preferences,
-        updated_at: new Date().toISOString(),
-        updated_by: userId,
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Error updating notification preferences', error, { userId });
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, data };
+    const response = await apiPost('/user/actions', {
+      action: 'update-user-settings',
+      userId,
+      settings: { notification_preferences: preferences },
+    });
+    return { success: true, data: response?.data };
   } catch (err) {
     logger.error('updateNotificationPreferences exception', err);
     return { success: false, error: err.message };
@@ -115,27 +52,13 @@ export const updateNotificationPreferences = async (userId, preferences) => {
  */
 export const updatePrivacySettings = async (userId, settings) => {
   try {
-    // First ensure settings exist
     await getUserSettings(userId);
-
-    // Update privacy settings
-    const { data, error } = await supabase
-      .from('user_settings')
-      .update({
-        privacy_settings: settings,
-        updated_at: new Date().toISOString(),
-        updated_by: userId,
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Error updating privacy settings', error, { userId });
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, data };
+    const response = await apiPost('/user/actions', {
+      action: 'update-user-settings',
+      userId,
+      settings: { privacy_settings: settings },
+    });
+    return { success: true, data: response?.data };
   } catch (err) {
     logger.error('updatePrivacySettings exception', err);
     return { success: false, error: err.message };
@@ -149,29 +72,12 @@ export const updatePrivacySettings = async (userId, settings) => {
  */
 export const getNotificationPreferencesByEmail = async (email) => {
   try {
-    // Get user_id from learners table
-    const { data: learner, error: learnerError } = await supabase
-      .from('learners')
-      .select('user_id')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (learnerError || !learner?.user_id) {
+    const response = await apiPost('/user/actions', { action: 'get-notification-preferences-by-email', email });
+    if (!response?.data?.notification_preferences) {
       logger.warn('Learner not found for email', { email });
       return { success: false, error: 'Learner not found' };
     }
-
-    // Get settings
-    const result = await getUserSettings(learner.user_id);
-    
-    if (!result.success) {
-      return result;
-    }
-
-    return {
-      success: true,
-      data: result.data.notification_preferences || {},
-    };
+    return { success: true, data: response.data.notification_preferences };
   } catch (err) {
     logger.error('getNotificationPreferencesByEmail exception', err);
     return { success: false, error: err.message };
@@ -185,29 +91,12 @@ export const getNotificationPreferencesByEmail = async (email) => {
  */
 export const getPrivacySettingsByEmail = async (email) => {
   try {
-    // Get user_id from learners table
-    const { data: learner, error: learnerError } = await supabase
-      .from('learners')
-      .select('user_id')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (learnerError || !learner?.user_id) {
+    const response = await apiPost('/user/actions', { action: 'get-notification-preferences-by-email', email });
+    if (!response?.data?.privacy_settings) {
       logger.warn('Learner not found for email', { email });
       return { success: false, error: 'Learner not found' };
     }
-
-    // Get settings
-    const result = await getUserSettings(learner.user_id);
-    
-    if (!result.success) {
-      return result;
-    }
-
-    return {
-      success: true,
-      data: result.data.privacy_settings || {},
-    };
+    return { success: true, data: response.data.privacy_settings };
   } catch (err) {
     logger.error('getPrivacySettingsByEmail exception', err);
     return { success: false, error: err.message };

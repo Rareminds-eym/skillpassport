@@ -142,7 +142,8 @@ export const useSubscription = () => {
 
       if (result.success) {
         await fetchSubscription();
-        return { success: true, pausedUntil: result.paused_until };
+        // apiSuccess wraps data at { success, data: { subscription: { paused_until, ... } } }
+        return { success: true, pausedUntil: result.data?.subscription?.paused_until };
       }
 
       return { success: false, error: result.error || 'Failed to pause subscription' };

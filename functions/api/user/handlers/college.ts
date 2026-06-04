@@ -7,9 +7,9 @@
  * Uses unified 'organizations' table with organization_type='college'
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import type { CollegeAdminSignupRequest, CollegeEducatorSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
 import {
@@ -37,21 +37,21 @@ export async function handleCollegeAdminSignup(request: Request, env: PagesEnv):
     ];
     for (const field of requiredFields) {
       if (!body[field as keyof CollegeAdminSignupRequest]) {
-        return jsonResponse({ error: `Missing required field: ${field}` }, 400);
+        return apiError(400, 'VALIDATION_ERROR', `Missing required field: ${field}`, request);
       }
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters', request);
     }
 
     // Check if email already exists
     if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An account with this email already exists', request);
     }
 
     // Check if college code is unique in organizations table
@@ -63,7 +63,7 @@ export async function handleCollegeAdminSignup(request: Request, env: PagesEnv):
       .maybeSingle();
 
     if (existingCollege) {
-      return jsonResponse({ error: 'College code already exists. Please choose a different code.' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'College code already exists. Please choose a different code.', request);
     }
 
     // 1. Create auth user
@@ -80,7 +80,7 @@ export async function handleCollegeAdminSignup(request: Request, env: PagesEnv):
 
     if (authError || !authUser.user) {
       console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', authError?.message || 'Failed to create account', request);
     }
 
     const userId = authUser.user.id;
@@ -158,8 +158,7 @@ export async function handleCollegeAdminSignup(request: Request, env: PagesEnv):
         `<strong>College:</strong> ${body.collegeName}`
       );
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'College account created successfully! Please check your email for login details.',
         data: {
           userId,
@@ -169,7 +168,7 @@ export async function handleCollegeAdminSignup(request: Request, env: PagesEnv):
           email: body.email,
           role: 'college_admin',
         },
-      });
+      }, request);
     } catch (error) {
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
@@ -177,10 +176,7 @@ export async function handleCollegeAdminSignup(request: Request, env: PagesEnv):
     }
   } catch (error) {
     console.error('College admin signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create college account' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create college account', request);
   }
 }
 
@@ -195,22 +191,19 @@ export async function handleCollegeEducatorSignup(request: Request, env: PagesEn
     const body = (await request.json()) as CollegeEducatorSignupRequest;
 
     if (!body.email || !body.password || !body.firstName || !body.lastName || !body.collegeId) {
-      return jsonResponse(
-        { error: 'Missing required fields: email, password, firstName, lastName, collegeId' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: email, password, firstName, lastName, collegeId', request);
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters', request);
     }
 
     if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An account with this email already exists', request);
     }
 
     // Verify college exists in organizations table
@@ -222,7 +215,7 @@ export async function handleCollegeEducatorSignup(request: Request, env: PagesEn
       .single();
 
     if (collegeError || !college) {
-      return jsonResponse({ error: 'Invalid college selected' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid college selected', request);
     }
 
     // Check college_lecturers table using metadata->>email (email stored in JSONB metadata)
@@ -233,7 +226,7 @@ export async function handleCollegeEducatorSignup(request: Request, env: PagesEn
       .maybeSingle();
 
     if (existingEducator) {
-      return jsonResponse({ error: 'An educator with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An educator with this email already exists', request);
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -252,7 +245,7 @@ export async function handleCollegeEducatorSignup(request: Request, env: PagesEn
 
     if (authError || !authUser.user) {
       console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', authError?.message || 'Failed to create account', request);
     }
 
     const userId = authUser.user.id;
@@ -322,8 +315,7 @@ export async function handleCollegeEducatorSignup(request: Request, env: PagesEn
         `<strong>College:</strong> ${college.name}`
       );
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'College educator account created successfully!',
         data: {
           userId,
@@ -334,7 +326,7 @@ export async function handleCollegeEducatorSignup(request: Request, env: PagesEn
           collegeName: college.name,
           role: 'college_educator',
         },
-      });
+      }, request);
     } catch (error) {
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
@@ -342,10 +334,7 @@ export async function handleCollegeEducatorSignup(request: Request, env: PagesEn
     }
   } catch (error) {
     console.error('College educator signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create college educator account' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create college educator account', request);
   }
 }
 

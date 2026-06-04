@@ -13,7 +13,6 @@
 //   CheckCircleIcon
 // } from '@heroicons/react/24/outline';
 // import { RequisitionFilters } from '@/shared/types/recruiter';
-// import { supabase } from '@/shared/api/supabaseClient';
 
 // interface AdvancedRequisitionFiltersProps {
 //   filters: RequisitionFilters;
@@ -757,6 +756,7 @@
 
 
 
+import { apiPost } from '@/shared/api/apiClient';
 import React, { useState, useEffect } from 'react';
 import {
   FunnelIcon,
@@ -775,7 +775,6 @@ import {
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import { RequisitionFilters } from '@/shared/types/recruiter';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('AdvancedRequisitionFilters');
@@ -856,101 +855,38 @@ const AdvancedRequisitionFilters: React.FC<AdvancedRequisitionFiltersProps> = ({
   const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [loadingTitles, setLoadingTitles] = useState(false);
-  // Fetch unique departments and locations from database
+  // Fetch unique departments, locations, and titles from backend
   useEffect(() => {
-  const fetchFilterOptions = async () => {
-    // 🔹 Fetch departments
-    setLoadingDepartments(true);
-    try {
-      const { data: deptData, error: deptError } = await supabase
-        .from('opportunities')
-        .select('department')
-        .not('department', 'is', null)
-        .order('department');
-
-      if (deptError) {
-        logger.error('Failed to fetch departments', deptError as Error);
-      } else {
-        const uniqueDepartments = [...new Set(
-          deptData.map(item => item.department).filter(Boolean)
-        )] as string[];
-        setDepartments(uniqueDepartments);
+    const fetchFilterOptions = async () => {
+      setLoadingDepartments(true);
+      setLoadingLocations(true);
+      setLoadingTitles(true);
+      try {
+        const response: any = await apiPost('/recruiter-pipeline', { action: 'get-filter-options' });
+        if (response?.data) {
+          setDepartments(response.data.departments || []);
+          setLocations(response.data.locations || []);
+          const titles = response.data.titles || [];
+          setTitles(
+            titles.length > 0
+              ? titles
+              : ['Software Engineer', 'Senior Software Engineer', 'Product Manager', 'UI/UX Designer', 'Data Analyst', 'DevOps Engineer']
+          );
+        }
+      } catch (error) {
+        logger.error('Failed to fetch filter options', error as Error);
+        setTitles([
+          'Software Engineer', 'Senior Software Engineer', 'Product Manager',
+          'UI/UX Designer', 'Data Analyst', 'DevOps Engineer',
+        ]);
+      } finally {
+        setLoadingDepartments(false);
+        setLoadingLocations(false);
+        setLoadingTitles(false);
       }
-    } catch (error) {
-      logger.error('Failed to fetch departments', error as Error);
-    } finally {
-      setLoadingDepartments(false);
-    }
+    };
 
-    // 🔹 Fetch locations
-    setLoadingLocations(true);
-    try {
-      const { data: locData, error: locError } = await supabase
-        .from('opportunities')
-        .select('location')
-        .not('location', 'is', null)
-        .order('location');
-
-      if (locError) {
-        logger.error('Failed to fetch locations', locError as Error);
-      } else {
-        const uniqueLocations = [...new Set(
-          locData.map(item => item.location).filter(Boolean)
-        )] as string[];
-        setLocations(uniqueLocations);
-      }
-    } catch (error) {
-      logger.error('Failed to fetch locations', error as Error);
-    } finally {
-      setLoadingLocations(false);
-    }
-
-    // 🔹 Fetch titles (moved **inside** the async function)
-    setLoadingTitles(true);
-    try {
-      const { data: titleData, error: titleError } = await supabase
-        .from('opportunities')
-        .select('title, job_title')
-        .order('title');
-
-      if (titleError) {
-        logger.error('Failed to fetch job titles', titleError as Error);
-      } else {
-        const allTitles = titleData
-          .map(item => item.title || item.job_title)
-          .filter(Boolean);
-        const uniqueTitles = [...new Set(allTitles)] as string[];
-
-        setTitles(
-          uniqueTitles.length > 0
-            ? uniqueTitles
-            : [
-                'Software Engineer',
-                'Senior Software Engineer',
-                'Product Manager',
-                'UI/UX Designer',
-                'Data Analyst',
-                'DevOps Engineer',
-              ]
-        );
-      }
-    } catch (error) {
-      logger.error('Failed to fetch job titles', error as Error);
-      setTitles([
-        'Software Engineer',
-        'Senior Software Engineer',
-        'Product Manager',
-        'UI/UX Designer',
-        'Data Analyst',
-        'DevOps Engineer',
-      ]);
-    } finally {
-      setLoadingTitles(false);
-    }
-  };
-
-  // ✅ Call once after mount
-  fetchFilterOptions();
+    fetchFilterOptions();
 }, []);
   // Count active filters
   const activeFilterCount = 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Small Message Modal Component
 const MessageModal = ({ learner, isOpen, onClose, onSend, isLoading }) => {
@@ -36,7 +36,7 @@ const MessageModal = ({ learner, isOpen, onClose, onSend, isLoading }) => {
     const finalSubject = subject === 'Other' ? customSubject.trim() : subject.trim();
     if (message.trim() && finalSubject) {
       onSend({
-        learnerId: learner.user_id,
+        learnerId: learner.id,
         subject: finalSubject,
         initialMessage: message.trim()
       });
@@ -221,76 +221,26 @@ const NewLearnerConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
     setLoading(true);
     try {
       console.log('🔍 Fetching learners for college:', collegeId);
-      
-      // First get the college name for fallback search from organizations table
-      const { data: collegeInfo, error: collegeError } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('id', collegeId)
-        .single();
-      
-      if (collegeError) {
-        console.error('❌ Error fetching college info:', collegeError);
-      }
-      
-      console.log('🏫 College info:', collegeInfo);
-      
-      // Try multiple approaches to find learners
-      let learnersData = [];
-      
-      // Method 1: Direct college association (without users join to avoid column errors)
-      const { data: directlearners, error: directError } = await supabase
-        .from('learners')
-        .select(`
-          id,
-          user_id,
-          name,
-          email,
-          university,
-          branch_field,
-          college_id,
-          university_college_id
-        `)
-        .or(`college_id.eq.${collegeId},university_college_id.eq.${collegeId}`)
-        .order('name');
 
-      if (!directError && directlearners && directlearners.length > 0) {
-        console.log('✅ Found learners with direct college association:', directlearners.length);
-        learnersData = directlearners;
-      } else if (collegeInfo) {
-        console.log('⚠️ No direct association found, trying college name search...');
-        
-        // Method 2: Search by college name in university field or email domain
-        const collegeName = collegeInfo.name.toLowerCase();
-        const { data: namelearners, error: nameError } = await supabase
-          .from('learners')
-          .select(`
-            id,
-            user_id,
-            name,
-            email,
-            university,
-            branch_field,
-            college_id,
-            university_college_id
-          `)
-          .or(`university.ilike.%${collegeInfo.name}%,email.ilike.%${collegeName.replace(/\s+/g, '')}%`)
-          .order('name');
-        
-        if (!nameError && namelearners && namelearners.length > 0) {
-          console.log('✅ Found learners using college name search:', namelearners.length);
-          learnersData = namelearners;
-        } else {
-          console.log('❌ No learners found with any method');
-          learnersData = [];
+      // Fetch learners associated with this college
+      const { data: directLearners } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-admin-learner', contextId: collegeId });
+
+      let learnersData = directLearners || [];
+
+      if (learnersData.length === 0) {
+        // Fallback: try searching by college name
+        const { data: collegeInfo } = await apiPost('/messaging/actions', { action: 'fetch-organization', id: collegeId });
+        if (collegeInfo?.name) {
+          const { data: nameSearch } = await apiPost('/messaging/actions', { action: 'search-recipients', query: collegeInfo.name, type: 'learners' });
+          if (nameSearch) {
+            learnersData = nameSearch;
+          }
         }
       }
 
-      if (directError && !collegeInfo) throw directError;
-
       const formattedlearners = learnersData.map(learner => ({
         id: learner.id,
-        user_id: learner.user_id,
+        user_id: learner.userId || learner.user_id,
         name: learner.name || learner.email || 'Learner',
         email: learner.email || '',
         university: learner.university || '',
@@ -300,20 +250,14 @@ const NewLearnerConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
 
       console.log('📋 Final formatted learners:', formattedlearners.length);
       setlearners(formattedlearners);
-      
+
       if (formattedlearners.length === 0) {
-        const collegeName = collegeInfo?.name || 'this college';
-        console.warn('⚠️ No learners found for:', collegeName);
-        toast({
-          title: "No learners found",
-          description: `No learners found for ${collegeName}. Learners may need to be associated with this college first.`,
-        });
-      } else {
-        console.log('✅ Learners loaded:', formattedlearners.map(s => s.name).join(', '));
+        console.warn('⚠️ No learners found for college:', collegeId);
+        toast.error('No learners found. Learners may need to be associated with this college first.');
       }
     } catch (error) {
       console.error('❌ Error fetching learners:', error);
-      toast.error('Failed to load learners: ' + error.message);
+      toast.error('Failed to load learners: ' + (error.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }

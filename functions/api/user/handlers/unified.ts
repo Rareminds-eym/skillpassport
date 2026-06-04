@@ -8,9 +8,9 @@
  * Authentication is handled by the SSO JWT (via withAuth middleware or ssoClient.fetch).
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import type { UnifiedSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
 import { apiLogger } from '../../../lib/logger';
@@ -36,25 +36,15 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
 
     // Validate required fields
     if (!body.email || !body.firstName || !body.lastName || !body.role) {
-      return jsonResponse(
-        {
-          error: 'Missing required fields: email, firstName, lastName, role',
-        },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: email, firstName, lastName, role', request);
     }
 
     if (!body.userId) {
-      return jsonResponse(
-        {
-          error: 'Missing userId. The SSO user must be created first.',
-        },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing userId. The SSO user must be created first.', request);
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     const email = body.email.toLowerCase();
@@ -93,31 +83,23 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
       }
 
       if (roleExists) {
-        return jsonResponse(
-          {
-            success: true,
-            data: { userId },
-            message: 'Profile already exists',
-          },
-          200
+        return apiSuccess(
+          { message: 'Profile already exists', data: { userId } },
+          request
         );
       } else {
         // Repair missing role record
         console.log(`[Signup] Repairing missing ${checkRole} record for existing user ${userId}`);
         try {
-          await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
+          await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, body);
         } catch (repairError) {
           console.error('Failed to repair missing role record:', repairError);
           throw repairError;
         }
         
-        return jsonResponse(
-          {
-            success: true,
-            data: { userId },
-            message: 'Profile role record repaired successfully',
-          },
-          200
+        return apiSuccess(
+          { message: 'Profile role record repaired successfully', data: { userId } },
+          request
         );
       }
     }
@@ -159,13 +141,9 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
         }
       }
 
-      return jsonResponse(
-        {
-          success: true,
-          data: { userId, linked: true, previousId: oldId },
-          message: 'Existing profile linked to SSO account',
-        },
-        200
+      return apiSuccess(
+        { message: 'Existing profile linked to SSO account', data: { userId, linked: true, previousId: oldId } },
+        request
       );
     }
 
@@ -201,7 +179,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
 
       // 2. Create role-specific record
       try {
-        await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, firstName, lastName, body);
+        await createRoleSpecificRecord(supabaseAdmin, userId, email, fullName, body);
       } catch (roleError) {
         // Rollback: delete the users row if role-specific record fails
         await supabaseAdmin.from('users').delete().eq('id', userId);
@@ -218,8 +196,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
         apiLogger.error('Welcome email failed', emailError as Error);
       }
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'Account created successfully!',
         data: {
           userId,
@@ -231,7 +208,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
         ...(emailSent ? {} : { 
           warning: 'Account created but welcome email could not be sent. Please check your email or contact support.' 
         })
-      });
+      }, request);
     } catch (error) {
       // Profile creation failed — SSO user still exists but has no app profile.
       // The frontend should handle this gracefully (retry or show error).
@@ -240,10 +217,7 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
     }
   } catch (error) {
     console.error('Unified signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create profile' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create profile', request);
   }
 }
 
@@ -257,8 +231,6 @@ async function createRoleSpecificRecord(
   userId: string,
   email: string,
   fullName: string,
-  firstName: string,
-  lastName: string,
   body: UnifiedSignupRequest
 ): Promise<void> {
   const { role, phone, dateOfBirth } = body;

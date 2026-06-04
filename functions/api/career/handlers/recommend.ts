@@ -10,12 +10,12 @@
  * - Fallback to popular opportunities
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createClient } from '@supabase/supabase-js';
-import { isValidUUID } from '../../shared/auth';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { isValidUUID } from '../../../lib/validation';
 import { checkRateLimit } from '../utils/rate-limit';
-import { getOpenRouterKey } from '../[[path]]';
-import { API_CONFIG, AI_MODELS } from '../../shared/ai-config';
+
 import { buildlearnerTextFromDatabase } from '../../embedding/services/textBuilder';
 import { callEmbeddingWorker } from '../../embedding/services/embeddingWorkerClient';
 import { updateEmbedding } from '../../embedding/services/databaseUpdater';
@@ -29,6 +29,7 @@ const RECOMMEND_CONFIG = {
 // ==================== FALLBACK HANDLER ====================
 
 async function getPopularFallback(
+  request: Request,
   supabase: SupabaseClient,
   learnerId: string,
   limit: number,
@@ -44,23 +45,23 @@ async function getPopularFallback(
     if (error) throw error;
 
     const executionTime = Date.now() - startTime;
-    return jsonResponse({
+    return apiSuccess({
       recommendations: popular || [],
       fallback: true,
       reason,
       count: popular?.length || 0,
       executionTime
-    });
+    }, request);
   } catch (fallbackError) {
     console.error('Fallback failed:', fallbackError);
     const executionTime = Date.now() - startTime;
-    return jsonResponse({
+    return apiSuccess({
       recommendations: [],
       fallback: true,
       reason,
       count: 0,
       executionTime
-    });
+    }, request);
   }
 }
 
@@ -68,7 +69,7 @@ async function getPopularFallback(
 
 export async function handleRecommendOpportunities(request: Request, env: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   const startTime = Date.now();
@@ -77,25 +78,25 @@ export async function handleRecommendOpportunities(request: Request, env: Record
   try {
     body = await request.json() as { learnerId?: string; forceRefresh?: boolean; limit?: number };
   } catch {
-    return jsonResponse({ error: 'Invalid JSON', recommendations: [] }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
   }
 
   const { learnerId, forceRefresh = false, limit = RECOMMEND_CONFIG.DEFAULT_LIMIT } = body;
   
   if (!learnerId) {
-    return jsonResponse({ error: 'learnerId is required', recommendations: [] }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'learnerId is required', request);
   }
 
   if (!isValidUUID(learnerId)) {
-    return jsonResponse({ error: 'Invalid learnerId format', recommendations: [] }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid learnerId format', request);
   }
 
   if (!await checkRateLimit(learnerId, env as any)) {
-    return jsonResponse({ error: 'Rate limit exceeded', recommendations: [] }, 429);
+    return apiError(429, 'ERROR', 'Rate limit exceeded', request);
   }
 
   const safeLimit = Math.min(Math.max(1, limit), RECOMMEND_CONFIG.MAX_RECOMMENDATIONS);
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = createSupabaseAdminClient(env);
 
   // ==================== CACHE CHECK ====================
   if (!forceRefresh) {
@@ -109,7 +110,7 @@ export async function handleRecommendOpportunities(request: Request, env: Record
         console.log(`[CACHE HIT] Learner ${learnerId} - ${cached.match_count} matches from cache`);
         
         const cachedMatches = (cached.matches || []).slice(0, safeLimit);
-        return jsonResponse({
+        return apiSuccess({
           recommendations: cachedMatches,
           cached: true,
           computed_at: cached.computed_at,
@@ -117,7 +118,7 @@ export async function handleRecommendOpportunities(request: Request, env: Record
           totalMatches: cached.match_count,
           executionTime,
           message: 'Recommendations retrieved from cache'
-        });
+        }, request);
       }
       console.log(`[CACHE MISS] Learner ${learnerId} - computing fresh matches`);
     } catch (cacheCheckError) {
@@ -141,7 +142,7 @@ export async function handleRecommendOpportunities(request: Request, env: Record
 
   if (learnerError || !learner) {
     console.error('Learner not found:', { learnerId, error: learnerError });
-    return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'no_profile');
+    return await getPopularFallback(request, supabase, learnerId, safeLimit, startTime, 'no_profile');
   }
 
   // Check if learner has embedding - auto-generate if missing
@@ -166,7 +167,7 @@ export async function handleRecommendOpportunities(request: Request, env: Record
       learnerEmbedding = embedding;
     } catch (error) {
       console.error(`[AUTO-EMBED] Failed for learner ${learnerId}:`, error);
-      return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'embedding_generation_failed');
+      return await getPopularFallback(request, supabase, learnerId, safeLimit, startTime, 'embedding_generation_failed');
     }
   } else {
     console.log(`[RECOMMEND] Learner ${learnerId} - using existing embedding`);
@@ -217,11 +218,11 @@ export async function handleRecommendOpportunities(request: Request, env: Record
 
   if (matchError) {
     console.error('Match error:', matchError);
-    return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'match_error');
+    return await getPopularFallback(request, supabase, learnerId, safeLimit, startTime, 'match_error');
   }
 
   if (!recommendations || recommendations.length === 0) {
-    return await getPopularFallback(supabase, learnerId, safeLimit, startTime, 'no_matches');
+    return await getPopularFallback(request, supabase, learnerId, safeLimit, startTime, 'no_matches');
   }
 
   // ==================== RESPONSE ENRICHMENT ====================
@@ -250,7 +251,7 @@ export async function handleRecommendOpportunities(request: Request, env: Record
     console.error('[CACHE SAVE ERROR]', cacheSaveError);
   }
 
-  return jsonResponse({
+  return apiSuccess({
     recommendations: topRecommendations,
     cached: false,
     computed_at: new Date().toISOString(),
@@ -259,5 +260,5 @@ export async function handleRecommendOpportunities(request: Request, env: Record
     executionTime,
     algorithmVersion,
     entityEmbeddingsEnabled: algorithmVersion === 'v2.0'
-  });
+  }, request);
 }

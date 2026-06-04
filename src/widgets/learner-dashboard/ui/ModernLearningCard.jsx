@@ -17,19 +17,13 @@ import {
     Users,
     Zap
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from '@/shared/model/authStore';
 import { useLearnerDataById } from '@/entities/learner';
-import { supabase } from "@/shared/api/supabaseClient";
-import { downloadCertificate, viewCertificate } from "@/shared/lib/certificateUtils";
+import { apiPost } from '@/shared/api/apiClient';
+import { downloadCertificate, getCertificateProxyUrl } from "@/features/certificate-generation";
 import { checkAssessmentStatus } from "@/features/assessment/api/externalAssessmentService";
-import toast from 'react-hot-toast';
-import { getLogger } from '@/shared/config/logging';
-import { useCertificateModal } from '@/features/certificate-generation';
-import { CertificateNameModal } from '@/shared/ui';
-
-const logger = getLogger('modern-learning-card');
 
 /**
  * Modern Learning Card Component - Completely Redesigned
@@ -63,19 +57,6 @@ const ModernLearningCard = ({
   
   // Use useLearnerDataById with user.id (SSO ID)
   const { learnerData } = useLearnerDataById(user?.id, false);
-  
-  // ✅ Consistent with the rest of the file
-  const handleCertificateSuccess = useCallback(({ certificateUrl: newCertUrl }) => {
-    if (newCertUrl && newCertUrl.trim() !== '') {
-      setCertificateUrl(newCertUrl);
-    }
-  }, []);
-
-  const certificateModal = useCertificateModal({
-    userId: user?.id,
-    userEmail: user?.email,
-    onSuccess: handleCertificateSuccess
-  });
 
   // Check if this is a course enrollment (started from course player)
   const isCourseEnrollment = item.type === 'course_enrollment' || item.source === 'course_enrollment';
@@ -191,20 +172,14 @@ const ModernLearningCard = ({
       }
       
       try {
-        // Fetch certificate using learner's database ID
-        const { data: enrollment, error } = await supabase
-          .from('course_enrollments')
-          .select('certificate_url')
-          .eq('learner_id', learnerData.id)
-          .eq('course_id', item.course_id)
-          .single();
+        const data = await apiPost('/learner-dashboard-widgets/actions', {
+          action: 'get-certificate-url',
+          learnerId: learnerData.id,
+          courseId: item.course_id,
+        });
 
-        if (error) {
-          return;
-        }
-
-        if (enrollment?.certificate_url && enrollment.certificate_url.trim() !== '') {
-          setCertificateUrl(enrollment.certificate_url);
+        if (data?.certificate_url && data.certificate_url.trim() !== '') {
+          setCertificateUrl(data.certificate_url);
         }
       } catch (error) {
         console.error('Error fetching certificate URL:', error);
@@ -219,156 +194,6 @@ const ModernLearningCard = ({
     if (isCourseEnrollment && item.course_id) {
       // Navigate to course player for enrolled courses
       navigate(`/learner/courses/${item.course_id}/learn`);
-    }
-  };
-
-  /**
-   * Handle "Get Certificate" button click
-   * 
-   * Two scenarios:
-   * 1. Certificate exists: View it directly using viewCertificate utility
-   * 2. Certificate doesn't exist: Open modal to generate new certificate
-   * 
-   * Generation Flow:
-   * - Prepare certificate data from item props
-   * - Fetch fresh learner data using user email (not SSO ID)
-   * - Validate required data (learnerData.id and course_id)
-   * - Guard check ensures modal is initialized
-   * - Open modal with pre-filled certificate information
-   * - User confirms name and generates certificate
-   * 
-   * Error Handling:
-   * - Guard check prevents crashes if hook initialization failed
-   * - Try-catch handles errors during modal opening
-   * - Enhanced logging provides debugging context
-   * 
-   * @param {Event} e - Click event (for stopPropagation)
-   */
-  const handleGetCertificate = async (e) => {
-    e?.stopPropagation();
-    
-    // If certificate already exists, view it directly
-    if (certificateUrl) {
-      viewCertificate(certificateUrl);
-      return;
-    }
-    
-    // Prepare certificate data from item
-    const courseName = item.course || item.title;
-    const educatorName = item.educator_name || 'Course Instructor';
-    const courseType = item.course_type === 'webinar' ? 'webinar' : 'course';
-    const issuedOnDate = courseType === 'webinar' ? item.issued_on : null;
-    
-    // Validate user email is available
-    if (!user?.email) {
-      toast.error('User email not found');
-      return;
-    }
-
-    // Validate course ID is available
-    if (!item.course_id) {
-      toast.error('Course ID not found');
-      return;
-    }
-    
-    try {
-      // Fetch fresh learner data from database using email (not SSO ID)
-      const { data: freshLearnerData, error: learnerError } = await supabase
-        .from('learners')
-        .select('id, learner_id, name, email')
-        .eq('email', user.email)
-        .maybeSingle();
-      
-      if (learnerError) {
-        logger.error('Error fetching learner data', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
-        toast.error('Failed to fetch learner information');
-        return;
-      }
-      
-      if (!freshLearnerData) {
-        toast.error('Learner profile not found. Please complete your profile first.');
-        return;
-      }
-    
-      /**
-       * Guard check: Ensure certificate modal is properly initialized
-       * 
-       * Prevents runtime errors if:
-       * - The useCertificateModal hook failed to initialize
-       * - Component unmounted during async operation
-       * - Hook returned undefined/null due to error
-       * 
-       * Logs error with context for debugging
-       */
-      if (!certificateModal?.openModal) {
-        logger.error('Certificate modal not initialized', { certificateModal });
-        toast.error('Certificate modal is not available. Please refresh the page.');
-        return;
-      }
-      
-      // Open certificate modal with all required data using fresh learner data
-      await certificateModal.openModal({
-        learnerId: freshLearnerData.id,
-        learnerIdText: freshLearnerData.learner_id || null,
-        courseName,
-        educatorName,
-        courseType,
-        issuedOnDate,
-        courseId: item.course_id,
-        prefillName: freshLearnerData.name || ''
-      });
-    } catch (error) {
-      /**
-       * Enhanced error logging for modal opening failures
-       * 
-       * Logs:
-       * - Original error object with full stack trace
-       * - Modal state (hasOpenModal flag)
-       * - Course data context for debugging
-       * 
-       * This helps identify whether the issue is:
-       * - Modal hook initialization failure
-       * - Invalid certificate data
-       * - Network/database errors
-       */
-      logger.error('Failed to open certificate modal', { 
-        error: error instanceof Error ? error : new Error(String(error)),
-        modalState: {
-          hasOpenModal: !!certificateModal?.openModal,
-          courseData: { courseName, educatorName, courseType }
-        }
-      });
-      toast.error('Failed to open certificate modal. Please try again.');
-    }
-  };
-
-  /**
-   * Handle certificate download
-   * 
-   * Downloads the certificate PDF file and shows appropriate toast notifications.
-   * Manages loading state to prevent duplicate downloads.
-   * 
-   * @param {Event} e - Click event (for stopPropagation)
-   */
-  const handleDownloadCertificate = async (e) => {
-    e?.stopPropagation();
-    
-    if (!certificateUrl) {
-      toast.error('No certificate available to download');
-      return;
-    }
-    
-    setIsDownloading(true);
-    setShowDropdown(false);
-    
-    try {
-      await downloadCertificate(certificateUrl, item.course || item.title);
-      toast.success('Certificate downloaded successfully!');
-    } catch (error) {
-      logger.error('Failed to download certificate', { error, certificateUrl });
-      toast.error('Failed to download certificate');
-    } finally {
-      setIsDownloading(false);
     }
   };
 
@@ -425,8 +250,120 @@ const ModernLearningCard = ({
   const StatusIcon = statusBadge.icon;
 
   // Helper functions for list view (different styling)
-  // Removed old handleDownloadCertificate and handleViewCertificate
-  // Now using handleGetCertificate instead
+  const handleDownloadCertificate = async (e) => {
+    e?.stopPropagation();
+    
+    if (!certificateUrl) {
+      return;
+    }
+    
+    setIsDownloading(true);
+    try {
+      await downloadCertificate(certificateUrl, item.course || item.title);
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleViewCertificate = (e) => {
+    e?.stopPropagation();
+    
+    if (!certificateUrl || certificateUrl.trim() === '') {
+      alert('Certificate URL is not available. Please try again or contact support.');
+      return;
+    }
+
+    try {
+      // Special handling for data URLs (base64 encoded images)
+      // Must handle BEFORE calling getCertificateProxyUrl
+      if (certificateUrl.startsWith('data:')) {
+        try {
+          // Convert data URL to blob with proper validation
+          const arr = certificateUrl.split(',');
+          
+          // Validate data URL format
+          if (arr.length < 2) {
+            throw new Error('Invalid data URL: missing base64 content');
+          }
+          
+          const mimeMatch = arr[0].match(/:(.*?);/);
+          if (!mimeMatch || !mimeMatch[1]) {
+            throw new Error('Invalid data URL format: missing MIME type');
+          }
+          const mime = mimeMatch[1];
+          
+          // Decode base64 with error handling
+          let bstr;
+          try {
+            bstr = atob(arr[1]);
+          } catch (decodeError) {
+            throw new Error('Invalid base64 encoding in data URL');
+          }
+          
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          const blob = new Blob([u8arr], { type: mime });
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const newWindow = window.open(blobUrl, '_blank');
+          
+          if (!newWindow) {
+            alert('Please allow popups for this site to view the certificate.');
+            // Revoke immediately if window didn't open
+            URL.revokeObjectURL(blobUrl);
+          } else {
+            // Use window load event for more reliable cleanup
+            newWindow.addEventListener('load', () => {
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+            });
+            // Fallback timeout in case load event doesn't fire
+            setTimeout(() => {
+              URL.revokeObjectURL(blobUrl);
+            }, 5000);
+          }
+          
+          return; // Exit early for data URLs
+        } catch (blobError) {
+          console.error('Error converting data URL to blob:', blobError);
+          alert('Error displaying certificate. Please try downloading instead.');
+          return;
+        }
+      }
+      
+      // For non-data URLs
+      let finalUrl;
+      
+      if (isExternalCourse) {
+        // For external courses, open the certificate URL directly
+        finalUrl = certificateUrl;
+      } else {
+        // For internal courses, use the proxy URL
+        const viewUrl = getCertificateProxyUrl(certificateUrl, 'inline');
+        
+        if (!viewUrl || viewUrl.trim() === '') {
+          alert('Failed to generate certificate viewing URL. Please try downloading instead.');
+          return;
+        }
+        
+        finalUrl = viewUrl;
+      }
+      
+      // Verify URL is valid before opening
+      if (!finalUrl || finalUrl === 'null' || finalUrl === 'undefined') {
+        alert('Invalid certificate URL. Please try downloading instead.');
+        return;
+      }
+      
+      window.open(finalUrl, '_blank');
+    } catch (error) {
+      alert('Error opening certificate: ' + error.message);
+    }
+  };
 
   const renderListCertificateButtons = () => (
     <div className="flex items-center gap-2 flex-wrap">
@@ -450,28 +387,12 @@ const ModernLearningCard = ({
     </button>
   );
 
-  const renderListCompletedStatus = (label = "Completed") => {
-    // For internal courses without certificate, show "Get Certificate" button
-    if (isInternalCourse && !certificateUrl) {
-      return (
-        <button
-          onClick={handleGetCertificate}
-          className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
-        >
-          <Award className="w-4 h-4" />
-          <span>Get Certificate</span>
-        </button>
-      );
-    }
-    
-    // Default completed status badge
-    return (
-      <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
-        <CheckCircle className="w-4 h-4" />
-        <span>{label}</span>
-      </div>
-    );
-  };
+  const renderListCompletedStatus = (label = "Completed") => (
+    <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
+      <CheckCircle className="w-4 h-4" />
+      <span>{label}</span>
+    </div>
+  );
 
   const renderListOngoingStatus = () => (
     <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600">
@@ -563,31 +484,14 @@ const ModernLearningCard = ({
     </button>
   );
 
-  // Helper function to render completed status or Get Certificate button
-  const renderCompletedStatus = (label = "Completed") => {
-    // For internal courses without certificate, show "Get Certificate" button
-    if (isInternalCourse && !certificateUrl) {
-      return (
-        <button
-          onClick={handleGetCertificate}
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
-        >
-          <Award className="w-4 sm:w-5 h-4 sm:h-5" />
-          <span className="hidden xs:inline">Get Certificate</span>
-          <span className="xs:hidden">Get Cert</span>
-        </button>
-      );
-    }
-    
-    // Default completed status badge
-    return (
-      <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
-        <CheckCircle className="w-4 sm:w-5 h-4 sm:h-5" />
-        <span className="hidden xs:inline">{label}</span>
-        <span className="xs:hidden">Completed</span>
-      </div>
-    );
-  };
+  // Helper function to render completed status
+  const renderCompletedStatus = (label = "Completed") => (
+    <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
+      <CheckCircle className="w-4 sm:w-5 h-4 sm:h-5" />
+      <span className="hidden xs:inline">{label}</span>
+      <span className="xs:hidden">Completed</span>
+    </div>
+  );
 
   // Helper function to render ongoing status
   const renderOngoingStatus = () => (
@@ -664,26 +568,7 @@ const ModernLearningCard = ({
 
   if (viewMode === 'list') {
     return (
-      <>
-        {/* Certificate Modal */}
-        <CertificateNameModal
-          isOpen={certificateModal.showModal}
-          onClose={certificateModal.closeModal}
-          fullName={certificateModal.fullName}
-          onFullNameChange={certificateModal.setFullName}
-          onConfirm={certificateModal.showConfirmationDialog}
-          onGenerate={certificateModal.generateCertificate}
-          isGenerating={certificateModal.isGenerating}
-          showConfirmation={certificateModal.showConfirmation}
-          onCancelConfirmation={certificateModal.cancelConfirmation}
-          validationError={certificateModal.validationError}
-          generatedCertificateUrl={certificateModal.generatedUrl}
-          onView={() => viewCertificate(certificateModal.generatedUrl)}
-          onDownload={certificateModal.downloadGeneratedCertificate}
-          courseName={certificateModal.pendingData?.courseName}
-        />
-        
-        <div
+      <div
         className={`
           group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-sm
           transition-all duration-500 ease-out hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1
@@ -979,9 +864,7 @@ const ModernLearningCard = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (certificateUrl) {
-                            viewCertificate(certificateUrl);
-                          }
+                          handleViewCertificate(e);
                           setShowDropdown(false);
                         }}
                         className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -1031,32 +914,12 @@ const ModernLearningCard = ({
           </div>
         </div>
       </div>
-      </>
     );
   }
 
   // Grid View (Default) - Completely Redesigned
   return (
-    <>
-      {/* Certificate Modal */}
-      <CertificateNameModal
-        isOpen={certificateModal.showModal}
-        onClose={certificateModal.closeModal}
-        fullName={certificateModal.fullName}
-        onFullNameChange={certificateModal.setFullName}
-        onConfirm={certificateModal.showConfirmationDialog}
-        onGenerate={certificateModal.generateCertificate}
-        isGenerating={certificateModal.isGenerating}
-        showConfirmation={certificateModal.showConfirmation}
-        onCancelConfirmation={certificateModal.cancelConfirmation}
-        validationError={certificateModal.validationError}
-        generatedCertificateUrl={certificateModal.generatedUrl}
-        onView={() => viewCertificate(certificateModal.generatedUrl)}
-        onDownload={certificateModal.downloadGeneratedCertificate}
-        courseName={certificateModal.pendingData?.courseName}
-      />
-      
-      <div
+    <div
       className={`
         group relative bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/60 shadow-sm
         transition-all duration-500 ease-out hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2
@@ -1137,9 +1000,7 @@ const ModernLearningCard = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (certificateUrl) {
-                          viewCertificate(certificateUrl);
-                        }
+                        handleViewCertificate(e);
                         setShowDropdown(false);
                       }}
                       className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -1470,7 +1331,6 @@ const ModernLearningCard = ({
         </div>
       </div>
     </div>
-    </>
   );
 };
 

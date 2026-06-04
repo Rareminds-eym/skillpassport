@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export const useLearnerExperience = (learnerId, enabled = true) => {
   const [experience, setExperience] = useState([]);
@@ -7,27 +7,17 @@ export const useLearnerExperience = (learnerId, enabled = true) => {
   const [error, setError] = useState(null);
 
   const fetchExperience = async () => {
-    if (!learnerId || !enabled) {
-      return;
-    }
+    if (!learnerId || !enabled) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('experience')
-        .select('*')
-        .eq('learner_id', learnerId)
-        // Fetch ALL experience (including hidden and pending) - filtering happens in display components
-        .order('created_at', { ascending: false });
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'fetch-experience', learnerId,
+      });
+      const data = result?.data || [];
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Transform data to match UI expectations
-      // Include versioning fields for proper display logic
       const transformedData = data.map(item => ({
         id: item.id,
         organization: item.organization,
@@ -38,7 +28,6 @@ export const useLearnerExperience = (learnerId, enabled = true) => {
         end_date: item.end_date,
         duration: item.duration,
         description: item.description,
-        // Status and metadata
         approval_status: item.approval_status,
         verified: item.approval_status === 'approved' || item.approval_status === 'verified',
         processing: item.approval_status === 'pending',
@@ -46,11 +35,9 @@ export const useLearnerExperience = (learnerId, enabled = true) => {
         createdAt: item.created_at,
         updatedAt: item.updated_at,
         verifiedAt: item.updated_at || item.created_at,
-        // Versioning fields - IMPORTANT for pending approval display
         has_pending_edit: item.has_pending_edit || false,
         verified_data: item.verified_data,
         pending_edit_data: item.pending_edit_data,
-        // Add flag for easy checking in components
         _hasPendingEdit: item.has_pending_edit === true
       }));
 
@@ -66,14 +53,5 @@ export const useLearnerExperience = (learnerId, enabled = true) => {
     fetchExperience();
   }, [learnerId, enabled]);
 
-  const refresh = () => {
-    fetchExperience();
-  };
-
-  return {
-    experience,
-    loading,
-    error,
-    refresh
-  };
+  return { experience, loading, error, refresh: fetchExperience };
 };

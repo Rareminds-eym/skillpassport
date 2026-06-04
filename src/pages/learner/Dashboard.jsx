@@ -1,8 +1,46 @@
+import { useLearnerAchievements, useLearnerDataByEmail, useLearnerMessageNotifications, useLearnerUnreadCount } from '@/entities/learner';
+import { isLearner } from '@/entities/learner/lib/learnerType';
+import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
+import {
+  CertificatesEditModal,
+  EducationEditModal,
+  ExperienceEditModal,
+  ProjectsEditModal,
+  SkillsEditModal,
+  TrainingEditModal,
+  useLearnerAIRecommendations,
+  useLearnerAssessment,
+  useLearnerDashboard,
+} from '@/features/learner-profile';
+import { useOpportunities } from '@/features/opportunities';
+import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
+import { useSubscriptionQuery } from '@/features/subscription/model';
+import { apiPost } from '@/shared/api/apiClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
+import { getLogger } from '@/shared/config/logging';
+import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import {
+  educationData,
+  experienceData,
+  softSkills,
+  suggestions,
+  technicalSkills
+} from "@/shared/lib/test/mockData";
+import { useUserRole } from '@/shared/model/authStore';
+import {
+  Badge, Button, Card, CardContent, CardHeader, CardTitle, DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger, LampContainer
+} from '@/shared/ui';
+import { AchievementsTimeline, AnalyticsView, TrainingRecommendations } from '@/widgets/learner-dashboard';
 import {
   ChartBarIcon,
   LockClosedIcon,
   RectangleStackIcon,
 } from "@heroicons/react/24/outline";
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { motion } from "framer-motion";
 import {
   Award,
   BookOpen,
@@ -14,10 +52,8 @@ import {
   ClipboardList,
   Clock,
   Cpu,
-  Edit,
   ExternalLink,
   Eye,
-  EyeOff,
   Factory,
   FileText,
   Github,
@@ -37,67 +73,12 @@ import {
   Users2,
   X
 } from "lucide-react";
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { motion } from "framer-motion";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('Dashboard');
-import {
-  CertificatesEditModal,
-  EducationEditModal,
-  ExperienceEditModal,
-  ProjectsEditModal,
-  SkillsEditModal,
-  TrainingEditModal,
-} from '@/features/learner-profile';
-import { AchievementsTimeline, AnalyticsView, TrainingRecommendations } from '@/widgets/learner-dashboard';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui';
-import { LampContainer } from '@/shared/ui';
-import {
-  educationData,
-  experienceData,
-  softSkills,
-  suggestions,
-  technicalSkills,
-  trainingData,
-} from "@/shared/lib/test/mockData";
-import { useOpportunities } from '@/features/opportunities';
-import {
-  useLearnerProfile,
-  useLearnerPortfolio,
-  useLearnerActivity,
-  useLearnerMessages,
-  useLearnerDashboard,
-  useLearnerAssessment,
-  useLearnerAIRecommendations
-} from "@/features/learner-profile";
-import { useLearnerMessageNotifications, useLearnerUnreadCount, useLearnerDataByEmail } from '@/entities/learner';
-import { useLearnerAchievements } from '@/entities/learner';
-import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
-import { supabase } from '@/shared/api/supabaseClient';
-import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
-import { useUserRole } from '@/shared/model/authStore';
-import { useSubscriptionQuery } from '@/features/subscription/model';
-import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
-import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
-import {
-  useHasAssessment,
-  useHasInProgressAssessment,
-  useLatestAttemptId,
-  useAssessmentLoading,
-  useLearnerId,
-  useLearnerActions
-} from '@/shared/model/learnerStore';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
@@ -866,21 +847,14 @@ const LearnerDashboard = () => {
     loading: achievementsLoading,
   } = useLearnerAchievements(learnerId, userEmail);
 
-  // Get assessment data from learner store
-  const hasAssessment = useHasAssessment();
-  const hasInProgressAssessment = useHasInProgressAssessment();
-  const latestAttemptId = useLatestAttemptId();
-  const assessmentLoading = useAssessmentLoading();
-
-  // Get action to load assessment data
-  const { loadAssessmentData } = useLearnerActions();
-
-  // Load assessment data when learner loads
-  React.useEffect(() => {
-    if (learnerId && !isViewingOthersProfile) {
-      loadAssessmentData(learnerId);
-    }
-  }, [learnerId, isViewingOthersProfile, loadAssessmentData]);
+  // Use new backend API hooks for assessment and AI recommendations
+  const {
+    recommendations: assessmentRecommendations,
+    loading: recommendationsLoading,
+    hasAssessment,
+    hasInProgressAssessment,
+    latestAttemptId,
+  } = useLearnerAssessment({ enabled: !isViewingOthersProfile });
 
   // Use new backend API hook for AI recommendations
   const {
@@ -1299,42 +1273,39 @@ const LearnerDashboard = () => {
   useEffect(() => {
     if (!userEmail || isViewingOthersProfile) return;
 
-    // Subscribe to real-time changes in opportunities table
-    const channel = supabase
-      .channel("opportunities-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "opportunities",
-        },
-        (payload) => {
+    const sseClient = getWSClient();
+
+    // Subscribe to INSERT events on opportunities table
+    const unsubscribeInsert = sseClient.subscribe(
+      'opportunities',
+      { event: 'INSERT' },
+      (event) => {
+        if (event.type === 'change') {
           // Refresh opportunities list
           refreshOpportunities();
-
           // Refresh Recent Updates to show the new opportunity
           setTimeout(() => {
             refreshRecentUpdates();
           }, 1000); // Small delay to ensure DB trigger has fired
         }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "opportunities",
-        },
-        (payload) => {
+      }
+    );
+
+    // Subscribe to UPDATE events on opportunities table
+    const unsubscribeUpdate = sseClient.subscribe(
+      'opportunities',
+      { event: 'UPDATE' },
+      (event) => {
+        if (event.type === 'change') {
           refreshOpportunities();
         }
-      )
-      .subscribe();
+      }
+    );
 
-    // Cleanup subscription on unmount
+    // Cleanup subscriptions on unmount
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribeInsert();
+      unsubscribeUpdate();
     };
   }, [userEmail, isViewingOthersProfile]);
 
@@ -1357,9 +1328,7 @@ const LearnerDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
-        const { data, error, count } = await supabase
-          .from("opportunities")
-          .select("*", { count: "exact" });
+        await apiPost('/learner-pages/actions', { action: 'test-supabase-connectivity' });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
@@ -1633,23 +1602,11 @@ const LearnerDashboard = () => {
     }
 
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skillId);
-
-      if (error) {
-        logger.error('🔧 Dashboard - Database error', error);
-        throw error;
-      }
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId,
+        enabled: newState,
+      });
 
       // Refresh technical skills to get updated data
       if (refreshTechnicalSkills) {
@@ -1690,20 +1647,11 @@ const LearnerDashboard = () => {
     }
 
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skillId);
-
-      if (error) throw error;
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId,
+        enabled: newState,
+      });
 
       // Refresh soft skills to get updated data
       if (refreshSoftSkills) {
@@ -1716,7 +1664,7 @@ const LearnerDashboard = () => {
         duration: 3000,
       });
     } catch (error) {
-      logger.error('Error toggling soft skill visibility', error);
+      logger.error('🔧 Dashboard - Error toggling soft skill visibility', error);
       toast({
         title: "Error",
         description: "Failed to update visibility. Please try again.",
@@ -1936,19 +1884,7 @@ const LearnerDashboard = () => {
                         if (!window.confirm('DEV: Are you sure you want to clear your assessment data? This will delete all your assessment results.')) return;
 
                         try {
-                          const { error: resultsError } = await supabase
-                            .from('personal_assessment_results')
-                            .delete()
-                            .eq('learner_id', learnerId);
-
-                          if (resultsError) throw resultsError;
-
-                          const { error: attemptsError } = await supabase
-                            .from('personal_assessment_attempts')
-                            .delete()
-                            .eq('learner_id', learnerId);
-
-                          if (attemptsError) throw attemptsError;
+                          await apiPost('/learner-pages/actions', { action: 'clear-assessment-data', learnerId });
 
                           localStorage.removeItem('assessment_gemini_results');
                           localStorage.removeItem('assessment_section_timings');
@@ -1989,40 +1925,32 @@ const LearnerDashboard = () => {
           </div>*/}
 
           <div className="flex justify-center py-4">
-            {(() => {
-              if (hasAssessment) {
-                return (
-                  <Button
-                    onClick={() => navigate(latestAttemptId ? `/learner/assessment/result?attemptId=${latestAttemptId}` : "/learner/assessment/result")}
-                    className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-                  >
-                    <Eye className="w-5 h-5 mr-2" />
-                    View Results
-                  </Button>
-                );
-              } else if (hasInProgressAssessment) {
-                return (
-                  <Button
-                    onClick={() => navigate("/learner/assessment/test")}
-                    className="w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-                  >
-                    <Clock className="w-5 h-5 mr-2" />
-                    Continue Assessment
-                    <ChevronRight className="w-5 h-5 ml-2" />
-                  </Button>
-                );
-              } else {
-                return (
-                  <Button
-                    onClick={() => navigate("/learner/assessment/test")}
-                    className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-                  >
-                    Start Assessment
-                    <ChevronRight className="w-5 h-5 ml-2" />
-                  </Button>
-                );
-              }
-            })()}
+            {hasAssessment ? (
+              <Button
+                onClick={() => navigate(latestAttemptId ? `/learner/assessment/result?attemptId=${latestAttemptId}` : "/learner/assessment/result")}
+                className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+              >
+                <Eye className="w-5 h-5 mr-2" />
+                View Results
+              </Button>
+            ) : hasInProgressAssessment ? (
+              <Button
+                onClick={() => navigate("/learner/assessment/test")}
+                className="w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+              >
+                <Clock className="w-5 h-5 mr-2" />
+                Continue Assessment
+                <ChevronRight className="w-5 h-5 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate("/learner/assessment/test")}
+                className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+              >
+                Start Assessment
+                <ChevronRight className="w-5 h-5 ml-2" />
+              </Button>
+            )}
           </div>
 
           {/* Conditional content below Start Assessment button */}
@@ -2506,7 +2434,7 @@ const LearnerDashboard = () => {
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">
           {/* No Assessment CTA - TOP (only show when not expanded) */}
-          {!hasAssessment && !aiLoading && !showAllTraining && (
+          {!hasAssessment && !recommendationsLoading && !showAllTraining && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div
@@ -2538,11 +2466,11 @@ const LearnerDashboard = () => {
           )}
 
           {/* AI-Powered Recommendations Section */}
-          {hasAssessment && aiRecommendations && (
+          {hasAssessment && assessmentRecommendations && (
             <div className="mb-6">
               <div className="max-h-[400px] overflow-y-auto pr-2">
                 <TrainingRecommendations
-                  recommendations={aiRecommendations}
+                  recommendations={assessmentRecommendations}
                   showAll={showAllTraining}
                 />
               </div>

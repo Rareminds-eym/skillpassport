@@ -14,7 +14,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ProfileSimple');
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface EducatorProfile {
   id: string;
@@ -73,32 +73,26 @@ const ProfileSimple = () => {
       let error = null;
 
       // Approach 1: Direct query
-      const { data: directData, error: directError } = await supabase
-        .from('school_educators')
-        .select(`
-          *,
-          school:organizations!school_educators_school_id_fkey (
-            name,
-            organization_type
-          )
-        `)
-        .eq('email', email)
-        .maybeSingle();
+      const directResult = await apiPost<any>('/educator/actions', {
+        action: 'get-school-educator-by-email',
+        email,
+        select: '*, school:organizations!school_educators_school_id_fkey (name, organization_type)'
+      });
+      const directData = directResult?.data;
 
-      if (directError) {
-        logger.info('Direct query failed', { error: directError.message });
+      if (!directData) {
+        logger.info('Direct query failed');
         
         // Approach 2: Case insensitive
-        const { data: ciData, error: ciError } = await supabase
-          .from('school_educators')
-          .select('*')
-          .ilike('email', email)
-          .limit(1)
-          .maybeSingle();
+        const ciResult = await apiPost<any>('/educator/actions', {
+          action: 'get-school-educator-by-user-id-ilike',
+          email
+        });
+        const ciData = ciResult?.data;
           
-        if (ciError) {
-          logger.info('Case insensitive query failed', { error: ciError.message });
-          error = ciError;
+        if (!ciData) {
+          logger.info('Case insensitive query failed');
+          error = { message: 'Not found' };
         } else {
           educatorData = ciData;
         }
@@ -185,13 +179,16 @@ const ProfileSimple = () => {
 
       if (profile.id) {
         // Update existing record
-        const { error } = await supabase
-          .from('school_educators')
-          .update(updateData)
-          .eq('email', profile.email);
+        const updateResult = await apiPost<any>('/educator/actions', {
+          action: 'update-educator-table',
+          table: 'school_educators',
+          values: updateData,
+          id: profile.email,
+          idField: 'email'
+        });
 
-        if (error) {
-          throw error;
+        if (!updateResult?.data) {
+          throw new Error('Failed to update profile');
         }
       }
 

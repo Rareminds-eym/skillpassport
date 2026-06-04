@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 import { CollegeEvent } from '@/features/learner-profile/model';
 import { collegeEventsService, organizationsService } from "@/features/college-admin";
@@ -13,7 +14,6 @@ export const useEvents = (collegeId: string | null) => {
   const [eventRegCounts, setEventRegCounts] = useState<Record<string, number>>({});
   const [draggedEvent, setDraggedEvent] = useState<CollegeEvent | null>(null);
 
-  // Load events
   const loadEvents = useCallback(async () => {
     try {
       setLoading(true);
@@ -23,40 +23,19 @@ export const useEvents = (collegeId: string | null) => {
     finally { setLoading(false); }
   }, [collegeId]);
 
-  // Load registration counts
   const loadRegistrationCounts = useCallback(async () => {
     try {
       if (!collegeId) {
         setEventRegCounts({});
         return;
       }
-      
-      // Get event IDs for this college first
-      const { data: collegeEvents, error: eventsError } = await supabase
-        .from("college_events")
-        .select("id")
-        .eq("college_id", collegeId);
-      
-      if (eventsError) throw eventsError;
-      
-      const eventIds = (collegeEvents || []).map(e => e.id);
-      
-      if (eventIds.length === 0) {
-        setEventRegCounts({});
-        return;
-      }
-      
-      // Now get registrations only for this college's events
-      const { data, error } = await supabase
-        .from("college_event_registrations")
-        .select("event_id")
-        .in("event_id", eventIds);
-      
-      if (error) throw error;
-      
-      const counts: Record<string, number> = {};
-      (data || []).forEach((r) => { counts[r.event_id] = (counts[r.event_id] || 0) + 1; });
-      setEventRegCounts(counts);
+
+      const response = await apiPost('/college-admin/events', {
+        action: 'get-event-registration-counts',
+        college_id: collegeId,
+      });
+
+      setEventRegCounts(response.data || {});
     } catch { 
       logger.error('Failed to load registration counts', new Error('Failed to load registration counts'));
       toast.error("Failed to load registration counts"); 
@@ -68,27 +47,22 @@ export const useEvents = (collegeId: string | null) => {
     loadRegistrationCounts();
   }, [collegeId, loadEvents, loadRegistrationCounts]);
 
-  // CRUD operations
   const saveEvent = async (data: Partial<CollegeEvent>, existingEvent?: CollegeEvent | null) => {
     try {
-      // Server-side validation for date and time
       if (data.start_date || data.end_date) {
         const now = new Date();
         const currentDateTime = now.toISOString();
         
-        // Check if start date is in the past (only for new events or when updating dates)
         if (data.start_date && data.start_date < currentDateTime) {
           toast.error("Start date and time cannot be in the past");
           return false;
         }
         
-        // Check if end date is in the past
         if (data.end_date && data.end_date < currentDateTime) {
           toast.error("End date and time cannot be in the past");
           return false;
         }
         
-        // Check if end date is after start date
         if (data.start_date && data.end_date && data.end_date <= data.start_date) {
           toast.error("End date must be after start date");
           return false;
@@ -97,7 +71,6 @@ export const useEvents = (collegeId: string | null) => {
 
       const user = useAuthStore.getState().user;
       
-      // Get college_id from organizations table if not already set
       let eventCollegeId = collegeId;
       if (!eventCollegeId && user) {
         const org = await organizationsService.getCollegeOrganization(user.id, user.email || '');
@@ -150,7 +123,6 @@ export const useEvents = (collegeId: string | null) => {
     }
   };
 
-  // Drag and drop
   const handleDragStart = useCallback((event: CollegeEvent) => { setDraggedEvent(event); }, []);
   
   const handleDrop = useCallback(async (targetDate: Date) => {
@@ -178,7 +150,6 @@ export const useEvents = (collegeId: string | null) => {
     finally { setDraggedEvent(null); }
   }, [draggedEvent, loadEvents]);
 
-  // Computed values
   const todayEvents = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
     return events.filter((e) => e.start_date.split("T")[0] <= today && e.end_date.split("T")[0] >= today && e.status === "published");

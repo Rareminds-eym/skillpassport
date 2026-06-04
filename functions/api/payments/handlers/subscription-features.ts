@@ -7,9 +7,10 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleSubscriptionFeatures(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -23,31 +24,12 @@ export async function handleSubscriptionFeatures(context: AuthenticatedContext):
 
     if (error) {
       console.error('[SubscriptionFeatures] Supabase error:', error);
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'Failed to fetch subscription features',
-          },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch subscription features', context.request);
     }
 
-    return new Response(
-      JSON.stringify({ success: true, features: data }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ features: data }, context.request, 200);
   } catch (error) {
     console.error('[SubscriptionFeatures] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to fetch subscription features',
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to fetch subscription features', context.request);
   }
 }

@@ -1,175 +1,83 @@
-/**
- * Course Entity - API Queries
- * Data fetching functions for course data
- */
-
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 import type { Course, CourseEnrollment, CourseProgress, CourseFilters } from '../model/types';
-import { getCourse } from './queries';
-import { getCourseAnalytics } from './queries';
-import { getCourseModule } from './queries';
-import { getUserEnrollments } from './queries';
-import { getCourseEnrollments } from './queries';
-
-// ============================================================================
-// Course Queries
-// ============================================================================
 
 export const getCourses = async (filters?: CourseFilters): Promise<Course[]> => {
-  let query = supabase
-    .from('courses')
-    .select('*')
-    .order('createdAt', { ascending: false });
-
-  if (filters?.category) {
-    query = query.eq('category', filters.category);
-  }
-
-  if (filters?.skillType) {
-    query = query.eq('skillType', filters.skillType);
-  }
-
-  if (filters?.status) {
-    query = query.eq('status', filters.status);
-  }
-
-  if (filters?.search) {
-    query = query.or(
-      `title.ilike.%${filters.search}%,description.ilike.%${filters.search}%,code.ilike.%${filters.search}%`
-    );
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return data || [];
+  const response: any = await apiPost('/course/actions', {
+    action: 'get-courses',
+    ...filters,
+  });
+  return response?.data ?? response ?? [];
 };
-
 
 export const getActiveCourses = async (): Promise<Course[]> => {
-  const { data, error } = await supabase
-    .from('courses')
-    .select('*')
-    .eq('status', 'Active')
-    .order('title', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
+  const response: any = await apiPost('/course/actions', {
+    action: 'get-active-courses',
+  });
+  return response?.data ?? response ?? [];
 };
 
-// ============================================================================
-// Course Enrollment Queries
-// ============================================================================
-
 export const getUserEnrollments = async (userId: string): Promise<CourseEnrollment[]> => {
-  const { data, error } = await supabase
-    .from('course_enrollments')
-    .select('*')
-    .eq('userId', userId)
-    .order('enrolledAt', { ascending: false });
-
-
-  if (error) throw error;
-  return data || [];
+  const response: any = await apiPost('/course/actions', {
+    action: 'get-user-enrollments',
+    userId,
+  });
+  return response?.data ?? response ?? [];
 };
 
 export const isUserEnrolled = async (
   userId: string,
   courseId: string
 ): Promise<boolean> => {
-  const { data, error } = await supabase
-
-// ============================================================================
-// Course Progress Queries
-// ============================================================================
+  const response: any = await apiPost('/course/actions', {
+    action: 'is-user-enrolled',
+    userId,
+    courseId,
+  });
+  return response?.data?.enrolled ?? false;
+};
 
 export const getCourseProgress = async (
   userId: string,
   courseId: string
 ): Promise<CourseProgress | null> => {
-  const { data, error } = await supabase
-    .from('course_progress')
-    .select('*')
-    .eq('userId', userId)
-    .eq('courseId', courseId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/course/actions', {
+    action: 'get-course-progress',
+    userId,
+    courseId,
+  });
+  return response?.data ?? null;
 };
 
 export const getUserCourseProgress = async (
   userId: string
 ): Promise<CourseProgress[]> => {
-  const { data, error } = await supabase
-    .from('course_progress')
-    .select('*')
-    .eq('userId', userId)
-    .order('lastAccessedAt', { ascending: false });
-
-  if (error) throw error;
-  return data || [];
+  const response: any = await apiPost('/course/actions', {
+    action: 'get-user-course-progress',
+    userId,
+  });
+  return response?.data ?? response ?? [];
 };
-
-// ============================================================================
-// Course Analytics Queries
-// ============================================================================
 
 export const getCourseAnalytics = async (courseId: string): Promise<any> => {
-  const { data, error } = await supabase
-    .from('course_analytics')
-    .select('*')
-    .eq('courseId', courseId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-    .eq('courseId', courseId);
-
-  if (enrollError) throw enrollError;
-
-  const { data: progress, error: progressError } = await supabase
-    .from('course_progress')
-    .select('progressPercentage')
-    .eq('courseId', courseId);
-
-  if (progressError) throw progressError;
-
-  const enrollmentCount = enrollments?.length || 0;
-  const completedCount = enrollments?.filter(e => e.status === 'completed').length || 0;
-  const completionRate = enrollmentCount > 0 ? (completedCount / enrollmentCount) * 100 : 0;
-  
-  const totalProgress = progress?.reduce((sum, p) => sum + (p.progressPercentage || 0), 0) || 0;
-  const averageProgress = progress?.length ? totalProgress / progress.length : 0;
-
-  return {
-    enrollmentCount,
-    completionRate,
-    averageProgress,
-  };
+  const response: any = await apiPost('/course/actions', {
+    action: 'get-course-analytics',
+    courseId,
+  });
+  return response?.data ?? null;
 };
 
-// ============================================================================
-// Course Modules Queries
-// ============================================================================
-
 export const getCourseModules = async (courseId: string): Promise<any[]> => {
-  const { data, error } = await supabase
-    .from('course_modules')
-    .select('*')
-    .eq('courseId', courseId)
-    .order('order', { ascending: true });
-
-  if (error) throw error;
-  return data || [];
+  const response: any = await apiPost('/course/actions', {
+    action: 'get-course-modules',
+    courseId,
+  });
+  return response?.data ?? response ?? [];
 };
 
 export const getCourseModule = async (moduleId: string): Promise<any | null> => {
-  const { data, error } = await supabase
-    .from('course_modules')
-    .select('*')
-    .eq('id', moduleId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/course/actions', {
+    action: 'get-course-module',
+    moduleId,
+  });
+  return response?.data ?? null;
 };

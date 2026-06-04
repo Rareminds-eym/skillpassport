@@ -10,8 +10,9 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import {
@@ -20,9 +21,10 @@ import {
   ssoSyncSubscription,
 } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleVerifyOrgPayment(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
@@ -30,40 +32,19 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required',
-          },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required', context.request);
     }
 
     if (!body.org_id || typeof body.org_id !== 'string') {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'org_id is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'org_id is required', context.request);
     }
 
     if (!body.plan_name || typeof body.plan_name !== 'string') {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'plan_name is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'plan_name is required', context.request);
     }
 
     // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
@@ -78,12 +59,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
 
     if (!body.billing_cycle || typeof body.billing_cycle !== 'string') {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'billing_cycle is required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'billing_cycle is required', context.request);
     }
 
     const seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
@@ -98,7 +74,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     let subscription: Record<string, unknown>;
     try {
       subscription = await ssoCreateSubscription(env, {
-        user_id: user.sub,
+        user_id: user.id,
         plan_id: (body.plan_id as string) || '',
         plan_code: (body.plan_code as string) || body.plan_name as string,
         plan_type: body.plan_name as string,
@@ -115,12 +91,11 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         seat_count: seatCount,
         is_organization_subscription: true,
         is_bulk_purchase: true,
-        purchased_by: user.sub,
+        purchased_by: user.id,
       });
     } catch (createError: any) {
       console.error('[VerifyOrgPayment] Subscription creation failed:', createError.message);
-      return new Response(JSON.stringify({
-        success: true,
+      return apiSuccess({
         ...verifyResult,
         subscription_created: false,
         error: {
@@ -128,17 +103,14 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
           message: 'Payment verified but org subscription creation failed. Please contact support.',
           details: createError.message,
         },
-      }), {
-        status: 207,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      }, context.request, 207);
     }
 
     // Step 3: Record transaction in auth DB
     try {
       await ssoRecordTransaction(env, {
         subscription_id: subscription.id as string,
-        user_id: user.sub,
+        user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
         amount: planAmount / 100,
@@ -156,9 +128,9 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
     // Step 4: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.sub, (user as any).email);
+      await syncUserShadow(supabase, user.id, (user as any).email);
 
-      const syncData = await ssoSyncSubscription(env, user.sub);
+      const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
       }
@@ -166,8 +138,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
       console.error('[VerifyOrgPayment] Shadow sync failed (non-critical):', syncError);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
+    return apiSuccess({
       ...verifyResult,
       subscription_created: true,
       subscription: {
@@ -179,13 +150,10 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         start_date: subscription.subscription_start_date,
         end_date: subscription.subscription_end_date,
       },
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    }, context.request);
   } catch (error) {
     console.error('[VerifyOrgPayment] Error:', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }
 

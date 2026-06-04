@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
 import toast from 'react-hot-toast';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Small Message Modal Component
 const MessageModal = ({ learner, isOpen, onClose, onSend, isLoading }) => {
@@ -191,184 +191,57 @@ const NewCollegeLecturerConversationModal = ({
       
       setLoading(true);
       try {
-        console.log('🔍 Step 1: Fetching programs and sections for lecturer:', collegeLecturerId);
-        
-        // Get programs through departments that belong to this college
-        // First get departments in this college
-        const { data: departments, error: deptError } = await supabase
-          .from('departments')
-          .select('id, name, college_id')
-          .eq('college_id', collegeId);
-        
-        console.log('🏢 Departments query result:', { 
-          data: departments, 
-          error: deptError,
-          count: departments?.length || 0
-        });
-        
-        if (deptError) {
-          console.error('❌ Error fetching departments:', deptError);
-          throw deptError;
-        }
-        
+        console.log('🔍 Step 1: Fetching departments for college:', collegeId);
+
+        const { data: departments } = await apiPost('/messaging/actions', { action: 'fetch-departments-by-college', collegeId });
+
+        console.log('🏢 Departments result:', departments?.length || 0, 'departments found');
+
         if (!departments || departments.length === 0) {
-          console.log('⚠️ No departments found in college:', collegeId);
-          console.log('💡 Fallback: Fetching ALL learners from college');
-          
-          // Fallback: Get all learners from the same college
-          const { data: alllearnersData, error: alllearnersError } = await supabase
-            .from('learners')
-            .select(`
-              id,
-              user_id,
-              name,
-              email,
-              program_id,
-              program_section_id,
-              semester,
-              college_id,
-              is_deleted,
-              course_name,
-              branch_field
-            `)
-            .eq('college_id', collegeId)
-            .eq('is_deleted', false)
-            .order('name');
-          
-          console.log('📊 All college learners query result:', { 
-            data: alllearnersData, 
-            error: alllearnersError,
-            count: alllearnersData?.length || 0
-          });
-          
-          if (alllearnersError) {
-            console.error('❌ Error fetching all college learners:', alllearnersError);
-            throw alllearnersError;
-          }
-          
-          if (alllearnersData && alllearnersData.length > 0) {
-            console.log('👥 Found', alllearnersData.length, 'learners in college (fallback)');
-            
-            // Transform learners data
-            const transformedlearners = alllearnersData.map(learner => ({
-              id: learner.user_id || learner.id,
-              name: learner.name || learner.email,
-              email: learner.email,
-              program: learner.course_name || learner.branch_field || 'Unknown Program',
-              programCode: learner.course_name || '',
-              section: learner.section || '',
-              semester: learner.semester || '',
-              academicYear: '',
-              programSectionId: learner.program_section_id,
-              programId: learner.program_id
-            }));
-            
-            console.log('✅ Fallback: Transformed learners:', transformedlearners);
-            
-            setlearners(transformedlearners);
-            return;
-          }
-          
-          console.log('❌ No learners found in college at all');
-          setlearners([]);
+          console.log('⚠️ No departments found, fetching all learners from college');
+
+          const { data: alllearnersData } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'college-admin-learner', contextId: collegeId });
+
+          const transformedlearners = (alllearnersData || []).map(learner => ({
+            id: learner.id,
+            name: learner.name || learner.email,
+            email: learner.email,
+            program: learner.university || 'Unknown Program',
+            programCode: '',
+            section: '',
+            semester: '',
+            academicYear: '',
+            programSectionId: null,
+            programId: null
+          }));
+
+          console.log('✅ Fallback: Transformed learners:', transformedlearners.length);
+          setlearners(transformedlearners);
           return;
         }
-        
+
         const departmentIds = departments.map(d => d.id);
-        console.log('🏢 Department IDs in college:', departmentIds);
-        
-        // Get programs in these departments
-        const { data: programs, error: programsError } = await supabase
-          .from('programs')
-          .select(`
-            id,
-            name,
-            code,
-            department_id
-          `)
-          .in('department_id', departmentIds);
-        
-        console.log('📚 Programs query result:', { 
-          data: programs, 
-          error: programsError,
-          count: programs?.length || 0
-        });
-        
-        if (programsError) {
-          console.error('❌ Error fetching programs:', programsError);
-          throw programsError;
-        }
-        
+        console.log('🏢 Department IDs:', departmentIds);
+
+        const { data: programs } = await apiPost('/messaging/actions', { action: 'fetch-programs-by-departments', departmentIds });
+
+        console.log('📚 Programs result:', programs?.length || 0, 'programs found');
+
         if (!programs || programs.length === 0) {
           console.log('⚠️ No programs found in college departments');
           setlearners([]);
           return;
         }
-        
+
         const programIds = programs.map(p => p.id);
-        console.log('🎓 Program IDs in college:', programIds);
-        
-        console.log('🔍 Step 2: Fetching learners from programs:', programIds, 'in college:', collegeId);
-        
-        // Get all learners from these programs in the same college
-        const { data: learnersData, error: learnersError } = await supabase
-          .from('learners')
-          .select(`
-            id,
-            user_id,
-            name,
-            email,
-            program_id,
-            program_section_id,
-            semester,
-            college_id,
-            is_deleted,
-            programs:program_id (
-              id,
-              name,
-              code
-            ),
-            program_sections:program_section_id (
-              id,
-              section,
-              semester,
-              academic_year
-            )
-          `)
-          .eq('college_id', collegeId)
-          .in('program_id', programIds)  // ← Fetch by program_id, not program_section_id
-          .eq('is_deleted', false)
-          .order('name');
-        
-        console.log('📊 Learners query result:', { 
-          data: learnersData, 
-          error: learnersError,
-          count: learnersData?.length || 0
-        });
-        
-        if (learnersError) {
-          console.error('❌ Error fetching learners:', learnersError);
-          throw learnersError;
-        }
-        
-        console.log('👥 Step 4: Found', learnersData?.length || 0, 'learners');
-        
-        if (learnersData && learnersData.length > 0) {
-          console.log('📋 Sample learner data:', learnersData[0]);
-          console.log('🎯 All learners:', learnersData.map(s => ({
-            id: s.id,
-            user_id: s.user_id,
-            name: s.name,
-            email: s.email,
-            program_id: s.program_id,
-            college_id: s.college_id,
-            is_deleted: s.is_deleted
-          })));
-        }
-        
-        // Transform learners data
+        console.log('🎓 Program IDs:', programIds);
+
+        const { data: learnersData } = await apiPost('/messaging/actions', { action: 'fetch-learners-by-programs', collegeId, programIds });
+
+        console.log('👥 Found', learnersData?.length || 0, 'learners');
+
         const transformedlearners = (learnersData || []).map(learner => ({
-          id: learner.user_id || learner.id,
+          id: learner.user_id || learner.id || learner.id,
           name: learner.name || learner.email,
           email: learner.email,
           program: learner.programs?.name || 'Unknown Program',
@@ -379,20 +252,13 @@ const NewCollegeLecturerConversationModal = ({
           programSectionId: learner.program_section_id,
           programId: learner.program_id
         }));
-        
-        console.log('✅ Step 5: Transformed learners:', transformedlearners);
-        
+
+        console.log('✅ Transformed learners:', transformedlearners.length);
         setlearners(transformedlearners);
-        
+
       } catch (error) {
         console.error('❌ FETCH ERROR:', error);
-        console.error('❌ Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-        toast.error('Failed to load learners: ' + error.message);
+        toast.error('Failed to load learners: ' + (error.message || 'Unknown error'));
       } finally {
         setLoading(false);
         console.log('🏁 === FETCH LEARNERS DEBUG END ===');

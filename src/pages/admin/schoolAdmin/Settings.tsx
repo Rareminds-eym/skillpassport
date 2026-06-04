@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase } from "@/shared/api";
 import toast from 'react-hot-toast';
 import {
   AcademicCapIcon,
@@ -28,9 +27,9 @@ import { useEffect, useState } from "react";
 import { SearchBar } from '@/shared/ui';
 import { SubscriptionSettingsSection } from '@/features/subscription';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('school-admin-settings');
-// import { supabase } from '@/shared/api/supabaseClient';
 
 
 /* ==============================
@@ -588,23 +587,14 @@ const SystemConfigModal = ({
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from("organizations")
-        .update({
-          name: formData.schoolName,
-          address: formData.address,
-          phone: formData.phone,
-          email: formData.email,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", schoolId)
-        .eq("organization_type", "school");
-
-      if (error) {
-        logger.error('Error updating school', error);
-        toast.error("Failed to update school information");
-        return;
-      }
+      await apiPost('/school-admin/settings', {
+        action: 'updateOrganization',
+        id: schoolId,
+        name: formData.schoolName,
+        address: formData.address,
+        phone: formData.phone,
+        email: formData.email,
+      });
 
       onSaved(formData);
       onClose();
@@ -1698,67 +1688,22 @@ const Settings = () => {
   const fetchCurrentSchool = async () => {
     try {
       setLoading(true);
-      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
 
-      if (!user) {
-        logger.error('No authenticated user');
-        return;
-      }
-
-      // First try to get school_id from school_educators table
-      const { data: educator, error: educatorError } = await supabase
-        .from("school_educators")
-        .select("school_id, role")
-        .eq("user_id", user.id)
-        .maybeSingle(); // Use maybeSingle() instead of single() to avoid 406 error
-
-      let schoolId = educator?.school_id;
-
-      // If not found in school_educators, try organizations table (for school admins)
-      if (!schoolId) {
-        const { data: org, error: orgError } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("admin_id", user.id)
-          .eq("organization_type", "school")
-          .maybeSingle();
-
-        if (org?.id) {
-          schoolId = org.id;
-        }
-      }
+      const schoolResp: any = await apiPost('/school-admin/settings', {
+        action: 'fetchCurrentSchool',
+      });
+      const { schoolId, systemConfig: sysCfg } = schoolResp.data || {};
 
       if (!schoolId) {
-        logger.error('Could not find school for user', { userId: user.id });
+        logger.error('Could not find school for user');
         return;
       }
 
       setCurrentSchoolId(schoolId);
 
-      // Fetch school details from organizations table
-      const { data: org, error: orgError } = await supabase
-        .from("organizations")
-        .select("*")
-        .eq("id", schoolId)
-        .maybeSingle(); // Use maybeSingle() to avoid 406 error
-
-      if (orgError || !org) {
-        logger.error('Error fetching organization', orgError);
-        return;
+      if (sysCfg) {
+        setSystemConfig(sysCfg);
       }
-
-      setSystemConfig({
-        schoolName: org.name || "",
-        schoolCode: org.code || "",
-        address: org.address || "",
-        phone: org.phone || "",
-        email: org.email || "",
-        sessionTimeout: 30,
-        maxLoginAttempts: 3,
-        passwordExpiryDays: 90,
-        enableMFA: false,
-        enableBiometric: false,
-      });
     } catch (error) {
       logger.error('Error in fetchCurrentSchool', error);
     } finally {
@@ -1770,28 +1715,13 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data, error } = await supabase
-        .from("school_educators")
-        .select(`
-          id,
-          user_id,
-          first_name,
-          last_name,
-          email,
-          role,
-          account_status,
-          created_at,
-          metadata
-        `)
-        .eq("school_id", currentSchoolId)
-        .order("created_at", { ascending: false });
+      const eduResp: any = await apiPost('/school-admin/settings', {
+        action: 'fetchSchoolEducators',
+        schoolId: currentSchoolId,
+      });
+      const data = eduResp.data || [];
 
-      if (error) {
-        logger.error('Error fetching educators', error);
-        return;
-      }
-
-      const mappedUsers: User[] = (data || []).map((educator: any) => ({
+      const mappedUsers: User[] = data.map((educator: any) => ({
         id: educator.id,
         name: `${educator.first_name || ""} ${educator.last_name || ""}`.trim() || "Unknown",
         email: educator.email || "",
@@ -1812,19 +1742,13 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data, error } = await supabase
-        .from("school_classes")
-        .select("*")
-        .eq("school_id", currentSchoolId)
-        .eq("account_status", "active")
-        .order("grade", { ascending: true });
+      const clsResp: any = await apiPost('/school-admin/settings', {
+        action: 'fetchSchoolClasses',
+        schoolId: currentSchoolId,
+      });
+      const data = clsResp.data || [];
 
-      if (error) {
-        logger.error('Error fetching classes', error);
-        return;
-      }
-
-      const mappedClasses: ClassConfig[] = (data || []).map((cls: any) => ({
+      const mappedClasses: ClassConfig[] = data.map((cls: any) => ({
         id: cls.id,
         name: `${cls.name || cls.grade}${cls.section ? ` - ${cls.section}` : ""}`,
         sections: cls.section ? [cls.section] : [],
@@ -1841,19 +1765,13 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data, error } = await supabase
-        .from("curriculum_academic_years")
-        .select("*")
-        .eq("school_id", currentSchoolId)
-        .eq("is_active", true)
-        .order("year", { ascending: false });
+      const yearResp: any = await apiPost('/school-admin/settings', {
+        action: 'fetchAcademicYears',
+        schoolId: currentSchoolId,
+      });
+      const data = yearResp.data || [];
 
-      if (error) {
-        logger.error('Error fetching academic years', error);
-        return;
-      }
-
-      const mappedYears: AcademicYear[] = (data || []).map((year: any) => {
+      const mappedYears: AcademicYear[] = data.map((year: any) => {
         const start = new Date(year.start_date);
         const end = new Date(year.end_date);
         const today = new Date();
@@ -1881,40 +1799,19 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      // Fetch subjects for this school (school-specific and global)
-      const { data, error } = await supabase
-        .from("curriculum_subjects")
-        .select("*")
-        .or(`school_id.eq.${currentSchoolId},school_id.is.null`)
-        .eq("is_active", true)
-        .order("display_order", { ascending: true });
+      const subjResp: any = await apiPost('/school-admin/settings', {
+        action: 'fetchSubjects',
+        schoolId: currentSchoolId,
+      });
+      const data = subjResp.data || [];
 
-      if (error) {
-        logger.error('Error fetching subjects', error);
-        return;
-      }
-
-      // For each subject, we need to find which classes use it
-      // This requires checking the curriculums table
-      const subjectsWithClasses = await Promise.all(
-        (data || []).map(async (subject: any) => {
-          const { data: curriculums } = await supabase
-            .from("curriculums")
-            .select("id, class")
-            .eq("school_id", currentSchoolId)
-            .eq("subject", subject.name);
-
-          const classIds = curriculums?.map((c: any) => c.id) || [];
-
-          return {
-            id: subject.id,
-            name: subject.name,
-            code: subject.name.substring(0, 3).toUpperCase() + "101",
-            type: "core" as "core" | "elective" | "skill",
-            classes: classIds,
-          };
-        })
-      );
+      const subjectsWithClasses = data.map((subject: any) => ({
+        id: subject.id,
+        name: subject.name,
+        code: subject.name.substring(0, 3).toUpperCase() + "101",
+        type: "core" as "core" | "elective" | "skill",
+        classes: subject.classIds || [],
+      }));
 
       setSubjects(subjectsWithClasses);
     } catch (error) {
@@ -1927,26 +1824,14 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-      if (!user) return;
+      const permResp: any = await apiPost('/school-admin/settings', {
+        action: 'fetchRolePermissions',
+      });
+      const rolePerms = permResp.data;
 
-      // Fetch from user_settings table using privacy_settings JSONB column
-      const { data, error } = await supabase
-        .from("user_settings")
-        .select("privacy_settings")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) {
-        logger.error('Error fetching role permissions', error);
-        return;
-      }
-
-      // If data exists and has rolePermissions, use it
-      if (data?.privacy_settings?.rolePermissions) {
-        setRolePermissions(data.privacy_settings.rolePermissions);
+      if (rolePerms) {
+        setRolePermissions(rolePerms);
       } else {
-        // Set default permissions if none exist
         const defaultPermissions = {
           Principal: ["learner_view", "learner_create", "learner_edit", "learner_delete", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "fee_view", "fee_collect", "library_issue", "career_view", "career_counsel", "settings_manage"],
           "Vice Principal": ["learner_view", "learner_create", "learner_edit", "attendance_mark", "attendance_edit", "exam_create", "exam_marks", "exam_publish", "career_view", "career_counsel", "settings_manage"],
@@ -1958,7 +1843,6 @@ const Settings = () => {
           "Career Counselor": ["learner_view", "career_view", "career_counsel"],
         };
         setRolePermissions(defaultPermissions);
-        // Save defaults to database
         await saveRolePermissionsToDb(defaultPermissions);
       }
     } catch (error) {
@@ -1966,124 +1850,41 @@ const Settings = () => {
     }
   };
 
-  // Save role permissions to database
   const saveRolePermissionsToDb = async (permissions: Record<string, string[]>) => {
     try {
-      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-      if (!user) return;
-
-      // Check if user_settings record exists
-      const { data: existing } = await supabase
-        .from("user_settings")
-        .select("id, privacy_settings")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      const updatedPrivacySettings = {
-        ...(existing?.privacy_settings || {}),
-        rolePermissions: permissions,
-      };
-
-      if (existing) {
-        // Update existing record
-        const { error } = await supabase
-          .from("user_settings")
-          .update({
-            privacy_settings: updatedPrivacySettings,
-            updated_at: new Date().toISOString(),
-            updated_by: user.id,
-          })
-          .eq("user_id", user.id);
-
-        if (error) {
-          logger.error('Error updating role permissions', error);
-        }
-      } else {
-        // Insert new record
-        const { error } = await supabase
-          .from("user_settings")
-          .insert({
-            user_id: user.id,
-            privacy_settings: updatedPrivacySettings,
-            notification_preferences: {},
-            ui_preferences: {},
-            communication_preferences: {},
-            updated_by: user.id,
-          });
-
-        if (error) {
-          logger.error('Error inserting role permissions', error);
-        }
-      }
+      await apiPost('/school-admin/settings', {
+        action: 'saveRolePermissions',
+        permissions,
+      });
     } catch (error) {
       logger.error('Error in saveRolePermissionsToDb', error);
     }
   };
 
-  // Fetch notification settings from user_settings
   const fetchNotificationSettings = async () => {
     if (!currentSchoolId) return;
 
     try {
-      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-      if (!user) return;
+      const notifResp: any = await apiPost('/school-admin/settings', {
+        action: 'fetchNotificationSettings',
+      });
+      const settings = notifResp.data;
 
-      // Fetch from user_settings table using notification_preferences JSONB column
-      const { data, error } = await supabase
-        .from("user_settings")
-        .select("notification_preferences")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (error) {
-        logger.error('Error fetching notification settings', error);
-        return;
-      }
-
-      // If data exists and has notificationSettings, use it
-      if (data?.notification_preferences?.notificationSettings) {
-        const settings = data.notification_preferences.notificationSettings;
+      if (settings) {
         setNotificationSettings(settings);
-        setOriginalNotificationSettings(JSON.parse(JSON.stringify(settings))); // Deep copy
+        setOriginalNotificationSettings(JSON.parse(JSON.stringify(settings)));
         setNotificationSettingsChanged(false);
       } else {
-        // Set default notification settings if none exist
         const defaultSettings: NotificationSetting[] = [
-          {
-            id: "1",
-            label: "Attendance Alerts",
-            description: "Notify parents when learner is absent",
-            enabled: true,
-          },
-          {
-            id: "2",
-            label: "Fee Reminders",
-            description: "Send fee payment reminders before due date",
-            enabled: true,
-          },
-          {
-            id: "3",
-            label: "Exam Notifications",
-            description: "Alert learners and parents about upcoming exams",
-            enabled: true,
-          },
-          {
-            id: "4",
-            label: "Result Publishing",
-            description: "Notify when exam results are published",
-            enabled: true,
-          },
-          {
-            id: "5",
-            label: "Career Updates",
-            description: "Send career assessment and recommendation updates",
-            enabled: false,
-          },
+          { id: "1", label: "Attendance Alerts", description: "Notify parents when learner is absent", enabled: true },
+          { id: "2", label: "Fee Reminders", description: "Send fee payment reminders before due date", enabled: true },
+          { id: "3", label: "Exam Notifications", description: "Alert learners and parents about upcoming exams", enabled: true },
+          { id: "4", label: "Result Publishing", description: "Notify when exam results are published", enabled: true },
+          { id: "5", label: "Career Updates", description: "Send career assessment and recommendation updates", enabled: false },
         ];
         setNotificationSettings(defaultSettings);
-        setOriginalNotificationSettings(JSON.parse(JSON.stringify(defaultSettings))); // Deep copy
+        setOriginalNotificationSettings(JSON.parse(JSON.stringify(defaultSettings)));
         setNotificationSettingsChanged(false);
-        // Save defaults to database
         await saveNotificationSettingsToDb(defaultSettings);
       }
     } catch (error) {
@@ -2091,55 +1892,12 @@ const Settings = () => {
     }
   };
 
-  // Save notification settings to database
   const saveNotificationSettingsToDb = async (settings: NotificationSetting[]) => {
     try {
-      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-      if (!user) return;
-
-      // Check if user_settings record exists
-      const { data: existing } = await supabase
-        .from("user_settings")
-        .select("id, notification_preferences")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      const updatedNotificationPreferences = {
-        ...(existing?.notification_preferences || {}),
-        notificationSettings: settings,
-      };
-
-      if (existing) {
-        // Update existing record
-        const { error } = await supabase
-          .from("user_settings")
-          .update({
-            notification_preferences: updatedNotificationPreferences,
-            updated_at: new Date().toISOString(),
-            updated_by: user.id,
-          })
-          .eq("user_id", user.id);
-
-        if (error) {
-          logger.error('Error updating notification settings', error);
-        }
-      } else {
-        // Insert new record
-        const { error } = await supabase
-          .from("user_settings")
-          .insert({
-            user_id: user.id,
-            notification_preferences: updatedNotificationPreferences,
-            privacy_settings: {},
-            ui_preferences: {},
-            communication_preferences: {},
-            updated_by: user.id,
-          });
-
-        if (error) {
-          logger.error('Error inserting notification settings', error);
-        }
-      }
+      await apiPost('/school-admin/settings', {
+        action: 'saveNotificationSettings',
+        settings,
+      });
     } catch (error) {
       logger.error('Error in saveNotificationSettingsToDb', error);
     }
@@ -2241,32 +1999,20 @@ const Settings = () => {
   const handleSaveUser = async (user: User) => {
     try {
       if (editUser) {
-        // Update existing educator
-        const { error } = await supabase
-          .from("school_educators")
-          .update({
-            first_name: user.name.split(" ")[0],
-            last_name: user.name.split(" ").slice(1).join(" "),
-            email: user.email,
-            role: user.role,
-            account_status: user.status,
-            metadata: {
-              permissions: user.permissions,
-            },
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", user.id);
-
-        if (error) {
-          logger.error('Error updating educator', error);
-          toast.error("Failed to update user");
-          return;
-        }
+        await apiPost('/school-admin/settings', {
+          action: 'updateEducator',
+          id: user.id,
+          firstName: user.name.split(" ")[0],
+          lastName: user.name.split(" ").slice(1).join(" "),
+          email: user.email,
+          role: user.role,
+          accountStatus: user.status,
+          permissions: user.permissions,
+        });
 
         setUsers(users.map((u) => (u.id === user.id ? user : u)));
         toast.success("User updated successfully");
       } else {
-        // Create new educator - Note: This requires creating a user in auth first
         toast.error("Creating new users requires additional setup. Please use the user management system.");
       }
     } catch (error) {
@@ -2282,19 +2028,11 @@ const Settings = () => {
     const newStatus = user.status === "active" ? "inactive" : "active";
 
     try {
-      const { error } = await supabase
-        .from("school_educators")
-        .update({
-          account_status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
-
-      if (error) {
-        logger.error('Error updating user status', error);
-        toast.error("Failed to update user status");
-        return;
-      }
+      await apiPost('/school-admin/settings', {
+        action: 'toggleUserStatus',
+        id: userId,
+        accountStatus: newStatus,
+      });
 
       setUsers(users.map((u) => {
         if (u.id === userId) {
@@ -2325,47 +2063,26 @@ const Settings = () => {
 
     try {
       if (editAcademicYear) {
-        // Update existing academic year
-        const { error } = await supabase
-          .from("curriculum_academic_years")
-          .update({
-            year: year.year,
-            start_date: year.startDate,
-            end_date: year.endDate,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", year.id);
-
-        if (error) {
-          logger.error('Error updating academic year', error);
-          toast.error("Failed to update academic year");
-          return;
-        }
+        await apiPost('/school-admin/settings', {
+          action: 'updateAcademicYear',
+          id: year.id,
+          year: year.year,
+          startDate: year.startDate,
+          endDate: year.endDate,
+        });
 
         setAcademicYears(academicYears.map((y) => (y.id === year.id ? year : y)));
         toast.success("Academic year updated successfully");
       } else {
-        // Create new academic year
-        const { data, error } = await supabase
-          .from("curriculum_academic_years")
-          .insert({
-            school_id: currentSchoolId,
-            year: year.year,
-            start_date: year.startDate,
-            end_date: year.endDate,
-            is_active: true,
-            is_current: false,
-          })
-          .select()
-          .single();
+        const createResp: any = await apiPost('/school-admin/settings', {
+          action: 'createAcademicYear',
+          schoolId: currentSchoolId,
+          year: year.year,
+          startDate: year.startDate,
+          endDate: year.endDate,
+        });
 
-        if (error) {
-          logger.error('Error creating academic year', error);
-          toast.error("Failed to create academic year");
-          return;
-        }
-
-        setAcademicYears([...academicYears, { ...year, id: data.id }]);
+        setAcademicYears([...academicYears, { ...year, id: createResp.data.id }]);
         toast.success("Academic year created successfully");
       }
     } catch (error) {
@@ -2378,23 +2095,11 @@ const Settings = () => {
     if (!currentSchoolId) return;
 
     try {
-      // First, deactivate all academic years for this school
-      await supabase
-        .from("curriculum_academic_years")
-        .update({ is_current: false })
-        .eq("school_id", currentSchoolId);
-
-      // Then activate the selected year
-      const { error } = await supabase
-        .from("curriculum_academic_years")
-        .update({ is_current: true })
-        .eq("id", yearId);
-
-      if (error) {
-        logger.error('Error activating academic year', error);
-        toast.error("Failed to activate academic year");
-        return;
-      }
+      await apiPost('/school-admin/settings', {
+        action: 'activateAcademicYear',
+        schoolId: currentSchoolId,
+        yearId,
+      });
 
       setAcademicYears(academicYears.map((y) => ({
         ...y,
@@ -2411,16 +2116,10 @@ const Settings = () => {
     if (!confirm("Are you sure you want to delete this academic year?")) return;
 
     try {
-      const { error } = await supabase
-        .from("curriculum_academic_years")
-        .delete()
-        .eq("id", yearId);
-
-      if (error) {
-        logger.error('Error deleting academic year', error);
-        toast.error("Failed to delete academic year");
-        return;
-      }
+      await apiPost('/school-admin/settings', {
+        action: 'deleteAcademicYear',
+        id: yearId,
+      });
 
       setAcademicYears(academicYears.filter((y) => y.id !== yearId));
       toast.success("Academic year deleted successfully");
@@ -2492,26 +2191,16 @@ const Settings = () => {
 
     try {
       if (editClass) {
-        // Update existing class
-        const { error } = await supabase
-          .from("school_classes")
-          .update({
-            name: cls.name,
-            max_learners: cls.capacity,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", cls.id);
-
-        if (error) {
-          logger.error('Error updating class', error);
-          toast.error("Failed to update class");
-          return;
-        }
+        await apiPost('/school-admin/settings', {
+          action: 'updateClass',
+          id: cls.id,
+          name: cls.name,
+          maxLearners: cls.capacity,
+        });
 
         setClasses(classes.map((c) => (c.id === cls.id ? cls : c)));
         toast.success("Class updated successfully");
       } else {
-        // Create new class(es) - one for each section
         const classInserts = cls.sections.map((section) => ({
           school_id: currentSchoolId,
           name: cls.name,
@@ -2521,18 +2210,11 @@ const Settings = () => {
           account_status: "active",
         }));
 
-        const { data, error } = await supabase
-          .from("school_classes")
-          .insert(classInserts)
-          .select();
+        await apiPost('/school-admin/settings', {
+          action: 'createClass',
+          classInserts,
+        });
 
-        if (error) {
-          logger.error('Error creating class', error);
-          toast.error("Failed to create class");
-          return;
-        }
-
-        // Refresh classes
         fetchSchoolClasses();
         toast.success("Class created successfully");
       }
@@ -2546,16 +2228,10 @@ const Settings = () => {
     if (!confirm("Are you sure you want to delete this class? This will affect associated subjects.")) return;
 
     try {
-      const { error } = await supabase
-        .from("school_classes")
-        .delete()
-        .eq("id", classId);
-
-      if (error) {
-        logger.error('Error deleting class', error);
-        toast.error("Failed to delete class");
-        return;
-      }
+      await apiPost('/school-admin/settings', {
+        action: 'deleteClass',
+        id: classId,
+      });
 
       setClasses(classes.filter((c) => c.id !== classId));
       setSubjects(subjects.map((s) => ({
@@ -2585,45 +2261,25 @@ const Settings = () => {
 
     try {
       if (editSubject) {
-        // Update existing subject
-        const { error } = await supabase
-          .from("curriculum_subjects")
-          .update({
-            name: subject.name,
-            description: `${subject.type} subject`,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", subject.id);
-
-        if (error) {
-          logger.error('Error updating subject', error);
-          toast.error("Failed to update subject");
-          return;
-        }
+        await apiPost('/school-admin/settings', {
+          action: 'updateSubject',
+          id: subject.id,
+          name: subject.name,
+          description: `${subject.type} subject`,
+        });
 
         setSubjects(subjects.map((s) => (s.id === subject.id ? subject : s)));
         toast.success("Subject updated successfully");
       } else {
-        // Create new subject
-        const { data, error } = await supabase
-          .from("curriculum_subjects")
-          .insert({
-            school_id: currentSchoolId,
-            name: subject.name,
-            description: `${subject.type} subject`,
-            is_active: true,
-            display_order: subjects.length,
-          })
-          .select()
-          .single();
+        const createResp: any = await apiPost('/school-admin/settings', {
+          action: 'createSubject',
+          schoolId: currentSchoolId,
+          name: subject.name,
+          description: `${subject.type} subject`,
+          displayOrder: subjects.length,
+        });
 
-        if (error) {
-          logger.error('Error creating subject', error);
-          toast.error("Failed to create subject");
-          return;
-        }
-
-        setSubjects([...subjects, { ...subject, id: data.id }]);
+        setSubjects([...subjects, { ...subject, id: createResp.data.id }]);
         toast.success("Subject created successfully");
       }
     } catch (error) {
@@ -2636,25 +2292,15 @@ const Settings = () => {
     if (!confirm("Are you sure you want to delete this subject? This may affect existing curriculums.")) return;
 
     try {
-      // Soft delete by setting is_active to false
-      const { error } = await supabase
-        .from("curriculum_subjects")
-        .update({
-          is_active: false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", subjectId);
-
-      if (error) {
-        logger.error('Error deleting subject', error);
-        toast.error("Failed to delete subject");
-        return;
-      }
+      await apiPost('/school-admin/settings', {
+        action: 'deleteSubject',
+        id: subjectId,
+      });
 
       setSubjects(subjects.filter((s) => s.id !== subjectId));
       toast.success("Subject deleted successfully");
     } catch (error) {
-      logger.error('Error in handleDeleteSubject', error);
+      logger.error('Error deleting subject', error);
       toast.error("Failed to delete subject");
     }
   };

@@ -10,7 +10,7 @@ import ReactApexChart from "react-apexcharts";
 import { useNavigate } from "react-router-dom";
 import { KPIDashboard } from '@/widgets/kpi-dashboard';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 import { useUser } from '@/shared/model/authStore';
@@ -95,43 +95,15 @@ const SchoolDashboard: React.FC = () => {
         return;
       }
 
-      // Fetch school_id from school_educators table using user_id
       try {
-        const { data, error } = await supabase
-          .from('school_educators')
-          .select('school_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          logger.error('Error fetching school_id from educators', error);
-        } else if (data?.school_id) {
-          logger.info('School ID from school_educators', { schoolId: data.school_id });
-          setSchoolId(data.school_id);
+        const resp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId' });
+        if (resp.data?.schoolId) {
+          logger.info('School ID found', { schoolId: resp.data.schoolId });
+          setSchoolId(resp.data.schoolId);
           return;
         }
 
-        // Try to get school_id from organizations table using admin_id or email
-        const userEmail = user.email || localStorage.getItem('userEmail');
-        if (userEmail) {
-          const { data: schoolData, error: schoolError } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'school')
-            .or(`admin_id.eq.${user.id},email.eq.${userEmail}`)
-            .maybeSingle();
-
-          if (schoolError) {
-            logger.error('Error fetching school_id from organizations', schoolError);
-          } else if (schoolData?.id) {
-            logger.info('School ID from organizations table', { schoolId: schoolData.id });
-            setSchoolId(schoolData.id);
-            return;
-          }
-        }
-
         logger.warn('No school_id found for user - dashboard will show empty data');
-        // Keep schoolId as undefined - KPIDashboard will show 0s
         setSchoolId(undefined);
       } catch (err) {
         logger.error('Failed to fetch school_id', err);
@@ -153,70 +125,12 @@ const SchoolDashboard: React.FC = () => {
       try {
         setLoading(true);
 
-        // Fetch courses for this school with enrollment counts
-        const { data: coursesData, error: coursesError } = await supabase
-          .from("courses")
-          .select(
-            `
-            course_id,
-            title,
-            category,
-            duration,
-            status,
-            created_at,
-            enrollment_count
-          `
-          )
-          .eq("school_id", schoolId)
-          .order("created_at", { ascending: false });
-
-        if (coursesError) {
-          logger.warn('Error fetching courses', coursesError);
-        }
-
-        // Fetch enrollments for this school's courses
-        const courseIds = (coursesData || []).map(c => c.course_id).filter(Boolean);
-        
-        let enrollmentsData: any[] = [];
-        if (courseIds.length > 0) {
-          const { data, error: enrollmentsError } = await supabase
-            .from("course_enrollments")
-            .select("course_id, learner_id, learner_name, status, progress, enrolled_at, last_accessed")
-            .in("course_id", courseIds)
-            .order("enrolled_at", { ascending: false });
-
-          if (enrollmentsError) {
-            logger.warn('Error fetching enrollments', enrollmentsError);
-          } else {
-            enrollmentsData = data || [];
-          }
-        }
-
-        // Fetch recent attendance records for activities
-        const { data: attendanceData, error: attendanceError } = await supabase
-          .from("attendance_records")
-          .select("learner_id, status, date, created_at")
-          .eq("school_id", schoolId)
-          .gte("date", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-          .order("created_at", { ascending: false })
-          .limit(10);
-
-        if (attendanceError) {
-          logger.warn('Error fetching attendance', attendanceError);
-        }
-
-        // Fetch recent learner registrations
-        const { data: learnersData, error: learnersError } = await supabase
-          .from("learners")
-          .select("id, name, created_at, grade, section")
-          .eq("school_id", schoolId)
-          .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-          .order("created_at", { ascending: false })
-          .limit(5);
-
-        if (learnersError) {
-          logger.warn('Error fetching learners', learnersError);
-        }
+        // Fetch dashboard data via API
+        const dashResp: any = await apiPost('/school-admin/actions', { action: 'fetchDashboardData', schoolId });
+        const coursesData = dashResp.data?.courses || [];
+        const enrollmentsData = dashResp.data?.enrollments || [];
+        const attendanceData = dashResp.data?.attendance || [];
+        const learnersData = dashResp.data?.learners || [];
 
         // Group by category for chart with better data
         const categoryMap = new Map<string, number>();

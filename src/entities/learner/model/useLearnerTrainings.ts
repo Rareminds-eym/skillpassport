@@ -1,24 +1,9 @@
-/**
- * Hook to fetch learner trainings with server-side sorting and filtering
- * Uses Supabase SQL queries instead of frontend filtering
- * Also fetches course enrollments to show courses the learner has started
- */
-
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from "@/shared/api/supabaseClient";
+import { apiPost } from "@/shared/api/apiClient";
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-trainings-hook');
 
-/**
- * @param {string} learnerId - Learner UUID
- * @param {Object} options - Sort and filter options
- * @param {string} options.sortBy - Field to sort by (title, organization, start_date, created_at, status)
- * @param {string} options.sortDirection - 'asc' or 'desc'
- * @param {string} options.status - Filter by status (all, ongoing, completed)
- * @param {string} options.approvalStatus - Filter by approval_status (all, pending, approved, rejected)
- * @param {string} options.searchTerm - Search in title and organization
- */
 export const useLearnerTrainings = (learnerId, options = {}) => {
   const {
     sortBy = 'created_at',
@@ -44,174 +29,120 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
       setLoading(true);
       setError(null);
 
-      // Fetch from trainings table
-      let trainingsQuery = supabase
-        .from('trainings')
-        .select('*')
-        .eq('learner_id', learnerId);
+      const [trainingsResult, enrollmentsResult] = await Promise.all([
+        apiPost('/learner-profile/actions', {
+          action: 'fetch-trainings', learnerId,
+          filters: {
+            status: status !== 'all' ? status : undefined,
+            approval_status: approvalStatus !== 'all' ? approvalStatus : undefined,
+            search: searchTerm?.trim() || undefined,
+            sortField: sortBy,
+            sortAsc: sortDirection === 'asc',
+          },
+        }),
+        apiPost('/learner-profile/actions', {
+          action: 'fetch-course-enrollments', learnerId,
+        }),
+      ]);
 
-      // Apply status filter for trainings
-      if (status && status !== 'all') {
-        trainingsQuery = trainingsQuery.eq('status', status);
-      }
+      const trainingsData = trainingsResult?.data || [];
+      const enrollmentsData = enrollmentsResult?.data || [];
 
-      // Apply approval status filter
-      if (approvalStatus && approvalStatus !== 'all') {
-        trainingsQuery = trainingsQuery.eq('approval_status', approvalStatus);
-      }
-
-      // Apply search filter (title or organization)
-      if (searchTerm && searchTerm.trim()) {
-        const term = searchTerm.trim();
-        trainingsQuery = trainingsQuery.or(`title.ilike.%${term}%,organization.ilike.%${term}%`);
-      }
-
-      // Apply sorting
-      const validSortFields = ['title', 'organization', 'start_date', 'end_date', 'created_at', 'status'];
-      const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
-      trainingsQuery = trainingsQuery.order(sortField, { ascending: sortDirection === 'asc' });
-
-      // Execute trainings query
-      const { data: trainingsData, error: trainingsError } = await trainingsQuery;
-
-      if (trainingsError) {
-        logger.warn('Failed to fetch trainings', { error: trainingsError.message });
-      }
-
-      // Fetch from course_enrollments table with optimized query
-      const { data: enrollmentsData, error: enrollmentsError } = await supabase
-        .from('course_enrollments')
-        .select('*')
-        .eq('learner_id', learnerId);
-
-      if (enrollmentsError) {
-        logger.warn('Failed to fetch course enrollments', { error: enrollmentsError.message });
-      }
-
-      // Optimize: Get all course lesson counts in a single query instead of N+1 queries
       let courseLessonCounts = {};
-      if (enrollmentsData && enrollmentsData.length > 0) {
+      if (enrollmentsData.length > 0) {
         const courseIds = enrollmentsData.map(e => e.course_id).filter(Boolean);
-        
         if (courseIds.length > 0) {
-          const { data: allCourseLessons, error: lessonsError } = await supabase
-            .from('course_modules')
-            .select(`
-              course_id,
-              lessons:lessons(lesson_id)
-            `)
-            .in('course_id', courseIds);
-
-          if (lessonsError) {
-            logger.warn('Failed to fetch course lessons', { error: lessonsError.message });
-          } else if (allCourseLessons) {
-            // Build lesson counts map
-            courseLessonCounts = allCourseLessons.reduce((acc, module) => {
-              if (!acc[module.course_id]) {
-                acc[module.course_id] = 0;
-              }
-              acc[module.course_id] += module.lessons?.length || 0;
-              return acc;
-            }, {});
-          }
+          const modulesResult = await apiPost('/learner-profile/actions', {
+            action: 'fetch-course-modules', courseIds,
+          });
+          const allCourseLessons = modulesResult?.data || [];
+          courseLessonCounts = allCourseLessons.reduce((acc, module) => {
+            if (!acc[module.course_id]) acc[module.course_id] = 0;
+            acc[module.course_id] += module.lessons?.length || 0;
+            return acc;
+          }, {});
         }
       }
 
-      // Add calculated totals to enrollments (more memory efficient)
-      const enrollmentsWithCorrectTotals = enrollmentsData?.map(enrollment => ({
+      const enrollmentsWithCorrectTotals = enrollmentsData.map(enrollment => ({
         ...enrollment,
-        calculated_total_lessons: courseLessonCounts[enrollment.course_id] || 0
-      })) || [];
+        calculated_total_lessons: courseLessonCounts[enrollment.course_id] || 0,
+      }));
 
-      // Filter enrollments: show if progress > 0 OR status is completed OR recently accessed (within 7 days)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      const filteredEnrollments = enrollmentsWithCorrectTotals.filter(e => 
-        e.progress > 0 || 
-        e.status === 'completed' || 
+
+      let filteredEnrollments = enrollmentsWithCorrectTotals.filter(e =>
+        e.progress > 0 || e.status === 'completed' ||
         (e.last_accessed && new Date(e.last_accessed) > sevenDaysAgo)
       );
 
-      // Apply additional filters to enrollments
-      let processedEnrollments = filteredEnrollments;
-      
       if (status && status !== 'all') {
-        if (status === 'completed') {
-          processedEnrollments = processedEnrollments.filter(e => e.status === 'completed');
-        } else if (status === 'ongoing') {
-          processedEnrollments = processedEnrollments.filter(e => e.status !== 'completed');
-        }
+        if (status === 'completed') filteredEnrollments = filteredEnrollments.filter(e => e.status === 'completed');
+        else if (status === 'ongoing') filteredEnrollments = filteredEnrollments.filter(e => e.status !== 'completed');
       }
 
-      if (searchTerm && searchTerm.trim()) {
+      if (searchTerm?.trim()) {
         const term = searchTerm.trim().toLowerCase();
-        processedEnrollments = processedEnrollments.filter(e => 
+        filteredEnrollments = filteredEnrollments.filter(e =>
           (e.course_title || '').toLowerCase().includes(term) ||
           (e.educator_name || '').toLowerCase().includes(term)
         );
       }
 
-      // Transform trainings data
-      const formattedTrainings = [];
-      
-      for (const train of (trainingsData || [])) {
-        // Fetch certificate for this training
-        const { data: certificateRows } = await supabase
-          .from('certificates')
-          .select('link')
-          .eq('training_id', train.id)
-          .eq('enabled', true)
-          .limit(1);
-          
-        // Fetch skills for this training (fetch ALL skills with full data)
-        const { data: skillRows } = await supabase
-          .from('skills')
-          .select('name, type, level, description')
-          .eq('training_id', train.id)
-          .eq('enabled', true);
-        
-        formattedTrainings.push({
-          id: train.id,
-          title: String(train.title || ''),
-          course: String(train.title || ''),
-          organization: String(train.organization || ''),
-          provider: String(train.organization || ''),
-          start_date: train.start_date,
-          end_date: train.end_date,
-          startDate: train.start_date,
-          endDate: train.end_date,
-          duration: String(train.duration || ''),
-          description: String(train.description || ''),
-          status: String(train.status || 'ongoing'),
-          completedModules: Number(train.completed_modules) || 0,
-          totalModules: Number(train.total_modules) || 0,
-          hoursSpent: Number(train.hours_spent) || 0,
-          approval_status: String(train.approval_status || 'pending'),
-          verified: train.approval_status === 'approved' || train.approval_status === 'verified',
-          processing: train.approval_status === 'pending',
-          enabled: train.approval_status !== 'rejected',
-          source: String(train.source || 'manual'),
-          course_id: train.course_id,
-          skills: skillRows || [], // Return full skill objects with type, level, description
-          certificateUrl: certificateRows?.[0]?.link || '', // Fetch actual certificate URL
-          createdAt: train.created_at,
-          updatedAt: train.updated_at,
-          type: 'training'
-        });
+      const trainingIds = trainingsData.map(t => t.id);
+
+      const [skillsResult, certsResult] = trainingIds.length > 0 ? await Promise.all([
+        apiPost('/learner-profile/actions', { action: 'fetch-skills-by-training', trainingIds }),
+        apiPost('/learner-profile/actions', { action: 'fetch-certificates-by-training', trainingIds }),
+      ]) : [{ data: [] }, { data: [] }];
+
+      const skillsByTraining = {};
+      for (const s of (skillsResult?.data || [])) {
+        if (!skillsByTraining[s.training_id]) skillsByTraining[s.training_id] = [];
+        skillsByTraining[s.training_id].push(s);
       }
 
-      // Transform course enrollments to match training format
-      const formattedEnrollments = processedEnrollments.map((enroll) => {
+      const certsByTraining = {};
+      for (const c of (certsResult?.data || [])) {
+        if (!certsByTraining[c.training_id]) certsByTraining[c.training_id] = [];
+        certsByTraining[c.training_id].push(c);
+      }
+
+      const formattedTrainings = trainingsData.map(train => ({
+        id: train.id,
+        title: String(train.title || ''),
+        course: String(train.title || ''),
+        organization: String(train.organization || ''),
+        provider: String(train.organization || ''),
+        start_date: train.start_date,
+        end_date: train.end_date,
+        startDate: train.start_date,
+        endDate: train.end_date,
+        duration: String(train.duration || ''),
+        description: String(train.description || ''),
+        status: String(train.status || 'ongoing'),
+        completedModules: Number(train.completed_modules) || 0,
+        totalModules: Number(train.total_modules) || 0,
+        hoursSpent: Number(train.hours_spent) || 0,
+        approval_status: String(train.approval_status || 'pending'),
+        verified: train.approval_status === 'approved' || train.approval_status === 'verified',
+        processing: train.approval_status === 'pending',
+        enabled: train.approval_status !== 'rejected',
+        source: String(train.source || 'manual'),
+        course_id: train.course_id,
+        skills: skillsByTraining[train.id] || [],
+        certificateUrl: (certsByTraining[train.id] || [])[0]?.link || '',
+        createdAt: train.created_at,
+        updatedAt: train.updated_at,
+        type: 'training',
+      }));
+
+      const formattedEnrollments = filteredEnrollments.map(enroll => {
         const completedLessonsCount = enroll.completed_lessons?.length || 0;
         const totalLessonsCount = enroll.calculated_total_lessons || 0;
-        
-        // Calculate correct progress percentage
-        let calculatedProgress = 0;
-        if (totalLessonsCount > 0) {
-          calculatedProgress = Math.round((completedLessonsCount / totalLessonsCount) * 100);
-        }
-        
+        const calculatedProgress = totalLessonsCount > 0 ? Math.round((completedLessonsCount / totalLessonsCount) * 100) : 0;
+
         return {
           id: `enrollment-${enroll.id}`,
           title: String(enroll.course_title || 'Untitled Course'),
@@ -228,7 +159,7 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
           completedModules: completedLessonsCount,
           totalModules: totalLessonsCount,
           hoursSpent: Math.round((enroll.total_time_spent_seconds || 0) / 3600),
-          progress: calculatedProgress, // Use calculated progress instead of stored progress
+          progress: calculatedProgress,
           approval_status: 'approved',
           verified: true,
           processing: false,
@@ -236,28 +167,23 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
           source: 'course_enrollment',
           course_id: enroll.course_id,
           skills: [],
-          certificateUrl: enroll.certificate_url || '', // Include certificate URL from enrollment
+          certificateUrl: enroll.certificate_url || '',
           createdAt: enroll.enrolled_at,
           updatedAt: enroll.last_accessed,
           type: 'course_enrollment',
           lastAccessed: enroll.last_accessed,
           lastModuleIndex: enroll.last_module_index,
           lastLessonIndex: enroll.last_lesson_index,
-          sessionsCount: enroll.sessions_count
+          sessionsCount: enroll.sessions_count,
         };
       });
 
-      // Merge and deduplicate
       const enrollmentCourseIds = new Set(formattedEnrollments.map(e => e.course_id).filter(Boolean));
       const filteredTrainings = formattedTrainings.filter(t => !t.course_id || !enrollmentCourseIds.has(t.course_id));
-      
-      // Combine both lists
-      let allItems = [...filteredTrainings, ...formattedEnrollments];
+      const allItems = [...filteredTrainings, ...formattedEnrollments];
 
-      // Sort combined list
       allItems.sort((a, b) => {
         let aVal, bVal;
-        
         if (sortBy === 'title') {
           aVal = a.title?.toLowerCase() || '';
           bVal = b.title?.toLowerCase() || '';
@@ -274,12 +200,7 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
           aVal = new Date(a.createdAt || 0);
           bVal = new Date(b.createdAt || 0);
         }
-
-        if (sortDirection === 'asc') {
-          return aVal > bVal ? 1 : -1;
-        } else {
-          return aVal < bVal ? 1 : -1;
-        }
+        return sortDirection === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
       });
 
       setTrainings(allItems);
@@ -298,60 +219,37 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
     if (!learnerId) return;
 
     try {
-      // Instead of querying raw tables, calculate stats from the deduplicated trainings array
-      // This ensures we don't double-count courses that exist in both tables
-      
-      // Get trainings that don't have course_id (external/manual trainings)
-      const { data: externalTrainings, error: externalError } = await supabase
-        .from('trainings')
-        .select('status')
-        .eq('learner_id', learnerId)
-        .neq('approval_status', 'rejected')
-        .is('course_id', null);
+      const [trainingsResult, enrollmentsResult] = await Promise.all([
+        apiPost('/learner-profile/actions', {
+          action: 'fetch-trainings', learnerId,
+          filters: { approval_status: 'rejected', sortField: 'created_at' },
+        }),
+        apiPost('/learner-profile/actions', {
+          action: 'fetch-course-enrollments', learnerId,
+        }),
+      ]);
 
-      if (externalError) {
-        logger.warn('Failed to fetch external trainings stats', { error: externalError.message });
-      }
-
-      // Get course enrollments with progress > 0 (internal courses)
-      const { data: internalCourses, error: internalError } = await supabase
-        .from('course_enrollments')
-        .select('status, progress, completed_lessons')
-        .eq('learner_id', learnerId);
-
-      if (internalError) {
-        logger.warn('Failed to fetch internal courses stats', { error: internalError.message });
-      }
-
-      // Calculate stats for external trainings
+      const externalTrainings = (trainingsResult?.data || []).filter(t => !t.course_id);
       const externalStats = {
-        total: externalTrainings?.length || 0,
-        completed: externalTrainings?.filter(t => t.status === 'completed').length || 0,
-        ongoing: externalTrainings?.filter(t => t.status === 'ongoing').length || 0
+        total: externalTrainings.length,
+        completed: externalTrainings.filter(t => t.status === 'completed').length,
+        ongoing: externalTrainings.filter(t => t.status === 'ongoing').length,
       };
 
-      // Calculate stats for internal courses (with corrected completion logic)
-      const internalCoursesWithProgress = (internalCourses || []).filter(c => 
-        c.progress > 0 || 
-        c.status === 'completed' || 
-        (c.completed_lessons && c.completed_lessons.length > 0)
+      const internalCourses = (enrollmentsResult?.data || []).filter(c =>
+        c.progress > 0 || c.status === 'completed' || (c.completed_lessons && c.completed_lessons.length > 0)
       );
 
       const internalStats = {
-        total: internalCoursesWithProgress.length,
-        completed: internalCoursesWithProgress.filter(c => c.status === 'completed').length,
-        ongoing: internalCoursesWithProgress.filter(c => c.status !== 'completed').length
+        total: internalCourses.length,
+        completed: internalCourses.filter(c => c.status === 'completed').length,
+        ongoing: internalCourses.filter(c => c.status !== 'completed').length,
       };
 
-      // Combine stats (no double counting)
-      const total = externalStats.total + internalStats.total;
-      const completed = externalStats.completed + internalStats.completed;
-      const ongoing = externalStats.ongoing + internalStats.ongoing;
-
       setStats({
-        total: typeof total === 'number' ? total : 0,
-        completed: typeof completed === 'number' ? completed : 0,
-        ongoing: typeof ongoing === 'number' ? ongoing : 0,
+        total: externalStats.total + internalStats.total,
+        completed: externalStats.completed + internalStats.completed,
+        ongoing: externalStats.ongoing + internalStats.ongoing,
       });
     } catch (err) {
       logger.error('Failed to fetch training statistics', err instanceof Error ? err : new Error(String(err)), { learnerId });
@@ -363,16 +261,12 @@ export const useLearnerTrainings = (learnerId, options = {}) => {
     fetchTrainings();
   }, [fetchTrainings]);
 
-  const refetch = useCallback(() => {
-    fetchTrainings();
-  }, [fetchTrainings]);
-
   return {
     trainings,
     loading,
     error,
     stats,
-    refetch,
+    refetch: useCallback(() => fetchTrainings(), [fetchTrainings]),
   };
 };
 

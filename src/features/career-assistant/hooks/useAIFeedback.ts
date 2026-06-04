@@ -1,15 +1,9 @@
-/**
- * Hook for managing AI feedback/evaluations
- * Allows learners to rate AI responses with thumbs up/down, star rating, and text feedback
- */
-
 import { useState, useCallback } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { useUser } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ai-feedback-hook');
-
 
 export interface AIFeedback {
   conversationId: string;
@@ -37,9 +31,6 @@ export function useAIFeedback() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Submit feedback for an AI response
-   */
   const submitFeedback = useCallback(async (
     feedback: AIFeedback,
     thumbsUp: boolean,
@@ -55,54 +46,26 @@ export function useAIFeedback() {
     setError(null);
 
     try {
-      const { data: existing } = await supabase
-        .from('ai_evaluations')
-        .select('id')
-        .eq('conversation_id', feedback.conversationId)
-        .eq('message_id', feedback.messageId)
-        .single();
+      await apiPost('/career/feedback', {
+        conversationId: feedback.conversationId,
+        messageId: feedback.messageId,
+        userMessage: feedback.userMessage,
+        aiResponse: feedback.aiResponse,
+        detectedIntent: feedback.detectedIntent,
+        intentConfidence: feedback.intentConfidence,
+        conversationPhase: feedback.conversationPhase,
+        thumbsUp,
+        userRating: userRating || null,
+        userFeedback: userFeedbackText || null,
+      });
 
-      if (existing) {
-        const { error: updateError } = await supabase
-          .from('ai_evaluations')
-          .update({
-            thumbs_up: thumbsUp,
-            user_rating: userRating || null,
-            user_feedback: userFeedbackText || null,
-            feedback_at: new Date().toISOString()
-          })
-          .eq('id', existing.id);
-
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from('ai_evaluations')
-          .insert({
-            conversation_id: feedback.conversationId,
-            learner_id: user.id,
-            message_id: feedback.messageId,
-            user_message: feedback.userMessage,
-            ai_response: feedback.aiResponse,
-            detected_intent: feedback.detectedIntent,
-            intent_confidence: feedback.intentConfidence,
-            conversation_phase: feedback.conversationPhase,
-            thumbs_up: thumbsUp,
-            user_rating: userRating || null,
-            user_feedback: userFeedbackText || null,
-            feedback_at: new Date().toISOString()
-          });
-
-        if (insertError) throw insertError;
-      }
-
-      // Update local state with full feedback data
       setFeedbackState(prev => ({
         ...prev,
         [feedback.messageId]: {
           thumbsUp,
           rating: userRating || null,
-          feedback: userFeedbackText || null
-        }
+          feedback: userFeedbackText || null,
+        },
       }));
 
       return true;
@@ -115,59 +78,40 @@ export function useAIFeedback() {
     }
   }, [user?.id]);
 
-  /**
-   * Load existing feedback for a conversation (includes rating and feedback text)
-   */
   const loadFeedback = useCallback(async (conversationId: string) => {
     if (!user?.id || !conversationId) return;
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('ai_evaluations')
-        .select('message_id, thumbs_up, user_rating, user_feedback')
-        .eq('conversation_id', conversationId)
-        .eq('learner_id', user.id);
+      const response: any = await apiGet(`/career/feedback?conversationId=${encodeURIComponent(conversationId)}`);
+      const data = response.data || [];
 
-      if (fetchError) throw fetchError;
-
-      if (data) {
-        const newState: FeedbackState = {};
-        data.forEach((item: { 
-          message_id: string; 
-          thumbs_up: boolean | null;
-          user_rating: number | null;
-          user_feedback: string | null;
-        }) => {
-          newState[item.message_id] = {
-            thumbsUp: item.thumbs_up,
-            rating: item.user_rating,
-            feedback: item.user_feedback
-          };
-        });
-        setFeedbackState(prev => ({ ...prev, ...newState }));
-      }
+      const newState: FeedbackState = {};
+      data.forEach((item: {
+        message_id: string;
+        thumbs_up: boolean | null;
+        user_rating: number | null;
+        user_feedback: string | null;
+      }) => {
+        newState[item.message_id] = {
+          thumbsUp: item.thumbs_up,
+          rating: item.user_rating,
+          feedback: item.user_feedback,
+        };
+      });
+      setFeedbackState(prev => ({ ...prev, ...newState }));
     } catch (err) {
       logger.error('Failed to load AI feedback', err instanceof Error ? err : new Error(String(err)));
     }
   }, [user?.id]);
 
-  /**
-   * Get full feedback data for a specific message
-   */
   const getFeedback = useCallback((messageId: string): FeedbackData | null => {
     return feedbackState[messageId] ?? null;
   }, [feedbackState]);
 
-  /**
-   * Get just thumbs up/down state (for backward compatibility)
-   */
   const getThumbsState = useCallback((messageId: string): boolean | null => {
     return feedbackState[messageId]?.thumbsUp ?? null;
   }, [feedbackState]);
 
-  /**
-   * Check if feedback is being submitted for a message
-   */
   const isLoading = useCallback((messageId: string): boolean => {
     return loading === messageId;
   }, [loading]);
@@ -180,6 +124,6 @@ export function useAIFeedback() {
     isLoading,
     feedbackState,
     error,
-    clearError: () => setError(null)
+    clearError: () => setError(null),
   };
 }

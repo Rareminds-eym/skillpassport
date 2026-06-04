@@ -6,7 +6,6 @@
 
 import type {
   TranscriptSegment,
-  VideoChapter,
   VideoSummaryResult,
   NotableQuote,
   QuizQuestion,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import toast from "react-hot-toast";
 import { LearnerLedger, FeePayment, LearnerFeeSummary, PaymentStatus } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
@@ -19,18 +19,7 @@ export const useFeeTracking = (schoolId: string | null) => {
       logger.info('Loading learner ledgers for school', { schoolId });
 
       // Try to load from database first
-      const { data, error } = await supabase
-        .from("learner_ledgers")
-        .select("*")
-        .eq("school_id", schoolId)
-        .order("learner_name", { ascending: true });
-      
-      if (error) {
-        logger.error('Learner ledgers query failed', error, { schoolId });
-        // Load learners and create mock ledgers
-        await loadlearnersAsFallback();
-        return;
-      }
+      const data = await apiPost('/college-admin/school-finance', { action: 'get-learner-ledgers', school_id: schoolId }) as any;
 
       if (data && data.length > 0) {
         logger.info('Found existing ledger entries', { count: data.length });
@@ -55,14 +44,10 @@ export const useFeeTracking = (schoolId: string | null) => {
       logger.info('Loading learners for school', { schoolId });
       
       // Get all learners for this school
-      const { data: learners, error } = await supabase
-        .from("learners")
-        .select("id, user_id, name, roll_number, email, school_id, grade, section")
-        .eq("school_id", schoolId)
-        .order("name", { ascending: true });
+      const learners = await apiPost('/college-admin/school-finance', { action: 'get-school-learners', school_id: schoolId }) as any;
       
-      if (error) {
-        logger.error('Learners query failed', error, { schoolId });
+      if (!learners || learners.length === 0) {
+        logger.error('Learners query failed', { schoolId });
         // Create completely mock data
         const mockLedgers: LearnerLedger[] = [
           {
@@ -167,19 +152,7 @@ export const useFeeTracking = (schoolId: string | null) => {
 
   const loadPayments = useCallback(async (learnerId?: string) => {
     try {
-      let query = supabase
-        .from("school_fee_payments")
-        .select("*")
-        .order("payment_date", { ascending: false });
-
-      if (learnerId) query = query.eq("learner_id", learnerId);
-
-      const { data, error } = await query;
-      if (error) {
-        logger.error('Payments query failed', error, { learnerId });
-        setPayments([]);
-        return;
-      }
+      const data = await apiPost('/college-admin/school-finance', { action: 'get-fee-payments', learner_id: learnerId }) as any;
       setPayments(data || []);
     } catch (err) {
       logger.error("Failed to load payments", err as Error, { learnerId });
@@ -231,41 +204,22 @@ export const useFeeTracking = (schoolId: string | null) => {
         is_reconciled: false,
       };
 
-      const { error: paymentError } = await supabase
-        .from("school_fee_payments")
-        .insert(payload);
+      await apiPost('/college-admin/school-finance', { action: 'create-fee-payment', ...payload }).catch((err: any) => {
+        logger.error('Payment insert failed', err, { ledgerId, learnerId });
+      });
 
-      if (paymentError) {
-        logger.error('Payment insert failed', paymentError, { ledgerId, learnerId });
-        // For demo, just update local state
-      }
-
-      // Update ledger paid_amount and balance
+      // Update local ledger state
       const ledger = ledgers.find((l) => l.id === ledgerId);
       if (ledger) {
         const newPaidAmount = (ledger.paid_amount || 0) + (paymentData.amount || 0);
         const newBalance = ledger.due_amount - newPaidAmount;
         const newStatus: PaymentStatus = newBalance <= 0 ? "paid" : newBalance < ledger.due_amount ? "partial" : "pending";
 
-        const { error: updateError } = await supabase
-          .from("learner_ledgers")
-          .update({
-            paid_amount: newPaidAmount,
-            balance: newBalance,
-            payment_status: newStatus,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", ledgerId);
-
-        if (updateError) {
-          logger.error('Ledger update failed', updateError, { ledgerId });
-          // For demo, update local state
-          setLedgers(prev => prev.map(l => 
-            l.id === ledgerId 
-              ? { ...l, paid_amount: newPaidAmount, balance: newBalance, payment_status: newStatus }
-              : l
-          ));
-        }
+        setLedgers(prev => prev.map(l => 
+          l.id === ledgerId 
+            ? { ...l, paid_amount: newPaidAmount, balance: newBalance, payment_status: newStatus }
+            : l
+        ));
       }
 
       toast.success(`Payment recorded. Receipt: ${receiptNumber}`);

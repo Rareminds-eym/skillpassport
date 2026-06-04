@@ -213,9 +213,9 @@ export { default as employabilityQuestions } from './model/questions/employabili
 export { streamKnowledgeQuestions } from './model/questions/streamKnowledgeQuestions';
 export { validateRiasecScores } from './api/riasecScoreValidator';
 export { validateAptitudeScores } from './api/aptitudeScoreValidator';
-export { getInProgressAttempt } from './api/assessmentService';
+export { checkInProgress as getInProgressAttempt } from './api/assessmentApiService';
 export { workValuesQuestions } from './model/questions/index';
-export { getLatestResult } from './api/assessmentService';
+export { getLatestResult } from './api/assessmentApiService';
 export { default as transformAssessmentResults } from './api/assessmentResultTransformer';
 export { addCourseRecommendations } from './api/assessment/courseIntegration';
 export { strengthsRatingScale } from './model/questions/middleSchoolQuestions';

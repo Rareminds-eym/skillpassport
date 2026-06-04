@@ -7,13 +7,13 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getServiceClient } from '../../../lib/auth';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { getContextUser, getServiceClient } from '../../../lib/auth';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import { getGenerationUsage } from '../utils/generation-limit';
-import { getLogger } from '../../../../src/shared/config/logging';
+import { createLogger } from '../../../lib/logger';
 
-const logger = getLogger('get-generation-usage');
+const logger = createLogger('get-generation-usage');
 
 const ADMIN_ROLES = new Set([
   'admin',
@@ -31,9 +31,9 @@ interface RequiredEnv {
 type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
 
 export const onRequestGet = async (context: TypedContext) => {
+  const { request, env } = context;
   try {
-    const { request, env, data } = context;
-    const authenticatedUser = data.user;
+    const authenticatedUser = getContextUser(context);
     const supabase = getServiceClient(env);
 
     // Parse query parameters
@@ -41,10 +41,10 @@ export const onRequestGet = async (context: TypedContext) => {
     const requestedUserId = url.searchParams.get('userId');
     
     // Use requested userId or fall back to authenticated user
-    const userId = requestedUserId || authenticatedUser.sub;
+    const userId = requestedUserId || authenticatedUser.id;
 
     if (!userId) {
-      return jsonResponse({ error: 'Missing userId parameter' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Missing userId parameter', request);
     }
 
     // Security check: Only allow users to fetch their own generation usage unless admin
@@ -54,10 +54,8 @@ export const onRequestGet = async (context: TypedContext) => {
         (role: unknown) => typeof role === 'string' && ADMIN_ROLES.has(role)
       );
 
-    if (requestedUserId && requestedUserId !== authenticatedUser.sub && !isAdmin) {
-      return jsonResponse({ 
-        error: 'Forbidden: You can only fetch your own generation usage' 
-      }, 403);
+    if (requestedUserId && requestedUserId !== authenticatedUser.id && !isAdmin) {
+      return apiError(403, 'FORBIDDEN', 'Forbidden: You can only fetch your own generation usage', request);
     }
 
     // Check if user is a teacher-learner
@@ -69,40 +67,32 @@ export const onRequestGet = async (context: TypedContext) => {
 
     if (learnerError) {
       logger.error('Failed to fetch learner_type', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
-      return jsonResponse({ 
-        error: 'Failed to fetch learner type',
-      }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch learner type', request);
     }
 
     const isTeacher = learner?.learner_type === 'teacher';
 
     // If not a teacher-learner, return unlimited usage
     if (!isTeacher) {
-      return jsonResponse({
+      return apiSuccess({
         userId,
         limit: null,
         used: 0,
         remaining: null,
         isTeacher: false,
-      });
+      }, request);
     }
 
     // Get generation usage using centralized utility
     const usage = await getGenerationUsage(supabase, userId);
 
-    return jsonResponse({
+    return apiSuccess({
       userId,
       ...usage,
       isTeacher: true,
-    });
+    }, request);
   } catch (error: unknown) {
     logger.error('Get generation usage error', error instanceof Error ? error : new Error(String(error)));
-    return jsonResponse(
-      { 
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 };

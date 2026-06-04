@@ -9,23 +9,23 @@
  * Source: cloudflare-workers/course-api/src/index.ts (handleGetFileUrl)
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { AwsClient } from 'aws4fetch';
 
 export async function handleGetFileUrl(request: Request, env: Record<string, any>): Promise<Response> {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   const body = await request.json() as { fileKey?: string };
   const { fileKey } = body;
   
   if (!fileKey) {
-    return jsonResponse({ error: 'fileKey is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'fileKey is required', request);
   }
 
   if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
-    return jsonResponse({ error: 'R2 credentials not configured' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'R2 credentials not configured', request);
   }
 
   const bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
@@ -47,8 +47,8 @@ export async function handleGetFileUrl(request: Request, env: Record<string, any
     { aws: { signQuery: true } }
   );
 
-  return jsonResponse({
+  return apiSuccess({
     url: signedRequest.url,
     expiresAt: new Date(expiration * 1000).toISOString(),
-  });
+  }, request);
 }

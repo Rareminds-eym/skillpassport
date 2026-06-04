@@ -1,10 +1,3 @@
-/**
- * useOrganization Hook
- * 
- * A React hook for fetching and managing organization data.
- * Uses the centralized organizationService for all queries.
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
   getOrganizationByAdminId,
@@ -34,12 +27,6 @@ interface User {
   email?: string;
 }
 
-/**
- * Hook to get the current user's organization
- * 
- * @param user - The authenticated user object (pass from store/context)
- * @param organizationType - Optional organization type filter
- */
 export function useCurrentOrganization(
   user: User | null,
   organizationType?: OrganizationType
@@ -54,40 +41,23 @@ export function useCurrentOrganization(
       setError('User not authenticated');
       return;
     }
-
     setLoading(true);
     setError(null);
-
-    const { data, error: fetchError } = await getOrganizationByAdminId(
-      user.id,
-      organizationType
-    );
-
-    if (fetchError) {
-      setError(fetchError);
-      setOrganization(null);
-    } else {
+    try {
+      const data = await getOrganizationByAdminId(user.id, organizationType);
       setOrganization(data);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch organization');
+      setOrganization(null);
     }
-
     setLoading(false);
   }, [user?.id, organizationType]);
 
-  useEffect(() => {
-    fetchOrganization();
-  }, [fetchOrganization]);
+  useEffect(() => { fetchOrganization(); }, [fetchOrganization]);
 
-  return {
-    organization,
-    loading,
-    error,
-    refetch: fetchOrganization,
-  };
+  return { organization, loading, error, refetch: fetchOrganization };
 }
 
-/**
- * Hook to get an organization by ID
- */
 export function useOrganizationById(
   organizationId: string | null | undefined
 ): UseOrganizationResult {
@@ -101,37 +71,23 @@ export function useOrganizationById(
       setOrganization(null);
       return;
     }
-
     setLoading(true);
     setError(null);
-
-    const { data, error: fetchError } = await getOrganizationById(organizationId);
-
-    if (fetchError) {
-      setError(fetchError);
-      setOrganization(null);
-    } else {
+    try {
+      const data = await getOrganizationById(organizationId);
       setOrganization(data);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch organization');
+      setOrganization(null);
     }
-
     setLoading(false);
   }, [organizationId]);
 
-  useEffect(() => {
-    fetchOrganization();
-  }, [fetchOrganization]);
+  useEffect(() => { fetchOrganization(); }, [fetchOrganization]);
 
-  return {
-    organization,
-    loading,
-    error,
-    refetch: fetchOrganization,
-  };
+  return { organization, loading, error, refetch: fetchOrganization };
 }
 
-/**
- * Hook to get a list of organizations with filters
- */
 export function useOrganizations(
   filters?: OrganizationFilters
 ): UseOrganizationsResult {
@@ -142,52 +98,33 @@ export function useOrganizations(
   const fetchOrganizations = useCallback(async () => {
     setLoading(true);
     setError(null);
-
-    const { data, error: fetchError } = await getOrganizations(filters);
-
-    if (fetchError) {
-      setError(fetchError);
-      setOrganizations([]);
-    } else {
+    try {
+      const data = await getOrganizations(filters);
       setOrganizations(data);
+    } catch (fetchError) {
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to fetch organizations');
+      setOrganizations([]);
     }
-
     setLoading(false);
   }, [JSON.stringify(filters)]);
 
-  useEffect(() => {
-    fetchOrganizations();
-  }, [fetchOrganizations]);
+  useEffect(() => { fetchOrganizations(); }, [fetchOrganizations]);
 
-  return {
-    organizations,
-    loading,
-    error,
-    refetch: fetchOrganizations,
-  };
+  return { organizations, loading, error, refetch: fetchOrganizations };
 }
 
-/**
- * Hook to get schools
- */
 export function useSchools(
   filters?: Omit<OrganizationFilters, 'organizationType'>
 ): UseOrganizationsResult {
   return useOrganizations({ ...filters, organizationType: 'school' });
 }
 
-/**
- * Hook to get colleges
- */
 export function useColleges(
   filters?: Omit<OrganizationFilters, 'organizationType'>
 ): UseOrganizationsResult {
   return useOrganizations({ ...filters, organizationType: 'college' });
 }
 
-/**
- * Hook to get universities
- */
 export function useUniversities(
   filters?: Omit<OrganizationFilters, 'organizationType'>
 ): UseOrganizationsResult {
@@ -195,10 +132,6 @@ export function useUniversities(
 }
 
 export default {
-  useCurrentOrganization,
-  useOrganizationById,
-  useOrganizations,
-  useSchools,
-  useColleges,
-  useUniversities,
+  useCurrentOrganization, useOrganizationById, useOrganizations,
+  useSchools, useColleges, useUniversities,
 };

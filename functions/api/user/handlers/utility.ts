@@ -11,9 +11,9 @@
  * - Cache-Control headers for browser/CDN caching
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import { validateEmail, checkEmailExists } from '../utils/helpers';
 
 // ==================== TYPES ====================
@@ -84,10 +84,7 @@ export async function handleGetSchools(env: PagesEnv): Promise<Response> {
 
   // Return cached data if available
   if (cached) {
-    return jsonResponse(cached, 200, {
-      'Cache-Control': 'public, max-age=3600',
-      'X-Cache': 'HIT',
-    });
+    return apiSuccess(cached, undefined);
   }
 
   const supabaseAdmin = createSupabaseAdminClient(env);
@@ -101,7 +98,7 @@ export async function handleGetSchools(env: PagesEnv): Promise<Response> {
 
     if (error) {
       console.error('Error fetching schools:', error);
-      return jsonResponse({ error: 'Failed to fetch schools' }, 500);
+return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch schools', undefined);
     }
 
     const response = { success: true, data: schools || [] };
@@ -109,13 +106,10 @@ export async function handleGetSchools(env: PagesEnv): Promise<Response> {
     // Cache the response
     setCache(cacheKey, response);
 
-    return jsonResponse(response, 200, {
-      'Cache-Control': 'public, max-age=3600',
-      'X-Cache': 'MISS',
-    });
+    return apiSuccess(response, undefined);
   } catch (error) {
     console.error('Get schools error:', error);
-    return jsonResponse({ error: 'Failed to fetch schools' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch schools', undefined);
   }
 }
 
@@ -129,10 +123,7 @@ export async function handleGetColleges(env: PagesEnv): Promise<Response> {
 
   // Return cached data if available
   if (cached) {
-    return jsonResponse(cached, 200, {
-      'Cache-Control': 'public, max-age=3600',
-      'X-Cache': 'HIT',
-    });
+    return apiSuccess(cached, undefined);
   }
 
   const supabaseAdmin = createSupabaseAdminClient(env);
@@ -146,7 +137,7 @@ export async function handleGetColleges(env: PagesEnv): Promise<Response> {
 
     if (error) {
       console.error('Error fetching colleges:', error);
-      return jsonResponse({ error: 'Failed to fetch colleges' }, 500);
+return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch colleges', undefined);
     }
 
     const response = { success: true, data: colleges || [] };
@@ -154,13 +145,10 @@ export async function handleGetColleges(env: PagesEnv): Promise<Response> {
     // Cache the response
     setCache(cacheKey, response);
 
-    return jsonResponse(response, 200, {
-      'Cache-Control': 'public, max-age=3600',
-      'X-Cache': 'MISS',
-    });
+    return apiSuccess(response, undefined);
   } catch (error) {
     console.error('Get colleges error:', error);
-    return jsonResponse({ error: 'Failed to fetch colleges' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch colleges', undefined);
   }
 }
 
@@ -174,10 +162,7 @@ export async function handleGetUniversities(env: PagesEnv): Promise<Response> {
 
   // Return cached data if available
   if (cached) {
-    return jsonResponse(cached, 200, {
-      'Cache-Control': 'public, max-age=3600',
-      'X-Cache': 'HIT',
-    });
+    return apiSuccess(cached, undefined);
   }
 
   const supabaseAdmin = createSupabaseAdminClient(env);
@@ -191,7 +176,7 @@ export async function handleGetUniversities(env: PagesEnv): Promise<Response> {
 
     if (error) {
       console.error('Error fetching universities:', error);
-      return jsonResponse({ error: 'Failed to fetch universities' }, 500);
+return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch universities', undefined);
     }
 
     const response = { success: true, data: universities || [] };
@@ -199,13 +184,10 @@ export async function handleGetUniversities(env: PagesEnv): Promise<Response> {
     // Cache the response
     setCache(cacheKey, response);
 
-    return jsonResponse(response, 200, {
-      'Cache-Control': 'public, max-age=3600',
-      'X-Cache': 'MISS',
-    });
+    return apiSuccess(response, undefined);
   } catch (error) {
     console.error('Get universities error:', error);
-    return jsonResponse({ error: 'Failed to fetch universities' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch universities', undefined);
   }
 }
 
@@ -219,10 +201,7 @@ export async function handleGetCompanies(env: PagesEnv): Promise<Response> {
 
   // Return cached data if available
   if (cached) {
-    return jsonResponse(cached, 200, {
-      'Cache-Control': 'public, max-age=3600',
-      'X-Cache': 'HIT',
-    });
+    return apiSuccess(cached, undefined);
   }
 
   const supabaseAdmin = createSupabaseAdminClient(env);
@@ -235,7 +214,7 @@ export async function handleGetCompanies(env: PagesEnv): Promise<Response> {
 
     if (error) {
       console.error('Error fetching companies:', error);
-      return jsonResponse({ error: 'Failed to fetch companies' }, 500);
+return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch companies', undefined);
     }
 
     const response = { success: true, data: companies || [] };
@@ -243,13 +222,10 @@ export async function handleGetCompanies(env: PagesEnv): Promise<Response> {
     // Cache the response
     setCache(cacheKey, response);
 
-    return jsonResponse(response, 200, {
-      'Cache-Control': 'public, max-age=3600',
-      'X-Cache': 'MISS',
-    });
+    return apiSuccess(response, undefined);
   } catch (error) {
     console.error('Get companies error:', error);
-    return jsonResponse({ error: 'Failed to fetch companies' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch companies', undefined);
   }
 }
 
@@ -265,7 +241,7 @@ export async function handleCheckSchoolCode(request: Request, env: PagesEnv): Pr
     const body = (await request.json()) as CheckCodeRequest;
 
     if (!body.code) {
-      return jsonResponse({ error: 'School code is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'School code is required', request);
     }
 
     const { data: existingSchool } = await supabaseAdmin
@@ -275,14 +251,13 @@ export async function handleCheckSchoolCode(request: Request, env: PagesEnv): Pr
       .eq('code', body.code)
       .maybeSingle();
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       isUnique: !existingSchool,
       message: existingSchool ? 'School code already exists' : 'School code is available',
-    });
+    }, request);
   } catch (error) {
     console.error('Check school code error:', error);
-    return jsonResponse({ error: 'Failed to check school code' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to check school code', request);
   }
 }
 
@@ -296,7 +271,7 @@ export async function handleCheckCollegeCode(request: Request, env: PagesEnv): P
     const body = (await request.json()) as CheckCodeRequest;
 
     if (!body.code) {
-      return jsonResponse({ error: 'College code is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'College code is required', request);
     }
 
     const { data: existingCollege } = await supabaseAdmin
@@ -306,14 +281,13 @@ export async function handleCheckCollegeCode(request: Request, env: PagesEnv): P
       .eq('code', body.code)
       .maybeSingle();
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       isUnique: !existingCollege,
       message: existingCollege ? 'College code already exists' : 'College code is available',
-    });
+    }, request);
   } catch (error) {
     console.error('Check college code error:', error);
-    return jsonResponse({ error: 'Failed to check college code' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to check college code', request);
   }
 }
 
@@ -327,7 +301,7 @@ export async function handleCheckUniversityCode(request: Request, env: PagesEnv)
     const body = (await request.json()) as CheckCodeRequest;
 
     if (!body.code) {
-      return jsonResponse({ error: 'University code is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'University code is required', request);
     }
 
     const { data: existingUniversity } = await supabaseAdmin
@@ -337,14 +311,13 @@ export async function handleCheckUniversityCode(request: Request, env: PagesEnv)
       .eq('code', body.code)
       .maybeSingle();
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       isUnique: !existingUniversity,
       message: existingUniversity ? 'University code already exists' : 'University code is available',
-    });
+    }, request);
   } catch (error) {
     console.error('Check university code error:', error);
-    return jsonResponse({ error: 'Failed to check university code' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to check university code', request);
   }
 }
 
@@ -358,7 +331,7 @@ export async function handleCheckCompanyCode(request: Request, env: PagesEnv): P
     const body = (await request.json()) as CheckCodeRequest;
 
     if (!body.code) {
-      return jsonResponse({ error: 'Company code is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Company code is required', request);
     }
 
     const { data: existingCompany } = await supabaseAdmin
@@ -367,14 +340,13 @@ export async function handleCheckCompanyCode(request: Request, env: PagesEnv): P
       .eq('code', body.code)
       .maybeSingle();
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       isUnique: !existingCompany,
       message: existingCompany ? 'Company code already exists' : 'Company code is available',
-    });
+    }, request);
   } catch (error) {
     console.error('Check company code error:', error);
-    return jsonResponse({ error: 'Failed to check company code' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to check company code', request);
   }
 }
 
@@ -390,24 +362,23 @@ export async function handleCheckEmail(request: Request, env: PagesEnv): Promise
     const body = (await request.json()) as CheckEmailRequest;
 
     if (!body.email) {
-      return jsonResponse({ error: 'Email is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Email is required', request);
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     const emailExists = await checkEmailExists(supabaseAdmin, body.email);
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       exists: emailExists,
       message: emailExists
         ? 'An account with this email already exists'
         : 'Email is available',
-    });
+    }, request);
   } catch (error) {
     console.error('Check email error:', error);
-    return jsonResponse({ error: 'Failed to check email' }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to check email', request);
   }
 }

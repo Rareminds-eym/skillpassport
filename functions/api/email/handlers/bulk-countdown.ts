@@ -4,10 +4,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { Env } from '../../../lib/types';
 import type { BulkCountdownEmailRequest, BulkEmailResult, PreRegistration } from '../types';
 import { EMAIL_STATUS } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { sendEmail } from '../services/mailer';
 import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
 import { 
@@ -31,17 +31,11 @@ export async function handleBulkCountdownEmail(
   const { countdownDay, launchDate } = body;
 
   if (!countdownDay || !launchDate) {
-    return jsonResponse({
-      success: false,
-      error: 'Missing required fields: countdownDay, launchDate'
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: countdownDay, launchDate');
   }
 
   if (!supabase) {
-    return jsonResponse({
-      success: false,
-      error: 'Supabase not configured'
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Supabase not configured');
   }
 
   try {
@@ -49,15 +43,11 @@ export async function handleBulkCountdownEmail(
 
     if (fetchError) {
       console.error('Error fetching pre-registrations:', fetchError);
-      return jsonResponse({
-        success: false,
-        error: 'Failed to fetch pre-registrations'
-      }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch pre-registrations');
     }
 
     if (!preRegistrations || preRegistrations.length === 0) {
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'No pre-registrations found',
         data: {
           summary: { total: 0, sent: 0, skipped: 0, failed: 0 },
@@ -78,8 +68,7 @@ export async function handleBulkCountdownEmail(
 
     console.log(`Bulk email completed: ${results.sent} sent, ${results.skipped} skipped, ${results.failed} failed`);
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: 'Bulk countdown emails processed',
       data: {
         summary: {
@@ -94,10 +83,7 @@ export async function handleBulkCountdownEmail(
 
   } catch (error: any) {
     console.error('Error in handleBulkCountdownEmail:', error);
-    return jsonResponse({
-      success: false,
-      error: error.message || 'Failed to send bulk countdown emails'
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to send bulk countdown emails');
   }
 }
 

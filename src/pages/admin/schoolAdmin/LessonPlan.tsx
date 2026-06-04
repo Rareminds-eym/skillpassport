@@ -32,7 +32,7 @@ import { useCurriculum } from '@/features/educator-copilot/model/useLessonPlans'
 import type { LessonPlan as LessonPlanType } from "@/features/educator-copilot";
 import { getSubjects, getClasses } from "@/features/educator-copilot";
 import { curriculumService } from "@/features/college-admin";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { uploadFile, validateFile } from '@/shared/api';
 import { deleteFile } from '@/shared/api/storageApiService';
 import { getApiUrl } from '@/shared/api/apiUtils';
@@ -1110,66 +1110,15 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       let classId: string | null = null;
 
       if (formData.class && formData.academicYear) {
-        // Get school_id from current user if not provided
-        let currentSchoolId = schoolId;
-        if (!currentSchoolId) {
-          // Fetch school_id from current educator
-          const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-          if (user) {
-            const { data: educatorData } = await supabase
-              .from('school_educators')
-              .select('school_id')
-              .eq('user_id', user.id)
-              .maybeSingle();
-            currentSchoolId = educatorData?.school_id || null;
-          }
-        }
-
-        if (currentSchoolId) {
-          // Fetch the actual class ID from school_classes table
-          // Use limit(1) to handle multiple classes with same grade/year
-          const { data: classDataArray, error: classError } = await supabase
-            .from('school_classes')
-            .select('id')
-            .eq('school_id', currentSchoolId)
-            .eq('grade', formData.class)
-            .eq('academic_year', formData.academicYear)
-            .limit(1);
-
-          if (classError) {
-            logger.error('Error fetching class', classError);
-          }
-
-          const classData = classDataArray?.[0];
-          classId = classData?.id || null;
-
-          if (!classId) {
-            logger.warn('No class found', {
-              school_id: currentSchoolId,
-              grade: formData.class,
-              academic_year: formData.academicYear
-            });
-          }
-        } else {
-          // Last resort: try to find any class with matching grade and academic year
-          logger.warn('No school_id found, searching for any matching class');
-          const { data: classDataArray, error: classError } = await supabase
-            .from('school_classes')
-            .select('id, school_id')
-            .eq('grade', formData.class)
-            .eq('academic_year', formData.academicYear)
-            .limit(1);
-
-          const classData = classDataArray?.[0];
-
-          if (classError) {
-            logger.error('Error fetching class (no school filter)', classError);
-          }
-
-          if (classData) {
-            classId = classData.id;
-            logger.info('Found class', { classData });
-          }
+        const resp: any = await apiPost('/school-admin/actions', {
+          action: 'findClassId',
+          schoolId,
+          grade: formData.class,
+          academicYear: formData.academicYear,
+        });
+        classId = resp.data?.classId || null;
+        if (!classId) {
+          logger.warn('No class found', { schoolId, grade: formData.class, academicYear: formData.academicYear });
         }
       }
 

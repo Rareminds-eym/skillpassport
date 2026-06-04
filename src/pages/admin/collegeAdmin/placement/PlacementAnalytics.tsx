@@ -14,7 +14,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
 import { opportunitiesService } from '@/features/opportunities';
 import { 
   placementAnalyticsService, 

@@ -7,8 +7,8 @@
  * - New: Proxy to email-worker which uses MessageCentral
  */
 
-import type { PagesEnv } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesEnv } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { getEmailWorkerConfig } from '../config/emailWorkerConfig';
 import { sendOtpSms, EmailWorkerError } from '../utils/emailWorkerClient';
 import { formatPhoneNumber } from '../utils/formatPhone';
@@ -64,7 +64,7 @@ export async function sendOtpHandler(
     
     // Validate phone
     if (!phone) {
-      return jsonResponse({ success: false, error: 'Phone number is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Phone number is required', undefined);
     }
     
     // Format phone number
@@ -73,17 +73,14 @@ export async function sendOtpHandler(
       formattedPhone = formatPhoneNumber(phone, countryCode);
     } catch (error) {
       if (error instanceof Error) {
-        return jsonResponse({ success: false, error: error.message }, 400);
+        return apiError(400, 'VALIDATION_ERROR', error.message, undefined);
       }
-      return jsonResponse({ success: false, error: 'Failed to format phone number' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Failed to format phone number', undefined);
     }
 
     // Validate phone length
     if (formattedPhone.length < 7 || formattedPhone.length > 15) {
-      return jsonResponse({ 
-        success: false, 
-        error: 'Invalid phone number. Must be 7-15 digits.' 
-      }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid phone number. Must be 7-15 digits.', undefined);
     }
     
     // Get and validate email worker configuration
@@ -101,36 +98,26 @@ export async function sendOtpHandler(
     const full = `${countryCode}${formattedPhone}`;
     const masked = full.length > 4 ? full.slice(0, -4) + '****' : '****';
     
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: result.message || 'OTP sent successfully',
       data: {
         phone: masked,
         expiresIn: parseTimeoutSeconds(result.timeout),
         verificationId: result.verificationId,
       },
-    });
+    }, undefined);
   } catch (error) {
     if (error instanceof EmailWorkerError) {
       // Downstream service error
-      return jsonResponse(
-        { success: false, error: error.message },
-        502
-      );
+      return apiError(502, 'ERROR', error.message, undefined);
     }
     
     if (error instanceof Error) {
       // Unexpected error
-      return jsonResponse(
-        { success: false, error: error.message },
-        500
-      );
+      return apiError(500, 'INTERNAL_ERROR', error.message, undefined);
     }
     
     // Unknown error type
-    return jsonResponse(
-      { success: false, error: 'An unexpected error occurred' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'An unexpected error occurred', undefined);
   }
 }

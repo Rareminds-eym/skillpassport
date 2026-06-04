@@ -4,7 +4,7 @@ import { getLogger } from '@/shared/config/logging';
 
 import { TOUR_KEYS } from '@/app/providers/tour-wrapper/lib/constants';
 import { waitForElement } from '@/shared/lib/utils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { useTour } from '@/shared/model/tourStore';
 import { useAuthStore } from '@/shared/model/authStore';
 
@@ -49,27 +49,20 @@ const After10AssessmentResultTour: React.FC = () => {
           return;
         }
 
-        // Get learner record first (learnerId in TourProvider is actually user_id)
-        const { data: learnerData, error: learnerError } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        // Fetch learner profile using API
+        const { learner: learnerData } = await apiGet('/learners/profile');
 
-        if (learnerError || !learnerData) {
+        if (!learnerData || !learnerData.id) {
           return;
         }
 
-        // Query the assessment result to get grade_level (source of truth)
-        const { data: resultData, error } = await supabase
-          .from('personal_assessment_results')
-          .select('grade_level, stream_id')
-          .eq('learner_id', learnerData.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        // Check if user has a completed assessment and fetch latest result using API
+        const resultData = await apiPost('/assessment/actions', {
+          action: 'get-latest-result',
+          learnerId: learnerData.id
+        });
 
-        if (error || !resultData) {
+        if (!resultData) {
           return;
         }
 

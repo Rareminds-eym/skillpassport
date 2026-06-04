@@ -1,17 +1,5 @@
-/**
- * Consolidated Learner Academics Hook
- * 
- * Handles academic-related data:
- * - Curriculum data
- * - Exam results
- * - Grades and academic records
- * - Assessment results
- * 
- * Returns: curriculum, exams, grades, assessments
- */
-
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-academics');
@@ -52,6 +40,11 @@ export interface AssessmentResult {
   status: string;
 }
 
+const fetchData = async <T>(action: string, params: Record<string, any>): Promise<T[]> => {
+  const res = await apiPost<T[]>('/learner-profile/actions', { action, ...params });
+  return res?.data || [];
+};
+
 export const useLearnerAcademics = ({ learnerId, enabled = true }: UselearnerAcademicsOptions) => {
   const [curriculum, setCurriculum] = useState<CurriculumData[]>([]);
   const [exams, setExams] = useState<ExamResult[]>([]);
@@ -59,7 +52,6 @@ export const useLearnerAcademics = ({ learnerId, enabled = true }: UselearnerAca
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all academic data
   const fetchAcademicData = useCallback(async () => {
     if (!learnerId || !enabled) {
       setLoading(false);
@@ -83,74 +75,44 @@ export const useLearnerAcademics = ({ learnerId, enabled = true }: UselearnerAca
     }
   }, [learnerId, enabled]);
 
-  // Fetch curriculum data
   const fetchCurriculum = async () => {
     if (!learnerId) return;
-
     try {
-      const { data, error: fetchError } = await supabase
-        .from('curriculum')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
+      const data = await fetchData<any>('fetch-curriculum', { learnerId });
       setCurriculum(data || []);
     } catch (err) {
       logger.error('Error fetching curriculum', err as Error);
     }
   };
 
-  // Fetch exam results
   const fetchExams = async () => {
     if (!learnerId) return;
-
     try {
-      const { data, error: fetchError } = await supabase
-        .from('exam_results')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .order('exam_date', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
+      const data = await fetchData<any>('fetch-exam-results', { learnerId });
       setExams(data || []);
     } catch (err) {
       logger.error('Error fetching exams', err as Error);
     }
   };
 
-  // Fetch assessment results
   const fetchAssessments = async () => {
     if (!learnerId) return;
-
     try {
-      const { data, error: fetchError } = await supabase
-        .from('assessment_results')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .order('completed_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
+      const data = await fetchData<any>('fetch-assessment-results', { learnerId });
       setAssessments(data || []);
     } catch (err) {
       logger.error('Error fetching assessments', err as Error);
     }
   };
 
-  // Refresh all academic data
   const refresh = useCallback(() => {
     fetchAcademicData();
   }, [fetchAcademicData]);
 
-  // Load data on mount
   useEffect(() => {
     fetchAcademicData();
   }, [fetchAcademicData]);
 
-  // Calculate academic statistics
   const stats = {
     totalCourses: curriculum.length,
     totalExams: exams.length,
@@ -167,24 +129,15 @@ export const useLearnerAcademics = ({ learnerId, enabled = true }: UselearnerAca
   };
 
   return {
-    // Data
     curriculum,
     exams,
     assessments,
-    grades: curriculum, // Alias for backward compatibility
-    academicRecords: {
-      curriculum,
-      exams,
-      assessments
-    },
+    grades: curriculum,
+    academicRecords: { curriculum, exams, assessments },
     stats,
     loading,
     error,
-    
-    // Refresh function
     refresh,
-    
-    // Individual refresh functions
     refreshCurriculum: fetchCurriculum,
     refreshExams: fetchExams,
     refreshAssessments: fetchAssessments
