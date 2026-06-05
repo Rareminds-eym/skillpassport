@@ -3,6 +3,8 @@ import { apiPost } from '@/shared/api/apiClient';
 import { lessonPlansService } from '../api';
 import { filterByStatus } from '../lib';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('use-lesson-plans');
 
@@ -41,7 +43,7 @@ export const useLessonPlans = (): UseLessonPlansReturn => {
   const loadLessonPlans = async () => {
     setLoading(true);
     try {
-      const userEmail = localStorage.getItem('userEmail');
+      const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
       
       const teacherResponse: any = await apiPost('/course/actions', {
         action: 'get-educator-by-email',

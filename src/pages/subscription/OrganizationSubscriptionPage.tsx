@@ -80,7 +80,7 @@ function OrganizationSubscriptionPage() {
       if (user?.universityId) { setOrganizationId(String(user.universityId)); return; }
 
       // Fallback to localStorage for school admins
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -98,7 +98,7 @@ function OrganizationSubscriptionPage() {
 
       // Fallback to localStorage for email
       if (!userEmail) {
-        userEmail = localStorage.getItem('userEmail') || undefined;
+        userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || undefined;
       }
 
       if (!userId && !userEmail) {

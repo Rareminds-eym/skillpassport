@@ -15,12 +15,14 @@ import { apiPost } from '@/shared/api/apiClient';
 import * as clubsService from "@/features/college-admin";
 import * as competitionsService from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('LearnerClubs');
 
 export default function LearnerDashboard() {
     // Get logged-in learner's email from localStorage
-    const userEmail = localStorage.getItem("userEmail");
+    const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
     const [currentLearnerId] = useState(userEmail); // Use email as learner ID
     const [selectedClub, setSelectedClub] = useState(null);
     const [clubs, setClubs] = useState([]);

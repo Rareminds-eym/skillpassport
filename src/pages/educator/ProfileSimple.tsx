@@ -15,6 +15,8 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('ProfileSimple');
 
 import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 interface EducatorProfile {
   id: string;
@@ -50,8 +52,8 @@ const ProfileSimple = () => {
       setLoading(true);
       
       // Get email from localStorage or use test email
-      const storedUser = localStorage.getItem('user');
-      const storedEmail = localStorage.getItem('userEmail');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
+      const storedEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
       
       let email = 'karthikeyan@rareminds.in'; // Default test email
       

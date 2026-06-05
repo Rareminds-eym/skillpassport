@@ -1,5 +1,7 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('reports-service');
 
@@ -66,7 +68,7 @@ const getStatus = (value: number, threshold = 90): string => {
 
 const getCollegeIdFromStorage = (): string | null => {
   try {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
     if (storedUser) {
       const userData = JSON.parse(storedUser);
       if (userData.role === 'college_admin' && userData.collegeId) {

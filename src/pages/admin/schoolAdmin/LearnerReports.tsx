@@ -12,6 +12,8 @@ import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
 import { attendanceService, learnerReportService } from '@/features/learner-profile/api';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 interface LearnerReportData {
   id: string;
@@ -47,7 +49,7 @@ const LearnerReports: React.FC = () => {
       let currentSchoolId: string | null = null;
 
       // First, check if user is logged in via AuthContext (for school admins)
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -61,7 +63,7 @@ const LearnerReports: React.FC = () => {
       }
 
       // Look up school_id via API
-      const schoolResp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId', storedUser: localStorage.getItem('user') });
+      const schoolResp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId', storedUser: (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user")) });
       currentSchoolId = schoolResp.data?.schoolId;
 
       if (!currentSchoolId) {

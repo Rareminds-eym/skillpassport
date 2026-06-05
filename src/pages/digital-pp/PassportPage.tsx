@@ -26,7 +26,7 @@ const PassportPage: React.FC = () => {
   // Auto-load current user's data if not already loaded
   React.useEffect(() => {
     if (!learner && !isLoading) {
-      const email = localStorage.getItem('userEmail');
+      const email = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
       if (email) {
         loadlearnerByEmail(email);
       }

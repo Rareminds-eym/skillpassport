@@ -418,8 +418,8 @@ const TeacherOnboardingPage: React.FC = () => {
 
     try {
       // Get current user from localStorage (custom auth) - MUST BE FIRST
-      const userStr = localStorage.getItem('user');
-      const userEmail = localStorage.getItem('userEmail');
+      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
+      const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
 
       if (!userEmail) {
         throw new Error("User not authenticated. Please log in again.");

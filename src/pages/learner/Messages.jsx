@@ -78,7 +78,7 @@ const Messages = () => {
 
   // Get learner data - same approach as Applications page
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData, loading: loadinglearnerData } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id || user?.id;
   const learnerName = learnerData?.profile?.name || user?.name || 'Learner';

@@ -62,7 +62,7 @@ function BulkPurchasePage() {
       if (userWithOrg?.collegeId) { setOrganizationId(String(userWithOrg.collegeId)); return; }
       if (userWithOrg?.universityId) { setOrganizationId(String(userWithOrg.universityId)); return; }
 
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -76,7 +76,7 @@ function BulkPurchasePage() {
       let userEmail = user?.email;
 
       if (!userEmail) {
-        userEmail = localStorage.getItem('userEmail') || undefined;
+        userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || undefined;
       }
 
       if (!userId && !userEmail) {

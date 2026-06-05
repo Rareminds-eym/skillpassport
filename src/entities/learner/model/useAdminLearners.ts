@@ -366,7 +366,7 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
         let userId: string | null = null;
         let universityId: string | null = null;
 
-        const storedUser = localStorage.getItem('user');
+        const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);

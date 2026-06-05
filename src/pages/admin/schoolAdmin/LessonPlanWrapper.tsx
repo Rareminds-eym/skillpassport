@@ -21,7 +21,7 @@ const LessonPlanWrapper: React.FC = () => {
 
       // Check localStorage user object first
       try {
-        const stored = localStorage.getItem('user');
+        const stored = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (stored) {
           const parsed = JSON.parse(stored);
           if (parsed.schoolId) { setSchoolId(parsed.schoolId); setResolving(false); return; }
@@ -29,7 +29,7 @@ const LessonPlanWrapper: React.FC = () => {
       } catch { /* ignore */ }
 
       // Look up school_id via API
-      const resp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId', storedUser: localStorage.getItem('user') });
+      const resp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId', storedUser: (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user")) });
       if (resp.data?.schoolId) {
         setSchoolId(resp.data.schoolId);
         setResolving(false);

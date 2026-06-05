@@ -592,7 +592,7 @@ const Interviews = () => {
     }
 
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (userStr) {
         const storedUser = JSON.parse(userStr);
         return storedUser.id || storedUser.recruiter_id;
@@ -969,7 +969,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
     }
 
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (userStr) {
         const storedUser = JSON.parse(userStr);
         return storedUser.id || storedUser.recruiter_id;

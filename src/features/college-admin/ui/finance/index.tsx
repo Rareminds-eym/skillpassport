@@ -14,6 +14,8 @@ import { useFeeStructures } from "./hooks/useFeeStructures";
 import { useFeeTracking } from "./hooks/useFeeTracking";
 import { usePrograms } from "./hooks/usePrograms";
 import { FeeStructure, LearnerFeeSummary } from '@/features/learner-profile/model';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 
 const logger = getLogger('finance-module');
@@ -39,7 +41,7 @@ const FinanceModule: React.FC = () => {
   useEffect(() => {
     const fetchCollegeId = async () => {
       try {
-        const storedUser = localStorage.getItem('user');
+        const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);

@@ -11,6 +11,8 @@ import { useFeeTracking } from "./hooks/useFeeTracking";
 import { FeeStructure, LearnerFeeSummary } from '@/features/learner-profile/model';
 
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('SchoolFinanceModule');
 
@@ -35,7 +37,7 @@ const SchoolFinanceModule: React.FC = () => {
     const fetchSchoolId = async () => {
       try {
         // First, check if user is logged in via AuthContext (for school admins)
-        const storedUser = localStorage.getItem('user');
+        const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);

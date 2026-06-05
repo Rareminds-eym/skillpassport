@@ -88,7 +88,7 @@ const EnrolledLearners: React.FC = () => {
         }
 
         // Fallback: check localStorage
-        const stored = localStorage.getItem('user');
+        const stored = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (stored) {
           try {
             const parsed = JSON.parse(stored);

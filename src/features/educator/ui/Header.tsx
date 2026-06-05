@@ -11,6 +11,8 @@ import NotificationPanel from './NotificationPanel'
 import { apiPost } from '@/shared/api/apiClient'
 import { useNotifications } from '@/features/notifications'
 import { getLogger } from '@/shared/config/logging'
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('EducatorHeader')
 
@@ -63,8 +65,8 @@ const Header: React.FC<HeaderProps> = ({
   const loadEducatorProfile = async () => {
     try {
       // Get email from localStorage (same method as ProfileFixed)
-      const storedUser = localStorage.getItem('user')
-      const storedEmail = localStorage.getItem('userEmail')
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
+      const storedEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
 
       let email = 'karthikeyan@rareminds.in' // Default fallback
 

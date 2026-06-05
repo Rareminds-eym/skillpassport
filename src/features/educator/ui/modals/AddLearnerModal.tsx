@@ -78,7 +78,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (userStr) {
         const userData = JSON.parse(userStr);
         const role = userData.role || '';
@@ -161,7 +161,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   // Download sample CSV template
   const downloadSampleCSV = () => {
     // Determine context (college vs school) from localStorage
-    const userStr = localStorage.getItem('user')
+    const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
     let isCollegeContext = false
     let userRole = null
 
@@ -351,8 +351,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       // Get current user from localStorage (custom auth - same as teacher onboarding)
-      const userEmail = localStorage.getItem('userEmail')
-      const userStr = localStorage.getItem('user')
+      const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
+      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
 
 
       if (!userEmail) {
@@ -733,8 +733,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           }
 
           // Get school ID for class validation
-          const userStr = localStorage.getItem('user')
-          const userEmail = localStorage.getItem('userEmail')
+          const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
+          const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
           let schoolId: string | null = null
           let collegeId: string | null = null
           let userRole: string | null = null
@@ -916,8 +916,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             }
 
             // Get userEmail and schoolId FIRST (moved up)
-            const userEmail = localStorage.getItem('userEmail')
-            const userStr = localStorage.getItem('user')
+            const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
+            const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
 
             if (!userEmail) {
               setError('You are not logged in. Please login and try again.')
@@ -1666,7 +1666,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 <p className="text-sm text-blue-800 mb-3">Your CSV file should include these columns:</p>
                 {(() => {
                   // Determine context (college vs school) from localStorage
-                  const userStr = localStorage.getItem('user')
+                  const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
                   let isCollegeContext = false
                   let userRole = null
 
@@ -1731,7 +1731,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 >
                   <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                   {(() => {
-                    const userStr = localStorage.getItem('user')
+                    const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
                     let isCollegeContext = false
                     try {
                       const userData = JSON.parse(userStr || '{}')

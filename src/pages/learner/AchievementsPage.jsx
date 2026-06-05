@@ -5,10 +5,15 @@ import { Button } from '@/shared/ui';
 import { AchievementsExpanded, SkillTrackerExpanded } from '@/widgets/learner-dashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui';
 
+import { useUser } from '@/shared/model/authStore';
+import { useLearnerId } from '@/shared/model/learnerStore';
+
 const AchievementsPage = () => {
   const navigate = useNavigate();
-  const userEmail = localStorage.getItem('userEmail');
-  const learnerId = localStorage.getItem('learnerId');
+  const user = useUser();
+  const userEmail = user?.email;
+  const storeLearnerId = useLearnerId();
+  const learnerId = storeLearnerId;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-8 px-6">

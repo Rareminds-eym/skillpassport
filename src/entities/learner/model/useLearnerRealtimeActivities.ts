@@ -4,6 +4,8 @@ import { apiGet } from '@/shared/api/apiClient';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { getlearnerRecentActivity } from '@/shared/api/learnerActivityService';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return "";
@@ -40,7 +42,7 @@ export const useLearnerRealtimeActivities = (learnerEmail, limit = 10) => {
   const [isResolvingLearner, setIsResolvingLearner] = useState(false);
 
   const effectiveEmail = useMemo(() => {
-    const email = learnerEmail || localStorage.getItem('userEmail');
+    const email = learnerEmail || (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
     return email;
   }, [learnerEmail]);
 

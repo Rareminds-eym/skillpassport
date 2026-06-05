@@ -54,7 +54,7 @@ const Header = ({ activeTab }) => {
   const isPortfolioPage = location.pathname === '/learner/digital-portfolio/portfolio';
   const isDigitalPortfolioRoute = location.pathname.startsWith('/learner/digital-portfolio');
 
-  const userEmail = user?.email || localStorage.getItem("userEmail");
+  const userEmail = user?.email || (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
   const { unreadCount } = useNotifications(userEmail);
 
   const { learnerData, loading: learnerDataLoading } = useLearnerDataByEmail(userEmail);

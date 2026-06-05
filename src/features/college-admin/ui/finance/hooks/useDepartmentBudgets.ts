@@ -34,7 +34,7 @@ export const useDepartmentBudgets = () => {
   const getCollegeId = useCallback(async () => {
     try {
       // First, check localStorage for college admin data
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         const userData = JSON.parse(storedUser);
         if (userData.role === 'college_admin' && userData.collegeId) {

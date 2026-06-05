@@ -276,7 +276,7 @@ const Assessments = () => {
                 setLoading(true);
 
                 // First, try to get educator_id from localStorage
-                const storedUser = localStorage.getItem('user');
+                const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
                 let educatorId = null;
 
                 if (storedUser) {

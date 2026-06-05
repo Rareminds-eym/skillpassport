@@ -45,7 +45,7 @@ type CollegeTabType = 'overview' | 'classmates' | 'assignments';
  */
 const CollegeMyClass: React.FC = () => {
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id;
 

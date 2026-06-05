@@ -4,6 +4,8 @@ import { AlertCircle, Award, Download, Eye, FileText, Grid3X3, List, Loader2, Me
 import React, { useEffect, useState } from 'react';
 import { KPICard } from '@/features/analytics';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 
 const logger = getLogger('school-admin-skill-badges');
@@ -60,7 +62,7 @@ const CompetitionResults = () => {
       let userRole = null;
       
       // First, check if user is logged in via AuthContext (for school admins)
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);

@@ -1,5 +1,7 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('lesson-plans');
 
@@ -96,7 +98,7 @@ export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; err
 
     if (!educatorId) {
       try {
-        const storedUser = localStorage.getItem('user');
+        const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           if (userData.role === 'school_admin' && userData.schoolId) {

@@ -13,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { apiPost } from '@/shared/api/apiClient';
 import { getDocumentUrl } from '@/shared/api';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('EducatorProfileFixed');
 
@@ -97,8 +99,8 @@ const ProfileFixed = () => {
   // Stable function to get user email
   const getUserEmail = useCallback(() => {
     // Try multiple sources for email
-    const storedUser = localStorage.getItem('user');
-    const storedEmail = localStorage.getItem('userEmail');
+    const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
+    const storedEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
     
     if (storedUser) {
       try {

@@ -48,7 +48,7 @@ const TimelinePage = () => {
   logger.info('TimelinePage loaded', { userEmail: user?.email });
   
   // Get email for fetching detailed timeline data
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   
   // Fetch detailed timeline data from database
   const { learnerData: timelineData, loading: timelineLoading } = useLearnerDataByEmail(userEmail);

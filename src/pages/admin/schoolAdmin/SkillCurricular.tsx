@@ -25,6 +25,8 @@ import * as XLSX from 'xlsx';
 import * as clubsService from "@/features/college-admin";
 import * as competitionsService from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('school-admin-skill-curricular');
 
@@ -32,7 +34,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 
 // Helper function to get school_id from logged-in user (uses organizations table)
 async function getSchoolId() {
-    const userEmail = localStorage.getItem('userEmail');
+    const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
     if (!userEmail) return null;
     
     const { data } = await supabase
@@ -383,7 +385,7 @@ export default function ClubsActivitiesPage() {
                 setLoadinglearners(true);
                 
                 // Get logged-in user's email
-                const userEmail = localStorage.getItem('userEmail');
+                const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
                 logger.info('Fetching learners for user', { userEmail });
                 
                 if (!userEmail) {
@@ -397,7 +399,7 @@ export default function ClubsActivitiesPage() {
                 let schoolId = null;
                 
                 // 1. Check localStorage for school admin
-                const storedUser = localStorage.getItem('user');
+                const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
                 if (storedUser) {
                     try {
                         const userData = JSON.parse(storedUser);

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('recent-updates-hook');
 
@@ -113,7 +115,7 @@ export const useRecentUpdates = () => {
   // 3️⃣ Get user email and fetch learnerId
   useEffect(() => {
     const email =
-      localStorage.getItem("userEmail") ||
+      (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) ||
       localStorage.getItem("email") ||
       null;
 

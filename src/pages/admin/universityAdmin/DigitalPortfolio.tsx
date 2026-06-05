@@ -13,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { SearchBar } from '@/shared/ui';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 
 const logger = getLogger('university-admin-digital-portfolio');
@@ -211,7 +213,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       let universityId: string | null = null;
       
       // Check localStorage first
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -259,7 +261,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       // Get university admin's universityId
       let universityId: string | null = null;
       
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
