@@ -666,7 +666,7 @@ function PaymentSuccess() {
     if (verificationError?.code === 'NO_SESSION') {
       sessionTimeoutRef.current = setTimeout(() => {
         if (!user && mountedRef.current) {
-          navigate(`/auth/login?redirect=${encodeURIComponent(window.location.href)}`, { replace: true });
+          navigate(`/login?redirect=${encodeURIComponent(window.location.href)}`, { replace: true });
         }
       }, CONFIG.NO_SESSION_REDIRECT_DELAY_MS);
     }

@@ -19,7 +19,7 @@ import { useProgramSections } from '@/features/college-admin/model/useProgramSec
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool'
 import toast from "react-hot-toast"
 import { Pagination } from '@/shared/ui'
-import { useAuth } from "@/features/auth"
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore'
 import { ProgramSection } from "@/features/college-admin"
 import { ManageProgramLearnersModal } from '@/features/educator'
 import { usePermission } from '@/entities/user/model/usePermissions'
@@ -165,7 +165,7 @@ const ProgramSectionDetailsDrawer = ({
   )
 }
 
-const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
+const EmptyState = ({ onCreate }: { onCreate?: () => void }) => {
   return (
     <div className="flex flex-col items-center justify-center text-center bg-white border border-dashed border-gray-300 rounded-lg p-10">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
@@ -175,6 +175,7 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
       <p className="mt-2 text-sm text-gray-500 max-w-sm">
         No program sections found. Create a new program section to get started with your educator workspace.
       </p>
+      {onCreate && (
       <div className="mt-6">
         <button
           onClick={onCreate}
@@ -184,6 +185,7 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
           Create New Program Section
         </button>
       </div>
+      )}
     </div>
   )
 }
@@ -217,20 +219,20 @@ const ProgramSectionsPage = () => {
   // Security check
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
     
-    if (user?.role !== 'educator' && user?.role !== 'college_educator') {
+    if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
       logger.error('Unauthorized access attempt to program sections page')
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
   }, [isAuthenticated, user, navigate])
 
   // Permission check - redirect if no view permission
   useEffect(() => {
-    if (!canView) {
+    if (!canView.allowed) {
       logger.warn('Access denied: No view permission for Classroom Management')
       navigate('/educator/dashboard')
       return
@@ -289,7 +291,7 @@ const ProgramSectionsPage = () => {
   const isEmpty = !isLoading && paginatedSections.length === 0 && !error && !searchQuery
 
   // Show access denied if no view permission
-  if (!canView) {
+  if (!canView.allowed) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
@@ -476,7 +478,7 @@ const ProgramSectionsPage = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
-                            if (!canCreate) {
+                            if (!canCreate.allowed) {
                               alert('❌ Access Denied: You need CREATE permission to manage learners');
                               return;
                             }
@@ -498,7 +500,7 @@ const ProgramSectionsPage = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
-                            if (!canView) {
+                            if (!canView.allowed) {
                               alert('❌ Access Denied: You need VIEW permission to see details');
                               return;
                             }
@@ -561,7 +563,7 @@ const ProgramSectionsPage = () => {
                           <div className="flex items-center justify-end space-x-2">
                             <button 
                               onClick={() => {
-                                if (!canCreate) {
+                                if (!canCreate.allowed) {
                                   alert('❌ Access Denied: You need CREATE permission to manage learners');
                                   return;
                                 }
@@ -579,7 +581,7 @@ const ProgramSectionsPage = () => {
                               Learners
                             </button>
                             <button onClick={() => {
-                              if (!canView) {
+                              if (!canView.allowed) {
                                 alert('❌ Access Denied: You need VIEW permission to see details');
                                 return;
                               }

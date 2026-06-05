@@ -98,7 +98,7 @@ const PortfolioCard = ({ learner, onViewPortfolio, canView, canCreate, canEdit, 
     <div 
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
       onClick={() => {
-        if (!canView) {
+        if (!canView.allowed) {
           logger.warn('Action blocked: Card click - no view permission');
           alert('❌ Access Denied: You need VIEW permission to view portfolios');
           return;
@@ -185,11 +185,11 @@ const PortfolioCard = ({ learner, onViewPortfolio, canView, canCreate, canEdit, 
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (!canView) {
-              logger.warn('Action blocked: View portfolio button - no view permission');
-              alert('❌ Access Denied: You need VIEW permission to view portfolios');
-              return;
-            }
+          if (!canView.allowed) {
+            logger.warn('Action blocked: View portfolio button - no view permission');
+            alert('❌ Access Denied: You need VIEW permission to view portfolios');
+            return;
+          }
             logger.info('View portfolio button clicked', { learnerId: learner.id });
             onViewPortfolio(learner);
           }}
@@ -247,20 +247,20 @@ const DigitalPortfolioPage = () => {
   // Security check - same as Program Sections
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
     
-    if (user?.role !== 'educator' && user?.role !== 'college_educator') {
+    if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
       logger.error('Unauthorized access attempt to digital portfolio page')
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
   }, [isAuthenticated, user, navigate])
 
   // Permission check - redirect if no view permission - same as Program Sections
   useEffect(() => {
-    if (!canView) {
+    if (!canView.allowed) {
       logger.warn('Access denied: No view permission for Digital Portfolio')
       navigate('/educator/dashboard')
       return
@@ -440,7 +440,7 @@ const DigitalPortfolioPage = () => {
   const paginatedlearners = filteredlearners.slice(startIndex, endIndex);
 
   const handleViewPortfolio = (learner: any) => {
-    if (!canView) {
+    if (!canView.allowed) {
       logger.warn('Action blocked: View portfolio - no view permission');
       alert('❌ Access Denied: You need VIEW permission to view portfolios');
       return;
@@ -473,7 +473,7 @@ const DigitalPortfolioPage = () => {
   const isEmpty = !isLoading && paginatedlearners.length === 0 && !error && !searchQuery
 
   // Show access denied if no view permission - same as Program Sections
-  if (!canView) {
+  if (!canView.allowed) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
@@ -884,7 +884,7 @@ const DigitalPortfolioPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <button
                                 onClick={() => {
-                                  if (!canView) {
+                                  if (!canView.allowed) {
                                     logger.warn('Action blocked: View portfolio (table) - no view permission');
                                     alert('❌ Access Denied: You need VIEW permission to view portfolios');
                                     return;

@@ -50,7 +50,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       .from('college_lecturers')
       .select('id, first_name, last_name, "collegeId"')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
     if (error) return apiDbError(error, context.request);
     return apiSuccess(data, context.request);
   }

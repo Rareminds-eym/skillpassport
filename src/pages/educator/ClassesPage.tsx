@@ -867,13 +867,13 @@ const ClassesPage = () => {
   // Security check: Ensure user is authenticated and has educator role
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
     
     if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
       logger.error('Unauthorized access attempt to educator classes page')
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
   }, [isAuthenticated, user, navigate])
