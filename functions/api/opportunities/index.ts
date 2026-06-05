@@ -49,33 +49,37 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const limit = rawLimit;
   const offset = rawOffset;
 
-  // ORG SCOPING (from HEAD)
-  // If org_id is provided, or user is not a super admin, we scope to an org.
-  const isLearner = user.role === 'learner' || (user.roles && user.roles.includes('learner'));
+  const isRecruiter = ['recruiter', 'company_admin'].includes(user.role) || (user.roles && (user.roles.includes('recruiter') || user.roles.includes('company_admin')));
   
   let query = supabase
     .from('opportunities')
     .select('*', { count: 'exact' })
     .neq('employment_type', 'factory_visit');
 
-  if (!isLearner) {
-    const orgId = url.searchParams.get('org_id') || user.org_id;
+  const requestedOrgId = url.searchParams.get('org_id');
+
+  if (isRecruiter) {
+    const orgId = requestedOrgId || user.org_id;
 
     if (!orgId) {
-      return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+      return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required for recruiters', context.request);
     }
 
-    // Verify user has access to this organization
+    // Verify recruiter has access to this organization
     const access = await verifyOrgAccess(supabase, user.sub, orgId);
     if (!access.allowed) {
       return access.error!;
     }
 
     query = query.eq('organization_id', orgId);
+  } else {
+    // For non-recruiters (learners, educators, super_admins), allow filtering by org_id if requested
+    if (requestedOrgId) {
+      query = query.eq('organization_id', requestedOrgId);
+    }
   }
 
   if (activeOnly) query = query.eq('is_active', true);
-  // Removed query.gt('applications_count', 0); because it hides new opportunities
 
   if (employmentType) {
     const vals = employmentType.split(',');
