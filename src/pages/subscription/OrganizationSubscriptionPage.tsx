@@ -297,7 +297,7 @@ function OrganizationSubscriptionPage() {
   const dashboardSubscriptions = useMemo(() => {
     return subscriptions.map(sub => ({
       id: sub.id,
-      planName: sub.planName || 'Standard Plan',
+      planName: sub.planName ?? 'Standard Plan',
       totalSeats: sub.totalSeats || 0,
       assignedSeats: sub.assignedSeats || 0,
       status: sub.status as 'active' | 'paused' | 'cancelled' | 'expired' | 'grace_period',
@@ -311,7 +311,7 @@ function OrganizationSubscriptionPage() {
   const dashboardPools = useMemo(() => {
     return licensePools.map(pool => ({
       id: pool.id,
-      poolName: pool.poolName || 'Default Pool',
+      poolName: pool.poolName ?? 'Default Pool',
       memberType: pool.memberType as 'educator' | 'learner',
       allocatedSeats: pool.allocatedSeats || 0,
       assignedSeats: pool.assignedSeats || 0,

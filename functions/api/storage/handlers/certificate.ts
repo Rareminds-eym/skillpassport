@@ -1,8 +1,8 @@
 /**
  * Course Certificate Handler
- *
- * Handles course certificate file access:
- * - GET /course-certificate - Get course certificate file (typically PNG/image)
+ * 
+ * Public endpoint for shareable course certificates.
+ * Supports key and URL parameters with inline/download modes.
  */
 
 import type { PagesFunction } from '../../../../src/functions-lib/types';
@@ -12,8 +12,6 @@ import { R2Client } from '../utils/r2-client';
 
 /**
  * Get course certificate file
- * Supports both key and URL parameters
- * Default mode is 'inline' for viewing in browser
  */
 export const handleCourseCertificate: PagesFunction = async ({ request, env }) => {
   if (request.method !== 'GET') {
@@ -23,14 +21,13 @@ export const handleCourseCertificate: PagesFunction = async ({ request, env }) =
   try {
     const url = new URL(request.url);
     let fileKey = url.searchParams.get('key');
-    const mode = url.searchParams.get('mode') || 'inline'; // 'inline' for viewing, 'download' for downloading
+    const mode = url.searchParams.get('mode') || 'inline';
 
-    // Also support extracting key from full URL
+    // Extract key from full URL if provided
     const fileUrl = url.searchParams.get('url');
     if (!fileKey && fileUrl) {
       fileKey = R2Client.extractKeyFromUrl(fileUrl);
 
-      // If extraction failed, try certificates specific pattern
       if (!fileKey) {
         const pathMatch = fileUrl.match(/\/certificates\/(.+)$/);
         if (pathMatch) {

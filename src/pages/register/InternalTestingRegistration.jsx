@@ -424,7 +424,7 @@ export default function InternalTestingRegistration() {
               <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
                 <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
                   <DotLottieReact
-                    src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
+                    src="/animations/hero.lottie"
                     loop
                     autoplay
                     style={{ width: '32px', height: '32px' }}

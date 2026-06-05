@@ -2,8 +2,15 @@
 # This is used for local development with `wrangler pages dev`
 
 name = "skill-passport-portal"
-compatibility_date = "2025-05-09"
+compatibility_date = "2026-05-25"
 compatibility_flags = ["nodejs_compat"]
+
+# ============================================================================
+# R2 BUCKET BINDING
+# ============================================================================
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "skill-echosystem"
 
 # ============================================================================
 # KV NAMESPACES - REMOVED
@@ -23,11 +30,11 @@ service = "razorpay-api"
 entrypoint = "PaymentService"
 
 # SSO worker — authentication service, zero-latency internal routing
-# HTTP-style binding (no entrypoint) for JWKS fetching and token refresh
+# RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]
 binding = "SSO_SERVICE"
 service = "sso-api"
-# No entrypoint needed - sso-api uses default fetch handler
+entrypoint = "SsoWorker"
 
 # ============================================================================
 # ENVIRONMENT VARIABLES
@@ -81,10 +88,12 @@ VITE_SSO_URL = "https://sso-api.dark-mode-d021.workers.dev/"
 VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Frontend)
-VITE_APP_URL = "https://skillpassport.rareminds.in/"
 VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
 VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
+
+# Analytics 
+VITE_GTM_ID = "GTM-M2N3952J"
 
 # Note: Razorpay keys are managed by the payment worker and returned in API responses
 

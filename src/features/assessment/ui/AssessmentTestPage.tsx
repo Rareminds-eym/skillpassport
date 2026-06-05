@@ -1,2115 +1,963 @@
-/**
- * AssessmentTestPage
- * 
- * Main orchestrator component for the career assessment test.
- * Replaces the monolithic AssessmentTest.jsx with a modular architecture.
- * 
- * Flow:
- * 1. Check for existing in-progress attempt
- * 2. Show grade selection (or auto-detect from database)
- * 3. Show category/stream selection
- * 4. Run through sections with questions
- * 5. Submit and analyze with Gemini AI
- * 
- * @module features/assessment/career-test/AssessmentTestPage
- */
+import React, { useEffect, useCallback, useState, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { useUser } from '@/shared/model/authStore';
+import { Loader2, AlertCircle } from 'lucide-react';
+import { Card, CardContent, Button } from '@/shared/ui';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+// Store
+import { useAssessmentStore } from '../model/assessmentStore';
 
-// Auth & Database
-
-// @ts-ignore - JS file without type declarations
-import { useAssessment } from '@/features/assessment';
-import { useAdaptiveAptitude } from '@/features/assessment/model/useAdaptiveAptitude';
-// @ts-ignore - JS service
-import * as assessmentService from '../api/assessmentService';
-// @ts-ignore - JS service
+// Services
+import {
+  startAssessment,
+  saveResponse,
+  checkInProgress,
+  abandonAttempt,
+  analyzeAssessment,
+  StartAssessmentResponse,
+} from '../api/assessmentApiService';
+import { useAssessmentSubmission } from '../model'; // Import the submission hook
 import { normalizeStreamId } from '../api/careerAssessmentAIService';
 
 // Hooks
-import { useAssessmentFlow } from '../model/useCareerTestFlow';
 import { useLearnerGrade } from '../model/useLearnerGrade';
+import { useAnswerSync } from '../hooks/useAnswerSync';
+import { useAdaptiveAptitude } from '../model';
 import { useAIQuestions } from '../model/useAIQuestions';
-import { useAssessmentSubmission } from '../model/useAssessmentSubmission';
-import { useAntiCheating, useAntiCheatingMonitor } from '@/shared/lib/hooks';
-
-// Config
-import {
-  getSectionsForGrade,
-  type GradeLevel,
-  RESPONSE_SCALES
-} from "@/features/assessment/lib/config/sections";
 
 // Components
-import { QuestionRenderer } from './questions/QuestionRenderer';
-import { QuestionNavigation } from './QuestionNavigation';
+import { LoadingScreen } from './screens/LoadingScreen';
+import { AssessmentCompleteScreen } from './screens/AssessmentCompleteScreen';
 import { SectionIntroScreen } from './screens/SectionIntroScreen';
 import { SectionCompleteScreen } from './screens/SectionCompleteScreen';
-import { LoadingScreen } from './screens/LoadingScreen';
 import { AnalyzingScreen } from './screens/AnalyzingScreen';
-import { ErrorScreen, type ErrorType } from './screens/ErrorScreen';
+import { GradeSelectionScreen } from './GradeSelectionScreen';
+import { CategorySelectionScreen } from './CategorySelectionScreen';
+import { StreamSelectionScreen } from './StreamSelectionScreen';
+import { QuestionRenderer } from './questions/QuestionRenderer';
 import { ProgressHeader } from './layout/ProgressHeader';
 import { QuestionLayout } from './layout/QuestionLayout';
-import { TestModeControls } from './layout/TestModeControls';
+import ResumePromptScreen from './ResumePromptScreen';
 
-// Shared Components (from parent assessment feature)
-// @ts-ignore - JSX components
-import {
-  GradeSelectionScreen,
-  CategorySelectionScreen,
-  StreamSelectionScreen,
-  ResumePromptScreen,
-  RestrictionScreen,
-} from '../ui';
+// Config
+import type { GradeLevel as AdaptiveGradeLevel } from '@/shared/types/adaptiveAptitude';
+import { getLogger } from '@/shared/config/logging';
 
-// Utilities
-import {
-  getGradeLevelFromGrade,
-  getAdaptiveGradeLevel,
-} from '@/features/assessment';
+// Adaptive Aptitude Service
+import AdaptiveAptitudeApiService, { linkSessionToAttempt } from '../api/adaptiveAptitudeApiService';
 
-// Question Data
-import {
-  riasecQuestions,
-  bigFiveQuestions,
-  workValuesQuestions,
-  employabilityQuestions,
-  // Middle School questions
-  interestExplorerQuestions,
-  strengthsCharacterQuestions,
-  learningPreferencesQuestions,
-  // High School questions
-  highSchoolInterestQuestions,
-  highSchoolStrengthsQuestions,
-  highSchoolLearningQuestions,
-  highSchoolAptitudeQuestions,
-} from '@/features/assessment/model/questions';
-import { supabase } from '@/shared/api';
+const logger = getLogger('AssessmentTestPage');
 
-import { useUser } from '@/shared/model/authStore';
-import { useTour } from '@/shared/model/tourStore';
-/**
- * Get icon image path for a section based on section ID
- */
-const getSectionIconPath = (sectionId: string): string => {
-  const iconMap: Record<string, string> = {
-    // Career Interests (RIASEC)
-    'riasec': '/assets/Assessment Icons/Career Interests.png',
+type ScreenType = 'loading' | 'grade-selection' | 'category-selection' | 'stream-selection' | 'section-intro' | 'section-complete' | 'assessment' | 'analyzing' | 'complete' | 'error' | 'resume-prompt';
 
-    // Big Five Personality
-    'bigfive': '/assets/Assessment Icons/Big 5 Personality.png',
+const getIconPathFromName = (sectionName?: string | null): string => {
+  if (!sectionName) return '/assets/Assessment Icons/Career Interests.png';
 
-    // Work Values & Motivators
-    'values': '/assets/Assessment Icons/Work Value & Motivators.png',
+  const name = sectionName.toLowerCase();
 
-    // Employability Skills
-    'employability': '/assets/Assessment Icons/Employability Skills.png',
+  if (name.includes('interest_explorer')) {
+    return '/assets/Assessment Icons/Interest Explorer.png';
+  }
+  if (name.includes('strengths_character') || name.includes('strength')) {
+    return '/assets/Assessment Icons/Strenghts & Character.png';
+  }
+  if (name.includes('learning_preferences') || name.includes('learning_preference')) {
+    return '/assets/Assessment Icons/Learning & Work Preference.png';
+  }
+  if (name.includes('aptitude_sampling') || name.includes('aptitude_')) {
+    return '/assets/Assessment Icons/Aptitude Sampling.png';
+  }
+  if (name.includes('riasec') || name.includes('bigfive') || name.includes('employability')) {
+    return '/assets/Assessment Icons/Career Interests.png';
+  }
 
-    // Stream Based Aptitude
-    'aptitude': '/assets/Assessment Icons/Multi-Aptitude.png',
-
-    // Stream Knowledge
-    'knowledge': '/assets/Assessment Icons/Stream Knowledge.png',
-
-    // Middle School - Interest Explorer
-    'middle_interest_explorer': '/assets/Assessment Icons/Interest Explorer.png',
-
-    // Middle School - Strengths & Character
-    'middle_strengths_character': '/assets/Assessment Icons/Strenghts & Character.png',
-
-    // Middle School - Learning & Work Preferences
-    'middle_learning_preferences': '/assets/Assessment Icons/Learning & Work Preference.png',
-
-    // High School - Interest Explorer
-    'hs_interest_explorer': '/assets/Assessment Icons/Interest Explorer.png',
-
-    // High School - Strengths & Character
-    'hs_strengths_character': '/assets/Assessment Icons/Strenghts & Character.png',
-
-    // High School - Learning & Work Preferences
-    'hs_learning_preferences': '/assets/Assessment Icons/Learning & Work Preference.png',
-
-    // High School - Aptitude Sampling
-    'hs_aptitude_sampling': '/assets/Assessment Icons/Aptitude Sampling.png',
-
-    // Adaptive Aptitude Test
-    'adaptive_aptitude': '/assets/Assessment Icons/Adaptive Aptitude Test.png',
-  };
-
-  return iconMap[sectionId] || '/assets/Assessment Icons/Career Interests.png';
+  return '/assets/Assessment Icons/Career Interests.png';
 };
 
-/**
- * Determine error type from error message
- */
-const getErrorType = (errorMessage: string): ErrorType => {
-  const msg = errorMessage.toLowerCase();
-
-  if (msg.includes('network') || msg.includes('connection') || msg.includes('offline') || msg.includes('fetch')) {
-    return 'network';
-  }
-  if (msg.includes('server') || msg.includes('500') || msg.includes('503') || msg.includes('502')) {
-    return 'server';
-  }
-  if (msg.includes('session') || msg.includes('expired') || msg.includes('token') || msg.includes('unauthorized')) {
-    return 'session';
-  }
-  if (msg.includes('load') || msg.includes('timeout') || msg.includes('failed to fetch')) {
-    return 'loading';
-  }
-  return 'generic';
+const isAdaptiveSection = (section: any): boolean => {
+  return section?.isAdaptive || section?.name === 'adaptive_aptitude';
 };
 
-/**
- * Check if error should show ErrorScreen instead of RestrictionScreen
- */
-const shouldShowErrorScreen = (errorMessage: string): boolean => {
-  const errorType = getErrorType(errorMessage);
-  // Show ErrorScreen for technical errors, RestrictionScreen for restriction errors
-  return errorType !== 'generic' || !errorMessage.includes('month');
-};
+const isAISection = (section: any): boolean =>
+  !isAdaptiveSection(section) && (
+    section?.name === 'aptitude' ||
+    section?.name === 'knowledge' ||
+    (typeof section?.id === 'string' && (section.id.startsWith('aptitude-') || section.id.startsWith('knowledge-')))
+  );
 
-/**
- * Build sections with questions for a given grade level
- */
-const buildSectionsWithQuestions = (
-  gradeLevel: GradeLevel,
-  _learnerStream: string | null,
-  aiQuestions: any,
-  _selectedCategory: string | null
-) => {
-  const sectionConfigs = getSectionsForGrade(gradeLevel);
+const ADAPTIVE_TOTAL_QUESTIONS = 50;
 
-  return sectionConfigs.map(config => {
-    let questions: any[] = [];
-    let responseScale = config.responseScale;
-
-    // Map section ID to question data
-    switch (config.id) {
-      // Middle School sections
-      case 'middle_interest_explorer':
-        questions = interestExplorerQuestions || [];
-        break;
-      case 'middle_strengths_character':
-        questions = strengthsCharacterQuestions || [];
-        break;
-      case 'middle_learning_preferences':
-        questions = learningPreferencesQuestions || [];
-        break;
-
-      // High School sections
-      case 'hs_interest_explorer':
-        questions = highSchoolInterestQuestions || [];
-        break;
-      case 'hs_strengths_character':
-        questions = highSchoolStrengthsQuestions || [];
-        break;
-      case 'hs_learning_preferences':
-        questions = highSchoolLearningQuestions || [];
-        break;
-      case 'hs_aptitude_sampling':
-        questions = highSchoolAptitudeQuestions || [];
-        break;
-
-      // Comprehensive sections (after10, after12, college)
-      case 'riasec':
-        questions = riasecQuestions || [];
-        responseScale = RESPONSE_SCALES.likert5;
-        break;
-      case 'bigfive':
-        questions = bigFiveQuestions || [];
-        responseScale = RESPONSE_SCALES.accuracy5;
-        break;
-      case 'values':
-        questions = workValuesQuestions || [];
-        responseScale = RESPONSE_SCALES.importance5;
-        break;
-      case 'employability':
-        questions = employabilityQuestions || [];
-        responseScale = RESPONSE_SCALES.selfDescription5;
-        break;
-      case 'aptitude':
-        // Use AI-generated questions if available
-        questions = aiQuestions?.aptitude || [];
-        break;
-      case 'knowledge':
-        // Use AI-generated stream-specific questions
-        questions = aiQuestions?.knowledge || [];
-        break;
-
-      // Adaptive aptitude (handled separately by adaptive hook)
-      case 'adaptive_aptitude':
-        questions = []; // Questions come from adaptive hook
-        break;
-    }
-
-    return {
-      ...config,
-      questions,
-      responseScale,
-      icon: null // Icons handled by components
-    };
-  });
-};
-
-/**
- * Main Assessment Test Page Component
- */
 const AssessmentTestPage: React.FC = () => {
-  const navigate = useNavigate();
   const user = useUser();
 
-  // Tour hook - check if tour is running to pause timers
-  const { isTourRunning } = useTour();
+  // Store state
+  const store = useAssessmentStore();
+  const [currentScreen, setCurrentScreen] = useState<ScreenType>('loading');
+  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedStream, setSelectedStream] = useState<string | null>(null);
+  const [showSectionIntro, setShowSectionIntro] = useState(true);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [adaptiveTimer, setAdaptiveTimer] = useState(60); // 60 seconds per question (1:00)
+  const adaptiveTimerRef = useRef(adaptiveTimer);
+  adaptiveTimerRef.current = adaptiveTimer; // keep ref in sync with state each render
+  const [adaptiveElapsedTime, setAdaptiveElapsedTime] = useState(0); // Track total elapsed time for adaptive section
+  const [resumeData, setResumeData] = useState<any>(null);
+  const [isLoadingResume, setIsLoadingResume] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [isResumingAdaptive, setIsResumingAdaptive] = useState(false);
+  const [aiSectionTimer, setAiSectionTimer] = useState(59);
 
-  // Environment flags
-  const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
-  const shouldShowAllOptions = window.location.hostname === 'skillpassport.pages.dev';
-  const shouldFilterByGrade = window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' || "dev.skillpassport.pages.dev"
-  window.location.hostname === 'skilldevelopment.rareminds.in';
+  // Ref to track pending AI section resume position
+  // When resuming to an AI section, questions aren't loaded yet so we store the target position here
+  // Once AI questions load and populate the section, we use this to jump to the exact position
+  const pendingAIResumeRef = useRef<{ sectionIndex: number; questionIndex: number; answers: Record<string, any> } | null>(null);
 
-  // Learner grade info
+  // Ref to store the full resume target across the entire resume flow
+  // This persists even when isAdaptiveCompleted path goes through section-complete → Continue
+  const resumeTargetRef = useRef<{ sectionIndex: number; questionIndex: number; answers: Record<string, any> } | null>(null);
+
+  // Learner grade hook - get complete profile data
   const {
     learnerId,
     learnerGrade,
     isCollegeLearner,
     learnerProgram,
     monthsInGrade,
+    detectedGradeLevel,
     profileData,
     loading: loadingLearnerGrade
   } = useLearnerGrade({ userId: user?.id, userEmail: user?.email });
 
-  // Database integration
-  const {
-    loading: dbLoading,
-    currentAttempt,
-    startAssessment: dbStartAssessment,
-    saveResponse: dbSaveResponse,
-    updateProgress: dbUpdateProgress,
-    checkInProgressAttempt,
-    learnerRecordId
-  } = useAssessment();
-
-  // Local state
-  const [sections, setSections] = useState<any[]>([]);
-  const [useDatabase, setUseDatabase] = useState(false);
-  const [testMode, setTestMode] = useState(false);
-  const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const [pendingAttempt, setPendingAttempt] = useState<any>(null);
-  const [checkingExistingAttempt, setCheckingExistingAttempt] = useState(true);
-  const [assessmentStarted, setAssessmentStarted] = useState(false);
-  const [skipResumeCheck, setSkipResumeCheck] = useState(false); // Flag to skip resume check after abandoning
-  const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = useState<string | null>(null);
-  const [adaptiveQuestionTimer, setAdaptiveQuestionTimer] = useState(60); // Default 60 seconds, will be updated based on section config
-
-  // Toast notification state for save errors
-  const [toastError, setToastError] = useState<string | null>(null);
-
-  // Anti-cheating monitoring
-  const antiCheatingMonitor = useAntiCheatingMonitor();
-
-  // Flow state machine
-  const flow = useAssessmentFlow({
-    sections,
-    onSectionComplete: async (sectionId, timeSpent) => {
-      // Update section timings in state so it shows on the complete screen
-      const updatedTimings = {
-        ...flow.sectionTimings,
-        [sectionId]: timeSpent
-      };
-      flow.setSectionTimings(updatedTimings);
-
-      if (useDatabase && currentAttempt?.id) {
-        // Save all responses including non-UUID questions (RIASEC, BigFive, etc.)
-        const progressResult = await dbUpdateProgress(flow.currentSectionIndex, 0, updatedTimings, null, null, flow.answers);
-
-        // BLOCKING: Show error if section completion save failed
-        if (!progressResult.success) {
-          const errorMsg = progressResult.userMessage || 'Failed to save section completion';
-          alert(`❌ Save Failed\n\n${errorMsg}\n\nYour section completion was not saved. Please try again or check your internet connection.`);
-          throw new Error(errorMsg);
-        }
-      }
-    },
-    onAnswerChange: async (questionId, answer) => {
-      // Save to database if database mode is enabled and we have an active attempt
-      if (useDatabase && currentAttempt?.id) {
-        const [sectionId, qId] = questionId.split('_');
-
-        // Check if qId is a valid UUID (36 chars with dashes: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(qId);
-
-        if (isUUID) {
-          // UUID questions (AI-generated) go to personal_assessment_responses table
-          const saveResult = await dbSaveResponse(sectionId, qId, answer);
-
-          // BLOCKING: Show error and prevent continuing if save failed
-          if (!saveResult.success) {
-            const errorMsg = saveResult.userMessage || 'Failed to save answer';
-            alert(`❌ Save Failed\n\n${errorMsg}\n\nYour answer was not saved. Please try again or check your internet connection.`);
-            // Revert the answer in UI since save failed
-            flow.setAnswer(questionId, flow.answers[questionId] || null);
-            throw new Error(errorMsg);
-          }
-        }
-        // Note: Non-UUID questions (RIASEC, BigFive, etc.) are saved via all_responses
-        // in the updateProgress call below
-
-        // IMPORTANT: flow.answers is stale here (React state is async)
-        // We need to include the current answer in the update
-        const updatedAnswers = { ...flow.answers, [questionId]: answer };
-
-        // Update progress (current position) after every answer
-        // Also save all responses to the all_responses column
-        const progressResult = await dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, updatedAnswers);
-
-        // BLOCKING: Show error and prevent continuing if progress update failed
-        if (!progressResult.success) {
-          const errorMsg = progressResult.userMessage || 'Failed to save progress';
-          alert(`❌ Save Failed\n\n${errorMsg}\n\nYour progress was not saved. Please try again or check your internet connection.`);
-          throw new Error(errorMsg);
-        }
-      }
-    }
-  });
-
-  // Submission hook
-  const submission = useAssessmentSubmission();
-
-  // AI Questions Hook
-  // - after10: Loads ONLY aptitude questions (stream-agnostic, no knowledge)
-  // - after12/college/higher_secondary: Loads BOTH aptitude AND knowledge questions
-  const {
-    aiQuestions,
-    loading: questionsLoading,
-    error: questionsError
-  } = useAIQuestions({
-    gradeLevel: flow.gradeLevel,
-    learnerStream: flow.learnerStream,
-    learnerId: learnerId || null,
-    attemptId: currentAttempt?.id || null,
-    learnerProgram: learnerProgram || null
-  });
-
-  // Adaptive Aptitude Hook
-  // Note: We need a ref to track if this is the last section since the callback
-  // is created before sections are built
-  const isAdaptiveLastSectionRef = React.useRef(false);
-
-  // Memoize callbacks to prevent infinite re-render loop
-  // These callbacks were causing the hook to re-initialize on every render
-  const handleAdaptiveTestComplete = useCallback(async (testResults: any) => {
-    console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
-    flow.setAnswer('adaptive_aptitude_results', testResults);
-    flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
-
-    // Link the adaptive session to the assessment attempt
-    // NOTE: This is now also done in startTest, but keeping it here as a backup
-    if (testResults.sessionId && currentAttempt?.id) {
-      console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
-        sessionId: testResults.sessionId,
-        attemptId: currentAttempt.id
-      });
-      await assessmentService.updateAttemptAdaptiveSession(
-        currentAttempt.id,
-        testResults.sessionId
-      );
-      console.log('✅ [AssessmentTestPage] Backup linking complete');
-    } else {
-      console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
-        hasSessionId: !!testResults.sessionId,
-        hasAttemptId: !!currentAttempt?.id
-      });
-    }
-
-    // Always call completeSection to show the section complete screen
-    // The auto-submit useEffect will handle submission if it's the last section
-    flow.completeSection();
-  }, [flow, currentAttempt?.id]);
-
-  const handleAdaptiveTestError = useCallback((err: any) => {
-    console.error('❌ [AssessmentTestPage] Adaptive aptitude test error:', err);
-    flow.setError(`Adaptive test error: ${err}`);
-  }, [flow]);
-
-  const adaptiveAptitude = useAdaptiveAptitude({
-    learnerId: user?.id || '',
-    gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
-    attemptId: currentAttempt?.id, // Pass attemptId to link session immediately
-    learnerCourse: learnerProgram || null, // Pass learner's course for college learners
-    onTestComplete: handleAdaptiveTestComplete,
-    onError: handleAdaptiveTestError,
-  });
-
-  // Enable anti-cheating protections when assessment is active
-  const isAssessmentActive = assessmentStarted && flow.currentSectionIndex >= 0 && flow.currentScreen === 'assessment';
-  useAntiCheating({
-    enabled: isAssessmentActive,
-    onTabSwitch: () => {
-      antiCheatingMonitor.logEvent('tab_switch', 'User switched tabs during assessment');
-    },
-    onDevToolsDetected: () => {
-      antiCheatingMonitor.logEvent('devtools', 'DevTools may be open');
-    },
-    enforceFullscreen: false, // Set to true if you want to force fullscreen
-    maxTabSwitches: 5 // Warning after 5 tab switches
-  });
-
-  // Track adaptive loading time for better UX
-  const [adaptiveLoadingStartTime, setAdaptiveLoadingStartTime] = React.useState<number | null>(null);
-  const [adaptiveLoadingDuration, setAdaptiveLoadingDuration] = React.useState(0);
-
-  // Update adaptive loading duration every second
-  useEffect(() => {
-    if (adaptiveAptitude.loading && adaptiveLoadingStartTime) {
-      const interval = setInterval(() => {
-        setAdaptiveLoadingDuration(Math.floor((Date.now() - adaptiveLoadingStartTime) / 1000));
-      }, 1000);
-      return () => clearInterval(interval);
-    } else if (!adaptiveAptitude.loading) {
-      setAdaptiveLoadingStartTime(null);
-      setAdaptiveLoadingDuration(0);
-    }
-  }, [adaptiveAptitude.loading, adaptiveLoadingStartTime]);
-
-  // Set loading start time when adaptive test starts loading
-  useEffect(() => {
-    const currentSection = sections[flow.currentSectionIndex];
-    if (currentSection?.isAdaptive && adaptiveAptitude.loading && !adaptiveLoadingStartTime) {
-      setAdaptiveLoadingStartTime(Date.now());
-    }
-  }, [adaptiveAptitude.loading, flow.currentSectionIndex, sections, adaptiveLoadingStartTime]);
-
-  // Track if initial check has been done (prevents re-running after assessment starts)
-  const initialCheckDoneRef = React.useRef(false);
-
-  // Track if adaptive section start is pending (waiting for questions to load)
-  const adaptiveStartPendingRef = React.useRef(false);
-
-  // Update the ref when sections change to track if adaptive is the last section
-  useEffect(() => {
-    if (sections.length > 0) {
-      const lastSection = sections[sections.length - 1];
-      isAdaptiveLastSectionRef.current = lastSection?.isAdaptive === true;
-    }
-  }, [sections]);
-
-  // Check for existing in-progress attempt on mount
-  // OPTIMIZED: Start checking as soon as learnerRecordId is available
-  // FIXED: Only run ONCE on initial mount, not on every dependency change
-  useEffect(() => {
-    const checkExisting = async () => {
-      // CRITICAL: Skip if we've already done the initial check
-      // This prevents showing "Resume Your Assessment?" after user clicks "Start Section"
-      if (initialCheckDoneRef.current) {
-
-        return;
-      }
-
-      // If still loading learner record, wait
-      if (dbLoading) {
-        return;
-      }
-
-      // If no learner record found, proceed to grade selection
-      if (!learnerRecordId) {
-
-        initialCheckDoneRef.current = true;
-        setCheckingExistingAttempt(false);
-        flow.setCurrentScreen('grade_selection');
-        return;
-      }
-
-      try {
-
-
-        // Mark initial check as done BEFORE setting state
-        initialCheckDoneRef.current = true;
-
-        const attempt = await checkInProgressAttempt();
-
-        if (attempt) {
-          setPendingAttempt(attempt);
-          setShowResumePrompt(true);
-        } else {
-          flow.setCurrentScreen('grade_selection');
-        }
-      } catch (err) {
-        console.error('Error checking existing attempt:', err);
-        initialCheckDoneRef.current = true;
-        flow.setCurrentScreen('grade_selection');
-      } finally {
-        setCheckingExistingAttempt(false);
-      }
+  const getAdaptiveGradeLevel = (grade: string | null): AdaptiveGradeLevel => {
+    const gradeMap: Record<string, AdaptiveGradeLevel> = {
+      'middle': 'middle_school',
+      'middle_school': 'middle_school',
+      'highschool': 'high_school',
+      'high_school': 'high_school',
+      'higher_secondary': 'higher_secondary',
+      'after10': 'after10',
+      'after12': 'after12',
+      'college': 'undergraduate',
+      'undergraduate': 'undergraduate',
+      'postgraduate': 'postgraduate',
     };
-
-    checkExisting();
-  }, [learnerRecordId, dbLoading, checkInProgressAttempt, skipResumeCheck]);
-
-  // Build sections when grade level, stream, or AI questions change
-  useEffect(() => {
-    if (!flow.gradeLevel) return;
-
-    // For stream-based assessments (after12, college), wait for stream selection
-    // For middle/highschool, build sections immediately
-    // For after10, we use 'general' which is set automatically in handleGradeSelect
-    // For higher_secondary, learners select their stream (Science/Commerce/Arts) before assessment
-    const needsStream = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
-    const canBuild = flow.learnerStream || !needsStream;
-
-    // CRITICAL FIX: For grade levels that use AI knowledge questions (higher_secondary, after12, college),
-    // wait for AI questions to load before building sections
-    // This prevents the knowledge section from being created with 0 questions
-    const needsAIKnowledge = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
-    const hasAIKnowledge = aiQuestions?.knowledge && aiQuestions.knowledge.length > 0;
-
-    // Don't build sections if we need AI knowledge questions but they haven't loaded yet
-    if (needsAIKnowledge && !hasAIKnowledge && questionsLoading) {
-      console.log('⏳ Waiting for AI knowledge questions to load before building sections');
-      return;
-    }
-
-    if (canBuild) {
-      const builtSections = buildSectionsWithQuestions(
-        flow.gradeLevel,
-        flow.learnerStream,
-        aiQuestions,
-        flow.selectedCategory
-      );
-      setSections(builtSections);
-    }
-  }, [flow.gradeLevel, flow.learnerStream, aiQuestions, flow.selectedCategory, questionsLoading]);
-
-  // FIX 2: Restore position after sections are built (handles race condition)
-  useEffect(() => {
-
-
-    // Only run if we have a pending attempt and sections are now built
-    if (!pendingAttempt || sections.length === 0) {
-
-      return;
-    }
-
-    // Only run if we haven't restored position yet (check if we're still on loading/resume screen)
-    if (flow.currentScreen !== 'loading' && flow.currentScreen !== 'resume_prompt') {
-
-      return;
-    }
-
-
-
-    const sectionIndex = pendingAttempt.current_section_index ?? 0;
-    const questionIndex = pendingAttempt.current_question_index ?? 0;
-
-    // Validate that the section index is valid
-    if (sectionIndex >= sections.length) {
-      console.error('❌ Invalid section index:', sectionIndex, 'sections.length:', sections.length);
-      // Start from beginning if invalid
-      flow.setCurrentSectionIndex(0);
-      flow.setCurrentQuestionIndex(0);
-      flow.setCurrentScreen('section_intro');
-      return;
-    }
-
-    const targetSection = sections[sectionIndex];
-
-    flow.setCurrentSectionIndex(sectionIndex);
-
-    // FIX: Restore elapsed time when restoring position after sections are built
-    if (pendingAttempt.elapsed_time !== null && pendingAttempt.elapsed_time !== undefined) {
-
-      flow.setElapsedTime(pendingAttempt.elapsed_time);
-    }
-
-    // FIX: Restore timer remaining for timed sections
-    if (pendingAttempt.timer_remaining !== null && pendingAttempt.timer_remaining !== undefined) {
-
-      flow.setTimeRemaining(pendingAttempt.timer_remaining);
-    }
-
-    // FIX: For adaptive sections, handle resume differently
-    // Only skip intro if we have an active adaptive session with a question
-    if (targetSection?.isAdaptive) {
-      console.log('🔄 [ADAPTIVE RESUME] Restoring adaptive section position');
-
-      // CRITICAL FIX: Check if adaptive session exists in the attempt
-      // If user completed previous section and moved to adaptive section but never clicked "Start Section",
-      // the adaptive_aptitude_session_id will be NULL
-      if (!pendingAttempt.adaptive_aptitude_session_id) {
-        console.log('⚠️ [ADAPTIVE RESUME] No adaptive session ID found - user never started this section');
-        console.log('⚠️ [ADAPTIVE RESUME] Showing section intro so user can start the section');
-        // Show section intro screen so user can click "Start Section"
-        flow.setCurrentQuestionIndex(0);
-        flow.setShowSectionIntro(true);
-        flow.setCurrentScreen('section_intro');
-        return;
-      }
-
-      // Adaptive session exists, check if it was successfully resumed and questions are loaded
-      if (adaptiveAptitude.isTestComplete) {
-        console.log('✅ [ADAPTIVE RESUME] Test is complete, showing results');
-        // Test is complete, show results
-        flow.setCurrentScreen('results');
-      } else if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
-        console.log('✅ [ADAPTIVE RESUME] Questions loaded, starting section immediately');
-        // Adaptive session was already resumed in handleResumeAssessment
-        // Questions are loaded, so we can start immediately
-        flow.setCurrentQuestionIndex(0);
-        flow.setShowSectionIntro(false);
-        flow.setCurrentScreen('assessment');
-      } else if (adaptiveAptitude.loading) {
-        console.log('⏳ [ADAPTIVE RESUME] Questions still loading, waiting...');
-        // Questions are still loading, wait for them
-        // The useEffect below will handle starting the section once questions load
-        flow.setCurrentQuestionIndex(0);
-        flow.setShowSectionIntro(false);
-        flow.setCurrentScreen('assessment'); // Show assessment screen with loading state
-      } else {
-        console.error('❌ [ADAPTIVE RESUME] No questions loaded and not loading - session resume may have failed');
-        console.log('🔧 [ADAPTIVE RESUME] Showing section intro so user can restart the section');
-        // Session resume failed or no questions available - show intro so user can restart
-        flow.setCurrentQuestionIndex(0);
-        flow.setShowSectionIntro(true);
-        flow.setCurrentScreen('section_intro');
-      }
-
-    } else {
-      // For regular sections, restore the exact question index
-      const questionCount = targetSection?.questions?.length || 0;
-
-      // Check if question index is out of bounds (past last question)
-      if (questionIndex >= questionCount && questionCount > 0) {
-        console.warn(`⚠️ Question index ${questionIndex} is out of bounds (section has ${questionCount} questions)`);
-
-
-        // Set to last valid question
-        flow.setCurrentQuestionIndex(Math.max(0, questionCount - 1));
-
-        // Check if this is the last section
-        const isLastSection = sectionIndex === sections.length - 1;
-
-        if (isLastSection) {
-
-          // Show section complete screen so user can submit
-          flow.setShowSectionIntro(false);
-          flow.setCurrentScreen('assessment');
-          const timer = setTimeout(() => {
-            flow.completeSection();
-          }, 100);
-          return () => clearTimeout(timer);
-        } else {
-
-          // Move to next section automatically
-          flow.setCurrentSectionIndex(sectionIndex + 1);
-          flow.setCurrentQuestionIndex(0);
-          flow.setShowSectionIntro(true);
-          flow.setCurrentScreen('section_intro');
-        }
-      } else {
-        // Normal resume - set question index
-        flow.setCurrentQuestionIndex(questionIndex);
-
-        if (questionIndex > 0) {
-          // If we're in the middle of a section, skip the intro
-          flow.setShowSectionIntro(false);
-          flow.setCurrentScreen('assessment');
-
-        } else {
-          flow.setCurrentScreen('section_intro');
-
-        }
-      }
-    }
-
-
-  }, [sections.length, pendingAttempt, flow.currentScreen, adaptiveAptitude.currentQuestion, adaptiveAptitude.loading]);
-
-  // Timer effects
-  useEffect(() => {
-    // Pause timer when tour is running
-    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting || isTourRunning) {
-      return;
-    }
-
-    const currentSection = sections[flow.currentSectionIndex];
-    if (!currentSection) {
-      return;
-    }
-
-
-    // For aptitude and knowledge sections: ALWAYS use elapsed time counter
-    // These sections use per-question timers, not section-level countdown
-    if (currentSection.isAptitude || currentSection.isKnowledge) {
-      const interval = setInterval(() => {
-        flow.setElapsedTime(flow.elapsedTime + 1);
-      }, 1000);
-      return () => {
-        clearInterval(interval);
-      };
-    }
-
-    // Elapsed time counter for non-timed sections
-    if (!currentSection.isTimed || flow.timeRemaining === null) {
-      const interval = setInterval(() => {
-        flow.setElapsedTime(flow.elapsedTime + 1);
-      }, 1000);
-      return () => {
-        clearInterval(interval);
-      };
-    }
-
-    // Countdown timer for timed sections (not aptitude/knowledge)
-    if (currentSection.isTimed && flow.timeRemaining !== null && flow.timeRemaining > 0) {
-      const interval = setInterval(() => {
-        flow.setTimeRemaining(flow.timeRemaining! - 1);
-      }, 1000);
-      return () => {
-        clearInterval(interval);
-      };
-    }
-
-    // Auto-advance when time runs out
-    if (currentSection.isTimed && flow.timeRemaining === 0) {
-      handleNextQuestion();
-    }
-  }, [flow.showSectionIntro, flow.showSectionComplete, flow.isSubmitting, flow.currentSectionIndex, flow.timeRemaining, flow.elapsedTime, sections, isTourRunning]);
-
-  // Aptitude and Knowledge per-question timer
-  useEffect(() => {
-    const currentSection = sections[flow.currentSectionIndex];
-    // Check if this is aptitude individual phase OR knowledge section
-    const hasIndividualTimer = (currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge;
-
-    if (!hasIndividualTimer) return;
-    // Pause timer when tour is running
-    if (flow.showSectionIntro || flow.showSectionComplete || isTourRunning) return;
-
-    if (flow.aptitudeQuestionTimer > 0) {
-      const interval = setInterval(() => {
-        flow.setAptitudeQuestionTimer(flow.aptitudeQuestionTimer - 1);
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      // Auto-advance when individual question time runs out
-      handleNextQuestion();
-    }
-  }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections, isTourRunning]);
-
-  // Adaptive aptitude per-question timer (90 seconds)
-  useEffect(() => {
-    const currentSection = sections[flow.currentSectionIndex];
-    if (!currentSection?.isAdaptive) return;
-    // Pause timer when tour is running
-    if (flow.showSectionIntro || flow.showSectionComplete || isTourRunning) return;
-    if (adaptiveAptitude.loading || adaptiveAptitude.submitting) return;
-    if (!adaptiveAptitude.currentQuestion) return;
-
-    if (adaptiveQuestionTimer > 0) {
-      const interval = setInterval(() => {
-        setAdaptiveQuestionTimer(prev => prev - 1);
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      // Auto-submit when time runs out - select a random answer if none selected
-      if (adaptiveAptitudeAnswer) {
-        adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer as 'A' | 'B' | 'C' | 'D');
-        setAdaptiveAptitudeAnswer(null);
-        // Reset timer based on current section's individualTimeLimit
-        const currentSection = sections[flow.currentSectionIndex];
-        setAdaptiveQuestionTimer(currentSection?.individualTimeLimit || 60);
-      } else {
-        // No answer selected, auto-submit 'A' as default
-        adaptiveAptitude.submitAnswer('A');
-        // Reset timer based on current section's individualTimeLimit
-        const currentSection = sections[flow.currentSectionIndex];
-        setAdaptiveQuestionTimer(currentSection?.individualTimeLimit || 60);
-      }
-    }
-  }, [adaptiveQuestionTimer, adaptiveAptitudeAnswer, adaptiveAptitude.currentQuestion, adaptiveAptitude.loading, adaptiveAptitude.submitting, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
-
-  // Reset adaptive timer when question changes
-  useEffect(() => {
-    if (adaptiveAptitude.currentQuestion) {
-      const currentSection = sections[flow.currentSectionIndex];
-      setAdaptiveQuestionTimer(currentSection?.individualTimeLimit || 60);
-    }
-  }, [adaptiveAptitude.currentQuestion?.id, flow.currentSectionIndex, sections]);
-
-  // Auto-start adaptive section once questions are loaded
-  // This handles the case where user clicked "Start Section" but questions were still loading
-  // OR when resuming an adaptive section and questions finish loading
-  useEffect(() => {
-    const currentSection = sections[flow.currentSectionIndex];
-
-    // CASE 1: User clicked "Start Section" and questions just finished loading
-    if (
-      currentSection?.isAdaptive &&
-      flow.showSectionIntro &&
-      adaptiveStartPendingRef.current &&
-      !adaptiveAptitude.loading &&
-      adaptiveAptitude.currentQuestion
-    ) {
-      console.log('✅ [ADAPTIVE] Questions loaded after clicking Start Section');
-      adaptiveStartPendingRef.current = false;
-      flow.startSection();
-      return;
-    }
-
-    // CASE 2: Resuming adaptive section - questions just finished loading
-    // This handles the case where user returns to continue test and adaptive session is being resumed
-    if (
-      currentSection?.isAdaptive &&
-      flow.currentScreen === 'assessment' &&
-      !flow.showSectionIntro &&
-      !adaptiveStartPendingRef.current && // Not from "Start Section" click
-      !adaptiveAptitude.loading &&
-      adaptiveAptitude.currentQuestion &&
-      flow.currentQuestionIndex === 0 // Just restored position
-    ) {
-      console.log('✅ [ADAPTIVE RESUME] Questions loaded after resume, assessment screen ready');
-      // Questions are loaded, screen is already set to 'assessment', nothing more to do
-      // The QuestionRenderer will display the adaptive question
-      return;
-    }
-
-    // CASE 3: Safety timeout - If adaptive test is stuck loading for more than 30 seconds, show error
-    if (
-      currentSection?.isAdaptive &&
-      (flow.showSectionIntro || flow.currentScreen === 'assessment') &&
-      (adaptiveStartPendingRef.current || adaptiveAptitude.loading) &&
-      adaptiveAptitude.loading
-    ) {
-      const timeoutId = setTimeout(() => {
-        if (adaptiveAptitude.loading) {
-          console.error('❌ [ADAPTIVE] Timeout: Questions failed to load after 30 seconds');
-          adaptiveStartPendingRef.current = false;
-          flow.setError('Adaptive test initialization timed out. Please refresh the page and try again.');
-        }
-      }, 30000); // 30 second timeout
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [adaptiveAptitude.loading, adaptiveAptitude.currentQuestion, flow.showSectionIntro, flow.currentScreen, flow.currentSectionIndex, flow.currentQuestionIndex, sections, flow]);
-
-  // Link adaptive aptitude session to assessment attempt when session is created
-  useEffect(() => {
-    const linkAdaptiveSession = async () => {
-      if (adaptiveAptitude.session?.id && currentAttempt?.id && useDatabase) {
-
-        try {
-          await assessmentService.updateAttemptAdaptiveSession(
-            currentAttempt.id,
-            adaptiveAptitude.session.id
-          );
-
-        } catch (err) {
-          console.warn('⚠️ Could not link adaptive session to attempt:', err);
-        }
-      }
-    };
-
-    linkAdaptiveSession();
-  }, [adaptiveAptitude.session?.id, currentAttempt?.id, useDatabase]);
-
-  // FIX: Periodically save elapsed time to database (every 10 seconds)
-  // This ensures the timer can be restored accurately when resuming
-  useEffect(() => {
-    if (!useDatabase || !currentAttempt?.id) return;
-    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting) return;
-
-    // Save elapsed time every 10 seconds
-    if (flow.elapsedTime > 0 && flow.elapsedTime % 10 === 0) {
-      const currentSection = sections[flow.currentSectionIndex];
-      const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
-
-
-      dbUpdateProgress(
-        flow.currentSectionIndex,
-        flow.currentQuestionIndex,
-        flow.sectionTimings,
-        timerRemaining,
-        flow.elapsedTime,
-        flow.answers
-      );
-    }
-  }, [
-    flow.elapsedTime,
-    flow.timeRemaining,
-    flow.currentSectionIndex,
-    flow.currentQuestionIndex,
-    flow.sectionTimings,
-    flow.answers,
-    flow.showSectionIntro,
-    flow.showSectionComplete,
-    flow.isSubmitting,
-    useDatabase,
-    currentAttempt?.id,
-    dbUpdateProgress,
-    sections
-  ]);
-
-  // FIX: Update database progress when adaptive aptitude question changes
-  useEffect(() => {
-    const currentSection = sections[flow.currentSectionIndex];
-
-    // Only update if we're in an adaptive section with an active session
-    if (!currentSection?.isAdaptive) return;
-    if (!adaptiveAptitude.session?.id) return;
-    if (!useDatabase || !currentAttempt?.id) return;
-
-    // Update progress whenever the adaptive question changes (after answer is submitted)
-    // Note: We don't include elapsedTime/answers/timings in dependency array 
-    // because we only want to save when the question count actually changes, 
-    // not on every timer tick or intermediate answer measurement.
-    const questionsAnswered = adaptiveAptitude.progress?.questionsAnswered || 0;
-
-    if (questionsAnswered > 0) {
-      // Update the attempt with current section index and adaptive progress
-      dbUpdateProgress(
-        flow.currentSectionIndex,
-        questionsAnswered, // Use questions answered as question index
-        flow.sectionTimings,
-        null, // No timer for adaptive
-        flow.elapsedTime,
-        flow.answers
-      );
-    }
-  }, [
-    adaptiveAptitude.progress?.questionsAnswered,
-    adaptiveAptitude.session?.id,
-    flow.currentSectionIndex,
-    sections,
-    useDatabase,
-    currentAttempt?.id,
-    dbUpdateProgress
-  ]);
-
-  // Handlers
-  const handleGradeSelect = useCallback(async (level: GradeLevel) => {
-    flow.setGradeLevel(level);
-
-    // Determine next screen based on grade level
-    // after12 and higher_secondary: Show category selection (Science/Commerce/Arts)
-    // after10: Skip stream selection, use 'general' (AI will recommend best stream)
-    // college and below: Skip category/stream selection
-    if (level === 'after12' || level === 'higher_secondary') {
-      // Show category selection for after12 and higher_secondary learners
-      // They need to select Science/Commerce/Arts first, then specific stream
-      flow.setCurrentScreen('category_selection');
-    } else if (level === 'after10') {
-      // After 10th (11th grade) learners skip stream selection - use 'general' stream
-      // The AI analysis will recommend the best stream based on their assessment results
-      flow.setlearnerStream('general');
-      setAssessmentStarted(true);
-
-      // DON'T create attempt here - wait until user clicks "Start Section"
-      // This prevents orphan attempts when user just browses
-
-      flow.setCurrentScreen('section_intro');
-    } else if (level === 'college') {
-      // College learners (UG/PG) skip category selection - use 'college' stream
-      // The 'college' stream exists in personal_assessment_streams table
-      setAssessmentStarted(true);
-
-      // Always use 'college' stream for college learners
-      // This is a general stream that works for all college programs
-      flow.setlearnerStream('college');
-
-      // DON'T create attempt here - wait until user clicks "Start Section"
-      // This prevents orphan attempts when user just browses
-
-      flow.setCurrentScreen('section_intro');
-    } else if (level === 'middle') {
-      // Middle school (6-8) - use 'middle_school' stream
-      flow.setlearnerStream('middle_school');
-      setAssessmentStarted(true);
-      flow.setCurrentScreen('section_intro');
-    } else if (level === 'highschool') {
-      // High school (9-10) - use 'high_school' stream
-      flow.setlearnerStream('high_school');
-      setAssessmentStarted(true);
-      flow.setCurrentScreen('section_intro');
-    } else {
-      // Fallback for any other grade level
-      setAssessmentStarted(true);
-      flow.setCurrentScreen('section_intro');
-    }
-  }, [flow, learnerRecordId, dbStartAssessment, learnerProgram]);
-
-  const handleCategorySelect = useCallback(async (category: string) => {
-    flow.setSelectedCategory(category);
-
-    // Show stream selection screen for the selected category
-    // This allows learners to choose specific streams like PCMB, Commerce with Maths, Arts with Psychology, etc.
-    flow.setCurrentScreen('stream_selection');
-  }, [flow]);
-
-  const handleStreamSelect = useCallback(async (stream: string) => {
-    flow.setlearnerStream(stream);
-    setAssessmentStarted(true);
-
-    // DON'T create attempt here - wait until user clicks "Start Section"
-    // This prevents orphan attempts when user just browses
-
-    flow.setCurrentScreen('section_intro');
-  }, [flow, learnerRecordId, dbStartAssessment]);
-
-  const handleResumeAssessment = useCallback(async () => {
-    if (!pendingAttempt) return;
-
-
-
-    // CRITICAL: Validate database values before proceeding
-    const dbSectionIndex = pendingAttempt.current_section_index;
-    const dbQuestionIndex = pendingAttempt.current_question_index;
-
-    if (dbSectionIndex === null || dbSectionIndex === undefined) {
-      console.error('❌ CRITICAL: current_section_index is null/undefined in database!');
-      console.error('❌ This indicates a database save issue. Starting from beginning.');
-      // Start from beginning if database values are invalid
-      flow.setCurrentSectionIndex(0);
-      flow.setCurrentQuestionIndex(0);
-      flow.setCurrentScreen('section_intro');
-      setShowResumePrompt(false);
-      setAssessmentStarted(true);
-      setUseDatabase(true);
-      return;
-    }
-
-    if (dbQuestionIndex === null || dbQuestionIndex === undefined) {
-      console.error('❌ CRITICAL: current_question_index is null/undefined in database!');
-      console.error('❌ This indicates a database save issue. Using section index only.');
-    }
-
-    setShowResumePrompt(false);
-    setAssessmentStarted(true);
-    setUseDatabase(true);
-
-
-
-    // Restore state from pending attempt
-    flow.setGradeLevel(pendingAttempt.grade_level as GradeLevel);
-    flow.setlearnerStream(pendingAttempt.stream_id);
-
-
-
-    // FIX 4: Restore timer state
-    if (pendingAttempt.timer_remaining !== null && pendingAttempt.timer_remaining !== undefined) {
-
-      flow.setTimeRemaining(pendingAttempt.timer_remaining);
-    }
-    if (pendingAttempt.elapsed_time !== null && pendingAttempt.elapsed_time !== undefined) {
-
-      flow.setElapsedTime(pendingAttempt.elapsed_time);
-    }
-
-    // FIX 5: Restore section timings
-    if (pendingAttempt.section_timings) {
-
-      flow.setSectionTimings(pendingAttempt.section_timings);
-    }
-
-    // Restore answers from UUID-based responses (personal_assessment_responses table)
-    if (pendingAttempt.restoredResponses) {
-
-      Object.entries(pendingAttempt.restoredResponses).forEach(([key, value]) => {
-        flow.setAnswer(key, value);
-      });
-    }
-
-    // FIX: Restore non-UUID answers from all_responses column (RIASEC, BigFive, Values, Employability)
-    if (pendingAttempt.all_responses) {
-
-      Object.entries(pendingAttempt.all_responses).forEach(([key, value]) => {
-        flow.setAnswer(key, value);
-      });
-    }
-
-
-
-    // FIX 1: Resume adaptive aptitude session if exists
-    if (pendingAttempt.adaptive_aptitude_session_id) {
-      console.log('🔄 [ADAPTIVE RESUME] Found adaptive session ID, attempting to resume:', pendingAttempt.adaptive_aptitude_session_id);
-
-      // Check if the adaptive session is already completed
-      const { data: adaptiveSession } = await supabase
-        .from('adaptive_aptitude_sessions')
-        .select('status, questions_answered')
-        .eq('id', pendingAttempt.adaptive_aptitude_session_id)
-        .single();
-
-      if (adaptiveSession?.status === 'completed') {
-        console.log('✅ [ADAPTIVE RESUME] Adaptive session already completed, skipping resume');
-        console.log('✅ [ADAPTIVE RESUME] Will show section complete screen');
-        // Don't try to resume - the section is already complete
-        // Check if we're currently on the adaptive section
-        const adaptiveSectionIndex = sections.findIndex(s => s.isAdaptive);
-        const sectionIndex = flow.currentSectionIndex;
-        if (sectionIndex === adaptiveSectionIndex) {
-          console.log('✅ [ADAPTIVE RESUME] Currently on adaptive section, showing section complete');
-          // Use the state setter directly instead of the non-existent method
-          flow.setShowSectionIntro(false);
-        }
-      } else {
-        // Session is in progress, try to resume it
-        try {
-          await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
-          console.log('✅ [ADAPTIVE RESUME] Session resumed successfully');
-        } catch (err) {
-          console.error('❌ [ADAPTIVE RESUME] Failed to resume adaptive session:', err);
-          // Show error to user but allow them to continue
-          flow.setError('Could not resume adaptive test session. The section will restart from the beginning.');
-          // Continue with regular resume - adaptive section will restart if needed
-        }
-      }
-    } else {
-      console.log('ℹ️ [ADAPTIVE RESUME] No adaptive session ID found - user may not have started adaptive section yet');
-    }
-
-    // FIX 3: Check if we need to wait for AI questions
-    const needsAIQuestions = ['after10', 'after12', 'college'].includes(pendingAttempt.grade_level);
-
-
-    if (needsAIQuestions && questionsLoading) {
-
-      // Set screen to loading so useEffect can detect and restore position later
-      flow.setCurrentScreen('loading');
-
-      // Position will be restored in the useEffect below once sections are built
-      return;
-    }
-
-    // Use validated database values
-    const sectionIndex = dbSectionIndex ?? 0;
-    const questionIndex = dbQuestionIndex ?? 0;
-
-
-    // FIX 2: Only restore position if sections are already built
-    // Otherwise, let the useEffect below handle it once sections are ready
-    if (sections.length > 0) {
-      // CRITICAL: Validate section index against actual sections
-      if (sectionIndex >= sections.length) {
-        console.error('❌ CRITICAL: Database section index', sectionIndex, 'is out of bounds! Available sections:', sections.length);
-        console.error('❌ Available sections:', sections.map((s, i) => `${i}: ${s.id}`));
-        console.error('❌ This indicates a mismatch between database and current sections. Starting from beginning.');
-
-        // Start from beginning if section index is invalid
-        flow.setCurrentSectionIndex(0);
-        flow.setCurrentQuestionIndex(0);
-        flow.setCurrentScreen('section_intro');
-        return;
-      }
-
-      const targetSection = sections[sectionIndex];
-
-      flow.setCurrentSectionIndex(sectionIndex);
-
-      // FIX: For adaptive sections, check if session exists
-      // The adaptive hook manages its own question state
-      if (targetSection?.isAdaptive) {
-        console.log('🔄 [ADAPTIVE RESUME] Detected adaptive section in handleResumeAssessment');
-
-        // CRITICAL FIX: Check if adaptive session exists
-        // If user completed previous section and moved to adaptive section but never clicked "Start Section",
-        // the adaptive_aptitude_session_id will be NULL
-        if (!pendingAttempt.adaptive_aptitude_session_id) {
-          console.log('⚠️ [ADAPTIVE RESUME] No adaptive session ID found - user never started this section');
-          console.log('⚠️ [ADAPTIVE RESUME] Showing section intro so user can start the section');
-          // Show section intro screen so user can click "Start Section"
-          flow.setCurrentQuestionIndex(0);
-          flow.setShowSectionIntro(true);
-          flow.setCurrentScreen('section_intro');
-        } else {
-          // Check if the adaptive session is completed
-          const { data: adaptiveSession } = await supabase
-            .from('adaptive_aptitude_sessions')
-            .select('status')
-            .eq('id', pendingAttempt.adaptive_aptitude_session_id)
-            .single();
-
-          if (adaptiveSession?.status === 'completed') {
-            console.log('✅ [ADAPTIVE RESUME] Adaptive session is completed, showing section complete');
-            flow.setCurrentQuestionIndex(0);
-            flow.setShowSectionIntro(false);
-            flow.setCurrentScreen('section_complete');
-          } else {
-            console.log('✅ [ADAPTIVE RESUME] Adaptive session exists and in progress, resuming to assessment screen');
-            // Adaptive session was already resumed above
-            // Just set to question 0 and let adaptive hook take over
-            flow.setCurrentQuestionIndex(0);
-            flow.setShowSectionIntro(false);
-            flow.setCurrentScreen('assessment');
+    return gradeMap[grade || ''] || 'high_school';
+  };
+
+  // Initialize adaptive aptitude hook at top level (hooks must be called unconditionally)
+  const adaptiveHook = useAdaptiveAptitude({
+    learnerId: learnerId || '',
+    gradeLevel: getAdaptiveGradeLevel(selectedGrade),
+    onTestComplete: async (results) => {
+      // WHY: The adaptive session ID is the only link the backend (save-results)
+      // uses to derive aptitude_scores/aptitude_overall via the adaptive results.
+      // It must survive a page reload/resume between finishing the adaptive section
+      // and submitting the (later) aptitude/knowledge sections. We therefore persist
+      // it in TWO durable places, not just non-persisted Zustand state:
+      //   1) answers map  -> saved to attempts.all_responses (survives reload)
+      //   2) attempts.adaptive_aptitude_session_id -> via linkSessionToAttempt (DB)
+      // This restores the backup-link guarantee that was previously missing; without
+      // it a failed startTest link silently caused aptitude to be saved as 0/null.
+      const sessionId = results?.sessionId;
+      if (sessionId) {
+        store.saveAnswer('adaptive_aptitude_session_id', sessionId);
+
+        if (store.attemptId) {
+          try {
+            await linkSessionToAttempt(store.attemptId, sessionId);
+            logger.info('[onTestComplete] Adaptive session linked to attempt (backup link)', {
+              attemptId: store.attemptId,
+              sessionId,
+            });
+          } catch (err) {
+            // Non-blocking: store + answers fallback still allow submit-time recovery.
+            logger.warn('[onTestComplete] Backup session link failed (non-blocking)', {
+              error: err instanceof Error ? err.message : String(err),
+              attemptId: store.attemptId,
+              sessionId,
+            });
           }
         }
-
       } else {
-        // For regular sections, restore the exact question index
-        const questionCount = targetSection?.questions?.length || 0;
-
-
-
-        // Check if question index is out of bounds (past last question)
-        if (questionIndex >= questionCount && questionCount > 0) {
-          console.warn(`⚠️ Question index ${questionIndex} is out of bounds (section has ${questionCount} questions)`);
-
-
-          // Set to last valid question
-          flow.setCurrentQuestionIndex(Math.max(0, questionCount - 1));
-
-          // Check if this is the last section
-          const isLastSection = sectionIndex === sections.length - 1;
-
-          if (isLastSection) {
-
-            // Show section complete screen so user can submit
-            flow.setShowSectionIntro(false);
-            flow.setCurrentScreen('assessment');
-            setTimeout(() => {
-              flow.completeSection();
-            }, 100);
-          } else {
-
-            // Move to next section automatically
-            flow.setCurrentSectionIndex(sectionIndex + 1);
-            flow.setCurrentQuestionIndex(0);
-            flow.setShowSectionIntro(true);
-            flow.setCurrentScreen('section_intro');
-          }
-        } else if (questionIndex > 0) {
-          // If we're in the middle of a section, skip the intro
-          flow.setCurrentQuestionIndex(questionIndex);
-          flow.setShowSectionIntro(false);
-          flow.setCurrentScreen('assessment');
-
-        } else {
-          // Start of section - show intro
-          flow.setCurrentQuestionIndex(questionIndex);
-          flow.setCurrentScreen('section_intro');
-
-        }
+        logger.warn('[onTestComplete] Completed adaptive test returned no sessionId');
       }
-    } else {
 
-      // Set screen to loading so useEffect can detect and restore position later
-      flow.setCurrentScreen('loading');
+      // Show section-complete screen; user clicks "Submit Assessment" to submit.
+      setCurrentScreen('section-complete');
+    },
+    onError: (err) => {
+      store.setError(err.message);
+    },
+  });
 
-      // Position will be restored in useEffect below
-    }
+  // Initialize AI questions hook for aptitude and knowledge sections
+  // Use store.streamId as the primary source since it's set during initializeAssessment
+  // Also use store.gradeLevel as it's more reliable than selectedGrade
+  const effectiveStream = store.streamId || selectedStream;
+  const effectiveGrade = store.gradeLevel || selectedGrade;
+  
+  logger.info('[AI Questions Hook Init]', {
+    effectiveStream,
+    effectiveGrade,
+    storeStreamId: store.streamId,
+    storeGradeLevel: store.gradeLevel,
+    selectedStream,
+    selectedGrade,
+    learnerId,
+    attemptId: store.attemptId,
+    learnerProgram
+  });
+  
+  const aiQuestionsHook = useAIQuestions({
+    gradeLevel: effectiveGrade as any,
+    learnerStream: effectiveStream,
+    learnerId: learnerId,
+    attemptId: store.attemptId,
+    learnerProgram: learnerProgram,
+    isResuming: !!resumeData || isResumingAdaptive // Flag to indicate resume operation
+  });
 
-
-  }, [pendingAttempt, flow, adaptiveAptitude, questionsLoading, sections.length]);
-
-  const handleStartNewAssessment = useCallback(async () => {
-
-
-    if (pendingAttempt?.id) {
-      try {
-
-        await assessmentService.abandonAttempt(pendingAttempt.id);
-
-      } catch (err) {
-        console.error('❌ Error abandoning attempt:', err);
-        // Continue anyway - user wants to start fresh
-      }
-    }
-
-    // Clear all resume-related state
-    setShowResumePrompt(false);
-    setPendingAttempt(null);
-    setCheckingExistingAttempt(false);
-    setSkipResumeCheck(true); // Prevent resume check from running again
-
-    // Clear current attempt from useAssessment hook
-    if (currentAttempt?.id) {
-      try {
-        await assessmentService.abandonAttempt(currentAttempt.id);
-      } catch (err) {
-        console.error('Error abandoning current attempt:', err);
-      }
-    }
-
-    // Go to grade selection
-    flow.setCurrentScreen('grade_selection');
-  }, [pendingAttempt, currentAttempt, flow]);
-
-  const handleStartSection = useCallback(async () => {
-    const currentSection = sections[flow.currentSectionIndex];
-
-    console.log('🚀 [handleStartSection] Called:', {
-      currentSectionIndex: flow.currentSectionIndex,
-      sectionId: currentSection?.id,
-      hasCurrentAttempt: !!currentAttempt,
-      haslearnerRecordId: !!learnerRecordId,
-      learnerRecordId,
-      useDatabase
+  // Log AI questions hook state for debugging
+  useEffect(() => {
+    logger.info('[AI Questions Hook State]', {
+      loading: aiQuestionsHook.loading,
+      error: aiQuestionsHook.error,
+      hasAptitude: !!aiQuestionsHook.aiQuestions.aptitude,
+      hasKnowledge: !!aiQuestionsHook.aiQuestions.knowledge,
+      aptitudeCount: aiQuestionsHook.aiQuestions.aptitude?.length || 0,
+      knowledgeCount: aiQuestionsHook.aiQuestions.knowledge?.length || 0,
+      progress: aiQuestionsHook.progress,
+      selectedGrade,
+      selectedStream,
+      effectiveStream,
+      storeStreamId: store.streamId,
+      learnerId,
+      attemptId: store.attemptId,
+      learnerProgram
     });
+  }, [aiQuestionsHook.loading, aiQuestionsHook.error, aiQuestionsHook.aiQuestions, aiQuestionsHook.progress, selectedGrade, selectedStream, effectiveStream, store.streamId, learnerId, store.attemptId, learnerProgram]);
 
-    // SAFEGUARD: Ensure resume prompt is hidden when starting a section
-    // This prevents any race conditions from showing the prompt
-    if (showResumePrompt) {
-      setShowResumePrompt(false);
-      setPendingAttempt(null);
-    }
+  // Effect: when pendingAIResumeRef is set AND questions are already loaded, restore position immediately
+  // This is intentionally left empty - position restore is handled in the AI questions effect below
+  // to ensure sections are populated BEFORE position is set
+  useEffect(() => {
+    // intentionally empty - position restore happens after sections are populated
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentScreen, aiQuestionsHook.loading, aiQuestionsHook.aiQuestions]);
 
-    // Create database attempt if not already created (regardless of section index)
-    // FIX: This ensures attemptId is available for all sections, not just section 0
-    // CRITICAL: Check if currentAttempt has an ID, not just if it exists
-    if (!currentAttempt?.id && learnerRecordId) {
-      try {
-        console.log('💾 [handleStartSection] Setting useDatabase to true');
-        setUseDatabase(true);
-
-        // Determine the appropriate stream ID based on grade level
-        // Use the stream that was set during grade selection
-        let streamId = flow.learnerStream;
-
-        // Fallback: If no stream selected, use 'college' for college learners
-        // Note: College learners have gradeLevel='after12' but isCollegeLearner=true
-        if (!streamId && isCollegeLearner) {
-          streamId = 'college';
+  // Effect to populate AI sections when questions are loaded
+  useEffect(() => {
+    if (!aiQuestionsHook.loading && !aiQuestionsHook.error && store.sections.length > 0) {
+      const { aptitude, knowledge } = aiQuestionsHook.aiQuestions;
+      
+      logger.info('[AI Questions Effect] Checking for questions to populate', {
+        hasAptitude: !!aptitude,
+        hasKnowledge: !!knowledge,
+        aptitudeLength: aptitude?.length || 0,
+        knowledgeLength: knowledge?.length || 0,
+        sectionsCount: store.sections.length,
+        hasPendingResume: !!pendingAIResumeRef.current
+      });
+      
+      let sectionsUpdated = false;
+      const updatedSections = [...store.sections];
+      
+      // Find and populate aptitude section
+      if (aptitude && aptitude.length > 0) {
+        const aptitudeIndex = store.sections.findIndex(s => s.name === 'aptitude' || s.id === 'aptitude' || (typeof s.id === 'string' && s.id.startsWith('aptitude-')));
+        if (aptitudeIndex !== -1 && store.sections[aptitudeIndex].questions.length === 0) {
+          logger.info('[AI Questions] Populating aptitude section', { questionCount: aptitude.length, sectionIndex: aptitudeIndex });
+          updatedSections[aptitudeIndex] = {
+            ...updatedSections[aptitudeIndex],
+            questions: aptitude.map((q: any, index: number) => ({
+              id: q.id || `aptitude-${index}`,
+              text: q.text || q.question,
+              type: 'mcq',
+              options: q.options || [],
+              correct: q.correct || q.correct_answer,
+              order: index
+            }))
+          };
+          sectionsUpdated = true;
+          logger.info('[AI Questions] Aptitude section populated successfully');
         }
-        // For after12, after10, middle, highschool: streamId should already be set
+      }
+      
+      // Find and populate knowledge section
+      if (knowledge && knowledge.length > 0) {
+        const knowledgeIndex = store.sections.findIndex(s => s.name === 'knowledge' || s.id === 'knowledge' || (typeof s.id === 'string' && s.id.startsWith('knowledge-')));
+        if (knowledgeIndex !== -1 && store.sections[knowledgeIndex].questions.length === 0) {
+          logger.info('[AI Questions] Populating knowledge section', { questionCount: knowledge.length, sectionIndex: knowledgeIndex });
+          updatedSections[knowledgeIndex] = {
+            ...updatedSections[knowledgeIndex],
+            questions: knowledge.map((q: any, index: number) => ({
+              id: q.id || `knowledge-${index}`,
+              text: q.text || q.question,
+              type: 'mcq',
+              options: q.options || [],
+              correct: q.correct || q.correct_answer,
+              order: index
+            }))
+          };
+          sectionsUpdated = true;
+          logger.info('[AI Questions] Knowledge section populated successfully');
+        }
+      }
+      
+      // Step 1: Update store with populated sections first
+      if (sectionsUpdated) {
+        store.setSections(updatedSections);
+        logger.info('[AI Questions] Sections updated in store');
 
-        console.log('🎯 [AssessmentTestPage] Creating attempt:', {
+        // Step 2: If we're on loading screen (resume case), restore exact question position then switch to assessment
+        if (currentScreen === 'loading') {
+          if (pendingAIResumeRef.current) {
+            const { sectionIndex, questionIndex } = pendingAIResumeRef.current;
+            logger.info('[AI Questions] Restoring pending resume position', { sectionIndex, questionIndex });
+            store.setCurrentQuestion(sectionIndex, questionIndex);
+            pendingAIResumeRef.current = null;
+          }
+          logger.info('[AI Questions] Questions loaded, switching from loading to assessment screen');
+          setCurrentScreen('assessment');
+        }
+      }
+    } else if (aiQuestionsHook.error) {
+      logger.error('[AI Questions Effect] Error loading AI questions', { error: aiQuestionsHook.error });
+    } else if (aiQuestionsHook.loading) {
+      logger.info('[AI Questions Effect] Still loading AI questions...');
+    }
+  }, [aiQuestionsHook.loading, aiQuestionsHook.aiQuestions, aiQuestionsHook.error, store.sections, store, currentScreen]);
+
+  // Initialize assessment on mount
+  useEffect((): void => {
+    const initAssessment = async (): Promise<void> => {
+      if (!user?.id) return;
+
+      if (loadingLearnerGrade) {
+        return;
+      }
+
+      try {
+        // Check if there's an in-progress assessment to resume
+        const inProgressResponse = await checkInProgress();
+
+        if (inProgressResponse.success && inProgressResponse.hasInProgress) {
+          setResumeData(inProgressResponse);
+          setCurrentScreen('resume-prompt');
+        } else {
+          setCurrentScreen('grade-selection');
+        }
+      } catch (err: unknown) {
+        setCurrentScreen('grade-selection');
+      }
+    };
+
+    initAssessment();
+  }, [user?.id, learnerId, loadingLearnerGrade]);
+
+  // Handle stream/category selection (defined first so it can be used by handleGradeSelect)
+  const handleStreamSelect = useCallback(async (streamId: string): Promise<void> => {
+    if (!selectedGrade) return;
+
+    setSelectedStream(streamId);
+    store.setLoading(true);
+    store.setStatus('loading');
+
+    try {
+      // Check if there's already an in-progress assessment for this grade/stream
+      // to avoid creating duplicate attempts
+      const resumeStreamId = resumeData?.streamId || resumeData?.stream_id;
+      if (resumeData?.gradeLevel === selectedGrade && resumeStreamId === streamId) {
+        // Resume existing attempt instead of creating a new one
+        const { gradeLevel, streamId: resumeStreamId, currentSectionIndex, currentQuestionIndex, answers, elapsedTime, attemptId, sections } = resumeData;
+
+        if (sections) {
+          store.initializeAssessment(sections, attemptId, gradeLevel, resumeStreamId);
+          store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
+
+          if (answers && Object.keys(answers).length > 0) {
+            Object.entries(answers).forEach(([questionId, answer]) => {
+              store.saveAnswer(questionId, answer);
+            });
+          }
+
+          if (elapsedTime) {
+            setElapsedTime(elapsedTime);
+          }
+
+          setShowSectionIntro(false);
+          setCurrentScreen('assessment');
+          setResumeData(null); // Clear resume data after resuming
+        }
+      } else {
+        // Create new assessment only if there's no matching in-progress one
+        const result: StartAssessmentResponse = await startAssessment({
+          gradeLevel: selectedGrade,
           streamId,
-          gradeLevel: flow.gradeLevel,
-          learnerRecordId,
-          currentSectionIndex: flow.currentSectionIndex,
-          note: streamId === 'college' ? 'Using college stream (program-based)' :
-            streamId ? 'Using selected stream' :
-              'No stream (will be null)'
         });
 
-        await dbStartAssessment(streamId, flow.gradeLevel || 'after10');
-        console.log('✅ [handleStartSection] Attempt created successfully');
-      } catch (err) {
-        console.error('❌ [handleStartSection] Error starting assessment:', err);
-      }
-    } else {
-      console.log('⏭️ [handleStartSection] Skipping attempt creation:', {
-        reason: !learnerRecordId ? 'No learnerRecordId' : 'Already have currentAttempt with ID',
-        hasCurrentAttempt: !!currentAttempt,
-        hasAttemptId: !!currentAttempt?.id,
-        learnerRecordId: !!learnerRecordId
-      });
-    }
-
-    // Initialize timer for timed sections
-    if (currentSection?.isTimed && currentSection.timeLimit) {
-      flow.setTimeRemaining(currentSection.timeLimit);
-    }
-
-    // Reset elapsed time
-    flow.setElapsedTime(0);
-
-    // Reset aptitude question timer for aptitude section
-    if (currentSection?.isAptitude) {
-      flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
-    }
-
-    // Reset question timer for knowledge section (reuse aptitudeQuestionTimer state)
-    if (currentSection?.isKnowledge) {
-      flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
-    }
-
-    // Initialize adaptive test
-    if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
-      console.log('🚀 [ADAPTIVE] Starting adaptive test...');
-      console.log('🚀 [ADAPTIVE] Learner ID:', user?.id);
-      console.log('🚀 [ADAPTIVE] Current attempt ID:', currentAttempt?.id);
-
-      // Initialize adaptive timer based on section config
-      setAdaptiveQuestionTimer(currentSection.individualTimeLimit || 60);
-
-      // Check if questions are already loaded
-      if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
-        console.log('✅ [ADAPTIVE] Questions already loaded, starting immediately');
-        // Questions already loaded, start immediately
-        flow.startSection();
-      } else {
-        console.log('⏳ [ADAPTIVE] Questions not loaded yet, setting pending flag');
-        // Set pending flag so useEffect knows to start section when questions load
-        adaptiveStartPendingRef.current = true;
-
-        // Start the adaptive test (async - questions will load in background)
-        try {
-          console.log('🚀 [ADAPTIVE] Calling adaptiveAptitude.startTest()...');
-          await adaptiveAptitude.startTest();
-          console.log('✅ [ADAPTIVE] startTest completed successfully');
-          console.log('✅ [ADAPTIVE] Session ID:', adaptiveAptitude.session?.id);
-          console.log('✅ [ADAPTIVE] Current question:', adaptiveAptitude.currentQuestion?.id);
-        } catch (err) {
-          console.error('❌ [ADAPTIVE] Failed to start test:', err);
-          console.error('❌ [ADAPTIVE] Error details:', {
-            message: (err as Error)?.message,
-            stack: (err as Error)?.stack,
-            error: err
-          });
-          adaptiveStartPendingRef.current = false;
-          flow.setError(`Failed to initialize adaptive test: ${(err as Error)?.message || 'Unknown error'}. Please refresh and try again.`);
-          return;
+        if (result.success && result.attemptId) {
+          store.initializeAssessment(result.sections, result.attemptId, selectedGrade, streamId);
+          setShowSectionIntro(true); // Show section intro before questions
+          setCurrentScreen('section-intro');
+          setResumeData(null); // Clear any old resume data
+          // Reset timers for fresh start
+          setElapsedTime(0);
+          setAdaptiveElapsedTime(0);
+        } else {
+          store.setError(result.error || 'Failed to start assessment');
+          setCurrentScreen('error');
         }
-
-        // Don't call flow.startSection() here - the useEffect will do it once questions are ready
       }
-      return;
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : 'Unknown error';
+      store.setError(error);
+      setCurrentScreen('error');
+    } finally {
+      store.setLoading(false);
     }
+  }, [selectedGrade, resumeData, store]);
 
-    flow.startSection();
-  }, [sections, flow, adaptiveAptitude, currentAttempt, learnerRecordId, dbStartAssessment, showResumePrompt]);
+  // Handle grade selection
+  const handleGradeSelect = useCallback((gradeLevel: string): void => {
+    setSelectedGrade(gradeLevel);
+    setShowSectionIntro(true);
 
-  const handleNextQuestion = useCallback(async () => {
-    const currentSection = sections[flow.currentSectionIndex];
-
-    // CRITICAL FIX 1: Race Condition Protection
-    if (flow.isSaving) {
-      console.log('⏳ [RACE PROTECTION] Already saving, ignoring click');
-      return;
+    // For middle school and high school: skip category selection and go directly to section intro
+    if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
+      // These grade levels will start assessment with the appropriate stream
+      handleStreamSelect(gradeLevel === 'middle' ? 'middle_school' : 'high_school');
+    } else if (gradeLevel === 'college') {
+      // College learners skip field selection and start assessment with normalized program stream
+      // Use learnerProgram from useLearnerGrade hook (already extracted with priority)
+      const normalizedStream = learnerProgram ? normalizeStreamId(learnerProgram) : 'college';
+      logger.info('College learner starting assessment', { 
+        normalizedStream, 
+        originalProgram: learnerProgram 
+      });
+      handleStreamSelect(normalizedStream);
+    } else {
+      // Other grade levels (higher_secondary, after10, after12) need category selection
+      setCurrentScreen('category-selection');
     }
+  }, [handleStreamSelect, learnerProgram]);
 
-    console.log('🔄 [NEXT QUESTION] Starting navigation with save-first logic:', {
-      currentSectionIndex: flow.currentSectionIndex,
-      currentQuestionIndex: flow.currentQuestionIndex,
-      sectionId: currentSection?.id,
-      totalQuestions: currentSection?.questions?.length,
-      useDatabase,
-      hasCurrentAttempt: !!currentAttempt?.id,
-      isSaving: flow.isSaving
-    });
-
-    // Handle adaptive section
-    if (currentSection?.isAdaptive) {
-      if (adaptiveAptitude.submitting) {
-        return;
-      }
-
-      if (adaptiveAptitudeAnswer !== null) {
-        console.log('🎯 [ADAPTIVE] Submitting answer:', adaptiveAptitudeAnswer);
-        adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer as 'A' | 'B' | 'C' | 'D');
-        setAdaptiveAptitudeAnswer(null);
-      }
-      return;
+  // Handle category selection (Science/Commerce/Arts)
+  const handleCategorySelect = useCallback((categoryId: string): void => {
+    setSelectedCategory(categoryId);
+    
+    // For higher_secondary and after10, show stream selection screen
+    // For after12, directly start with the category as stream (no sub-streams)
+    if (selectedGrade === 'higher_secondary' || selectedGrade === 'after10') {
+      setCurrentScreen('stream-selection');
+    } else {
+      // For after12, use category directly as stream
+      handleStreamSelect(categoryId);
     }
+  }, [selectedGrade, handleStreamSelect]);
 
-    // CRITICAL: Block navigation if database is required but we can't save
-    if (useDatabase && !currentAttempt?.id) {
-      console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
-      showBlockingError('Assessment session not found. Please refresh the page and try again.');
-      return;
-    }
+  // Handle resume assessment from resume prompt screen
+  const handleResumeAssessment = useCallback(async (): Promise<void> => {
+    if (!resumeData) return;
 
-    // CRITICAL FIX 2: Set saving state and clear previous errors
-    flow.setIsSaving(true);
-    if (flow.error) {
-      flow.setError(null);
+    setIsLoadingResume(true);
+    // Set flag immediately to prevent startTest() from being called during resume
+    const isAdaptiveInProgress = resumeData.isAdaptiveInProgress;
+    const isAdaptiveCompleted = resumeData.adaptiveSession?.status === 'completed';
+    // Suppress startTest() for both in-progress resume AND completed-adaptive resume
+    if (isAdaptiveInProgress || isAdaptiveCompleted) {
+      setIsResumingAdaptive(true);
     }
 
     try {
-      // Calculate navigation positions
-      const isLastInSection = flow.currentQuestionIndex >= (currentSection?.questions?.length - 1);
-      const isEvery10th = (flow.currentQuestionIndex + 1) % 10 === 0;
-      const nextQuestionIndex = flow.currentQuestionIndex + 1;
-      const nextSectionIndex = isLastInSection ? flow.currentSectionIndex + 1 : flow.currentSectionIndex;
-      const finalQuestionIndex = isLastInSection ? 0 : nextQuestionIndex;
+      const gradeLevel = resumeData.gradeLevel;
+      const streamId = resumeData.streamId || resumeData.stream_id;
+      const { currentSectionIndex, currentQuestionIndex, answers, elapsedTime, attemptId, sections } = resumeData;
 
-      console.log('📊 [SAVE STRATEGY] Determining save approach:', {
-        isLastInSection,
-        isEvery10th,
-        nextPosition: { section: nextSectionIndex, question: finalQuestionIndex },
-        saveStrategy: isLastInSection ? 'CRITICAL' : isEvery10th ? 'CHECKPOINT' : 'LIGHT'
-      });
+      // sections are loaded by checkInProgress and stored in resumeData
+      const sectionsToUse = sections;
 
-      // Reset timers before navigation
-      if (currentSection?.isAptitude && flow.aptitudePhase === 'individual') {
-        flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
-      }
-      if (currentSection?.isKnowledge) {
-        flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
-      }
+      if (sectionsToUse) {
+        // Initialize store with sections
+        store.initializeAssessment(
+          sectionsToUse,
+          attemptId,
+          gradeLevel,
+          streamId
+        );
 
-      // Smart save strategy based on importance
-      if (useDatabase && currentAttempt?.id) {
-        const updatedAnswers = { ...flow.answers };
+        // Set selectedGrade and selectedStream to trigger AI questions loading
+        setSelectedGrade(gradeLevel);
+        setSelectedStream(streamId);
 
-        if (isLastInSection) {
-          // CRITICAL SAVE: Block at section boundaries (data integrity)
-          console.log('💾 [CRITICAL SAVE] Section boundary - blocking save for data integrity');
-          const saveStartTime = performance.now();
-          const saveResult = await dbUpdateProgress(
-            nextSectionIndex,
-            finalQuestionIndex,
-            flow.sectionTimings,
-            null,
-            null,
-            updatedAnswers
-          );
-          const saveEndTime = performance.now();
-          const saveDuration = Math.round(saveEndTime - saveStartTime);
+        // If adaptive test is already completed — all sections done, go straight to submit
+        if (isAdaptiveCompleted) {
+          const adaptiveSection = sectionsToUse.find((s: any) => s.isAdaptive || s.name === 'adaptive_aptitude');
+          const adaptiveSectionIndex = adaptiveSection ? sectionsToUse.indexOf(adaptiveSection) : (sectionsToUse.length - 1);
 
-          console.log('📊 [CRITICAL SAVE] Completed:', {
-            success: saveResult?.success,
-            duration: `${saveDuration}ms`,
-            error: saveResult?.error || 'none'
-          });
+          // Set position FIRST before restoring answers — same pattern as regular resume flow.
+          // useAnswerSync's detect-answers effect fires when saveAnswer runs and captures
+          // store.currentQuestionIndex into pendingQuestionIndexRef. If setCurrentQuestion
+          // hasn't run yet, it captures 0 and syncs questionIndex: 0 to the backend → Q1 on resume.
+          store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
 
-          if (!saveResult?.success) {
-            console.error('❌ [SAVE BLOCK] Critical save failed - Navigation BLOCKED');
-            console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-            showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
-            return; // BLOCK NAVIGATION - critical save failed
+          // Restore all previous answers
+          if (answers && Object.keys(answers).length > 0) {
+            Object.entries(answers).forEach(([questionId, answer]) => {
+              store.saveAnswer(questionId, answer);
+            });
           }
 
-          console.log('✅ [CRITICAL SAVE] Success - Navigation ALLOWED');
+          // Check if user was in a post-adaptive section (AI section)
+          if (currentSectionIndex > adaptiveSectionIndex) {
+            // User was in an AI section - directly restore that position
+            logger.info('[Resume] Adaptive completed, restoring position in post-adaptive section', {
+              sectionIndex: currentSectionIndex,
+              questionIndex: currentQuestionIndex,
+              adaptiveSectionIndex
+            });
+
+            store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
+            // Store pending position so populate effect can restore it after AI questions load
+            pendingAIResumeRef.current = {
+              sectionIndex: currentSectionIndex || 0,
+              questionIndex: currentQuestionIndex || 0,
+              answers: answers || {}
+            };
+
+            // Check if it's an AI section that needs questions loaded
+            const currentSection = sectionsToUse[currentSectionIndex || 0];
+            const isAISection = currentSection && (
+              currentSection.name === 'aptitude' ||
+              currentSection.name === 'knowledge' ||
+              (typeof currentSection.id === 'string' && (currentSection.id.startsWith('aptitude-') || currentSection.id.startsWith('knowledge-')))
+            );
+
+            if (isAISection && currentSection.questions.length === 0) {
+              // AI section with no questions - show loading while questions load
+              logger.info('[Resume] AI section needs questions, showing loading screen');
+              setShowSectionIntro(false);
+              setCurrentScreen('loading');
+            } else {
+              // Questions already loaded or not an AI section - go directly to assessment
+              logger.info('[Resume] Going directly to assessment');
+              setShowSectionIntro(false);
+              setCurrentScreen('assessment');
+            }
+          } else if (currentSectionIndex === adaptiveSectionIndex) {
+            // Adaptive is completed but DB recorded the adaptive section index
+            // (caused by debounce race on section transition) — move directly to AI section intro
+            logger.info('[Resume] Adaptive completed at boundary, advancing to AI section', {
+              adaptiveSectionIndex,
+              nextSectionIndex: adaptiveSectionIndex + 1
+            });
+            const nextSectionIndex = adaptiveSectionIndex + 1;
+            store.setCurrentQuestion(nextSectionIndex, 0);
+            setShowSectionIntro(true);
+            setCurrentScreen('section-intro');
+          } else {
+            // User was still in adaptive section or earlier - show section-complete for adaptive
+            store.setCurrentQuestion(adaptiveSectionIndex, 0);
+
+            // Use saved adaptive section timing (in minutes → seconds), fallback to overall elapsed
+            const adaptiveSectionMinutes = resumeData.sectionTimings?.adaptive_aptitude || 0;
+            const restoredElapsed = adaptiveSectionMinutes > 0
+              ? adaptiveSectionMinutes * 60
+              : (resumeData.elapsedTime || 0);
+            // Set after tick so the section-change effect (which resets to 0) fires first
+            setTimeout(() => setElapsedTime(restoredElapsed), 0);
+
+            setShowSectionIntro(false);
+            setCurrentScreen('section-complete');
+          }
+          
+          setIsResumingAdaptive(false);
+          return;
+        }
+
+        // If resuming adaptive test mid-way, restore it properly
+        if (isAdaptiveInProgress && resumeData.adaptiveSession) {
+          // Find the adaptive section
+          const adaptiveSection = sectionsToUse.find((s: any) => s.isAdaptive || s.name === 'adaptive_aptitude');
+          if (adaptiveSection) {
+            const adaptiveSectionIndex = sectionsToUse.indexOf(adaptiveSection);
+
+            // Initialize store to point to adaptive section
+            store.setCurrentQuestion(adaptiveSectionIndex, 0);
+
+            // Restore adaptive session from backend
+            try {
+              const resumedSessionData = await AdaptiveAptitudeApiService.resumeTest(
+                resumeData.adaptiveSession.sessionId
+              );
+
+              if (resumedSessionData.session && resumedSessionData.currentQuestion) {
+                // Initialize both store AND hook with resumed session data
+                store.initializeAdaptiveSession(
+                  resumedSessionData.session,
+                  resumedSessionData.currentQuestion
+                );
+
+                // Set selectedGrade so the hook's gradeLevel matches
+                const resumedGradeLevel = resumeData.gradeLevel;
+                if (resumedGradeLevel) {
+                  setSelectedGrade(resumedGradeLevel);
+                }
+
+                setShowSectionIntro(false);
+                setCurrentScreen('assessment');
+                setIsResumingAdaptive(false);
+              } else {
+                throw new Error('Failed to resume adaptive test');
+              }
+            } catch (resumeError) {
+              store.setError('Failed to resume adaptive test');
+              setCurrentScreen('error');
+              setIsResumingAdaptive(false);
+              return;
+            }
+          }
         } else {
-          // For non-critical saves, try to save first, then navigate
-          console.log('💾 [BACKGROUND SAVE] Attempting save before navigation...');
+          // Regular resume flow
+          // Set current position to where user left off
+          store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
 
-          if (isEvery10th) {
-            // CHECKPOINT SAVE: Try to save, block if it fails
-            const saveResult = await dbUpdateProgress(
-              nextSectionIndex,
-              finalQuestionIndex,
-              flow.sectionTimings,
-              null,
-              null,
-              updatedAnswers
-            );
-
-            if (!saveResult?.success) {
-              console.error('❌ [SAVE BLOCK] Checkpoint save failed - Navigation BLOCKED');
-              console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-              showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
-              return; // BLOCK NAVIGATION - checkpoint save failed
-            }
-
-            console.log('✅ [CHECKPOINT SAVE] Success - Navigation ALLOWED');
-          } else {
-            // LIGHT SAVE: Try to save, block if it fails
-            const saveResult = await dbUpdateProgress(
-              nextSectionIndex,
-              finalQuestionIndex,
-              {}, // Empty section timings for light save
-              null,
-              null,
-              {} // Empty answers for light save
-            );
-
-            if (!saveResult?.success) {
-              console.error('❌ [SAVE BLOCK] Light save failed - Navigation BLOCKED');
-              console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-              showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
-              return; // BLOCK NAVIGATION - light save failed
-            }
-
-            console.log('✅ [LIGHT SAVE] Success - Navigation ALLOWED');
+          // Restore all previous answers
+          if (answers && Object.keys(answers).length > 0) {
+            Object.entries(answers).forEach(([questionId, answer]) => {
+              store.saveAnswer(questionId, answer);
+            });
           }
 
-          // Only navigate after successful save
-          console.log('🚀 [NAVIGATION] Proceeding with navigation after successful save');
-          flow.goToNextQuestion();
-          console.log('✅ [NAVIGATION] Navigation completed');
-          return; // Early return for non-critical saves
-        }
-      } else {
-        console.log('⏭️ [SAVE] Database disabled - allowing navigation without save');
-      }
-
-      // Navigate after critical save or when database is disabled
-      console.log('🚀 [NAVIGATION] Proceeding with navigation after critical save');
-      flow.goToNextQuestion();
-      console.log('✅ [NAVIGATION] Navigation completed');
-
-    } catch (error: any) {
-      // CRITICAL FIX 3: Handle network errors and other exceptions
-      console.error('❌ [CRITICAL ERROR] Unexpected error during navigation:', error);
-
-      // Provide user-friendly error messages based on error type
-      if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
-        showBlockingError('Network connection lost. Please check your internet connection and try again.');
-      } else if (error?.message?.includes('timeout')) {
-        showBlockingError('Request timed out. Please try again.');
-      } else if (error?.message?.includes('session')) {
-        showBlockingError('Your session has expired. Please refresh the page and try again.');
-      } else {
-        showBlockingError('An unexpected error occurred. Please try again or refresh the page.');
-      }
-
-      // Don't navigate on error
-      return;
-    } finally {
-      // CRITICAL FIX 4: Always clear saving state in finally block
-      console.log('🔓 [SAVE] Clearing isSaving state in finally block');
-      flow.setIsSaving(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, flow, adaptiveAptitude, adaptiveAptitudeAnswer, useDatabase, currentAttempt, dbUpdateProgress]);
-
-  const handleNextSection = useCallback(async () => {
-    // Compute isLastSection directly to avoid stale closure issues
-    const isLastSection = flow.currentSectionIndex === sections.length - 1;
-
-
-    console.log('📊 handleNextSection state:', {
-      isLastSection,
-      flowIsLastSection: flow.isLastSection,
-      currentSectionIndex: flow.currentSectionIndex,
-      sectionsLength: sections.length,
-      gradeLevel: flow.gradeLevel,
-      useDatabase,
-      hasCurrentAttempt: !!currentAttempt?.id,
-      currentAttemptId: currentAttempt?.id
-    });
-
-    if (isLastSection) {
-
-      // IMPORTANT: Set submitting state IMMEDIATELY so the UI shows loading
-      // This prevents the button from appearing unresponsive during database fetch
-      flow.setIsSubmitting(true);
-
-      // CRITICAL FIX: Load answers and section timings from database before submitting
-      // Don't rely on flow.answers/flow.sectionTimings because of async state updates
-      let answersToSubmit = flow.answers;
-      let timingsToSubmit = flow.sectionTimings;
-
-      if (useDatabase && currentAttempt?.id) {
-        try {
-          // Fetch the latest attempt data with all_responses and section_timings
-          const { data: attemptData, error: fetchError } = await supabase
-            .from('personal_assessment_attempts')
-            .select('all_responses, section_timings')
-            .eq('id', currentAttempt.id)
-            .single();
-
-          if (!fetchError && attemptData) {
-            if (attemptData.all_responses) {
-              answersToSubmit = attemptData.all_responses;
-            } else {
-              console.warn('⚠️ Could not load answers from database, using flow.answers');
-            }
-
-            if (attemptData.section_timings) {
-              timingsToSubmit = attemptData.section_timings;
-            } else {
-              console.warn('⚠️ Could not load section timings from database, using flow.sectionTimings');
-            }
+          // Set elapsed time for non-timed sections
+          if (elapsedTime) {
+            setElapsedTime(elapsedTime);
           }
-        } catch (err) {
-          console.error('Error loading data from database:', err);
-        }
-      }
 
-      // Submit assessment with the correct answers and timings
-      submission.submit({
-        answers: answersToSubmit,
-        sections,
-        learnerStream: flow.learnerStream,
-        gradeLevel: flow.gradeLevel,
-        sectionTimings: timingsToSubmit,
-        currentAttempt,
-        userId: user?.id || null,
-        timeRemaining: flow.timeRemaining,
-        elapsedTime: flow.elapsedTime,
-        selectedCategory: flow.selectedCategory,
-        learnerProgram: learnerProgram || null,
-        antiCheatingReport: antiCheatingMonitor.getReport()
-      });
-    } else {
-      console.log('⏭️ [NEXT SECTION] Moving to next section with optimized save strategy');
-      console.log('📊 [NEXT SECTION] Current state:', {
-        currentSectionIndex: flow.currentSectionIndex,
-        totalSections: sections.length,
-        currentQuestionIndex: flow.currentQuestionIndex,
-        useDatabase,
-        hasCurrentAttempt: !!currentAttempt?.id
-      });
-
-      // CRITICAL: Block navigation if database is required but we can't save
-      if (useDatabase && !currentAttempt?.id) {
-        console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
-        console.error('❌ [SAVE BLOCK] Section navigation BLOCKED - database enabled but no attempt');
-        showBlockingError('Assessment session not found. Please refresh the page and try again.');
-        return; // BLOCK NAVIGATION - cannot save at all
-      }
-
-      // Calculate the next section position
-      const nextSectionIndex = flow.currentSectionIndex + 1;
-      const nextQuestionIndex = 0; // Always start at question 0 in new section
-
-      console.log('📊 [NEXT SECTION] Next position:', {
-        currentPosition: { section: flow.currentSectionIndex, question: flow.currentQuestionIndex },
-        nextPosition: { section: nextSectionIndex, question: nextQuestionIndex }
-      });
-
-      // CRITICAL SAVE: Section boundaries are always critical for data integrity
-      if (useDatabase && currentAttempt?.id) {
-        console.log('💾 [CRITICAL SAVE] Section boundary - blocking save for data integrity');
-        const updatedAnswers = { ...flow.answers };
-
-        try {
-          const saveStartTime = performance.now();
-          const saveResult = await dbUpdateProgress(
-            nextSectionIndex,
-            nextQuestionIndex,
-            flow.sectionTimings,
-            null,
-            null,
-            updatedAnswers
+          // Check if resuming to an AI section (aptitude or knowledge)
+          const currentSection = sectionsToUse[currentSectionIndex || 0];
+          const isAISection = currentSection && (
+            currentSection.name === 'aptitude' || 
+            currentSection.name === 'knowledge' ||
+            (typeof currentSection.id === 'string' && (currentSection.id.startsWith('aptitude-') || currentSection.id.startsWith('knowledge-')))
           );
-          const saveEndTime = performance.now();
-          const saveDuration = Math.round(saveEndTime - saveStartTime);
+          
+          if (isAISection && currentSection.questions.length === 0) {
+            // Resuming to an AI section with no questions yet - store the target position
+            // The AI questions effect will restore position once questions are loaded
+            logger.info('[Resume] Resuming to AI section - storing pending position for restore after questions load', {
+              sectionName: currentSection.name,
+              sectionIndex: currentSectionIndex || 0,
+              questionIndex: currentQuestionIndex || 0
+            });
 
-          console.log('📊 [CRITICAL SAVE] Section boundary save completed:', {
-            success: saveResult?.success,
-            duration: `${saveDuration}ms`,
-            error: saveResult?.error || 'none'
-          });
+            // Store the pending resume position - will be used by AI questions effect
+            pendingAIResumeRef.current = {
+              sectionIndex: currentSectionIndex || 0,
+              questionIndex: currentQuestionIndex || 0,
+              answers: answers || {}
+            };
 
-          if (!saveResult?.success) {
-            console.error('❌ [SAVE BLOCK] Section save failed - Navigation BLOCKED');
-            console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-            showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
-            return; // BLOCK NAVIGATION - critical save failed
-          }
-
-          console.log('✅ [CRITICAL SAVE] Section save successful - Navigation ALLOWED');
-        } catch (error: any) {
-          console.error('❌ [SAVE BLOCK] Section save error - Navigation BLOCKED');
-          console.error('❌ [SAVE BLOCK] Error details:', error);
-
-          // Provide user-friendly error messages based on error type
-          if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
-            showBlockingError('Network connection lost. Please check your internet connection and try again.');
-          } else if (error?.message?.includes('timeout')) {
-            showBlockingError('Request timed out. Please try again.');
-          } else if (error?.message?.includes('session')) {
-            showBlockingError('Your session has expired. Please refresh the page and try again.');
+            // Show loading screen while AI questions load
+            setShowSectionIntro(false);
+            setCurrentScreen('loading');
           } else {
-            showBlockingError('An unexpected error occurred. Please try again or refresh the page.');
+            // Skip intro and go directly to assessment
+            setShowSectionIntro(false);
+            setCurrentScreen('assessment');
           }
-
-          return; // BLOCK NAVIGATION - critical save error
         }
       } else {
-        console.log('⏭️ [SAVE] Database disabled - allowing section navigation without save');
+        store.setError('Failed to load assessment');
+        setCurrentScreen('error');
       }
-
-      // Navigate after critical save or when database is disabled
-      console.log('🚀 [SECTION NAVIGATION] Proceeding with section navigation after critical save');
-      flow.goToNextSection();
-      console.log('✅ [SECTION NAVIGATION] Section navigation completed');
+    } catch (error) {
+      const err = error instanceof Error ? error.message : 'Unknown error';
+      store.setError(err);
+      setCurrentScreen('error');
+    } finally {
+      setIsLoadingResume(false);
     }
-  }, [flow, sections, submission, currentAttempt, user, useDatabase, dbUpdateProgress]);
+  }, [resumeData, store, adaptiveHook]);
 
-  const handleAnswerChange = useCallback((value: any) => {
-    const currentSection = sections[flow.currentSectionIndex];
-    const qId = flow.questionId; // Capture questionId at the time of answer
-
-    console.log(`📝 [Answer Change] Section: ${currentSection?.id}, QuestionID: ${qId}, Value:`, value);
-
-    if (currentSection?.isAdaptive) {
-      setAdaptiveAptitudeAnswer(value);
-    } else {
-      flow.setAnswer(qId, value);
-      console.log(`📝 [Answer Stored] QuestionID: ${qId}, Answers now:`, Object.keys(flow.answers).length, 'total');
-
-      // Log the actual stored value to verify
-      setTimeout(() => {
-        console.log(`📝 [Answer Verify] Checking if stored - flow.answers[${qId}]:`, flow.answers[qId]);
-      }, 100);
+  // Handle start fresh - abandon previous attempt
+  const handleStartFresh = useCallback(async (): Promise<void> => {
+    setIsLoadingResume(true);
+    try {
+      if (resumeData?.attemptId) {
+        await abandonAttempt(resumeData.attemptId);
+      }
+      // Reset store to clear all old state
+      store.reset();
+      // Clear resume data and show grade selection
+      setResumeData(null);
+      setSelectedGrade(null);
+      setSelectedStream(null);
+      setElapsedTime(0);
+      setAdaptiveElapsedTime(0); // Also reset adaptive elapsed time
+      setAdaptiveTimer(60); // Reset adaptive timer to 60 seconds
+      setShowSectionIntro(true);
+      setCurrentScreen('grade-selection');
+    } catch (error) {
+      // Silently fail on abandon
+    } finally {
+      setIsLoadingResume(false);
     }
-  }, [sections, flow]);
+  }, [resumeData, store]);
 
-  // Blocking error helper function - shows alert and blocks user
-  const showBlockingError = useCallback((message: string) => {
-    console.log('🚨 [BLOCKING ERROR] Showing blocking error:', message);
-    alert(`❌ Save Failed\n\n${message}\n\nPlease try again or check your internet connection.`);
-  }, []);
+  // Handle answer submission
+  const handleAnswerSubmit = useCallback((questionId: string, answer: unknown): void => {
+    store.saveAnswer(questionId, answer);
+    // useAnswerSync hook handles backend sync - no direct save needed
+  }, [store]);
 
-  // Test mode functions
-  const autoFillAllAnswers = useCallback(async () => {
-    sections.forEach(section => {
-      section.questions?.forEach((question: any) => {
-        const questionId = `${section.id}_${question.id}`;
+  // Use the old submission hook that properly handles AI-generated questions
+  const { submit: submitAssessmentWithAI, isSubmitting } = useAssessmentSubmission();
 
-        // Handle SJT questions (best/worst)
-        if (question.partType === 'sjt') {
-          const options = question.options || [];
-          if (options.length >= 2) {
-            flow.setAnswer(questionId, { best: options[0], worst: options[options.length - 1] });
-          }
-        }
-        // Handle RIASEC questions with categoryMapping (multiselect)
-        else if (question.categoryMapping && question.options?.length > 0) {
-          // For RIASEC questions, select 2-3 random options to generate valid scores
-          const numToSelect = Math.min(3, question.options.length);
-          const selectedOptions = question.options.slice(0, numToSelect);
-          flow.setAnswer(questionId, selectedOptions);
-        }
-        // Handle rating scale questions (1-5)
-        else if (section.responseScale) {
-          // Random rating between 1-5 for realistic test data
-          flow.setAnswer(questionId, Math.floor(Math.random() * 5) + 1);
-        }
-        // Handle multiple choice questions
-        else if (question.options?.length > 0) {
-          // Random option selection
-          const randomIndex = Math.floor(Math.random() * question.options.length);
-          flow.setAnswer(questionId, question.options[randomIndex]);
-        }
+  // Handle submit assessment
+  const handleSubmit = useCallback(async (): Promise<void> => {
+    if (!store.attemptId) return;
+
+    store.setStatus('submitting');
+    store.setLoading(true);
+    setCurrentScreen('analyzing');
+
+    try {
+      // Use the old flow that properly fetches AI-generated questions
+      // and calls analyzeAssessmentWithGemini
+      await submitAssessmentWithAI({
+        answers: store.answers,
+        sections: store.sections,
+        learnerStream: store.streamId || null,
+        gradeLevel: store.gradeLevel,
+        sectionTimings: {}, // TODO: Track section timings
+        currentAttempt: { id: store.attemptId },
+        userId: user?.id || null,
+        timeRemaining: null,
+        elapsedTime: 0,
+        selectedCategory: undefined,
+        learnerProgram: learnerProgram || undefined, // Pass the learner program from the hook
       });
-    });
-    console.log('Test Mode: Auto-filled all answers with valid RIASEC data');
-  }, [sections, flow]);
 
-  const skipToSection = useCallback((sectionIndex: number) => {
-    if (sections.length === 0) {
-      console.warn('❌ Cannot skip: sections array is empty');
-      return;
+      toast.success('Success');
+      store.setStatus('completed');
+      setCurrentScreen('complete');
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[AssessmentTestPage] Submit error:', error);
+      store.setError(error);
+      setCurrentScreen('error');
+    } finally {
+      store.setLoading(false);
     }
+  }, [store, submitAssessmentWithAI, user, learnerProgram]);
 
-    if (sectionIndex >= sections.length) {
-      console.warn(`❌ Cannot skip to section ${sectionIndex}: only ${sections.length} sections available`);
-      return;
-    }
+  // Handle next question
+  const handleNextQuestion = useCallback((): void => {
+    const currentSection = store.sections[store.currentSectionIndex];
+    const isLastQuestion = store.currentQuestionIndex >= currentSection.questions.length - 1;
 
-    // Fill all previous sections with dummy answers
-    sections.slice(0, sectionIndex).forEach(section => {
-      section.questions?.forEach((question: any) => {
-        const questionId = `${section.id}_${question.id}`;
-
-        // Handle SJT questions (best/worst)
-        if (question.partType === 'sjt') {
-          const options = question.options || [];
-          if (options.length >= 2) {
-            flow.setAnswer(questionId, { best: options[0], worst: options[options.length - 1] });
-          }
-        }
-        // Handle RIASEC questions with categoryMapping (multiselect)
-        else if (question.categoryMapping && question.options?.length > 0) {
-          // For RIASEC questions, select 2-3 random options to generate valid scores
-          const numToSelect = Math.min(3, question.options.length);
-          const selectedOptions = question.options.slice(0, numToSelect);
-          flow.setAnswer(questionId, selectedOptions);
-        }
-        // Handle rating scale questions (1-5)
-        else if (section.responseScale) {
-          // Random rating between 1-5 for realistic test data
-          flow.setAnswer(questionId, Math.floor(Math.random() * 5) + 1);
-        }
-        // Handle multiple choice questions
-        else if (question.options?.length > 0) {
-          // Random option selection
-          const randomIndex = Math.floor(Math.random() * question.options.length);
-          flow.setAnswer(questionId, question.options[randomIndex]);
-        }
-      });
-    });
-
-    // Jump to the target section
-    flow.jumpToSection(sectionIndex);
-
-    const targetSection = sections[sectionIndex];
-
-    // For adaptive sections, we need to initialize the test first
-    if (targetSection?.isAdaptive) {
-      console.log(`✅ Test Mode: Skipped to adaptive section ${sectionIndex} (${targetSection.title})`);
-      console.log('⏳ Initializing adaptive test...');
-
-      // Initialize adaptive timer
-      setAdaptiveQuestionTimer(targetSection.individualTimeLimit || 60);
-
-      // Set pending flag so useEffect knows to start section when questions load
-      adaptiveStartPendingRef.current = true;
-
-      // Start the adaptive test (async - questions will load in background)
-      adaptiveAptitude.startTest();
-
-      // The useEffect will call flow.startSection() once questions are ready
-      // Don't call it here or it will cause issues
+    if (isLastQuestion && store.currentSectionIndex === store.sections.length - 1) {
+      handleSubmit();
+    } else if (isLastQuestion) {
+      // Show section complete screen
+      setCurrentScreen('section-complete');
     } else {
-      // For non-adaptive sections, auto-start immediately
-      setTimeout(() => {
-        flow.startSection();
-      }, 100);
-
-      console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${targetSection?.title})`);
+      store.nextQuestion();
     }
-  }, [sections, flow, useDatabase, currentAttempt, dbUpdateProgress, dbSaveResponse, adaptiveAptitude, setAdaptiveQuestionTimer]);
+  }, [store, handleSubmit]);
 
-  // Get current question (handle adaptive sections)
-  const currentSection = sections[flow.currentSectionIndex];
-  const currentQuestion = currentSection?.isAdaptive
-    ? adaptiveAptitude.currentQuestion
-    : currentSection?.questions?.[flow.currentQuestionIndex];
+  // Handle section complete - move to next section and show its intro
+  const handleSectionComplete = useCallback((): void => {
+    // Calculate next section index BEFORE calling nextSection() 
+    // because store.currentSectionIndex won't update synchronously
+    const nextSectionIndex = store.currentSectionIndex + 1;
+    const nextSection = store.sections[nextSectionIndex];
 
-  // CRITICAL: Use flow.questionId consistently everywhere
-  // Don't create a local questionId variable that might differ
-  const questionId = flow.questionId;
-
-  // Check if current question is answered
-  const isCurrentAnswered = useMemo(() => {
-    console.log('🔍 [MCQ Check START] Checking if answered...');
-    console.log('🔍 [MCQ Check] Current section:', currentSection?.id, 'isAptitude:', currentSection?.isAptitude, 'isKnowledge:', currentSection?.isKnowledge);
-    console.log('🔍 [MCQ Check] QuestionID from flow:', flow.questionId);
-    console.log('🔍 [MCQ Check] QuestionID local:', questionId);
-    console.log('🔍 [MCQ Check] Are they equal?:', flow.questionId === questionId);
-
-    // Check for adaptive sections
-    if (currentSection?.isAdaptive) {
-      const isAnswered = adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
-      console.log('🔍 [Adaptive Check] Is answered:', isAnswered);
-      return isAnswered;
-    }
-
-    // Validate questionId
-    if (!questionId || questionId.includes('undefined')) {
-      console.log('🔍 [Validation] Invalid questionId:', questionId);
-      return false;
-    }
-
-    const answer = flow.answers[questionId];
-    console.log('🔍 [Answer Check] QuestionID:', questionId, 'Answer:', answer, 'Type:', typeof answer);
-
-    // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
-    // CRITICAL: Check this BEFORE the general empty check to ensure strict validation
-    if (currentSection?.isAptitude || currentSection?.isKnowledge) {
-      // Answer must be a non-empty string (option value like "A", "B", "C", "D" or the actual option text)
-      const isAnswered = typeof answer === 'string' && answer.trim().length > 0;
-      console.log('🔍 [MCQ Check] Answer value:', answer);
-      console.log('🔍 [MCQ Check] Answer type:', typeof answer);
-      console.log('🔍 [MCQ Check] Is answered:', isAnswered);
-      console.log('🔍 [MCQ Check] Total answers in flow:', Object.keys(flow.answers).length);
-      console.log('🔍 [MCQ Check] All answer keys:', Object.keys(flow.answers));
-      return isAnswered;
-    }
-
-    // Check for empty/null/undefined answers for other question types
-    if (answer === null || answer === undefined || answer === '') {
-      console.log('🔍 [Empty Check] No answer found for questionId:', questionId);
-      return false;
-    }
-
-    // For SJT questions, both best and worst must be selected
-    if (currentQuestion?.partType === 'sjt') {
-      const isAnswered = answer.best && answer.worst;
-      console.log('🔍 [SJT Check] Is answered:', isAnswered);
-      return isAnswered;
-    }
-
-    // For multiselect questions, check if required number of selections made
-    if (currentQuestion?.type === 'multiselect') {
-      const isAnswered = Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
-      console.log('🔍 [Multiselect Check] Is answered:', isAnswered);
-      return isAnswered;
-    }
-
-    // For text questions, check if there's some content (at least 10 characters for meaningful response)
-    if (currentQuestion?.type === 'text') {
-      const isAnswered = typeof answer === 'string' && answer.trim().length >= 10;
-      console.log('🔍 [Text Check] Is answered:', isAnswered);
-      return isAnswered;
-    }
-
-    // For other question types (Likert scales, etc.), ensure answer is not empty
-    const isAnswered = answer !== null && answer !== undefined && answer !== '';
-    console.log('🔍 [Default Check] Is answered:', isAnswered, 'Answer:', answer);
-    return isAnswered;
-  }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion, flow.questionId]);
-
-  // Loading state - show loading for initial checks AND for AI questions when needed
-  // For grade levels that require AI knowledge questions, show loading until questions are ready
-  const needsAIKnowledge = flow.gradeLevel && ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
-  const waitingForAIQuestions = needsAIKnowledge && questionsLoading && assessmentStarted && sections.length === 0;
-
-  const showLoading = checkingExistingAttempt || (!assessmentStarted && dbLoading) || waitingForAIQuestions;
-
-  // Debug: Log loading states
-  if (showLoading) {
-    console.log('🔄 Loading states:', {
-      checkingExistingAttempt,
-      questionsLoading,
-      assessmentStarted,
-      dbLoading,
-      loadinglearnerGrade,
-      learnerRecordId,
-      currentScreen: flow.currentScreen,
-      waitingForAIQuestions
-    });
-  }
-
-  if (showLoading) {
-    const message = waitingForAIQuestions
-      ? "Generating personalized questions for your stream..."
-      : "Loading assessment...";
-    return <LoadingScreen message={message} />;
-  }
-
-  // Error state
-  if (questionsError && flow.currentScreen !== 'grade_selection') {
-    return (
-      <RestrictionScreen
-        errorMessage={questionsError}
-        onViewLastReport={() => navigate('/learner/assessment/result')}
-        onBackToDashboard={() => navigate('/learner/dashboard')}
-      />
+    // Normal flow: move to next section (this resets questionIndex to 0, which is correct)
+    store.nextSection();
+    
+    const isAISection = nextSection && (
+      nextSection.name === 'aptitude' || 
+      nextSection.name === 'knowledge' ||
+      (typeof nextSection.id === 'string' && (nextSection.id.startsWith('aptitude-') || nextSection.id.startsWith('knowledge-')))
     );
-  }
-
-  // Restriction/Error state
-  if (flow.error && !showResumePrompt && !assessmentStarted) {
-    // Determine if we should show ErrorScreen or RestrictionScreen
-    const showErrorScreen = shouldShowErrorScreen(flow.error);
-    const errorType = getErrorType(flow.error);
-
-    if (showErrorScreen) {
-      return (
-        <ErrorScreen
-          errorType={errorType}
-          message={flow.error}
-          onRetry={() => {
-            flow.setError(null);
-            // Retry loading questions if it was a loading error
-            if (errorType === 'loading' && flow.gradeLevel) {
-              window.location.reload();
-            }
-          }}
-          onRefresh={() => window.location.reload()}
-          onBackToDashboard={() => navigate('/learner/dashboard')}
-          showContactSupport={errorType === 'server'}
-        />
-      );
+    
+    // Save progress when moving to next section (especially important for AI sections)
+    if (store.attemptId) {
+      if (isAISection) {
+        logger.info('[AI Section Entry] Saving progress for AI section', { 
+          sectionName: nextSection.name,
+          sectionIndex: nextSectionIndex,
+          attemptId: store.attemptId
+        });
+        store.saveAnswer('_ai_section_entry_marker', new Date().toISOString());
+      }
     }
+    
+    setShowSectionIntro(true);
+    setCurrentScreen('section-intro');
+  }, [store]);
 
-    // Show RestrictionScreen for restriction errors (6-month wait)
-    return (
-      <RestrictionScreen
-        errorMessage={flow.error}
-        onViewLastReport={() => navigate('/learner/assessment/result')}
-        onBackToDashboard={() => navigate('/learner/dashboard')}
-      />
-    );
+  // Use the sync hook at top level (not conditionally)
+  const syncStatus = useAnswerSync(store.attemptId, showSectionIntro);
+
+  // Initialize adaptive test when reaching adaptive section
+  useEffect(() => {
+    if (store.sections.length === 0) return;
+
+    const currentSection = store.sections[store.currentSectionIndex];
+
+    // Only start a NEW test if:
+    // 1. We're in an adaptive section
+    // 2. AND we don't already have a session (either resumed or already started)
+    // 3. AND we're not currently in the process of resuming
+    const alreadyHasSession = adaptiveHook.sessionId || store.adaptiveSessionId;
+
+    if (isAdaptiveSection(currentSection) && !alreadyHasSession && !isResumingAdaptive) {
+      adaptiveHook.startTest();
+    }
+  }, [store.currentSectionIndex, learnerId, selectedGrade, adaptiveHook.sessionId, store.adaptiveSessionId, isResumingAdaptive]);
+
+  // Unified timer for all non-adaptive sections (counts up)
+  // This timer runs for both timed and non-timed sections
+  // Timer ONLY runs during active assessment, NOT on intro or complete screens
+  useEffect(() => {
+    if (store.sections.length === 0) return;
+    
+    const currentSection = store.sections[store.currentSectionIndex];
+    const isAdaptive = isAdaptiveSection(currentSection);
+    
+    // Run timer ONLY when:
+    // 1. Not adaptive section
+    // 2. Currently on assessment screen (not intro, not complete, not analyzing)
+    // 3. Not showing section intro
+    const shouldRunTimer = !isAdaptive 
+      && currentScreen === 'assessment' 
+      && !showSectionIntro;
+
+    if (shouldRunTimer) {
+      const timer = setInterval(() => {
+        setElapsedTime(prev => prev + 1);
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [store.currentSectionIndex, currentScreen, showSectionIntro, store.sections]);
+
+  // Adaptive timer countdown (60 seconds per question)
+  // Timer ONLY runs during active assessment, NOT on complete screens
+  useEffect(() => {
+    const currentSection = store.sections[store.currentSectionIndex];
+    const isAdaptive = isAdaptiveSection(currentSection);
+    
+    // Run timer ONLY when:
+    // 1. Is adaptive section
+    // 2. Currently on assessment screen (not complete)
+    // 3. Not showing section intro
+    // 4. Has current question
+    const shouldRunTimer = isAdaptive 
+      && currentScreen === 'assessment' 
+      && !showSectionIntro 
+      && adaptiveHook.currentQuestion;
+
+    if (shouldRunTimer) {
+      const timer = setInterval(() => {
+        if (adaptiveTimerRef.current <= 1) {
+          // Time's up — submit selected answer or default to A, then reset timer
+          const answerToSubmit = (selectedAnswer || 'A') as 'A' | 'B' | 'C' | 'D';
+          adaptiveHook.submitAnswer(answerToSubmit);
+          if (selectedAnswer) setSelectedAnswer(null);
+          setAdaptiveTimer(60);
+        } else {
+          setAdaptiveTimer(prev => prev - 1);
+        }
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections, selectedAnswer]);
+
+  // Adaptive elapsed time tracker (counts up for total time spent)
+  useEffect(() => {
+    const currentSection = store.sections[store.currentSectionIndex];
+    const isAdaptive = isAdaptiveSection(currentSection);
+    
+    // Track elapsed time for adaptive section
+    const shouldRunTimer = isAdaptive 
+      && currentScreen === 'assessment' 
+      && !showSectionIntro 
+      && adaptiveHook.currentQuestion;
+
+    if (shouldRunTimer) {
+      const timer = setInterval(() => {
+        setAdaptiveElapsedTime(prev => prev + 1);
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [store.currentSectionIndex, currentScreen, showSectionIntro, adaptiveHook.currentQuestion, store.sections]);
+
+  // Reset adaptive timer when question changes
+  useEffect(() => {
+    const currentSection = store.sections[store.currentSectionIndex];
+    if (isAdaptiveSection(currentSection) && adaptiveHook.currentQuestion) {
+      setAdaptiveTimer(60); // Reset to 60 seconds for new question
+    }
+  }, [adaptiveHook.questionsAnswered, store.currentSectionIndex, adaptiveHook.currentQuestion, store.sections]);
+
+  // AI section per-question countdown (59 → 0, loops back to 59)
+  useEffect(() => {
+    if (store.sections.length === 0) return;
+    const currentSection = store.sections[store.currentSectionIndex];
+    if (!isAISection(currentSection) || currentScreen !== 'assessment' || showSectionIntro) return;
+
+    const timer = setInterval(() => {
+      setAiSectionTimer(prev => (prev <= 1 ? 59 : prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [store.currentSectionIndex, store.currentQuestionIndex, currentScreen, showSectionIntro, store.sections]);
+
+  // Reset AI section timer to 59 when question changes
+  useEffect(() => {
+    if (store.sections.length === 0) return;
+    const currentSection = store.sections[store.currentSectionIndex];
+    if (isAISection(currentSection)) {
+      setAiSectionTimer(59);
+    }
+  }, [store.currentQuestionIndex, store.currentSectionIndex, store.sections]);
+
+  // Reset elapsed time when section changes
+  const previousSectionIndexRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (previousSectionIndexRef.current !== null && previousSectionIndexRef.current !== store.currentSectionIndex) {
+      setElapsedTime(0);
+      setAdaptiveElapsedTime(0); // Also reset adaptive elapsed time
+    }
+    previousSectionIndexRef.current = store.currentSectionIndex;
+  }, [store.currentSectionIndex]);
+
+  // Render screens based on current screen state
+  if (store.loading && currentScreen === 'loading') {
+    return <LoadingScreen message="Loading assessment..." />;
   }
 
-  // Resume Prompt
-  if (showResumePrompt && pendingAttempt) {
+  if (currentScreen === 'resume-prompt' && resumeData) {
     return (
       <ResumePromptScreen
-        pendingAttempt={pendingAttempt}
+        pendingAttempt={resumeData}
+        totalQuestions={resumeData.totalQuestions}
         onResume={handleResumeAssessment}
-        onStartNew={handleStartNewAssessment}
-        isLoading={questionsLoading}
+        onStartNew={handleStartFresh}
+        isLoading={isLoadingResume}
       />
     );
   }
 
-  // Grade Selection
-  if (flow.currentScreen === 'grade_selection') {
-    const detectedGradeLevel = getGradeLevelFromGrade(learnerGrade);
-
+  if (currentScreen === 'grade-selection') {
     return (
       <GradeSelectionScreen
         onGradeSelect={handleGradeSelect}
@@ -2117,444 +965,352 @@ const AssessmentTestPage: React.FC = () => {
         detectedGradeLevel={detectedGradeLevel}
         monthsInGrade={monthsInGrade}
         isCollegeLearner={isCollegeLearner}
-        loadinglearnerGrade={loadinglearnerGrade}
-        shouldShowAllOptions={shouldShowAllOptions}
-        shouldFilterByGrade={shouldFilterByGrade}
+        loadingLearnerGrade={loadingLearnerGrade}
+        shouldShowAllOptions={false}
+        shouldFilterByGrade={true}
         learnerProgram={learnerProgram}
         profileData={profileData}
       />
     );
   }
 
-  // Category Selection
-  if (flow.currentScreen === 'category_selection') {
+  if (currentScreen === 'category-selection' && selectedGrade) {
     return (
       <CategorySelectionScreen
+        gradeLevel={selectedGrade}
         onCategorySelect={handleCategorySelect}
-        onBack={() => flow.setCurrentScreen('grade_selection')}
-        gradeLevel={flow.gradeLevel}
+        onBack={() => {
+          setSelectedGrade(null);
+          setSelectedCategory(null);
+          setCurrentScreen('grade-selection');
+        }}
+        loading={store.loading}
       />
     );
   }
 
-  // Stream Selection
-  if (flow.currentScreen === 'stream_selection') {
+  // Stream selection screen (for higher_secondary and after10)
+  if (currentScreen === 'stream-selection' && selectedGrade && selectedCategory) {
     return (
       <StreamSelectionScreen
+        gradeLevel={selectedGrade}
+        selectedCategory={selectedCategory}
         onStreamSelect={handleStreamSelect}
-        onBack={() => flow.setCurrentScreen('category_selection')}
-        selectedCategory={flow.selectedCategory}
-        gradeLevel={flow.gradeLevel}
+        onBack={() => {
+          setSelectedCategory(null);
+          setCurrentScreen('category-selection');
+        }}
+        isLoading={store.loading}
         learnerProgram={learnerProgram}
       />
     );
   }
 
-  // Submitting state - show engaging multi-stage progress screen
-  if (submission.isSubmitting || flow.isSubmitting) {
-    return <AnalyzingScreen gradeLevel={flow.gradeLevel || undefined} />;
+  // Show section completion screen after each section
+  if (currentScreen === 'section-complete' && store.sections.length > 0) {
+    const completedSection = store.sections[store.currentSectionIndex];
+    const nextSection = store.currentSectionIndex < store.sections.length - 1
+      ? store.sections[store.currentSectionIndex + 1]
+      : null;
+    const isLastSection = store.currentSectionIndex === store.sections.length - 1;
+
+    const handleContinue = isLastSection
+      ? handleSubmit  // Last section: submit assessment
+      : handleSectionComplete;  // Other sections: move to next section
+
+    return (
+      <SectionCompleteScreen
+        sectionTitle={completedSection.title}
+        nextSectionTitle={nextSection?.title}
+        elapsedTime={syncStatus.getElapsedSecondsForSection(store.currentSectionIndex)}
+        isLastSection={isLastSection}
+        onContinue={handleContinue}
+      />
+    );
   }
 
-  // Calculate overall progress based on actual answered questions
-  const calculateProgress = () => {
-    if (sections.length === 0) return 0;
+  // Show section introduction screen before questions
+  if (currentScreen === 'section-intro' && showSectionIntro && store.sections.length > 0) {
+    const currentSection = store.sections[store.currentSectionIndex];
+    const currentGradeLevel = (selectedGrade || 'after10') as GradeLevel;
 
-    let totalQuestions = 0;
-    let answeredQuestions = 0;
+    const isAdaptiveIntro = isAdaptiveSection(currentSection);
+    const adaptiveInstruction = isAdaptiveIntro ? "Take your time with each question. You have 5 minutes per question - just do your best!" : undefined;
+    const adaptiveDescription = isAdaptiveIntro ? "A smart test that adjusts to your skill level. It gets easier or harder based on how you're doing!" : undefined;
 
-    sections.forEach((section, idx) => {
-      const sectionQuestions = section.questions?.length || (section.isAdaptive ? 50 : 0);
-      totalQuestions += sectionQuestions;
+    const sectionIconPath = getIconPathFromName(currentSection.name as string | null);
+    
+    // Check if this is an AI section (aptitude or knowledge) and if questions are being loaded
+    const isAISection = currentSection.id === 'aptitude' || currentSection.id === 'knowledge' || currentSection.name === 'aptitude' || currentSection.name === 'knowledge';
+    const isLoadingAI = isAISection && aiQuestionsHook.loading;
+    const hasAIError = isAISection && aiQuestionsHook.error;
+    const hasNoQuestions = currentSection.questions?.length === 0;
 
-      if (idx < flow.currentSectionIndex) {
-        // For completed sections, count all questions as answered
-        answeredQuestions += sectionQuestions;
-      } else if (idx === flow.currentSectionIndex) {
-        if (section.isAdaptive) {
-          // For adaptive sections, use the adaptive progress
-          answeredQuestions += adaptiveAptitude.progress?.questionsAnswered || 0;
-        } else {
-          // For current section, count actual answered questions from flow.answers
-          // This ensures progress is accurate after resume
-          const sectionAnswerCount = section.questions?.filter((q: any) => {
-            const questionId = `${section.id}_${q.id}`;
-            return flow.answers[questionId] !== undefined;
-          }).length || 0;
+    return (
+      <SectionIntroScreen
+        title={currentSection.title}
+        description={isAdaptiveIntro ? adaptiveDescription : currentSection.description}
+        instruction={currentSection.instruction || adaptiveInstruction}
+        icon={sectionIconPath}
+        color={currentSection.color}
+        sectionId={currentSection.id}
+        questionCount={currentSection.questions?.length || 0}
+        timeLimit={currentSection.timeLimit}
+        isAptitude={currentSection.isAptitude}
+        isAdaptive={isAdaptiveIntro}
+        isTimed={currentSection.isTimed}
+        showAIPoweredBadge={isAISection}
+        isLoading={store.loading || isLoadingAI}
+        gradeLevel={currentGradeLevel}
+        aiProgress={isLoadingAI ? aiQuestionsHook.progress : undefined}
+        aiError={hasAIError ? aiQuestionsHook.error : undefined}
+        onRetryAI={hasAIError ? aiQuestionsHook.reload : undefined}
+        onStart={() => {
+          // Don't allow starting if AI questions are still loading or if there are no questions
+          if (isLoadingAI || (isAISection && hasNoQuestions && !hasAIError)) {
+            toast.error('Please wait for questions to load');
+            return;
+          }
+          
+          if (hasAIError) {
+            toast.error('Please retry loading questions');
+            return;
+          }
+          
+          // Save progress marker only on first entry (not on resume), to avoid overwriting saved position
+          if (isAISection && store.attemptId && !store.answers['_ai_section_start_marker']) {
+            logger.info('[AI Section Start] Saving progress marker for AI section (first entry)', {
+              sectionName: currentSection.name,
+              sectionIndex: store.currentSectionIndex,
+              attemptId: store.attemptId
+            });
 
-          // Use the higher of: answered count or current question index
-          // This handles both fresh progress and resumed progress
-          answeredQuestions += Math.max(sectionAnswerCount, flow.currentQuestionIndex);
-        }
+            // Save a progress marker to ensure this attempt is considered "started"
+            store.saveAnswer('_ai_section_start_marker', new Date().toISOString());
+          }
+          
+          setShowSectionIntro(false);
+          setCurrentScreen('assessment');
+        }}
+      />
+    );
+  }
+
+  if (currentScreen === 'assessment' && store.sections.length > 0) {
+    const currentSection = store.sections[store.currentSectionIndex];
+    const currentQuestion = currentSection?.questions[store.currentQuestionIndex];
+    if (isAdaptiveSection(currentSection)) {
+      // Show error if exists
+      if (adaptiveHook.error) {
+        return (
+          <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <Card className="max-w-md w-full">
+              <CardContent className="p-8 text-center">
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Error</h2>
+                <p className="text-gray-600 mb-4">{adaptiveHook.error}</p>
+                <Button
+                  onClick={() => {
+                    adaptiveHook.clearError();
+                    adaptiveHook.reset();
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  Try Again
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        );
       }
-    });
 
-    const progressPercentage = totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
+      // If no question yet, return early (shouldn't happen in normal flow)
+      if (!adaptiveHook.currentQuestion) {
+        return null;
+      }
 
-    return progressPercentage;
-  };
-
-  // Main Assessment UI
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      {/* Progress Header */}
-      <div>
-        <ProgressHeader
-          sections={sections}
-          currentSectionIndex={flow.currentSectionIndex}
-          currentQuestionIndex={flow.currentQuestionIndex}
-          progress={calculateProgress()}
-          adaptiveProgress={adaptiveAptitude.progress ? {
-            questionsAnswered: adaptiveAptitude.progress.questionsAnswered,
-            estimatedTotalQuestions: 50
-          } : null}
-          isDevMode={isDevMode}
-          testMode={testMode}
-          onEnableTestMode={() => setTestMode(true)}
-        />
-      </div>
-
-      {/* Test Mode Controls (Dev only) */}
-      {isDevMode && testMode && (
-        <div className="max-w-4xl mx-auto px-4 py-2">
-          <TestModeControls
-            onAutoFillAll={autoFillAllAnswers}
-            onSkipToAptitude={() => {
-              const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
-              if (aptitudeIndex >= 0) {
-                skipToSection(aptitudeIndex);
-              } else {
-                console.warn('❌ Aptitude section not found');
-              }
-            }}
-            onSkipToKnowledge={() => {
-              const knowledgeIndex = sections.findIndex(s => s.id === 'knowledge' || s.id === 'adaptive_aptitude');
-              if (knowledgeIndex >= 0) {
-                skipToSection(knowledgeIndex);
-              } else {
-                console.warn('❌ Knowledge section not found');
-              }
-            }}
-            onSkipToSubmit={async () => {
-
-              if (sections.length === 0) {
-                console.warn('❌ Cannot submit: sections array is empty');
-                return;
-              }
-
-              // Enable database mode and create attempt if not already created
-              if (!currentAttempt && learnerRecordId) {
-                setUseDatabase(true);
-
-                try {
-                  // Only use 'college' stream for actual college learners
-                  const streamId = flow.learnerStream ||
-                    (flow.gradeLevel === 'college' ? 'college' : null);
-
-                  await dbStartAssessment(streamId, flow.gradeLevel || 'after12');
-
-                  // Wait a bit for the attempt to be created
-                  await new Promise(resolve => setTimeout(resolve, 500));
-                } catch (err) {
-                  console.error('❌ Failed to create database attempt:', err);
-                }
-              }
-
-              // Auto-fill all answers first
-              autoFillAllAnswers();
-
-              // Use setTimeout to ensure state updates after auto-fill
-              setTimeout(async () => {
-
-                // Mark all sections as complete by setting section timings
-                const completedTimings: Record<string, number> = {};
-                sections.forEach((section) => {
-                  if (!flow.sectionTimings[section.id]) {
-                    completedTimings[section.id] = 60;
-                  }
-                });
-
-                if (Object.keys(completedTimings).length > 0) {
-                  flow.setSectionTimings({ ...flow.sectionTimings, ...completedTimings });
-                }
-
-                // Jump to last section to trigger submission
-                const lastSectionIndex = sections.length - 1;
-                flow.setCurrentSectionIndex(lastSectionIndex);
-                flow.setCurrentQuestionIndex(0);
-                flow.setShowSectionIntro(false);
-
-                // Wait for state to update, then trigger submission directly
-                setTimeout(() => {
-                  handleNextSection();
-                }, 200);
-              }, 100);
-            }}
-            onExitTestMode={() => setTestMode(false)}
-            gradeLevel={flow.gradeLevel || undefined}
-            learnerStream={flow.learnerStream || undefined}
-            currentSectionIndex={flow.currentSectionIndex}
-            totalSections={sections.length}
-            aiQuestionsLoading={questionsLoading}
-            aiQuestionsLoaded={aiQuestions ? {
-              aptitude: aiQuestions.aptitude?.length || 0,
-              knowledge: aiQuestions.knowledge?.length || 0
-            } : undefined}
-            sections={sections}
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <ProgressHeader
+            sections={store.sections}
+            currentSectionIndex={store.currentSectionIndex}
+            currentQuestionIndex={adaptiveHook.questionsAnswered}
+            progress={(adaptiveHook.questionsAnswered / 50) * 100}
           />
-        </div>
-      )}
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <AnimatePresence mode="wait">
-          {/* Section Intro */}
-          {flow.showSectionIntro && currentSection && (
-            <SectionIntroScreen
-              key={`intro-${currentSection.id}`}
-              title={currentSection.title}
-              description={currentSection.description}
-              instruction={currentSection.instruction}
-              icon={getSectionIconPath(currentSection.id)}
-              color={currentSection.color}
-              sectionId={currentSection.id}
-              questionCount={currentSection.questions?.length || 0}
-              timeLimit={currentSection.timeLimit}
-              isAptitude={currentSection.isAptitude}
-              isAdaptive={currentSection.isAdaptive}
-              isTimed={currentSection.isTimed}
-              showAIPoweredBadge={currentSection.id === 'aptitude' || currentSection.id === 'knowledge'}
-              gradeLevel={flow.gradeLevel}
-              isLoading={
-                // Show loading for adaptive aptitude (50 questions)
-                (currentSection.isAdaptive && adaptiveAptitude.loading) ||
-                // Show loading for multi-aptitude (50 questions) when AI questions are still loading
-                (currentSection.id === 'aptitude' && !currentSection.isAdaptive && questionsLoading) ||
-                // Show loading for knowledge section when AI questions are still loading
-                (currentSection.id === 'knowledge' && questionsLoading)
-              }
-              onStart={handleStartSection}
-            />
-          )}
-
-          {/* Section Complete */}
-          {flow.showSectionComplete && currentSection && (
-            <SectionCompleteScreen
-              key={`complete-${currentSection.id}`}
-              sectionTitle={currentSection.title}
-              nextSectionTitle={!flow.isLastSection && sections[flow.currentSectionIndex + 1]?.title}
-              elapsedTime={flow.sectionTimings[currentSection.id]}
-              isLastSection={flow.isLastSection}
-              onContinue={handleNextSection}
-            />
-          )}
-
-
-          {/* Loading Question Fallback - Handle race condition where intro is hidden but question loading */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && !currentQuestion && !currentSection?.isAdaptive && (
-            <LoadingScreen message="Loading question..." />
-          )}
-
-          {/* Adaptive Section Loading - Show loading when adaptive test is initializing */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && (adaptiveAptitude.loading || !adaptiveAptitude.currentQuestion) && !adaptiveAptitude.error && !adaptiveAptitude.isTestComplete && (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center">
-              <div className="text-center max-w-md px-4">
-                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-600 text-lg mb-2">Initializing adaptive test...</p>
-                {adaptiveLoadingDuration > 5 && (
-                  <p className="text-gray-500 text-sm">
-                    This is taking longer than usual. Please wait...
-                    {adaptiveLoadingDuration > 15 && (
-                      <span className="block mt-2 text-amber-600">
-                        If this continues for more than 30 seconds, please refresh the page.
-                      </span>
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Adaptive Test Complete - Show section complete if adaptive test finished but flow.showSectionComplete not set yet */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && adaptiveAptitude.isTestComplete && (
-            <SectionCompleteScreen
-              key={`complete-adaptive-${currentSection.id}`}
-              sectionTitle={currentSection.title}
-              nextSectionTitle={!flow.isLastSection && sections[flow.currentSectionIndex + 1]?.title}
-              elapsedTime={flow.sectionTimings[currentSection.id] || flow.elapsedTime}
-              isLastSection={flow.isLastSection}
-              onContinue={handleNextSection}
-            />
-          )}
-
-          {/* Adaptive Section Error - Show error if adaptive test fails to initialize */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && adaptiveAptitude.error && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-                <div className="flex items-start gap-3">
-                  <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <h3 className="text-lg font-semibold text-red-900 mb-2">Adaptive Test Error</h3>
-                    <p className="text-red-700">{adaptiveAptitude.error}</p>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  adaptiveAptitude.clearError();
-                  flow.setShowSectionIntro(true);
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            {adaptiveHook.currentQuestion && (
+              <QuestionLayout
+                key={`adaptive-${adaptiveHook.sessionId}-${adaptiveHook.questionsAnswered}`}
+                sectionTitle={currentSection.title}
+                sectionDescription="Adaptive Aptitude Test"
+                sectionInstruction="Answer at your own pace. The difficulty adjusts based on your responses."
+                sectionId={currentSection.id}
+                sectionIcon={currentSection.name as string}
+                sectionColor={currentSection.color}
+                currentSectionIndex={store.currentSectionIndex}
+                totalSections={store.sections.length}
+                currentQuestionIndex={adaptiveHook.questionsAnswered}
+                totalQuestions={ADAPTIVE_TOTAL_QUESTIONS}
+                elapsedTime={adaptiveElapsedTime}
+                perQuestionTimer={adaptiveTimer}
+                showPerQuestionTimer={false}
+                showNoWrongAnswers={true}
+                isAnswered={!!selectedAnswer}
+                isLastQuestion={adaptiveHook.isTestComplete}
+                isSubmitting={adaptiveHook.loading}
+                canGoPrevious={false}
+                onNext={async () => {
+                  if (selectedAnswer) {
+                    await adaptiveHook.submitAnswer(selectedAnswer);
+                    setSelectedAnswer(null);
+                  }
                 }}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                onPrevious={() => {}}
               >
-                Try Again
-              </button>
-            </div>
-          )}
-
-          {/* Question with Sidebar Layout */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && currentQuestion && (
-            <QuestionLayout
-              sectionTitle={currentSection?.title || ''}
-              sectionDescription={currentSection?.description || ''}
-              sectionInstruction={currentSection?.instruction}
-              sectionId={currentSection?.id || ''}
-              sectionColor={currentSection?.color}
-              currentSectionIndex={flow.currentSectionIndex}
-              totalSections={sections.length}
-              currentQuestionIndex={currentSection?.isAdaptive
-                ? (adaptiveAptitude.progress?.questionsAnswered || 0)
-                : flow.currentQuestionIndex}
-              totalQuestions={currentSection?.isAdaptive
-                ? (adaptiveAptitude.progress?.estimatedTotalQuestions || 50)
-                : (currentSection?.questions?.length || 0)}
-              elapsedTime={flow.elapsedTime}
-              showNoWrongAnswers={!currentSection?.isAptitude && !currentSection?.isAdaptive}
-              perQuestionTimer={((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) ? flow.aptitudeQuestionTimer : null}
-              showPerQuestionTimer={((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null}
-            >
-              {/* Question Number Label with Per-Question Timer - Fixed at top in container */}
-              <div className="bg-white/60 rounded-xl border border-blue-200/50 px-4 py-2 mb-12 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="text-base font-semibold text-indigo-600">
-                    QUESTION {currentSection?.isAdaptive
-                      ? `${(adaptiveAptitude.progress?.questionsAnswered || 0) + 1} / ${adaptiveAptitude.progress?.estimatedTotalQuestions || 50}`
-                      : `${flow.currentQuestionIndex + 1} / ${currentSection?.questions?.length || 0}`}
-                  </div>
-
-                  {/* Per-Question Countdown Timer - Top Right (for aptitude/knowledge sections ONLY) */}
-                  {((currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge) && flow.aptitudeQuestionTimer !== null && (
-                    <div className={`text-sm font-semibold flex items-center gap-1.5 ${flow.aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'
-                      }`}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                        <path strokeLinecap="round" strokeWidth="2" d="M12 6v6l4 2" />
-                      </svg>
-                      <span>Question Time: {Math.floor(flow.aptitudeQuestionTimer / 60)}:{(flow.aptitudeQuestionTimer % 60).toString().padStart(2, '0')}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <motion.div
-                key={questionId}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="flex flex-col flex-1"
-              >
-                {/* Question Content */}
-                <div className="flex-1 py-8">
-                  {currentSection?.isAdaptive && !currentQuestion ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-4">
-                      <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-                      <p className="text-gray-600">Loading adaptive question...</p>
-                      {adaptiveAptitude.error && (
-                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                          <p className="text-red-700 text-sm">{adaptiveAptitude.error}</p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <QuestionRenderer
-                      question={currentQuestion}
-                      questionId={questionId}
-                      sectionId={currentSection?.id || ''}
-                      answer={currentSection?.isAdaptive ? adaptiveAptitudeAnswer : flow.answers[questionId]}
-                      onAnswer={handleAnswerChange}
-                      responseScale={currentSection?.responseScale}
-                      isAdaptive={currentSection?.isAdaptive}
-                      adaptiveTimer={adaptiveQuestionTimer}
-                      adaptiveDifficulty={adaptiveAptitude.currentQuestion?.difficulty || adaptiveAptitude.progress?.currentDifficulty}
-                      adaptiveLoading={false}
-                      adaptiveDisabled={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
-                    />
-                  )}
-                </div>
-
-                {/* Navigation Buttons - Fixed at bottom */}
-                <div className="mt-2">
-                  <QuestionNavigation
-                    onPrevious={flow.goToPreviousQuestion}
-                    onNext={handleNextQuestion}
-                    canGoPrevious={
-                      flow.currentQuestionIndex > 0 &&
-                      !currentSection?.isAdaptive &&
-                      !currentSection?.isAptitude &&
-                      !currentSection?.isKnowledge
-                    }
-                    isAnswered={isCurrentAnswered}
-                    isSubmitting={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
-                    isLastQuestion={flow.isLastQuestion}
-                  />
-                </div>
-              </motion.div>
-            </QuestionLayout>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Submission Error */}
-      {submission.error && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg">
-          <p>{submission.error}</p>
+                <QuestionRenderer
+                  question={adaptiveHook.currentQuestion}
+                  questionId={adaptiveHook.currentQuestion.id}
+                  sectionId={currentSection.id}
+                  answer={selectedAnswer}
+                  onAnswer={setSelectedAnswer}
+                  isAdaptive={true}
+                  adaptiveTimer={adaptiveTimer}
+                  adaptiveDifficulty={adaptiveHook.difficulty}
+                  adaptiveLoading={adaptiveHook.loading}
+                  color={currentSection.color}
+                />
+              </QuestionLayout>
+            )}
+          </div>
         </div>
-      )}
+      );
+    }
 
-      {/* Toast Error Notification - Top Right Corner */}
-      <AnimatePresence>
-        {toastError && (
-          <motion.div
-            initial={{ opacity: 0, x: 100, y: -20 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, x: 100, y: -20 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed top-4 right-4 z-[9999] bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg max-w-sm"
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0">
-                <svg className="w-5 h-5 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Save Error</p>
-                <p className="text-sm opacity-90 mt-1">{toastError}</p>
-              </div>
-              <button
-                onClick={() => setToastError(null)}
-                className="flex-shrink-0 ml-2 text-white hover:text-gray-200 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-          </motion.div>
+    // Validate answer completeness
+    const isCurrentAnswered = (() => {
+      const answer = store.answers[currentQuestion?.id];
+      const hasAnswer = !!answer;
+
+      // For multiselect questions, must have exact selection count
+      if (currentQuestion?.type === 'multiselect' && currentQuestion?.maxSelections) {
+        const selectedItems = answer;
+        const selectedCount = Array.isArray(selectedItems) ? selectedItems.length : 0;
+        return selectedCount === currentQuestion.maxSelections;
+      }
+
+      return hasAnswer;
+    })();
+
+    const isLastQuestion = store.currentQuestionIndex === currentSection.questions.length - 1 && store.currentSectionIndex === store.sections.length - 1;
+    const isCurrentAISection = isAISection(currentSection);
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <ProgressHeader
+          sections={store.sections}
+          currentSectionIndex={store.currentSectionIndex}
+          currentQuestionIndex={store.currentQuestionIndex}
+          progress={(store.currentSectionIndex / store.sections.length) * 100}
+        />
+
+        {/* ===== ONLY SHOW ERROR MESSAGES ===== */}
+        {syncStatus.errorMessage && (
+          <div className="fixed top-4 left-4 right-4 z-50 px-4 py-3 bg-red-100 text-red-800 text-sm font-medium rounded-lg border border-red-300">
+            ⚠️ {syncStatus.errorMessage}
+          </div>
         )}
-      </AnimatePresence>
-    </div>
-  );
+
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <AnimatePresence mode="wait">
+            {currentQuestion && (
+              <QuestionLayout
+                key={`${store.currentSectionIndex}-${store.currentQuestionIndex}`}
+                sectionTitle={currentSection.title}
+                sectionDescription={currentSection.description}
+                sectionInstruction={currentSection.instruction}
+                sectionId={currentSection.id}
+                sectionIcon={currentSection.name as string}
+                sectionColor={currentSection.color}
+                currentSectionIndex={store.currentSectionIndex}
+                totalSections={store.sections.length}
+                currentQuestionIndex={store.currentQuestionIndex}
+                totalQuestions={currentSection.questions.length}
+                elapsedTime={elapsedTime}
+                showNoWrongAnswers={true}
+                isAnswered={isCurrentAnswered}
+                isLastQuestion={isLastQuestion}
+                canGoPrevious={store.currentQuestionIndex > 0}
+                perQuestionTimer={isCurrentAISection ? aiSectionTimer : null}
+                showPerQuestionTimer={isCurrentAISection}
+                onNext={() => {
+                  // Block only if offline
+                  if (!syncStatus.isOnline) {
+                    toast.error('Cannot proceed. No internet connection.', {
+                      duration: 3000,
+                      position: 'top-right',
+                    });
+                    return;
+                  }
+                  // Allow navigation - sync happens in background
+                  handleNextQuestion();
+                }}
+                onPrevious={store.previousQuestion}
+              >
+                <QuestionRenderer
+                  question={currentQuestion}
+                  questionId={currentQuestion.id}
+                  sectionId={currentSection.id}
+                  answer={store.answers[currentQuestion.id]}
+                  onAnswer={(answer) => handleAnswerSubmit(currentQuestion.id, answer)}
+                  responseScale={currentSection.responseScale}
+                  color={currentSection.color}
+                />
+              </QuestionLayout>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {store.error && (
+          <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg">
+            {store.error}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (currentScreen === 'analyzing') {
+    return <AnalyzingScreen />;
+  }
+
+  if (currentScreen === 'complete' && store.attemptId) {
+    return <AssessmentCompleteScreen attemptId={store.attemptId} />;
+  }
+
+  if (currentScreen === 'error') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Assessment Error</h1>
+          <p className="text-gray-700 mb-6">{store.error || 'An error occurred'}</p>
+          <button
+            onClick={() => {
+              store.reset();
+              setCurrentScreen('grade-selection');
+              setSelectedGrade(null);
+              setSelectedStream(null);
+            }}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <LoadingScreen message="Loading assessment..." />;
 };
 
 export default AssessmentTestPage;

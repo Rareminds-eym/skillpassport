@@ -18,12 +18,6 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 PAYMENTS_API_URL=http://localhost:9003
 
 
-# ==================== SSO WORKER SERVICE AUTHENTICATION ====================
-# Shared secret for service-to-service authentication with SSO worker sync endpoints
-# CRITICAL: This value MUST match the SERVICE_AUTH_SECRET in sso-worker
-# Generate with: openssl rand -base64 32
-SERVICE_AUTH_SECRET=your-strong-random-secret-here-min-32-bytes-base64
-
 # ==================== EMBEDDING WORKER CONFIGURATION ====================
 # URL of the embedding worker (standalone Cloudflare Worker on port 9002)
 EMBEDDING_API_URL=http://localhost:9002

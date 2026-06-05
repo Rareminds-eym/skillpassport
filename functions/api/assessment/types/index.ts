@@ -1,0 +1,290 @@
+/**
+ * Assessment API Types
+ *
+ * Type definitions for personal assessment attempt and response handling
+ */
+
+// ============================================================================
+// REQUEST TYPES
+// ============================================================================
+
+/**
+ * Options for starting a new assessment
+ */
+export interface StartAssessmentOptions {
+  gradeLevel: string;
+  streamId?: string | null;
+}
+
+/**
+ * Options for saving a response
+ */
+export interface SaveResponseOptions {
+  attemptId: string;
+  questionId: string;
+  answer: unknown;
+}
+
+/**
+ * Options for updating progress
+ */
+export interface UpdateProgressOptions {
+  attemptId: string;
+  sectionIndex?: number;
+  questionIndex?: number;
+  sectionTimings?: Record<string, number>;
+  timerRemaining?: number | null;
+  elapsedTime?: number;
+  answers?: Record<string, unknown>;
+}
+
+/**
+ * Options for submitting assessment
+ */
+export interface SubmitAssessmentOptions {
+  attemptId: string;
+  answers?: Record<string, unknown>;
+}
+
+/**
+ * Options for abandoning attempt
+ */
+export interface AbandonAttemptOptions {
+  attemptId: string;
+}
+
+/**
+ * Options for analyzing completed assessment
+ */
+export interface AnalyzeRequest {
+  attemptId: string;
+  gradeLevel?: string;
+}
+
+// ============================================================================
+// RESPONSE TYPES
+// ============================================================================
+
+/**
+ * Result of starting assessment
+ */
+export interface StartAssessmentResult {
+  success: boolean;
+  attemptId: string;
+  attempt: AssessmentAttempt;
+  sections: AssessmentSection[];
+}
+
+/**
+ * Adaptive session data for resume context
+ */
+export interface AdaptiveSessionInfo {
+  sessionId: string;
+  currentQuestionIndex: number;
+  questionsAnswered: number;
+  status: string;
+  phase: string;
+  difficulty: number;
+  currentPhaseQuestions: unknown[];
+  allResponses: unknown[];
+}
+
+/**
+ * Adaptive progress (legacy format for ResumePromptScreen)
+ */
+export interface AdaptiveProgress {
+  questionsAnswered: number;
+}
+
+/**
+ * Result of checking in-progress status
+ *
+ * Supports both regular assessment and adaptive aptitude test resume
+ * If isAdaptiveInProgress is true, use adaptiveSession data for resume
+ */
+export interface CheckInProgressResult {
+  success: boolean;
+  hasInProgress: boolean;
+  attemptId: string | null;
+  answers: Record<string, unknown>;
+  all_responses?: Record<string, unknown>;
+  currentSectionIndex: number;
+  currentQuestionIndex: number;
+  gradeLevel: string | null;
+  streamId: string | null;
+  stream_id?: string | null;
+  sectionTimings: Record<string, number>;
+  timerRemaining: number | null;
+  elapsedTime: number;
+  started_at: string | null;
+  sections?: AssessmentSection[] | null;
+  // Adaptive test resume fields
+  adaptiveSession?: AdaptiveSessionInfo | null;
+  isAdaptiveInProgress?: boolean;
+  totalQuestionsAdaptive?: number;
+  // Legacy format for ResumePromptScreen compatibility
+  adaptiveProgress?: AdaptiveProgress;
+}
+
+/**
+ * Generic success response
+ */
+export interface SuccessResponse {
+  success: boolean;
+  message?: string;
+}
+
+/**
+ * Error response
+ */
+export interface ErrorResponse {
+  error: string;
+  details?: string;
+}
+
+// ============================================================================
+// DOMAIN MODELS
+// ============================================================================
+
+/**
+ * Assessment attempt record
+ */
+export interface AssessmentAttempt {
+  id: string;
+  learner_id: string;
+  grade_level: string;
+  stream_id: string | null;
+  status: 'in_progress' | 'completed' | 'abandoned';
+  all_responses: Record<string, unknown>;
+  timer_remaining: number | null;
+  elapsed_time: number;
+  current_section_index: number;
+  current_question_index: number;
+  section_timings?: Record<string, number>;
+  started_at?: string;
+  completed_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Assessment section with questions
+ */
+export interface AssessmentSection {
+  id: string;
+  name: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  instruction?: string;
+  responseScale?: ResponseScale[];
+  isTimed?: boolean;
+  timeLimitSeconds?: number | null;
+  questions: AssessmentQuestion[];
+}
+
+/**
+ * Assessment question
+ */
+export interface AssessmentQuestion {
+  id: string;
+  text: string;
+  type: 'mcq' | 'rating' | 'multiselect' | 'text' | 'sjt' | 'likert';
+  order: number;
+  options?: unknown;
+  maxSelections?: number;
+  categoryMapping?: unknown;
+  riasecType?: 'R' | 'I' | 'A' | 'S' | 'E' | 'C';
+  metadata?: unknown;
+  correctAnswer?: string;
+  explanation?: string;
+}
+
+/**
+ * Response scale for rating questions
+ */
+export interface ResponseScale {
+  value: number;
+  label: string;
+}
+
+/**
+ * Assessment response
+ */
+export interface AssessmentResponse {
+  id: string;
+  attempt_id: string;
+  question_id: string;
+  response_value: unknown;
+}
+
+/**
+ * RIASEC career interest scores
+ */
+export interface RIASECScores {
+  realistic: number;
+  investigative: number;
+  artistic: number;
+  social: number;
+  enterprising: number;
+  conventional: number;
+}
+
+/**
+ * Character strength score with dimension and ratings
+ */
+export interface StrengthScore {
+  dimension: string;
+  ratings: number[];
+  average: number;
+}
+
+/**
+ * Adaptive aptitude data from linked session
+ */
+export interface AdaptiveAptitudeData {
+  questionsAnswered: number;
+  difficulty: number;
+  aptitudeLevel: number | null;
+  confidenceTag: string | null;
+  tier: string | null;
+  totalQuestions: number | null;
+  totalCorrect: number | null;
+  overallAccuracy: string | null;
+  accuracyByDifficulty: Record<string, unknown> | null;
+  accuracyBySubtag: Record<string, unknown> | null;
+  pathClassification: string | null;
+  averageResponseTimeMs: number | null;
+}
+
+/**
+ * Assessment analysis result
+ */
+export interface AnalyzeResult {
+  success: boolean;
+  riasecScores: RIASECScores;
+  strengthScores: StrengthScore[];
+  learningPreferences: Record<string, unknown>;
+  adaptiveData: AdaptiveAptitudeData | null;
+  profileSnapshot: {
+    grade_level: string;
+    stream_id: string | null;
+    started_at: string;
+    completed_at: string;
+    riasec_profile: string[];
+    top_strengths: StrengthScore[];
+    reflections: Array<{ question: string; answer: string }>;
+  };
+}
+
+// ============================================================================
+// VALIDATION RESULTS
+// ============================================================================
+
+/**
+ * Validation result
+ */
+export interface ValidationResult {
+  isValid: boolean;
+  message?: string;
+}

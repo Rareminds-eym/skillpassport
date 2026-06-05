@@ -13,7 +13,6 @@
 export {
   CourseCard,
   CourseDetailDrawer,
-  CoursePlayer,
   CreateCourseModal
 } from './ui';
 

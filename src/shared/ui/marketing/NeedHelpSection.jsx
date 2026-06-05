@@ -30,7 +30,7 @@ export default function NeedHelpSection() {
           >
             <div className="w-full max-w-[260px] sm:max-w-[320px] md:max-w-[380px] lg:max-w-[500px]">
               <DotLottieReact
-                src="https://lottie.host/3ae3ba03-21ac-4b70-90e3-f349c2360211/wRnTObzkdE.lottie"
+                src="/animations/help.lottie"
                 loop
                 autoplay
                 className="w-full h-auto"

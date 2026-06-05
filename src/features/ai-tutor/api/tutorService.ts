@@ -1,5 +1,5 @@
 import { ssoClient } from '@/shared/api/ssoClient';
-
+import { useAuthStore } from '@/shared/model/authStore';
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
@@ -8,7 +8,7 @@ import type { WorksheetConfig, LessonPlanConfig } from '../types';
 const logger = getLogger('tutor-service');
 
 // ==================== API URL CONFIGURATION ====================
-const API_URL = getApiUrl('course');
+const API_URL = getApiUrl('ai-tutor');
 
 // ==================== TYPES ====================
 
@@ -96,7 +96,7 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
 
   
   const response = await ssoClient.fetch(
-    `${API_URL}/ai-tutor-chat`,
+    `${API_URL}/chat`,
     {
       method: 'POST',
             body: JSON.stringify(request),
@@ -266,7 +266,7 @@ export async function getSuggestedQuestions(lessonId: string): Promise<string[]>
     }
 
     const response = await ssoClient.fetch(
-      `${API_URL}/ai-tutor-suggestions`,
+      `${API_URL}/suggestions`,
       {
         method: 'POST',
                 body: JSON.stringify({ lessonId }),
@@ -313,7 +313,7 @@ export async function getCourseProgress(courseId: string): Promise<CourseProgres
   const user = useAuthStore.getState().user;
   
   const response = await ssoClient.fetch(
-    `${API_URL}/ai-tutor-progress?courseId=${courseId}`,
+    `${API_URL}/progress?courseId=${courseId}`,
     {
       method: 'GET',
           }
@@ -338,7 +338,7 @@ export async function updateLessonProgress(
   const user = useAuthStore.getState().user;
   
   const response = await ssoClient.fetch(
-    `${API_URL}/ai-tutor-progress`,
+    `${API_URL}/progress`,
     {
       method: 'POST',
             body: JSON.stringify({ courseId, lessonId, status }),
@@ -394,7 +394,7 @@ export async function submitFeedback(
   const user = useAuthStore.getState().user;
   
   const response = await ssoClient.fetch(
-    `${API_URL}/ai-tutor-feedback`,
+    `${API_URL}/feedback`,
     {
       method: 'POST',
             body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),

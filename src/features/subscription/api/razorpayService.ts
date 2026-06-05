@@ -165,7 +165,7 @@ export const initiateRazorpayPayment = async ({
       amount: orderData.amount,
       currency: orderData.currency,
       name: 'RareMinds Skill Passport',
-      description: `${plan.name} Plan - ₹${plan.price}/${plan.duration || 'month'}`,
+      description: `${plan.name} Plan - ₹${plan.price}/${plan.duration ?? 'month'}`,
       order_id: orderData.id,
       prefill: {
         name: userDetails.name,

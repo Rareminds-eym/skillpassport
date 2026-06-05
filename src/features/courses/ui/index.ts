@@ -13,5 +13,17 @@ export { default as QuizProgressTracker } from './QuizProgressTracker';
 export { default as RestoreProgressModal } from './RestoreProgressModal';
 export { default as SyncStatusIndicator } from './SyncStatusIndicator';
 
-// Course player
-export { default as CoursePlayer } from './CoursePlayer';
+/**
+ * CoursePlayer Component Location
+ * 
+ * ⚠️ BREAKING CHANGE (if you were importing from here)
+ * 
+ * Location: @/pages/learner/CoursePlayer.jsx
+ * Reason: Moved to pages layer - contains routing logic and page-level concerns
+ * 
+ * Migration Path:
+ * OLD: import { CoursePlayer } from '@/features/courses/ui'  // ❌ No longer exists
+ * NEW: import CoursePlayer from '@/pages/learner/CoursePlayer'  // ✅ Correct import
+ * 
+ * Not exported from features layer to maintain FSD architectural compliance.
+ */

@@ -216,8 +216,8 @@ export function useAddOnCatalog(options = {}) {
 
     const term = searchTerm.toLowerCase();
     return addOnsWithOwnership.filter(addOn =>
-      addOn.feature_name?.toLowerCase().includes(term) ||
-      addOn.addon_description?.toLowerCase().includes(term) ||
+      (addOn.feature_name ?? addOn.name)?.toLowerCase().includes(term) ||
+      (addOn.description ?? addOn.addon_description)?.toLowerCase().includes(term) ||
       addOn.category?.toLowerCase().includes(term)
     );
   }, [addOnsWithOwnership]);

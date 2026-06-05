@@ -150,7 +150,7 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
               <div className="flex items-center gap-2.5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 shadow-md">
                   <DotLottieReact
-                    src="https://lottie.host/d2e9c81b-68e5-4817-8cdb-232a1a4d96d1/IrCaxvOj5s.lottie"
+                    src="/animations/assessment.lottie"
                     loop
                     autoplay
                     style={{ width: '100%', height: '100%' }}
@@ -161,7 +161,7 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10">
                   <DotLottieReact
-                    src="https://lottie.host/d2e9c81b-68e5-4817-8cdb-232a1a4d96d1/IrCaxvOj5s.lottie"
+                    src="/animations/assessment.lottie"
                     loop
                     autoplay
                     style={{ width: '100%', height: '100%' }}

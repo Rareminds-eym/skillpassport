@@ -123,7 +123,7 @@ const SubscriptionStatusWidget = () => {
               Subscription Expiring Soon
             </h3>
             <p className="text-xs text-slate-600 mb-3 font-light leading-relaxed">
-              Only {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left on your {subscriptionData.planName || 'Basic'} plan
+              Only {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} left on your {subscriptionData.planName ?? ''} plan
             </p>
             <button
               onClick={() => navigate(`${basePath}/subscription/manage`)}
@@ -146,7 +146,7 @@ const SubscriptionStatusWidget = () => {
         </div>
         <div className="flex-1">
           <h3 className="text-sm font-light text-slate-900 mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-            {subscriptionData.planName || 'Basic'} Plan Active
+            {subscriptionData.planName ?? ''} Plan Active
           </h3>
           <p className="text-xs text-slate-600 mb-2 font-light leading-relaxed">
             {daysRemaining} days remaining

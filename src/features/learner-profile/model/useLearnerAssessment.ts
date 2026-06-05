@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useLearnerId } from '@/shared/model/learnerStore';
 import { getLearnerAssessmentData, type AssessmentData } from '../api/learnerAssessmentService';
 import { getLogger } from '@/shared/config/logging';
 
@@ -16,6 +17,9 @@ export interface UseLearnerAssessmentOptions {
 }
 
 export const useLearnerAssessment = ({ enabled = true }: UseLearnerAssessmentOptions = {}) => {
+  // Get learnerId from store
+  const learnerId = useLearnerId();
+
   const [data, setData] = useState<AssessmentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +27,7 @@ export const useLearnerAssessment = ({ enabled = true }: UseLearnerAssessmentOpt
 
   // Fetch assessment data
   const fetchAssessmentData = useCallback(async () => {
-    if (!enabled) {
+    if (!enabled || !learnerId) {
       setLoading(false);
       return;
     }
@@ -32,7 +36,8 @@ export const useLearnerAssessment = ({ enabled = true }: UseLearnerAssessmentOpt
       setLoading(true);
       setError(null);
 
-      const result = await getLearnerAssessmentData();
+      // Pass learnerId to service
+      const result = await getLearnerAssessmentData(learnerId);
 
       if (result.success && result.data) {
         setData(result.data);
@@ -45,7 +50,7 @@ export const useLearnerAssessment = ({ enabled = true }: UseLearnerAssessmentOpt
     } finally {
       setLoading(false);
     }
-  }, [enabled]);
+  }, [enabled, learnerId]);
 
   // Trigger refresh
   const refresh = useCallback(() => {
@@ -55,7 +60,7 @@ export const useLearnerAssessment = ({ enabled = true }: UseLearnerAssessmentOpt
   // Load data on mount and when dependencies change
   useEffect(() => {
     fetchAssessmentData();
-  }, [fetchAssessmentData, refreshKey]);
+  }, [fetchAssessmentData, refreshKey, learnerId]);
 
   return {
     // Assessment data

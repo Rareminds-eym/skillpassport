@@ -105,6 +105,7 @@ export interface ResponseScaleOption {
 
 export interface AssessmentSection {
   id: string;
+  name?: string; // Section name like 'middle_interest_explorer', used for icon matching
   title: string;
   description: string;
   color: string;

@@ -16,19 +16,11 @@ import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
-import { ssoRecordTransaction } from '../../../lib/sso-client';
-
-function extractAuthToken(request: Request): string {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('No auth token found');
-  }
-  return authHeader.slice(7);
-}
+import { ssoRecordTransaction, ssoRecordBundlePurchase } from '../../../lib/sso-client';
 
 export async function handleVerifyBundlePayment(context: AuthenticatedContext): Promise<Response> {
   const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SERVICE_AUTH_SECRET: string; SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher; SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
     // Parse request body
@@ -73,29 +65,31 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
       body.razorpay_signature as string
     );
 
-    const priceAtPurchase = typeof body.amount === 'number' ? body.amount : 0;
-    const billingPeriod = (body.billing_period as string) || 'monthly';
+    if (!body.billing_period || typeof body.billing_period !== 'string') {
+      return new Response(
+        JSON.stringify({
+          error: { code: 'INVALID_INPUT', message: 'billing_period is required' },
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Step 2: Record purchase in Auth DB via SSO Worker
-    const ssoResponse = await env.SSO_SERVICE.fetch(new Request('http://sso-worker/api/bundle-purchases/record', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.SERVICE_AUTH_SECRET}`,
-      },
-      body: JSON.stringify({
+    const priceAtPurchase = typeof body.amount === 'number' ? body.amount / 100 : 0;
+    const billingPeriod = body.billing_period as string;
+
+    // Step 2: Record purchase in Auth DB via SSO Worker RPC
+    try {
+      await ssoRecordBundlePurchase(env, {
         user_id: user.sub,
-        bundle_id: body.bundle_id,
+        bundle_id: body.bundle_id as string,
         billing_period: billingPeriod,
         price_at_purchase: priceAtPurchase,
-        razorpay_order_id: body.razorpay_order_id,
-        razorpay_payment_id: body.razorpay_payment_id,
-        razorpay_signature: body.razorpay_signature,
-      })
-    }));
-
-    if (!ssoResponse.ok) {
-      console.error('[VerifyBundlePayment] SSO Worker failed to record purchase:', await ssoResponse.text());
+        razorpay_order_id: body.razorpay_order_id as string,
+        razorpay_payment_id: body.razorpay_payment_id as string,
+        razorpay_signature: body.razorpay_signature as string,
+      });
+    } catch (rpcError: any) {
+      console.error('[VerifyBundlePayment] SSO Worker failed to record purchase:', rpcError.message);
     }
 
     // Step 3: Grant App DB entitlement locally for immediate access
@@ -121,8 +115,7 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
 
     // Record transaction in auth DB (non-blocking)
     try {
-      const authToken = extractAuthToken(context.request);
-      await ssoRecordTransaction(env, authToken, {
+      await ssoRecordTransaction(env, {
         user_id: user.sub,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,

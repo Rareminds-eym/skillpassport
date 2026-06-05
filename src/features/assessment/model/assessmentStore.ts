@@ -1,478 +1,370 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { persist } from 'zustand/middleware';
+import { devtools } from 'zustand/middleware';
+import type { TestSession, TestResults, TestPhase, DifficultyLevel, Question } from '@/shared/types/adaptiveAptitude';
 
-// Types
-export type AssessmentFlowStatus =
-  | 'idle'
-  | 'checkingEligibility'
-  | 'gradeSelection'
-  | 'categorySelection'
-  | 'streamSelection'
-  | 'sectionIntro'
-  | 'inProgress'
-  | 'sectionComplete'
-  | 'submitting'
-  | 'completed'
-  | 'restricted'
-  | 'error'
-  | 'resumePrompt';
+export type AssessmentStatus = 'idle' | 'loading' | 'inProgress' | 'submitting' | 'completed' | 'error';
 
-export type GradeLevel = '9' | '10' | '11' | '12' | 'college';
-export type StreamCategory = 'after_10th' | 'after_12th' | 'college';
-export type AnswerValue = string | number | string[] | boolean | null;
-
-export interface Answers {
-  [questionId: string]: AnswerValue;
-}
-
-export interface SectionTimings {
-  [sectionId: string]: number;
-}
-
-export interface AssessmentAttempt {
+export interface AssessmentSection {
   id: string;
-  grade_level: GradeLevel;
-  stream_id: string | null;
-  current_section_index: number;
-  current_question_index: number;
-  section_timings: SectionTimings;
-  [key: string]: any;
+  name?: string;
+  title?: string; // For section intro screen
+  description?: string; // For section intro screen
+  instruction?: string; // For section intro screen
+  color?: string; // For section intro screen
+  questions: any[];
+  responseScale?: Array<{ value: number; label: string }>; // Response scale options
+  isAptitude?: boolean;
+  isAdaptive?: boolean;
+  isKnowledge?: boolean;
+  isTimed?: boolean;
+  timeLimit?: number;
+  individualTimeLimit?: number; // Per question time limit
 }
 
-export interface AssessmentFlowState {
-  status: AssessmentFlowStatus;
-  gradeLevel: GradeLevel | null;
-  selectedCategory: StreamCategory | null;
-  learnerStream: string | null;
+export interface AssessmentState {
+  // Assessment metadata
+  attemptId: string | null;
+  gradeLevel: string | null;
+  streamId: string | null;
+
+  // Progress tracking
   currentSectionIndex: number;
   currentQuestionIndex: number;
-  answers: Answers;
-  sectionTimings: SectionTimings;
-  timeRemaining: number | null;
-  elapsedTime: number;
-  error: string | null;
-  pendingAttempt: AssessmentAttempt | null;
-}
+  sections: AssessmentSection[];
 
-interface AssessmentStore extends AssessmentFlowState {
-  // Computed flags
-  isLoading: boolean;
-  isInProgress: boolean;
-  isSubmitting: boolean;
-  isCompleted: boolean;
-  isRestricted: boolean;
-  hasError: boolean;
-  showGradeSelection: boolean;
-  showCategorySelection: boolean;
-  showStreamSelection: boolean;
-  showResumePrompt: boolean;
-  showSectionIntro: boolean;
-  showSectionComplete: boolean;
-  canGoPrevious: boolean;
-  canGoNext: boolean;
-  
-  // Actions - State setters
-  setStatus: (status: AssessmentFlowStatus) => void;
-  setGradeLevel: (gradeLevel: GradeLevel) => void;
-  setCategory: (category: StreamCategory) => void;
-  setStream: (stream: string) => void;
-  setSectionIndex: (index: number) => void;
-  setQuestionIndex: (index: number) => void;
-  setAnswer: (questionId: string, answer: AnswerValue) => void;
-  setAnswers: (answers: Answers) => void;
-  mergeAnswers: (answers: Answers) => void;
-  setTimeRemaining: (time: number | null) => void;
-  decrementTime: () => void;
-  incrementElapsedTime: () => void;
-  setElapsedTime: (time: number) => void;
-  setSectionTiming: (sectionId: string, time: number) => void;
-  setSectionTimings: (timings: SectionTimings) => void;
-  setError: (error: string | null) => void;
-  setPendingAttempt: (attempt: AssessmentAttempt | null) => void;
-  
-  // Actions - Navigation
+  // User responses
+  answers: Record<string, any>;
+
+  // UI state
+  status: AssessmentStatus;
+  loading: boolean;
+  error: string | null;
+
+  // Adaptive Aptitude Fields
+  adaptiveSessionId: string | null;
+  adaptivePhase: TestPhase | null;
+  adaptiveCurrentQuestion: Question | null;
+  adaptiveDifficulty: DifficultyLevel;
+  adaptiveQuestionsAnswered: number;
+  adaptiveCorrectAnswers: number;
+  adaptiveAbilityEstimate: number;
+  adaptiveTestComplete: boolean;
+  adaptiveResults: TestResults | null;
+
+  // Assessment Results Fields
+  resultId: string | null;
+  riasecScores: Record<string, number> | null;
+  strengthScores: any[] | null;
+  learningPreferences: Record<string, any> | null;
+  aptitudeScores: any | null;
+  profileSnapshot: any | null;
+  analysisRetryCount: number;
+  analysisMaxRetries: number;
+
+  // Actions - Regular Assessment
+  initializeAssessment: (sections: AssessmentSection[], attemptId: string, gradeLevel: string, streamId: string) => void;
+  setSections: (sections: AssessmentSection[]) => void;
+  setCurrentQuestion: (sectionIdx: number, questionIdx: number) => void;
+  saveAnswer: (questionId: string, answer: any) => void;
   nextQuestion: () => void;
   previousQuestion: () => void;
-  goToQuestion: (sectionIndex: number, questionIndex: number) => void;
   nextSection: () => void;
-  goToSection: (index: number) => void;
-  
-  // Actions - Flow control
-  startNewAssessment: () => void;
-  startSection: () => void;
-  completeSection: () => void;
-  submitAssessment: () => void;
-  completeAssessment: () => void;
-  showResumeDialog: (attempt: AssessmentAttempt, answers: Answers) => void;
-  resumeAssessment: () => void;
-  showRestriction: (message: string) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  setStatus: (status: AssessmentStatus) => void;
   reset: () => void;
-  
-  // Computed values
-  getProgressPercentage: () => number;
-  getTotalQuestions: () => number;
-  getAnsweredQuestions: () => number;
+
+  // Actions - Adaptive Aptitude
+  initializeAdaptiveSession: (session: TestSession, firstQuestion: Question) => void;
+  setAdaptivePhase: (phase: TestPhase) => void;
+  setAdaptiveCurrentQuestion: (question: Question | null) => void;
+  setAdaptiveDifficulty: (difficulty: DifficultyLevel) => void;
+  updateAdaptiveProgress: (answered: number, correct: number, ability: number) => void;
+  setAdaptiveTestComplete: (complete: boolean) => void;
+  setAdaptiveResults: (results: TestResults) => void;
+  resetAdaptive: () => void;
+
+  // Actions - Assessment Results
+  setResultData: (data: {
+    resultId: string;
+    riasecScores: Record<string, number>;
+    strengthScores: any[];
+    learningPreferences: Record<string, any>;
+    aptitudeScores: any;
+    profileSnapshot: any;
+  }) => void;
+  incrementAnalysisRetryCount: () => void;
+  resetAnalysisRetry: () => void;
+  resetResults: () => void;
 }
 
-const initialState: AssessmentFlowState = {
-  status: 'idle',
+const initialState = {
+  attemptId: null,
   gradeLevel: null,
-  selectedCategory: null,
-  learnerStream: null,
+  streamId: null,
   currentSectionIndex: 0,
   currentQuestionIndex: 0,
+  sections: [],
   answers: {},
-  sectionTimings: {},
-  timeRemaining: null,
-  elapsedTime: 0,
+  status: 'idle' as AssessmentStatus,
+  loading: false,
   error: null,
-  pendingAttempt: null,
+  adaptiveSessionId: null,
+  adaptivePhase: null,
+  adaptiveCurrentQuestion: null,
+  adaptiveDifficulty: 3 as DifficultyLevel,
+  adaptiveQuestionsAnswered: 0,
+  adaptiveCorrectAnswers: 0,
+  adaptiveAbilityEstimate: 0,
+  adaptiveTestComplete: false,
+  adaptiveResults: null,
+  resultId: null,
+  riasecScores: null,
+  strengthScores: null,
+  learningPreferences: null,
+  aptitudeScores: null,
+  profileSnapshot: null,
+  analysisRetryCount: 0,
+  analysisMaxRetries: 4,
 };
 
-export const useAssessmentStore = create<AssessmentStore>()(
-  immer(
-    persist(
-      (set, get) => ({
-        ...initialState,
+export const useAssessmentStore = create<AssessmentState>()(
+  devtools(
+    immer((set, get) => ({
+      ...initialState,
 
-        // Computed flags (using getters that access state)
-        get isLoading() {
-          return get().status === 'idle' || get().status === 'checkingEligibility';
-        },
-        get isInProgress() {
-          return get().status === 'inProgress';
-        },
-        get isSubmitting() {
-          return get().status === 'submitting';
-        },
-        get isCompleted() {
-          return get().status === 'completed';
-        },
-        get isRestricted() {
-          return get().status === 'restricted';
-        },
-        get hasError() {
-          return get().status === 'error';
-        },
-        get showGradeSelection() {
-          return get().status === 'gradeSelection';
-        },
-        get showCategorySelection() {
-          return get().status === 'categorySelection';
-        },
-        get showStreamSelection() {
-          return get().status === 'streamSelection';
-        },
-        get showResumePrompt() {
-          return get().status === 'resumePrompt';
-        },
-        get showSectionIntro() {
-          return get().status === 'sectionIntro';
-        },
-        get showSectionComplete() {
-          return get().status === 'sectionComplete';
-        },
-        get canGoPrevious() {
-          return get().currentQuestionIndex > 0;
-        },
-        get canGoNext() {
-          // Logic depends on your specific requirements
-          return true;
-        },
+      initializeAssessment: (sections, attemptId, gradeLevel, streamId) => {
+        set((state) => {
+          state.sections = sections;
+          state.attemptId = attemptId;
+          state.gradeLevel = gradeLevel;
+          state.streamId = streamId;
+          state.status = 'inProgress';
+          state.loading = false;
+        });
+      },
 
-        // State setters
-        setStatus: (status) => {
-          set((state) => {
-            state.status = status;
-          });
-        },
+      setCurrentQuestion: (sectionIdx, questionIdx) => {
+        set((state) => {
+          state.currentSectionIndex = sectionIdx;
+          state.currentQuestionIndex = questionIdx;
+        });
+      },
 
-        setGradeLevel: (gradeLevel) => {
-          set((state) => {
-            state.gradeLevel = gradeLevel;
-            state.status = 'categorySelection';
-          });
-        },
+      setSections: (sections) => {
+        set((state) => {
+          state.sections = sections;
+        });
+      },
 
-        setCategory: (category) => {
-          set((state) => {
-            state.selectedCategory = category;
-            state.status = 'streamSelection';
-          });
-        },
+      saveAnswer: (questionId, answer) => {
+        set((state) => {
+          state.answers[questionId] = answer;
+        });
+      },
 
-        setStream: (stream) => {
-          set((state) => {
-            state.learnerStream = stream;
-            state.status = 'sectionIntro';
-            state.currentSectionIndex = 0;
-            state.currentQuestionIndex = 0;
-          });
-        },
+      nextQuestion: () => {
+        set((state) => {
+          const currentSection = state.sections[state.currentSectionIndex];
+          if (!currentSection) return;
 
-        setSectionIndex: (index) => {
-          set((state) => {
-            state.currentSectionIndex = index;
-          });
-        },
-
-        setQuestionIndex: (index) => {
-          set((state) => {
-            state.currentQuestionIndex = index;
-          });
-        },
-
-        setAnswer: (questionId, answer) => {
-          set((state) => {
-            state.answers[questionId] = answer;
-          });
-        },
-
-        setAnswers: (answers) => {
-          set((state) => {
-            state.answers = answers;
-          });
-        },
-
-        mergeAnswers: (answers) => {
-          set((state) => {
-            state.answers = { ...state.answers, ...answers };
-          });
-        },
-
-        setTimeRemaining: (time) => {
-          set((state) => {
-            state.timeRemaining = time;
-          });
-        },
-
-        decrementTime: () => {
-          set((state) => {
-            if (state.timeRemaining !== null && state.timeRemaining > 0) {
-              state.timeRemaining -= 1;
-            }
-          });
-        },
-
-        incrementElapsedTime: () => {
-          set((state) => {
-            state.elapsedTime += 1;
-          });
-        },
-
-        setElapsedTime: (time) => {
-          set((state) => {
-            state.elapsedTime = time;
-          });
-        },
-
-        setSectionTiming: (sectionId, time) => {
-          set((state) => {
-            state.sectionTimings[sectionId] = time;
-          });
-        },
-
-        setSectionTimings: (timings) => {
-          set((state) => {
-            state.sectionTimings = timings;
-          });
-        },
-
-        setError: (error) => {
-          set((state) => {
-            state.error = error;
-            state.status = error ? 'error' : state.status;
-          });
-        },
-
-        setPendingAttempt: (attempt) => {
-          set((state) => {
-            state.pendingAttempt = attempt;
-          });
-        },
-
-        // Navigation
-        nextQuestion: () => {
-          set((state) => {
+          const questionCount = currentSection.questions.length;
+          if (state.currentQuestionIndex < questionCount - 1) {
             state.currentQuestionIndex += 1;
-          });
-        },
+          }
+        });
+      },
 
-        previousQuestion: () => {
-          set((state) => {
-            if (state.currentQuestionIndex > 0) {
-              state.currentQuestionIndex -= 1;
-            }
-          });
-        },
+      previousQuestion: () => {
+        set((state) => {
+          if (state.currentQuestionIndex > 0) {
+            state.currentQuestionIndex -= 1;
+          }
+        });
+      },
 
-        goToQuestion: (sectionIndex, questionIndex) => {
-          set((state) => {
-            state.currentSectionIndex = sectionIndex;
-            state.currentQuestionIndex = questionIndex;
-          });
-        },
-
-        nextSection: () => {
-          set((state) => {
+      nextSection: () => {
+        set((state) => {
+          if (state.currentSectionIndex < state.sections.length - 1) {
             state.currentSectionIndex += 1;
             state.currentQuestionIndex = 0;
-            state.status = 'sectionIntro';
-            state.elapsedTime = 0;
-            state.timeRemaining = null;
-          });
-        },
+          }
+        });
+      },
 
-        goToSection: (index) => {
-          set((state) => {
-            state.currentSectionIndex = index;
-            state.currentQuestionIndex = 0;
-            state.status = 'sectionIntro';
-          });
-        },
+      setLoading: (loading) => {
+        set((state) => {
+          state.loading = loading;
+        });
+      },
 
-        // Flow control
-        startNewAssessment: () => {
-          set((state) => {
-            state.status = 'gradeSelection';
-            state.pendingAttempt = null;
-            state.answers = {};
-            state.sectionTimings = {};
-            state.currentSectionIndex = 0;
-            state.currentQuestionIndex = 0;
-            state.elapsedTime = 0;
-            state.timeRemaining = null;
-          });
-        },
+      setError: (error) => {
+        set((state) => {
+          state.error = error;
+          if (error) state.status = 'error';
+        });
+      },
 
-        startSection: () => {
-          set((state) => {
-            state.status = 'inProgress';
-            state.elapsedTime = 0;
-          });
-        },
+      setStatus: (status) => {
+        set((state) => {
+          state.status = status;
+        });
+      },
 
-        completeSection: () => {
-          set((state) => {
-            state.status = 'sectionComplete';
-          });
-        },
+      reset: () => {
+        set(initialState);
+      },
 
-        submitAssessment: () => {
-          set((state) => {
-            state.status = 'submitting';
-          });
-        },
+      // Adaptive Aptitude Actions
+      initializeAdaptiveSession: (session, firstQuestion) => {
+        set((state) => {
+          state.adaptiveSessionId = session.id;
+          state.adaptivePhase = session.currentPhase;
+          state.adaptiveCurrentQuestion = firstQuestion;
+          state.adaptiveDifficulty = session.currentDifficulty;
+          state.adaptiveQuestionsAnswered = session.questionsAnswered;
+          state.adaptiveCorrectAnswers = session.correctAnswers;
+          state.status = 'inProgress';
+          state.loading = false;
+        });
+      },
 
-        completeAssessment: () => {
-          set((state) => {
-            state.status = 'completed';
-          });
-        },
+      setAdaptivePhase: (phase) => {
+        set((state) => {
+          state.adaptivePhase = phase;
+        });
+      },
 
-        showResumeDialog: (attempt, answers) => {
-          set((state) => {
-            state.pendingAttempt = attempt;
-            state.status = 'resumePrompt';
-            state.gradeLevel = attempt.grade_level;
-            state.learnerStream = attempt.stream_id;
-            state.currentSectionIndex = attempt.current_section_index;
-            state.currentQuestionIndex = attempt.current_question_index;
-            state.answers = answers;
-            state.sectionTimings = attempt.section_timings || {};
-          });
-        },
+      setAdaptiveCurrentQuestion: (question) => {
+        set((state) => {
+          state.adaptiveCurrentQuestion = question;
+        });
+      },
 
-        resumeAssessment: () => {
-          set((state) => {
-            state.status = 'inProgress';
-            state.pendingAttempt = null;
-          });
-        },
+      setAdaptiveDifficulty: (difficulty) => {
+        set((state) => {
+          state.adaptiveDifficulty = difficulty;
+        });
+      },
 
-        showRestriction: (message) => {
-          set((state) => {
-            state.status = 'restricted';
-            state.error = message;
-          });
-        },
+      updateAdaptiveProgress: (answered, correct, ability) => {
+        set((state) => {
+          state.adaptiveQuestionsAnswered = answered;
+          state.adaptiveCorrectAnswers = correct;
+          state.adaptiveAbilityEstimate = ability;
+        });
+      },
 
-        reset: () => {
-          set((state) => {
-            Object.assign(state, initialState);
-          });
-        },
+      setAdaptiveTestComplete: (complete) => {
+        set((state) => {
+          state.adaptiveTestComplete = complete;
+          if (complete) state.status = 'completed';
+        });
+      },
 
-        // Computed methods
-        getProgressPercentage: () => {
-          // This would need to know total questions - placeholder
-          return 0;
-        },
+      setAdaptiveResults: (results) => {
+        set((state) => {
+          state.adaptiveResults = results;
+        });
+      },
 
-        getTotalQuestions: () => {
-          // Placeholder - would need section/question data
-          return 0;
-        },
+      resetAdaptive: () => {
+        set((state) => {
+          state.adaptiveSessionId = null;
+          state.adaptivePhase = null;
+          state.adaptiveCurrentQuestion = null;
+          state.adaptiveDifficulty = 3;
+          state.adaptiveQuestionsAnswered = 0;
+          state.adaptiveCorrectAnswers = 0;
+          state.adaptiveAbilityEstimate = 0;
+          state.adaptiveTestComplete = false;
+          state.adaptiveResults = null;
+        });
+      },
 
-        getAnsweredQuestions: () => {
-          return Object.keys(get().answers).length;
-        },
-      }),
-      {
-        name: 'assessment-storage',
-        partialize: (state) => ({
-          answers: state.answers,
-          sectionTimings: state.sectionTimings,
-          gradeLevel: state.gradeLevel,
-          learnerStream: state.learnerStream,
-          currentSectionIndex: state.currentSectionIndex,
-          currentQuestionIndex: state.currentQuestionIndex,
-        }),
-      }
-    )
+      setResultData: (data) => {
+        set((state) => {
+          state.resultId = data.resultId;
+          state.riasecScores = data.riasecScores;
+          state.strengthScores = data.strengthScores;
+          state.learningPreferences = data.learningPreferences;
+          state.aptitudeScores = data.aptitudeScores;
+          state.profileSnapshot = data.profileSnapshot;
+          state.loading = false;
+          state.error = null;
+        });
+      },
+
+      incrementAnalysisRetryCount: () => {
+        set((state) => {
+          state.analysisRetryCount += 1;
+        });
+      },
+
+      resetAnalysisRetry: () => {
+        set((state) => {
+          state.analysisRetryCount = 0;
+        });
+      },
+
+      resetResults: () => {
+        set((state) => {
+          state.resultId = null;
+          state.riasecScores = null;
+          state.strengthScores = null;
+          state.learningPreferences = null;
+          state.aptitudeScores = null;
+          state.profileSnapshot = null;
+          state.analysisRetryCount = 0;
+        });
+      },
+    })),
+    { name: 'assessmentStore' }
   )
 );
 
-// Convenience hooks for common selections
-export const useAssessmentStatus = () => 
-  useAssessmentStore((state) => state.status);
-
-export const useAssessmentAnswers = () => 
-  useAssessmentStore((state) => state.answers);
-
-export const useAssessmentCurrentQuestion = () => {
-  const sectionIndex = useAssessmentStore((state) => state.currentSectionIndex);
-  const questionIndex = useAssessmentStore((state) => state.currentQuestionIndex);
-  return { sectionIndex, questionIndex };
+// Convenience hooks - Regular Assessment
+export const useAssessmentStatus = () => useAssessmentStore((state) => state.status);
+export const useAssessmentLoading = () => useAssessmentStore((state) => state.loading);
+export const useAssessmentError = () => useAssessmentStore((state) => state.error);
+export const useAssessmentAnswers = () => useAssessmentStore((state) => state.answers);
+export const useCurrentSection = () => {
+  const store = useAssessmentStore();
+  return store.sections[store.currentSectionIndex];
+};
+export const useCurrentQuestion = () => {
+  const store = useAssessmentStore();
+  const section = store.sections[store.currentSectionIndex];
+  return section?.questions[store.currentQuestionIndex];
 };
 
-export const useAssessmentTime = () => {
-  const timeRemaining = useAssessmentStore((state) => state.timeRemaining);
-  const elapsedTime = useAssessmentStore((state) => state.elapsedTime);
-  return { timeRemaining, elapsedTime };
-};
+// Convenience hooks - Adaptive Aptitude
+export const useAdaptiveSessionId = () => useAssessmentStore((state) => state.adaptiveSessionId);
+export const useAdaptivePhase = () => useAssessmentStore((state) => state.adaptivePhase);
+export const useAdaptiveCurrentQuestion = () => useAssessmentStore((state) => state.adaptiveCurrentQuestion);
+export const useAdaptiveDifficulty = () => useAssessmentStore((state) => state.adaptiveDifficulty);
+export const useAdaptiveProgress = () =>
+  useAssessmentStore((state) => ({
+    questionsAnswered: state.adaptiveQuestionsAnswered,
+    correctAnswers: state.adaptiveCorrectAnswers,
+    abilityEstimate: state.adaptiveAbilityEstimate,
+  }));
+export const useAdaptiveResults = () => useAssessmentStore((state) => state.adaptiveResults);
+export const useAdaptiveTestComplete = () => useAssessmentStore((state) => state.adaptiveTestComplete);
 
-export const useAssessmentFlowActions = () => {
-  const startNewAssessment = useAssessmentStore((state) => state.startNewAssessment);
-  const startSection = useAssessmentStore((state) => state.startSection);
-  const completeSection = useAssessmentStore((state) => state.completeSection);
-  const submitAssessment = useAssessmentStore((state) => state.submitAssessment);
-  const completeAssessment = useAssessmentStore((state) => state.completeAssessment);
-  const resumeAssessment = useAssessmentStore((state) => state.resumeAssessment);
-  const showResumeDialog = useAssessmentStore((state) => state.showResumeDialog);
-  const showRestriction = useAssessmentStore((state) => state.showRestriction);
-  const reset = useAssessmentStore((state) => state.reset);
-  return { startNewAssessment, startSection, completeSection, submitAssessment, completeAssessment, resumeAssessment, showResumeDialog, showRestriction, reset };
-};
-
-export const useAssessmentNavigation = () => {
-  const nextQuestion = useAssessmentStore((state) => state.nextQuestion);
-  const previousQuestion = useAssessmentStore((state) => state.previousQuestion);
-  const goToQuestion = useAssessmentStore((state) => state.goToQuestion);
-  const nextSection = useAssessmentStore((state) => state.nextSection);
-  const goToSection = useAssessmentStore((state) => state.goToSection);
-  const canGoPrevious = useAssessmentStore((state) => state.canGoPrevious);
-  const canGoNext = useAssessmentStore((state) => state.canGoNext);
-  return { nextQuestion, previousQuestion, goToQuestion, nextSection, goToSection, canGoPrevious, canGoNext };
-};
+// Convenience hooks - Assessment Results
+export const useAssessmentResults = () =>
+  useAssessmentStore((state) => ({
+    resultId: state.resultId,
+    riasecScores: state.riasecScores,
+    strengthScores: state.strengthScores,
+    learningPreferences: state.learningPreferences,
+    aptitudeScores: state.aptitudeScores,
+    profileSnapshot: state.profileSnapshot,
+  }));
+export const useAnalysisRetry = () =>
+  useAssessmentStore((state) => ({
+    retryCount: state.analysisRetryCount,
+    maxRetries: state.analysisMaxRetries,
+  }));

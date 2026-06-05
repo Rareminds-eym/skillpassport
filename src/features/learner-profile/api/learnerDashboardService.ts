@@ -9,15 +9,8 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-dashboard-service');
 
-// Get API base URL from environment, fallback to current origin
-const getApiBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_APP_URL;
-  if (envUrl && envUrl.trim() !== '') {
-    return envUrl;
-  }
-  // Fallback to current origin (same domain)
-  return typeof window !== 'undefined' ? window.location.origin : '';
-};
+// API base URL — same origin (Cloudflare Pages serves frontend + API)
+const API_BASE_ORIGIN = typeof window !== 'undefined' ? window.location.origin : '';
 
 export interface DashboardData {
   profile: any;
@@ -45,18 +38,15 @@ export async function getLearnerDashboardData(): Promise<{
   error?: string;
 }> {
   try {
-    const apiBaseUrl = getApiBaseUrl();
-    
-    if (!apiBaseUrl) {
-      logger.error('API_BASE_URL is not configured');
+    if (!API_BASE_ORIGIN) {
+      logger.error('API base URL not available');
       return {
         success: false,
         error: 'API configuration error: Base URL not set'
       };
     }
 
-    // Build URL - no email parameter needed, backend uses user_id from JWT
-    const url = new URL(`/api/learners/dashboard`, apiBaseUrl);
+    const url = new URL(`/api/learners/dashboard`, API_BASE_ORIGIN);
 
     logger.info('Fetching dashboard data', { url: url.toString() });
 

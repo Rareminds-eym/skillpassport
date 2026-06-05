@@ -8,6 +8,7 @@
 
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { ssoFetch } from '../../../lib/sso-client';
 export async function handleGetAddonByFeatureKey(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SSO_SERVICE: Fetcher };
   const url = new URL(context.request.url);
@@ -22,7 +23,7 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
 
   try {
     const ssoUrl = new URL(`http://sso-worker/api/addon-catalog/${encodeURIComponent(featureKey)}`);
-    const ssoResponse = await env.SSO_SERVICE.fetch(new Request(ssoUrl.toString(), {
+    const ssoResponse = await ssoFetch(env as any, new Request(ssoUrl.toString(), {
       method: 'GET',
     }));
 
@@ -47,11 +48,15 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
     const transformedData = {
       id: addon.id,
       feature_key: addon.feature_key,
+      feature_name: addon.feature_name,
       name: addon.feature_name,
+      addon_description: addon.description,
       description: addon.description,
       category: addon.category,
-      price_monthly: parseFloat(addon.price_monthly) || 199,
-      price_annual: parseFloat(addon.price_annual) || 1990,
+      addon_price_monthly: parseFloat(addon.price_monthly) ?? 0,
+      price_monthly: parseFloat(addon.price_monthly) ?? 0,
+      addon_price_annual: parseFloat(addon.price_annual) ?? 0,
+      price_annual: parseFloat(addon.price_annual) ?? 0,
       icon_url: addon.icon,
     };
 

@@ -90,7 +90,7 @@ export function AddOnCheckout({
       }
     });
 
-    const discount = appliedDiscount?.totalDiscount || 0;
+    const discount = appliedDiscount?.totalDiscount ?? 0;
     const total = Math.max(subtotal - discount, 0);
 
     return { subtotal, discount, total };
@@ -167,24 +167,23 @@ export function AddOnCheckout({
       }
       
       // For simplicity, process first item (can be extended for multi-item cart)
-      let orderData;
+      let orderResult;
 
       if (type === 'addon') {
-        orderData = await purchaseAddOn(item.feature_key, billingPeriod);
+        orderResult = await purchaseAddOn(item.feature_key, billingPeriod);
       } else {
-        orderData = await purchaseBundle(item.id, billingPeriod);
+        orderResult = await purchaseBundle(item.id, billingPeriod);
       }
 
-      if (orderData && window.Razorpay) {
+      if (orderResult?.success && window.Razorpay) {
+        const data = orderResult.data;
         const options = {
-          key: orderData.razorpayKeyId,
-          amount: orderData.amount,
-          currency: orderData.currency,
+          key: data.razorpayKeyId,
+          amount: data.amount,
+          currency: data.currency,
           name: 'SkillPassport',
-          description: type === 'addon' 
-            ? `${item.feature_name} (${billingPeriod})`
-            : `${item.name} Bundle (${billingPeriod})`,
-          order_id: orderData.orderId,
+          description: `${item.feature_name ?? item.name} (${billingPeriod})`,
+          order_id: data.orderId,
           handler: async function(response) {
             // Payment successful - verify and create entitlement
             console.log('[AddOnCheckout] Payment successful, verifying...', response);
@@ -197,7 +196,7 @@ export function AddOnCheckout({
                   response.razorpay_payment_id,
                   response.razorpay_signature,
                   item.feature_key,
-                  totals.total,
+                  data.amount,
                   billingPeriod
                 );
               } else {
@@ -206,7 +205,7 @@ export function AddOnCheckout({
                   response.razorpay_payment_id,
                   response.razorpay_signature,
                   item.id,
-                  totals.total,
+                  data.amount,
                   billingPeriod
                 );
               }
@@ -247,6 +246,8 @@ export function AddOnCheckout({
         });
         
         rzp.open();
+      } else if (orderResult?.error) {
+        setCheckoutError(orderResult.error);
       }
     } catch (error) {
       setCheckoutError(error.message || 'Checkout failed');

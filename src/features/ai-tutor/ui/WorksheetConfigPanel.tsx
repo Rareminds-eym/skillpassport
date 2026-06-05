@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import type { WorksheetConfig, WorksheetTemplateType, DifficultyLevel } from '../types/worksheet';
 import { WORKSHEET_TEMPLATES } from '../types/worksheet';
@@ -168,8 +168,11 @@ const WorksheetConfigPanel = ({
           )}
         </button>
         {generationLimit !== undefined && remainingGenerations !== undefined && !isUsageLoading && (
-          <p className={`text-xs text-center ${isGenerationLimitReached ? 'text-red-600' : 'text-purple-700'}`}>
-            {remainingGenerations} of {generationLimit} worksheet/lesson plan generations remaining
+          <p className={`text-xs text-center ${isGenerationLimitReached ? 'text-red-600 font-semibold' : 'text-purple-700'}`}>
+            {isGenerationLimitReached 
+              ? `Generation limit reached (${generationLimit}/${generationLimit} used)`
+              : `${remainingGenerations} of ${generationLimit} generations remaining`
+            }
           </p>
         )}
         </div>
