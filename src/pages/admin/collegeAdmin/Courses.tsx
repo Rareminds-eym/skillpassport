@@ -26,6 +26,7 @@ import {
 import toast from 'react-hot-toast';
 
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-courses');
@@ -97,11 +98,11 @@ const CollegeAdminCourses: React.FC = () => {
         logger.info('✅ College Admin name set:', { value: fullName });
 
         // Get school_id from school_educators table for creating courses
-        const { data: educatorData, error: educatorError } = await supabase
-          .from('school_educators')
-          .select('school_id')
-          .eq('user_id', user.id)
-          .single();
+        const educatorRes: any = await apiPost('/college-admin/faculty', {
+          action: 'get-school-educators',
+          user_id: user.id
+        });
+        const educatorData = educatorRes?.data?.[0] || educatorRes?.data;
 
         if (educatorData) {
           setSchoolId(educatorData.school_id);

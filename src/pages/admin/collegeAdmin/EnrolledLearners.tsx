@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-enrolled-learners');
@@ -60,32 +61,15 @@ const EnrolledLearners: React.FC = () => {
       if (!user?.id && !user?.email) return;
 
       try {
-        // Try organizations table by admin_id first (most reliable for college admins)
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('admin_id', user.id)
-          .eq('organization_type', 'college')
-          .maybeSingle();
+        const orgRes: any = await apiPost('/college-admin/actions', {
+          action: 'get-org-by-admin-or-email',
+          userId: user.id,
+          email: user.email
+        });
 
-        if (orgData?.id) {
-          setCollegeId(orgData.id);
+        if (orgRes.success && orgRes.data?.id) {
+          setCollegeId(orgRes.data.id);
           return;
-        }
-
-        // Fallback: try organizations table by email
-        if (user.email) {
-          const { data: orgByEmail } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('email', user.email)
-            .eq('organization_type', 'college')
-            .maybeSingle();
-
-          if (orgByEmail?.id) {
-            setCollegeId(orgByEmail.id);
-            return;
-          }
         }
 
         // Fallback: check localStorage
@@ -141,15 +125,13 @@ const EnrolledLearners: React.FC = () => {
     if (!collegeId) return;
 
     try {
-      const { data, error } = await supabase
-        .from("departments")
-        .select("*")
-        .eq("college_id", collegeId)
-        .eq("status", "active")
-        .order("name");
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-departments',
+        college_id: collegeId
+      });
 
-      if (error) throw error;
-      setDepartments(data || []);
+      if (!res.success) throw new Error(res.error);
+      setDepartments(res.data || []);
     } catch (error) {
       logger.error("Error loading departments:", error as Error);
     }
@@ -157,15 +139,14 @@ const EnrolledLearners: React.FC = () => {
 
   const loadPrograms = async (departmentId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("programs")
-        .select("*")
-        .eq("department_id", departmentId)
-        .eq("status", "active")
-        .order("name");
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-programs'
+      });
 
-      if (error) throw error;
-      setPrograms(data || []);
+      if (!res.success) throw new Error(res.error);
+      
+      const filtered = (res.data || []).filter((p: any) => p.department_id === departmentId);
+      setPrograms(filtered);
     } catch (error) {
       logger.error("Error loading programs:", error as Error);
     }
@@ -548,15 +529,14 @@ const EnrolllearnersModal: React.FC<{
   const loadPrograms = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("programs")
-        .select("*")
-        .eq("department_id", selectedDepartment)
-        .eq("status", "active")
-        .order("name");
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-programs'
+      });
 
-      if (error) throw error;
-      setPrograms(data || []);
+      if (!res.success) throw new Error(res.error);
+      
+      const filtered = (res.data || []).filter((p: any) => p.department_id === selectedDepartment);
+      setPrograms(filtered);
     } catch (error) {
       logger.error("Error loading programs:", error as Error);
       toast.error("Failed to load programs");
@@ -567,17 +547,15 @@ const EnrolllearnersModal: React.FC<{
 
   const loadAvailableSemesters = async () => {
     try {
-      // Get distinct semesters from program_sections for this program
-      const { data, error } = await supabase
-        .from("program_sections")
-        .select("semester")
-        .eq("program_id", selectedProgram)
-        .eq("status", "active");
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-available-semesters',
+        program_id: selectedProgram
+      });
 
-      if (error) throw error;
+      if (!res.success) throw new Error(res.error);
 
       // Get unique semesters and sort them
-      const semesters = [...new Set((data || []).map(s => s.semester))].sort((a, b) => a - b);
+      const semesters = [...new Set((res.data || []).map((s: any) => s.semester))].sort((a: any, b: any) => a - b);
       setAvailableSemesters(semesters);
 
       // Reset semester selection if current selection is not available
@@ -593,38 +571,14 @@ const EnrolllearnersModal: React.FC<{
 
   const loadSections = async () => {
     try {
-      const { data, error } = await supabase
-        .from("program_sections")
-        .select("*")
-        .eq("program_id", selectedProgram)
-        .eq("semester", parseInt(selectedSemester))
-        .eq("status", "active")
-        .order("section");
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-program-sections-with-counts',
+        program_id: selectedProgram,
+        semester: parseInt(selectedSemester)
+      });
 
-      if (error) throw error;
-
-      // Get actual learner counts for each section
-      if (data && data.length > 0) {
-        const sectionsWithCounts = await Promise.all(
-          data.map(async (sec) => {
-            const { count } = await supabase
-              .from("learners")
-              .select("*", { count: "exact", head: true })
-              .eq("program_id", selectedProgram)
-              .eq("semester", parseInt(selectedSemester))
-              .eq("section", sec.section)
-              .eq("is_deleted", false);
-
-            return {
-              ...sec,
-              current_learners: count || 0
-            };
-          })
-        );
-        setSections(sectionsWithCounts);
-      } else {
-        setSections([]);
-      }
+      if (!res.success) throw new Error(res.error);
+      setSections(res.data || []);
     } catch (error) {
       logger.error("Error loading sections:", error as Error);
     }
@@ -634,24 +588,13 @@ const EnrolllearnersModal: React.FC<{
     try {
       setLoadinglearners(true);
 
-      // Get learners who are NOT enrolled in any program (program_id is null)
-      // AND belong to the same college as the admin
-      let query = supabase
-        .from("learners")
-        .select("id, name, roll_number, email, contact_number, admission_number")
-        .eq("is_deleted", false)
-        .is("program_id", null)
-        .order("name");
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-unenrolled-learners',
+        college_id: collegeId
+      });
 
-      // Filter by college if collegeId is available
-      if (collegeId) {
-        query = query.eq("college_id", collegeId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setAvailablelearners(data || []);
+      if (!res.success) throw new Error(res.error);
+      setAvailablelearners(res.data || []);
     } catch (error: any) {
       logger.error("Error loading learners:", error);
       toast.error("Failed to load learners");

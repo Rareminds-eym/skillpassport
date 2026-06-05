@@ -13,6 +13,7 @@ import {
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface Program {
   id: string;
@@ -55,26 +56,14 @@ const ProgramManagement: React.FC = () => {
       if (!user) return;
       
       try {
-        const { data: lecturerData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
+        const orgRes: any = await apiPost('/college-admin/actions', {
+          action: 'get-org-by-admin-or-email',
+          userId: user.id,
+          email: user.email
+        });
 
-        if (lecturerData?.collegeId) {
-          setCollegeId(lecturerData.collegeId);
-          return;
-        }
-
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('admin_id', user.id)
-          .eq('organization_type', 'college')
-          .maybeSingle();
-
-        if (orgData?.id) {
-          setCollegeId(orgData.id);
+        if (orgRes.success && orgRes.data?.id) {
+          setCollegeId(orgRes.data.id);
         }
       } catch (error) {
         logger.error('Error fetching college ID:', error as Error);
@@ -96,30 +85,16 @@ const ProgramManagement: React.FC = () => {
     try {
       setLoading(true);
 
-      // Load departments
-      const { data: deptData, error: deptError } = await supabase
-        .from("departments")
-        .select("*")
-        .eq("college_id", collegeId)
-        .order("name", { ascending: true });
-      
-      if (deptError) throw deptError;
-      setDepartments(deptData || []);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-programs-data',
+        college_id: collegeId
+      });
 
-      // Load programs with department names
-      const { data: programsData, error: programsError } = await supabase
-        .from("programs")
-        .select(`
-          *,
-          departments!inner (
-            name,
-            college_id
-          )
-        `)
-        .eq("departments.college_id", collegeId)
-        .order("name", { ascending: true });
-      
-      if (programsError) throw programsError;
+      if (!res.success) throw new Error(res.error || 'Failed to load programs data');
+
+      const { deptData, programsData } = res.data;
+
+      setDepartments(deptData || []);
 
       const formattedPrograms: Program[] = (programsData || []).map((p: any) => ({
         id: p.id,
@@ -159,12 +134,12 @@ const ProgramManagement: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from("programs")
-        .delete()
-        .eq("id", program.id);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'delete-program',
+        program_id: program.id
+      });
 
-      if (error) throw error;
+      if (!res.success) throw new Error(res.error || 'Failed to delete program');
       
       toast.success("Program deleted successfully");
       loadData();
@@ -178,40 +153,15 @@ const ProgramManagement: React.FC = () => {
     try {
       const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       
-      if (selectedProgram) {
-        // Update existing program
-        const { error } = await supabase
-          .from("programs")
-          .update({
-            name: data.name,
-            code: data.code,
-            description: data.description,
-            degree_level: data.degree_level,
-            department_id: data.department_id,
-            status: data.status,
-            updated_by: user?.id,
-          })
-          .eq("id", selectedProgram.id);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'save-program',
+        program_id: selectedProgram?.id,
+        data: data,
+        user_id: user?.id
+      });
 
-        if (error) throw error;
-        toast.success("Program updated successfully");
-      } else {
-        // Create new program
-        const { error } = await supabase
-          .from("programs")
-          .insert({
-            name: data.name,
-            code: data.code,
-            description: data.description,
-            degree_level: data.degree_level,
-            department_id: data.department_id,
-            status: data.status || "active",
-            created_by: user?.id,
-          });
-
-        if (error) throw error;
-        toast.success("Program created successfully");
-      }
+      if (!res.success) throw new Error(res.error || 'Failed to save program');
+      toast.success(selectedProgram ? "Program updated successfully" : "Program created successfully");
       
       setIsModalOpen(false);
       loadData();

@@ -13,6 +13,7 @@ import { AssessmentReportDrawer } from '@/features/assessment';
 
 import { formatStreamId } from '@/shared/lib/utils/formatters';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-assessment-results');
@@ -331,123 +332,34 @@ const CollegeAdminAssessmentResults: React.FC = () => {
       }
 
       // Find college by matching email in organizations table (case-insensitive)
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .select('id, name, email')
-        .eq('organization_type', 'college')
-        .ilike('email', userEmail)
-        .maybeSingle();
+      const orgRes: any = await apiPost('/college-admin/actions', {
+        action: 'get-org-by-admin-or-email',
+        userId: user.id,
+        email: userEmail
+      });
 
-      if (orgError || !org?.id) {
-        logger.error('Error fetching organization:', orgError, 'for email:', userEmail as Error);
+      if (!orgRes.success || !orgRes.data?.id) {
+        logger.error('Error fetching organization:', orgRes.error, 'for email:', userEmail as Error);
         setError('No college associated with your account');
         setLoading(false);
         return;
       }
 
-      const collegeId = org.id;
+      const collegeId = orgRes.data.id;
       
       // Set college name from the already fetched organization data
-      setCollegeName(org.name);
+      setCollegeName(orgRes.data.name);
 
-      // Get learners from this college
-      const { data: learnersData, error: learnersError } = await supabase
-        .from('learners')
-        .select(`
-          user_id, 
-          name, 
-          email, 
-          enrollmentNumber, 
-          grade, 
-          program_id,
-          programs (
-            name
-          )
-        `)
-        .eq('college_id', collegeId);
-
-      if (learnersError) throw learnersError;
-
-      if (!learnersData || learnersData.length === 0) {
-        setResults([]);
-        setLoading(false);
-        return;
-      }
-
-      // Filter out learners with null user_id to avoid UUID parsing errors
-      const validlearners = learnersData.filter((s) => s.user_id != null);
-      
-      if (validlearners.length === 0) {
-        setResults([]);
-        setLoading(false);
-        return;
-      }
-
-      const learnerIds = validlearners.map((s) => s.user_id);
-      const learnerMap = new Map(validlearners.map((s) => [s.user_id, s]));
-
-      // Fetch assessment results for these learners
-      const { data, error: fetchError } = await supabase
-        .from('personal_assessment_results')
-        .select(`
-          id,
-          learner_id,
-          stream_id,
-          riasec_code,
-          aptitude_overall,
-          employability_readiness,
-          knowledge_score,
-          status,
-          created_at,
-          career_fit,
-          skill_gap,
-          gemini_results,
-          overall_summary,
-          platform_courses,
-          riasec_scores,
-          aptitude_scores,
-          roadmap,
-          profile_snapshot,
-          personal_assessment_streams (
-            name
-          )
-        `)
-        .in('learner_id', learnerIds)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      const enrichedResults = (data || []).map((r) => {
-        const learner = learnerMap.get(r.learner_id);
-        return {
-          ...r,
-          learner_name: learner?.name || null,
-          learner_email: learner?.email || null,
-          college_id: collegeId,
-          college_name: org.name || null,
-          enrollmentNumber: learner?.enrollmentNumber || null,
-          learner_grade: learner?.grade || null,
-          program_id: learner?.program_id || null,
-          program_name: (() => {
-            if (!learner?.programs) return null;
-            // Handle both single object and array cases
-            if (Array.isArray(learner.programs)) {
-              return learner.programs.length > 0 ? learner.programs[0].name : null;
-            }
-            return (learner.programs as any).name || null;
-          })(),
-          stream_name: (() => {
-            if (!r.personal_assessment_streams) return null;
-            // Handle both single object and array cases
-            if (Array.isArray(r.personal_assessment_streams)) {
-              return r.personal_assessment_streams.length > 0 ? r.personal_assessment_streams[0].name : null;
-            }
-            return (r.personal_assessment_streams as any).name || null;
-          })(),
-        };
+      // Get assessment results via backend action
+      const resultsRes: any = await apiPost('/college-admin/actions', {
+        action: 'get-assessment-results',
+        college_id: collegeId,
+        college_name: orgRes.data.name
       });
 
-      setResults(enrichedResults as AssessmentResult[]);
+      if (!resultsRes.success) throw new Error(resultsRes.error || 'Failed to fetch results');
+
+      setResults(resultsRes.data);
     } catch (err: any) {
       logger.error('Error fetching assessment results:', err as Error);
       setError(err?.message || 'Failed to load assessment results');

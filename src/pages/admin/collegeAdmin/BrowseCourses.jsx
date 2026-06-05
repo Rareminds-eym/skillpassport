@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { CourseDetailModal } from '@/features/courses';
+import { apiPost } from '@/shared/api/apiClient';
 
 const BrowseCourses = () => {
   const navigate = useNavigate();
@@ -55,16 +56,13 @@ const BrowseCourses = () => {
 
       // Fetch courses with status Active or Upcoming (learners shouldn't see Drafts)
       // Also exclude deleted courses
-      let query = supabase
-        .from('courses')
-        .select('*')
-        .in('status', ['Active', 'Upcoming'])
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+      const res = await apiPost('/college-admin/actions', {
+        action: 'get-browse-courses'
+      });
 
-      const { data, error } = await query;
+      if (!res.success) throw new Error(res.error || 'Failed to fetch courses');
 
-      if (error) throw error;
+      const data = res.data;
 
       console.log('📚 Fetched courses for learners:', data?.length || 0);
       setCourses(data || []);
