@@ -5,6 +5,7 @@
  * Handles Razorpay integration for organization subscriptions.
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import {
   AlertCircle,
   ArrowLeft,

@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import userApiService from '@/entities/user/api/userApiService';
 import type {

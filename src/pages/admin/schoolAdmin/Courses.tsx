@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {

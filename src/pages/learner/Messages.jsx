@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import {

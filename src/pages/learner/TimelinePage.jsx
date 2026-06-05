@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {

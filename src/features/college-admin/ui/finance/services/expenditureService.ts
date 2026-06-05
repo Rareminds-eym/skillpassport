@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { apiPost } from '@/shared/api/apiClient';
 import { 
   getExpenditureSummary, 

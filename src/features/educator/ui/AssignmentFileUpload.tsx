@@ -1,4 +1,5 @@
 
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   DocumentArrowUpIcon,

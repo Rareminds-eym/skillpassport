@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useAuthStore } from '@/shared/model/authStore';
 import { apiPost } from '@/shared/api/apiClient'
 import { getLogger } from '@/shared/config/logging'
 import {

@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useState, useMemo, useEffect } from "react";
 import { 
   Search, Users, Calendar, Trophy, Plus, X, 

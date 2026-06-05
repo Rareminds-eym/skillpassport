@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';

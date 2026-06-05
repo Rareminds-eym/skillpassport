@@ -8,6 +8,7 @@
  * The public API (hooks and types) is preserved from the legacy store
  * so existing consumers continue to work without import changes.
  */
+import { useAuthStore } from '@/shared/model/authStore';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';

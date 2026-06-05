@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { X, Search, ShieldCheck, MessageCircle } from 'lucide-react';
 import { apiPost } from '@/shared/api/apiClient';

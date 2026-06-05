@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { GradingModal } from '@/features/educator';
 import {
     ArrowPathIcon,

@@ -5,6 +5,7 @@
  * Provides organization context and handles purchase completion.
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';

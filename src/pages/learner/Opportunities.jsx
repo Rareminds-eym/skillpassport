@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';

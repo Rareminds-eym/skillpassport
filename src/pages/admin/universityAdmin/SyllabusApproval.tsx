@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { curriculumApprovalService, curriculumChangeRequestService, type CurriculumApprovalDashboard } from '@/features/college-admin';
 import { apiPost } from '@/shared/api/apiClient';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';

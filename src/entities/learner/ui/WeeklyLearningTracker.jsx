@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { ArrowRight, BookOpen, Clock, Download, Eye, Filter, Flame, GraduationCap, Play, TrendingUp, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

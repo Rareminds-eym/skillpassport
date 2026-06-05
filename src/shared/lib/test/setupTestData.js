@@ -11,6 +11,7 @@
  * 4. Call: await setupTestData()
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import { supabase } from './api';
 import { 
   learnerData as mocklearnerData,

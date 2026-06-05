@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactApexChart from 'react-apexcharts';

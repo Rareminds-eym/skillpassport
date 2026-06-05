@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { apiPost } from '@/shared/api/apiClient';

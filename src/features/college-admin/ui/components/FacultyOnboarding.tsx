@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { AlertCircle, CheckCircle, FileText, Loader2, Upload, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
 

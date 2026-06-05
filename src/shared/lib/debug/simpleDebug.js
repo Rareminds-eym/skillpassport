@@ -3,6 +3,7 @@
  * Run this in browser console: window.simpleDebug()
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import { apiPost } from '@/shared/api/apiClient';
 
 export const simpleDebug = async () => {

@@ -5,6 +5,7 @@
  * Fetches organization subscription data and connects to services.
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import type { PoolFormData, PoolUpdateData } from '@/features/subscription';
 import {
   AssignToPoolModal,

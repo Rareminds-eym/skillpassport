@@ -3,6 +3,7 @@
  * Basic tests to verify all stores can be imported and initialized
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import { describe, it, expect } from 'vitest';
 
 // Local helper to reset all stores (previously in store utilities)

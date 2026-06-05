@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     BookOpen,

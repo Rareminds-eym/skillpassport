@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Resume Parser Service

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from "react";
 import {
   UserGroupIcon,

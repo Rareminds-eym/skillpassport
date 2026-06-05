@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
 import { ChangeEvent, FormEvent, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';

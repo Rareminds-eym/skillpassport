@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 
 // Helper function to get current user ID
 const getCurrentUserId = async (): Promise<string> => {

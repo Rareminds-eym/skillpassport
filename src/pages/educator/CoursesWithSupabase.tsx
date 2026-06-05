@@ -8,6 +8,7 @@
  * 3. Ensure your Supabase client is properly configured
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useMemo, useEffect } from 'react';
 import { getLogger } from '@/shared/config/logging';
 

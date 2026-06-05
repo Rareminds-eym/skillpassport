@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { apiGet, apiPost } from '@/shared/api/apiClient';
 import userApiService from './userApiService';
 import type { QualificationData, ImportError, UserRoleHistoryRecord } from '@/types/LearnerManagement';

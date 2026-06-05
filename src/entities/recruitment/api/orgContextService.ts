@@ -4,6 +4,7 @@
  * Uses API endpoints to query SSO-Worker database
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import type { OrgContext, UserOrgContexts } from '../model/types';

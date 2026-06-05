@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { AlertCircle, CheckCircle, FileText, Shield, Upload, X } from "lucide-react";
 import React, { useState } from "react";
 import RoleDebugger from '@/features/debug/ui/RoleDebugger';

@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useCallback, useEffect, useState } from 'react';
 import { apiPost } from '@/shared/api/apiClient';
 import { Assessment, AssessmentType, CurriculumSubject, ExamRoom, examsService, ExamTimetable, MarkEntry, SchoolClass, SchoolEducator, Learner } from '@/features/assessment';

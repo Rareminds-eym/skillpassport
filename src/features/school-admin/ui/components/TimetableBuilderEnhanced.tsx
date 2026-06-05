@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { AlertTriangle, Edit2, Filter, Grid3X3, List, Save, Search, Send, Sparkles, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import toast from 'react-hot-toast';

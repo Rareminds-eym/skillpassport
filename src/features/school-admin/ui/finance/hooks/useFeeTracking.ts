@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { apiPost } from '@/shared/api/apiClient';
 import toast from "react-hot-toast";
