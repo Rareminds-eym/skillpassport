@@ -14,8 +14,10 @@ import {
   ChevronRightIcon,
   EnvelopeIcon,
   SparklesIcon,
-  RocketLaunchIcon
+  RocketLaunchIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
+import { useOrgContext } from '@/entities/recruitment/model/useOrgContext';
 
 const navigationItems = [
   { name: 'Overview', path: '/recruitment/overview', icon: HomeIcon },
@@ -42,6 +44,11 @@ const navigationItems = [
   { name: 'Settings', path: '/recruitment/settings', icon: CogIcon }
 ];
 
+// Admin-only navigation items
+const adminNavigationItems = [
+  { name: 'Admin Dashboard', path: '/recruitment/admin', icon: ShieldCheckIcon, adminOnly: true }
+];
+
 function classNames(...classes: string[]): string {
   return classes.filter(Boolean).join(' ');
 }
@@ -58,6 +65,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<{ [key: string]: boolean }>({});
 
+  // Get user's org context to determine if they're an admin
+  const { orgContext } = useOrgContext();
+  const isAdmin = orgContext?.isAdmin || orgContext?.ssoRoleName === 'owner';
+
+  // Combine navigation items - add admin items if user is admin
+  const allNavigationItems = isAdmin
+    ? [...adminNavigationItems, ...navigationItems]
+    : navigationItems;
+
   const toggleSubmenu = (itemName: string) => {
     setOpenSubmenus(prev => ({
       ...prev,
@@ -72,11 +88,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
         <div className="flex min-h-0 flex-1 flex-col bg-white border-r border-gray-200">
           <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
             <nav className="mt-14 flex-1 space-y-1 px-2">
-              {navigationItems.map((item) => (
+              {allNavigationItems.map((item) => (
                 <div key={item.name}>
                   <button
                     onClick={() => {
-                      if (item.subItems) {
+                      if ('subItems' in item && item.subItems) {
                         toggleSubmenu(item.name);
                       } else {
                         setActiveTab(item.name.toLowerCase().replace(/ /g, '_'));
@@ -105,7 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                         {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
                       </span>
                     )}
-                    {item.subItems && (
+                    {'subItems' in item && item.subItems && (
                       openSubmenus[item.name] ? (
                         <ChevronDownIcon className="h-4 w-4" />
                       ) : (
@@ -113,9 +129,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                       )
                     )}
                   </button>
-                  {item.subItems && openSubmenus[item.name] && (
+                  {'subItems' in item && item.subItems && openSubmenus[item.name] && (
                     <div className="ml-11 mt-1 space-y-1">
-                      {item.subItems.map((subItem) => (
+                      {item.subItems.map((subItem: { name: string; path: string }) => (
                         <button
                           key={subItem.name}
                           onClick={() => {
@@ -150,11 +166,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
               <div className="flex h-0 flex-1 flex-col overflow-y-auto">
                 <div className="flex flex-1 flex-col pt-5 pb-4">
                   <nav className="mt-5 flex-1 space-y-1 px-2">
-                    {navigationItems.map((item) => (
+                    {allNavigationItems.map((item) => (
                       <div key={item.name}>
                         <button
                           onClick={() => {
-                            if (item.subItems) {
+                            if ('subItems' in item && item.subItems) {
                               toggleSubmenu(item.name);
                             } else {
                               setActiveTab(item.name.toLowerCase().replace(/ /g, '_'));
@@ -183,7 +199,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                               {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
                             </span>
                           )}
-                          {item.subItems && (
+                          {'subItems' in item && item.subItems && (
                             openSubmenus[item.name] ? (
                               <ChevronDownIcon className="h-4 w-4" />
                             ) : (
@@ -191,9 +207,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, showMobileMe
                             )
                           )}
                         </button>
-                        {item.subItems && openSubmenus[item.name] && (
+                        {'subItems' in item && item.subItems && openSubmenus[item.name] && (
                           <div className="ml-11 mt-1 space-y-1">
-                            {item.subItems.map((subItem) => (
+                            {item.subItems.map((subItem: { name: string; path: string }) => (
                               <button
                                 key={subItem.name}
                                 onClick={() => {

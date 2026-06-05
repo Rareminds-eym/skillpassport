@@ -17,13 +17,22 @@ const logger = getLogger('memberService');
 
 /**
  * Fetch all members for current organization
+ * @param orgId - Organization ID (required, from orgContext)
+ * @param options - Filter and pagination options
  */
 export const getMembers = async (
+    orgId: string,
     options?: Partial<FetchMembersOptions>
 ): Promise<FetchMembersResult> => {
     try {
         // Build query params
         const params = new URLSearchParams();
+
+        // CRITICAL: Always include org_id
+        if (!orgId) {
+            throw new Error('Organization ID is required to fetch members');
+        }
+        params.append('org_id', orgId);
 
         if (options?.role && options.role !== 'all') {
             params.append('role', options.role);
@@ -48,16 +57,19 @@ export const getMembers = async (
         const queryString = params.toString();
         const url = `/recruitment/members${queryString ? `?${queryString}` : ''}`;
 
+        logger.info('Fetching members', { orgId, url });
+
         const response = await apiGet<{ data: FetchMembersResult }>(url);
 
         logger.info('Fetched members', {
+            orgId,
             count: response.data.members.length,
             total: response.data.total,
         });
 
         return response.data;
     } catch (error: any) {
-        logger.error('Failed to fetch members', { error: error.message });
+        logger.error('Failed to fetch members', { error: error.message, orgId });
         throw error;
     }
 };

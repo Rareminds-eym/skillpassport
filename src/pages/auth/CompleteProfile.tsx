@@ -280,8 +280,11 @@ export default function CompleteProfile() {
             toast.success('Profile completed successfully!');
 
             // Redirect to dashboard based on role
+            // Check if user is company admin (owner) to route to admin dashboard
+            const userRoles = user.roles || [];
+            const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
             const dashboardPath = user.role === 'recruiter'
-                ? '/recruitment/overview'
+                ? (isCompanyAdmin ? '/recruitment/admin' : '/recruitment/overview')
                 : '/learner/dashboard';
 
             setTimeout(() => {
@@ -299,8 +302,10 @@ export default function CompleteProfile() {
     };
 
     const handleSkip = () => {
+        const userRoles = user?.roles || [];
+        const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
         const dashboardPath = user?.role === 'recruiter'
-            ? '/recruitment/overview'
+            ? (isCompanyAdmin ? '/recruitment/admin' : '/recruitment/overview')
             : '/learner/dashboard';
         navigate(dashboardPath);
     };

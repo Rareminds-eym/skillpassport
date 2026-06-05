@@ -162,7 +162,7 @@ export const InvitationsList: React.FC = () => {
 
                                     {/* Details */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
+                                        <div className="flex items-center gap-2 mb-2">
                                             <h3 className="text-base font-semibold text-gray-900 truncate">
                                                 {invitation.inviteeName || invitation.inviteeEmail}
                                             </h3>
@@ -175,7 +175,8 @@ export const InvitationsList: React.FC = () => {
                                             {getStatusBadge(invitation.status)}
                                         </div>
 
-                                        <div className="space-y-1">
+                                        <div className="space-y-2">
+                                            {/* Email */}
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <EnvelopeIcon className="h-4 w-4 text-gray-400" />
                                                 <span className="truncate">
@@ -183,33 +184,88 @@ export const InvitationsList: React.FC = () => {
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
-                                                <span>
-                                                    Sent:{' '}
-                                                    {new Date(invitation.createdAt).toLocaleDateString()}
-                                                </span>
-                                                {invitation.expiresAt && (
-                                                    <span>
-                                                        Expires:{' '}
-                                                        {new Date(
-                                                            invitation.expiresAt
-                                                        ).toLocaleDateString()}
-                                                    </span>
-                                                )}
-                                                {invitation.acceptedAt && (
-                                                    <span className="text-green-600">
-                                                        Accepted:{' '}
-                                                        {new Date(
-                                                            invitation.acceptedAt
-                                                        ).toLocaleDateString()}
-                                                    </span>
-                                                )}
+                                            {/* Invitation Details Card */}
+                                            <div className="bg-gray-50 rounded-lg p-3 mt-2 space-y-2">
+                                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                                    {/* Sent Date */}
+                                                    <div>
+                                                        <span className="text-gray-500 font-medium">Sent:</span>
+                                                        <p className="text-gray-900 mt-0.5">
+                                                            {new Date(invitation.createdAt).toLocaleDateString('en-US', {
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                                year: 'numeric'
+                                                            })}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Expiry Date */}
+                                                    {invitation.expiresAt && (
+                                                        <div>
+                                                            <span className="text-gray-500 font-medium">Expires:</span>
+                                                            <p className="text-gray-900 mt-0.5">
+                                                                {new Date(invitation.expiresAt).toLocaleDateString('en-US', {
+                                                                    month: 'short',
+                                                                    day: 'numeric',
+                                                                    year: 'numeric'
+                                                                })}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Role */}
+                                                    <div>
+                                                        <span className="text-gray-500 font-medium">Role:</span>
+                                                        <p className="text-gray-900 mt-0.5 capitalize">
+                                                            {invitation.inviteeRole?.replace('_', ' ')}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Invited By */}
+                                                    {invitation.invitedByName && (
+                                                        <div>
+                                                            <span className="text-gray-500 font-medium">Invited by:</span>
+                                                            <p className="text-gray-900 mt-0.5 truncate">
+                                                                {invitation.invitedByName}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Accepted Date (for accepted invitations) */}
+                                                    {invitation.acceptedAt && (
+                                                        <div className="col-span-2">
+                                                            <span className="text-green-600 font-medium">Accepted:</span>
+                                                            <p className="text-green-700 mt-0.5">
+                                                                {new Date(invitation.acceptedAt).toLocaleDateString('en-US', {
+                                                                    month: 'short',
+                                                                    day: 'numeric',
+                                                                    year: 'numeric',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Organization Name */}
+                                                    {invitation.organizationName && (
+                                                        <div className="col-span-2">
+                                                            <span className="text-gray-500 font-medium">Organization:</span>
+                                                            <p className="text-gray-900 mt-0.5">
+                                                                {invitation.organizationName}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
 
+                                            {/* Custom Message */}
                                             {invitation.invitationMessage && (
-                                                <p className="text-sm text-gray-600 mt-2 italic">
-                                                    "{invitation.invitationMessage}"
-                                                </p>
+                                                <div className="bg-blue-50 border-l-4 border-blue-400 p-2 mt-2">
+                                                    <p className="text-sm text-gray-700 italic">
+                                                        "{invitation.invitationMessage}"
+                                                    </p>
+                                                </div>
                                             )}
                                         </div>
                                     </div>

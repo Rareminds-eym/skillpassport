@@ -295,6 +295,27 @@ const UnifiedSignup = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Clear persisted auth state when starting invitation signup
+  // This prevents old user email from localStorage interfering with invitation email
+  useEffect(() => {
+    if (invitationToken && invitationEmail) {
+      console.log('[UnifiedSignup] Invitation detected, clearing persisted auth state');
+      console.log('[UnifiedSignup] Invitation email:', invitationEmail);
+
+      // Clear the Zustand persisted state
+      localStorage.removeItem('skillpassport-auth-v1');
+
+      // Ensure the email state matches the invitation email
+      setState(prev => {
+        if (prev.email !== invitationEmail) {
+          console.log('[UnifiedSignup] Correcting email from', prev.email, 'to', invitationEmail);
+          return { ...prev, email: invitationEmail };
+        }
+        return prev;
+      });
+    }
+  }, [invitationToken, invitationEmail]);
+
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
   const allRoles: UserRole[] = ['learner', 'recruiter', 'recruitment_admin', 'school_educator', 'college_educator', 'school_admin', 'college_admin', 'university_admin'];
@@ -511,6 +532,27 @@ const UnifiedSignup = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    console.log('=== SIGNUP FORM SUBMITTED ===');
+    console.log('[UnifiedSignup] Checking invitation token at form submit');
+    console.log('[UnifiedSignup] invitationToken constant:', invitationToken);
+    console.log('[UnifiedSignup] invitationToken from sessionStorage (fresh):', sessionStorage.getItem('invitation_token'));
+    console.log('[UnifiedSignup] invitationEmail:', invitationEmail);
+    console.log('[UnifiedSignup] returnUrl:', returnUrl);
+    console.log('[UnifiedSignup] selectedRole:', state.selectedRole);
+
+    // CRITICAL: Force email to match invitation email if invitation token exists
+    // This prevents using a stale email from a previous session
+    const emailToUse = invitationToken ? (invitationEmail || state.email) : state.email;
+    console.log('[UnifiedSignup] Email being used for signup:', emailToUse);
+    console.log('[UnifiedSignup] state.email value:', state.email);
+
+    if (invitationToken && emailToUse !== invitationEmail) {
+      console.error('[UnifiedSignup] ❌ EMAIL MISMATCH DETECTED!');
+      console.error('[UnifiedSignup] Expected (invitation):', invitationEmail);
+      console.error('[UnifiedSignup] Got (state.email):', state.email);
+      console.error('[UnifiedSignup] Using invitation email:', emailToUse);
+    }
+
     // If user selected Recruitment Admin, redirect to company signup with their details
     if (state.selectedRole === 'recruitment_admin') {
       navigate('/signup/company', {
@@ -549,7 +591,7 @@ const UnifiedSignup = () => {
         // Admin signup creates user + org
         const orgName = `${state.firstName} ${state.lastName}'s Institution`;
         const ssoResult = await ssoClient.signup({
-          email: state.email,
+          email: emailToUse, // Use the forced email, not state.email
           password: state.password,
           org_name: orgName,
           redirect_url: window.location.origin,
@@ -558,7 +600,7 @@ const UnifiedSignup = () => {
       } else {
         // Member signup (learner, educator, recruiter) — no org creation
         const ssoResult = await ssoClient.signupMember({
-          email: state.email,
+          email: emailToUse, // Use the forced email, not state.email
           password: state.password,
           role: state.selectedRole!,
           redirect_url: window.location.origin,
@@ -593,7 +635,7 @@ const UnifiedSignup = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: ssoUserId,
-          email: state.email,
+          email: emailToUse, // Use the forced email, not state.email
           firstName: state.firstName,
           lastName: state.lastName,
           phone: state.phone || undefined,
@@ -628,45 +670,109 @@ const UnifiedSignup = () => {
       // Track signup_success — profile created, about to redirect
       trackSignup.success(ssoUserId, state.email, state.selectedRole || 'unknown');
 
+      console.log('=== INVITATION AUTO-ACCEPTANCE DEBUG ===');
+      console.log('[UnifiedSignup] Signup successful, checking for invitation token');
+
+      // IMPORTANT: Read fresh from sessionStorage, not the stale constant
+      const freshInvitationToken = sessionStorage.getItem('invitation_token');
+      console.log('[UnifiedSignup] invitationToken (constant from mount):', invitationToken);
+      console.log('[UnifiedSignup] invitationToken (fresh from sessionStorage):', freshInvitationToken);
+      console.log('[UnifiedSignup] ssoUserId:', ssoUserId);
+      console.log('[UnifiedSignup] selectedRole:', state.selectedRole);
+      console.log('[UnifiedSignup] user email:', state.email);
+      console.log('[UnifiedSignup] Current origin:', window.location.origin);
+
       // Check for invitation token and auto-accept if present
       // This is important for recruiter signups via invitation
-      if (invitationToken) {
+      if (freshInvitationToken) {
+        console.log('[UnifiedSignup] ✓ Invitation token found, attempting auto-accept');
+        console.log('[UnifiedSignup] Request payload:', {
+          token: freshInvitationToken,
+          userId: ssoUserId,
+        });
+
         try {
           // Auto-accept the invitation
-          const invitationResponse = await fetch('/api/recruitment/invitations/accept', {
+          // IMPORTANT: Use relative URL to ensure it goes to the Pages Functions server, not SSO-Worker
+          const apiUrl = '/api/recruitment/invitations/accept';
+          console.log('[UnifiedSignup] Making POST request to:', apiUrl);
+          console.log('[UnifiedSignup] Full URL will be:', `${window.location.origin}${apiUrl}`);
+
+          const invitationResponse = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              token: invitationToken,
+              token: freshInvitationToken,
               userId: ssoUserId,
             }),
           });
 
+          console.log('[UnifiedSignup] Invitation API response status:', invitationResponse.status);
+          console.log('[UnifiedSignup] Invitation API response ok:', invitationResponse.ok);
+
           if (invitationResponse.ok) {
             const invitationResult = await invitationResponse.json();
-            // Clear invitation data from session storage
+            console.log('[UnifiedSignup] ✓ Invitation accepted successfully:', invitationResult);
+
+            // CRITICAL FIX: After accepting invitation, force logout and redirect to login
+            // This is necessary because:
+            // 1. The invitation acceptance created a membership in SSO database
+            // 2. But the current JWT doesn't include this membership yet
+            // 3. User needs to login again to get a fresh JWT with the new role/membership
+            console.log('[UnifiedSignup] Step: Force logout to clear stale JWT');
+
+            // Store invitation context for post-login verification flow
+            sessionStorage.setItem('post_signup_verification_redirect', '/recruitment/overview');
+            sessionStorage.setItem('invitation_just_accepted', 'true');
+            sessionStorage.setItem('invitation_org_id', invitationResult.organizationId);
+            sessionStorage.setItem('invitation_role', invitationResult.role);
+
+            console.log('[UnifiedSignup] ✓ Stored post-verification context');
+            console.log('[UnifiedSignup] ✓ Clearing invitation tokens (no longer needed)');
             sessionStorage.removeItem('invitation_token');
             sessionStorage.removeItem('invitation_email');
             sessionStorage.removeItem('invitation_return_url');
 
-            // Refresh user data to get updated roles after invitation acceptance
-            await ssoClient.getMe();
+            // Logout to clear the current JWT
+            try {
+              await ssoClient.logout();
+              console.log('[UnifiedSignup] ✓ Logged out successfully');
+            } catch (logoutError) {
+              console.warn('[UnifiedSignup] Logout failed (non-critical):', logoutError);
+            }
 
-            // Redirect to appropriate dashboard based on invitation role
-            const dashboardPath = invitationResult.memberType?.includes('recruiter') || invitationResult.memberType?.includes('company_admin')
-              ? '/recruitment/overview'
-              : '/learner/dashboard';
+            // Clear auth store
+            useAuthStore.setState({
+              user: null,
+              isAuthenticated: false,
+              role: null,
+              isLearner: false,
+              isEducator: false,
+              isAdmin: false,
+              isRecruiter: false,
+            });
 
-            navigate(dashboardPath);
+            // Redirect to verify-email page
+            // User will verify email, then get redirected based on stored context
+            console.log('[UnifiedSignup] ✓ Redirecting to verify-email page');
+            console.log('=== INVITATION AUTO-ACCEPTANCE SUCCESS - AWAITING EMAIL VERIFICATION ===');
+            navigate('/verify-email', { replace: true });
             return; // Exit early, don't continue with normal flow
           } else {
             // If invitation acceptance fails, show error
             const errorData = await invitationResponse.json();
-            console.error('Failed to accept invitation:', errorData);
+            console.error('[UnifiedSignup] ✗ Invitation API returned error:', errorData);
+            console.error('[UnifiedSignup] Response status:', invitationResponse.status);
+            console.error('[UnifiedSignup] Response statusText:', invitationResponse.statusText);
             throw new Error(errorData.error || 'Failed to accept invitation');
           }
         } catch (invitationError) {
-          console.error('Failed to auto-accept invitation:', invitationError);
+          console.error('=== INVITATION AUTO-ACCEPTANCE FAILED ===');
+          console.error('[UnifiedSignup] ✗ Exception during auto-accept:', invitationError);
+          console.error('[UnifiedSignup] Error type:', invitationError instanceof Error ? 'Error' : typeof invitationError);
+          console.error('[UnifiedSignup] Error message:', invitationError instanceof Error ? invitationError.message : String(invitationError));
+          console.error('[UnifiedSignup] Error stack:', invitationError instanceof Error ? invitationError.stack : 'N/A');
+
           // Show error to user instead of continuing
           setState(prev => ({
             ...prev,
@@ -675,6 +781,10 @@ const UnifiedSignup = () => {
           }));
           return;
         }
+      } else {
+        console.log('[UnifiedSignup] ✗ No invitation token found in sessionStorage');
+        console.log('[UnifiedSignup] Continuing with normal signup flow');
+        console.log('=== INVITATION AUTO-ACCEPTANCE SKIPPED ===');
       }
 
       // Check for return URL (invitation flow) - redirect there instead of subscription plans
@@ -997,8 +1107,29 @@ const UnifiedSignup = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span className="text-red-500">*</span></label>
-                  <input type="email" name="email" value={state.email} onChange={handleInputChange} placeholder="john@example.com" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Email Address <span className="text-red-500">*</span>
+                    {invitationEmail && <span className="text-xs text-blue-600 ml-2">(From invitation)</span>}
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={state.email}
+                    onChange={handleInputChange}
+                    placeholder="john@example.com"
+                    readOnly={!!invitationEmail}
+                    disabled={!!invitationEmail}
+                    autoComplete={invitationEmail ? "off" : "email"}
+                    data-lpignore="true"
+                    data-form-type="other"
+                    className={`block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none ${invitationEmail ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-50 focus:bg-white'
+                      }`}
+                  />
+                  {invitationEmail && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      This email is locked because you're accepting an invitation
+                    </p>
+                  )}
                 </div>
 
                 <div>

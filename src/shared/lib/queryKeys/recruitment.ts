@@ -75,4 +75,26 @@ export const recruitmentQueryKeys = {
                 ? ['recruitment', 'analytics', 'performance', orgId, recruiterId] as const
                 : ['recruitment', 'analytics', 'performance', orgId] as const,
     },
+
+    // Organization (company profile, verification, contacts, config, billing)
+    organization: {
+        all: ['recruitment', 'organization'] as const,
+        profile: (orgId: string): QueryKey =>
+            ['recruitment', 'organization', 'profile', orgId] as const,
+        verification: (orgId: string): QueryKey =>
+            ['recruitment', 'organization', 'verification', orgId] as const,
+        contacts: (orgId: string): QueryKey =>
+            ['recruitment', 'organization', 'contacts', orgId] as const,
+        config: (orgId: string): QueryKey =>
+            ['recruitment', 'organization', 'config', orgId] as const,
+        billing: (orgId: string): QueryKey =>
+            ['recruitment', 'organization', 'billing', orgId] as const,
+        offerTemplates: {
+            all: ['recruitment', 'organization', 'offer-templates'] as const,
+            list: (orgId: string): QueryKey =>
+                ['recruitment', 'organization', 'offer-templates', orgId] as const,
+            detail: (templateId: string): QueryKey =>
+                ['recruitment', 'organization', 'offer-templates', 'detail', templateId] as const,
+        },
+    },
 } as const;

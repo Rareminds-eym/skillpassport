@@ -15,6 +15,7 @@ import { EmployeeList } from '@/features/org-recruitment/ui/EmployeeList';
 import { InvitationsList } from '@/features/org-recruitment/ui/InvitationsList';
 import { InviteEmployeeModal } from '@/features/org-recruitment/ui/InviteEmployeeModal';
 import { OrgSettings } from '@/features/org-recruitment/ui/OrgSettings';
+import { TeamAnalytics } from '@/features/org-recruitment/ui/TeamAnalytics';
 import { useOrgContext } from '@/entities/recruitment/model/useOrgContext';
 import { useRecruitmentMembers } from '@/entities/recruitment/model/useRecruitmentMembers';
 import { useRecruitmentInvitations } from '@/entities/recruitment/model/useRecruitmentInvitations';
@@ -147,22 +148,7 @@ export const AdminDashboard = () => {
 
                 {activeTab === 'settings' && <OrgSettings />}
 
-                {activeTab === 'analytics' && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-8">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                            Team Analytics
-                        </h2>
-                        <p className="text-gray-600">
-                            Analytics dashboard coming soon. This will include:
-                        </p>
-                        <ul className="list-disc list-inside mt-4 space-y-2 text-gray-600">
-                            <li>Recruiter performance metrics</li>
-                            <li>Time-to-hire statistics</li>
-                            <li>Pipeline conversion rates</li>
-                            <li>Team activity overview</li>
-                        </ul>
-                    </div>
-                )}
+                {activeTab === 'analytics' && <TeamAnalytics />}
             </div>
 
             {/* Invite Modal */}

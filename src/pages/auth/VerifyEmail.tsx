@@ -48,26 +48,85 @@ const VerifyEmail = () => {
         setTimeout(() => {
           const currentUser = useAuthStore.getState().user;
           const userRole = currentUser?.role || useAuthStore.getState().role;
+          const userRoles = currentUser?.roles || [];
 
           console.log('[VerifyEmail] Auto-redirecting after verification', {
             userRole,
             orgId: currentUser?.orgId,
-            roles: currentUser?.roles,
+            roles: userRoles,
             isAuthenticated: useAuthStore.getState().isAuthenticated
           });
 
-          // Check if user is a recruiter (including company admins who have 'owner' role in SSO)
-          if (userRole === 'recruiter' || currentUser?.roles?.includes('owner')) {
-            console.log('[VerifyEmail] Redirecting to recruitment subscription plans', {
-              userRole,
-              roles: currentUser?.roles,
-              orgId: currentUser?.orgId
+          // CRITICAL FIX: Check if user just accepted an invitation during signup
+          // If so, redirect to login to get fresh JWT with membership roles
+          const invitationJustAccepted = sessionStorage.getItem('invitation_just_accepted');
+          const postVerificationRedirect = sessionStorage.getItem('post_signup_verification_redirect');
+          const invitationOrgId = sessionStorage.getItem('invitation_org_id');
+          const invitationRole = sessionStorage.getItem('invitation_role');
+
+          if (invitationJustAccepted === 'true') {
+            console.log('[VerifyEmail] User just accepted invitation during signup', {
+              orgId: invitationOrgId,
+              role: invitationRole,
+              targetRedirect: postVerificationRedirect
             });
-            navigate('/recruitment/subscription/plans', { replace: true });
+            console.log('[VerifyEmail] Redirecting to login to obtain fresh JWT with membership');
+
+            // Keep the context for post-login redirect
+            // Don't clear invitation_just_accepted yet - login will use it
+            navigate('/login', { replace: true });
+            return;
+          }
+
+          // Check if user has any recruitment vertical roles
+          const isRecruitmentUser =
+            userRole === 'recruiter' ||
+            userRoles.includes('recruiter') ||
+            userRoles.includes('company_admin') ||
+            userRoles.includes('viewer') ||
+            userRoles.includes('owner');
+
+          // Legacy flow: Check if there's an invitation token still in sessionStorage
+          // (This shouldn't happen anymore with the new flow, but keep for safety)
+          const invitationToken = sessionStorage.getItem('invitation_token');
+          const invitationReturnUrl = sessionStorage.getItem('invitation_return_url');
+
+          if (invitationToken || invitationReturnUrl) {
+            // User came from recruitment invitation (legacy path)
+            console.log('[VerifyEmail] LEGACY: Redirecting to login for invitation auto-acceptance', {
+              userRole,
+              roles: userRoles,
+              hasInvitationToken: !!invitationToken
+            });
+            navigate('/login', { replace: true });
+          } else if (isRecruitmentUser) {
+            // Recruitment user without invitation context
+            // Company admins (owner role in SSO) who just signed up should see subscription plans first
+            // Invited recruiters should go directly to their respective dashboards
+            const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+
+            if (isCompanyAdmin) {
+              // New company signup - show subscription plans
+              console.log('[VerifyEmail] Redirecting company admin to recruitment subscription plans', {
+                userRole,
+                roles: userRoles,
+                orgId: currentUser?.orgId,
+              });
+              navigate('/recruitment/subscription/plans', { replace: true });
+            } else {
+              // Invited recruiter - go to overview dashboard
+              console.log('[VerifyEmail] Redirecting invited recruiter to overview dashboard', {
+                userRole,
+                roles: userRoles,
+                orgId: currentUser?.orgId,
+              });
+              navigate('/recruitment/overview', { replace: true });
+            }
           } else {
+            // Regular learner user - go to subscription plans
             console.log('[VerifyEmail] Redirecting to regular subscription plans', {
               userRole,
-              roles: currentUser?.roles
+              roles: userRoles
             });
             navigate('/subscription/plans', { replace: true });
           }
@@ -110,17 +169,30 @@ const VerifyEmail = () => {
           </div>
         )}
 
-        {state === 'success' && (
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">✅ Email Verified!</h2>
-            <p className="text-gray-600 mb-4">Your email has been successfully verified.</p>
-            <div className="flex items-center justify-center gap-2 text-blue-600">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm font-medium">Redirecting to subscription plans...</span>
+        {state === 'success' && (() => {
+          const currentUser = useAuthStore.getState().user;
+          const userRoles = currentUser?.roles || [];
+          const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+          const isRecruitmentUser = currentUser?.role === 'recruiter' || userRoles.includes('recruiter') || userRoles.includes('owner');
+
+          return (
+            <div className="bg-white rounded-xl shadow-lg p-8">
+              <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">✅ Email Verified!</h2>
+              <p className="text-gray-600 mb-4">Your email has been successfully verified.</p>
+              <div className="flex items-center justify-center gap-2 text-blue-600">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm font-medium">
+                  {isRecruitmentUser && isCompanyAdmin
+                    ? 'Redirecting to subscription plans...'
+                    : isRecruitmentUser
+                      ? 'Redirecting to dashboard...'
+                      : 'Redirecting to subscription plans...'}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {state === 'error' && (
           <div className="bg-white rounded-xl shadow-lg p-8">

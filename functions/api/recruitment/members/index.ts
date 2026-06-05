@@ -19,80 +19,124 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     const supabase = getServiceClient(env as any);
 
     const url = new URL(context.request.url);
-    const orgId = url.searchParams.get('org_id') || user.org_id;
+    // CRITICAL FIX: Don't rely on user.org_id from JWT - it may be empty for invited users
+    // Get org_id from query params (passed by frontend via orgContext)
+    const orgId = url.searchParams.get('org_id');
     const role = url.searchParams.get('role');
     const isActive = url.searchParams.get('isActive');
     const search = url.searchParams.get('search');
     const limit = parseInt(url.searchParams.get('limit') || '50', 10);
     const offset = parseInt(url.searchParams.get('offset') || '0', 10);
 
+    console.log('[members API] GET request:', {
+        userId: user.sub,
+        userOrgId: user.org_id,
+        requestedOrgId: orgId,
+        hasOrgIdParam: !!orgId,
+    });
+
     if (!orgId) {
-        return Response.json({ error: 'Organization ID is required' }, { status: 400 });
+        console.error('[members API] ❌ Organization ID is required but not provided');
+        return Response.json({
+            error: 'Organization ID is required. Please ensure you have organization context loaded.'
+        }, { status: 400 });
     }
 
     // Verify user has access to this organization
     const access = await verifyOrgAccess(supabase, user.sub, orgId);
     if (!access.allowed) {
+        console.error('[members API] ❌ Access denied:', access);
         return access.error!;
     }
 
+    console.log('[members API] ✓ Access verified for org:', orgId);
+
     try {
-        // Query members via FDW
-        // This queries SSO-Worker memberships and joins with recruitment_role_mapping
-        let query = supabase
-            .from('sso_foreign.memberships')
-            .select(
-                `
-        id,
-        user_id,
-        org_id,
-        status,
-        created_at,
-        sso_foreign.users!inner(id, email),
-        sso_foreign.membership_roles!inner(
-          role_id,
-          sso_foreign.roles!inner(id, name)
-        )
-      `,
-                { count: 'exact' }
-            )
-            .eq('org_id', orgId);
+        // Query organization_invitations that have been accepted
+        // This is more reliable than FDW which may have schema issues
+        const { data: acceptedInvitations, error: invError } = await supabase
+            .from('organization_invitations')
+            .select('*')
+            .eq('organization_id', orgId)
+            .eq('status', 'accepted')
+            .order('accepted_at', { ascending: false });
 
-        // Apply filters
-        if (isActive === 'true') {
-            query = query.eq('status', 'active');
-        } else if (isActive === 'false') {
-            query = query.neq('status', 'active');
+        if (invError) {
+            console.error('Error fetching accepted invitations:', invError);
+            return Response.json({ error: invError.message }, { status: 500 });
         }
 
-        // Note: Role and search filtering would need to be done post-query
-        // since we're querying foreign tables
+        // Get user details for each accepted invitation
+        const userIds = (acceptedInvitations || [])
+            .map((inv: any) => inv.accepted_by_user_id)
+            .filter(Boolean);
 
-        query = query.range(offset, offset + limit - 1).order('created_at', { ascending: false });
+        let users: any[] = [];
+        if (userIds.length > 0) {
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('id, email, full_name, role')
+                .in('id', userIds);
 
-        const { data, error, count } = await query;
-
-        if (error) {
-            console.error('Error fetching members:', error);
-            return Response.json({ error: error.message }, { status: 500 });
+            if (userError) {
+                console.error('Error fetching user details:', userError);
+            } else {
+                users = userData || [];
+            }
         }
+
+        // Create a map of userId -> user details
+        const userMap = new Map(users.map((u: any) => [u.id, u]));
 
         // Transform data to match frontend expectations
-        const members = (data || []).map((member: any) => ({
-            id: member.id,
-            userId: member.user_id,
-            organizationId: member.org_id,
-            email: member.sso_foreign?.users?.email || '',
-            ssoRoleName: member.sso_foreign?.membership_roles?.sso_foreign?.roles?.name || '',
-            membershipStatus: member.status,
-            isActive: member.status === 'active',
-            createdAt: member.created_at,
-        }));
+        const members = (acceptedInvitations || [])
+            .filter((inv: any) => inv.accepted_by_user_id && userMap.has(inv.accepted_by_user_id))
+            .map((inv: any) => {
+                const user = userMap.get(inv.accepted_by_user_id);
+                return {
+                    id: inv.id,
+                    userId: inv.accepted_by_user_id,
+                    organizationId: inv.organization_id,
+                    name: user?.full_name || inv.invitee_name || '',
+                    email: user?.email || inv.invitee_email,
+                    ssoRoleName: 'member', // Default SSO role
+                    recruitmentRole: inv.invitee_role, // This is the recruitment role (company_admin, recruiter, viewer)
+                    membershipStatus: 'active',
+                    isActive: true,
+                    invitedBy: inv.invited_by,
+                    invitedAt: inv.created_at,
+                    joinedAt: inv.accepted_at,
+                    createdAt: inv.accepted_at || inv.created_at,
+                    updatedAt: inv.updated_at || inv.accepted_at || inv.created_at,
+                };
+            });
+
+        // Apply filters
+        let filteredMembers = members;
+        if (role && role !== 'all') {
+            filteredMembers = filteredMembers.filter((m: any) => m.ssoRoleName === role);
+        }
+        if (isActive === 'true') {
+            filteredMembers = filteredMembers.filter((m: any) => m.isActive);
+        } else if (isActive === 'false') {
+            filteredMembers = filteredMembers.filter((m: any) => !m.isActive);
+        }
+        if (search) {
+            const searchLower = search.toLowerCase();
+            filteredMembers = filteredMembers.filter((m: any) =>
+                m.email.toLowerCase().includes(searchLower) ||
+                (m.fullName && m.fullName.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Apply pagination
+        const total = filteredMembers.length;
+        const paginatedMembers = filteredMembers.slice(offset, offset + limit);
 
         return Response.json({
-            members,
-            total: count || 0,
-            hasMore: (count || 0) > offset + limit,
+            members: paginatedMembers,
+            total,
+            hasMore: total > offset + limit,
         });
     } catch (error: any) {
         console.error('Error fetching members:', error);
@@ -126,34 +170,32 @@ export const onRequestGet_stats = withAuth(async (context: AuthenticatedContext)
     }
 
     try {
-        // Get all members
-        const { data: members, error } = await supabase
-            .from('sso_foreign.memberships')
-            .select(
-                `
-        status,
-        sso_foreign.membership_roles!inner(
-          sso_foreign.roles!inner(name)
-        )
-      `
-            )
-            .eq('org_id', orgId);
+        // Query accepted invitations for stats (same approach as main GET)
+        const { data: acceptedInvitations, error } = await supabase
+            .from('organization_invitations')
+            .select('invitee_role, status')
+            .eq('organization_id', orgId)
+            .eq('status', 'accepted');
 
         if (error) {
+            console.error('Error fetching member stats:', error);
             return Response.json({ error: error.message }, { status: 500 });
         }
 
-        // Calculate statistics
-        const total = members?.length || 0;
-        const active = members?.filter((m: any) => m.status === 'active').length || 0;
-        const inactive = total - active;
+        const members = acceptedInvitations || [];
 
-        // Count by role (simplified - would need proper role mapping)
-        const admins =
-            members?.filter((m: any) =>
-                ['owner', 'admin'].includes(m.sso_foreign?.membership_roles?.sso_foreign?.roles?.name)
-            ).length || 0;
-        const recruiters = total - admins;
+        // Calculate statistics
+        const total = members.length;
+        const active = total; // All accepted invitations are considered active
+        const inactive = 0; // We don't track inactive members in this model
+
+        // Count by role
+        const admins = members.filter((m: any) =>
+            ['owner', 'company_admin'].includes(m.invitee_role)
+        ).length;
+        const recruiters = members.filter((m: any) =>
+            ['recruiter', 'viewer'].includes(m.invitee_role)
+        ).length;
 
         return Response.json({
             total,

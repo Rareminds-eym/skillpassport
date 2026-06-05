@@ -62,6 +62,18 @@ export default function InvitationSignup() {
         loadInvitationDetails();
     }, [invitationToken]);
 
+    // Clear persisted auth state when loading invitation
+    // This prevents old user email from localStorage interfering with invitation email
+    useEffect(() => {
+        if (invitationToken && invitationEmail) {
+            console.log('[InvitationSignup] Invitation detected, clearing persisted auth state');
+            console.log('[InvitationSignup] Invitation email:', invitationEmail);
+
+            // Clear the Zustand persisted state
+            localStorage.removeItem('skillpassport-auth-v1');
+        }
+    }, [invitationToken, invitationEmail]);
+
     const loadInvitationDetails = async () => {
         if (!invitationToken) {
             toast.error('No invitation token provided');
@@ -261,10 +273,25 @@ export default function InvitationSignup() {
                                         </p>
                                         <button
                                             onClick={() => {
+                                                console.log('=== NAVIGATING TO SIGNUP FROM INVITATION ===');
+                                                console.log('[InvitationSignup] Storing invitation data before redirect');
+                                                console.log('[InvitationSignup] Token:', invitationToken ? `${invitationToken.substring(0, 8)}...` : 'missing');
+                                                console.log('[InvitationSignup] Email:', state.email);
+
                                                 // Store invitation data for after signup
                                                 sessionStorage.setItem('invitation_token', invitationToken);
                                                 sessionStorage.setItem('invitation_email', state.email);
                                                 sessionStorage.setItem('invitation_return_url', `/invitation/accept?token=${invitationToken}`);
+
+                                                // Verify storage
+                                                const storedToken = sessionStorage.getItem('invitation_token');
+                                                const storedEmail = sessionStorage.getItem('invitation_email');
+                                                const storedReturnUrl = sessionStorage.getItem('invitation_return_url');
+                                                console.log('[InvitationSignup] ✓ Stored token:', storedToken ? `${storedToken.substring(0, 8)}...` : 'FAILED');
+                                                console.log('[InvitationSignup] ✓ Stored email:', storedEmail);
+                                                console.log('[InvitationSignup] ✓ Stored return URL:', storedReturnUrl);
+                                                console.log('[InvitationSignup] Navigating to /signup');
+
                                                 navigate('/signup');
                                             }}
                                             className="mt-2 text-sm font-medium text-amber-700 hover:text-amber-800 underline"
@@ -352,10 +379,25 @@ export default function InvitationSignup() {
                             Don't have an account?{' '}
                             <button
                                 onClick={() => {
+                                    console.log('=== NAVIGATING TO SIGNUP FROM INVITATION (BOTTOM LINK) ===');
+                                    console.log('[InvitationSignup] Storing invitation data before redirect');
+                                    console.log('[InvitationSignup] Token:', invitationToken ? `${invitationToken.substring(0, 8)}...` : 'missing');
+                                    console.log('[InvitationSignup] Email:', state.email);
+
                                     // Store invitation data for after signup
                                     sessionStorage.setItem('invitation_token', invitationToken);
                                     sessionStorage.setItem('invitation_email', state.email);
                                     sessionStorage.setItem('invitation_return_url', `/invitation/accept?token=${invitationToken}`);
+
+                                    // Verify storage
+                                    const storedToken = sessionStorage.getItem('invitation_token');
+                                    const storedEmail = sessionStorage.getItem('invitation_email');
+                                    const storedReturnUrl = sessionStorage.getItem('invitation_return_url');
+                                    console.log('[InvitationSignup] ✓ Stored token:', storedToken ? `${storedToken.substring(0, 8)}...` : 'FAILED');
+                                    console.log('[InvitationSignup] ✓ Stored email:', storedEmail);
+                                    console.log('[InvitationSignup] ✓ Stored return URL:', storedReturnUrl);
+                                    console.log('[InvitationSignup] Navigating to /signup');
+
                                     navigate('/signup');
                                 }}
                                 className="font-medium text-indigo-600 hover:text-indigo-500"

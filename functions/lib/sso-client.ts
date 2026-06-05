@@ -232,3 +232,61 @@ export async function ssoSyncPlans(
   }
   return res.json() as Promise<{ plans: Record<string, unknown>[] }>;
 }
+
+/**
+ * Create a new membership in the SSO-Worker database
+ * Used when accepting invitations (cannot write to foreign tables directly)
+ */
+export async function ssoCreateMembership(
+  env: SsoClientEnv,
+  data: { user_id: string; org_id: string; status: string },
+): Promise<{ id: string; status: string }> {
+  const res = await ssoFetch(env, "/api/memberships/create", {
+    method: "POST",
+    body: JSON.stringify(data),
+  }, "", true);
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`SSO create membership failed [${res.status}]: ${text}`);
+  }
+  return res.json() as Promise<{ id: string; status: string }>;
+}
+
+/**
+ * Assign a role to a membership in the SSO-Worker database
+ */
+export async function ssoAssignMembershipRole(
+  env: SsoClientEnv,
+  data: { membership_id: string; role_id: string },
+): Promise<{ success: boolean }> {
+  const res = await ssoFetch(env, "/api/memberships/assign-role", {
+    method: "POST",
+    body: JSON.stringify(data),
+  }, "", true);
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`SSO assign role failed [${res.status}]: ${text}`);
+  }
+  return res.json() as Promise<{ success: boolean }>;
+}
+
+/**
+ * Update membership status in the SSO-Worker database
+ */
+export async function ssoUpdateMembershipStatus(
+  env: SsoClientEnv,
+  data: { membership_id: string; status: string },
+): Promise<{ success: boolean }> {
+  const res = await ssoFetch(env, "/api/memberships/update-status", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  }, "", true);
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`SSO update membership status failed [${res.status}]: ${text}`);
+  }
+  return res.json() as Promise<{ success: boolean }>;
+}

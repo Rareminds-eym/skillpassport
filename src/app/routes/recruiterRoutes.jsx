@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import OrganizationProtectedRoute from "@/features/recruitment/ui/OrganizationProtectedRoute";
+import AdminProtectedRoute from "@/features/recruitment/ui/AdminProtectedRoute";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 
 const RECRUITER_ROLES = ["recruiter", "company_admin"];
@@ -31,6 +32,9 @@ const AddOns = lazy(() =>
 const RecruitmentSubscriptionPlans = lazy(() =>
   import("@/pages/recruitment/RecruitmentSubscriptionPlans")
 );
+const ManageSubscription = lazy(() =>
+  import("@/pages/recruitment/ManageSubscription")
+);
 const AdminDashboard = lazy(() => import("@/pages/recruiter/AdminDashboard"));
 
 export const recruiterRoutes = (
@@ -44,7 +48,14 @@ export const recruiterRoutes = (
     }
   >
     <Route path="overview" element={<Overview />} />
-    <Route path="admin" element={<AdminDashboard />} />
+    <Route
+      path="admin"
+      element={
+        <AdminProtectedRoute>
+          <AdminDashboard />
+        </AdminProtectedRoute>
+      }
+    />
     <Route path="projects" element={<ProjectHiringWithNav />} />
     <Route path="talent-pool" element={<TalentPool />} />
     <Route path="requisition" element={<Requisitions />} />
@@ -59,7 +70,14 @@ export const recruiterRoutes = (
     <Route path="messages" element={<RecruiterMessages />} />
     <Route path="profile" element={<RecruiterProfile />} />
     <Route path="settings" element={<RecruiterSettings />} />
-    <Route path="subscription/manage" element={<SubscriptionManage />} />
+    <Route
+      path="subscription/manage"
+      element={
+        <AdminProtectedRoute>
+          <ManageSubscription />
+        </AdminProtectedRoute>
+      }
+    />
     <Route path="subscription/add-ons" element={<AddOns />} />
     <Route path="*" element={<Navigate to="/recruitment/overview" replace />} />
   </Route>

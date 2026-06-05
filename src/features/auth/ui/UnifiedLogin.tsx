@@ -86,6 +86,13 @@ const UnifiedLogin = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    console.log('=== LOGIN FORM SUBMITTED ===');
+    console.log('[UnifiedLogin] Checking invitation context');
+    console.log('[UnifiedLogin] invitationToken:', invitationToken ? `${invitationToken.substring(0, 8)}...` : 'null');
+    console.log('[UnifiedLogin] returnUrl:', returnUrl);
+    console.log('[UnifiedLogin] invitationEmail:', invitationEmail);
+    console.log('[UnifiedLogin] selectedRole:', state.selectedRole);
+
     if (!state.email || !state.password) {
       setState((prev) => ({ ...prev, error: 'Please enter both email and password' }));
       return;
@@ -105,61 +112,110 @@ const UnifiedLogin = () => {
 
     try {
       // Login via SSO — the store reads roles from the JWT
+      console.log('[UnifiedLogin] Attempting login...');
       await login(state.email, state.password);
+      console.log('[UnifiedLogin] ✓ Login successful');
 
       const { useAuthStore } = await import('@/shared/model/authStore');
 
-      // Check for invitation token and auto-accept FIRST (before role check)
-      // This is important because the invitation acceptance assigns the role
-      if (invitationToken && returnUrl?.includes('/invitation/accept')) {
+      // CRITICAL FIX: Check if user just completed invitation signup
+      const invitationJustAccepted = sessionStorage.getItem('invitation_just_accepted');
+      const postVerificationRedirect = sessionStorage.getItem('post_signup_verification_redirect');
+      const invitationOrgId = sessionStorage.getItem('invitation_org_id');
+      const invitationRole = sessionStorage.getItem('invitation_role');
+
+      if (invitationJustAccepted === 'true') {
+        console.log('[UnifiedLogin] ✓ User completed invitation signup, now logged in with fresh JWT');
+        console.log('[UnifiedLogin] Expected org:', invitationOrgId);
+        console.log('[UnifiedLogin] Expected role:', invitationRole);
+        console.log('[UnifiedLogin] Target redirect:', postVerificationRedirect);
+
+        // The fresh JWT should now include the membership/role
+        const currentUser = useAuthStore.getState().user;
+        console.log('[UnifiedLogin] Current user data:', {
+          id: currentUser?.id,
+          email: currentUser?.email,
+          orgId: currentUser?.orgId,
+          roles: currentUser?.roles,
+          role: currentUser?.role
+        });
+
+        // Clear invitation context
+        sessionStorage.removeItem('invitation_just_accepted');
+        sessionStorage.removeItem('post_signup_verification_redirect');
+        sessionStorage.removeItem('invitation_org_id');
+        sessionStorage.removeItem('invitation_role');
+
+        // Redirect to the target dashboard
+        const redirectPath = postVerificationRedirect || '/recruitment/overview';
+        console.log('[UnifiedLogin] ✓ Redirecting to:', redirectPath);
+        console.log('=== POST-INVITATION LOGIN SUCCESS ===');
+        navigate(redirectPath, { replace: true });
+        return;
+      }
+
+      // LEGACY FLOW: Check for old-style invitation token (shouldn't happen with new flow)
+      const freshInvitationToken = sessionStorage.getItem('invitation_token');
+
+      if (freshInvitationToken) {
+        console.log('[UnifiedLogin] LEGACY: Invitation token found, attempting auto-accept');
         try {
           const userId = useAuthStore.getState().user?.id;
 
           if (userId) {
-            // Auto-accept the invitation - this will assign the role
             const invitationResponse = await fetch('/api/recruitment/invitations/accept', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                token: invitationToken,
+                token: freshInvitationToken,
                 userId: userId,
               }),
             });
 
             if (invitationResponse.ok) {
               const invitationResult = await invitationResponse.json();
+              console.log('[UnifiedLogin] ✓ LEGACY invitation accepted:', invitationResult);
 
-              // Clear invitation data from session storage
               sessionStorage.removeItem('invitation_token');
               sessionStorage.removeItem('invitation_email');
               sessionStorage.removeItem('invitation_return_url');
 
-              // Refresh user data to get updated roles
-              await useAuthStore.getState().refreshUser();
+              await useAuthStore.getState().refreshSession();
 
-              // Redirect to appropriate dashboard based on invitation role
-              const dashboardPath = invitationResult.memberType?.includes('recruiter') || invitationResult.memberType?.includes('company_admin')
-                ? '/recruitment/overview'
-                : '/learner/dashboard';
+              const isCompanyAdmin = invitationResult.memberType?.includes('company_admin');
+              const isRecruiter = invitationResult.memberType?.includes('recruiter');
+              const dashboardPath = isCompanyAdmin
+                ? '/recruitment/admin'
+                : (isRecruiter ? '/recruitment/overview' : '/learner/dashboard');
 
               navigate(dashboardPath);
-              return; // Exit early - invitation flow complete
-            } else {
-              // If invitation acceptance fails, log error but don't block login
-              const errorData = await invitationResponse.json();
-              console.error('Failed to accept invitation:', errorData);
-              // Continue with normal login flow
+              return;
             }
           }
         } catch (invitationError) {
-          console.error('Failed to auto-accept invitation:', invitationError);
-          // Continue with normal flow if invitation acceptance fails
+          console.error('[UnifiedLogin] ✗ LEGACY invitation auto-accept failed:', invitationError);
         }
       }
 
+      // CRITICAL FIX: Log the actual user data to debug role issues
+      const currentUser = useAuthStore.getState().user;
+      console.log('[UnifiedLogin] Current user after login:', {
+        id: currentUser?.id,
+        email: currentUser?.email,
+        role: currentUser?.role,
+        roles: currentUser?.roles,
+        orgId: currentUser?.orgId,
+        membershipStatus: currentUser?.membershipStatus
+      });
+
       // Verify the user actually has the selected role
       // (Reading directly from the store after login() completes)
-      const currentRoles = useAuthStore.getState().user?.roles ?? [];
+      const currentRoles = currentUser?.roles ?? [];
+      console.log('[UnifiedLogin] Checking role access:', {
+        selectedRole: state.selectedRole,
+        currentRoles,
+        hasRolesArray: currentRoles.length > 0
+      });
 
       // Check if user has the selected role or a variant of it
       // For 'educator', accept 'educator', 'school_educator', or 'college_educator'
@@ -172,12 +228,21 @@ const UnifiedLogin = () => {
       }
       if (!hasRole && state.selectedRole === 'recruiter') {
         hasRole = currentRoles.some(role =>
-          role === 'recruiter' || role === 'owner'
+          role === 'recruiter' || role === 'owner' || role === 'company_admin' || role === 'viewer' || role === 'member'
         );
       }
 
+      console.log('[UnifiedLogin] Role check result:', { hasRole });
+
       if (!hasRole) {
         // User doesn't have this role
+        console.error('[UnifiedLogin] ❌ Role check failed!');
+        console.error('[UnifiedLogin] This might be a JWT/role loading issue.');
+        console.error('[UnifiedLogin] Possible causes:');
+        console.error('[UnifiedLogin] 1. Membership exists in DB but JWT doesn\'t include roles');
+        console.error('[UnifiedLogin] 2. SSO service not populating roles from memberships');
+        console.error('[UnifiedLogin] 3. Role name mismatch (DB has \'recruiter\', JWT has something else)');
+
         // If they came from an invitation, show a more helpful error
         if (invitationToken) {
           setState((prev) => ({
@@ -186,12 +251,11 @@ const UnifiedLogin = () => {
             error: `Failed to assign ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role. The invitation may have already been used or expired. Please contact support.`,
           }));
         } else {
-          // Normal case - user doesn't have this role, log them out
-          await useAuthStore.getState().logout();
+          // TEMPORARY: Don't logout immediately, show error with more context
           setState((prev) => ({
             ...prev,
             loading: false,
-            error: `You do not have access to the ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role.`,
+            error: `You do not have access to the ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role. Your account may need to be set up correctly. Current roles: ${currentRoles.length > 0 ? currentRoles.join(', ') : 'none'}`,
           }));
         }
         return;

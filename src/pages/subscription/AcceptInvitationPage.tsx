@@ -46,11 +46,7 @@ export default function AcceptInvitationPage() {
     }
 
     try {
-      // Check if user is logged in
-      const { data: { user: currentUser } } = { data: { user: useAuthStore.getState().user } };
-      setUser(currentUser);
-
-      // Load invitation details
+      // Load invitation details FIRST to check if it's recruitment
       const inv = await memberInvitationService.getInvitationByToken(token);
 
       if (!inv) {
@@ -60,6 +56,33 @@ export default function AcceptInvitationPage() {
       }
 
       setInvitation(inv);
+
+      // CRITICAL FIX: For recruitment invitations, redirect to signup immediately
+      const isRecruitmentInvitation = inv.memberType?.includes('company_admin') ||
+        inv.memberType?.includes('recruiter') ||
+        inv.memberType?.includes('viewer');
+
+      if (isRecruitmentInvitation) {
+        console.log('[AcceptInvitationPage] Recruitment invitation detected, redirecting to signup');
+        console.log('[AcceptInvitationPage] Token:', token);
+        console.log('[AcceptInvitationPage] Email:', inv.email);
+
+        // Store invitation data
+        sessionStorage.setItem('invitation_token', token);
+        sessionStorage.setItem('invitation_email', inv.email);
+        sessionStorage.setItem('invitation_return_url', window.location.href);
+
+        // Redirect to signup with token
+        const signupUrl = `/signup?invitation_token=${token}&email=${encodeURIComponent(inv.email)}`;
+        console.log('[AcceptInvitationPage] Redirecting to:', signupUrl);
+        navigate(signupUrl, { replace: true });
+        return;
+      }
+
+      // For non-recruitment invitations, continue with normal flow
+      // Check if user is logged in
+      const { data: { user: currentUser } } = { data: { user: useAuthStore.getState().user } };
+      setUser(currentUser);
 
       // Check invitation status
       if (inv.status === 'accepted') {
@@ -187,20 +210,62 @@ export default function AcceptInvitationPage() {
   };
 
   const handleLoginRedirect = () => {
+    console.log('=== INVITATION LOGIN REDIRECT ===');
+    console.log('[AcceptInvitationPage] Redirecting to login with invitation');
+    console.log('[AcceptInvitationPage] Token:', token);
+    console.log('[AcceptInvitationPage] Email:', invitation?.email);
+
     // Store the current URL to redirect back after login
     const returnUrl = window.location.pathname + window.location.search;
     sessionStorage.setItem('invitation_return_url', returnUrl);
 
-    if (invitation) {
-      sessionStorage.setItem('invitation_email', invitation.email);
+    // Store invitation token and email for auto-acceptance after login
+    if (token) {
+      console.log('[AcceptInvitationPage] Storing invitation token in sessionStorage');
+      sessionStorage.setItem('invitation_token', token);
+      sessionStorage.setItem('invitation_email', invitation?.email || '');
+
+      // Verify storage
+      const storedToken = sessionStorage.getItem('invitation_token');
+      const storedEmail = sessionStorage.getItem('invitation_email');
+      console.log('[AcceptInvitationPage] ✓ Token stored:', storedToken ? `${storedToken.substring(0, 8)}...` : 'FAILED');
+      console.log('[AcceptInvitationPage] ✓ Email stored:', storedEmail);
+    } else {
+      console.error('[AcceptInvitationPage] ✗ No token available to store!');
     }
 
     navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}&email=${encodeURIComponent(invitation?.email || '')}`);
   };
 
   const handleSignupRedirect = () => {
+    console.log('=== INVITATION SIGNUP REDIRECT ===');
+    console.log('[AcceptInvitationPage] Redirecting to signup with invitation');
+    console.log('[AcceptInvitationPage] Token:', token);
+    console.log('[AcceptInvitationPage] Email:', invitation?.email);
+
+    // Clear persisted auth state to prevent old user data from interfering
+    console.log('[AcceptInvitationPage] Clearing persisted auth state');
+    localStorage.removeItem('skillpassport-auth-v1');
+
+    // Store invitation token in sessionStorage for auto-acceptance after signup
+    if (token) {
+      console.log('[AcceptInvitationPage] Storing invitation token in sessionStorage');
+      sessionStorage.setItem('invitation_token', token);
+      sessionStorage.setItem('invitation_email', invitation?.email || '');
+
+      // Verify storage
+      const storedToken = sessionStorage.getItem('invitation_token');
+      const storedEmail = sessionStorage.getItem('invitation_email');
+      console.log('[AcceptInvitationPage] ✓ Token stored:', storedToken ? `${storedToken.substring(0, 8)}...` : 'FAILED');
+      console.log('[AcceptInvitationPage] ✓ Email stored:', storedEmail);
+    } else {
+      console.error('[AcceptInvitationPage] ✗ No token available to store!');
+    }
+
     // Redirect to simplified invitation signup page
-    navigate(`/invitation/signup?token=${token}&email=${encodeURIComponent(invitation?.email || '')}`);
+    const signupUrl = `/invitation/signup?token=${token}&email=${encodeURIComponent(invitation?.email || '')}`;
+    console.log('[AcceptInvitationPage] Navigating to:', signupUrl);
+    navigate(signupUrl);
   };
 
   const getDashboardPath = (memberType: string): string => {
@@ -211,7 +276,8 @@ export default function AcceptInvitationPage() {
       return '/educator/dashboard';
     }
     if (memberType.includes('recruiter') || memberType.includes('company_admin')) {
-      return '/recruitment/overview';
+      // Company admins should go to admin dashboard, regular recruiters to overview
+      return memberType.includes('company_admin') ? '/recruitment/admin' : '/recruitment/overview';
     }
     // Fallback to learner dashboard instead of non-existent /dashboard
     return '/learner/dashboard';

@@ -28,7 +28,12 @@ export const useRecruitmentMembers = (options?: Partial<FetchMembersOptions>) =>
 
     return useQuery({
         queryKey: recruitmentQueryKeys.members.list(organizationId || '', options),
-        queryFn: () => getMembers(options),
+        queryFn: () => {
+            if (!organizationId) {
+                throw new Error('Organization ID is required');
+            }
+            return getMembers(organizationId, options);
+        },
         enabled: !!organizationId,
         staleTime: 2 * 60 * 1000, // 2 minutes
     });

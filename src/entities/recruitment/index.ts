@@ -21,6 +21,17 @@ export type {
     InvitationEmailData,
 } from './model';
 
+// Organization types
+export type {
+    OrganizationProfile,
+    CompanyVerification,
+    CompanyContacts,
+    RecruitmentConfiguration,
+    OfferLetterTemplate,
+    BillingInformation,
+    OrganizationProfileResponse,
+} from './api/organizationService';
+
 export { ROLE_PERMISSIONS } from './model';
 
 // Hooks
@@ -42,6 +53,29 @@ export {
     useResendInvitation,
 } from './model';
 
+// Organization hooks
+export {
+    useOrganizationProfile,
+    useUpdateOrganizationProfile,
+    useCompanyVerification,
+    useUpdateCompanyVerification,
+    useSubmitVerification,
+    useVerifyDomain,
+    useCompanyContacts,
+    useUpdateCompanyContacts,
+    useRecruitmentConfiguration,
+    useUpdateRecruitmentConfiguration,
+    useOfferTemplates,
+    useOfferTemplate,
+    useCreateOfferTemplate,
+    useUpdateOfferTemplate,
+    useDeleteOfferTemplate,
+    useBillingInformation,
+    useUpdateBillingInformation,
+    useUploadDocument,
+    useDeleteDocument,
+} from './model/useOrganizationProfile';
+
 // API exports
 export {
     getOrgContext,
@@ -62,6 +96,29 @@ export {
     removeMember,
     getMemberStats,
 } from './api';
+
+// Organization API exports
+export {
+    getOrganizationProfile,
+    updateOrganizationProfile,
+    getCompanyVerification,
+    updateCompanyVerification,
+    submitVerificationForReview,
+    verifyDomain,
+    getCompanyContacts,
+    updateCompanyContacts,
+    getRecruitmentConfiguration,
+    updateRecruitmentConfiguration,
+    getOfferTemplates,
+    getOfferTemplate,
+    createOfferTemplate,
+    updateOfferTemplate,
+    deleteOfferTemplate,
+    getBillingInformation,
+    updateBillingInformation,
+    uploadDocument,
+    deleteDocument,
+} from './api/organizationService';
 
 // UI exports
 export { OrgContextProvider, useOrgContextFromProvider } from './ui/OrgContextProvider';

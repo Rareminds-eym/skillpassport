@@ -33,7 +33,18 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     try {
         const { data, error } = await supabase
             .from('organization_invitations')
-            .select('*')
+            .select(`
+                *,
+                invited_by_user:users!organization_invitations_invited_by_fkey(
+                    id,
+                    email,
+                    full_name
+                ),
+                organization:organizations(
+                    id,
+                    name
+                )
+            `)
             .eq('organization_id', orgId)
             .order('created_at', { ascending: false });
 
@@ -41,9 +52,30 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             return Response.json({ error: error.message }, { status: 500 });
         }
 
+        // Transform data to match frontend expectations
+        const invitations = (data || []).map((inv: any) => ({
+            id: inv.id,
+            organizationId: inv.organization_id,
+            organizationName: inv.organization?.name || '',
+            invitedBy: inv.invited_by,
+            invitedByEmail: inv.invited_by_user?.email || '',
+            invitedByName: inv.invited_by_user?.full_name || '',
+            inviteeEmail: inv.invitee_email,
+            inviteeName: inv.invitee_name,
+            inviteeRole: inv.invitee_role,
+            token: inv.invitation_token,
+            status: inv.status,
+            expiresAt: inv.expires_at,
+            acceptedAt: inv.accepted_at,
+            acceptedByUserId: inv.accepted_by_user_id,
+            invitationMessage: inv.invitation_message,
+            createdAt: inv.created_at,
+            updatedAt: inv.updated_at,
+        }));
+
         return Response.json({
-            data: data || [],
-            total: data?.length || 0
+            data: invitations,
+            total: invitations.length
         });
     } catch (error: any) {
         console.error('Error fetching invitations:', error);
