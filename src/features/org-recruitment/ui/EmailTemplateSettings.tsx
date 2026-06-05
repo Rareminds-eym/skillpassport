@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useOrgContext } from '@/entities/recruitment/model/useOrgContext';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import {
     EnvelopeIcon,
     CheckCircleIcon,
@@ -94,14 +94,16 @@ export const EmailTemplateSettings = () => {
         if (!orgContext?.orgId) return;
 
         try {
-            const { data, error } = await supabase
-                .from('organization_email_templates')
-                .select('*')
-                .eq('organization_id', orgContext.orgId);
+            const response = await apiPost('/recruiter/actions', {
+                action: 'get-org-email-templates',
+                organization_id: orgContext.orgId,
+            });
 
-            if (error && error.code !== 'PGRST116') {
-                throw error;
+            if (!response.success) {
+                throw new Error(response.error || 'Failed to fetch templates');
             }
+
+            const data = response.data;
 
             // Merge custom templates with defaults
             if (data && data.length > 0) {
@@ -140,20 +142,16 @@ export const EmailTemplateSettings = () => {
         setMessage(null);
 
         try {
-            const { error } = await supabase
-                .from('organization_email_templates')
-                .upsert({
-                    organization_id: orgContext.orgId,
-                    template_type: editedTemplate.id,
-                    name: editedTemplate.name,
-                    subject: editedTemplate.subject,
-                    body: editedTemplate.body,
-                    updated_at: new Date().toISOString(),
-                }, {
-                    onConflict: 'organization_id,template_type',
-                });
+            const response = await apiPost('/recruiter/actions', {
+                action: 'upsert-org-email-template',
+                organization_id: orgContext.orgId,
+                template_type: editedTemplate.id,
+                name: editedTemplate.name,
+                subject: editedTemplate.subject,
+                body: editedTemplate.body,
+            });
 
-            if (error) throw error;
+            if (!response.success) throw new Error(response.error || 'Failed to save template');
 
             setMessage({ type: 'success', text: 'Template saved successfully!' });
 

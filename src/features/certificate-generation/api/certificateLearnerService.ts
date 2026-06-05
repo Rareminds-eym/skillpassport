@@ -8,7 +8,7 @@
  * business logic specific to the certificate generation feature.
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { generateCourseCertificate } from './certificateService';
 
@@ -47,26 +47,20 @@ export async function fetchLearnerName(user: User | undefined, signal?: AbortSig
       return '';
     }
 
-    // Try to fetch from learners table using user_id or email
-    let query = supabase
-      .from('learners')
-      .select('name');
-    
-    if (user.id) {
-      query = query.eq('user_id', user.id);
-    } else if (user.email) {
-      query = query.eq('email', user.email);
-    }
-    
-    const { data, error } = await query.maybeSingle();
+    // Try to fetch from backend API using user_id or email
+    const response = await apiPost('/user/actions', {
+      action: 'get-learner-name',
+      id: user.id,
+      email: user.email
+    });
     
     // Check if aborted after fetch
     if (signal?.aborted) {
       return '';
     }
     
-    if (!error && data?.name) {
-      return data.name;
+    if (response.success && response.data?.name) {
+      return response.data.name;
     }
     
     // Fallback to email username
@@ -97,48 +91,22 @@ export async function updateLearnerName(user: User, fullName: string, signal?: A
       return false;
     }
 
-    // Update learners table
-    let learnerQuery = supabase
-      .from('learners')
-      .update({ name: fullName });
+    // Update through backend API
+    const response = await apiPost('/user/actions', {
+      action: 'update-learner-name',
+      id: user.id,
+      email: user.email,
+      fullName
+    });
     
-    if (user.id) {
-      learnerQuery = learnerQuery.eq('user_id', user.id);
-    } else if (user.email) {
-      learnerQuery = learnerQuery.eq('email', user.email);
-    }
-    
-    const { error: learnerUpdateError } = await learnerQuery;
-    
-    // Check if aborted after first DB write
+    // Check if aborted after API call
     if (signal?.aborted) {
       return false;
     }
     
-    if (learnerUpdateError) {
-      logger.error('Failed to update learner name', learnerUpdateError);
+    if (!response.success) {
+      logger.error('Failed to update learner name', new Error(response.error || 'API Error'));
       return false;
-    }
-    
-    // Also update users table for backward compatibility
-    if (user.id) {
-      // Split name only when needed for users table update
-      const nameParts = fullName.split(' ');
-      const firstName = nameParts[0] || fullName;
-      const lastName = nameParts.slice(1).join(' ') || '';
-      
-      const { error: userUpdateError } = await supabase
-        .from('users')
-        .update({
-          firstName,
-          lastName
-        })
-        .eq('id', user.id);
-
-      if (userUpdateError) {
-        logger.error('Failed to update user name', userUpdateError);
-        return false;
-      }
     }
     
     return true;

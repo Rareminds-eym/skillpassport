@@ -57,6 +57,40 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiSuccess({ hasPermission: data }, context.request);
   }
 
+  if (action === 'get-org-email-templates') {
+    const { organization_id } = body;
+    if (!organization_id) return apiError(400, 'VALIDATION_ERROR', 'Missing organization_id', context.request);
+    
+    const { data, error } = await supabase
+      .from('organization_email_templates')
+      .select('*')
+      .eq('organization_id', organization_id);
+      
+    if (error && error.code !== 'PGRST116') return apiDbError(error, context.request);
+    return apiSuccess(data || [], context.request);
+  }
+
+  if (action === 'upsert-org-email-template') {
+    const { organization_id, template_type, name, subject, body: emailBody } = body;
+    if (!organization_id || !template_type) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+    
+    const { error } = await supabase
+      .from('organization_email_templates')
+      .upsert({
+        organization_id,
+        template_type,
+        name,
+        subject,
+        body: emailBody,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'organization_id,template_type',
+      });
+      
+    if (error) return apiDbError(error, context.request);
+    return apiSuccess({ success: true }, context.request);
+  }
+
   // ── Opportunities ──
   if (action === 'list-opportunities-skills') {
     const { opportunityIds } = body;

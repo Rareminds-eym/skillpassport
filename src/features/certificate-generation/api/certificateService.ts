@@ -3,7 +3,7 @@
  * Generates course completion certificates using Cloudflare R2 storage
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import { ssoClient } from '@/shared/api/ssoClient';
@@ -395,44 +395,35 @@ export const generateCourseCertificate = async (
       };
     }
 
-    // Save to database
-    // FIX 2: Use completionDate (not current date) for issued_on to ensure correct date for webinars
-    const { error: certificateError } = await supabase.from('certificates').insert({
-      learner_id: learnerId,
-      title: certificateTitle,
-      issuer: educatorName || 'Skill Ecosystem Platform',
-      level: certificateLevel,
-      credential_id: credentialId,
-      link: certificateUrl,
-      document_url: certificateUrl,
-      issued_on: completionDate.split('T')[0],
-      description: certificateDescription,
-      status: 'active',
-      approval_status: 'approved',
-      enabled: true
+    // Save to database and update enrollment
+    const response = await apiPost('/course/actions', {
+      action: 'save-certificate',
+      learnerId,
+      courseId,
+      certificateData: {
+        learner_id: learnerId,
+        title: certificateTitle,
+        issuer: educatorName || 'Skill Ecosystem Platform',
+        level: certificateLevel,
+        credential_id: credentialId,
+        link: certificateUrl,
+        document_url: certificateUrl,
+        issued_on: completionDate.split('T')[0],
+        description: certificateDescription,
+        status: 'active',
+        approval_status: 'approved',
+        enabled: true
+      }
     });
 
-    if (certificateError) {
-      logger.error('Failed to insert certificate into database', certificateError);
-      throw new Error(`Database insert failed: ${certificateError.message}`);
+    if (!response.success) {
+      logger.error('Failed to save certificate to database via API', new Error(response.error || 'API error'));
+      throw new Error(`Database save failed: ${response.error || 'API error'}`);
     }
-
-    logger.info('Certificate saved to database successfully', { credentialId, courseType, isWebinar });
-
-    // Update enrollment
-    const { error: enrollmentError } = await supabase
-      .from('course_enrollments')
-      .update({ certificate_url: certificateUrl })
-      .eq('learner_id', learnerId)
-      .eq('course_id', courseId);
 
     let warning: string | undefined;
-    if (enrollmentError) {
-      logger.error('Failed to update enrollment with certificate URL', enrollmentError);
-      warning = 'Certificate created successfully, but enrollment record was not updated. Please contact support if the certificate does not appear in your profile.';
-    } else {
-      logger.info('Enrollment updated with certificate URL', { learnerId, courseId });
-    }
+    // Since API handles both, if it succeeded, it succeeded.
+    logger.info('Certificate saved to database and enrollment updated successfully', { credentialId, courseType, isWebinar });
 
     // Embedding regeneration handled by database trigger on certificates table
 

@@ -263,6 +263,26 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({ success: true }, context.request, { startTime });
       }
 
+      case 'save-certificate': {
+        const { certificateData, learnerId, courseId } = params;
+        if (!certificateData || !learnerId || !courseId) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request, { startTime });
+        
+        // Save to certificates table
+        const { error: certificateError } = await supabase.from('certificates').insert(certificateData);
+        if (certificateError) return apiDbError(certificateError, context.request, { startTime });
+        
+        // Update course_enrollments
+        const { error: enrollmentError } = await supabase
+          .from('course_enrollments')
+          .update({ certificate_url: certificateData.link || certificateData.document_url })
+          .eq('userId', learnerId) // Use userId instead of learner_id as seen in enroll-in-course
+          .eq('courseId', courseId);
+          
+        if (enrollmentError) return apiDbError(enrollmentError, context.request, { startTime });
+        
+        return apiSuccess({ success: true }, context.request, { startTime });
+      }
+
       case 'mark-lesson-complete': {
         const { userId, courseId, lessonId } = params;
         if (!userId || !courseId || !lessonId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, courseId, or lessonId', context.request, { startTime });

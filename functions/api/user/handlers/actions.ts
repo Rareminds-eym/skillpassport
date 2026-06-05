@@ -140,6 +140,43 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({ learner: data }, context.request, { startTime });
       }
 
+      case 'get-learner-name': {
+        const { id, email } = params;
+        if (!id && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing id or email', context.request, { startTime });
+        
+        let query = supabase.from('learners').select('name');
+        if (id) query = query.eq('user_id', id);
+        else query = query.eq('email', email);
+        
+        const { data, error } = await query.maybeSingle();
+        if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
+        
+        return apiSuccess({ name: data?.name || null }, context.request, { startTime });
+      }
+
+      case 'update-learner-name': {
+        const { id, email, fullName } = params;
+        if (!fullName || (!id && !email)) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request, { startTime });
+        
+        let learnerQuery = supabase.from('learners').update({ name: fullName });
+        if (id) learnerQuery = learnerQuery.eq('user_id', id);
+        else learnerQuery = learnerQuery.eq('email', email);
+        
+        const { error: learnerError } = await learnerQuery;
+        if (learnerError) return apiDbError(learnerError, context.request, { startTime });
+        
+        if (id) {
+          const nameParts = fullName.split(' ');
+          const firstName = nameParts[0] || fullName;
+          const lastName = nameParts.slice(1).join(' ') || '';
+          
+          const { error: userError } = await supabase.from('users').update({ firstName, lastName }).eq('id', id);
+          if (userError) return apiDbError(userError, context.request, { startTime });
+        }
+        
+        return apiSuccess({ success: true }, context.request, { startTime });
+      }
+
       case 'get-recent-updates': {
         const { learnerId } = params;
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
