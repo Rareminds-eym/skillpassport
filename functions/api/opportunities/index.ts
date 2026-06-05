@@ -51,26 +51,31 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   // ORG SCOPING (from HEAD)
   // If org_id is provided, or user is not a super admin, we scope to an org.
-  const orgId = url.searchParams.get('org_id') || user.org_id;
-
-  if (!orgId) {
-    return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
-  }
-
-  // Verify user has access to this organization
-  const access = await verifyOrgAccess(supabase, user.sub, orgId);
-  if (!access.allowed) {
-    return access.error!;
-  }
-
+  const isLearner = user.role === 'learner' || (user.roles && user.roles.includes('learner'));
+  
   let query = supabase
     .from('opportunities')
     .select('*', { count: 'exact' })
-    .eq('organization_id', orgId)
     .neq('employment_type', 'factory_visit');
 
+  if (!isLearner) {
+    const orgId = url.searchParams.get('org_id') || user.org_id;
+
+    if (!orgId) {
+      return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
+    }
+
+    // Verify user has access to this organization
+    const access = await verifyOrgAccess(supabase, user.sub, orgId);
+    if (!access.allowed) {
+      return access.error!;
+    }
+
+    query = query.eq('organization_id', orgId);
+  }
+
   if (activeOnly) query = query.eq('is_active', true);
-  query = query.gt('applications_count', 0);
+  // Removed query.gt('applications_count', 0); because it hides new opportunities
 
   if (employmentType) {
     const vals = employmentType.split(',');
