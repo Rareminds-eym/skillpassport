@@ -5,16 +5,25 @@
  * Called by SSO Worker to send beautiful email verification emails
  */
 
+import { z } from 'zod';
 import type { Env } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib';
 import { sendEmail, isEmailConfigured } from '../../lib/email-service';
 import { apiLogger } from '../../lib/logger';
+import { isValidEmail } from '../../lib/validation';
 
-interface VerificationEmailRequest {
-  to: string;
-  verifyUrl: string;
-  templateOnly?: boolean;  // If true, return template data instead of sending email
-}
+const verificationEmailSchema = z.object({
+  to: z.string({ message: 'to email address is required' })
+    .trim()
+    .min(1, 'to email address is required')
+    .refine(val => isValidEmail(val), { message: 'Invalid email format' }),
+  verifyUrl: z.string({ message: 'verifyUrl is required' })
+    .trim()
+    .min(1, 'verifyUrl is required'),
+  templateOnly: z.boolean().optional(),
+});
+
+type VerificationEmailRequest = z.infer<typeof verificationEmailSchema>;
 
 export async function onRequestPost(context: { request: Request; env: Env }): Promise<Response> {
   const { request, env } = context;
@@ -29,43 +38,23 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       }, 500);
     }
 
-    // Parse request body
+    // Parse request body and validate using Zod
     let body: VerificationEmailRequest;
     try {
       const parsed = await request.json();
-      if (typeof parsed !== 'object' || parsed === null) {
-        throw new Error('Invalid payload');
+      const result = verificationEmailSchema.safeParse(parsed);
+      if (!result.success) {
+        return jsonResponse({
+          success: false,
+          error: result.error.issues[0].message
+        }, 400);
       }
-      body = parsed as VerificationEmailRequest;
+      body = result.data;
     } catch (error) {
       apiLogger.error('Invalid JSON in verification email request', error as Error);
       return jsonResponse({ 
         success: false, 
         error: 'Invalid JSON payload' 
-      }, 400);
-    }
-
-    // Validate required fields
-    if (!body.to) {
-      return jsonResponse({
-        success: false,
-        error: 'to email address is required'
-      }, 400);
-    }
-
-    if (!body.verifyUrl) {
-      return jsonResponse({
-        success: false,
-        error: 'verifyUrl is required'
-      }, 400);
-    }
-
-    // Validate email format with more robust regex
-    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    if (!emailRegex.test(body.to)) {
-      return jsonResponse({
-        success: false,
-        error: 'Invalid email format'
       }, 400);
     }
 

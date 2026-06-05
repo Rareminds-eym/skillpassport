@@ -5,49 +5,42 @@
  * Calls SSO Worker via service binding, then sends beautiful email template
  */
 
+import { z } from 'zod';
 import type { Env } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib';
 import { apiLogger } from '../../lib/logger';
 
-interface ForgotPasswordRequest {
-  email: string;
-  redirect_url?: string;
-}
+const forgotPasswordSchema = z.object({
+  email: z.string({ message: 'email is required' })
+    .trim()
+    .min(1, 'email is required')
+    .email('Invalid email format'),
+  redirect_url: z.string().trim().optional(),
+});
+
+type ForgotPasswordRequest = z.infer<typeof forgotPasswordSchema>;
 
 export async function onRequestPost(context: { request: Request; env: Env }): Promise<Response> {
   const { request, env } = context;
 
   try {
-    // Parse request body
+    // Parse request body and validate using Zod
     let body: ForgotPasswordRequest;
     try {
       const parsed = await request.json();
-      if (typeof parsed !== 'object' || parsed === null) {
-        throw new Error('Invalid payload');
+      const result = forgotPasswordSchema.safeParse(parsed);
+      if (!result.success) {
+        return jsonResponse({
+          success: false,
+          error: result.error.issues[0].message
+        }, 400);
       }
-      body = parsed as ForgotPasswordRequest;
+      body = result.data;
     } catch (error) {
       apiLogger.error('Invalid JSON in forgot password request', error as Error);
       return jsonResponse({ 
         success: false, 
         error: 'Invalid JSON payload' 
-      }, 400);
-    }
-
-    // Validate required fields
-    if (!body.email) {
-      return jsonResponse({
-        success: false,
-        error: 'email is required'
-      }, 400);
-    }
-
-    // Validate email format with more robust regex
-    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    if (!emailRegex.test(body.email)) {
-      return jsonResponse({
-        success: false,
-        error: 'Invalid email format'
       }, 400);
     }
 

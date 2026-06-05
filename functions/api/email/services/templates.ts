@@ -1309,7 +1309,7 @@ export function generateEmailVerificationHtml(data: EmailVerificationData): stri
       align-items: center;
       justify-content: center;
     }
-    .header-circle {
+    .header-icon {
       width: 120px;
       height: 120px;
       background-color: rgba(255, 255, 255, 0.2);
@@ -1405,7 +1405,7 @@ export function generateEmailVerificationHtml(data: EmailVerificationData): stri
       .header-banner {
         height: 150px;
       }
-      .header-circle {
+      .header-icon {
         width: 80px;
         height: 80px;
       }
@@ -1423,7 +1423,7 @@ export function generateEmailVerificationHtml(data: EmailVerificationData): stri
     <div class="email-card">
       <!-- Header Banner -->
       <div class="header-banner">
-        <div class="header-circle">
+        <div class="header-icon">
           <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M4 4V9C4 10.1046 4.89543 11 6 11H8M4 4L8 8M4 4H9C10.1046 4 11 4.89543 11 6V8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M20 4V9C20 10.1046 19.1046 11 18 11H16M20 4L16 8M20 4H15C13.8954 4 13 4.89543 13 6V8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

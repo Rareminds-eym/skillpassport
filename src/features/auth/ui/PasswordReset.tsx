@@ -93,17 +93,30 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const response = await fetch('/api/user/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send', email: state.email })
-      });
+      let response: Response;
+      let apiResult: ApiResponse;
+      
+      try {
+        response = await fetch('/api/user/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'send', email: state.email })
+        });
 
-      const result = await response.json();
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response format');
+        const result = await response.json();
+        if (!result || typeof result !== 'object') {
+          throw new Error('Invalid response format');
+        }
+        apiResult = result as ApiResponse;
+      } catch (fetchError) {
+        // Handle network errors, JSON parsing errors, etc.
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Network error. Please check your connection and try again.'
+        }));
+        return;
       }
-      const apiResult = result as ApiResponse;
 
       if (!response.ok || !apiResult.success) {
         setState(prev => ({
@@ -163,22 +176,35 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const response = await fetch('/api/user/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'reset-password', 
-          email: state.email, 
-          otp: state.otp, 
-          newPassword: state.newPassword 
-        })
-      });
+      let response: Response;
+      let apiResult: ApiResponse;
+      
+      try {
+        response = await fetch('/api/user/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            action: 'reset-password', 
+            email: state.email, 
+            otp: state.otp, 
+            newPassword: state.newPassword 
+          })
+        });
 
-      const result = await response.json();
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response format');
+        const result = await response.json();
+        if (!result || typeof result !== 'object') {
+          throw new Error('Invalid response format');
+        }
+        apiResult = result as ApiResponse;
+      } catch (fetchError) {
+        // Handle network errors, JSON parsing errors, etc.
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Network error. Please check your connection and try again.'
+        }));
+        return;
       }
-      const apiResult = result as ApiResponse;
 
       if (!response.ok || !apiResult.success) {
         setState(prev => ({
@@ -211,17 +237,30 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const response = await fetch('/api/user/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send', email: state.email })
-      });
+      let response: Response;
+      let apiResult: ApiResponse;
+      
+      try {
+        response = await fetch('/api/user/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'send', email: state.email })
+        });
 
-      const result = await response.json();
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response format');
+        const result = await response.json();
+        if (!result || typeof result !== 'object') {
+          throw new Error('Invalid response format');
+        }
+        apiResult = result as ApiResponse;
+      } catch (fetchError) {
+        // Handle network errors, JSON parsing errors, etc.
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Network error. Please check your connection and try again.'
+        }));
+        return;
       }
-      const apiResult = result as ApiResponse;
 
       if (!response.ok || !apiResult.success) {
         setState(prev => ({

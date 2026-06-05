@@ -12,42 +12,43 @@ import {
   type WelcomeEmailData,
 } from '../services/templates';
 import { apiLogger } from '../../../lib/logger';
+import { z } from 'zod';
 
-interface WelcomeEmailRequest {
-  to: string;
-  name: string;
-  role: string;
-  baseUrl: string;
-  additionalInfo?: string;
-}
+const welcomeEmailSchema = z.object({
+  to: z.string({ message: 'Missing required fields: to, name, role, baseUrl' })
+    .trim()
+    .min(1, 'Missing required fields: to, name, role, baseUrl')
+    .email('Invalid email address'),
+  name: z.string({ message: 'Missing required fields: to, name, role, baseUrl' })
+    .trim()
+    .min(1, 'Missing required fields: to, name, role, baseUrl'),
+  role: z.string({ message: 'Missing required fields: to, name, role, baseUrl' })
+    .trim()
+    .min(1, 'Missing required fields: to, name, role, baseUrl'),
+  baseUrl: z.string({ message: 'Missing required fields: to, name, role, baseUrl' })
+    .trim()
+    .min(1, 'Missing required fields: to, name, role, baseUrl'),
+  additionalInfo: z.string().trim().optional(),
+});
+
+type WelcomeEmailRequest = z.infer<typeof welcomeEmailSchema>;
 
 export async function handleWelcomeEmail(
-  body: WelcomeEmailRequest,
+  requestBody: unknown,
   env: Env
 ): Promise<Response> {
   try {
-    // Validate required fields
-    if (!body.to || !body.name || !body.role || !body.baseUrl) {
+    const result = welcomeEmailSchema.safeParse(requestBody);
+    if (!result.success) {
       return jsonResponse(
         {
           success: false,
-          error: 'Missing required fields: to, name, role, baseUrl',
+          error: result.error.issues[0].message,
         },
         400
       );
     }
-
-    // Validate email format with more robust regex
-    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    if (!emailRegex.test(body.to)) {
-      return jsonResponse(
-        {
-          success: false,
-          error: 'Invalid email address',
-        },
-        400
-      );
-    }
+    const body = result.data;
 
     // Generate email content from template
     const templateData: WelcomeEmailData = {
@@ -63,19 +64,19 @@ export async function handleWelcomeEmail(
     const text = `Welcome to SkillPassport!\n\nHello ${body.name},\n\nYour account has been created successfully and is ready to use!\n\nEmail: ${body.to}\nRole: ${body.role}\n\nLogin now: ${body.baseUrl}/login\n\nIf you have any questions, please don't hesitate to contact our support team.`;
 
     // Send email via email-worker
-    const result = await sendEmail(env, {
+    const emailResult = await sendEmail(env, {
       to: body.to,
       subject,
       html,
       text,
     });
 
-    if (!result.success) {
-      apiLogger.error('Failed to send welcome email', new Error(result.error));
+    if (!emailResult.success) {
+      apiLogger.error('Failed to send welcome email', new Error(emailResult.error));
       return jsonResponse(
         {
           success: false,
-          error: result.error || 'Failed to send email',
+          error: emailResult.error || 'Failed to send email',
         },
         500
       );
@@ -86,7 +87,7 @@ export async function handleWelcomeEmail(
     return jsonResponse({
       success: true,
       message: 'Welcome email sent successfully',
-      messageId: result.messageId,
+      messageId: emailResult.messageId,
     });
   } catch (error) {
     apiLogger.error('Error in handleWelcomeEmail', error as Error);

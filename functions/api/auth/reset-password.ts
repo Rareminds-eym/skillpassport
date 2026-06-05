@@ -22,8 +22,13 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     let body: ResetPasswordRequest;
     try {
       const parsed = await request.json();
-      if (typeof parsed !== 'object' || parsed === null) {
-        throw new Error('Invalid payload');
+      if (typeof parsed !== 'object' || 
+          parsed === null ||
+          typeof (parsed as any).token !== 'string' ||
+          !(parsed as any).token.trim() ||
+          typeof (parsed as any).password !== 'string' ||
+          !(parsed as any).password.trim()) {
+        throw new Error('Missing or invalid required fields');
       }
       body = parsed as ResetPasswordRequest;
     } catch (error) {
