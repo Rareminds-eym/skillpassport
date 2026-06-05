@@ -187,3 +187,17 @@ export function apiMethodNotAllowed(request?: Request): Response {
 export function apiNotFound(message = 'Resource not found', request?: Request): Response {
   return apiError(404, 'NOT_FOUND', message, request);
 }
+
+/**
+ * Legacy JSON response builder (for backward compatibility)
+ */
+export function jsonResponse(body: any, status = 200, extraHeaders: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...getCorsHeaders(null),
+      ...extraHeaders
+    }
+  });
+}

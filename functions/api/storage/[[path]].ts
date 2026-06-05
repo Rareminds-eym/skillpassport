@@ -3,14 +3,17 @@
  * Handles R2 storage operations with JWT authentication
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { jsonResponse } from '../../../src/functions-lib';
-import { corsHeaders } from '../../../src/functions-lib/cors';
-import { authenticateUser, AuthResult } from '../shared/auth';
+import type { PagesFunction } from '../../lib/types';
+import { jsonResponse } from '../../lib/response';
+import { corsHeaders } from '../../lib/cors';
+import { withAuth, getContextUser } from '../../lib/auth';
+import type { AuthUser } from '../../lib/auth';
+import { createSupabaseClient, createSupabaseAdminClient } from '../../lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAuthenticationError } from './utils/error-handling';
-import { getLogger } from '../../../src/shared/config/logging';
+import { createLogger } from '../../lib/logger';
 
-const logger = getLogger('storage-api');
+const logger = createLogger('storage-api');
 
 // Import all handlers
 import { handleUpload } from './handlers/upload';
@@ -33,9 +36,9 @@ export interface AuthenticatedContext {
   waitUntil?: (promise: Promise<any>) => void;
   next?: () => Promise<Response>;
   data?: Record<string, any>;
-  user?: AuthResult['user'];
-  supabase?: AuthResult['supabase'];
-  supabaseAdmin?: AuthResult['supabaseAdmin'];
+  user?: AuthUser;
+  supabase?: SupabaseClient;
+  supabaseAdmin?: SupabaseClient;
 }
 
 export const onRequest: PagesFunction = async (context) => {
@@ -81,20 +84,16 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     // All other endpoints require JWT authentication
-    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
-    
-    if (!authResult) {
-      logger.warn('Authentication required', { path, method: request.method });
-      return createAuthenticationError(path, 'missing_token');
-    }
-
-    // Create authenticated context with proper typing
-    const authenticatedContext: AuthenticatedContext = {
-      ...context,
-      user: authResult.user,
-      supabase: authResult.supabase,
-      supabaseAdmin: authResult.supabaseAdmin,
-    };
+    return withAuth(async (authContext: any) => {
+      const user = getContextUser(authContext);
+      
+      // Create authenticated context with proper typing
+      const authenticatedContext: AuthenticatedContext = {
+        ...context,
+        user: user,
+        supabase: createSupabaseClient(env as any),
+        supabaseAdmin: createSupabaseAdminClient(env as any),
+      };
 
     // Check for /files/:courseId/:lessonId pattern
     const filesMatch = path.match(/^\/files\/([^\/]+)\/([^\/]+)$/);
@@ -157,6 +156,7 @@ export const onRequest: PagesFunction = async (context) => {
           404
         );
     }
+    })(context as any);
   } catch (error) {
     logger.error('Storage API Error', error instanceof Error ? error : new Error(String(error)));
     return jsonResponse(
