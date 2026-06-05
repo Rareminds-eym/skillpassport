@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BellIcon,
@@ -18,6 +18,18 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
   const user = useUser()
   const { logout } = useAuthActions()
   const navigate = useNavigate()
+
+  // Determine if user is admin based on roles
+  const userDisplayRole = useMemo(() => {
+    const userRoles = user?.roles || [];
+    const isAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+    return isAdmin ? 'Admin' : 'Recruiter';
+  }, [user?.roles]);
+
+  const isUserAdmin = useMemo(() => {
+    const userRoles = user?.roles || [];
+    return userRoles.includes('owner') || userRoles.includes('company_admin');
+  }, [user?.roles]);
 
   const profileRef = useRef<HTMLDivElement>(null)
   const notificationRef = useRef<HTMLDivElement>(null)
@@ -113,8 +125,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
               >
                 <UserCircleIcon className="h-8 w-8 text-gray-400" />
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-gray-700 font-medium">{user?.name || "Recruiter"}</span>
-                  <span className="text-xs text-gray-500">{user?.email}</span>
+                  <span className="text-gray-700 font-medium">{user?.name || userDisplayRole}</span>
+                  <span className="text-xs text-gray-500">{userDisplayRole} • {user?.email}</span>
                 </div>
               </button>
 
@@ -131,6 +143,18 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
                     >
                       My Profile
                     </button>
+                    {/* Only show Manage Subscription for admins */}
+                    {isUserAdmin && (
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false)
+                          navigate("/recruitment/subscription/manage")
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        Manage Subscription
+                      </button>
+                    )}
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
                       onClick={() => {

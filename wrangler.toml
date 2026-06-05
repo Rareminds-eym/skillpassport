@@ -60,6 +60,12 @@ EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
 EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
 
+# Email Worker API Key (for local dev)
+INTERNAL_API_KEY = "dev-test1232312"
+
+# Frontend URL (for invitation links)
+FRONTEND_URL = "http://localhost:5173"
+
 
 
 # Cloudflare R2 Configuration (Pages Functions)
@@ -101,6 +107,7 @@ VITE_GTM_ID = "GTM-M2N3952J"
 # - SUPABASE_ANON_KEY
 # - SUPABASE_SERVICE_ROLE_KEY
 # - VITE_SUPABASE_ANON_KEY
+# - SERVICE_AUTH_SECRET (Shared secret for authenticating with SSO worker)
 # - CLOUDFLARE_R2_ACCESS_KEY_ID
 # - CLOUDFLARE_R2_SECRET_ACCESS_KEY
 # - EMAIL_API_KEY

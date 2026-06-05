@@ -31,7 +31,7 @@ const LoginAdmin = () => {
       }
 
       toast.success('Welcome back!');
-      redirectToRoleDashboard(result.role as UserRole, navigate);
+      await redirectToRoleDashboard(result.role as UserRole, navigate);
     } finally {
       setIsLoading(false);
     }

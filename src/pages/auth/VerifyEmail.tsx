@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertCircle, Loader2, Mail } from 'lucide-react';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
-import { useIsAuthenticated, useUser, useAuthStore } from '@/shared/model/authStore';
+import { useIsAuthenticated, useAuthStore } from '@/shared/model/authStore';
 
 type VerifyState = 'verifying' | 'success' | 'error' | 'no-token';
 
@@ -12,7 +12,6 @@ const VerifyEmail = () => {
   const navigate = useNavigate();
   const token = searchParams.get('token');
   const isAuthenticated = useIsAuthenticated();
-  const user = useUser();
 
   const [state, setState] = useState<VerifyState>(token ? 'verifying' : 'no-token');
   const [error, setError] = useState('');
@@ -25,10 +24,114 @@ const VerifyEmail = () => {
     (async () => {
       try {
         await ssoClient.verifyEmail({ token });
-        setState('success');
-        
+
         // Refresh session to get updated user data with is_email_verified = true
         await useAuthStore.getState().refreshSession();
+
+        // Wait for session to fully propagate to auth store
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Log user data after refresh for debugging
+        const refreshedUser = useAuthStore.getState().user;
+        console.log('[VerifyEmail] User data after refresh:', {
+          role: refreshedUser?.role,
+          roles: refreshedUser?.roles,
+          orgId: refreshedUser?.orgId,
+          isEmailVerified: refreshedUser?.isEmailVerified,
+          isAuthenticated: useAuthStore.getState().isAuthenticated,
+        });
+
+        // Set success state
+        setState('success');
+
+        // Auto-redirect after a short delay to show success message
+        setTimeout(() => {
+          const currentUser = useAuthStore.getState().user;
+          const userRole = currentUser?.role || useAuthStore.getState().role;
+          const userRoles = currentUser?.roles || [];
+
+          console.log('[VerifyEmail] Auto-redirecting after verification', {
+            userRole,
+            orgId: currentUser?.orgId,
+            roles: userRoles,
+            isAuthenticated: useAuthStore.getState().isAuthenticated
+          });
+
+          // CRITICAL FIX: Check if user just accepted an invitation during signup
+          // If so, redirect to login to get fresh JWT with membership roles
+          const invitationJustAccepted = sessionStorage.getItem('invitation_just_accepted');
+          const postVerificationRedirect = sessionStorage.getItem('post_signup_verification_redirect');
+          const invitationOrgId = sessionStorage.getItem('invitation_org_id');
+          const invitationRole = sessionStorage.getItem('invitation_role');
+
+          if (invitationJustAccepted === 'true') {
+            console.log('[VerifyEmail] User just accepted invitation during signup', {
+              orgId: invitationOrgId,
+              role: invitationRole,
+              targetRedirect: postVerificationRedirect
+            });
+            console.log('[VerifyEmail] Redirecting to login to obtain fresh JWT with membership');
+
+            // Keep the context for post-login redirect
+            // Don't clear invitation_just_accepted yet - login will use it
+            navigate('/login', { replace: true });
+            return;
+          }
+
+          // Check if user has any recruitment vertical roles
+          const isRecruitmentUser =
+            userRole === 'recruiter' ||
+            userRoles.includes('recruiter') ||
+            userRoles.includes('company_admin') ||
+            userRoles.includes('viewer') ||
+            userRoles.includes('owner');
+
+          // Legacy flow: Check if there's an invitation token still in sessionStorage
+          // (This shouldn't happen anymore with the new flow, but keep for safety)
+          const invitationToken = sessionStorage.getItem('invitation_token');
+          const invitationReturnUrl = sessionStorage.getItem('invitation_return_url');
+
+          if (invitationToken || invitationReturnUrl) {
+            // User came from recruitment invitation (legacy path)
+            console.log('[VerifyEmail] LEGACY: Redirecting to login for invitation auto-acceptance', {
+              userRole,
+              roles: userRoles,
+              hasInvitationToken: !!invitationToken
+            });
+            navigate('/login', { replace: true });
+          } else if (isRecruitmentUser) {
+            // Recruitment user without invitation context
+            // Company admins (owner role in SSO) who just signed up should see subscription plans first
+            // Invited recruiters should go directly to their respective dashboards
+            const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+
+            if (isCompanyAdmin) {
+              // New company signup - show subscription plans
+              console.log('[VerifyEmail] Redirecting company admin to recruitment subscription plans', {
+                userRole,
+                roles: userRoles,
+                orgId: currentUser?.orgId,
+              });
+              navigate('/recruitment/subscription/plans', { replace: true });
+            } else {
+              // Invited recruiter - go to overview dashboard
+              console.log('[VerifyEmail] Redirecting invited recruiter to overview dashboard', {
+                userRole,
+                roles: userRoles,
+                orgId: currentUser?.orgId,
+              });
+              navigate('/recruitment/overview', { replace: true });
+            }
+          } else {
+            // Regular learner user - go to subscription plans
+            console.log('[VerifyEmail] Redirecting to regular subscription plans', {
+              userRole,
+              roles: userRoles
+            });
+            navigate('/subscription/plans', { replace: true });
+          }
+        }, 1500); // Show success message for 1.5 seconds before redirecting
+
       } catch (err) {
         if (err instanceof AuthFetchError) {
           if (err.status === 400) setError('This verification link has expired or already been used.');
@@ -39,7 +142,7 @@ const VerifyEmail = () => {
         setState('error');
       }
     })();
-  }, [token]);
+  }, [token, navigate]);
 
   const handleResend = async () => {
     setResending(true);
@@ -66,19 +169,30 @@ const VerifyEmail = () => {
           </div>
         )}
 
-        {state === 'success' && (
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">✅ Email Verified!</h2>
-            <p className="text-gray-600 mb-6">Your email has been successfully verified. You can now access all features.</p>
-            <button
-              onClick={() => navigate('/subscription/plans')}
-              className="w-full py-3 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        )}
+        {state === 'success' && (() => {
+          const currentUser = useAuthStore.getState().user;
+          const userRoles = currentUser?.roles || [];
+          const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+          const isRecruitmentUser = currentUser?.role === 'recruiter' || userRoles.includes('recruiter') || userRoles.includes('owner');
+
+          return (
+            <div className="bg-white rounded-xl shadow-lg p-8">
+              <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">✅ Email Verified!</h2>
+              <p className="text-gray-600 mb-4">Your email has been successfully verified.</p>
+              <div className="flex items-center justify-center gap-2 text-blue-600">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm font-medium">
+                  {isRecruitmentUser && isCompanyAdmin
+                    ? 'Redirecting to subscription plans...'
+                    : isRecruitmentUser
+                      ? 'Redirecting to dashboard...'
+                      : 'Redirecting to subscription plans...'}
+                </span>
+              </div>
+            </div>
+          );
+        })()}
 
         {state === 'error' && (
           <div className="bg-white rounded-xl shadow-lg p-8">
@@ -113,7 +227,7 @@ const VerifyEmail = () => {
             <p className="text-gray-600 mb-4">
               {isAuthenticated ? (
                 <>
-                  We've sent a verification email to <strong>{useUser()?.email}</strong>.
+                  We've sent a verification email to <strong>{useAuthStore.getState().user?.email}</strong>.
                   Please check your inbox and click the verification link.
                 </>
               ) : (

@@ -472,8 +472,8 @@ export class MemberInvitationService {
 
       // Calculate acceptance rate (accepted / (accepted + expired + cancelled))
       const completed = stats.accepted + stats.expired + stats.cancelled;
-      stats.acceptanceRate = completed > 0 
-        ? Math.round((stats.accepted / completed) * 100) 
+      stats.acceptanceRate = completed > 0
+        ? Math.round((stats.accepted / completed) * 100)
         : 0;
 
       return stats;
@@ -557,11 +557,11 @@ export class MemberInvitationService {
     invitation: any,
     customMessage?: string
   ): Promise<boolean> {
-    const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
+    const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL ||
       (import.meta.env.DEV ? '/api/email' : import.meta.env.VITE_PRODUCTION_EMAIL_API_URL || 'https://skillpassport.rareminds.in/api/email');
     // Use current origin in development, production URL otherwise
-    const VITE_APP_URL = import.meta.env.DEV 
-      ? window.location.origin 
+    const VITE_APP_URL = import.meta.env.DEV
+      ? window.location.origin
       : 'https://skillpassport.rareminds.in';
 
     try {
@@ -601,6 +601,13 @@ export class MemberInvitationService {
               <p style="color: #374151; font-size: 16px; margin-bottom: 24px;">
                 You have been invited to join <strong>${organizationName}</strong> as a <strong>${memberTypeDisplay}</strong> on Skill Passport.
               </p>
+              <div style="background-color: #DBEAFE; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid #3B82F6;">
+                <p style="margin: 0 0 8px; color: #1E40AF; font-weight: 600; font-size: 15px;">Getting Started:</p>
+                <p style="margin: 0; color: #1E3A8A; font-size: 14px; line-height: 1.6;">
+                  <strong>No account?</strong> You'll create one in just 2 minutes.<br/>
+                  <strong>Already have an account?</strong> Just login to accept.
+                </p>
+              </div>
               ${customMessage ? `
               <div style="background-color: #F3F4F6; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid #6366F1;">
                 <p style="margin: 0; color: #4B5563; font-style: italic;">"${customMessage}"</p>
@@ -718,7 +725,7 @@ export class MemberInvitationService {
           .update(memberUpdateData)
           .eq('user_id', userId)
           .select('id');
-        
+
         if (learnerError) {
           logger.warn('Could not update learners table by user_id', learnerError as Error);
         } else if (updatedByUserId && updatedByUserId.length > 0) {
@@ -731,7 +738,7 @@ export class MemberInvitationService {
             .update({ ...memberUpdateData, user_id: userId })
             .eq('email', inviteeEmail.toLowerCase())
             .select('id');
-          
+
           if (emailError) {
             logger.warn('Could not update learners table by email', emailError as Error);
           } else if (updatedByEmail && updatedByEmail.length > 0) {
@@ -750,7 +757,7 @@ export class MemberInvitationService {
           .update({ school_id: organizationId })
           .eq('user_id', userId)
           .select('id');
-        
+
         if (educatorError) {
           logger.warn('Could not update school_educators table by user_id', educatorError as Error);
         } else if (updatedByUserId && updatedByUserId.length > 0) {
@@ -763,7 +770,7 @@ export class MemberInvitationService {
             .update({ school_id: organizationId, user_id: userId })
             .eq('email', inviteeEmail.toLowerCase())
             .select('id');
-          
+
           if (emailError) {
             logger.warn('Could not update school_educators table by email', emailError as Error);
           } else if (updatedByEmail && updatedByEmail.length > 0) {
@@ -800,14 +807,13 @@ export class MemberInvitationService {
    */
   private async getOrganizationName(
     organizationId: string,
-    organizationType: 'school' | 'college' | 'university'
+    organizationType: 'school' | 'college' | 'university' | 'company'
   ): Promise<string> {
     try {
       const { data, error } = await supabase
         .from('organizations')
         .select('name')
         .eq('id', organizationId)
-        .eq('organization_type', organizationType)
         .single();
 
       if (error) throw error;
