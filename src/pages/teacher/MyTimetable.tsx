@@ -19,7 +19,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { SwapRequestModal } from '@/features/college-admin';
-import { usePermission } from '@/entities/user/model/usePermissions';
 import { getLogger } from '@/shared/config/logging';
 import {
     createSwapRequest,
@@ -133,11 +132,6 @@ const MyTimetable: React.FC = () => {
   const user = useUser()
   const isAuthenticated = useIsAuthenticated()
   
-  // Permission controls for Classroom Management module - same as Program Sections
-  const canView = usePermission("Classroom Management", "view")
-  const canCreate = usePermission("Classroom Management", "create")
-  const canEdit = usePermission("Classroom Management", "edit")
-  
   const [slots, setSlots] = useState<TimetableSlot[]>([]);
   const [breaks, setBreaks] = useState<Break[]>([]);
   const [periods, setPeriods] = useState<TimePeriod[]>(DEFAULT_PERIODS);
@@ -174,14 +168,6 @@ const MyTimetable: React.FC = () => {
       return
     }
   }, [isAuthenticated, user, navigate])
-
-  // Permission check - redirect if no view permission - same as Program Sections
-  useEffect(() => {
-    if (!canView.allowed) {
-      navigate('/educator/dashboard')
-      return
-    }
-  }, [canView, navigate])
 
   // Week dates
   const weekDates = useMemo(() => getWeekDates(currentWeekStart), [currentWeekStart]);
@@ -426,11 +412,6 @@ const MyTimetable: React.FC = () => {
   };
 
   const handleInitiateSwap = async (slot: TimetableSlot) => {
-    if (!canCreate.allowed) {
-      alert('❌ Access Denied: You need CREATE permission to send swap requests');
-      return;
-    }
-    
     setSelectedSlotForSwap(slot);
     
     // Load available slots for swapping
@@ -527,66 +508,9 @@ const MyTimetable: React.FC = () => {
     );
   }
 
-  // Show access denied if no view permission - same as Program Sections
-  if (!canView.allowed) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-            <XMarkIcon className="h-6 w-6 text-red-600" />
-          </div>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">Access Denied</h3>
-          <p className="mt-2 text-sm text-gray-500">
-            You don't have permission to view the Classroom Management module.
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={() => navigate('/educator/dashboard')}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Go to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex overflow-y-auto mb-4 flex-col h-screen">
-      {/* Permission Debug Panel - Only in development - same as Program Sections */}
-      {/* {process.env.NODE_ENV === 'development' && (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">
-                📅 Educator Permission Debug - Classroom Management (Timetable)
-              </h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p><strong>User Role:</strong> {user?.role}</p>
-                <p><strong>Module:</strong> Classroom Management</p>
-                <div className="flex gap-4 mt-1">
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canView ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    View: {canView ? '✅' : '❌'}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canCreate ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    Create: {canCreate ? '✅' : '❌'}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canEdit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    Edit: {canEdit ? '✅' : '❌'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )} */}
+
       
       <div className="flex h-full bg-gray-50">
       {/* Left Sidebar */}
@@ -722,19 +646,10 @@ const MyTimetable: React.FC = () => {
             </div>
             <button
               onClick={() => {
-              if (!canView.allowed) {
-                alert('❌ Access Denied: You need VIEW permission to view swap requests');
-                return;
-              }
               setShowSwapDashboard(true);
             }}
-            disabled={!canView.allowed}
-              className={`w-full mt-3 px-3 py-2 text-xs font-medium rounded-lg transition ${
-                canView.allowed
-                  ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer'
-                  : 'text-gray-400 bg-gray-50 cursor-not-allowed opacity-50 blur-sm'
-              }`}
-              title={canView.allowed ? 'View All Requests' : '❌ No VIEW permission'}
+              className="w-full mt-3 px-3 py-2 text-xs font-medium rounded-lg transition text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer"
+              title="View All Requests"
             >
               View All Requests
             </button>
@@ -795,20 +710,11 @@ const MyTimetable: React.FC = () => {
               {/* Swap Requests Button with Notification Badge */}
               <button 
                 onClick={() => {
-                  if (!canView.allowed) {
-                    alert('❌ Access Denied: You need VIEW permission to view swap requests');
-                    return;
-                  }
                   setShowSwapDashboard(true);
                 }}
 
-                disabled={!canView.allowed}
-                className={`relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition ${
-                  canView.allowed
-                    ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer'
-                    : 'text-gray-400 bg-gray-50 cursor-not-allowed opacity-50 blur-sm'
-                }`}
-                title={canView.allowed ? 'Swap Requests' : '❌ No VIEW permission'}
+                className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer"
+                title="Swap Requests"
               >
                 <RefreshCw className="h-4 w-4" />
                 <span>Swap Requests</span>
@@ -988,13 +894,8 @@ const MyTimetable: React.FC = () => {
                                 {/* Swap Button (appears on hover) */}
                                 <button
                                   onClick={() => handleInitiateSwap(slot)}
-                                  disabled={!canCreate.allowed}
-                                  className={`absolute top-1 right-1 p-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity ${
-                                    canCreate.allowed
-                                      ? 'bg-white hover:bg-indigo-50 cursor-pointer'
-                                      : 'bg-gray-100 cursor-not-allowed opacity-50 blur-sm'
-                                  }`}
-                                  title={canCreate.allowed ? 'Request Class Swap' : '❌ No CREATE permission'}
+                                  className="absolute top-1 right-1 p-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity bg-white hover:bg-indigo-50 cursor-pointer"
+                                  title="Request Class Swap"
                                 >
                                   <RefreshCw className="h-3 w-3 text-indigo-600" />
                                 </button>

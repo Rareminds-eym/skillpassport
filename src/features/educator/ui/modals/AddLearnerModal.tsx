@@ -7,7 +7,6 @@ import storageService from '@/shared/api/storageService'
 import { useAuthStore } from '@/shared/model/authStore'
 import { ssoClient } from '@/shared/api/ssoClient'
 import userApiService from '@/entities/user/api/userApiService'
-import { usePermission } from '@/entities/user/model/usePermissions'
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation'
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
 import { getLogger } from '@/shared/config/logging'
@@ -71,27 +70,6 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
 
-  // Permission check - allow school_admin and college_admin by default
-  const { allowed: canAddlearners, reason: addReason, loading: permissionLoading } = usePermission('Learners', 'create');
-
-  // Check if user is an admin (school_admin or college_admin should always be allowed)
-  const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => {
-    try {
-      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
-      if (userStr) {
-        const userData = JSON.parse(userStr);
-        const role = userData.role || '';
-        // School admins, college admins, and educators should always be able to add learners
-        if (role === 'school_admin' || role === 'college_admin' || role === 'university_admin' || role === 'educator' || role === 'school_educator' || role === 'college_educator') {
-          setIsAdmin(true);
-        }
-      }
-    } catch (e) {
-      logger.error('Failed to parse user data for admin check', e as Error);
-    }
-  }, []);
-
   const [formData, setFormData] = useState<LearnerFormData>({
     name: '',
     email: '',
@@ -152,11 +130,6 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setIsUploadingDocuments(false)
     }
   }, [isOpen])
-
-  // Don't render modal if user doesn't have permission (unless they're an admin)
-  if (!permissionLoading && !canAddlearners && !isAdmin) {
-    return null;
-  }
 
   // Download sample CSV template
   const downloadSampleCSV = () => {

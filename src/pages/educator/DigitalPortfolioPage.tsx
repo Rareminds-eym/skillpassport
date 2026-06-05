@@ -21,7 +21,6 @@ import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 
 import { SearchBar } from '@/shared/ui';
 import { Pagination } from '@/shared/ui';
-import { usePermission } from '@/entities/user/model/usePermissions';
 
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 import { useSearch } from '@/shared/model/searchStore';
@@ -93,17 +92,11 @@ const BadgeComponent = ({ badges }) => {
   );
 };
 
-const PortfolioCard = ({ learner, onViewPortfolio, canView, canCreate, canEdit, user }: any) => {
+const PortfolioCard = ({ learner, onViewPortfolio }: any) => {
   return (
     <div 
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
       onClick={() => {
-        if (!canView.allowed) {
-          logger.warn('Action blocked: Card click - no view permission');
-          alert('❌ Access Denied: You need VIEW permission to view portfolios');
-          return;
-        }
-        logger.info('Portfolio card clicked', { learnerId: learner.id });
         onViewPortfolio(learner);
       }}
     >
@@ -185,21 +178,10 @@ const PortfolioCard = ({ learner, onViewPortfolio, canView, canCreate, canEdit, 
         <button
           onClick={(e) => {
             e.stopPropagation();
-          if (!canView.allowed) {
-            logger.warn('Action blocked: View portfolio button - no view permission');
-            alert('❌ Access Denied: You need VIEW permission to view portfolios');
-            return;
-          }
-            logger.info('View portfolio button clicked', { learnerId: learner.id });
             onViewPortfolio(learner);
           }}
-          disabled={!canView.allowed}
-          className={`inline-flex items-center px-3 py-1.5 border rounded-md transition-colors text-xs font-medium ${
-            canView.allowed
-              ? 'bg-primary-50 text-primary-700 border-primary-200 hover:bg-primary-100 cursor-pointer'
-              : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-50 blur-sm'
-          }`}
-          title={canView.allowed ? 'View Portfolio' : '❌ No VIEW permission'}
+          className="inline-flex items-center px-3 py-1.5 border rounded-md transition-colors text-xs font-medium bg-primary-50 text-primary-700 border-primary-200 hover:bg-primary-100 cursor-pointer"
+          title="View Portfolio"
         >
           <EyeIcon className="h-3.5 w-3.5 mr-1.5" />
           View Portfolio
@@ -214,11 +196,6 @@ const DigitalPortfolioPage = () => {
   const user = useUser()
   const isAuthenticated = useIsAuthenticated()
   const { searchQuery, setSearchQuery } = useSearch()
-  
-  // Permission controls for Digital Portfolio module - same pattern as Program Sections
-  const canView = usePermission("Digital Portfolio", "view")
-  const canCreate = usePermission("Digital Portfolio", "create")
-  const canEdit = usePermission("Digital Portfolio", "edit")
   
   const [viewMode, setViewMode] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1);
@@ -257,15 +234,6 @@ const DigitalPortfolioPage = () => {
       return
     }
   }, [isAuthenticated, user, navigate])
-
-  // Permission check - redirect if no view permission - same as Program Sections
-  useEffect(() => {
-    if (!canView.allowed) {
-      logger.warn('Access denied: No view permission for Digital Portfolio')
-      navigate('/educator/dashboard')
-      return
-    }
-  }, [canView, navigate])
 
   // Reset to page 1 when filters or search change
   useEffect(() => {
@@ -440,13 +408,6 @@ const DigitalPortfolioPage = () => {
   const paginatedlearners = filteredlearners.slice(startIndex, endIndex);
 
   const handleViewPortfolio = (learner: any) => {
-    if (!canView.allowed) {
-      logger.warn('Action blocked: View portfolio - no view permission');
-      alert('❌ Access Denied: You need VIEW permission to view portfolios');
-      return;
-    }
-    
-    logger.info('View portfolio clicked', { learnerId: learner.id });
     navigate('/digital-pp/homepage', { state: { candidate: learner } });
   };
 
@@ -472,66 +433,9 @@ const DigitalPortfolioPage = () => {
   const isLoading = loading || schoolLoading
   const isEmpty = !isLoading && paginatedlearners.length === 0 && !error && !searchQuery
 
-  // Show access denied if no view permission - same as Program Sections
-  if (!canView.allowed) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-            <XMarkIcon className="h-6 w-6 text-red-600" />
-          </div>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">Access Denied</h3>
-          <p className="mt-2 text-sm text-gray-500">
-            You don't have permission to view the Digital Portfolio module.
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={() => navigate('/educator/dashboard')}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Go to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex overflow-y-auto mb-4 flex-col h-screen">
-      {/* Permission Debug Panel - Only in development - same as Program Sections */}
-      {/* {process.env.NODE_ENV === 'development' && (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">
-                📁 Educator Permission Debug - Digital Portfolio
-              </h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p><strong>User Role:</strong> {user?.role}</p>
-                <p><strong>Module:</strong> Digital Portfolio</p>
-                <div className="flex gap-4 mt-1">
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canView ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    View: {canView ? '✅' : '❌'}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canCreate ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    Create: {canCreate ? '✅' : '❌'}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canEdit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    Edit: {canEdit ? '✅' : '❌'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )} */}
+
       {/* Header Section - Desktop */}
       <div className="p-4 sm:p-6 lg:p-8 mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -805,10 +709,6 @@ const DigitalPortfolioPage = () => {
                         key={learner.id}
                         learner={learner}
                         onViewPortfolio={handleViewPortfolio}
-                        canView={canView}
-                        canCreate={canCreate}
-                        canEdit={canEdit}
-                        user={user}
                       />
                     ))}
                   </div>
@@ -884,21 +784,10 @@ const DigitalPortfolioPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <button
                                 onClick={() => {
-                                  if (!canView.allowed) {
-                                    logger.warn('Action blocked: View portfolio (table) - no view permission');
-                                    alert('❌ Access Denied: You need VIEW permission to view portfolios');
-                                    return;
-                                  }
-                                  logger.info('View portfolio clicked (table)', { learnerId: learner.id });
                                   handleViewPortfolio(learner);
                                 }}
-                                disabled={!canView.allowed}
-                                className={`transition-all ${
-                                  canView.allowed
-                                    ? 'text-primary-600 hover:text-primary-900 cursor-pointer'
-                                    : 'text-gray-400 cursor-not-allowed opacity-50 blur-sm'
-                                }`}
-                                title={canView.allowed ? 'View Portfolio' : '❌ No VIEW permission'}
+                                className="transition-all text-primary-600 hover:text-primary-900 cursor-pointer"
+                                title="View Portfolio"
                               >
                                 View Portfolio
                               </button>
