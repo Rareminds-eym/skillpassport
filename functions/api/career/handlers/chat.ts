@@ -16,6 +16,14 @@ import { authenticateUser, sanitizeInput, generateConversationTitle } from '../.
 import { checkRateLimit } from '../utils/rate-limit';
 import { getModelForUseCase, API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
 import type { ChatRequest, StoredMessage, CareerIntent, Opportunity } from '../types';
+import {
+  FEATURE_CODES,
+  createTokenCapture,
+  updateTokenCapture,
+  settleStreamCredits,
+  streamCreditPreflight,
+} from '../../_shared/ai-credits';
+import { getServiceClient } from '../../../lib/supabase';
 
 // AI modules
 import { runGuardrails, getBlockedResponse, validateResponse } from '../ai/guardrails';
@@ -92,6 +100,13 @@ export async function handleCareerChat(request: Request, env: Record<string, str
   if (!openRouterKey) {
     return jsonResponse({ error: 'AI service not configured' }, 500);
   }
+
+  // ── Credit pre-flight check ────────────────────────────────────────────────
+  const creditRequestId = crypto.randomUUID();
+  const supabaseService = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
+  const creditGate = await streamCreditPreflight(supabaseService, learnerId);
+  if (creditGate) return creditGate;
+  // ── End credit pre-flight ──────────────────────────────────────────────────
 
   try {
     // ==================== FETCH CONVERSATION HISTORY ====================
@@ -260,6 +275,9 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     let assistantMessage = '';
     let finalConversationId = conversationId;
 
+    // Token usage tracking — captured from OpenRouter SSE usage event
+    const tokenCapture = createTokenCapture();
+
     const stream = new ReadableStream({
       async start(controller) {
         try {
@@ -300,6 +318,9 @@ export async function handleCareerChat(request: Request, env: Record<string, str
                   assistantMessage += content;
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
                 }
+
+                // Capture usage from OpenRouter usage event
+                updateTokenCapture(tokenCapture, parsed as Record<string, unknown>);
               } catch (e) {
                 /* Skip invalid JSON */
               }
@@ -366,6 +387,26 @@ export async function handleCareerChat(request: Request, env: Record<string, str
             console.error('[DB ERROR]', dbError);
           }
 
+          // ==================== SETTLE AI CREDITS (post-stream) ====================
+          const creditResult = await settleStreamCredits({
+            supabase: supabaseService,
+            userId: learnerId,
+            featureCode: FEATURE_CODES.CAREER_AI,
+            requestId: creditRequestId,
+            capture: tokenCapture,
+            fallbackPromptText: systemPromptWithMemory + processedMessage,
+            fallbackCompletionText: assistantMessage,
+            endpoint: '/api/career/chat',
+            modelUsed: usedModel,
+            conversationId: finalConversationId ?? undefined,
+            requestMetadata: {
+              user_message_length: processedMessage.length,
+              context_messages: existingMessages.length,
+              intent: intentResult.intent,
+            },
+            latencyMs: Date.now() - startTime,
+          });
+
           // ==================== SEND COMPLETION EVENT ====================
           const executionTime = Date.now() - startTime;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -376,7 +417,13 @@ export async function handleCareerChat(request: Request, env: Record<string, str
             intentConfidence: intentResult.confidence,
             phase: conversationPhase,
             hasAssessment: assessmentContext.hasAssessment,
-            executionTime
+            executionTime,
+            credits: {
+              deducted: creditResult.actualCostDeducted,
+              balance_after: creditResult.balanceAfter,
+              tokens_used: creditResult.finalTotalTokens,
+              usage_captured: tokenCapture.captured,
+            },
           })}\n\n`));
 
           console.log(`[COMPLETE] Intent: ${intentResult.intent}, Time: ${executionTime}ms`);

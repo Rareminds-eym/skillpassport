@@ -90,6 +90,45 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         console.error('[CreateOrder] Shadow sync failed:', syncError);
       }
 
+      // Provision AI credits for freemium user
+      // Idempotent by subscription.id — safe if this runs twice
+      try {
+        const freemiumPlanId = subscription.plan_id as string | null;
+        const freemiumSubId = subscription.id as string | null;
+
+        if (freemiumPlanId && freemiumSubId) {
+          const provisionUrl = new URL('/api/credits/provision', new URL(context.request.url).origin);
+          const provisionRes = await fetch(provisionUrl.toString(), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Internal-Secret': (env as any).CRON_SECRET ?? '',
+            },
+            body: JSON.stringify({
+              userId: user.sub,
+              subscriptionId: freemiumSubId,
+              planId: freemiumPlanId,
+              // Use subscription.id as eventId — stable and unique per subscription
+              eventId: `freemium_${freemiumSubId}`,
+            }),
+          });
+
+          if (!provisionRes.ok) {
+            const provisionErr = await provisionRes.text();
+            console.error('[CreateOrder] Freemium credit provisioning failed (non-critical):', provisionErr);
+          } else {
+            const provisionData = await provisionRes.json() as Record<string, unknown>;
+            console.log('[CreateOrder] Freemium credits provisioned:', {
+              idempotent: provisionData.idempotent,
+              balance: provisionData.balance,
+              welcome_bonus: provisionData.welcome_bonus_granted,
+            });
+          }
+        }
+      } catch (provisionError) {
+        console.error('[CreateOrder] Freemium credit provision error (non-critical):', provisionError);
+      }
+
       // Return simulated success response structure expected by frontend for freemium
       return new Response(JSON.stringify({ 
         success: true,

@@ -256,7 +256,6 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     error,
     conversationId,
     conversations,
-    suggestedQuestions,
     sendMessage,
     editMessage,
     loadConversation,
@@ -264,7 +263,6 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     deleteConversation,
     submitFeedback,
     refreshConversations,
-    refreshSuggestions
   } = useTutorChat({
     courseId,
     lessonId: lessonContext?.lessonId,
@@ -302,13 +300,6 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       return () => clearTimeout(timer);
     }
   }, [isExpanded, showHistory]);
-
-  // Refresh suggestions when lesson changes
-  useEffect(() => {
-    if (lessonContext?.lessonId) {
-      refreshSuggestions();
-    }
-  }, [lessonContext?.lessonId, refreshSuggestions]);
 
   const handleSend = async () => {
     if (!input.trim() || isStreaming) return;
@@ -640,24 +631,6 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             <p className="text-sm text-gray-600 mb-6 max-w-xs">
               {uiConfig.welcomeMessage}
             </p>
-
-            {/* Suggested Questions - Only for Learners */}
-            {!isEducator && suggestedQuestions.length > 0 && (
-              <div className="w-full">
-                <p className="text-xs text-gray-500 mb-2 font-medium">Try asking:</p>
-                <div className="space-y-2">
-                  {suggestedQuestions.slice(0, 3).map((q, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setInput(q)}
-                      className="w-full p-3 text-left text-sm bg-white border border-gray-200 rounded-xl hover:border-violet-400 hover:bg-violet-50 transition-all group"
-                    >
-                      <span className="text-gray-700 group-hover:text-violet-700">{q}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <div className="p-4 space-y-4">

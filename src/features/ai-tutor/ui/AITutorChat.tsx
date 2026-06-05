@@ -60,7 +60,6 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
     error,
     conversationId,
     conversations,
-    suggestedQuestions,
     sendMessage,
     editMessage,
     loadConversation,
@@ -88,19 +87,6 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
     iconColor: isEducator ? 'text-purple-600' : 'text-blue-600',
     textColor: isEducator ? 'text-purple-100' : 'text-blue-100',
   };
-
-  // Role-based suggested questions
-  const defaultSuggestions = isEducator ? [
-    "Create a worksheet about the main concepts in this lesson",
-    "Generate 10 multiple-choice questions about this topic",
-    "Create an answer key for this lesson"
-  ] : [
-    "Can you explain the main concepts in this lesson?",
-    "What are the key takeaways I should remember?",
-    "Can you give me a practical example?"
-  ];
-
-  const displaySuggestions = suggestedQuestions.length > 0 ? suggestedQuestions : defaultSuggestions;
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -136,11 +122,6 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
       e.preventDefault();
       handleSend();
     }
-  };
-
-  const handleSuggestionClick = (question: string) => {
-    setInput(question);
-    inputRef.current?.focus();
   };
 
   const handleGenerateWorksheet = async () => {
@@ -487,24 +468,6 @@ const AITutorChat: React.FC<AITutorChatProps> = ({ courseId, lessonId, onClose }
             <p className="text-sm text-gray-600 mb-6">
               {uiConfig.welcomeMessage}
             </p>
-            
-            {/* Suggested Questions */}
-            {displaySuggestions.length > 0 && (
-              <div className="w-full">
-                <p className="text-xs text-gray-500 mb-2">{isEducator ? 'Try asking:' : 'Suggested questions:'}</p>
-                <div className="space-y-2">
-                  {displaySuggestions.map((q) => (
-                    <button
-                      key={q}
-                      onClick={() => handleSuggestionClick(q)}
-                      className="w-full p-2 text-left text-sm bg-white border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         ) : (
           <>

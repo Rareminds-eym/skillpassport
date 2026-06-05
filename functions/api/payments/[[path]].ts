@@ -26,6 +26,8 @@
  * - POST /api/payments/create-org-order
  * - POST /api/payments/verify-org-payment
  * - POST /api/payments/org-subscriptions/purchase
+ * - POST /api/payments/create-credit-order
+ * - POST /api/payments/verify-credit-payment
  * - GET  /api/payments/health
  */
 
@@ -72,6 +74,8 @@ import { handleUpdateRegistrationPaymentStatus } from './handlers/update-registr
 import { handleCreateOrgOrder } from './handlers/create-org-order';
 import { handleVerifyOrgPayment } from './handlers/verify-org-payment';
 import { handleOrgSubscriptionsPurchase } from './handlers/org-subscriptions-purchase';
+import { handleCreateCreditOrder } from './handlers/create-credit-order';
+import { handleVerifyCreditPayment } from './handlers/verify-credit-payment';
 
 
 function methodNotAllowed(): Response {
@@ -229,6 +233,16 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
   if (path === '/org-subscriptions/purchase') {
     if (method !== 'POST') return methodNotAllowed();
     return handleOrgSubscriptionsPurchase(context);
+  }
+
+  if (path === '/create-credit-order') {
+    if (method !== 'POST') return methodNotAllowed();
+    return handleCreateCreditOrder(context);
+  }
+
+  if (path === '/verify-credit-payment') {
+    if (method !== 'POST') return methodNotAllowed();
+    return handleVerifyCreditPayment(context);
   }
 
 

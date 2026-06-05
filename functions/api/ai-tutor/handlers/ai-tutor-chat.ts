@@ -27,6 +27,13 @@ import {
 import { buildLessonPlanPrompt } from '../utils/lesson-plan-templates';
 import { hasReachedLimit, incrementGenerationCount } from '../utils/generation-limit';
 import { getLogger } from '../../../../src/shared/config/logging';
+import {
+  FEATURE_CODES,
+  createTokenCapture,
+  updateTokenCapture,
+  settleStreamCredits,
+  streamCreditPreflight,
+} from '../../_shared/ai-credits';
 
 const logger = getLogger('ai-tutor-chat');
 
@@ -213,9 +220,25 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     
     logger.info('System prompt built', { promptLength: systemPrompt.length });
 
+    // ── Credit pre-flight check ──────────────────────────────────────────────
+    const featureCode = userRole.toLowerCase().includes('educator')
+      ? FEATURE_CODES.EDUCATOR_AI
+      : FEATURE_CODES.AI_TUTOR;
+
+    const creditGate = await streamCreditPreflight(supabase, learnerId);
+    if (creditGate) return creditGate;
+    // ── End credit pre-flight ────────────────────────────────────────────────
+
     // Get model and endpoint from shared config
     const chatModel = AI_MODELS.GPT_4O_MINI;
     const endpoint = API_CONFIG.OPENROUTER.endpoint;
+
+    // Unique request ID for idempotent deduction — generated once per HTTP request
+    const creditRequestId = crypto.randomUUID();
+    const requestStartTime = Date.now();
+
+    // Tracks actual token usage captured from OpenRouter SSE usage event
+    const tokenCapture = createTokenCapture();
 
     // Create user message
     const userMessageId = crypto.randomUUID();
@@ -271,7 +294,6 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             });
 
             if (!outlineResponse.ok) {
-              const errorText = await outlineResponse.text();
               logger.error('Outline generation error', new Error(`HTTP ${outlineResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate outline' })}\n\n`));
               controller.close();
@@ -321,7 +343,6 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             });
 
             if (!finalResponse.ok) {
-              const errorText = await finalResponse.text();
               logger.error('Lesson plan generation error', new Error(`HTTP ${finalResponse.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'Failed to generate lesson plan' })}\n\n`));
               controller.close();
@@ -359,6 +380,10 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                       fullResponse += content;
                       controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content })}\n\n`));
                     }
+                    // OpenRouter always includes usage in the final SSE chunk automatically.
+                    // The final chunk has choices:[] (empty) and a populated usage object.
+                    // We use the LAST usage chunk seen (overwrite) to get the most accurate count.
+                    updateTokenCapture(tokenCapture, parsed as Record<string, unknown>);
                   } catch {
                     // Skip invalid JSON
                   }
@@ -388,7 +413,6 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             });
 
             if (!response.ok) {
-              const errorText = await response.text();
               logger.error('OpenRouter error', new Error(`HTTP ${response.status}`));
               controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'AI service error' })}\n\n`));
               controller.close();
@@ -426,6 +450,10 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                       fullResponse += content;
                       controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content })}\n\n`));
                     }
+                    // OpenRouter always includes usage in the final SSE chunk automatically.
+                    // The final chunk has choices:[] (empty) and a populated usage object.
+                    // We use the LAST usage chunk seen (overwrite) to get the most accurate count.
+                    updateTokenCapture(tokenCapture, parsed as Record<string, unknown>);
                   } catch {
                     // Skip invalid JSON
                   }
@@ -461,57 +489,8 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               logger.info('Updated conversation', { conversationId: currentConversationId });
             }
           } else {
-            // Create new conversation with generated title
-            let title = message.slice(0, 50);
-
-            try {
-              const titleAbortController = new AbortController();
-              const titleTimeoutId = setTimeout(() => titleAbortController.abort(), 5000);
-
-              const titleResponse = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${openRouterKey}`,
-                  'Content-Type': 'application/json',
-                  'HTTP-Referer': env.SUPABASE_URL ?? env.VITE_SUPABASE_URL ?? '',
-                  'X-Title': 'AI Course Tutor - Title Generation'
-                },
-                body: JSON.stringify({
-                  model: chatModel,
-                  messages: [{
-                    role: 'user',
-                    content: `Generate a short title (max 50 chars) for a tutoring conversation about "${courseContext.courseTitle}" starting with: "${message}"`
-                  }],
-                  max_tokens: 60,
-                  temperature: 0.5
-                }),
-                signal: titleAbortController.signal
-              });
-
-              clearTimeout(titleTimeoutId);
-
-              if (titleResponse.ok) {
-                let titleData: unknown;
-                try {
-                  titleData = await titleResponse.json();
-                } catch (parseErr) {
-                  logger.warn('Failed to parse title response, using default', { error: parseErr instanceof Error ? parseErr.message : String(parseErr) });
-                  // Continue with default title
-                  titleData = null;
-                }
-
-                if (titleData && !isValidOpenRouterResponse(titleData)) {
-                  logger.warn('Invalid title response structure, using default');
-                } else if (titleData) {
-                  const generatedTitle = (titleData as { choices?: Array<{ message?: { content?: string } }> }).choices?.[0]?.message?.content?.trim();
-                  if (generatedTitle) {
-                    title = generatedTitle;
-                  }
-                }
-              }
-            } catch (error) {
-              logger.warn('Title generation failed, using default', { error: error instanceof Error ? error.message : String(error) });
-            }
+            // Create new conversation title from the first message (no extra AI call)
+            const title = message.slice(0, 50);
 
             const { data: newConv } = await supabase
               .from('tutor_conversations')
@@ -542,11 +521,42 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             }
           }
 
+          // ── Settle AI credits (post-stream) ──────────────────────────────────
+          const latencyMs = Date.now() - requestStartTime;
+          const creditResult = await settleStreamCredits({
+            supabase,
+            userId: learnerId,
+            featureCode,
+            requestId: creditRequestId,
+            capture: tokenCapture,
+            fallbackPromptText: systemPrompt + message,
+            fallbackCompletionText: fullResponse,
+            endpoint: '/api/ai-tutor/chat',
+            modelUsed: chatModel,
+            conversationId: currentConversationId ?? undefined,
+            requestMetadata: {
+              conversation_id: currentConversationId,
+              model: chatModel,
+              user_message_length: message.length,
+              context_messages: existingMessages.length,
+              is_generation: isGenerationRequest,
+            },
+            latencyMs,
+            log: (msg, data) => logger.info(msg, data ?? {}),
+          });
+          // ── End credit settlement ─────────────────────────────────────────────
+
           // Send completion event
           controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({
             conversationId: currentConversationId,
             messageId: assistantMessage.id,
-            generationUsage
+            generationUsage,
+            credits: {
+              deducted: creditResult.actualCostDeducted,
+              balance_after: creditResult.balanceAfter,
+              tokens_used: creditResult.finalTotalTokens,
+              usage_captured: tokenCapture.captured,
+            },
           })}\n\n`));
 
           logger.info('Streaming complete', { responseLength: fullResponse.length });

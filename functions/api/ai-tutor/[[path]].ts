@@ -2,7 +2,6 @@
  * AI Tutor API - Cloudflare Pages Function
  * 
  * Handles all AI tutor functionality:
- * - AI tutor suggestions
  * - AI tutor chat (with streaming)
  * - AI tutor feedback
  * - AI tutor progress tracking
@@ -15,7 +14,6 @@
  * - GET /health - Health check (public)
  * - GET /learner-type - Get learner type for role detection (authenticated)
  * - GET /generation-usage - Get worksheet/lesson plan generation usage (authenticated)
- * - POST /suggestions - Generate suggested questions (authenticated)
  * - POST /chat - AI tutor chat with streaming responses (authenticated)
  * - POST /feedback - Submit feedback on AI responses (authenticated)
  * - GET /progress - Get learner progress (authenticated)
@@ -25,7 +23,6 @@
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
 import { withAuth } from '../../lib/auth';
-import { handleAiTutorSuggestions } from './handlers/ai-tutor-suggestions';
 import { handleAiTutorChat } from './handlers/ai-tutor-chat';
 import { onRequestPost as handleAiTutorFeedback } from './handlers/ai-tutor-feedback';
 import { onRequestGet as handleAiTutorProgressGet, onRequestPost as handleAiTutorProgressPost } from './handlers/ai-tutor-progress';
@@ -61,7 +58,6 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           'GET /health - Health check',
           'GET /learner-type - Get learner type for role detection',
           'GET /generation-usage - Get worksheet/lesson plan generation usage',
-          'POST /suggestions - Generate suggested questions',
           'POST /chat - AI tutor chat (streaming)',
           'POST /feedback - Submit feedback',
           'GET /progress - Get progress',
@@ -78,11 +74,6 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     // Get Generation Usage (authenticated)
     if (path === '/generation-usage' && request.method === 'GET') {
       return withAuth(handleGetGenerationUsage)(context);
-    }
-
-    // AI Tutor Suggestions (authenticated)
-    if (path === '/suggestions' && request.method === 'POST') {
-      return withAuth(handleAiTutorSuggestions)(context);
     }
 
     // AI Tutor Chat (authenticated)
@@ -113,7 +104,6 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           'GET /health - Health check',
           'GET /learner-type - Get learner type for role detection',
           'GET /generation-usage - Get worksheet/lesson plan generation usage',
-          'POST /suggestions - Generate suggested questions',
           'POST /chat - AI tutor chat (streaming)',
           'POST /feedback - Submit feedback',
           'GET /progress - Get progress',

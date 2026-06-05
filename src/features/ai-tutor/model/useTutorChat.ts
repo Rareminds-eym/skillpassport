@@ -6,7 +6,6 @@ import {
   getLastConversationId,
   getConversations,
   getConversation,
-  getSuggestedQuestions,
   submitFeedback as submitFeedbackService,
   deleteConversation as deleteConversationService
 } from '../api/tutorService';
@@ -43,7 +42,6 @@ export interface UseTutorChatReturn {
   error: string | null;
   conversationId: string | null;
   conversations: Conversation[];
-  suggestedQuestions: string[];
   sendMessage: (content: string) => Promise<void>;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
@@ -51,7 +49,6 @@ export interface UseTutorChatReturn {
   deleteConversation: (conversationId: string) => Promise<void>;
   submitFeedback: (messageIndex: number, rating: 1 | -1, feedbackText?: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
-  refreshSuggestions: () => Promise<void>;
 }
 
 export function useTutorChat({
@@ -69,7 +66,6 @@ export function useTutorChat({
   const [error, setError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
 
   // Fetch conversations on mount and when courseId changes
   const refreshConversations = useCallback(async () => {
@@ -81,28 +77,9 @@ export function useTutorChat({
     }
   }, [courseId]);
 
-  // Fetch suggested questions when lessonId changes
-  const refreshSuggestions = useCallback(async () => {
-    if (!lessonId) {
-      setSuggestedQuestions([]);
-      return;
-    }
-    try {
-      const questions = await getSuggestedQuestions(lessonId);
-      setSuggestedQuestions(questions);
-    } catch (err) {
-      logger.error('Error fetching suggestions', err instanceof Error ? err : new Error(String(err)));
-      setSuggestedQuestions([]);
-    }
-  }, [lessonId]);
-
   useEffect(() => {
     refreshConversations();
   }, [refreshConversations]);
-
-  useEffect(() => {
-    refreshSuggestions();
-  }, [refreshSuggestions]);
 
 
   // Send a message to the AI tutor
@@ -369,7 +346,6 @@ export function useTutorChat({
     error,
     conversationId,
     conversations,
-    suggestedQuestions,
     sendMessage: handleSendMessage,
     editMessage: handleEditMessage,
     loadConversation,
@@ -377,6 +353,5 @@ export function useTutorChat({
     deleteConversation: handleDeleteConversation,
     submitFeedback: handleSubmitFeedback,
     refreshConversations,
-    refreshSuggestions
   };
 }

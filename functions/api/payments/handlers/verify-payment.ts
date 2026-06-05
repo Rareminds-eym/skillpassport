@@ -262,7 +262,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         razorpay_order_id: body.razorpay_order_id as string,
         amount: planPrice,
         currency: 'INR',
-        status: 'success',
+        status: 'completed',
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
       });
     } catch (txError) {
@@ -270,6 +270,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
 
     // Step 3.5: Sync shadow table in app DB
+    let syncedPlanId: string | null = null;
+    let syncedSubscriptionId: string | null = null;
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
       await syncUserShadow(supabase, user.sub, body.email || (user as any).email);
@@ -277,9 +279,69 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       const syncData = await ssoSyncSubscription(env, user.sub);
       if (syncData.subscription) {
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+        syncedPlanId = syncData.subscription.plan_id ? String(syncData.subscription.plan_id) : null;
+        syncedSubscriptionId = syncData.subscription.id ? String(syncData.subscription.id) : null;
       }
     } catch (syncError) {
       console.error('[VerifyPayment] Shadow sync failed (non-critical):', syncError);
+    }
+
+    // Step 3.6: Provision AI credits after successful subscription sync
+    try {
+      const cronSecret = (env as any).CRON_SECRET;
+      const paymentId = body.razorpay_payment_id as string;
+      const provisionPlanId = syncedPlanId ?? (plan?.id ? String(plan.id) : null);
+      const provisionSubId = syncedSubscriptionId ?? (subscription?.id ? String(subscription.id) : null);
+
+      if (!cronSecret) {
+        console.error('[VerifyPayment] CRON_SECRET missing — cannot provision credits');
+        // non-critical — skip provisioning, payment already succeeded
+      } else if (!provisionPlanId || !provisionSubId || !paymentId) {
+        console.warn('[VerifyPayment] Missing required data for credit provision:', {
+          hasPlanId: !!provisionPlanId,
+          hasSubId: !!provisionSubId,
+          hasPaymentId: !!paymentId,
+        });
+      } else {
+        const provisionUrl = new URL('/api/credits/provision', new URL(context.request.url).origin);
+        const provisionRes = await fetch(provisionUrl.toString(), {
+          method: 'POST',
+          signal: AbortSignal.timeout(5000),
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Secret': cronSecret,
+          },
+          body: JSON.stringify({
+            userId: user.sub,
+            subscriptionId: provisionSubId,
+            planId: provisionPlanId,
+            eventId: paymentId,
+          }),
+        });
+
+        if (!provisionRes.ok) {
+          const errorText = await provisionRes.text();
+          console.error('[VerifyPayment] Credit provisioning failed:', {
+            status: provisionRes.status,
+            userId: user.sub,
+            paymentId,
+            error: errorText,
+          });
+        } else {
+          const provisionData = await provisionRes.json() as Record<string, unknown>;
+          console.log('[VerifyPayment] Credits provisioned successfully:', {
+            userId: user.sub,
+            paymentId,
+            idempotent: !!provisionData.idempotent,
+          });
+        }
+      }
+    } catch (provisionError) {
+      console.error('[VerifyPayment] Credit provision error:', {
+        userId: user.sub,
+        paymentId: body.razorpay_payment_id,
+        error: provisionError instanceof Error ? provisionError.message : String(provisionError),
+      });
     }
 
     // Step 4: Generate receipt PDF and upload to R2 (unchanged)

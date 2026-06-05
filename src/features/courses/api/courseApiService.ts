@@ -28,23 +28,6 @@ export async function getFileUrl(fileKey: string): Promise<string> {
   return data.url;
 }
 
-/**
- * Get AI tutor suggestions for a lesson
- */
-export async function getAiTutorSuggestions(lessonId: string, token?: string): Promise<any> {
-  const response = await fetch(`${API_URL}/ai-tutor-suggestions`, {
-    method: 'POST',
-        body: JSON.stringify({ lessonId }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to get suggestions');
-  }
-
-  return response.json();
-}
-
 interface AiTutorMessageParams {
   conversationId?: string;
   courseId: string;
@@ -215,7 +198,6 @@ export async function summarizeVideo(
 
 export default {
   getFileUrl,
-  getAiTutorSuggestions,
   sendAiTutorMessage,
   submitAiTutorFeedback,
   getAiTutorProgress,

@@ -8,7 +8,8 @@ import {
   Lock,
   Settings as SettingsIcon,
   Shield,
-  User
+  User,
+  Zap,
 } from "lucide-react";
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
@@ -44,6 +45,7 @@ import ProfileTab from "./ProfileTab";
 import SecurityTab from "./SecurityTab";
 import NotificationsTab from "./NotificationsTab";
 import PrivacyTab from "./PrivacyTab";
+import { TokensTab } from '@/features/ai-credits/ui/TokensTab';
 
 import { useUser } from '@/shared/model/authStore';
 const MainSettings = () => {
@@ -160,12 +162,21 @@ const MainSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
 
+  // Tracks which expensive tabs have been visited so they stay mounted after first visit
+  const hasVisitedRef = useRef({ subscription: false, tokens: false });
+
   // Handle navigation state to set active tab
   useEffect(() => {
     if (location.state?.activeTab) {
       setActiveTab(location.state.activeTab);
     }
   }, [location.state]);
+
+  // Mark expensive tabs as visited so they remain mounted after first activation
+  useEffect(() => {
+    if (activeTab === "subscription") hasVisitedRef.current.subscription = true;
+    if (activeTab === "tokens")       hasVisitedRef.current.tokens = true;
+  }, [activeTab]);
 
   // Education management state - now using real data from dedicated table
   const educationData = Array.isArray(tableEducation) && tableEducation.length > 0 
@@ -1440,6 +1451,7 @@ const MainSettings = () => {
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "privacy", label: "Privacy", icon: Shield },
     { id: "subscription", label: "Subscription", icon: CreditCard },
+    { id: "tokens", label: "Tokens", icon: Zap },
   ];
 
   // Show loading state
@@ -1679,9 +1691,18 @@ const MainSettings = () => {
               />
             )}
 
-            {/* Subscription Settings */}
-            {activeTab === "subscription" && (
-              <SubscriptionSettingsSection />
+            {/* Subscription Settings — lazy-mount: mounts on first visit, stays mounted after */}
+            {(activeTab === "subscription" || hasVisitedRef.current.subscription) && (
+              <div className={activeTab === "subscription" ? "block" : "hidden"}>
+                <SubscriptionSettingsSection />
+              </div>
+            )}
+
+            {/* Tokens / AI Credits — lazy-mount: mounts on first visit, stays mounted after */}
+            {(activeTab === "tokens" || hasVisitedRef.current.tokens) && (
+              <div className={activeTab === "tokens" ? "block" : "hidden"}>
+                <TokensTab />
+              </div>
             )}
           </div>
         </div>

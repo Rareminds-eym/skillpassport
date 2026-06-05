@@ -1,5 +1,5 @@
 import { ssoClient } from '@/shared/api/ssoClient';
-import { useAuthStore } from '@/shared/model/authStore';
+
 import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
@@ -86,15 +86,7 @@ export interface StreamChunk {
  * Returns an async generator that yields content and reasoning chunks
  */
 export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
-  const user = useAuthStore.getState().user;
-    const sessionError = null;
 
-  if (sessionError) {
-    logger.error('Session error in sendMessage', sessionError instanceof Error ? sessionError : new Error(String(sessionError)));
-    throw new Error('Authentication error. Please try logging in again.');
-  }
-
-  
   const response = await ssoClient.fetch(
     `${API_URL}/chat`,
     {
@@ -137,8 +129,13 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
         try {
           const parsed = JSON.parse(data);
 
+          // Handle error events from the server
+          if (currentEventType === 'error') {
+            const errorMessage = parsed.error || 'An error occurred. Please try again.';
+            throw new Error(errorMessage);
+          }
           // Handle reasoning events (from grok/reasoning models)
-          if (currentEventType === 'reasoning' && parsed.reasoning) {
+          else if (currentEventType === 'reasoning' && parsed.reasoning) {
             yield { type: 'reasoning', reasoning: parsed.reasoning };
           }
           // Handle content events
@@ -249,69 +246,12 @@ export async function getConversation(conversationId: string): Promise<Conversat
   };
 }
 
-// ==================== SUGGESTED QUESTIONS ====================
-
-/**
- * Get suggested questions for a lesson
- * Returns default suggestions if not authenticated or on error (graceful degradation)
- */
-export async function getSuggestedQuestions(lessonId: string): Promise<string[]> {
-  try {
-    const user = useAuthStore.getState().user;
-    const sessionError = null;
-
-    if (sessionError) {
-      logger.error('Session error in getSuggestedQuestions', sessionError instanceof Error ? sessionError : new Error(String(sessionError)), { lessonId });
-      return getDefaultSuggestions();
-    }
-
-    const response = await ssoClient.fetch(
-      `${API_URL}/suggestions`,
-      {
-        method: 'POST',
-                body: JSON.stringify({ lessonId }),
-      }
-    );
-
-    // Handle auth errors gracefully - return defaults instead of throwing
-    if (response.status === 401 || response.status === 403) {
-      logger.warn('Auth required for suggestions, using defaults', { status: response.status, lessonId });
-      return getDefaultSuggestions();
-    }
-
-    if (!response.ok) {
-      // Return default suggestions on error
-      logger.warn('Failed to fetch suggestions, using defaults', { status: response.status, lessonId });
-      return getDefaultSuggestions();
-    }
-
-    const data = await response.json() as { questions?: string[] };
-    return data.questions || getDefaultSuggestions();
-  } catch (err) {
-    logger.warn('Error fetching suggestions, using defaults', { lessonId, error: err instanceof Error ? err.message : String(err) });
-    return getDefaultSuggestions();
-  }
-}
-
-/**
- * Default suggestions when API is unavailable
- */
-function getDefaultSuggestions(): string[] {
-  return [
-    "Can you explain the main concepts in this lesson?",
-    "What are the key takeaways I should remember?",
-    "Can you give me a practical example?"
-  ];
-}
-
 // ==================== PROGRESS FUNCTIONS ====================
 
 /**
  * Get learner progress for a course
  */
 export async function getCourseProgress(courseId: string): Promise<CourseProgress> {
-  const user = useAuthStore.getState().user;
-  
   const response = await ssoClient.fetch(
     `${API_URL}/progress?courseId=${courseId}`,
     {
@@ -335,8 +275,6 @@ export async function updateLessonProgress(
   lessonId: string,
   status: 'not_started' | 'in_progress' | 'completed'
 ): Promise<void> {
-  const user = useAuthStore.getState().user;
-  
   const response = await ssoClient.fetch(
     `${API_URL}/progress`,
     {
@@ -357,8 +295,6 @@ export async function updateLessonProgress(
  * Delete a conversation and all related data permanently
  */
 export async function deleteConversation(conversationId: string): Promise<void> {
-  const user = useAuthStore.getState().user;
-  
   // First, delete related feedback records
   const { error: feedbackError } = await supabase
     .from('tutor_feedback')
@@ -391,8 +327,6 @@ export async function submitFeedback(
   rating: 1 | -1,
   feedbackText?: string
 ): Promise<void> {
-  const user = useAuthStore.getState().user;
-  
   const response = await ssoClient.fetch(
     `${API_URL}/feedback`,
     {
