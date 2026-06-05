@@ -10,16 +10,28 @@ import type { Env } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib';
 import { sendEmail, isEmailConfigured } from '../../lib/email-service';
 import { apiLogger } from '../../lib/logger';
-import { isValidEmail } from '../../lib/validation';
+
+// HTML attribute escaping function to prevent XSS
+const escapeHtmlAttribute = (str: string): string =>
+  str.replace(/[&<>"']/g, c =>
+    ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[c]!)
+  );
 
 const verificationEmailSchema = z.object({
   to: z.string({ message: 'to email address is required' })
     .trim()
     .min(1, 'to email address is required')
-    .refine(val => isValidEmail(val), { message: 'Invalid email format' }),
+    .email('Invalid email format'),
   verifyUrl: z.string({ message: 'verifyUrl is required' })
     .trim()
-    .min(1, 'verifyUrl is required'),
+    .min(1, 'verifyUrl is required')
+    .url('Invalid URL format'),
   templateOnly: z.boolean().optional(),
 });
 
@@ -60,7 +72,8 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
     apiLogger.info('Processing email verification request', {
       to: body.to
-      // Note: verifyUrl not logged for security reasons
+      // SECURITY: verifyUrl contains sensitive token and MUST NOT be logged
+      // This policy should be enforced across all endpoints handling sensitive URLs
     });
 
     // Generate beautiful HTML email
@@ -140,6 +153,9 @@ The SkillPassport Team
 // Generate verification email HTML template
 function generateVerificationEmailHtml(data: { verifyUrl: string }): string {
   const { verifyUrl } = data;
+  
+  // Escape the URL to prevent XSS attacks
+  const safeUrl = escapeHtmlAttribute(verifyUrl);
   
   return `
 <!DOCTYPE html>
@@ -277,7 +293,7 @@ function generateVerificationEmailHtml(data: { verifyUrl: string }): string {
         Please click the button below to confirm your email address and activate your account.
       </p>
       
-      <a href="${verifyUrl}" class="verify-button">
+      <a href="${safeUrl}" class="verify-button">
         CONFIRM EMAIL
       </a>
     </div>

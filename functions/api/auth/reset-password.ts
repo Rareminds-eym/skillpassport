@@ -5,52 +5,47 @@
  * Calls SSO Worker via service binding to complete password reset
  */
 
+import { z } from 'zod';
 import type { Env } from '../../../src/functions-lib/types';
 import { jsonResponse } from '../../../src/functions-lib';
 import { apiLogger } from '../../lib/logger';
 
-interface ResetPasswordRequest {
-  token: string;
-  password: string;
-}
+const resetPasswordSchema = z.object({
+  token: z.string({ message: 'token is required' })
+    .trim()
+    .min(1, 'token is required'),
+  password: z.string({ message: 'password is required' })
+    .trim()
+    .min(1, 'password is required')
+});
+
+const ssoResponseSchema = z.object({
+  reset: z.boolean().optional()
+});
+
+type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>;
 
 export async function onRequestPost(context: { request: Request; env: Env }): Promise<Response> {
   const { request, env } = context;
 
   try {
-    // Parse request body
+    // Parse request body and validate using Zod
     let body: ResetPasswordRequest;
     try {
       const parsed = await request.json();
-      if (typeof parsed !== 'object' || 
-          parsed === null ||
-          typeof (parsed as any).token !== 'string' ||
-          !(parsed as any).token.trim() ||
-          typeof (parsed as any).password !== 'string' ||
-          !(parsed as any).password.trim()) {
-        throw new Error('Missing or invalid required fields');
+      const result = resetPasswordSchema.safeParse(parsed);
+      if (!result.success) {
+        return jsonResponse({
+          success: false,
+          error: result.error.issues[0].message
+        }, 400);
       }
-      body = parsed as ResetPasswordRequest;
+      body = result.data;
     } catch (error) {
       apiLogger.error('Invalid JSON in reset password request', error as Error);
       return jsonResponse({ 
         success: false, 
         error: 'Invalid JSON payload' 
-      }, 400);
-    }
-
-    // Validate required fields
-    if (!body.token) {
-      return jsonResponse({
-        success: false,
-        error: 'token is required'
-      }, 400);
-    }
-
-    if (!body.password) {
-      return jsonResponse({
-        success: false,
-        error: 'password is required'
       }, 400);
     }
 
@@ -91,7 +86,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       // Parse error message from SSO Worker
       let errorMessage = 'Failed to reset password';
       try {
-        const errorData = JSON.parse(errorText);
+        const errorData: { error?: string } = JSON.parse(errorText);
         errorMessage = errorData.error || errorMessage;
       } catch {
         // Use default error message
@@ -104,7 +99,13 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     }
 
     const ssoData = await ssoResponse.json();
-    if (typeof ssoData !== 'object' || ssoData === null) {
+    
+    // Validate SSO response using Zod
+    let validatedData: z.infer<typeof ssoResponseSchema>;
+    try {
+      validatedData = ssoResponseSchema.parse(ssoData);
+    } catch (parseError) {
+      apiLogger.error('Invalid SSO response format', parseError as Error);
       throw new Error('Invalid SSO response');
     }
 
@@ -112,9 +113,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
     return jsonResponse({
       success: true,
-      reset: (ssoData && typeof ssoData === 'object' && 'reset' in ssoData && typeof ssoData.reset === 'boolean') 
-        ? ssoData.reset 
-        : true,
+      reset: validatedData.reset ?? true,
       message: 'Password reset successfully'
     });
 

@@ -890,6 +890,35 @@ export function getWelcomeSubject(): string {
   return 'Welcome to SkillPassport!';
 }
 
+export function generateWelcomeEmailText(data: WelcomeEmailData): string {
+  const { name, email, role, baseUrl, additionalInfo } = data;
+  
+  return `
+Welcome to SkillPassport!
+
+Hello ${name},
+
+Your account has been created successfully and is ready to use!
+
+Account Details:
+• Email: ${email}
+• Role: ${role}
+
+${additionalInfo ? `\nAdditional Information:\n${additionalInfo}\n` : ''}
+
+Get started by logging into your account:
+${baseUrl}/login
+
+If you have any questions, please don't hesitate to contact our support team.
+
+Best regards,
+The SkillPassport Team
+
+---
+© ${new Date().getFullYear()} skillpassport.rareminds.in
+  `.trim();
+}
+
 // ==================== PASSWORD RESET TEMPLATE ====================
 
 export interface PasswordResetData {
@@ -1270,7 +1299,6 @@ export function getInterviewReminderSubject(): string {
 
 export interface EmailVerificationData {
   verifyUrl: string;
-  recipientEmail?: string;
 }
 
 export function generateEmailVerificationHtml(data: EmailVerificationData): string {

@@ -5,6 +5,12 @@
 
 import type { PagesEnv } from '../../src/functions-lib/types';
 import { apiLogger } from './logger';
+import { z } from 'zod';
+
+// Zod schema for email service response validation
+const emailServiceResponseSchema = z.object({
+  messageId: z.string().optional()
+});
 
 const FROM_EMAIL = 'noreply@rareminds.in';
 const FROM_NAME = 'Skill Passport';
@@ -49,8 +55,12 @@ export async function sendEmail(
       fromName: payload.fromName || FROM_NAME,
     });
 
-    // Validate the result structure
-    if (!result || typeof result !== 'object') {
+    // Validate the result structure using Zod
+    let validatedResult;
+    try {
+      validatedResult = emailServiceResponseSchema.parse(result);
+    } catch (parseError) {
+      apiLogger.error('Invalid email service response format', parseError as Error);
       throw new Error('Invalid email service response');
     }
 
@@ -58,9 +68,7 @@ export async function sendEmail(
     
     return {
       success: true,
-      messageId: (result && typeof result === 'object' && 'messageId' in result && typeof result.messageId === 'string') 
-        ? result.messageId 
-        : undefined,
+      messageId: validatedResult.messageId,
     };
   } catch (error) {
     apiLogger.error('Failed to send email', error as Error);

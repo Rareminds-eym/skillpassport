@@ -8,6 +8,7 @@ import { jsonResponse } from '../../../../src/functions-lib';
 import { sendEmail } from '../../../lib/email-service';
 import {
   generateWelcomeEmailHtml,
+  generateWelcomeEmailText,
   getWelcomeSubject,
   type WelcomeEmailData,
 } from '../services/templates';
@@ -15,19 +16,19 @@ import { apiLogger } from '../../../lib/logger';
 import { z } from 'zod';
 
 const welcomeEmailSchema = z.object({
-  to: z.string({ message: 'Missing required fields: to, name, role, baseUrl' })
+  to: z.string({ message: 'Email address is required' })
     .trim()
-    .min(1, 'Missing required fields: to, name, role, baseUrl')
+    .min(1, 'Email address is required')
     .email('Invalid email address'),
-  name: z.string({ message: 'Missing required fields: to, name, role, baseUrl' })
+  name: z.string({ message: 'Name is required' })
     .trim()
-    .min(1, 'Missing required fields: to, name, role, baseUrl'),
-  role: z.string({ message: 'Missing required fields: to, name, role, baseUrl' })
+    .min(1, 'Name is required'),
+  role: z.string({ message: 'Role is required' })
     .trim()
-    .min(1, 'Missing required fields: to, name, role, baseUrl'),
-  baseUrl: z.string({ message: 'Missing required fields: to, name, role, baseUrl' })
+    .min(1, 'Role is required'),
+  baseUrl: z.string({ message: 'Base URL is required' })
     .trim()
-    .min(1, 'Missing required fields: to, name, role, baseUrl'),
+    .min(1, 'Base URL is required'),
   additionalInfo: z.string().trim().optional(),
 });
 
@@ -61,7 +62,7 @@ export async function handleWelcomeEmail(
 
     const subject = getWelcomeSubject();
     const html = generateWelcomeEmailHtml(templateData);
-    const text = `Welcome to SkillPassport!\n\nHello ${body.name},\n\nYour account has been created successfully and is ready to use!\n\nEmail: ${body.to}\nRole: ${body.role}\n\nLogin now: ${body.baseUrl}/login\n\nIf you have any questions, please don't hesitate to contact our support team.`;
+    const text = generateWelcomeEmailText(templateData);
 
     // Send email via email-worker
     const emailResult = await sendEmail(env, {

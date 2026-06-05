@@ -61,7 +61,8 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
     apiLogger.info('Processing password reset email request', {
       to: body.to
-      // Note: resetUrl not logged for security reasons
+      // SECURITY: resetUrl contains sensitive token and MUST NOT be logged
+      // This policy should be enforced across all endpoints handling sensitive URLs
     });
 
     // Generate beautiful HTML email

@@ -86,8 +86,10 @@ export const onRequest: PagesFunction = async (context) => {
       }, 400);
     }
 
-    // Note: /verification and /password-reset are handled by direct endpoint files
-    // (password-reset.ts and verification.ts in the same directory)
+    // Note: /verification and /password-reset routes are excluded from this router
+    // They are handled by dedicated endpoint files (verification.ts and password-reset.ts)
+    // This separation allows for specialized validation and security handling
+    // for authentication-related email templates
     
     if (path === '/event-confirmation') {
       return await handleEventConfirmation(body, env);

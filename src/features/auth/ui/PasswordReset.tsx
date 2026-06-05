@@ -1,5 +1,6 @@
 import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { z } from 'zod';
 import { 
   Mail, 
   AlertCircle, 
@@ -12,6 +13,35 @@ import {
   Clock,
   RefreshCw
 } from 'lucide-react';
+
+// Zod schema for API response validation
+const apiResponseSchema = z.object({
+  success: z.boolean(),
+  error: z.string().optional(),
+  message: z.string().optional()
+});
+
+// Helper function for safe API calls with validation
+const makeApiCall = async (url: string, body: object): Promise<{
+  response: Response;
+  data: z.infer<typeof apiResponseSchema>;
+}> => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  const result = await response.json();
+  
+  // Validate response using Zod
+  try {
+    const data = apiResponseSchema.parse(result);
+    return { response, data };
+  } catch (validationError) {
+    throw new Error('Invalid response format from server');
+  }
+};
 
 interface PasswordResetState {
   step: 'email' | 'otp' | 'success';
@@ -93,27 +123,33 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      let response: Response;
-      let apiResult: ApiResponse;
+      let apiResult: z.infer<typeof apiResponseSchema>;
       
       try {
-        response = await fetch('/api/user/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'send', email: state.email })
+        const { response, data } = await makeApiCall('/api/user/reset-password', { 
+          action: 'send', 
+          email: state.email 
         });
-
-        const result = await response.json();
-        if (!result || typeof result !== 'object') {
-          throw new Error('Invalid response format');
+        apiResult = data;
+        
+        if (!response.ok || !apiResult.success) {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: apiResult.error || 'Failed to send reset code'
+          }));
+          return;
         }
-        apiResult = result as ApiResponse;
       } catch (fetchError) {
         // Handle network errors, JSON parsing errors, etc.
+        const errorMessage = fetchError instanceof Error 
+          ? `Network error: ${fetchError.message}` 
+          : 'Network error. Please check your connection and try again.';
+        
         setState(prev => ({
           ...prev,
           loading: false,
-          error: 'Network error. Please check your connection and try again.'
+          error: errorMessage
         }));
         return;
       }
@@ -176,26 +212,38 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      let response: Response;
-      let apiResult: ApiResponse;
+      let apiResult: z.infer<typeof apiResponseSchema>;
       
       try {
-        response = await fetch('/api/user/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            action: 'reset-password', 
-            email: state.email, 
-            otp: state.otp, 
-            newPassword: state.newPassword 
-          })
+        const { response, data } = await makeApiCall('/api/user/reset-password', { 
+          action: 'reset-password', 
+          email: state.email, 
+          otp: state.otp, 
+          newPassword: state.newPassword 
         });
-
-        const result = await response.json();
-        if (!result || typeof result !== 'object') {
-          throw new Error('Invalid response format');
+        apiResult = data;
+        
+        if (!response.ok || !apiResult.success) {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: apiResult.error || 'Failed to reset password'
+          }));
+          return;
         }
-        apiResult = result as ApiResponse;
+      } catch (fetchError) {
+        // Handle network errors, JSON parsing errors, etc.
+        const errorMessage = fetchError instanceof Error 
+          ? `Network error: ${fetchError.message}` 
+          : 'Network error. Please check your connection and try again.';
+        
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: errorMessage
+        }));
+        return;
+      }
       } catch (fetchError) {
         // Handle network errors, JSON parsing errors, etc.
         setState(prev => ({
@@ -237,23 +285,36 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      let response: Response;
-      let apiResult: ApiResponse;
+      let apiResult: z.infer<typeof apiResponseSchema>;
       
       try {
-        response = await fetch('/api/user/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'send', email: state.email })
+        const { response, data } = await makeApiCall('/api/user/reset-password', { 
+          action: 'send', 
+          email: state.email 
         });
-
-        const result = await response.json();
-        if (!result || typeof result !== 'object') {
-          throw new Error('Invalid response format');
+        apiResult = data;
+        
+        if (!response.ok || !apiResult.success) {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: apiResult.error || 'Failed to resend code'
+          }));
+          return;
         }
-        apiResult = result as ApiResponse;
       } catch (fetchError) {
         // Handle network errors, JSON parsing errors, etc.
+        const errorMessage = fetchError instanceof Error 
+          ? `Network error: ${fetchError.message}` 
+          : 'Network error. Please check your connection and try again.';
+        
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: errorMessage
+        }));
+        return;
+      }
         setState(prev => ({
           ...prev,
           loading: false,
