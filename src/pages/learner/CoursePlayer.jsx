@@ -22,7 +22,7 @@ import { RestoreProgressModal } from '@/features/courses';
 import { Badge, Button, Card, CardContent, CertificateNameModal } from '@/shared/ui';
 import { useUser } from '@/features/auth';
 import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
 import { courseProgressService } from '@/features/courses';
@@ -633,51 +633,36 @@ const CoursePlayer = () => {
     }
 
     try {
-      // Fetch current time from database first
-      const { data: existing, error: fetchError } = await supabase
-        .from('learner_course_progress')
-        .select('time_spent_seconds')
-        .eq('learner_id', user.id)
-        .eq('course_id', courseId)
-        .eq('lesson_id', targetLessonId)
-        .maybeSingle();
+      const existingRes = await apiPost('/learner-pages/actions', {
+        action: 'fetch-course-time',
+        userId: user.id,
+        courseId,
+        lessonId: targetLessonId,
+      });
 
-      if (fetchError) {
-        console.error('Error fetching current time:', fetchError);
-        return;
-      }
-
-      // Calculate total time by adding to database value
-      const currentTimeInDb = existing?.time_spent_seconds || 0;
+      const currentTimeInDb = existingRes?.data?.time_spent_seconds || 0;
       const totalTime = currentTimeInDb + additionalSeconds;
 
       console.log('Saving time:', { additionalSeconds, currentTimeInDb, totalTime, lessonId: targetLessonId });
 
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert({
-          learner_id: user.id,
-          course_id: courseId,
-          lesson_id: targetLessonId,
-          time_spent_seconds: totalTime,
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
+      await apiPost('/learner-pages/actions', {
+        action: 'upsert-course-time',
+        userId: user.id,
+        courseId,
+        lessonId: targetLessonId,
+        timeSpentSeconds: totalTime,
+        lastAccessed: new Date().toISOString(),
+      });
 
-      if (error) {
-        console.error('Error saving time spent:', error);
-      } else {
-        // Update accumulated time state only if this is the current lesson
-        if (targetLessonId === currentLessonId) {
-          setAccumulatedTime(totalTime);
-        }
-        // Also update the lessonTimeSpent map for sidebar display
-        setLessonTimeSpent(prev => ({
-          ...prev,
-          [targetLessonId]: totalTime
-        }));
+      // Update accumulated time state only if this is the current lesson
+      if (targetLessonId === currentLessonId) {
+        setAccumulatedTime(totalTime);
       }
+      // Also update the lessonTimeSpent map for sidebar display
+      setLessonTimeSpent(prev => ({
+        ...prev,
+        [targetLessonId]: totalTime
+      }));
     } catch (error) {
       console.error('Error in saveTimeSpent:', error);
     }
@@ -688,23 +673,12 @@ const CoursePlayer = () => {
     if (!user?.id || !courseId || !isLearner) return;
 
     try {
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert({
-          learner_id: user.id,
-          course_id: courseId,
-          lesson_id: lessonId,
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
-
-      if (error) {
-        console.error('Error marking lesson complete:', error);
-        return;
-      }
+      await apiPost('/learner-pages/actions', {
+        action: 'mark-lesson-completed',
+        userId: user.id,
+        courseId,
+        lessonId,
+      });
 
       // Check if all lessons in the course are now completed
       await checkAndUpdateCourseCompletion();
@@ -753,33 +727,22 @@ const CoursePlayer = () => {
       const totalLessons = course.modules?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 0;
       if (totalLessons === 0) return;
 
-      // Get completed lessons count from database
-      const { count: completedCount, error: countError } = await supabase
-        .from('learner_course_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('learner_id', user.id)
-        .eq('course_id', courseId)
-        .eq('status', 'completed');
+      const countRes = await apiPost('/learner-pages/actions', {
+        action: 'count-completed-lessons',
+        userId: user.id,
+        courseId,
+      });
 
-      if (countError) {
-        console.error('Error checking completion:', countError);
-        return;
-      }
+      const completedCount = countRes?.data?.count || 0;
 
       // If all lessons are completed, update course_enrollments.completed_at
       if (completedCount >= totalLessons) {
-        const { error: updateError } = await supabase
-          .from('course_enrollments')
-          .update({ completed_at: new Date().toISOString() })
-          .eq('learner_id', user.id)
-          .eq('course_id', courseId)
-          .is('completed_at', null); // Only update if not already completed
-
-        if (updateError) {
-          console.error('Error updating course completion:', updateError);
-        } else {
-          console.log('🎉 Course marked as completed!');
-        }
+        await apiPost('/learner-pages/actions', {
+          action: 'update-course-completed-at',
+          userId: user.id,
+          courseId,
+        });
+        console.log('🎉 Course marked as completed!');
       }
     } catch (error) {
       console.error('Error in checkAndUpdateCourseCompletion:', error);
@@ -797,52 +760,40 @@ const CoursePlayer = () => {
     console.log('📚 initializeLessonProgress for lesson:', currentLesson.title, 'ID:', currentLesson.id);
 
     try {
-      // Check if progress record exists
-      const { data: existing, error: fetchError } = await supabase
-        .from('learner_course_progress')
-        .select('*')
-        .eq('learner_id', user.id)
-        .eq('course_id', courseId)
-        .eq('lesson_id', currentLesson.id)
-        .maybeSingle();
+      const existingRes = await apiPost('/learner-pages/actions', {
+        action: 'get-lesson-progress',
+        userId: user.id,
+        courseId,
+        lessonId: currentLesson.id,
+      });
 
-      if (fetchError) {
-        console.error('Error fetching lesson progress:', fetchError);
-        return;
-      }
+      const existing = existingRes?.data;
 
       // If record exists, load accumulated time
       if (existing) {
         setAccumulatedTime(existing.time_spent_seconds || 0);
         console.log('📚 Loaded existing progress for lesson:', currentLesson.title, 'Time:', existing.time_spent_seconds);
 
-        // Update last_accessed
-        await supabase
-          .from('learner_course_progress')
-          .update({
-            last_accessed: new Date().toISOString(),
-            status: existing.status === 'completed' ? 'completed' : 'in_progress'
-          })
-          .eq('id', existing.id);
+        await apiPost('/learner-pages/actions', {
+          action: 'upsert-lesson-progress',
+          userId: user.id,
+          courseId,
+          lessonId: currentLesson.id,
+          status: existing.status === 'completed' ? 'completed' : 'in_progress',
+        });
       } else {
         // Create new progress record
         console.log('📚 Creating new progress record for lesson:', currentLesson.title);
         setAccumulatedTime(0);
         
-        const { error: insertError } = await supabase
-          .from('learner_course_progress')
-          .insert({
-            learner_id: user.id,
-            course_id: courseId,
-            lesson_id: currentLesson.id,
-            status: 'in_progress',
-            time_spent_seconds: 0,
-            last_accessed: new Date().toISOString()
-          });
-          
-        if (insertError && insertError.code !== '23505') {
-          console.error('Error creating lesson progress:', insertError);
-        }
+        await apiPost('/learner-pages/actions', {
+          action: 'upsert-lesson-progress',
+          userId: user.id,
+          courseId,
+          lessonId: currentLesson.id,
+          status: 'in_progress',
+          timeSpentSeconds: 0,
+        });
       }
 
       // Also update the course enrollment's last position
@@ -1049,38 +1000,19 @@ const CoursePlayer = () => {
     try {
       setLoading(true);
 
-      // Fetch course basic info
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('course_id', courseId)
-        .maybeSingle();
+      const fullRes = await apiPost('/learner-pages/actions', {
+        action: 'fetch-course-full',
+        courseId,
+      });
 
-      if (courseError) throw courseError;
-
+      const courseData = fullRes?.data;
       if (!courseData) {
         navigate(getBackPath());
         return;
       }
 
-      // Fetch modules with lessons and resources
-      const { data: modulesData, error: modulesError } = await supabase
-        .from('course_modules')
-        .select(`
-          *,
-          lessons!fk_module (
-            *,
-            lesson_resources!fk_lesson (*)
-          )
-        `)
-        .eq('course_id', courseId)
-        .order('order_index', { ascending: true });
-
-      if (modulesError) {
-        console.error('Error fetching modules:', modulesError);
-      }
-
-      console.log('Raw modules data from Supabase:', modulesData);
+      const modulesData = courseData.modules || [];
+      console.log('Raw modules data:', modulesData);
 
       // Transform modules data to match expected structure
       const transformedModules = (modulesData || []).map(module => {
@@ -1142,11 +1074,13 @@ const CoursePlayer = () => {
 
       // Load time spent for all lessons from database (for learners only)
       if (isLearner && user?.id && transformedModules.length > 0) {
-        const { data: progressData } = await supabase
-          .from('learner_course_progress')
-          .select('lesson_id, time_spent_seconds')
-          .eq('learner_id', user.id)
-          .eq('course_id', courseId);
+        const timeRes = await apiPost('/learner-pages/actions', {
+          action: 'fetch-all-lesson-times',
+          userId: user.id,
+          courseId,
+        });
+
+        const progressData = timeRes?.data;
 
         if (progressData && progressData.length > 0) {
           const timeSpentMap = {};
@@ -1420,11 +1354,13 @@ const CoursePlayer = () => {
       // Get learner's database ID and user's name from learners table
       let learnerRecord;
       try {
-        const { data, error: learnerError } = await supabase
-          .from('learners')
-          .select('id, learner_id, name')
-          .eq('user_id', user.id)
-          .single();
+        const learnerRes = await apiPost('/learner-pages/actions', {
+          action: 'fetch-learner-record',
+          userId: user.id,
+        });
+        
+        const data = learnerRes?.data;
+        const learnerError = !data ? new Error('Not found') : null;
 
         if (learnerError || !data) {
           logger.error('Error fetching learner record', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
@@ -1451,15 +1387,12 @@ const CoursePlayer = () => {
       // Get learner name from learners table
       const prefillName = learnerRecord.name || user?.email?.split('@')[0] || '';
 
-      const { error } = await supabase
-        .from('course_enrollments')
-        .update({ 
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          progress: 100
-        })
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId);
+      await apiPost('/learner-pages/actions', {
+        action: 'complete-course-enrollment',
+        learnerId,
+        courseId,
+      });
+      const error = null; // for the logging condition below
 
       if (error) {
         logger.error('Error completing course', error instanceof Error ? error : new Error(String(error)));

@@ -4,8 +4,9 @@
  * Generates a signed upload URL for Supabase Storage.
  * Requires SSO authentication. Validates path ownership.
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
+import { apiSuccess, apiError } from '../../lib/response';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 interface UploadUrlRequest {
@@ -15,27 +16,26 @@ interface UploadUrlRequest {
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
 
   let body: UploadUrlRequest;
   try {
     body = await context.request.json() as UploadUrlRequest;
   } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
   if (!body.bucket || !body.path) {
-    return Response.json({ error: 'bucket and path are required' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'bucket and path are required', context.request);
   }
 
-  // Validate path ownership: users can only upload to their own paths unless admin
   const isAdmin = user.roles.some((r: string) =>
     ['admin', 'owner', 'school_admin', 'college_admin', 'university_admin'].includes(r)
   );
 
-  if (!isAdmin && !body.path.startsWith(`${user.sub}/`)) {
-    return Response.json({ error: 'Forbidden: cannot upload to this path' }, { status: 403 });
+  if (!isAdmin && !body.path.startsWith(`${user.id}/`)) {
+    return apiError(403, 'FORBIDDEN', 'Forbidden: cannot upload to this path', context.request);
   }
 
   const supabase = getServiceClient(env as any);
@@ -45,12 +45,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     .createSignedUploadUrl(body.path);
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
   }
 
-  return Response.json({
+  return apiSuccess({
     signedUrl: data.signedUrl,
     path: data.path,
     token: data.token,
-  });
+  }, context.request);
 });

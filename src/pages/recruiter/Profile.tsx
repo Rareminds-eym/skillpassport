@@ -238,45 +238,6 @@ const RecruiterProfile: React.FC = () => {
               </div>
             </div>
 
-            <div className="min-w-0">
-              <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">
-                {recruiter.name}
-              </h1>
-              <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-slate-400" />
-                <span className="truncate">{recruiter.email}</span>
-              </p>
-
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-100 px-3 py-1 rounded-full text-xs text-slate-600">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span className="font-medium">
-                    {recruiter.verificationstatus || "Pending"}
-                  </span>
-                </div>
-
-                <div
-                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs ${recruiter.isactive
-                    ? "bg-white border border-slate-100 text-emerald-700"
-                    : "bg-white border border-slate-100 text-rose-600"
-                    }`}
-                >
-                  {recruiter.isactive ? (
-                    <CheckCircle className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <XCircle className="w-4 h-4 text-rose-500" />
-                  )}
-                  <span className="font-medium">
-                    {recruiter.isactive ? "Active" : "Inactive"}
-                  </span>
-                </div>
-
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs bg-white border border-slate-100 text-slate-600">
-                  <Calendar className="w-4 h-4 text-slate-400" />
-                  <span>Member since {formatDate(recruiter.createdat)}</span>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* right: quick actions */}

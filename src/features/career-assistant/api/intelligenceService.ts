@@ -3,7 +3,7 @@
  * Provides advanced analytics, career readiness scoring, and intelligent insights
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { LearnerProfile } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
@@ -342,37 +342,8 @@ class IntelligenceService {
    */
   private async getInDemandSkills(): Promise<string[]> {
     try {
-      const { data } = await supabase
-        .from('opportunities')
-        .select('skills_required')
-        .limit(50);
-
-      if (!data) return this.getDefaultInDemandSkills();
-
-      const skillsMap = new Map<string, number>();
-      
-      data.forEach((job: any) => {
-        let skills: string[] = [];
-        if (Array.isArray(job.skills_required)) {
-          skills = job.skills_required;
-        } else if (typeof job.skills_required === 'string') {
-          try {
-            skills = JSON.parse(job.skills_required);
-          } catch (e) {}
-        }
-
-        skills.forEach(skill => {
-          if (skill) {
-            const normalized = skill.toLowerCase().trim();
-            skillsMap.set(normalized, (skillsMap.get(normalized) || 0) + 1);
-          }
-        });
-      });
-
-      return Array.from(skillsMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 20)
-        .map(([skill]) => skill);
+      const response: any = await apiGet('/career/skills-demand');
+      return response.data || this.getDefaultInDemandSkills();
     } catch (error) {
       logger.error('Failed to fetch in-demand skills from database', error as Error);
       return this.getDefaultInDemandSkills();
@@ -395,17 +366,7 @@ class IntelligenceService {
    */
   private async saveReadinessScore(learnerId: string, data: any): Promise<void> {
     try {
-      await supabase.from('career_readiness_scores').insert({
-        learner_id: learnerId,
-        overall_score: data.overall_score,
-        profile_completeness: data.profileCompleteness,
-        skills_marketability: data.skillsMarketability,
-        experience_level: data.experienceLevel,
-        project_quality: data.projectQuality,
-        learning_consistency: data.learningConsistency,
-        breakdown: data.breakdown,
-        recommendations: data.recommendations
-      });
+      await apiPost('/career/readiness-score', data);
     } catch (error) {
       logger.error('Failed to save career readiness score', error as Error);
     }
@@ -511,14 +472,17 @@ class IntelligenceService {
     }
 
     // Save to database
-    await supabase.from('profile_health_analysis').insert({
-      learner_id: profile.id,
-      completeness_score: completenessScore,
-      missing_sections: missingSections,
-      weak_sections: weakSections,
-      improvement_suggestions: suggestions,
-      estimated_impact: estimatedImpact
-    });
+    try {
+      await apiPost('/career/profile-health', {
+        completeness_score: completenessScore,
+        missing_sections: missingSections,
+        weak_sections: weakSections,
+        improvement_suggestions: suggestions,
+        estimated_impact: estimatedImpact,
+      });
+    } catch (error) {
+      logger.error('Failed to save profile health analysis', error as Error);
+    }
 
     return {
       completeness_score: completenessScore,
@@ -537,14 +501,8 @@ class IntelligenceService {
     const cohort = this.determineCohort(profile);
 
     try {
-      // Get benchmark data for cohort
-      const { data: benchmarks } = await supabase
-        .from('peer_benchmarks')
-        .select('*')
-        .eq('cohort', cohort)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
+      const response: any = await apiGet(`/career/peer-benchmarks?cohort=${encodeURIComponent(cohort)}`);
+      const benchmarks = response.data;
 
       if (benchmarks) {
         const yourSkills = profile.profile?.technicalSkills?.length || 0;

@@ -38,10 +38,8 @@ import { useSmartScroll } from '@/features/career-assistant/hooks/useSmartScroll
 import { useConversationSwitcher } from '@/features/career-assistant/hooks/useConversationSwitcher';
 import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
 
-import { useCareerAssistant } from '@/features/career-assistant/model/careerAssistantStore';
+
 import { useUser } from '@/shared/model/authStore';
-// Import Context Provider
-;
 
 // Import constants
 import {
@@ -458,44 +456,114 @@ const CareerAssistantContainer: React.FC = () => {
 
   // ==================== RENDER ====================
   
-  return <CareerAssistantUI />;
+  return (
+    <CareerAssistantUI
+      showWelcome={showWelcome}
+      selectedChips={selectedChips}
+      setSelectedChips={setSelectedChips}
+      sidebarCollapsed={sidebarCollapsed}
+      setSidebarCollapsed={setSidebarCollapsed}
+      messages={messages}
+      loading={loading}
+      isTyping={isTyping}
+      input={input}
+      setInput={setInput}
+      onSendMessage={handleSend}
+      onStopTyping={stopTyping}
+      messagesContainerRef={messagesContainerRef}
+      messagesEndRef={messagesEndRef}
+      handleScroll={handleScroll}
+      userScrolledUp={userScrolledUp}
+      setUserScrolledUp={setUserScrolledUp}
+      scrollToBottom={scrollToBottom}
+      getFeedback={getFeedback}
+      isFeedbackLoading={isFeedbackLoading}
+      submitFeedback={submitFeedback}
+      onSendQuery={(query: string) => {
+        setInput(query);
+        setAutoSendQuery(true);
+      }}
+      conversations={conversations}
+      currentConversationId={currentConversationId}
+      selectConversation={selectConversation}
+      newConversation={newConversation}
+      deleteConversation={deleteConversation}
+      conversationsLoading={conversationsLoading}
+      hasMore={hasMore}
+      loadMore={loadMore}
+    />
+  );
 };
+
+interface CareerAssistantUIProps {
+  showWelcome: boolean;
+  selectedChips: string[];
+  setSelectedChips: React.Dispatch<React.SetStateAction<string[]>>;
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+  messages: Message[];
+  loading: boolean;
+  isTyping: boolean;
+  input: string;
+  setInput: React.Dispatch<React.SetStateAction<string>>;
+  onSendMessage: () => void;
+  onStopTyping: () => void;
+  messagesContainerRef: React.RefObject<HTMLDivElement | null>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  handleScroll: () => void;
+  userScrolledUp: boolean;
+  setUserScrolledUp: React.Dispatch<React.SetStateAction<boolean>>;
+  scrollToBottom: (smooth?: boolean) => void;
+  getFeedback: (messageId: string) => any;
+  isFeedbackLoading: (messageId: string) => boolean;
+  submitFeedback: (messageId: string, type: 'positive' | 'negative') => void;
+  onSendQuery: (query: string) => void;
+  conversations: any[];
+  currentConversationId: string | null;
+  selectConversation: (id: string) => void;
+  newConversation: () => void;
+  deleteConversation: (id: string) => void;
+  conversationsLoading: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+}
 
 /**
  * Career Assistant UI Component
  * Uses Zustand store for state management
  */
-const CareerAssistantUI: React.FC = () => {
-  const {
-    // UI state
-    showWelcome,
-    selectedChips,
-    sidebarCollapsed,
-    messages,
-    loading,
-    isTyping,
-    input,
-    
-    // Handlers
-    onToggleSidebar,
-    onQuickAction,
-    onRemoveChip,
-    onSendMessage,
-    setInput,
-    
-    // Scroll
-    messagesContainerRef,
-    messagesEndRef,
-    handleScroll,
-    userScrolledUp,
-    scrollToBottom,
-    onStopTyping,
-    onSendQuery,
-    onFeedback,
-    getFeedback,
-    isFeedbackLoading,
-    setUserScrolledUp,
-  } = useCareerAssistant();
+const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
+  showWelcome,
+  selectedChips,
+  setSelectedChips,
+  sidebarCollapsed,
+  setSidebarCollapsed,
+  messages,
+  loading,
+  isTyping,
+  input,
+  setInput,
+  onSendMessage,
+  onStopTyping,
+  messagesContainerRef,
+  messagesEndRef,
+  handleScroll,
+  userScrolledUp,
+  setUserScrolledUp,
+  scrollToBottom,
+  getFeedback,
+  isFeedbackLoading,
+  submitFeedback,
+  onSendQuery,
+  conversations,
+  currentConversationId,
+  selectConversation,
+  newConversation,
+  deleteConversation,
+  conversationsLoading,
+  hasMore,
+  loadMore,
+}) => {
   
   const inputRef = useRef<HTMLInputElement>(null);
   const userInteractedRef = useRef(false);
@@ -510,14 +578,25 @@ const CareerAssistantUI: React.FC = () => {
   return (
     <div className="flex h-full min-h-0 bg-white">
       {/* Conversation History Sidebar */}
-      <ConversationSidebar />
+      <ConversationSidebar
+        conversations={conversations}
+        currentConversationId={currentConversationId}
+        onSelectConversation={selectConversation}
+        onNewConversation={newConversation}
+        onDeleteConversation={deleteConversation}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebar={() => setSidebarCollapsed(prev => !prev)}
+        conversationsLoading={conversationsLoading}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
+      />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col max-w-5xl mx-auto relative">
         {/* Mobile sidebar toggle */}
         <div className="md:hidden absolute top-4 left-4 z-10">
           <button
-            onClick={onToggleSidebar}
+            onClick={() => setSidebarCollapsed(v => !v)}
             className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50"
           >
             {sidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
@@ -542,8 +621,8 @@ const CareerAssistantUI: React.FC = () => {
                 </motion.p>
               </div>
 
-              <CareerAIToolsGrid onAction={onQuickAction} variant="full" animated={true} />
-
+              <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="full" animated={true} />
+ 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
                 💡 Click a card above or type your question below to get started
               </motion.div>
@@ -553,7 +632,7 @@ const CareerAssistantUI: React.FC = () => {
               {selectedChips.length === 0 && messages.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
                   <p className="text-sm text-gray-500 mb-3 text-center">Quick Actions:</p>
-                  <CareerAIToolsGrid onAction={onQuickAction} variant="compact" animated={true} />
+                  <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="compact" animated={true} />
                 </motion.div>
               )}
 
@@ -595,7 +674,7 @@ const CareerAssistantUI: React.FC = () => {
                           timestamp={message.timestamp} 
                           isUser={false}
                           messageId={message.id}
-                          onFeedback={onFeedback}
+                           onFeedback={(id, type) => submitFeedback(id, type)}
                           feedbackData={getFeedback(message.id)}
                           feedbackLoading={isFeedbackLoading(message.id)}
                         />
@@ -700,7 +779,7 @@ const CareerAssistantUI: React.FC = () => {
                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium border border-gray-200"
                   >
                     <span>{chip}</span>
-                    <button onClick={() => onRemoveChip(chip)} className="hover:bg-gray-200 rounded-full p-0.5 transition-colors" aria-label={`Remove ${chip}`}>
+                    <button onClick={() => setSelectedChips(prev => prev.filter(c => c !== chip))} className="hover:bg-gray-200 rounded-full p-0.5 transition-colors" aria-label={`Remove ${chip}`}>
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </motion.div>

@@ -1,8 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import {
   ClipboardList,
@@ -95,7 +92,7 @@ const transformAssignment = (dbAssignment) => ({
 const Assignments = () => {
   const queryClient = useQueryClient();
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id || user?.id;
 

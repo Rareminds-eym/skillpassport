@@ -1,19 +1,8 @@
-/**
- * Organization Billing Service
- * 
- * Handles billing dashboard, invoicing, cost projections, and payment management
- * for organization-level subscriptions.
- */
-
-import { supabase } from '@/shared/api';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('organizationBilling');
-
-// ============================================================================
-// Types & Interfaces
-// ============================================================================
 
 export interface BillingPeriod {
   startDate: string;
@@ -29,7 +18,7 @@ export interface SubscriptionSummary {
   planName: string;
   seatCount: number;
   assignedSeats: number;
-  utilization: number; // percentage
+  utilization: number;
   monthlyCost: number;
   status: string;
   endDate: string;
@@ -134,103 +123,67 @@ export interface CostProjection {
   currentMonthlyCost: number;
   projectedMonthlyCost: number;
   projectedAnnualCost: number;
-  breakdown: {
-    subscriptions: number;
-    addons: number;
-    taxes: number;
-  };
+  breakdown: { subscriptions: number; addons: number; taxes: number };
 }
 
-// ============================================================================
-// Service Class
-// ============================================================================
-
 export class OrganizationBillingService {
-  /**
-   * Get comprehensive billing dashboard for an organization
-   */
   async getBillingDashboard(
     organizationId: string,
     organizationType: 'school' | 'college' | 'university'
   ): Promise<BillingDashboard> {
     try {
-      // 1. Get all active subscriptions
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscription_cache')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('organization_type', organizationType)
-        .eq('is_org_subscription', true)
-        .in('status', ['active', 'grace_period']);
+      const subscriptions = await apiGet<any[]>(`/organization?action=getSubscriptions&orgId=${encodeURIComponent(organizationId)}&orgType=${organizationType}`);
 
-      if (subError) throw subError;
-
-      // 2. Get payment history from auth DB via API
       let payments: any[] = [];
       try {
         const origin = window.location.origin;
-        const res = await ssoClient.fetch(
-            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&limit=20`, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
+        const res = await ssoClient.fetch(`${origin}/api/payments/get-user-payments?organization_id=${organizationId}&limit=20`, {
+          headers: { 'Content-Type': 'application/json' },
         });
-          if (res.ok) {
-            const json = await res.json();
-            payments = json.transactions || json.data || [];
-          }
+        if (res.ok) {
+          const json = await res.json();
+          const inner = json.data || json;
+          payments = inner.transactions || inner.data || [];
+        }
       } catch (payErr) {
         logger.error('Error fetching payment history', payErr as Error);
       }
 
-      // 3. Get addon purchases for organization
-      // We no longer query the deprecated addon_pending_orders table.
-      // Instead, we filter addon purchases from the payment history.
       const addons = payments.filter(p => p.transaction_type === 'addon' && p.status === 'success');
-
-      // 4. Calculate current period
       const now = new Date();
       const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
       const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-      // 5. Calculate costs
       let subscriptionCosts = 0;
       let totalActiveSeats = 0;
       let totalAssignedSeats = 0;
 
-      const subscriptionSummaries: SubscriptionSummary[] = (subscriptions || []).map(sub => {
+      const subscriptionSummaries: SubscriptionSummary[] = (subscriptions?.data || []).map((sub: any) => {
         const monthlyCost = this.calculateMonthlyCost(sub);
         subscriptionCosts += monthlyCost;
         totalActiveSeats += sub.seat_count;
         totalAssignedSeats += sub.assigned_seats;
-
         return {
           subscriptionId: sub.id,
           planId: sub.plan_id,
           planName: sub.plan_name || 'Unknown Plan',
           seatCount: sub.seat_count,
           assignedSeats: sub.assigned_seats,
-          utilization: sub.seat_count > 0
-            ? Math.round((sub.assigned_seats / sub.seat_count) * 100)
-            : 0,
+          utilization: sub.seat_count > 0 ? Math.round((sub.assigned_seats / sub.seat_count) * 100) : 0,
           monthlyCost,
           status: sub.status,
-          endDate: sub.subscription_end_date
+          endDate: sub.subscription_end_date,
         };
       });
 
-      // 6. Calculate addon costs
       let addonCosts = 0;
       const addonSummaries: AddonSummary[] = [];
       const addonMap = new Map<string, AddonSummary>();
-
-      (addons || []).forEach(addon => {
+      (addons || []).forEach((addon: any) => {
         const addonKey = addon.metadata?.feature_key || 'unknown';
         const existing = addonMap.get(addonKey);
         const memberCount = addon.metadata?.target_member_ids?.length || addon.seat_count || 1;
-        // Use the amount from the transaction
         const cost = parseFloat(addon.amount ?? 0);
-
         if (existing) {
           existing.memberCount += memberCount;
           existing.monthlyCost += cost;
@@ -239,34 +192,27 @@ export class OrganizationBillingService {
             addonId: addonKey,
             addonName: addonKey.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
             memberCount,
-            monthlyCost: cost
+            monthlyCost: cost,
           });
         }
         addonCosts += cost;
       });
-
       addonMap.forEach(addon => addonSummaries.push(addon));
 
-      // 7. Get upcoming renewals (within 30 days)
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-
-      const upcomingRenewals: UpcomingRenewal[] = (subscriptions || [])
-        .filter(sub => {
-          const endDate = new Date(sub.subscription_end_date);
-          return endDate <= thirtyDaysFromNow && sub.status === 'active';
-        })
-        .map(sub => ({
+      const upcomingRenewals: UpcomingRenewal[] = (subscriptions?.data || [])
+        .filter((sub: any) => new Date(sub.subscription_end_date) <= thirtyDaysFromNow && sub.status === 'active')
+        .map((sub: any) => ({
           subscriptionId: sub.id,
           planName: sub.plan_name || 'Unknown Plan',
           renewalDate: sub.subscription_end_date,
           estimatedCost: parseFloat(sub.final_amount) || 0,
           seatCount: sub.seat_count,
-          autoRenew: sub.auto_renew
+          autoRenew: sub.auto_renew,
         }));
 
-      // 8. Map payment history
-      const paymentHistory: PaymentRecord[] = (payments || []).map(p => ({
+      const paymentHistory: PaymentRecord[] = (payments || []).map((p: any) => ({
         id: p.id,
         transactionId: p.razorpay_payment_id || p.id,
         amount: parseFloat(p.amount),
@@ -275,13 +221,10 @@ export class OrganizationBillingService {
         paymentMethod: p.payment_method || 'unknown',
         description: p.description || 'Subscription payment',
         createdAt: p.created_at,
-        invoiceId: p.invoice_id
+        invoiceId: p.invoice_id,
       }));
 
-      // 9. Calculate overall utilization
-      const overallUtilization = totalActiveSeats > 0
-        ? Math.round((totalAssignedSeats / totalActiveSeats) * 100)
-        : 0;
+      const overallUtilization = totalActiveSeats > 0 ? Math.round((totalAssignedSeats / totalActiveSeats) * 100) : 0;
 
       return {
         organizationId,
@@ -291,7 +234,7 @@ export class OrganizationBillingService {
           endDate: periodEnd.toISOString(),
           totalCost: subscriptionCosts + addonCosts,
           subscriptionCosts,
-          addonCosts
+          addonCosts,
         },
         subscriptions: subscriptionSummaries,
         addons: addonSummaries,
@@ -299,7 +242,7 @@ export class OrganizationBillingService {
         paymentHistory,
         totalActiveSeats,
         totalAssignedSeats,
-        overallUtilization
+        overallUtilization,
       };
     } catch (error) {
       logger.error('Error fetching billing dashboard', error as Error);
@@ -307,103 +250,54 @@ export class OrganizationBillingService {
     }
   }
 
-  /**
-   * Generate an invoice for a transaction
-   */
   async generateInvoice(
     transactionId: string,
-    organizationDetails?: {
-      name: string;
-      gstNumber?: string;
-      billingAddress?: BillingAddress;
-    }
+    organizationDetails?: { name: string; gstNumber?: string; billingAddress?: BillingAddress }
   ): Promise<Invoice> {
     try {
-      // 1. Get transaction details from auth DB via API
       let transaction: any = null;
       try {
         const origin = window.location.origin;
-        const res = await ssoClient.fetch(
-          `${origin}/api/payments/get-user-payments?transaction_id=${transactionId}`, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
+        const res = await ssoClient.fetch(`${origin}/api/payments/get-user-payments?transaction_id=${transactionId}`, {
+          headers: { 'Content-Type': 'application/json' },
         });
         if (res.ok) {
           const json = await res.json();
-          const transactions = json.transactions || json.data || [];
+          const inner = json.data || json;
+          const transactions = inner.transactions || inner.data || [];
           transaction = transactions.find((t: any) => t.id === transactionId) || transactions[0];
         }
       } catch (fetchErr) {
         logger.error('Error fetching transaction from API', fetchErr as Error);
       }
 
-      if (!transaction) {
-        throw new Error('Transaction not found');
-      }
+      if (!transaction) throw new Error('Transaction not found');
 
-      // 2. Get organization subscription details if applicable
       let lineItems: InvoiceLineItem[] = [];
-
       if (transaction.organization_id) {
-        const { data: orgSub } = await supabase
-          .from('subscription_cache')
-          .select('*')
-          .eq('organization_id', transaction.organization_id)
-          .eq('is_org_subscription', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
+        const subscriptionsRes = await apiGet<any[]>(`/organization?action=getSubscriptions&orgId=${encodeURIComponent(transaction.organization_id)}`);
+        const orgSub = subscriptionsRes?.data?.[0];
         if (orgSub) {
           const baseAmount = parseFloat(orgSub.total_amount);
           const discountAmount = (baseAmount * orgSub.discount_percentage) / 100;
           const afterDiscount = baseAmount - discountAmount;
           const taxAmount = afterDiscount * 0.18;
-
           lineItems = [
-            {
-              description: `${orgSub.plan_name || 'Subscription'} - ${orgSub.seat_count} seats`,
-              quantity: orgSub.seat_count,
-              unitPrice: orgSub.price_per_seat,
-              amount: baseAmount,
-              taxRate: 0,
-              taxAmount: 0
-            }
+            { description: `${orgSub.plan_name || 'Subscription'} - ${orgSub.seat_count} seats`, quantity: orgSub.seat_count, unitPrice: orgSub.price_per_seat, amount: baseAmount, taxRate: 0, taxAmount: 0 },
           ];
-
           if (discountAmount > 0) {
-            lineItems.push({
-              description: `Volume Discount (${orgSub.discount_percentage}%)`,
-              quantity: 1,
-              unitPrice: -discountAmount,
-              amount: -discountAmount,
-              taxRate: 0,
-              taxAmount: 0
-            });
+            lineItems.push({ description: `Volume Discount (${orgSub.discount_percentage}%)`, quantity: 1, unitPrice: -discountAmount, amount: -discountAmount, taxRate: 0, taxAmount: 0 });
           }
-
-          lineItems.push({
-            description: 'GST (18%)',
-            quantity: 1,
-            unitPrice: taxAmount,
-            amount: taxAmount,
-            taxRate: 18,
-            taxAmount: taxAmount
-          });
+          lineItems.push({ description: 'GST (18%)', quantity: 1, unitPrice: taxAmount, amount: taxAmount, taxRate: 18, taxAmount });
         }
       }
 
-      // 3. Generate invoice number
       const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 11).toUpperCase()}`;
-
-      // 4. Calculate totals
       const amount = parseFloat(transaction.amount);
-      const taxAmount = amount * 0.18 / 1.18; // Extract tax from total
+      const taxAmount = amount * 0.18 / 1.18;
       const baseAmount = amount - taxAmount;
 
-      // 5. Create invoice record
-      const invoice: Invoice = {
+      return {
         id: `inv_${Date.now()}`,
         invoiceNumber,
         organizationId: transaction.organization_id,
@@ -418,62 +312,38 @@ export class OrganizationBillingService {
         issueDate: new Date().toISOString(),
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         paidDate: transaction.status === 'success' ? transaction.created_at : undefined,
-        lineItems: lineItems.length > 0 ? lineItems : [{
-          description: transaction.description || 'Subscription Payment',
-          quantity: 1,
-          unitPrice: baseAmount,
-          amount: baseAmount,
-          taxRate: 18,
-          taxAmount
-        }],
+        lineItems: lineItems.length > 0 ? lineItems : [{ description: transaction.description || 'Subscription Payment', quantity: 1, unitPrice: baseAmount, amount: baseAmount, taxRate: 18, taxAmount }],
         billingAddress: organizationDetails?.billingAddress,
         gstNumber: organizationDetails?.gstNumber,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
-
-      // 6. Store invoice in database (if invoices table exists)
-      // For now, we return the generated invoice
-      // In production, this would be stored in an invoices table
-
-      return invoice;
     } catch (error) {
       logger.error('Error generating invoice', error as Error);
       throw error;
     }
   }
 
-  /**
-   * Get invoice history for an organization
-   */
-  async getInvoiceHistory(
-    organizationId: string,
-    limit: number = 50
-  ): Promise<Invoice[]> {
+  async getInvoiceHistory(organizationId: string, limit: number = 50): Promise<Invoice[]> {
     try {
-      // Get all successful payment transactions from auth DB via API
       let transactions: any[] = [];
       try {
         const origin = window.location.origin;
-        const res = await ssoClient.fetch(
-            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&status=success&limit=${limit}`, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
+        const res = await ssoClient.fetch(`${origin}/api/payments/get-user-payments?organization_id=${organizationId}&status=success&limit=${limit}`, {
+          headers: { 'Content-Type': 'application/json' },
         });
-          if (res.ok) {
-            const json = await res.json();
-            transactions = json.transactions || json.data || [];
-          }
+        if (res.ok) {
+          const json = await res.json();
+          const inner = json.data || json;
+          transactions = inner.transactions || inner.data || [];
+        }
       } catch (fetchErr) {
         logger.error('Error fetching transactions from API', fetchErr as Error);
       }
 
-      // Generate invoice objects for each transaction
-      const invoices: Invoice[] = (transactions || []).map((tx, index) => {
+      return (transactions || []).map((tx: any, index: number) => {
         const amount = parseFloat(tx.amount);
         const taxAmount = amount * 0.18 / 1.18;
         const baseAmount = amount - taxAmount;
-
         return {
           id: tx.invoice_id || `inv_${tx.id}`,
           invoiceNumber: `INV-${new Date(tx.created_at).getFullYear()}-${String(index + 1).padStart(5, '0')}`,
@@ -489,46 +359,27 @@ export class OrganizationBillingService {
           issueDate: tx.created_at,
           dueDate: tx.created_at,
           paidDate: tx.created_at,
-          lineItems: [{
-            description: tx.description || 'Subscription Payment',
-            quantity: tx.seat_count || 1,
-            unitPrice: baseAmount / (tx.seat_count || 1),
-            amount: baseAmount,
-            taxRate: 18,
-            taxAmount
-          }],
-          createdAt: tx.created_at
+          lineItems: [{ description: tx.description || 'Subscription Payment', quantity: tx.seat_count || 1, unitPrice: baseAmount / (tx.seat_count || 1), amount: baseAmount, taxRate: 18, taxAmount }],
+          createdAt: tx.created_at,
         };
       });
-
-      return invoices;
     } catch (error) {
       logger.error('Error fetching invoice history', error as Error);
       throw error;
     }
   }
 
-  /**
-   * Download invoice as PDF
-   * Calls the backend API to generate and return a PDF blob
-   */
   async downloadInvoice(invoiceId: string): Promise<Blob> {
     try {
       const origin = window.location.origin;
-      const response = await ssoClient.fetch(
-        `${origin}/api/payments/org-billing/invoice/${invoiceId}/download`, {
+      const response = await ssoClient.fetch(`${origin}/api/payments/org-billing/invoice/${invoiceId}/download`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' },
       });
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Failed to download invoice: ${response.status}`);
       }
-
-      // Return the PDF blob
       return await response.blob();
     } catch (error) {
       logger.error('Error downloading invoice', error as Error);
@@ -536,46 +387,25 @@ export class OrganizationBillingService {
     }
   }
 
-  /**
-   * Project monthly cost for an organization
-   */
-  async projectMonthlyCost(
-    organizationId: string,
-    organizationType: 'school' | 'college' | 'university'
-  ): Promise<CostProjection> {
+  async projectMonthlyCost(organizationId: string, organizationType: 'school' | 'college' | 'university'): Promise<CostProjection> {
     try {
-      // Get active subscriptions from subscription_cache
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscription_cache')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('organization_type', organizationType)
-        .eq('is_organization_subscription', true)
-        .eq('status', 'active');
-
-      if (subError) throw subError;
-
-      // Calculate subscription costs
+      const subscriptionsRes = await apiGet<any[]>(`/organization?action=getSubscriptions&orgId=${encodeURIComponent(organizationId)}&orgType=${organizationType}`);
+      const subscriptions = subscriptionsRes?.data || [];
       let subscriptionCost = 0;
-      (subscriptions || []).forEach(sub => {
-        subscriptionCost += this.calculateMonthlyCost(sub);
-      });
+      (subscriptions || []).forEach((sub: any) => { subscriptionCost += this.calculateMonthlyCost(sub); });
 
-      // Get addon costs from auth DB via API
       let addonCost = 0;
       try {
         const origin = window.location.origin;
-        const res = await ssoClient.fetch(
-            `${origin}/api/payments/get-user-payments?organization_id=${organizationId}&limit=50`, {
-          headers: { 'Content-Type': 'application/json' }
+        const res = await ssoClient.fetch(`${origin}/api/payments/get-user-payments?organization_id=${organizationId}&limit=50`, {
+          headers: { 'Content-Type': 'application/json' },
         });
         if (res.ok) {
           const json = await res.json();
-          const payments = json.transactions || json.data || [];
+          const inner = json.data || json;
+          const payments = inner.transactions || inner.data || [];
           payments.filter((p: any) => p.transaction_type === 'addon' && p.status === 'success')
-                 .forEach((addon: any) => {
-                   addonCost += parseFloat(addon.amount ?? 0);
-                 });
+            .forEach((addon: any) => { addonCost += parseFloat(addon.amount ?? 0); });
         }
       } catch (addonError) {
         logger.error('Error fetching addons for projection', addonError as Error);
@@ -589,11 +419,7 @@ export class OrganizationBillingService {
         currentMonthlyCost: totalWithTax,
         projectedMonthlyCost: totalWithTax,
         projectedAnnualCost: totalWithTax * 12,
-        breakdown: {
-          subscriptions: subscriptionCost,
-          addons: addonCost,
-          taxes
-        }
+        breakdown: { subscriptions: subscriptionCost, addons: addonCost, taxes },
       };
     } catch (error) {
       logger.error('Error projecting monthly cost', error as Error);
@@ -601,163 +427,64 @@ export class OrganizationBillingService {
     }
   }
 
-  /**
-   * Calculate cost for adding seats to a subscription
-   */
-  async calculateSeatAdditionCost(
-    subscriptionId: string,
-    additionalSeats: number
-  ): Promise<{
-    additionalSeats: number;
-    pricePerSeat: number;
-    subtotal: number;
-    newDiscountPercentage: number;
-    discountAmount: number;
-    taxAmount: number;
-    totalCost: number;
-    proratedDays: number;
-    proratedCost: number;
+  async calculateSeatAdditionCost(subscriptionId: string, additionalSeats: number): Promise<{
+    additionalSeats: number; pricePerSeat: number; subtotal: number; newDiscountPercentage: number;
+    discountAmount: number; taxAmount: number; totalCost: number; proratedDays: number; proratedCost: number;
   }> {
     try {
-      // Get current subscription from subscription_cache
-      const { data: subscription, error } = await supabase
-        .from('subscription_cache')
-        .select('*')
-        .eq('id', subscriptionId)
-        .single();
-
-      if (error || !subscription) {
-        throw new Error('Subscription not found');
-      }
+      const subscriptionsRes = await apiGet<any[]>(`/organization?action=getSubscriptions&subId=${encodeURIComponent(subscriptionId)}`);
+      const subscriptions = subscriptionsRes?.data || [];
+      const subscription = Array.isArray(subscriptions) ? subscriptions[0] : subscriptions;
+      if (!subscription) throw new Error('Subscription not found');
 
       const newTotalSeats = (subscription.seat_count || 0) + additionalSeats;
       const pricePerSeat = parseFloat(subscription.price_per_seat ?? subscription.plan_amount ?? '0');
-
-      // Calculate new volume discount
       const newDiscountPercentage = this.calculateVolumeDiscount(newTotalSeats);
-      
-      // Calculate costs for additional seats
       const subtotal = pricePerSeat * additionalSeats;
       const discountAmount = (subtotal * newDiscountPercentage) / 100;
       const afterDiscount = subtotal - discountAmount;
       const taxAmount = afterDiscount * 0.18;
       const totalCost = afterDiscount + taxAmount;
-
-      // Calculate proration
       const endDate = new Date(subscription.subscription_end_date);
       const now = new Date();
       const totalDays = Math.ceil((endDate.getTime() - new Date(subscription.subscription_start_date).getTime()) / (1000 * 60 * 60 * 24));
       const remainingDays = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       const proratedCost = (totalCost / totalDays) * remainingDays;
 
-      return {
-        additionalSeats,
-        pricePerSeat,
-        subtotal,
-        newDiscountPercentage,
-        discountAmount,
-        taxAmount,
-        totalCost,
-        proratedDays: remainingDays,
-        proratedCost: Math.round(proratedCost * 100) / 100
-      };
+      return { additionalSeats, pricePerSeat, subtotal, newDiscountPercentage, discountAmount, taxAmount, totalCost, proratedDays: remainingDays, proratedCost: Math.round(proratedCost * 100) / 100 };
     } catch (error) {
       logger.error('Error calculating seat addition cost', error as Error);
       throw error;
     }
   }
 
-  /**
-   * Get billing contacts for an organization
-   */
   async getBillingContacts(organizationId: string): Promise<BillingContact[]> {
     try {
-      // For now, return from organization metadata
-      // Get billing contact from unified organizations table
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('email, phone, name')
-        .eq('id', organizationId)
-        .single();
-
-      if (error) {
-        logger.error('Error fetching organization for billing', error as Error);
-        return [];
-      }
-
-      return data ? [{
-        name: data.name || 'Admin',
-        email: data.email || '',
-        phone: data.phone,
-        isPrimary: true
-      }] : [];
+      const dataRes = await apiGet<any>(`/organization?action=getOrganizationById&id=${encodeURIComponent(organizationId)}`);
+      const d = dataRes?.data;
+      return d ? [{ name: d.name || 'Admin', email: d.email || '', phone: d.phone, isPrimary: true }] : [];
     } catch (error) {
       logger.error('Error fetching billing contacts', error as Error);
       return [];
     }
   }
 
-  /**
-   * Add or update billing contact
-   */
-  async addBillingContact(
-    organizationId: string,
-    contact: BillingContact
-  ): Promise<void> {
-    try {
-      // In production, this would insert into a billing_contacts table
-      // For now, we update the organization's admin contact
-      logger.info('Updating organization admin contact');
-      // This is a placeholder - actual implementation would depend on
-      // having a dedicated billing_contacts table
-    } catch (error) {
-      logger.error('Error adding billing contact', error as Error);
-      throw error;
-    }
+  async addBillingContact(organizationId: string, contact: BillingContact): Promise<void> {
+    logger.info('Updating organization admin contact');
   }
 
-  /**
-   * Update payment method for organization
-   */
-  async updatePaymentMethod(
-    organizationId: string,
-    paymentMethod: PaymentMethod
-  ): Promise<void> {
-    try {
-      // In production, this would integrate with Razorpay to store
-      // payment method tokens securely
-      
-      // This is a placeholder - actual implementation would integrate
-      // with Razorpay's saved payment methods API
-    } catch (error) {
-      logger.error('Error updating payment method', error as Error);
-      throw error;
-    }
+  async updatePaymentMethod(organizationId: string, paymentMethod: PaymentMethod): Promise<void> {
+    // Placeholder - would integrate with Razorpay
   }
 
-  // ============================================================================
-  // Helper Methods
-  // ============================================================================
-
-  /**
-   * Calculate monthly cost from subscription
-   */
   private calculateMonthlyCost(subscription: any): number {
     const finalAmount = parseFloat(subscription.final_amount ?? subscription.plan_amount ?? '0');
     const startDate = new Date(subscription.subscription_start_date || subscription.start_date);
     const endDate = new Date(subscription.subscription_end_date || subscription.end_date);
     const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const isAnnual = durationDays > 60; // More than 2 months = annual
-    
-    if (isAnnual) {
-      return finalAmount / 12;
-    }
-    return finalAmount;
+    return durationDays > 60 ? finalAmount / 12 : finalAmount;
   }
 
-  /**
-   * Calculate volume discount based on seat count
-   */
   private calculateVolumeDiscount(seatCount: number): number {
     if (seatCount >= 500) return 30;
     if (seatCount >= 100) return 20;
@@ -766,5 +493,4 @@ export class OrganizationBillingService {
   }
 }
 
-// Export singleton instance
 export const organizationBillingService = new OrganizationBillingService();

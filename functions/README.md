@@ -42,7 +42,7 @@ The `_middleware.ts` file runs before all Pages Functions and handles:
 
 ## Shared Utilities
 
-All Pages Functions use shared utilities from `src/functions-lib/`:
+All Pages Functions use shared utilities from `lib/`:
 - `cors.ts` - CORS headers and handling
 - `response.ts` - Response formatting helpers
 - `supabase.ts` - Supabase client creation

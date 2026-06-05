@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export const useLearnerEducation = (learnerId, enabled = true) => {
   const [education, setEducation] = useState([]);
@@ -7,39 +7,28 @@ export const useLearnerEducation = (learnerId, enabled = true) => {
   const [error, setError] = useState(null);
 
   const fetchEducation = async () => {
-    if (!learnerId || !enabled) {
-      return;
-    }
+    if (!learnerId || !enabled) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('education')
-        .select('*')
-        .eq('learner_id', learnerId)
-        // Fetch ALL education records (including hidden and pending) - filtering happens in display components
-        .order('created_at', { ascending: false });
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'fetch-education', learnerId,
+      });
+      const data = result?.data || [];
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Transform data to match UI expectations
-      // Include versioning fields for proper display logic
       const transformedData = data.map(item => ({
         id: item.id,
         degree: item.degree,
         department: item.department,
         university: item.university,
-        institution: item.university, // Alias for compatibility
+        institution: item.university,
         yearOfPassing: item.year_of_passing,
         year_of_passing: item.year_of_passing,
         cgpa: item.cgpa,
         level: item.level,
         status: item.status,
-        // Status and metadata
         approval_status: item.approval_status,
         verified: item.approval_status === 'approved' || item.approval_status === 'verified',
         processing: item.approval_status === 'pending',
@@ -47,11 +36,9 @@ export const useLearnerEducation = (learnerId, enabled = true) => {
         createdAt: item.created_at,
         updatedAt: item.updated_at,
         verifiedAt: item.updated_at || item.created_at,
-        // Versioning fields - IMPORTANT for pending approval display
         has_pending_edit: item.has_pending_edit || false,
         verified_data: item.verified_data,
         pending_edit_data: item.pending_edit_data,
-        // Add flag for easy checking in components
         _hasPendingEdit: item.has_pending_edit === true
       }));
 
@@ -67,14 +54,5 @@ export const useLearnerEducation = (learnerId, enabled = true) => {
     fetchEducation();
   }, [learnerId, enabled]);
 
-  const refresh = () => {
-    fetchEducation();
-  };
-
-  return {
-    education,
-    loading,
-    error,
-    refresh
-  };
+  return { education, loading, error, refresh: fetchEducation };
 };

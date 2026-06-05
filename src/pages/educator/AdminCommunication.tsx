@@ -26,7 +26,7 @@ import { useEducatorMessages, useConversationActions } from '@/features/messagin
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { MessageService, Conversation } from '@/features/messaging';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { getLogger } from '@/shared/config/logging';
@@ -63,14 +63,14 @@ const AdminCommunication = () => {
     enabled: !!educatorId,
     queryFn: async () => {
       if (!educatorId) return null;
-      const { data, error } = await supabase
-        .from('school_educators')
-        .select('id, school_id, first_name, last_name, email')
-        .eq('user_id', educatorId)
-        .maybeSingle();
+      const result = await apiPost<any>('/educator/actions', {
+        action: 'get-school-educator-by-user-id',
+        userId: educatorId,
+        select: 'id, school_id, first_name, last_name, email'
+      });
 
-      if (error) throw error;
-      return data;
+      if (!result?.data) return null;
+      return result.data;
     },
   });
 
@@ -82,19 +82,18 @@ const AdminCommunication = () => {
     queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'active'),
     queryFn: async () => {
       if (!educatorRecordId) return [];
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
-        `)
-        .eq('educator_id', educatorRecordId)
-        .eq('conversation_type', 'educator_admin')
-        .eq('deleted_by_educator', false)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
+      const result = await apiPost<any>('/educator/actions', {
+        action: 'list-conversations',
+        select: '*, educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)',
+        filters: {
+          educator_id: educatorRecordId,
+          conversation_type: 'educator_admin',
+          deleted_by_educator: false,
+          last_message_at: { order: 'desc' }
+        }
+      });
 
-      if (error) throw error;
-      return data || [];
+      return result?.data || [];
     },
     enabled: !!educatorRecordId,
     staleTime: 60000,
@@ -109,16 +108,16 @@ const AdminCommunication = () => {
     queryKey: queryKeys.educator.admin.conversations(educatorRecordId || '', 'archived'),
     queryFn: async () => {
       if (!educatorRecordId) return [];
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
-        `)
-        .eq('educator_id', educatorRecordId)
-        .eq('conversation_type', 'educator_admin')
-        .eq('status', 'archived')
-        .order('last_message_at', { ascending: false, nullsFirst: false });
+      const result = await apiPost<any>('/educator/actions', {
+        action: 'list-conversations',
+        select: '*, educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)',
+        filters: {
+          educator_id: educatorRecordId,
+          conversation_type: 'educator_admin',
+          status: 'archived',
+          last_message_at: { order: 'desc' }
+        }
+      });
 
       if (error) throw error;
       return data || [];
@@ -447,14 +446,19 @@ const AdminCommunication = () => {
 
     try {
       // Find school admin user ID for the school
-      const { data: schoolAdmin, error: adminError } = await supabase
-        .from('school_educators')
-        .select('user_id')
-        .eq('school_id', currentChat.schoolId)
-        .eq('role', 'school_admin')
-        .maybeSingle();
+      const adminResult = await apiPost<any>('/educator/actions', {
+        action: 'list-school-educators',
+        select: 'user_id',
+        filters: {
+          school_id: currentChat.schoolId,
+          role: 'school_admin'
+        }
+      });
 
-      if (adminError || !schoolAdmin) {
+      const schoolAdmins = adminResult?.data || [];
+      const schoolAdmin = schoolAdmins.length > 0 ? schoolAdmins[0] : null;
+
+      if (!schoolAdmin) {
         toast.error('Could not find school admin');
         return;
       }

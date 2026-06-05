@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('saved-searches');
@@ -23,63 +23,22 @@ export interface SavedSearch {
 /**
  * Get all saved searches for a recruiter
  */
-export const getSavedSearches = async (recruiterId?: string) => {
+export const getSavedSearches = async () => {
   try {
-    let query = supabase
-      .from('recruiter_saved_searches')
-      .select('*')
-      .order('last_used', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false });
-
-    if (recruiterId) {
-      query = query.eq('recruiter_id', recruiterId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    return { data: data || [], error: null };
+    const response: any = await apiPost('/opportunities', {
+      action: 'recruiter-saved-searches',
+      sub_action: 'get',
+    });
+    return { data: response?.data?.searches ?? [], error: null };
   } catch (error) {
     logger.error('Error fetching saved searches', error as Error);
-    // Return default searches if table doesn't exist
     const defaultSearches = [
-      {
-        id: 'default-1',
-        name: 'React + Node.js',
-        search_criteria: { skills: ['React', 'Node.js'] },
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'default-2',
-        name: 'Python Developers',
-        search_criteria: { skills: ['Python'] },
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'default-3',
-        name: 'Data Science + ML',
-        search_criteria: { skills: ['Data Science', 'Machine Learning'] },
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'default-4',
-        name: 'Frontend (React/Angular)',
-        search_criteria: { skills: ['React', 'Angular'] },
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'default-5',
-        name: 'Full Stack Developers',
-        search_criteria: { query: 'Full Stack Developer' },
-        created_at: new Date().toISOString()
-      },
-      {
-        id: 'default-6',
-        name: 'DevOps Engineers',
-        search_criteria: { skills: ['DevOps', 'CI/CD', 'Docker'] },
-        created_at: new Date().toISOString()
-      }
+      { id: 'default-1', name: 'React + Node.js', search_criteria: { skills: ['React', 'Node.js'] }, created_at: new Date().toISOString() },
+      { id: 'default-2', name: 'Python Developers', search_criteria: { skills: ['Python'] }, created_at: new Date().toISOString() },
+      { id: 'default-3', name: 'Data Science + ML', search_criteria: { skills: ['Data Science', 'Machine Learning'] }, created_at: new Date().toISOString() },
+      { id: 'default-4', name: 'Frontend (React/Angular)', search_criteria: { skills: ['React', 'Angular'] }, created_at: new Date().toISOString() },
+      { id: 'default-5', name: 'Full Stack Developers', search_criteria: { query: 'Full Stack Developer' }, created_at: new Date().toISOString() },
+      { id: 'default-6', name: 'DevOps Engineers', search_criteria: { skills: ['DevOps', 'CI/CD', 'Docker'] }, created_at: new Date().toISOString() },
     ];
     return { data: defaultSearches, error };
   }
@@ -88,27 +47,15 @@ export const getSavedSearches = async (recruiterId?: string) => {
 /**
  * Create a new saved search
  */
-export const createSavedSearch = async (
-  name: string,
-  searchCriteria: SavedSearch['search_criteria'],
-  recruiterId?: string
-) => {
+export const createSavedSearch = async (name: string, searchCriteria: SavedSearch['search_criteria']) => {
   try {
-    const { data, error } = await supabase
-      .from('recruiter_saved_searches')
-      .insert([
-        {
-          recruiter_id: recruiterId || 'default',
-          name,
-          search_criteria: searchCriteria,
-          use_count: 0
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', {
+      action: 'recruiter-saved-searches',
+      sub_action: 'create',
+      name,
+      search_criteria: searchCriteria,
+    });
+    return { data: response?.data?.search ?? null, error: null };
   } catch (error) {
     logger.error('Error creating saved search', error as Error);
     return { data: null, error };
@@ -118,20 +65,15 @@ export const createSavedSearch = async (
 /**
  * Update a saved search
  */
-export const updateSavedSearch = async (
-  searchId: string,
-  updates: Partial<SavedSearch>
-) => {
+export const updateSavedSearch = async (searchId: string, updates: Partial<SavedSearch>) => {
   try {
-    const { data, error } = await supabase
-      .from('recruiter_saved_searches')
-      .update(updates)
-      .eq('id', searchId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', {
+      action: 'recruiter-saved-searches',
+      sub_action: 'update',
+      id: searchId,
+      ...updates,
+    });
+    return { data: response?.data?.search ?? null, error: null };
   } catch (error) {
     logger.error('Error updating saved search', error as Error);
     return { data: null, error };
@@ -143,12 +85,7 @@ export const updateSavedSearch = async (
  */
 export const deleteSavedSearch = async (searchId: string) => {
   try {
-    const { error } = await supabase
-      .from('recruiter_saved_searches')
-      .delete()
-      .eq('id', searchId);
-
-    if (error) throw error;
+    await apiPost('/opportunities', { action: 'recruiter-saved-searches', sub_action: 'delete', id: searchId });
     return { error: null };
   } catch (error) {
     logger.error('Error deleting saved search', error as Error);
@@ -161,24 +98,7 @@ export const deleteSavedSearch = async (searchId: string) => {
  */
 export const trackSearchUsage = async (searchId: string) => {
   try {
-    // Increment use count and update last_used timestamp
-    const { error } = await supabase.rpc('increment_search_usage', {
-      search_id: searchId
-    });
-
-    if (error) {
-      // If the function doesn't exist, try manual update
-      const { error: updateError } = await supabase
-        .from('recruiter_saved_searches')
-        .update({
-          last_used: new Date().toISOString(),
-          use_count: supabase.sql`use_count + 1`
-        })
-        .eq('id', searchId);
-
-      if (updateError) throw updateError;
-    }
-
+    await apiPost('/opportunities', { action: 'increment-search-usage', search_id: searchId });
     return { error: null };
   } catch (error) {
     logger.error('Error tracking search usage', error as Error);
@@ -191,16 +111,10 @@ export const trackSearchUsage = async (searchId: string) => {
  */
 export const getSavedSearchById = async (searchId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('recruiter_saved_searches')
-      .select('*')
-      .eq('id', searchId)
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'recruiter-saved-searches', sub_action: 'get', id: searchId });
+    return { data: response?.data?.search ?? null, error: null };
   } catch (error) {
     logger.error('Error fetching saved search', error as Error);
-    return { data: null, error };
+    return { data: null, error: null };
   }
 };

@@ -8,16 +8,16 @@
  * 
  * Falls back to simpler queries if the complex JOIN fails.
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError, apiDbError } from '../../lib/response';
+import { apiSuccess, apiError } from '../../lib/response';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
-  const user = context.data.user;
+  const user = getContextUser(context);
 
   const url = new URL(context.request.url);
   const email = url.searchParams.get('email');
@@ -110,7 +110,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Strategy 3: Try by user_id from JWT
-    const userId = user.sub;
+    const userId = user.id;
     console.log(`[LearnersByEmail] No learner found by email, trying user_id="${userId}"`);
     const { data: byUserData, error: byUserError } = await supabase
       .from('learners')

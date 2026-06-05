@@ -163,7 +163,7 @@ describe('Course Certificate Handler', () => {
       const request = new Request('http://localhost/course-certificate');
 
       const response = await handleCourseCertificate({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('File key or URL is required');
@@ -175,7 +175,7 @@ describe('Course Certificate Handler', () => {
       });
 
       const response = await handleCourseCertificate({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(405);
       expect(data.error).toBe('Method not allowed');
@@ -189,7 +189,7 @@ describe('Course Certificate Handler', () => {
       );
 
       const response = await handleCourseCertificate({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(404);
       expect(data.error).toBe('File not found or access denied');
@@ -214,7 +214,7 @@ describe('Course Certificate Handler', () => {
       );
 
       const response = await handleCourseCertificate({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Failed to get certificate');

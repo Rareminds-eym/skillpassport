@@ -1,6 +1,6 @@
 import { ssoClient } from '@/shared/api/ssoClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import type { WorksheetConfig, LessonPlanConfig } from '../types';
@@ -188,65 +188,56 @@ export function getLastConversationId(): string | null {
  * Get all conversations for a course
  */
 export async function getConversations(courseId: string): Promise<Conversation[]> {
-  const { data, error } = await supabase
-    .from('tutor_conversations')
-    .select('id, title, course_id, lesson_id, created_at, updated_at, messages')
-    .eq('course_id', courseId)
-    .order('updated_at', { ascending: false });
-
-  if (error) {
+  try {
+    const response = await apiPost('/ai-tutor/actions', { action: 'get-conversations', course_id: courseId });
+    const data = response?.data || [];
+    return data.map((conv: any) => ({
+      id: conv.id,
+      title: conv.title || 'Untitled Conversation',
+      courseId: conv.course_id,
+      lessonId: conv.lesson_id,
+      createdAt: new Date(conv.created_at),
+      updatedAt: new Date(conv.updated_at),
+      messages: (conv.messages || []).map((m: MessageData) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.timestamp)
+      }))
+    }));
+  } catch (error) {
     logger.error('Error fetching conversations', error instanceof Error ? error : new Error(String(error)), { courseId });
     throw error;
   }
-
-  return (data || []).map(conv => ({
-    id: conv.id,
-    title: conv.title || 'Untitled Conversation',
-    courseId: conv.course_id,
-    lessonId: conv.lesson_id,
-    createdAt: new Date(conv.created_at),
-    updatedAt: new Date(conv.updated_at),
-    messages: (conv.messages || []).map((m: MessageData) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      timestamp: new Date(m.timestamp)
-    }))
-  }));
 }
 
 /**
  * Get a specific conversation by ID
  */
 export async function getConversation(conversationId: string): Promise<Conversation | null> {
-  const { data, error } = await supabase
-    .from('tutor_conversations')
-    .select('id, title, course_id, lesson_id, created_at, updated_at, messages')
-    .eq('id', conversationId)
-    .maybeSingle();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
+  try {
+    const response = await apiPost('/ai-tutor/actions', { action: 'get-conversation', id: conversationId });
+    const data = response?.data;
+    if (!data) return null;
+    return {
+      id: data.id,
+      title: data.title || 'Untitled Conversation',
+      courseId: data.course_id,
+      lessonId: data.lesson_id,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      messages: (data.messages || []).map((m: MessageData) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.timestamp)
+      }))
+    };
+  } catch (error) {
+    if ((error as any)?.status === 404) return null;
     logger.error('Error fetching conversation', error instanceof Error ? error : new Error(String(error)), { conversationId });
     throw error;
   }
-
-  if (!data) return null;
-
-  return {
-    id: data.id,
-    title: data.title || 'Untitled Conversation',
-    courseId: data.course_id,
-    lessonId: data.lesson_id,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
-    messages: (data.messages || []).map((m: MessageData) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      timestamp: new Date(m.timestamp)
-    }))
-  };
 }
 
 // ==================== SUGGESTED QUESTIONS ====================
@@ -357,27 +348,10 @@ export async function updateLessonProgress(
  * Delete a conversation and all related data permanently
  */
 export async function deleteConversation(conversationId: string): Promise<void> {
-  const user = useAuthStore.getState().user;
-  
-  // First, delete related feedback records
-  const { error: feedbackError } = await supabase
-    .from('tutor_feedback')
-    .delete()
-    .eq('conversation_id', conversationId);
-
-  if (feedbackError) {
-    logger.warn('Error deleting feedback', { conversationId });
-    // Continue even if feedback deletion fails (might not have any feedback)
-  }
-
-  // Then delete the conversation
-  const { error: conversationError } = await supabase
-    .from('tutor_conversations')
-    .delete()
-    .eq('id', conversationId);
-
-  if (conversationError) {
-    logger.error('Error deleting conversation', conversationError instanceof Error ? conversationError : new Error(String(conversationError)), { conversationId });
+  try {
+    await apiPost('/ai-tutor/actions', { action: 'delete-conversation', id: conversationId });
+  } catch (error) {
+    logger.error('Error deleting conversation', error instanceof Error ? error : new Error(String(error)), { conversationId });
     throw new Error('Failed to delete conversation');
   }
 }

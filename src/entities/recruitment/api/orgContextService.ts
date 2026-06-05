@@ -1,10 +1,10 @@
 /**
  * Organization Context Service
  * Fetches and manages organization context for recruitment features
- * Uses Supabase RPC to query SSO-Worker database via Foreign Data Wrapper (FDW)
+ * Uses API endpoints to query SSO-Worker database
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import type { OrgContext, UserOrgContexts } from '../model/types';
 
@@ -90,28 +90,15 @@ export const getUserOrgContexts = async (): Promise<UserOrgContexts> => {
             email: user.email
         });
 
-        // Call database function via RPC
-        console.log('[orgContextService] Calling get_user_org_context RPC...');
-        const { data, error } = await supabase.rpc('get_user_org_context', {
+        console.log('[orgContextService] Calling get-user-org-context API...');
+        const response: any = await apiPost('/recruiter/actions', {
+            action: 'get-user-org-context',
             p_user_id: user.id,
         });
+        
+        const data = response.data;
 
-        if (error) {
-            console.error('[orgContextService] RPC error', {
-                error: error.message,
-                code: error.code,
-                details: error.details,
-                hint: error.hint,
-                userId: user.id,
-            });
-            logger.error('Failed to fetch organization contexts from database', {
-                error: error.message,
-                userId: user.id,
-            });
-            throw error;
-        }
-
-        console.log('[orgContextService] RPC response', {
+        console.log('[orgContextService] API response', {
             dataLength: data?.length || 0,
             data: data
         });
@@ -151,13 +138,6 @@ export const getUserOrgContexts = async (): Promise<UserOrgContexts> => {
 
         return { contexts };
     } catch (error: any) {
-        console.error('[orgContextService] Failed to fetch organization contexts', {
-            error: error.message,
-            errorName: error.name,
-            errorCode: error.code,
-            stack: error.stack,
-            fullError: error
-        });
         logger.error('Failed to fetch organization contexts', {
             error: error.message,
             errorName: error.name,
@@ -279,8 +259,8 @@ export const checkPermission = async (permission: string): Promise<boolean> => {
 };
 
 /**
- * Check if user has specific permission in organization using database function
- * This is the authoritative permission check that queries the database
+ * Check if user has specific permission in organization using backend API
+ * This is the authoritative permission check that queries the database via the API
  */
 export const hasRecruitmentPermission = async (
     userId: string,
@@ -288,23 +268,14 @@ export const hasRecruitmentPermission = async (
     permission: string
 ): Promise<boolean> => {
     try {
-        const { data, error } = await supabase.rpc('has_recruitment_permission', {
+        const response: any = await apiPost('/recruiter/actions', {
+            action: 'has-recruitment-permission',
             p_user_id: userId,
             p_org_id: orgId,
-            p_permission: permission,
+            p_required_permission: permission,
         });
 
-        if (error) {
-            logger.error('Failed to check recruitment permission', {
-                error: error.message,
-                userId,
-                orgId,
-                permission,
-            });
-            return false;
-        }
-
-        return data === true;
+        return response?.data?.hasPermission === true;
     } catch (error: any) {
         logger.error('Failed to check recruitment permission', {
             error: error.message,

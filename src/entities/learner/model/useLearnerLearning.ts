@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
-// Helper to clamp progress between 0 and 100
 const clampProgress = (value) => Math.max(0, Math.min(100, value));
 
-// Calculate progress based on completed/total modules
 const calculateProgress = (completedModules, totalModules) => {
   if (!totalModules || totalModules === 0) return 0;
   const completed = Math.min(completedModules, totalModules);
@@ -23,45 +21,41 @@ export const useLearnerLearning = (learnerId, enabled = true) => {
       setLoading(true);
       setError(null);
 
-      // 1. Fetch trainings (table name stays same for backend compatibility)
-      const { data: trainings, error: fetchError } = await supabase
-        .from('trainings')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .in('approval_status', ['verified', 'approved'])
-        .order('created_at', { ascending: false });
+      const trainingsResult = await apiPost('/learner-profile/actions', {
+        action: 'fetch-trainings', learnerId,
+      });
+      const allTrainings = Array.isArray(trainingsResult?.data) ? trainingsResult.data : [];
+      const trainings = allTrainings.filter(t => ['verified', 'approved'].includes(t.approval_status));
 
-      if (fetchError) throw fetchError;
+      if (!trainings.length) {
+        setLearning([]);
+        return;
+      }
 
-      let result = [];
+      const trainingIds = trainings.map(t => t.id);
 
-      for (const item of trainings) {
-        const trainingId = item.id;
+      const [skillsResult, certsResult] = await Promise.all([
+        apiPost('/learner-profile/actions', { action: 'fetch-skills-by-training', trainingIds }),
+        apiPost('/learner-profile/actions', { action: 'fetch-certificates-by-training', trainingIds }),
+      ]);
 
-        // 2. Fetch related skills
-        const { data: skillRows } = await supabase
-          .from('skills')
-          .select('name')
-          .eq('training_id', trainingId)
-          .eq('enabled', true);
+      const skillsByTraining = {};
+      for (const s of (skillsResult?.data || [])) {
+        if (!skillsByTraining[s.training_id]) skillsByTraining[s.training_id] = [];
+        skillsByTraining[s.training_id].push(s);
+      }
 
-        // 3. Fetch related certificate
-        const { data: certificateRows } = await supabase
-          .from('certificates')
-          .select('link')
-          .eq('training_id', trainingId)
-          .eq('enabled', true)
-          .limit(1);
-          
-        let progressValue = 0;
-        const statusLower = (item.status || '').toLowerCase();
-        if (statusLower === 'completed') {
-          progressValue = 100;
-        } else if (item.total_modules > 0) {
-          progressValue = calculateProgress(item.completed_modules, item.total_modules);
-        }
+      const certsByTraining = {};
+      for (const c of (certsResult?.data || [])) {
+        if (!certsByTraining[c.training_id]) certsByTraining[c.training_id] = [];
+        certsByTraining[c.training_id].push(c);
+      }
 
-        result.push({
+      const result = trainings.map(item => {
+        const progressValue = (item.status || '').toLowerCase() === 'completed' ? 100
+          : item.total_modules > 0 ? calculateProgress(item.completed_modules, item.total_modules) : 0;
+
+        return {
           id: item.id,
           course: item.title,
           provider: item.organization,
@@ -72,19 +66,19 @@ export const useLearnerLearning = (learnerId, enabled = true) => {
           total_modules: item.total_modules,
           completed_modules: item.completed_modules,
           hours_spent: item.hours_spent,
-          skills: skillRows?.map(s => s.name) || [],
-          certificateUrl: certificateRows?.[0]?.link || null,
+          skills: (skillsByTraining[item.id] || []).map(s => s.name),
+          certificateUrl: (certsByTraining[item.id] || [])[0]?.link || null,
           progress: progressValue,
           status: item.status,
           approval_status: item.approval_status,
           verified: item.approval_status === 'approved',
           processing: item.approval_status === 'pending',
           enabled: item.enabled !== false,
-          source: item.source, // Add source to identify internal vs external courses
+          source: item.source,
           createdAt: item.created_at,
-          updatedAt: item.updated_at
-        });
-      }
+          updatedAt: item.updated_at,
+        };
+      });
 
       setLearning(result);
     } catch (err) {

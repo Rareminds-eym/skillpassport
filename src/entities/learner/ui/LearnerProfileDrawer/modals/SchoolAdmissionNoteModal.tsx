@@ -1,16 +1,3 @@
-/**
- * DEPENDENCY INJECTION PATTERN APPLIED
- * 
- * This component should receive MessageService as a prop instead of importing it directly.
- * This maintains FSD architecture by preventing entities from depending on features.
- * 
- * The parent component (in features layer) should import MessageService and pass it down.
- * 
- * Example:
- *   import { MessageService } from '@/features/messaging';
- *   <AdmissionNoteModal messageService={MessageService} ... />
- */
-
 import {
     ChatBubbleLeftRightIcon,
     DocumentTextIcon,
@@ -18,9 +5,11 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { Learner } from '@/shared/types';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+import MessageService from '@/shared/api/messageService';
 
 const logger = getLogger('school-admission-note-modal');
 
@@ -39,18 +28,16 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 }) => {
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sendToCommunication, setSendToCommunication] = useState(true); // Auto-checked by default
+  const [sendToCommunication, setSendToCommunication] = useState(true);
 
   const handleSubmit = async () => {
     if (!note.trim()) return;
 
     setIsSubmitting(true);
     try {
-      // If "Send to Communication" is checked, send as message
       if (sendToCommunication) {
         await sendNoteAsCommunication();
       } else {
-        // Just save locally with a small delay
         await new Promise((resolve) => setTimeout(resolve, 500));
         toast.success('Note saved successfully');
       }
@@ -69,41 +56,29 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 
   const sendNoteAsCommunication = async () => {
     try {
-      // Get current user (school admin)
-      const {
-        data: { user },
-      } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('Not authenticated');
       }
 
-      // Get school ID for the admin - match the same logic as LearnerCommunication.tsx
       let schoolId: string | null = null;
 
-      // Try school_educators table first
-      const { data: educatorData, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('school_id')
-        .eq('user_id', user.id)
-        .single();
+      const schoolResult = await apiPost('/learner-profile/actions', {
+        action: 'fetch-school-educators', userId: user.id,
+      });
+      const educatorData = schoolResult?.data || null;
 
       if (educatorData?.school_id) {
         schoolId = educatorData.school_id;
       } else {
-        // Fallback: check if user is school owner/admin in organizations table
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'school')
-          .eq('admin_id', user.id)
-          .maybeSingle();
-
-        if (orgData?.id) {
-          schoolId = orgData.id;
+        const orgResult = await apiPost('/learner-profile/actions', {
+          action: 'fetch-organization', adminId: user.id, type: 'school',
+        });
+        if (orgResult?.data?.id) {
+          schoolId = orgResult.data.id;
         }
       }
 
-      // If still no school ID, try to use the learner's school_id
       if (!schoolId && (learner as any).school_id) {
         schoolId = (learner as any).school_id;
       }
@@ -112,44 +87,29 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         throw new Error('Could not determine school ID. Please ensure you are logged in as a school admin.');
       }
 
-      // Create or get conversation with learner
       const conversation = await MessageService.getOrCreatelearnerAdminConversation(
         learner.id,
         schoolId,
         'Admission Note'
       );
 
-      // Send the note as a message directly to the database
-      const messageData = {
-        conversation_id: conversation.id,
-        sender_id: user.id,
-        sender_type: 'school_admin',
-        receiver_id: learner.id,
-        receiver_type: 'learner',
-        message_text: `📝 Admission Note:\n\n${note}`,
-        subject: 'Admission Note',
-      };
+      const msgResult = await apiPost('/learner-profile/actions', {
+        action: 'create-message',
+        conversationId: conversation.id,
+        senderId: user.id,
+        senderRole: 'school_admin',
+        messageContent: `📝 Admission Note:\n\n${note}`,
+        messageType: 'text',
+      });
 
-      const { data: messageResult, error: messageError } = await supabase
-        .from('messages')
-        .insert(messageData)
-        .select()
-        .single();
-
-      if (messageError) {
-        throw messageError;
+      if (!msgResult?.data) {
+        throw new Error('Failed to send message');
       }
 
-      // Update conversation's last_message fields to ensure it shows up in the list
-      const { error: updateError } = await supabase
-        .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          last_message_preview: `📝 Admission Note: ${note.substring(0, 50)}${note.length > 50 ? '...' : ''}`,
-          last_message_sender: 'school_admin',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', conversation.id);
+      await apiPost('/learner-profile/actions', {
+        action: 'update-conversation-last-message',
+        conversationId: conversation.id,
+      });
 
       toast.success('Note sent to learner via communication');
     } catch (error) {
@@ -195,7 +155,6 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
               />
             </div>
 
-            {/* Send to Communication Option */}
             <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <input
                 type="checkbox"

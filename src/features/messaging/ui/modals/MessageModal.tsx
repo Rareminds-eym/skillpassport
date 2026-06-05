@@ -83,13 +83,13 @@ export const MessageModal: React.FC<MessageModalProps> = ({
   useEffect(() => {
     if (conversation && isOpen && !hasMarkedReadRef.current) {
       hasMarkedReadRef.current = true;
-      markAsRead(currentUserId);
+      markAsRead();
     }
     // Reset when modal closes
     if (!isOpen) {
       hasMarkedReadRef.current = false;
     }
-  }, [conversation, isOpen, currentUserId, markAsRead]);
+  }, [conversation, isOpen, markAsRead]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -109,20 +109,21 @@ export const MessageModal: React.FC<MessageModalProps> = ({
       const receiverType = currentUserType === 'learner' ? 'recruiter' : 'learner';
       
       sendMessage({
-        senderId: currentUserId,
-        senderType: currentUserType,
+        conversationId: conversation?.id || '',
         receiverId: receiverId,
         receiverType: receiverType,
         messageText: newMessage.trim(),
-        applicationId,
-        opportunityId
+        metadata: {
+          applicationId,
+          opportunityId
+        }
       });
       
       setNewMessage('');
     } catch (error) {
       toast.error('Failed to send message');
     }
-  }, [newMessage, conversation, isSending, currentUserType, recruiterId, learnerId, currentUserId, sendMessage, applicationId, opportunityId]);
+  }, [newMessage, conversation, isSending, currentUserType, recruiterId, learnerId, sendMessage, applicationId, opportunityId]);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);

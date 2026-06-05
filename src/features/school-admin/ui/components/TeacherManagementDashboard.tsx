@@ -8,7 +8,7 @@ import {
 import React, { useEffect, useState } from 'react';
 
 import { useUserRole } from "@/entities/user";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getTeacherStatistics } from '@/entities/teacher';
 import TeacherBulkImport from './TeacherBulkImport';
 import TeacherList from './TeacherList';
@@ -46,35 +46,11 @@ const TeacherManagementDashboard: React.FC = () => {
     }
 
     try {
-      // First, try to get school_id from school_educators table
-      const { data: educatorData, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('school_id')
-        .eq('email', user.email)
-        .maybeSingle();
-
-      if (educatorData?.school_id) {
-        setSchoolId(educatorData.school_id);
+      const result = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: user.email, user_id: user.id }) as any;
+      if (result?.school_id) {
+        setSchoolId(result.school_id);
         return;
       }
-
-      // If not found in school_educators, check organizations table
-      const { data: schoolData, error: schoolError } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('organization_type', 'school')
-        .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-        .maybeSingle();
-
-      if (schoolError) {
-        // Error handled silently
-      }
-
-      if (schoolData?.id) {
-        setSchoolId(schoolData.id);
-        return;
-      }
-
       setLoading(false);
     } catch (error) {
       setLoading(false);

@@ -8,14 +8,10 @@
  * GET /document-access?url={fileUrl}&mode={inline|download}
  */
 
+import { apiError } from '../../../lib/response';
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
-import {
-  extractUserIdFromPath,
-  validatePaymentReceiptOwnership,
-  validateUploadOwnership,
-  type OwnershipValidationResult,
-} from '../utils/ownership';
+
 import {
   createAuthenticationError,
   createAuthorizationError,
@@ -33,10 +29,7 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
   const authenticatedContext = context as AuthenticatedContext;
 
   if (request.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
@@ -51,17 +44,11 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
     }
 
     if (!fileKey) {
-      return new Response(
-        JSON.stringify({ error: 'File key or URL is required' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
     }
 
     // Check if document is public
-    const isPublic = checkIfPublicDocument(fileKey);
+    const isPublic = fileKey.startsWith('public/') || fileKey.startsWith('uploads/public/');
 
     if (!isPublic) {
       // Private document - require authentication
@@ -69,14 +56,14 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
         return createAuthenticationError('/document-access', 'missing_token');
       }
 
-      // Validate ownership
-      const ownership = validateDocumentOwnership(fileKey, authenticatedContext.user.id);
-      if (!ownership.isOwner) {
+      // Validate ownership (check if file key contains user ID)
+      const isOwner = fileKey.includes(authenticatedContext.user.id);
+      if (!isOwner) {
         return createAuthorizationError(
           authenticatedContext.user.id,
           fileKey,
           'ownership_mismatch',
-          ownership.reason || 'You do not have permission to access this document'
+          'You do not have permission to access this document'
         );
       }
     }
@@ -88,13 +75,7 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
     const response = await r2Client.getObject(fileKey);
 
     if (!response.ok) {
-      return new Response(
-        JSON.stringify({ error: 'File not found or access denied' }),
-        {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(404, 'NOT_FOUND', 'File not found or access denied', request);
     }
 
     // Extract filename from key
@@ -124,15 +105,6 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
     });
   } catch (error) {
     logErrorSafely('DocumentAccess', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to access document',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };

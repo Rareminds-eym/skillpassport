@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { Assessment, AssessmentType, CurriculumSubject, ExamRoom, examsService, ExamTimetable, MarkEntry, SchoolClass, SchoolEducator, Learner } from '@/features/assessment';
 
 // Transform database types to UI types
@@ -329,16 +329,11 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
         // Map user_ids back to school_educators.id for UI consistency
         const invigilationsWithEducatorIds = await Promise.all(
           allInvigilations.map(async (inv) => {
-            // Find the school_educators record that matches this user_id
-            const { data: educatorData } = await supabase
-              .from('school_educators')
-              .select('id')
-              .eq('user_id', inv.invigilator_id)
-              .maybeSingle();
-            
+            const educatorRes = await apiPost('/exams/actions', { action: 'get-educator-by-user-id', userId: inv.invigilator_id });
+            const educatorData = educatorRes?.data;
             return {
               ...inv,
-              educator_id: educatorData?.id || inv.invigilator_id // Fallback to user_id if not found
+              educator_id: educatorData?.id || inv.invigilator_id
             };
           })
         );
@@ -388,7 +383,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
   // Create exam
   const createExam = useCallback(async (examData: Partial<UIExam>, userId?: string) => {
     try {
-      // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
         const user = useAuthStore.getState().user;
@@ -405,14 +399,9 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
         examData.section
       );
 
-      // Get teacher_id from school_educators table (not user.id)
-      const { data: educatorData, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('id')
-        .eq('user_id', currentUserId)
-        .maybeSingle();
-
-      if (educatorError || !educatorData) {
+      const educatorRes = await apiPost('/exams/actions', { action: 'get-educator-by-user-id', userId: currentUserId });
+      const educatorData = educatorRes?.data;
+      if (!educatorData) {
         throw new Error('Teacher record not found in school_educators table');
       }
 
@@ -550,18 +539,11 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
       // Get class_id for the exam using target_classes
       const firstClassId = exam.targetClasses?.class_ids?.[0] || null;
 
-      // Find the actual subject ID from curriculum_subjects
       let actualSubjectId = null;
       if (schoolId) {
-        const { data: subjectData, error: subjectError } = await supabase
-          .from('curriculum_subjects')
-          .select('id')
-          .eq('name', entry.subjectName)
-          .eq('school_id', schoolId)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (!subjectError && subjectData) {
+        const subjectRes = await apiPost('/exams/actions', { action: 'get-subject-by-name', name: entry.subjectName, schoolId });
+        const subjectData = subjectRes?.data;
+        if (subjectData) {
           actualSubjectId = subjectData.id;
         }
       }
@@ -646,7 +628,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
     room?: string;
   }, userId?: string) => {
     try {
-      // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
         const user = useAuthStore.getState().user;
@@ -664,14 +645,9 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
         throw new Error('Timetable entry not found');
       }
 
-      // Get the user_id from school_educators table since invigilator_id references users.id
-      const { data: educatorData, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('user_id')
-        .eq('id', assignment.teacherId)
-        .maybeSingle();
-
-      if (educatorError || !educatorData?.user_id) {
+      const educatorRes = await apiPost('/exams/actions', { action: 'get-educator-user-id', educatorId: assignment.teacherId });
+      const educatorData = educatorRes?.data;
+      if (!educatorData?.user_id) {
         throw new Error('Could not find user ID for the selected teacher');
       }
 
@@ -744,7 +720,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
   // Save marks
   const saveMarks = useCallback(async (examId: string, subjectId: string, learnerMarks: UIlearnerMark[], userId?: string) => {
     try {
-      // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
         const user = useAuthStore.getState().user;
@@ -849,7 +824,6 @@ export const useExams = (schoolId?: string, collegeId?: string) => {
   // Approve subject moderation
   const approveSubjectModeration = useCallback(async (examId: string, subjectId: string, userId?: string) => {
     try {
-      // Use provided userId or fallback to supabase auth
       let currentUserId = userId;
       if (!currentUserId) {
         const user = useAuthStore.getState().user;

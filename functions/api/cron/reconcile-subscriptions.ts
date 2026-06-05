@@ -10,6 +10,7 @@
  * Protected by a shared cron secret — not accessible to end users.
  */
 
+import { apiSuccess, apiError } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 import { ssoSyncSubscription, ssoSyncPlans } from '../../lib/sso-client';
 import { syncSubscriptionCache, syncAllPlansCache } from '../../lib/sync-shadow';
@@ -27,10 +28,7 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
   // Validate cron secret
   const cronSecret = request.headers.get('X-Cron-Secret');
   if (env.CRON_SECRET && cronSecret !== env.CRON_SECRET) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(401, 'UNAUTHORIZED', 'Unauthorized', request);
   }
 
   const supabase = getServiceClient(env);
@@ -64,10 +62,7 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
 
     if (staleError) {
       results.errors.push(`Stale query failed: ${staleError.message}`);
-      return new Response(JSON.stringify(results), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiSuccess(results, request);
     }
 
     results.subscriptions_checked = staleEntries?.length || 0;
@@ -87,15 +82,9 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
 
     console.log('[Reconcile] Completed:', JSON.stringify(results));
 
-    return new Response(JSON.stringify(results), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess(results, request);
   } catch (error: any) {
     console.error('[Reconcile] Fatal error:', error);
-    return new Response(JSON.stringify({ error: error.message, ...results }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(500, 'INTERNAL_ERROR', error.message, request);
   }
 }

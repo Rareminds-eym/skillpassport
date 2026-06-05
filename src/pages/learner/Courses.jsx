@@ -33,7 +33,7 @@ import {
   PaginationPrevious,
 } from '@/shared/ui';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
@@ -228,15 +228,14 @@ const Courses = () => {
       if (!user?.email) return;
       
       try {
-        const { data, error } = await supabase
-          .from('learners')
-          .select('grade, branch_field')
-          .eq('email', user.email)
-          .maybeSingle();
+        const res = await apiPost('/learner-pages/actions', {
+          action: 'fetch-learner-info',
+          email: user.email,
+        });
         
-        if (!error && data) {
-          setlearnerGrade(data.grade);
-          setlearnerBranch(data.branch_field);
+        if (res?.data) {
+          setlearnerGrade(res.data.grade);
+          setlearnerBranch(res.data.branch_field);
           
           // Note: No need to manually call fetchCourses() here
           // The filter-watching useEffect will automatically trigger when learnerGrade/learnerBranch change
@@ -279,119 +278,40 @@ const Courses = () => {
       const from = (currentPage - 1) * coursesPerPage;
       const to = from + coursesPerPage - 1;
 
-      // Build base query for courses with status Active or Upcoming
-      // Also exclude deleted courses
-      let query = supabase
-        .from('courses')
-        .select('*', { count: 'exact' }) // Get total count for pagination
-        .in('status', ['Active', 'Upcoming'])
-        .is('deleted_at', null);
-
-      // Apply classification filter based on learner grade (ALWAYS applied if grade exists)
-      // If no grade, show all courses (fallback)
+      let classification = null;
       if (learnerGrade) {
-        let classification = null;
-        
-        // Handle numeric grades (6-12)
         if (/^(Grade\s*)?(\d+)$/i.test(learnerGrade)) {
           const gradeNum = parseInt(learnerGrade.match(/\d+/)[0]);
-          
-          if (gradeNum >= 6 && gradeNum <= 8) {
-            classification = 'middle_school';
-          } else if (gradeNum >= 9 && gradeNum <= 10) {
-            classification = 'high_school';
-          } else if (gradeNum >= 11 && gradeNum <= 12) {
-            classification = 'higher_secondary';
-          }
-        }
-        // Handle college/university grades (UG, PG, Diploma)
-        else if (/^(UG|PG|Diploma)/i.test(learnerGrade)) {
+          if (gradeNum >= 6 && gradeNum <= 8) classification = 'middle_school';
+          else if (gradeNum >= 9 && gradeNum <= 10) classification = 'high_school';
+          else if (gradeNum >= 11 && gradeNum <= 12) classification = 'higher_secondary';
+        } else if (/^(UG|PG|Diploma)/i.test(learnerGrade)) {
           classification = 'college';
         }
-        
-        if (classification) {
-          // Show courses that match classification OR have no classification (universal courses)
-          query = query.or(`classification.eq.${classification},classification.is.null`);
-        }
-      }
-      // FALLBACK: If no grade is set, show all courses (no classification filter)
-
-      // Apply branch/category filter based on learner's branch_field
-      // Only filter if learner has a branch AND toggle is enabled AND no category filter is already applied
-      if (filterByBranch && learnerBranch && learnerBranch.trim() && advancedFilters.category.length === 0) {
-        // Show courses where category matches learner's branch OR category is null
-        // Use a more precise match to avoid showing unrelated courses
-        query = query.or(`category.eq.${learnerBranch},category.is.null`);
       }
 
-      // Apply search filter at database level
-      if (debouncedSearch && debouncedSearch.trim()) {
-        query = query.or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%,code.ilike.%${debouncedSearch}%`);
-      }
+      const filters = {
+        status: filterStatus !== 'all' ? filterStatus : ['Active', 'Upcoming'],
+        classification,
+        branchField: filterByBranch && learnerBranch?.trim() && advancedFilters.category.length === 0 ? learnerBranch : undefined,
+        search: debouncedSearch?.trim() || undefined,
+        categories: advancedFilters.category.length > 0 ? advancedFilters.category : undefined,
+        skillTypes: advancedFilters.skillType.length > 0 ? advancedFilters.skillType : undefined,
+        durations: advancedFilters.duration.length > 0 ? advancedFilters.duration : undefined,
+        page: currentPage,
+        limit: coursesPerPage,
+        sortBy: sortBy,
+        enrollmentRange: advancedFilters.enrollmentRange,
+        postedWithin: advancedFilters.postedWithin
+      };
 
-      // Apply status filter
-      if (filterStatus !== 'all') {
-        query = query.eq('status', filterStatus);
-      }
+      const res = await apiPost('/learner-pages/actions', {
+        action: 'fetch-courses-query',
+        filters,
+      });
 
-      // Apply advanced filters
-      if (advancedFilters.category.length > 0) {
-        query = query.in('category', advancedFilters.category);
-      }
-
-      if (advancedFilters.skillType.length > 0) {
-        query = query.in('skill_type', advancedFilters.skillType.map(type => type.toLowerCase()));
-      }
-
-      if (advancedFilters.duration.length > 0) {
-        query = query.in('duration', advancedFilters.duration);
-      }
-
-      // Apply enrollment range filter
-      if (advancedFilters.enrollmentRange) {
-        const range = advancedFilters.enrollmentRange;
-        if (range === '1-25') {
-          query = query.gte('enrollment_count', 1).lte('enrollment_count', 25);
-        } else if (range === '26-100') {
-          query = query.gte('enrollment_count', 26).lte('enrollment_count', 100);
-        } else if (range === '101-500') {
-          query = query.gte('enrollment_count', 101).lte('enrollment_count', 500);
-        } else if (range === '500+') {
-          query = query.gte('enrollment_count', 500);
-        }
-      }
-
-      // Apply posted within filter
-      if (advancedFilters.postedWithin) {
-        const daysAgo = parseInt(advancedFilters.postedWithin);
-        const dateThreshold = new Date();
-        dateThreshold.setDate(dateThreshold.getDate() - daysAgo);
-        query = query.gte('created_at', dateThreshold.toISOString());
-      }
-
-      // Apply sorting
-      switch (sortBy) {
-        case 'title':
-          query = query.order('title', { ascending: true });
-          break;
-        case 'enrollment_count':
-          query = query.order('enrollment_count', { ascending: false, nullsFirst: false });
-          break;
-        case 'created_at':
-        default:
-          query = query.order('created_at', { ascending: false });
-          break;
-      }
-
-      // Apply pagination range
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      setCourses(data || []);
-      setTotalCount(count || 0);
+      setCourses(res?.data?.courses || []);
+      setTotalCount(res?.data?.total || 0);
 
       if (isFirstLoad) {
         setInitialLoad(false);
@@ -490,11 +410,8 @@ const Courses = () => {
         return;
       }
       
-      const { data: learnerData, error: learnerError } = await supabase
-        .from('learners')
-        .select('id, learner_id, name, email')
-        .eq('email', user.email)
-        .maybeSingle();
+      const learnerData = await apiGet(`/learners/by-email?email=${encodeURIComponent(user.email)}`);
+      const learnerError = !learnerData ? new Error('Not found') : null;
       
       if (learnerError) {
         logger.error('Error fetching learner data', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));

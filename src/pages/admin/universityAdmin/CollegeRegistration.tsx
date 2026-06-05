@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 import { useUser } from '@/shared/model/authStore';
@@ -817,17 +817,17 @@ const CollegeRegistration = () => {
       try {
         setLoading(true);
         
-        // First, fetch the user's organizationId from the database (fresh data)
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('organizationId')
-          .eq('id', userId)
-          .single();
+        const userResp = await apiPost('/university-admin/actions', {
+          action: 'get-user-by-id',
+          userId,
+          select: 'organizationId',
+        });
 
-        if (userError) {
-          logger.error('Error fetching user:', userError as Error);
-          throw userError;
+        if (!userResp.success) {
+          logger.error('Error fetching user:', new Error(userResp.error?.message));
+          throw new Error(userResp.error?.message || 'Failed to fetch user');
         }
+        const userData = userResp.data;
 
         const organizationId = userData?.organizationId;
         

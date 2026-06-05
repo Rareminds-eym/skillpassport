@@ -89,7 +89,7 @@ Reset user's streak (admin only).
 ## Dependencies
 
 - Supabase for data storage
-- Shared utilities from `src/functions-lib/`
+- Shared utilities from `lib/`
 
 ## Environment Variables
 

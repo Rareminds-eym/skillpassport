@@ -2,9 +2,8 @@
  * Subscription Entity - Utility Functions
  */
 
+import { formatSubscriptionDate, formatPrice } from '../../shared/lib/format';
 import type {
-import { formatSubscriptionDate } from '..\..\..\shared\lib\format';
-import { formatPrice } from '..\..\..\shared\lib\format';
   Subscription,
   SubscriptionStatus,
   BillingCycle,
@@ -177,7 +176,6 @@ export function calculatePricing(
     final_amount: finalAmount,
     price_per_seat: pricePerSeat
   };
-}
 }
 
 export function calculateAnnualSavings(monthlyPrice: number, annualPrice: number): number {

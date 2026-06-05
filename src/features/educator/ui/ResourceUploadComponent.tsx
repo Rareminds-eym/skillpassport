@@ -14,8 +14,7 @@ import { Resource, FileUpload } from '@/shared/types/educator/course';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation';
 import { getFileSizeLimit, formatFileSize as formatFileSizeUtil } from '@/shared/config/fileSizeLimits';
 import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('ResourceUploadComponent');
+import { ssoClient } from '@/shared/api/ssoClient';
 
 // Extend FileUpload type locally to include serverProgress
 interface ExtendedFileUpload extends FileUpload {
@@ -157,7 +156,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       );
 
       // STEP 1: Request presigned URL
-      const presignedResponse = await fetch(`${API_BASE_URL}/api/upload/presigned`, {
+      const presignedResponse = await ssoClient.fetch(`${API_BASE_URL}/api/upload/presigned`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -223,7 +222,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
       });
 
       // STEP 3: Confirm upload
-      const confirmResponse = await fetch(`${API_BASE_URL}/api/upload/confirm`, {
+      const confirmResponse = await ssoClient.fetch(`${API_BASE_URL}/api/upload/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -330,7 +329,7 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
     // If file was already uploaded to R2, delete it from storage
     if (upload.status === 'completed' && upload.uploadedData?.key) {
       try {
-        await fetch(`${API_BASE_URL}/api/file/${upload.uploadedData.key}`, {
+        await ssoClient.fetch(`${API_BASE_URL}/api/file/${upload.uploadedData.key}`, {
           method: 'DELETE',
         });
       } catch (error) {

@@ -27,7 +27,7 @@ import {
   Award
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { CollegeAdminNotificationService } from '@/features/college-admin';
 import { 
@@ -68,32 +68,8 @@ const CollegeVerifications = () => {
     try {
       logger.info('Fetching pending trainings using CollegeAdminNotificationService...');
       
-      // Get college_id from user or college_lecturers table
-      let collegeId = user?.college_id;
-      
-      if (!collegeId) {
-        // Fallback: get college_id from college_lecturers table
-        logger.info('Looking up college_id for user:', user?.id);
-        const { data: educatorData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
-          .maybeSingle();
-          
-        if (educatorData?.collegeId) {
-          collegeId = educatorData.collegeId;
-        } else {
-          // Try organizations table
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('admin_id', user?.id)
-            .eq('organization_type', 'college')
-            .maybeSingle();
-          
-          collegeId = orgData?.id;
-        }
-      }
+      const response = await apiPost('/college-admin/verifications', { action: 'resolve-college-id' });
+      const collegeId = response.data?.collegeId;
       
       if (!collegeId) {
         logger.warn('No college ID found - showing empty list');
@@ -103,7 +79,6 @@ const CollegeVerifications = () => {
       
       logger.info('Using college_id:', collegeId);
       
-      // Use the notification service which now uses approval_authority
       const trainings = await CollegeAdminNotificationService.getPendingTrainings(collegeId);
       
       logger.info('Trainings fetched via notification service:', trainings.length);
@@ -119,32 +94,8 @@ const CollegeVerifications = () => {
     try {
       logger.info('Fetching pending experiences using CollegeAdminNotificationService...');
       
-      // Get college_id from user or college_lecturers table
-      let collegeId = user?.college_id;
-      
-      if (!collegeId) {
-        // Fallback: get college_id from college_lecturers table
-        logger.info('Looking up college_id for user:', user?.id);
-        const { data: educatorData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
-          .maybeSingle();
-          
-        if (educatorData?.collegeId) {
-          collegeId = educatorData.collegeId;
-        } else {
-          // Try organizations table
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('admin_id', user?.id)
-            .eq('organization_type', 'college')
-            .maybeSingle();
-          
-          collegeId = orgData?.id;
-        }
-      }
+      const response = await apiPost('/college-admin/verifications', { action: 'resolve-college-id' });
+      const collegeId = response.data?.collegeId;
       
       if (!collegeId) {
         logger.warn('No college ID found - showing empty list');
@@ -154,7 +105,6 @@ const CollegeVerifications = () => {
       
       logger.info('Using college_id:', collegeId);
       
-      // Use the notification service which now uses approval_authority
       const experiences = await CollegeAdminNotificationService.getPendingExperiences(collegeId);
       
       logger.info('Experiences fetched via notification service:', experiences.length);
@@ -170,46 +120,17 @@ const CollegeVerifications = () => {
     try {
       logger.info('Fetching pending projects using CollegeAdminNotificationService...');
       
-      // Get college_id from user or college_lecturers table
-      let collegeId = user?.college_id;
+      const response = await apiPost('/college-admin/verifications', { action: 'resolve-college-id' });
+      const collegeId = response.data?.collegeId;
       
-      if (!collegeId) {
-        // Fallback: get college_id from college_lecturers table
-        logger.info('Looking up college_id for user:', user?.id);
-        const { data: educatorData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
-          .maybeSingle();
-          
-        if (educatorData?.collegeId) {
-          collegeId = educatorData.collegeId;
-        } else {
-          // Try organizations table
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('admin_id', user?.id)
-            .eq('organization_type', 'college')
-            .maybeSingle();
-          
-          collegeId = orgData?.id;
-        }
-      }
-
       if (!collegeId) {
         logger.warn('No college ID found - showing empty list');
         setPendingProjects([]);
         return;
       }
       
-      if (!collegeId) {
-        throw new Error('College ID not found for current user');
-      }
-      
       logger.info('Using college_id:', collegeId);
       
-      // Use the notification service which now uses approval_authority
       const projects = await CollegeAdminNotificationService.getPendingProjects(collegeId);
       
       logger.info('Projects fetched via notification service:', projects.length);

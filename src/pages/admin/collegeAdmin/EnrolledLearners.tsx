@@ -9,7 +9,6 @@ import {
   ArrowPathIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from '@/shared/api/supabaseClient';
 import { learnerEnrollmentService, type EnrolledLearnerView } from "@/features/learner-profile/api";
 
 import toast from "react-hot-toast";
@@ -89,7 +88,7 @@ const EnrolledLearners: React.FC = () => {
         }
 
         // Fallback: check localStorage
-        const stored = localStorage.getItem('user');
+        const stored = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (stored) {
           try {
             const parsed = JSON.parse(stored);

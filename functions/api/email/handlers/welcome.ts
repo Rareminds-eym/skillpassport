@@ -3,8 +3,8 @@
  * Sends welcome emails using the template
  */
 
-import type { Env } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { Env } from '../../../lib/types';
+import { jsonResponse } from '../../../lib/response';
 import { sendEmail } from '../../../lib/email-service';
 import {
   generateWelcomeEmailHtml,

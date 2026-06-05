@@ -1,19 +1,10 @@
-// ============================================================================
-// CURRICULUM CHANGE REQUEST SERVICE
-// ============================================================================
-// Handles all curriculum change approval operations
-// ============================================================================
-
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { curriculumChangeFallbackService } from './curriculumChangeFallbackService';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('curriculum-change-request');
 
 export interface PendingChange {
   id: string;
-  change_type: 'unit_add' | 'unit_edit' | 'unit_delete' | 
-                'outcome_add' | 'outcome_edit' | 'outcome_delete' | 
+  change_type: 'unit_add' | 'unit_edit' | 'unit_delete' |
+                'outcome_add' | 'outcome_edit' | 'outcome_delete' |
                 'curriculum_edit';
   entity_id?: string;
   timestamp: string;
@@ -27,63 +18,68 @@ export interface PendingChange {
 }
 
 class CurriculumChangeRequestService {
-  /**
-   * Check if curriculum requires approval for changes
-   */
   async requiresApproval(curriculumId: string): Promise<{
     requiresApproval: boolean;
     reason?: string;
   }> {
     try {
-      const { data: curriculum, error } = await supabase
-        .from('college_curriculums')
-        .select('status, university_id')
-        .eq('id', curriculumId)
-        .single();
+      const result = await apiPost<any>('/college-admin/curriculum-changes', {
+        action: 'requires-approval',
+        curriculum_id: curriculumId
+      });
 
-      if (error) throw error;
-
-      // Requires approval if:
-      // 1. Curriculum is published
-      // 2. College is affiliated with university
-      const requiresApproval =
-        curriculum.status === 'published' &&
-        curriculum.university_id !== null;
+      if (!result.success) {
+        return { requiresApproval: false };
+      }
 
       return {
-        requiresApproval,
-        reason: requiresApproval
-          ? 'Published curriculum in affiliated college requires university approval'
-          : undefined
+        requiresApproval: result.data?.requiresApproval || false,
+        reason: result.data?.reason
       };
     } catch (error: any) {
-      logger.error('Failed to check curriculum approval requirement', new Error(error?.message || 'Unknown error'));
       return { requiresApproval: false };
     }
   }
 
-  /**
-   * Submit change request for UNIT ADD
-   */
+  async submitChangeRequest(
+    curriculumId: string,
+    changeType: string,
+    data: any,
+    message?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await apiPost<any>('/college-admin/curriculum-changes', {
+        action: 'submit-change-request',
+        curriculum_id: curriculumId,
+        change_type: changeType,
+        data,
+        message
+      });
+
+      if (!result.success) {
+        return { success: false, error: result.error || 'Failed to submit change request' };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
+      return { success: false, error: errorMessage };
+    }
+  }
+
   async submitUnitAdd(
     curriculumId: string,
     unitData: any,
     message?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.submitUnitAdd(curriculumId, unitData, message);
-
     } catch (error: any) {
-      logger.error('Failed to submit unit add', new Error(error?.message || 'Unknown error'));
       const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
   }
 
-  /**
-   * Submit change request for UNIT EDIT
-   */
   async submitUnitEdit(
     curriculumId: string,
     unitId: string,
@@ -92,7 +88,6 @@ class CurriculumChangeRequestService {
     message?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'unit_edit',
@@ -100,17 +95,12 @@ class CurriculumChangeRequestService {
         { before: beforeData, after: afterData },
         message || 'Editing unit'
       );
-
     } catch (error: any) {
-      logger.error('Failed to submit unit edit', new Error(error?.message || 'Unknown error'));
       const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
   }
 
-  /**
-   * Submit change request for UNIT DELETE
-   */
   async submitUnitDelete(
     curriculumId: string,
     unitId: string,
@@ -118,7 +108,6 @@ class CurriculumChangeRequestService {
     message?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'unit_delete',
@@ -126,40 +115,19 @@ class CurriculumChangeRequestService {
         { data: unitData },
         message || 'Deleting unit'
       );
-
     } catch (error: any) {
-      logger.error('Failed to submit unit delete', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Submit change request for OUTCOME ADD
-   */
   async submitOutcomeAdd(
     curriculumId: string,
     outcomeData: any,
     message?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Check authentication before making the request
-      const user = useAuthStore.getState().user;
-    const authError = null;
-
-      if (authError || !user) {
-        logger.error('Failed to verify authentication for outcome add', new Error('User not authenticated'));
-        return {
-          success: false,
-          error: 'You must be logged in to make changes to the curriculum. Please refresh the page and try again.'
-        };
-      }
-
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.submitOutcomeAdd(curriculumId, outcomeData, message);
-
     } catch (error: any) {
-      logger.error('Failed to submit outcome add', new Error(error?.message || 'Unknown error'));
-      // Handle different error formats
       let errorMessage = 'Failed to submit change request';
 
       if (error?.message) {
@@ -170,7 +138,6 @@ class CurriculumChangeRequestService {
         errorMessage = error;
       }
 
-      // Provide user-friendly error messages
       if (errorMessage.includes('User not authenticated')) {
         errorMessage = 'Authentication expired. Please refresh the page and try again.';
       } else if (errorMessage.includes('function') && errorMessage.includes('does not exist')) {
@@ -181,9 +148,6 @@ class CurriculumChangeRequestService {
     }
   }
 
-  /**
-   * Submit change request for OUTCOME EDIT
-   */
   async submitOutcomeEdit(
     curriculumId: string,
     outcomeId: string,
@@ -192,7 +156,6 @@ class CurriculumChangeRequestService {
     message?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'outcome_edit',
@@ -200,16 +163,11 @@ class CurriculumChangeRequestService {
         { before: beforeData, after: afterData },
         message || 'Editing learning outcome'
       );
-
     } catch (error: any) {
-      logger.error('Failed to submit outcome edit', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Submit change request for OUTCOME DELETE
-   */
   async submitOutcomeDelete(
     curriculumId: string,
     outcomeId: string,
@@ -217,7 +175,6 @@ class CurriculumChangeRequestService {
     message?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'outcome_delete',
@@ -225,16 +182,11 @@ class CurriculumChangeRequestService {
         { data: outcomeData },
         message || 'Deleting learning outcome'
       );
-
     } catch (error: any) {
-      logger.error('Failed to submit outcome delete', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Submit change request for CURRICULUM EDIT
-   */
   async submitCurriculumEdit(
     curriculumId: string,
     beforeData: any,
@@ -242,7 +194,6 @@ class CurriculumChangeRequestService {
     message?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.addPendingChange(
         curriculumId,
         'curriculum_edit',
@@ -250,182 +201,104 @@ class CurriculumChangeRequestService {
         { before: beforeData, after: afterData },
         message || 'Editing curriculum details'
       );
-
     } catch (error: any) {
-      logger.error('Failed to submit curriculum edit', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Get pending changes for a curriculum
-   */
   async getPendingChanges(curriculumId: string): Promise<{
     success: boolean;
     data?: PendingChange[];
     error?: string;
   }> {
     try {
-      // Use direct database query instead of RPC
-      const { data: curriculum, error } = await supabase
-        .from('college_curriculums')
-        .select('pending_changes')
-        .eq('id', curriculumId)
-        .single();
-      
-      if (error) throw error;
-      
-      const pendingChanges = curriculum?.pending_changes || [];
-      return { success: true, data: pendingChanges };
+      const result = await apiPost<any>('/college-admin/curriculum-changes', {
+        action: 'get-pending-changes',
+        curriculum_id: curriculumId
+      });
+
+      if (!result.success) {
+        return { success: false, error: result.error || 'Failed to fetch pending changes' };
+      }
+
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
-      logger.error('Failed to fetch pending changes', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Approve a pending change (University Admin)
-   */
   async approveChange(
     curriculumId: string,
     changeId: string,
     reviewNotes?: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.approvePendingChange(curriculumId, changeId, reviewNotes);
     } catch (error: any) {
-      logger.error('Failed to approve change', new Error(error?.message || 'Unknown error'));
       const errorMessage = error?.message || error?.error_description || error?.toString() || 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
   }
 
-  /**
-   * Reject a pending change (University Admin)
-   */
   async rejectChange(
     curriculumId: string,
     changeId: string,
     reviewNotes: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.rejectPendingChange(curriculumId, changeId, reviewNotes);
     } catch (error: any) {
-      logger.error('Failed to reject change', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Cancel a pending change (College Admin)
-   */
-  async cancelChange(
+  async cancelChangeRequest(
     curriculumId: string,
     changeId: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // Use fallback method directly to avoid RPC authentication issues
       return await curriculumChangeFallbackService.cancelPendingChange(curriculumId, changeId);
     } catch (error: any) {
-      logger.error('Failed to cancel change', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }
 
-  /**
-   * Get all pending changes for university admin
-   * Uses the simpler function that automatically gets current user's university
-   */
+  async cancelChange(
+    curriculumId: string,
+    changeId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    return this.cancelChangeRequest(curriculumId, changeId);
+  }
+
+  async getChangeRequestDetails(requestId: string): Promise<{
+    success: boolean;
+    data?: any;
+    error?: string;
+  }> {
+    try {
+      return await curriculumChangeFallbackService.getCurriculumChangeDetails(requestId);
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
   async getAllPendingChangesForUniversity(universityId?: string): Promise<{
     success: boolean;
     data?: any[];
     error?: string;
   }> {
     try {
-      // Use direct database query instead of RPC functions
-      // Query college_curriculums with pending changes
-      const { data: curriculums, error } = await supabase
-        .from('college_curriculums')
-        .select(`
-          id,
-          status,
-          academic_year,
-          pending_changes,
-          created_at,
-          college_id,
-          course:college_courses!college_curriculums_course_id_fkey(course_name, course_code),
-          departments(name),
-          programs(name)
-        `)
-        .eq('has_pending_changes', true)
-        .eq('university_id', universityId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        logger.error('Failed to fetch curriculums with pending changes', new Error(error?.message || 'Unknown error'));
-        return { success: false, error: error.message };
-      }
-
-      // Get college names for the curriculums
-      const collegeIds = [...new Set(curriculums?.map(c => c.college_id).filter(Boolean))] || [];
-      let collegeMap: { [key: string]: string } = {};
-      
-      if (collegeIds.length > 0) {
-        // Try to get college names from curriculum_approval_dashboard view
-        const { data: collegeData } = await supabase
-          .from('curriculum_approval_dashboard')
-          .select('college_id, college_name')
-          .in('college_id', collegeIds);
-        
-        if (collegeData) {
-          collegeData.forEach(college => {
-            collegeMap[college.college_id] = college.college_name;
-          });
-        }
-      }
-
-      // Transform the data to flatten pending changes
-      const pendingChanges: any[] = [];
-
-      curriculums?.forEach(curriculum => {
-        if (curriculum.pending_changes && Array.isArray(curriculum.pending_changes)) {
-          curriculum.pending_changes.forEach((change: any) => {
-            if (change.status === 'pending') {
-              pendingChanges.push({
-                curriculum_id: curriculum.id,
-                curriculum_status: curriculum.status,
-                academic_year: curriculum.academic_year,
-                course_name: curriculum.course?.course_name,
-                course_code: curriculum.course?.course_code,
-                department_name: curriculum.departments?.name,
-                program_name: curriculum.programs?.name,
-                college_name: collegeMap[curriculum.college_id] || 'Unknown College',
-                college_id: curriculum.college_id,
-
-                // Change details - using field names expected by frontend
-                change_id: change.id,
-                change_type: change.change_type,
-                change_timestamp: change.request_date || change.request_timestamp,
-                request_date: change.request_date || change.request_timestamp,
-                request_message: change.request_message,
-                requester_name: change.requester_name,
-                requested_by: change.requested_by,
-                status: change.status,
-                data: change.data,
-                change_data: change.data,
-                curriculum_name: curriculum.course?.course_name
-              });
-            }
-          });
-        }
+      const result = await apiPost<any>('/college-admin/curriculum-changes', {
+        action: 'get-all-curriculum-changes',
+        university_id: universityId
       });
 
-      return { success: true, data: pendingChanges };
+      if (!result.success) {
+        return { success: false, error: result.error || 'Failed to fetch pending changes' };
+      }
 
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
-      logger.error('Failed to fetch university pending changes', new Error(error?.message || 'Unknown error'));
       return { success: false, error: error.message };
     }
   }

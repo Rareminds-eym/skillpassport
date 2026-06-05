@@ -25,7 +25,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from 'react-hot-toast';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-department-management');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, MagnifyingGlassIcon, UserGroupIcon } from '@heroicons/react/24/outline';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('LearnerSelectionModal');
@@ -56,15 +56,10 @@ const LearnerSelectionModal: React.FC<LearnerSelectionModalProps> = ({
         if (!classIds || classIds.length === 0) return;
         
         try {
-            const { data, error } = await supabase
-                .from('school_classes')
-                .select('name, grade, section')
-                .in('id', classIds);
-
-            if (!error && data) {
-                const names = data.map(cls => cls.name || `Grade ${cls.grade} - ${cls.section || 'General'}`);
-                setClassNames(names);
-            }
+            const res = await apiPost('/educator/actions', { action: 'fetch-classes-by-ids', ids: classIds });
+            const data = res?.data || [];
+            const names = data.map(cls => cls.name || `Grade ${cls.grade} - ${cls.section || 'General'}`);
+            setClassNames(names);
         } catch (error) {
             logger.error('Failed to fetch class names', error as Error);
         }
@@ -87,19 +82,8 @@ const LearnerSelectionModal: React.FC<LearnerSelectionModalProps> = ({
     // Fetch learners already assigned to this assignment
     const fetchAssignedlearners = async () => {
         try {
-            const { data: assignedlearners, error } = await supabase
-                .from('learner_assignments')
-                .select('learner_id')
-                .eq('assignment_id', assignmentId)
-                .eq('is_deleted', false);
-
-            if (error) {
-                logger.error('Failed to fetch assigned learners', error as Error);
-                return;
-            }
-
-            // Pre-select already assigned learners
-            const assignedIds = (assignedlearners || []).map(sa => sa.learner_id);
+            const res = await apiPost('/educator/actions', { action: 'get-assigned-learner-ids', assignmentId });
+            const assignedIds = res?.data || [];
             setSelectedIds(assignedIds);
             setInitiallyAssignedIds(assignedIds);
         } catch (error) {
@@ -110,47 +94,27 @@ const LearnerSelectionModal: React.FC<LearnerSelectionModalProps> = ({
 const fetchlearners = async () => {
     try {
         setLoading(true);
-        
-        let query = supabase
-            .from('learners')
-            .select('*')
-            .eq('is_deleted', false);
 
-        // Filter by classes if classIds are provided (priority filter)
+        const filtersPayload: any = {};
         if (classIds && classIds.length > 0) {
-            query = query.in('school_class_id', classIds);
+            filtersPayload.school_class_id = classIds;
         } else if (schoolId) {
-            // Filter by school if schoolId is provided and no classIds
-            query = query.eq('school_id', schoolId);
+            filtersPayload.school_id = schoolId;
         }
-
-        // Apply filters
         if (filters.department !== 'all') {
-            query = query.eq('branch_field', filters.department);
+            filtersPayload.branch_field = filters.department;
         }
         if (filters.year !== 'all') {
-            // Year filtering might need adjustment based on your schema
-            query = query.eq('grade', filters.year);
+            filtersPayload.grade = filters.year;
         }
         if (filters.search) {
-            const searchTerm = filters.search.toLowerCase();
-            query = query.or(
-                `name.ilike.%${searchTerm}%,` +
-                `email.ilike.%${searchTerm}%,` +
-                `learner_id.ilike.%${searchTerm}%,` +
-                `registration_number.ilike.%${searchTerm}%`
-            );
+            filtersPayload.search = filters.search;
         }
 
-        const { data, error } = await query;
+        const res = await apiPost('/educator/actions', { action: 'fetch-learners-with-filters', filters: filtersPayload });
+        const data = res?.data || [];
 
-        if (error) {
-            logger.error('Supabase query error', error as Error);
-            throw error;
-        }
-
-        // Transform data
-        const transformedlearners = (data || []).map(learner => {
+        const transformedlearners = data.map(learner => {
             return {
                 id: learner.id || learner.user_id,
                 user_id: learner.user_id,
@@ -191,21 +155,10 @@ const fetchlearners = async () => {
 
     const fetchFiltersData = async () => {
         try {
-            // Get learners from school to extract unique departments and years from profile JSONB
-            let query = supabase
-                .from('learners')
-                .select('profile')
-                .eq('is_deleted', false);
-            
-            if (schoolId) {
-                query = query.eq('school_id', schoolId);
-            }
-            
-            const { data: learnersData } = await query;
-            
-            const depts = learnersData?.map(s => s.profile?.department).filter(Boolean) || [];
-            const uniqueDepts = [...new Set(depts)];
-            setDepartments(uniqueDepts as string[]);
+            const res = await apiPost('/educator/actions', { action: 'fetch-learner-profiles-data', schoolId, classIds });
+            const data = res?.data || {};
+            setDepartments(data.departments || []);
+            setYears(data.years || []);
 
             const years = learnersData?.map(s => s.profile?.yearOfPassing).filter(Boolean) || [];
             const uniqueYears = [...new Set(years)];

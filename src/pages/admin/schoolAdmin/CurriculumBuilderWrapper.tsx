@@ -201,12 +201,7 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
       let isSchoolAdmin = false;
       
       if (user) {
-        const { data: userData } = await curriculumService.supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
-        isSchoolAdmin = userData?.role === 'school_admin';
+        isSchoolAdmin = user.role === 'school_admin';
       }
 
       await submitForApproval();

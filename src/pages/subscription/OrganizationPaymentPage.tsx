@@ -100,7 +100,7 @@ function OrganizationPaymentPage() {
     if (user?.collegeId) return String(user.collegeId);
     if (user?.universityId) return String(user.universityId);
 
-    const storedUser = localStorage.getItem('user');
+    const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
     if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);

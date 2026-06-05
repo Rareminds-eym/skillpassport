@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { KPICard } from '@/features/analytics';
 import { useNavigate } from "react-router-dom";
-import { supabase } from '@/shared/api/supabaseClient';
 
 import { getLogger } from '@/shared/config/logging';
 

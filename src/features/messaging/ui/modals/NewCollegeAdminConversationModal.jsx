@@ -1,6 +1,6 @@
 import { Building2, MessageCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationCreated }) => {
   const [college, setCollege] = useState(null);
@@ -37,36 +37,7 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, onConver
   const fetchlearnerCollege = async () => {
     setLoading(true);
     try {
-      // First try to get learner's college information via college_id (organizations table)
-      const { data: learnerData, error } = await supabase
-        .from('learners')
-        .select(`
-          college_id,
-          university_college_id,
-          college:organizations!learners_college_id_fkey (
-            id,
-            name,
-            city,
-            state,
-            organization_type
-          ),
-          university_colleges:university_college_id (
-            id,
-            name,
-            code,
-            university:organizations!university_colleges_university_id_fkey (
-              id,
-              name,
-              city,
-              state,
-              organization_type
-            )
-          )
-        `)
-        .eq('id', learnerId)
-        .single();
-
-      if (error) throw error;
+      const { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-college', learnerId });
 
       let collegeData = null;
 

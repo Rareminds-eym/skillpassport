@@ -7,9 +7,9 @@
  * Uses unified 'organizations' table with organization_type='school'
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import type { SchoolAdminSignupRequest, EducatorSignupRequest, LearnerSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
 import {
@@ -38,21 +38,21 @@ export async function handleSchoolAdminSignup(request: Request, env: PagesEnv): 
     ];
     for (const field of requiredFields) {
       if (!body[field as keyof SchoolAdminSignupRequest]) {
-        return jsonResponse({ error: `Missing required field: ${field}` }, 400);
+        return apiError(400, 'VALIDATION_ERROR', `Missing required field: ${field}`, request);
       }
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters', request);
     }
 
     // Check if email already exists
     if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An account with this email already exists', request);
     }
 
     // Check if school code is unique in organizations table
@@ -64,7 +64,7 @@ export async function handleSchoolAdminSignup(request: Request, env: PagesEnv): 
       .maybeSingle();
 
     if (existingSchool) {
-      return jsonResponse({ error: 'School code already exists. Please choose a different code.' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'School code already exists. Please choose a different code.', request);
     }
 
     // 1. Create auth user
@@ -81,7 +81,7 @@ export async function handleSchoolAdminSignup(request: Request, env: PagesEnv): 
 
     if (authError || !authUser.user) {
       console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', authError?.message || 'Failed to create account', request);
     }
 
     const userId = authUser.user.id;
@@ -157,8 +157,7 @@ export async function handleSchoolAdminSignup(request: Request, env: PagesEnv): 
         `<strong>School:</strong> ${body.schoolName}`
       );
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'School account created successfully! Please check your email for login details.',
         data: {
           userId,
@@ -168,7 +167,7 @@ export async function handleSchoolAdminSignup(request: Request, env: PagesEnv): 
           email: body.email,
           role: 'school_admin',
         },
-      });
+      }, request);
     } catch (error) {
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
@@ -176,10 +175,7 @@ export async function handleSchoolAdminSignup(request: Request, env: PagesEnv): 
     }
   } catch (error) {
     console.error('School admin signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create school account' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create school account', request);
   }
 }
 
@@ -194,22 +190,19 @@ export async function handleEducatorSignup(request: Request, env: PagesEnv): Pro
     const body = (await request.json()) as EducatorSignupRequest;
 
     if (!body.email || !body.password || !body.firstName || !body.lastName || !body.schoolId) {
-      return jsonResponse(
-        { error: 'Missing required fields: email, password, firstName, lastName, schoolId' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: email, password, firstName, lastName, schoolId', request);
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters', request);
     }
 
     if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An account with this email already exists', request);
     }
 
     // Verify school exists in organizations table
@@ -221,7 +214,7 @@ export async function handleEducatorSignup(request: Request, env: PagesEnv): Pro
       .single();
 
     if (schoolError || !school) {
-      return jsonResponse({ error: 'Invalid school selected' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid school selected', request);
     }
 
     const { data: existingEducator } = await supabaseAdmin
@@ -231,7 +224,7 @@ export async function handleEducatorSignup(request: Request, env: PagesEnv): Pro
       .maybeSingle();
 
     if (existingEducator) {
-      return jsonResponse({ error: 'An educator with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An educator with this email already exists', request);
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -250,7 +243,7 @@ export async function handleEducatorSignup(request: Request, env: PagesEnv): Pro
 
     if (authError || !authUser.user) {
       console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', authError?.message || 'Failed to create account', request);
     }
 
     const userId = authUser.user.id;
@@ -316,8 +309,7 @@ export async function handleEducatorSignup(request: Request, env: PagesEnv): Pro
         `<strong>School:</strong> ${school.name}`
       );
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'Educator account created successfully!',
         data: {
           userId,
@@ -328,7 +320,7 @@ export async function handleEducatorSignup(request: Request, env: PagesEnv): Pro
           schoolName: school.name,
           role: 'school_educator',
         },
-      });
+      }, request);
     } catch (error) {
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
@@ -336,10 +328,7 @@ export async function handleEducatorSignup(request: Request, env: PagesEnv): Pro
     }
   } catch (error) {
     console.error('Educator signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create educator account' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create educator account', request);
   }
 }
 
@@ -355,19 +344,19 @@ export async function handleLearnerSignup(request: Request, env: PagesEnv): Prom
     const body = (await request.json()) as LearnerSignupRequest;
 
     if (!body.email || !body.password || !body.name || !body.schoolId) {
-      return jsonResponse({ error: 'Missing required fields: email, password, name, schoolId' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: email, password, name, schoolId', request);
     }
 
     if (!validateEmail(body.email)) {
-      return jsonResponse({ error: 'Invalid email format' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
     }
 
     if (body.password.length < 6) {
-      return jsonResponse({ error: 'Password must be at least 6 characters' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters', request);
     }
 
     if (await checkEmailExists(supabaseAdmin, body.email)) {
-      return jsonResponse({ error: 'An account with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'An account with this email already exists', request);
     }
 
     // Verify school exists in organizations table
@@ -379,7 +368,7 @@ export async function handleLearnerSignup(request: Request, env: PagesEnv): Prom
       .single();
 
     if (schoolError || !school) {
-      return jsonResponse({ error: 'Invalid school selected' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid school selected', request);
     }
 
     const { data: existingLearner } = await supabaseAdmin
@@ -389,7 +378,7 @@ export async function handleLearnerSignup(request: Request, env: PagesEnv): Prom
       .maybeSingle();
 
     if (existingLearner) {
-      return jsonResponse({ error: 'A learner with this email already exists' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'A learner with this email already exists', request);
     }
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -406,7 +395,7 @@ export async function handleLearnerSignup(request: Request, env: PagesEnv): Prom
 
     if (authError || !authUser.user) {
       console.error('Auth user creation failed:', authError);
-      return jsonResponse({ error: authError?.message || 'Failed to create account' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', authError?.message || 'Failed to create account', request);
     }
 
     const userId = authUser.user.id;
@@ -483,8 +472,7 @@ export async function handleLearnerSignup(request: Request, env: PagesEnv): Prom
         `<strong>School:</strong> ${school.name}${body.grade ? `<br><strong>Grade:</strong> ${body.grade}` : ''}`
       );
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         message: 'Learner account created successfully!',
         data: {
           userId,
@@ -495,7 +483,7 @@ export async function handleLearnerSignup(request: Request, env: PagesEnv): Prom
           schoolName: school.name,
           role: 'learner',
         },
-      });
+      }, request);
     } catch (error) {
       console.error('Rollback: deleting auth user due to error:', error);
       await deleteAuthUser(supabaseAdmin, userId);
@@ -503,9 +491,6 @@ export async function handleLearnerSignup(request: Request, env: PagesEnv): Prom
     }
   } catch (error) {
     console.error('Learner signup error:', error);
-    return jsonResponse(
-      { error: error instanceof Error ? error.message : 'Failed to create learner account' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to create learner account', request);
   }
 }

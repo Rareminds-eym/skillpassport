@@ -14,7 +14,7 @@ import {
 import React, { useEffect, useId, useState } from "react"
 import { SubscriptionSettingsSection } from "@/features/subscription"
 import { useAuth } from "@/features/auth"
-import { supabase } from '@/shared/api/supabaseClient'
+import { apiPost } from '@/shared/api/apiClient'
 import { getLogger } from '@/shared/config/logging'
 
 
@@ -124,16 +124,11 @@ export default function SettingsPage() {
     const fetchRecruiter = async () => {
       if (!user?.email) return
       setLoading(true)
-      const { data, error } = await supabase
-        .from("recruiters")
-        .select("*")
-        .eq("email", user.email)
-        .maybeSingle()
-
-      if (error) {
-        logger.error("❌ Error fetching recruiter", error)
-      } else {
-        setRecruiter(data)
+      try {
+        const result = await apiPost<any>('/recruiter/actions', { action: 'get-recruiter-profile', email: user.email })
+        setRecruiter(result.data)
+      } catch (err) {
+        logger.error("❌ Error fetching recruiter", err as Error)
       }
       setLoading(false)
     }

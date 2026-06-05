@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 import React, { useState } from 'react';
 
-import { supabase } from '@/shared/api/supabaseClient';
 
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { useUser } from '@/shared/model/authStore';
 interface OrganizationFormData {
   name: string;
@@ -154,16 +154,7 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
 
     try {
       // Check if organization with same name and type already exists
-      const { data: existingOrg, error: checkError } = await supabase
-        .from('organizations')
-        .select('id')
-        .ilike('name', formData.name.trim())
-        .eq('organization_type', organizationType)
-        .maybeSingle();
-
-      if (checkError) {
-        throw new Error(`Failed to check existing organizations: ${checkError.message}`);
-      }
+      const { data: existingOrg } = await apiGet('/organization?action=checkOrganizationNameExists&name=' + encodeURIComponent(formData.name.trim()) + '&orgType=' + organizationType);
 
       if (existingOrg) {
         setValidationErrors({ name: `A ${getOrganizationLabel().toLowerCase()} with this name already exists` });
@@ -172,26 +163,11 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
       }
 
       // Create the organization in the unified organizations table
-      const { data: newOrg, error: createError } = await supabase
-        .from('organizations')
-        .insert({
-          name: formData.name.trim(),
-          organization_type: organizationType,
-          address: formData.address.trim() || null,
-          city: formData.city.trim() || null,
-          state: formData.state.trim() || null,
-          country: formData.country.trim() || null,
-          phone: formData.phone.trim() || null,
-          email: formData.email.trim() || null,
-          website: formData.website.trim() || null,
-          admin_id: user.id,
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        throw new Error(`Failed to create ${getOrganizationLabel().toLowerCase()}: ${createError.message}`);
-      }
+      const { data: newOrg } = await apiPost('/organization', {
+        action: 'createOrganization',
+        ...formData,
+        admin_id: user.id,
+      });
 
       setStep('success');
 

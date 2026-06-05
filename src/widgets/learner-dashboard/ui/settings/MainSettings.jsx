@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { apiPost } from '@/shared/api/apiClient';
 import {
   AlertCircle,
   Bell,
@@ -767,26 +768,17 @@ const MainSettings = () => {
     }
     
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-      
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skill.id);
-      
-      if (error) throw error;
-      
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId: skill.id,
+        enabled: newState,
+      });
+
       // Refresh technical skills to get updated data
       if (refreshTechnicalSkills) {
         await refreshTechnicalSkills();
       }
-      
+
       toast.success(`Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
     } catch (error) {
       console.error('Error toggling technical skill visibility:', error);
@@ -798,36 +790,27 @@ const MainSettings = () => {
   const handleToggleSoftSkillEnabled = async (index) => {
     const skill = tableSoftSkills[index];
     if (!skill) return;
-    
+
     const newState = !skill.enabled;
-    
+
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
       toast.error("You cannot hide or show skills that are pending verification or approval.", { duration: 4000 });
       return;
     }
-    
+
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-      
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skill.id);
-      
-      if (error) throw error;
-      
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId: skill.id,
+        enabled: newState,
+      });
+
       // Refresh soft skills to get updated data
       if (refreshSoftSkills) {
         await refreshSoftSkills();
       }
-      
+
       toast.success(`Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
     } catch (error) {
       console.error('Error toggling soft skill visibility:', error);

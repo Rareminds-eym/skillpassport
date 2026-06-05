@@ -6,8 +6,8 @@
  */
 
 import { z } from 'zod';
-import type { Env } from '../../../src/functions-lib/types';
-import { jsonResponse } from '../../../src/functions-lib';
+import type { Env } from '../../lib/types';
+import { jsonResponse } from '../../lib/response';
 import { apiLogger } from '../../lib/logger';
 
 const forgotPasswordSchema = z.object({

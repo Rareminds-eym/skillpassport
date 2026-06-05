@@ -7,39 +7,28 @@
  * via the SSO worker. Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { ssoGetUserTransactions } from '../../../lib/sso-client';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleGetSubscriptionPayments(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SSO_SERVICE: Fetcher };
-  const userId = context.data.user.sub;
+  const user = getContextUser(context);
+  const userId = user.id;
   const url = new URL(context.request.url);
   const subscriptionId = url.searchParams.get('subscriptionId');
 
   if (!subscriptionId) {
-    return new Response(
-      JSON.stringify({ success: false, data: null, error: 'subscriptionId is required' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'subscriptionId is required', context.request);
   }
 
   try {
     const transactions = await ssoGetUserTransactions(env, userId, subscriptionId);
 
-    return new Response(
-      JSON.stringify({ success: true, data: transactions, error: null }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess(transactions, context.request, 200);
   } catch (error) {
     console.error('[GetSubscriptionPayments] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        data: null,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

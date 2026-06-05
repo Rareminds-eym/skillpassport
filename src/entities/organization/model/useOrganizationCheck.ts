@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 
 export type OrganizationType = 'school' | 'college' | 'university';
 
@@ -30,14 +30,6 @@ interface User {
   email?: string;
 }
 
-/**
- * Hook to check if an admin user has an organization linked to their account.
- * Used to enforce organization creation before accessing the dashboard.
- * 
- * @param organizationType - The type of organization to check ('school', 'college', 'university')
- * @param user - The authenticated user object (pass from store/context)
- * @returns Object containing organization data, loading state, and whether organization exists
- */
 export function useOrganizationCheck(
   organizationType: OrganizationType,
   user: User | null
@@ -48,7 +40,6 @@ export function useOrganizationCheck(
   const hasInitialized = useRef(false);
   const lastUserId = useRef<string | null>(null);
 
-  // Reset initialization when user changes
   useEffect(() => {
     if (user?.id !== lastUserId.current) {
       hasInitialized.current = false;
@@ -57,11 +48,7 @@ export function useOrganizationCheck(
   }, [user?.id]);
 
   const fetchOrganization = useCallback(async () => {
-    // Prevent multiple fetches
-    if (hasInitialized.current) {
-      return;
-    }
-
+    if (hasInitialized.current) return;
     if (!user?.id) {
       setLoading(false);
       setError('User not authenticated');
@@ -72,26 +59,17 @@ export function useOrganizationCheck(
     setError(null);
 
     try {
-      // Find organization by admin_id and organization_type in the unified organizations table
-      const { data, error: fetchError } = await supabase
-        .from('organizations')
-        .select('id, name, organization_type, address, city, state, country, phone, email, website, logo_url')
-        .eq('admin_id', user.id)
-        .eq('organization_type', organizationType)
-        .maybeSingle();
+      const params = new URLSearchParams({ action: 'getOrganizationByAdminId', adminId: user.id, orgType: organizationType });
+      const result = await apiGet<any>(`/organization?${params.toString()}`);
 
-      if (fetchError) {
-        setError(`Failed to check ${organizationType} status`);
-        setOrganization(null);
-      } else if (data) {
-        setOrganization(data as Organization);
+      if (result?.data) {
+        setOrganization(result.data as Organization);
       } else {
-        // No organization found - this is expected for new admins
         setOrganization(null);
       }
       hasInitialized.current = true;
     } catch (err) {
-      setError('An unexpected error occurred');
+      setError(`Failed to check ${organizationType} status`);
       setOrganization(null);
       hasInitialized.current = true;
     } finally {
@@ -103,19 +81,12 @@ export function useOrganizationCheck(
     fetchOrganization();
   }, [fetchOrganization]);
 
-  // Refetch function that resets initialization to force a new fetch
   const refetch = useCallback(async () => {
     hasInitialized.current = false;
     await fetchOrganization();
   }, [fetchOrganization]);
 
-  return {
-    organization,
-    loading,
-    error,
-    hasOrganization: organization !== null,
-    refetch,
-  };
+  return { organization, loading, error, hasOrganization: organization !== null, refetch };
 }
 
 export default useOrganizationCheck;

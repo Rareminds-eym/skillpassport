@@ -3,7 +3,7 @@
  * Single source of truth for all email operations via email-worker service binding
  */
 
-import type { PagesEnv } from '../../src/functions-lib/types';
+import type { PagesEnv } from './types';
 import { apiLogger } from './logger';
 import { z } from 'zod';
 

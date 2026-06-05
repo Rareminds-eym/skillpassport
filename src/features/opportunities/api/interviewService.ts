@@ -1,6 +1,6 @@
-import { supabase } from '@/shared/api/supabaseClient';
 import userApiService from '@/entities/user/api/userApiService';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('interviewService');
 
@@ -11,13 +11,9 @@ const logger = getLogger('interviewService');
  */
 export const getInterviews = async () => {
   try {
-    const { data, error } = await supabase
-      .from('interviews')
-      .select('*')
-      .order('date', { ascending: true });
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-interviews' });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.interviews || [], error: null };
   } catch (error) {
     return { data: null, error };
   }
@@ -28,14 +24,9 @@ export const getInterviews = async () => {
  */
 export const getInterviewById = async (interviewId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('interviews')
-      .select('*')
-      .eq('id', interviewId)
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-interview-by-id', id: interviewId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.interview || null, error: null };
   } catch (error) {
     return { data: null, error };
   }
@@ -46,14 +37,9 @@ export const getInterviewById = async (interviewId: string) => {
  */
 export const getInterviewsForLearner = async (learnerId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('interviews')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .order('date', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-interviews-for-learner', learner_id: learnerId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.interviews || [], error: null };
   } catch (error) {
     return { data: null, error };
   }
@@ -64,12 +50,9 @@ export const getInterviewsForLearner = async (learnerId: string) => {
  */
 export const getUpcomingInterviews = async () => {
   try {
-    const { data, error } = await supabase
-      .from('upcoming_interviews')
-      .select('*');
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-upcoming-interviews' });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.interviews || [], error: null };
   } catch (error) {
     return { data: null, error };
   }
@@ -80,12 +63,9 @@ export const getUpcomingInterviews = async () => {
  */
 export const getPendingScorecards = async () => {
   try {
-    const { data, error } = await supabase
-      .from('pending_scorecards')
-      .select('*');
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-pending-scorecards' });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.scorecards || [], error: null };
   } catch (error) {
     return { data: null, error };
   }
@@ -113,14 +93,9 @@ export const createInterview = async (interviewData: {
   created_by?: string;
 }) => {
   try {
-    const { data, error } = await supabase
-      .from('interviews')
-      .insert([interviewData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'create-interview', interview: interviewData });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.interview || null, error: null };
   } catch (error) {
     return { data: null, error };
   }
@@ -151,15 +126,9 @@ export const updateInterview = async (
   }>
 ) => {
   try {
-    const { data, error } = await supabase
-      .from('interviews')
-      .update(updates)
-      .eq('id', interviewId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'update-interview', id: interviewId, ...updates });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.interview || null, error: null };
   } catch (error) {
     return { data: null, error };
   }
@@ -170,12 +139,8 @@ export const updateInterview = async (
  */
 export const deleteInterview = async (interviewId: string) => {
   try {
-    const { error } = await supabase
-      .from('interviews')
-      .delete()
-      .eq('id', interviewId);
-
-    if (error) throw error;
+    const response: any = await apiPost('/opportunities', { action: 'delete-interview', id: interviewId });
+    if (response?.error) return { error: response.error };
     return { error: null };
   } catch (error) {
     return { error };
@@ -197,15 +162,9 @@ export const updateInterviewStatus = async (
       updates.completed_date = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
-      .from('interviews')
-      .update(updates)
-      .eq('id', interviewId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'update-interview', id: interviewId, ...updates });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.interview || null, error: null };
   } catch (error) {
     return { data: null, error };
   }
@@ -227,19 +186,9 @@ export const updateScorecard = async (
   }
 ) => {
   try {
-    const { data, error } = await supabase
-      .from('interviews')
-      .update({
-        scorecard,
-        status: 'completed',
-        completed_date: new Date().toISOString()
-      })
-      .eq('id', interviewId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'update-scorecard', id: interviewId, scorecard });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.interview || null, error: null };
   } catch (error) {
     logger.error('Failed to update scorecard', error as Error);
     return { data: null, error };
@@ -258,14 +207,9 @@ export const logInterviewReminder = async (reminderData: {
   status?: 'sent' | 'delivered' | 'failed';
 }) => {
   try {
-    const { data, error } = await supabase
-      .from('interview_reminders')
-      .insert([reminderData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'log-interview-reminder', reminder: reminderData });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.reminder || null, error: null };
   } catch (error) {
     logger.error('Failed to log reminder', error as Error);
     return { data: null, error };
@@ -277,14 +221,9 @@ export const logInterviewReminder = async (reminderData: {
  */
 export const getReminderHistory = async (interviewId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('interview_reminders')
-      .select('*')
-      .eq('interview_id', interviewId)
-      .order('sent_at', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-reminder-history', interview_id: interviewId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.reminders || [], error: null };
   } catch (error) {
     logger.error('Failed to fetch reminder history', error as Error);
     return { data: null, error };
@@ -301,25 +240,9 @@ export const sendInterviewReminder = async (
 ) => {
   try {
     // Update reminders count
-    const { error: updateError } = await supabase
-      .from('interviews')
-      .update({
-        reminders_sent: currentReminderCount + 1
-      })
-      .eq('id', interviewId);
-
-    if (updateError) throw updateError;
-
-    // Log reminder
-    const { data, error: logError } = await logInterviewReminder({
-      interview_id: interviewId,
-      sent_to: recipientInfo,
-      reminder_type: 'interview_reminder'
-    });
-
-    if (logError) throw logError;
-
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'send-interview-reminder', id: interviewId, reminders_sent: currentReminderCount, sent_to: recipientInfo });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.reminder || null, error: null };
   } catch (error) {
     logger.error('Failed to send reminder', error as Error);
     return { data: null, error };

@@ -37,7 +37,7 @@ import {
   ExperienceDetailsModal, 
   ProjectDetailsModal 
 } from '@/features/school-admin';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser } from '@/shared/model/authStore';
 const Verifications: React.FC = () => {
@@ -83,20 +83,12 @@ const Verifications: React.FC = () => {
       logger.info('user.school_id not found, checking school_educators table');
       
       try {
-        const { data, error } = await supabase
-          .from('school_educators')
-          .select('school_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          logger.error('Error fetching school_id', error);
-          setSchoolId(undefined);
-        } else if (data?.school_id) {
-          logger.info('Found school_id from educators table', { schoolId: data.school_id });
-          setSchoolId(data.school_id);
+        const resp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId' });
+        if (resp.data?.schoolId) {
+          logger.info('Found school_id', { schoolId: resp.data.schoolId });
+          setSchoolId(resp.data.schoolId);
         } else {
-          logger.warn('No school_id found in educators table');
+          logger.warn('No school_id found');
           setSchoolId(undefined);
         }
       } catch (err) {

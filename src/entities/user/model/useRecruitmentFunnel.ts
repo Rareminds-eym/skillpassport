@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/shared/api/supabaseClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
 interface UseRecruitmentFunnelOptions {
   preset: FunnelRangePreset;
@@ -35,25 +35,31 @@ export const useRecruitmentFunnel = (
   });
 
   useEffect(() => {
-    // subscribe to stage changes and pipeline candidate changes
-    const channel = supabase.channel(`recruitment-funnel-${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_activities' }, () => {
-        // invalidate on any activity change
-        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.recruitment.all });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.recruitment.all });
-      });
+    const wsClient = getWSClient();
+    const unsubscribers: Array<() => void> = [];
 
-    channel.subscribe();
-    channelRef.current = channel;
+    // Subscribe to pipeline_activities changes
+    const unsubActivities = wsClient.subscribe(
+      'pipeline_activities',
+      { event: '*' },
+      () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.recruitment.all });
+      }
+    );
+    unsubscribers.push(unsubActivities);
+
+    // Subscribe to pipeline_candidates changes
+    const unsubCandidates = wsClient.subscribe(
+      'pipeline_candidates',
+      { event: '*' },
+      () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.recruitment.all });
+      }
+    );
+    unsubscribers.push(unsubCandidates);
 
     return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      unsubscribers.forEach(unsub => unsub());
     };
   }, [queryClient]);
 

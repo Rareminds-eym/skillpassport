@@ -10,8 +10,9 @@
 
 import type { PagesFunction } from '@cloudflare/workers-types';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceClient } from '../../../lib/supabase';
 import { createLogger } from '../../../lib/logger';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-registration-order');
 
@@ -32,29 +33,20 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     // Validate required fields
     if (!body.amount || typeof body.amount !== 'number') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'amount is required and must be a number' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'amount is required and must be a number', context.request);
     }
 
     if (!body.userEmail || !body.userName || !body.userPhone) {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'userEmail, userName, and userPhone are required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'userEmail, userName, and userPhone are required', context.request);
     }
 
     // Create Supabase client
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = getServiceClient(env);
 
     // Create pre_registration record first
     const { data: preReg, error: insertError } = await supabase
@@ -74,16 +66,7 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
 
     if (insertError) {
       logger.error('Database insert error', insertError);
-      return new Response(
-        JSON.stringify({ 
-          error: { 
-            code: 'DATABASE_ERROR', 
-            message: 'Failed to create registration record',
-            details: insertError.message 
-          } 
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to create registration record', context.request);
     }
 
     const registrationId = preReg.id;
@@ -126,26 +109,13 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
     // Validate that payment worker returned key_id
     if (!order.key_id) {
       logger.error('Payment worker did not return key_id');
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Payment worker configuration error', context.request);
     }
 
     // Return order with key_id from payment worker and registrationId
-    return new Response(
-      JSON.stringify({ 
-        ...order, 
-        razorpay_key_id: order.key_id,
-        registrationId: registrationId 
-      }), 
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiSuccess({ ...order, razorpay_key_id: order.key_id, registrationId }, context.request, 200);
   } catch (error) {
     logger.error('Error creating registration order', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

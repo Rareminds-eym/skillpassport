@@ -1,16 +1,5 @@
-/**
- * Consolidated Learner Portfolio Hook
- * 
- * Consolidates:
- * - useLearnerProjects
- * - useLearnerCertificates
- * - useLearnerTrainings
- * 
- * Returns: projects, certificates, trainings
- */
-
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-portfolio');
@@ -103,6 +92,11 @@ export interface Training {
   type: 'training' | 'course_enrollment';
 }
 
+const fetchData = async <T>(action: string, params: Record<string, any>): Promise<T[]> => {
+  const res = await apiPost<T[]>('/learner-profile/actions', { action, ...params });
+  return res?.data || [];
+};
+
 export const useLearnerPortfolio = ({ learnerId, enabled = true }: UselearnerPortfolioOptions) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
@@ -110,7 +104,6 @@ export const useLearnerPortfolio = ({ learnerId, enabled = true }: UselearnerPor
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all portfolio data
   const fetchPortfolioData = useCallback(async () => {
     if (!learnerId || !enabled) {
       setLoading(false);
@@ -134,20 +127,11 @@ export const useLearnerPortfolio = ({ learnerId, enabled = true }: UselearnerPor
     }
   }, [learnerId, enabled]);
 
-  // Fetch projects
   const fetchProjects = async () => {
     if (!learnerId) return;
-
     try {
-      const { data, error: fetchError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      const transformedData = (data || []).map(item => ({
+      const data = await fetchData<any>('fetch-projects', { learnerId });
+      const transformedData = (data || []).map((item: any) => ({
         id: item.id,
         title: item.title || item.name,
         description: item.description,
@@ -175,28 +159,17 @@ export const useLearnerPortfolio = ({ learnerId, enabled = true }: UselearnerPor
         createdAt: item.created_at,
         updatedAt: item.updated_at
       }));
-
       setProjects(transformedData);
     } catch (err) {
       logger.error('Error fetching projects', err as Error);
     }
   };
 
-  // Fetch certificates
   const fetchCertificates = async () => {
     if (!learnerId) return;
-
     try {
-      const { data, error: fetchError } = await supabase
-        .from('certificates')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .is('training_id', null)
-        .order('issued_on', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      const transformedData = (data || []).map(item => ({
+      const data = await fetchData<any>('fetch-certificates', { learnerId });
+      const transformedData = (data || []).map((item: any) => ({
         id: item.id,
         title: item.title || item.name,
         issuer: item.issuer || item.organization,
@@ -221,55 +194,24 @@ export const useLearnerPortfolio = ({ learnerId, enabled = true }: UselearnerPor
         createdAt: item.created_at,
         updatedAt: item.updated_at
       }));
-
       setCertificates(transformedData);
     } catch (err) {
       logger.error('Error fetching certificates', err as Error);
     }
   };
 
-  // Fetch trainings (includes course enrollments)
   const fetchTrainings = async () => {
     if (!learnerId) return;
-
     try {
-      // Fetch trainings
-      const { data: trainingsData, error: trainingsError } = await supabase
-        .from('trainings')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .order('created_at', { ascending: false });
+      const trainingsData = await fetchData<any>('fetch-trainings', { learnerId });
+      const enrollmentsData = await fetchData<any>('fetch-course-enrollments', { learnerId });
 
-      if (trainingsError) throw trainingsError;
-
-      // Fetch course enrollments
-      const { data: enrollmentsData, error: enrollmentsError } = await supabase
-        .from('course_enrollments')
-        .select('*')
-        .eq('learner_id', learnerId);
-
-      if (enrollmentsError) throw enrollmentsError;
-
-      // Transform trainings
       const formattedTrainings: Training[] = [];
-      
+
       for (const train of (trainingsData || [])) {
-        // Fetch certificate for this training
-        const { data: certificateRows } = await supabase
-          .from('certificates')
-          .select('link')
-          .eq('training_id', train.id)
-          .eq('enabled', true)
-          .limit(1);
-          
-        // Fetch skills for this training
-        const { data: skillRows } = await supabase
-          .from('skills')
-          .select('name')
-          .eq('training_id', train.id)
-          .eq('type', 'technical')
-          .eq('enabled', true);
-        
+        const certificateRows = await fetchData<any>('fetch-certificates-by-training', { trainingIds: [train.id], enabled: true });
+        const skillRows = await fetchData<any>('fetch-skills-by-training', { trainingIds: [train.id], skillType: 'technical' });
+
         formattedTrainings.push({
           id: train.id,
           title: train.title || '',
@@ -292,7 +234,7 @@ export const useLearnerPortfolio = ({ learnerId, enabled = true }: UselearnerPor
           enabled: train.approval_status !== 'rejected',
           source: train.source || 'manual',
           course_id: train.course_id,
-          skills: skillRows?.map(s => s.name) || [],
+          skills: (skillRows || []).map((s: any) => s.name) || [],
           certificateUrl: certificateRows?.[0]?.link || '',
           createdAt: train.created_at,
           updatedAt: train.updated_at,
@@ -300,21 +242,17 @@ export const useLearnerPortfolio = ({ learnerId, enabled = true }: UselearnerPor
         });
       }
 
-      // Filter enrollments with progress
-      const filteredEnrollments = (enrollmentsData || []).filter(e => 
+      const filteredEnrollments = (enrollmentsData || []).filter((e: any) => 
         e.progress > 0 || e.status === 'completed'
       );
 
-      // Transform course enrollments
-      const formattedEnrollments = filteredEnrollments.map((enroll) => {
+      const formattedEnrollments = filteredEnrollments.map((enroll: any) => {
         const completedLessonsCount = enroll.completed_lessons?.length || 0;
         const totalLessonsCount = enroll.total_lessons || 0;
-        
         let calculatedProgress = 0;
         if (totalLessonsCount > 0) {
           calculatedProgress = Math.round((completedLessonsCount / totalLessonsCount) * 100);
         }
-        
         return {
           id: `enrollment-${enroll.id}`,
           title: enroll.course_title || 'Untitled Course',
@@ -346,27 +284,23 @@ export const useLearnerPortfolio = ({ learnerId, enabled = true }: UselearnerPor
         };
       });
 
-      // Merge and deduplicate
       const enrollmentCourseIds = new Set(formattedEnrollments.map(e => e.course_id).filter(Boolean));
       const filteredTrainings = formattedTrainings.filter(t => !t.course_id || !enrollmentCourseIds.has(t.course_id));
-      
+
       setTrainings([...filteredTrainings, ...formattedEnrollments]);
     } catch (err) {
       logger.error('Error fetching trainings', err as Error);
     }
   };
 
-  // Refresh all portfolio data
   const refresh = useCallback(() => {
     fetchPortfolioData();
   }, [fetchPortfolioData]);
 
-  // Load data on mount
   useEffect(() => {
     fetchPortfolioData();
   }, [fetchPortfolioData]);
 
-  // Calculate portfolio statistics
   const stats = {
     totalProjects: projects.length,
     totalCertificates: certificates.length,
@@ -376,15 +310,12 @@ export const useLearnerPortfolio = ({ learnerId, enabled = true }: UselearnerPor
   };
 
   return {
-    // Data
     projects,
     certificates,
     trainings,
     stats,
     loading,
     error,
-    
-    // Refresh functions
     refresh,
     refreshProjects: fetchProjects,
     refreshCertificates: fetchCertificates,

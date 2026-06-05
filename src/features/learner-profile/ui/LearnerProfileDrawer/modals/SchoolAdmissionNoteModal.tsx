@@ -1,14 +1,15 @@
+import { Learner } from '@/features/learner-profile/model';
+import { MessageService } from '@/features/messaging';
+import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 import {
-    ChatBubbleLeftRightIcon,
-    DocumentTextIcon,
-    XMarkIcon,
+  ChatBubbleLeftRightIcon,
+  DocumentTextIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
-import { MessageService } from '@/features/messaging';
-import { Learner } from '@/features/learner-profile/model';
-import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admission-note-modal');
 
@@ -27,18 +28,16 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 }) => {
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sendToCommunication, setSendToCommunication] = useState(true); // Auto-checked by default
+  const [sendToCommunication, setSendToCommunication] = useState(true);
 
   const handleSubmit = async () => {
     if (!note.trim()) return;
 
     setIsSubmitting(true);
     try {
-      // If "Send to Communication" is checked, send as message
       if (sendToCommunication) {
         await sendNoteAsCommunication();
       } else {
-        // Just save locally with a small delay
         await new Promise((resolve) => setTimeout(resolve, 500));
         toast.success('Note saved successfully');
       }
@@ -57,41 +56,31 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 
   const sendNoteAsCommunication = async () => {
     try {
-      // Get current user (school admin)
-      const {
-        data: { user },
-      } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('Not authenticated');
       }
 
-      // Get school ID for the admin - match the same logic as LearnerCommunication.tsx
       let schoolId: string | null = null;
 
-      // Try school_educators table first
-      const { data: educatorData, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('school_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (educatorData?.school_id) {
-        schoolId = educatorData.school_id;
+      const educatorRes = await apiPost<any>('/learner-profile/actions', {
+        action: 'fetch-school-educator-by-user',
+        userId: user.id,
+      });
+      if (educatorRes?.data?.school_id) {
+        schoolId = educatorRes.data.school_id;
       } else {
-        // Fallback: check if user is school owner/admin in organizations table
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'school')
-          .eq('admin_id', user.id)
-          .maybeSingle();
-
-        if (orgData?.id) {
-          schoolId = orgData.id;
+        const orgRes = await apiPost<any>('/learner-profile/actions', {
+          action: 'fetch-org-by-admin',
+          userId: user.id,
+          email: user.email,
+          orgType: 'school',
+        });
+        if (orgRes?.data?.id) {
+          schoolId = orgRes.data.id;
         }
       }
 
-      // If still no school ID, try to use the learner's school_id
       if (!schoolId && (learner as any).school_id) {
         schoolId = (learner as any).school_id;
       }
@@ -100,44 +89,28 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         throw new Error('Could not determine school ID. Please ensure you are logged in as a school admin.');
       }
 
-      // Create or get conversation with learner
       const conversation = await MessageService.getOrCreatelearnerAdminConversation(
         learner.id,
         schoolId,
         'Admission Note'
       );
 
-      // Send the note as a message directly to the database
       const messageData = {
-        conversation_id: conversation.id,
-        sender_id: user.id,
-        sender_type: 'school_admin',
-        receiver_id: learner.id,
-        receiver_type: 'learner',
-        message_text: `📝 Admission Note:\n\n${note}`,
+        conversationId: conversation.id,
+        senderId: user.id,
+        senderType: 'school_admin',
+        receiverId: learner.id,
+        receiverType: 'learner',
+        messageText: `📝 Admission Note:\n\n${note}`,
         subject: 'Admission Note',
       };
 
-      const { data: messageResult, error: messageError } = await supabase
-        .from('messages')
-        .insert(messageData)
-        .select()
-        .single();
+      await apiPost<any>('/learner-profile/actions', { action: 'send-learner-message', ...messageData });
 
-      if (messageError) {
-        throw messageError;
-      }
-
-      // Update conversation's last_message fields to ensure it shows up in the list
-      const { error: updateError } = await supabase
-        .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          last_message_preview: `📝 Admission Note: ${note.substring(0, 50)}${note.length > 50 ? '...' : ''}`,
-          last_message_sender: 'school_admin',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', conversation.id);
+      await apiPost<any>('/learner-profile/actions', {
+        action: 'update-conversation-last-message',
+        conversationId: conversation.id,
+      });
 
       toast.success('Note sent to learner via communication');
     } catch (error) {
@@ -183,7 +156,6 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
               />
             </div>
 
-            {/* Send to Communication Option */}
             <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <input
                 type="checkbox"
@@ -192,19 +164,13 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
                 onChange={(e) => setSendToCommunication(e.target.checked)}
                 className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
-              <label
-                htmlFor="sendToCommunicationSchool"
-                className="flex-1 cursor-pointer"
-              >
+              <label htmlFor="sendToCommunicationSchool" className="flex-1 cursor-pointer">
                 <div className="flex items-center space-x-2">
                   <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">
-                    Send to Communication
-                  </span>
+                  <span className="text-sm font-medium text-blue-900">Send to Communication</span>
                 </div>
                 <p className="text-xs text-blue-700 mt-1">
-                  This will send the note as a message to the learner in the
-                  Communication section
+                  This will send the note as a message to the learner in the Communication section
                 </p>
               </label>
             </div>

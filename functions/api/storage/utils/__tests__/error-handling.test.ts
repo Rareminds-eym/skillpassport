@@ -37,7 +37,7 @@ describe('Error Handling Utilities', () => {
       
       expect(response.status).toBe(401);
       
-      const body = await response.json();
+      const body = await response.json() as Record<string, unknown>;
       expect(body.error).toBe('Authentication required');
       expect(body.message).toBe('Please provide a valid JWT token in the Authorization header');
       
@@ -57,7 +57,7 @@ describe('Error Handling Utilities', () => {
       
       const response = createAuthenticationError('/upload', 'expired_token', 'Token has expired');
       
-      const body = await response.json();
+      const body = await response.json() as Record<string, unknown>;
       expect(body.message).toBe('Token has expired');
       
       consoleSpy.mockRestore();
@@ -76,7 +76,7 @@ describe('Error Handling Utilities', () => {
       
       expect(response.status).toBe(403);
       
-      const body = await response.json();
+      const body = await response.json() as Record<string, unknown>;
       expect(body.error).toBe('Access denied');
       expect(body.message).toBe('You do not have permission to access this resource');
       
@@ -102,7 +102,7 @@ describe('Error Handling Utilities', () => {
         'Only educators can delete course materials'
       );
       
-      const body = await response.json();
+      const body = await response.json() as Record<string, unknown>;
       expect(body.message).toBe('Only educators can delete course materials');
       
       consoleSpy.mockRestore();
@@ -223,7 +223,7 @@ describe('Error Handling Utilities', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       const response = createAuthenticationError('/upload', 'missing_token');
-      const body = await response.json();
+      const body = await response.json() as Record<string, unknown>;
       
       expect(body).toHaveProperty('error');
       expect(body).toHaveProperty('message');
@@ -237,7 +237,7 @@ describe('Error Handling Utilities', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       const response = createAuthorizationError('user-123', 'file.pdf', 'ownership_mismatch');
-      const body = await response.json();
+      const body = await response.json() as Record<string, unknown>;
       
       expect(body).toHaveProperty('error');
       expect(body).toHaveProperty('message');

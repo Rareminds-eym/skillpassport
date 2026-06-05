@@ -3,7 +3,7 @@
  * Uses email-worker Cloudflare Worker for sending emails
  */
 
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import { sendEmail, sendEmailSafe, validateEmailEnv } from '../../../lib/email-service';
 import {
   generateWelcomeEmailHtml,

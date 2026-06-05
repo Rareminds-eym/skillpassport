@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase } from "@/shared/api";
+import { apiPost } from '@/shared/api/apiClient';
 import { exportCurriculum } from "@/features/college-admin";
 import { curriculumService } from "@/features/school-admin";
 import {
@@ -849,23 +849,15 @@ const CopyCurriculumModal = ({
       setLoadingSourceClasses(true);
       try {
 
-        // Handle different academic year formats
         const normalizedYear = sourceAcademicYear.replace(/\s+/g, '');
         
-        const { data: classData, error } = await supabase
-          .from('school_classes')
-          .select('grade, academic_year')
-          .eq('school_id', educatorData.school_id)
-          .order('grade');
+        const classResp: any = await apiPost('/school-admin/curriculum', {
+          action: 'getClassesBySchool',
+          schoolId: educatorData.school_id,
+        });
+        const classData = classResp.data || [];
 
-        if (error) {
-          logger.error('Error fetching source classes', error);
-          setAvailableSourceClasses([]);
-          return;
-        }
-
-        // Filter by normalized academic year
-        const filteredData = classData?.filter(c => 
+        const filteredData = classData.filter((c: any) => 
           c.academic_year.replace(/\s+/g, '') === normalizedYear
         );
 
@@ -875,8 +867,8 @@ const CopyCurriculumModal = ({
           return;
         }
 
-        const uniqueGrades = [...new Set(filteredData.map(c => c.grade))]
-          .sort((a, b) => parseInt(a) - parseInt(b));
+        const uniqueGrades = [...new Set(filteredData.map((c: any) => c.grade))]
+          .sort((a: any, b: any) => parseInt(a) - parseInt(b));
         logger.info('Found source classes', { count: uniqueGrades.length, academicYear: sourceAcademicYear });
         setAvailableSourceClasses(uniqueGrades);
       } catch (err) {
@@ -901,23 +893,15 @@ const CopyCurriculumModal = ({
       setLoadingTargetClasses(true);
       try {
 
-        // Handle different academic year formats
         const normalizedYear = targetAcademicYear.replace(/\s+/g, '');
         
-        const { data: classData, error } = await supabase
-          .from('school_classes')
-          .select('grade, academic_year')
-          .eq('school_id', educatorData.school_id)
-          .order('grade');
+        const classResp: any = await apiPost('/school-admin/curriculum', {
+          action: 'getClassesBySchool',
+          schoolId: educatorData.school_id,
+        });
+        const classData = classResp.data || [];
 
-        if (error) {
-          logger.error('Error fetching target classes', error);
-          setAvailableTargetClasses([]);
-          return;
-        }
-
-        // Filter by normalized academic year
-        const filteredData = classData?.filter(c => 
+        const filteredData = classData.filter((c: any) => 
           c.academic_year.replace(/\s+/g, '') === normalizedYear
         );
 
@@ -927,8 +911,8 @@ const CopyCurriculumModal = ({
           return;
         }
 
-        const uniqueGrades = [...new Set(filteredData.map(c => c.grade))]
-          .sort((a, b) => parseInt(a) - parseInt(b));
+        const uniqueGrades = [...new Set(filteredData.map((c: any) => c.grade))]
+          .sort((a: any, b: any) => parseInt(a) - parseInt(b));
         logger.info('Found target classes', { count: uniqueGrades.length, academicYear: targetAcademicYear });
         setAvailableTargetClasses(uniqueGrades);
       } catch (err) {
@@ -959,35 +943,18 @@ const CopyCurriculumModal = ({
       setError(null);
 
       try {
+        const currResp: any = await apiPost('/school-admin/curriculum', {
+          action: 'getAvailableCurriculums',
+          schoolId: educatorData.school_id,
+          academicYear: sourceAcademicYear,
+          classGrade: sourceClass,
+          subject: sourceSubject,
+        });
+        const data = currResp.data || [];
 
-        // Fetch curriculums matching the source criteria
-        const { data, error: fetchError } = await supabase
-          .from('curriculums')
-          .select(`
-            id,
-            subject,
-            class,
-            academic_year,
-            status,
-            last_modified,
-            curriculum_chapters (
-              id,
-              name,
-              order_number
-            )
-          `)
-          .eq('school_id', educatorData.school_id)
-          .eq('academic_year', sourceAcademicYear)
-          .eq('class', sourceClass)
-          .eq('subject', sourceSubject)
-          .in('status', ['approved', 'draft'])
-          .order('last_modified', { ascending: false });
-
-        if (fetchError) throw fetchError;
-
-        setAvailableCurriculums(data || []);
+        setAvailableCurriculums(data);
         
-        if (data && data.length === 0) {
+        if (data.length === 0) {
           setError(`No curriculum found for Class ${sourceClass} - ${sourceSubject} (${sourceAcademicYear})`);
         }
       } catch (err: any) {
@@ -1010,28 +977,11 @@ const CopyCurriculumModal = ({
       }
 
       try {
-        const { data, error: fetchError } = await supabase
-          .from('curriculums')
-          .select(`
-            id,
-            subject,
-            class,
-            academic_year,
-            curriculum_chapters (
-              id,
-              name,
-              description,
-              order_number,
-              curriculum_learning_outcomes (
-                id,
-                outcome
-              )
-            )
-          `)
-          .eq('id', selectedCurriculumId)
-          .maybeSingle();
-
-        if (fetchError) throw fetchError;
+        const previewResp: any = await apiPost('/school-admin/curriculum', {
+          action: 'getCurriculumPreview',
+          curriculumId: selectedCurriculumId,
+        });
+        const data = previewResp.data;
         if (!data) {
           logger.error('Curriculum not found');
           return;
@@ -1590,35 +1540,13 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         if (user) {
           setCurrentUser(user);
           
-          // Check role - use maybeSingle() to avoid 406 error
-          const { data: userData } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .maybeSingle();
-          setIsSchoolAdmin(userData?.role === 'school_admin');
-
-          // Get educator data - use maybeSingle() to avoid 406 error
-          const { data: educator } = await supabase
-            .from('school_educators')
-            .select('id, school_id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-          
-          if (educator) {
-            setEducatorData(educator);
-          } else {
-            // Fallback: Check organizations table for school admins
-            const { data: org } = await supabase
-              .from('organizations')
-              .select('id')
-              .eq('organization_type', 'school')
-              .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-              .maybeSingle();
-            
-            if (org?.id) {
-              setEducatorData({ id: user.id, school_id: org.id });
-            }
+          const initResp: any = await apiPost('/school-admin/curriculum', {
+            action: 'initUser',
+          });
+          const initData = initResp.data;
+          setIsSchoolAdmin(initData?.isSchoolAdmin || false);
+          if (initData?.educatorData) {
+            setEducatorData(initData.educatorData);
           }
         }
       } catch (error) {
@@ -1746,31 +1674,21 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
       setLoadingClasses(true);
       try {
 
-        // Fetch distinct classes for the selected academic year
-        // Handle different academic year formats (with/without spaces)
         const normalizedYear = selectedAcademicYear.replace(/\s+/g, '');
         
-        const { data: classData, error } = await supabase
-          .from('school_classes')
-          .select('grade, academic_year')
-          .eq('school_id', educatorData.school_id)
-          .order('grade');
+        const classResp: any = await apiPost('/school-admin/curriculum', {
+          action: 'getClassesBySchool',
+          schoolId: educatorData.school_id,
+        });
+        const classData = classResp.data || [];
         
-        // Filter by normalized academic year to handle format variations
-        const filteredData = classData?.filter(c => 
+        const filteredData = classData.filter((c: any) => 
           c.academic_year.replace(/\s+/g, '') === normalizedYear
         );
 
-        if (error) {
-          logger.error('Error fetching classes', error);
-          setAvailableClasses([]);
-          return;
-        }
-
         if (filteredData && filteredData.length > 0) {
-          // Extract unique grades and sort numerically
-          const uniqueGrades = [...new Set(filteredData.map(c => c.grade))]
-            .sort((a, b) => parseInt(a) - parseInt(b));
+          const uniqueGrades = [...new Set(filteredData.map((c: any) => c.grade))]
+            .sort((a: any, b: any) => parseInt(a) - parseInt(b));
           logger.info('Found classes', { count: uniqueGrades.length, academicYear: selectedAcademicYear });
           setAvailableClasses(uniqueGrades);
         } else {
@@ -2027,18 +1945,17 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
       if (!educatorData) throw new Error("Educator data not loaded");
 
       // Check if target curriculum already exists
-      const { data: existingCurriculum } = await supabase
-        .from('curriculums')
-        .select('id, status')
-        .eq('school_id', educatorData.school_id)
-        .eq('subject', targetSubject)
-        .eq('class', targetClass)
-        .eq('academic_year', targetAcademicYear)
-        .maybeSingle();
+      const checkResp: any = await apiPost('/school-admin/curriculum', {
+        action: 'checkExistingCurriculum',
+        schoolId: educatorData.school_id,
+        subject: targetSubject,
+        classGrade: targetClass,
+        academicYear: targetAcademicYear,
+      });
+      const existingCurriculum = checkResp.data;
 
       if (existingCurriculum) {
         if (!overwriteExisting) {
-          // Return error with existing curriculum info for modal to handle
           throw new Error(
             JSON.stringify({
               type: 'CURRICULUM_EXISTS',
@@ -2049,13 +1966,10 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
           );
         }
 
-        // Delete existing curriculum if overwrite is confirmed
-        const { error: deleteError } = await supabase
-          .from('curriculums')
-          .delete()
-          .eq('id', existingCurriculum.id);
-
-        if (deleteError) throw new Error(`Failed to delete existing curriculum: ${deleteError.message}`);
+        await apiPost('/school-admin/curriculum', {
+          action: 'deleteCurriculum',
+          curriculumId: existingCurriculum.id,
+        });
       }
 
       // Use the database function to copy curriculum
@@ -2070,42 +1984,12 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
       });
 
       // Fetch the copied curriculum data
-      const { data: copiedCurriculum, error: fetchError } = await supabase
-        .from('curriculums')
-        .select(`
-          id,
-          subject,
-          class,
-          academic_year,
-          status,
-          curriculum_chapters (
-            id,
-            name,
-            code,
-            description,
-            order_number,
-            estimated_duration,
-            duration_unit,
-            curriculum_learning_outcomes (
-              id,
-              outcome,
-              bloom_level,
-              outcome_assessment_mappings (
-                id,
-                assessment_type_id,
-                weightage,
-                assessment_types (
-                  id,
-                  name
-                )
-              )
-            )
-          )
-        `)
-        .eq('id', newCurriculumId)
-        .maybeSingle();
+      const copiedResp: any = await apiPost('/school-admin/curriculum', {
+        action: 'getCopiedCurriculum',
+        curriculumId: newCurriculumId,
+      });
+      const copiedCurriculum = copiedResp.data;
 
-      if (fetchError) throw fetchError;
       if (!copiedCurriculum) {
         throw new Error('Failed to fetch copied curriculum');
       }
@@ -2181,15 +2065,13 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
       // Fetch school name if available from organizations table
       let schoolName = '';
       if (educatorData?.school_id) {
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', educatorData.school_id)
-          .maybeSingle();
-        
-        if (orgData) {
-          schoolName = orgData.name;
-        }
+        try {
+          const orgResp: any = await apiPost('/school-admin/curriculum', {
+            action: 'getOrganizationName',
+            organizationId: educatorData.school_id,
+          });
+          schoolName = orgResp.data || '';
+        } catch { /* ignore */ }
       }
 
       // Prepare export data

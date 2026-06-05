@@ -13,22 +13,23 @@ import { exportAsHTML, exportAsPDF } from '@/features/digital-portfolio';
 import { getLogger } from '@/shared/config/logging';
 
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
-
+import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('portfolio-page');
 const PortfolioPage: React.FC = () => {
   const navigate = useNavigate();
+  const user = useUser();
   const { learner, settings, isLoading, isManuallySet, viewerRole, loadlearnerByEmail } = usePortfolio();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Auto-load current user's data if not already loaded
   useEffect(() => {
     if (!learner && !isLoading && !isManuallySet) {
-      const email = localStorage.getItem('userEmail');
+      const email = user?.email;
       if (email) {
         loadlearnerByEmail(email);
       }
     }
-  }, [learner, isLoading, isManuallySet, loadlearnerByEmail]);
+  }, [learner, isLoading, isManuallySet, loadlearnerByEmail, user?.email]);
 
   // Check if user is admin
   const isAdminViewing = viewerRole && (viewerRole.includes('admin') || viewerRole === 'admin');

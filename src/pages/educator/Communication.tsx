@@ -30,7 +30,7 @@ import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal, } from '@/features/messaging';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { NewLearnerConversationModal } from '@/features/messaging';
 import { NewEducatorAdminConversationModal } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
@@ -95,37 +95,40 @@ const Communication = () => {
       logger.info('🔍 Auth user ID from session:', userId);
 
       // First try with the auth user ID
-      let { data, error } = await supabase
-        .from('school_educators')
-        .select('id, school_id, first_name, last_name, email, user_id')
-        .eq('user_id', userId)
-        .single();
+      let currentData: any = null;
+      let currentError: any = null;
+
+      const userIdResult = await apiPost<any>('/educator/actions', {
+        action: 'get-school-educator-by-user-id',
+        userId,
+        select: 'id, school_id, first_name, last_name, email, user_id'
+      });
+      currentData = userIdResult?.data;
 
       // If not found with auth user ID, try with email
-      if (error && error.code === 'PGRST116') {
+      if (!currentData) {
         logger.info('🔄 Auth user ID not found, trying with email:', user.email);
-        const result = await supabase
-          .from('school_educators')
-          .select('id, school_id, first_name, last_name, email, user_id')
-          .eq('email', user.email)
-          .single();
+        const emailResult = await apiPost<any>('/educator/actions', {
+          action: 'get-school-educator-by-email',
+          email: user.email,
+          select: 'id, school_id, first_name, last_name, email, user_id'
+        });
+        currentData = emailResult?.data;
 
-        data = result.data;
-        error = result.error;
-
-        if (data) {
+        if (currentData) {
           logger.info('⚠️ Found educator by email but user_id mismatch:');
           logger.info('  - Auth user ID:', userId);
-          logger.info('  - Database user_id:', data.user_id);
+          logger.info('  - Database user_id:', currentData.user_id);
         }
       }
 
-      if (error) {
-        logger.error('❌ Error fetching educator details:', error);
-        throw error;
+      if (!currentData) {
+        const errMsg = '❌ Error fetching educator details';
+        logger.error(errMsg);
+        throw new Error(errMsg);
       }
-      logger.info('✅ Educator details found:', data);
-      return data;
+      logger.info('✅ Educator details found:', currentData);
+      return currentData;
     },
     enabled: !!user?.email,
   });
@@ -215,22 +218,21 @@ const Communication = () => {
       logger.info('📤 Executing query for active admin conversations...');
 
       // 1. Get conversations
-      const { data: conversations, error } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('educator_id', educatorRecordId)
-        .eq('conversation_type', 'educator_admin')
-        .eq('deleted_by_educator', false)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
+      const convResult = await apiPost<any>('/educator/actions', {
+        action: 'list-conversations',
+        select: '*',
+        filters: {
+          educator_id: educatorRecordId,
+          conversation_type: 'educator_admin',
+          deleted_by_educator: false,
+          last_message_at: { order: 'desc' }
+        }
+      });
 
-      logger.info('📥 Admin conversations query result:', { conversations, error, dataLength: conversations?.length });
+      const conversations = convResult?.data || [];
+      logger.info('📥 Admin conversations query result:', { dataLength: conversations?.length });
 
-      if (error) {
-        logger.error('❌ Admin conversations query error:', error);
-        throw error;
-      }
-
-      if (!conversations || conversations.length === 0) {
+      if (conversations.length === 0) {
         logger.info('✅ No admin conversations found, returning empty array');
         logger.info('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
         return [];
@@ -246,19 +248,17 @@ const Communication = () => {
         return conversations;
       }
 
-      const { data: schoolAdmins, error: adminError } = await supabase
-        .from('school_educators')
-        .select('school_id, user_id')
-        .in('school_id', schoolIds)
-        .eq('role', 'school_admin');
+      const adminsResult = await apiPost<any>('/educator/actions', {
+        action: 'list-school-educators',
+        select: 'school_id, user_id',
+        filters: {
+          school_id: { in: schoolIds },
+          role: 'school_admin'
+        }
+      });
 
-      logger.info('📥 School admins query result:', { schoolAdmins, adminError, adminsLength: schoolAdmins?.length });
-
-      if (adminError) {
-        logger.error('❌ School admins query error:', adminError);
-        // Return conversations without admin user IDs rather than failing completely
-        return conversations;
-      }
+      const schoolAdmins = adminsResult?.data || [];
+      logger.info('📥 School admins query result:', { adminsLength: schoolAdmins?.length });
 
       // 3. Merge the data
       const conversationsWithAdminIds = conversations.map(conv => ({
@@ -293,22 +293,21 @@ const Communication = () => {
       logger.info('📤 Executing query for archived admin conversations...');
 
       // 1. Get conversations
-      const { data: conversations, error } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('educator_id', educatorRecordId)
-        .eq('conversation_type', 'educator_admin')
-        .eq('status', 'archived')
-        .order('last_message_at', { ascending: false, nullsFirst: false });
+      const convResult = await apiPost<any>('/educator/actions', {
+        action: 'list-conversations',
+        select: '*',
+        filters: {
+          educator_id: educatorRecordId,
+          conversation_type: 'educator_admin',
+          status: 'archived',
+          last_message_at: { order: 'desc' }
+        }
+      });
 
-      logger.info('📥 Archived admin conversations query result:', { conversations, error, dataLength: conversations?.length });
+      const conversations = convResult?.data || [];
+      logger.info('📥 Archived admin conversations query result:', { dataLength: conversations?.length });
 
-      if (error) {
-        logger.error('❌ Archived admin conversations query error:', error);
-        throw error;
-      }
-
-      if (!conversations || conversations.length === 0) {
+      if (conversations.length === 0) {
         logger.info('✅ No archived admin conversations found, returning empty array');
         logger.info('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
         return [];
@@ -316,7 +315,7 @@ const Communication = () => {
 
       // 2. Get school admin user IDs for online status
       const schoolIds = conversations.map(c => c.school_id).filter(Boolean);
-      logger.info('�  Archived school IDs to fetch admin user IDs for:', schoolIds);
+      logger.info('🔍 Archived school IDs to fetch admin user IDs for:', schoolIds);
 
       if (schoolIds.length === 0) {
         logger.info('✅ No archived school IDs found, returning conversations without admin user IDs');
@@ -324,19 +323,17 @@ const Communication = () => {
         return conversations;
       }
 
-      const { data: schoolAdmins, error: adminError } = await supabase
-        .from('school_educators')
-        .select('school_id, user_id')
-        .in('school_id', schoolIds)
-        .eq('role', 'school_admin');
+      const adminsResult = await apiPost<any>('/educator/actions', {
+        action: 'list-school-educators',
+        select: 'school_id, user_id',
+        filters: {
+          school_id: { in: schoolIds },
+          role: 'school_admin'
+        }
+      });
 
-      logger.info('📥 Archived school admins query result:', { schoolAdmins, adminError, adminsLength: schoolAdmins?.length });
-
-      if (adminError) {
-        logger.error('❌ Archived school admins query error:', adminError);
-        // Return conversations without admin user IDs rather than failing completely
-        return conversations;
-      }
+      const schoolAdmins = adminsResult?.data || [];
+      logger.info('📥 Archived school admins query result:', { adminsLength: schoolAdmins?.length });
 
       // 3. Merge the data
       const conversationsWithAdminIds = conversations.map(conv => ({
@@ -582,14 +579,19 @@ const Communication = () => {
       // Send the initial message
       if (initialMessage.trim()) {
         // First, find the school admin user ID
-        const { data: schoolAdmin, error: adminError } = await supabase
-          .from('school_educators')
-          .select('user_id')
-          .eq('school_id', schoolId)
-          .eq('role', 'school_admin')
-          .single();
+        const adminResult = await apiPost<any>('/educator/actions', {
+          action: 'list-school-educators',
+          select: 'user_id',
+          filters: {
+            school_id: schoolId,
+            role: 'school_admin'
+          }
+        });
 
-        if (adminError || !schoolAdmin) {
+        const schoolAdmins = adminResult?.data || [];
+        const schoolAdmin = schoolAdmins.length > 0 ? schoolAdmins[0] : null;
+
+        if (!schoolAdmin) {
           logger.warn('Could not find school admin for initial message');
         } else {
           await MessageService.sendMessage(
@@ -1002,14 +1004,19 @@ const Communication = () => {
       } else {
         // Send message to school admin
         // Find school admin user ID for the school
-        const { data: schoolAdmin, error: adminError } = await supabase
-          .from('school_educators')
-          .select('user_id')
-          .eq('school_id', currentChat.schoolId)
-          .eq('role', 'school_admin')
-          .single();
+        const adminResult = await apiPost<any>('/educator/actions', {
+          action: 'list-school-educators',
+          select: 'user_id',
+          filters: {
+            school_id: currentChat.schoolId,
+            role: 'school_admin'
+          }
+        });
 
-        if (adminError || !schoolAdmin) {
+        const schoolAdmins = adminResult?.data || [];
+        const schoolAdmin = schoolAdmins.length > 0 ? schoolAdmins[0] : null;
+
+        if (!schoolAdmin) {
           toast.error('Could not find school admin');
           return;
         }

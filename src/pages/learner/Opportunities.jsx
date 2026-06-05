@@ -269,7 +269,7 @@ const Opportunities = () => {
   const location = useLocation();
   const queryClient = useQueryClient();
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id; // Use learners.id (database ID)
 

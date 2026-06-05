@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/shared/ui/Card';
 import { Badge } from '@/shared/ui/Badge';
 import { parseResumeWithAI } from '@/features/digital-portfolio';
 import { saveResumeToTables } from '@/features/digital-portfolio';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation';
@@ -246,27 +246,21 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
 
       // If not available, fetch from database
       if (!learnerId) {
-        const { data: currentLearner, error: fetchError } = await supabase
-          .from('learners')
-          .select('id, email, name, user_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          console.error('Error fetching learner:', fetchError);
-        }
+        const currentLearner = await apiPost('/learner-dashboard-widgets/actions', {
+          action: 'get-learner-by-user',
+          userId: user.id,
+        });
 
         learnerId = currentLearner?.id;
 
         // If still not found, try by email as fallback
         if (!learnerId && emailToUse) {
-          const { data: learnerByEmail, error: emailError } = await supabase
-            .from('learners')
-            .select('id, email, name')
-            .eq('email', emailToUse)
-            .single();
+          const learnerByEmail = await apiPost('/learner-dashboard-widgets/actions', {
+            action: 'get-learner-by-user',
+            email: emailToUse,
+          });
 
-          if (!emailError && learnerByEmail) {
+          if (learnerByEmail) {
             learnerId = learnerByEmail.id;
           }
         }

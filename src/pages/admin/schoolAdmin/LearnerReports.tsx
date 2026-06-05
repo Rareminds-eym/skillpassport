@@ -10,8 +10,10 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { attendanceService, learnerReportService } from '@/features/learner-profile/api';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 interface LearnerReportData {
   id: string;
@@ -47,7 +49,7 @@ const LearnerReports: React.FC = () => {
       let currentSchoolId: string | null = null;
 
       // First, check if user is logged in via AuthContext (for school admins)
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -60,33 +62,9 @@ const LearnerReports: React.FC = () => {
         }
       }
 
-      // If not found in localStorage, try Supabase Auth (for educators/teachers)
-      if (!currentSchoolId) {
-        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-        
-        if (user) {
-          // Check school_educators table - use maybeSingle() to avoid 406 error
-          const { data: educator } = await supabase
-            .from('school_educators')
-            .select('school_id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          if (educator?.school_id) {
-            currentSchoolId = educator.school_id;
-          } else {
-            // Check organizations table for school admins (by admin_id or email)
-            const { data: org } = await supabase
-              .from('organizations')
-              .select('id')
-              .eq('organization_type', 'school')
-              .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-              .maybeSingle();
-
-            currentSchoolId = org?.id || null;
-          }
-        }
-      }
+      // Look up school_id via API
+      const schoolResp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId', storedUser: (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user")) });
+      currentSchoolId = schoolResp.data?.schoolId;
 
       if (!currentSchoolId) {
         logger.error('No school_id found for this user');
@@ -97,51 +75,20 @@ const LearnerReports: React.FC = () => {
       setSchoolId(currentSchoolId);
       logger.info('Fetching reports for school_id', { schoolId: currentSchoolId });
 
-      // Fetch learners with their data
-      const { data: learnersData, error: learnersError } = await supabase
-        .from('learners')
-        .select(`
-          id,
-          name,
-          roll_number,
-          grade,
-          section,
-          extended:learner_management_records(enrollment_number)
-        `)
-        .eq('school_id', currentSchoolId);
-
-      if (learnersError) throw learnersError;
+      // Fetch learner reports data
+      const reportsResp: any = await apiPost('/school-admin/actions', { action: 'fetchLearnerReports', schoolId: currentSchoolId });
 
       // Fetch attendance and assessment data for each learner
       const enrichedlearners = await Promise.all(
-        (learnersData || []).map(async (learner: any) => {
-          // Get attendance summary
+        (reportsResp.data || []).map(async (learner: any) => {
           const { data: attendanceData } = await attendanceService.getlearnerAttendanceSummary(learner.id);
           
-          // Get assessments
-          const { data: assessments } = await supabase
-            .from('skill_assessments')
-            .select('score, max_score')
-            .eq('learner_id', learner.id)
-            .eq('school_id', currentSchoolId);
-
-          const avgScore = assessments && assessments.length > 0
-            ? assessments.reduce((sum: number, a: any) => sum + (a.score / a.max_score * 100), 0) / assessments.length
-            : 0;
-
           return {
-            id: learner.id,
-            name: learner.name,
-            rollNumber: learner.roll_number || 'N/A',
-            class: learner.grade || 'N/A',
-            section: learner.section || 'N/A',
-            enrollmentNumber: learner.extended?.enrollment_number || 'N/A',
+            ...learner,
             attendancePercentage: attendanceData?.percentage || 0,
             totalDays: attendanceData?.totalDays || 0,
             presentDays: attendanceData?.presentDays || 0,
             absentDays: attendanceData?.absentDays || 0,
-            assessmentCount: assessments?.length || 0,
-            averageScore: avgScore,
           };
         })
       );

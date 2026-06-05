@@ -21,8 +21,8 @@ import RestoreProgressModal from './RestoreProgressModal';
 import { Badge, Button, Card, CardContent } from '@/shared/ui';
 import { useUser, useUserRole } from '@/features/auth';
 import { useSessionRestore } from '@/features/courses/model/useSessionRestore';
-import { supabase } from '@/shared/api/supabaseClient';
 import { generateCourseCertificate } from '@/features/digital-portfolio';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { enrollmentService } from '@/features/courses';
 import { courseProgressService as progressService } from '@/features/courses';
 import { fileService } from '@/features/courses';
@@ -403,24 +403,11 @@ const CoursePlayer = () => {
 
       console.log('Saving time:', { additionalSeconds, accumulatedTime, totalTime });
 
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert({
-          learner_id: user.id,
-          course_id: courseId,
-          lesson_id: currentLesson.id,
-          time_spent_seconds: totalTime,
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
+      await apiPost('/courses/progress/time-spent', {
+        learnerId: user.id, courseId, lessonId: currentLesson.id, additionalSeconds,
+      });
 
-      if (error) {
-        console.error('Error saving time spent:', error);
-      } else {
-        // Update accumulated time after successful save
-        setAccumulatedTime(totalTime);
-      }
+      setAccumulatedTime(totalTime);
     } catch (error) {
       console.error('Error in saveTimeSpent:', error);
     }
@@ -431,32 +418,17 @@ const CoursePlayer = () => {
     if (!user?.id || !courseId || !isLearner) return;
 
     try {
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert({
-          learner_id: user.id,
-          course_id: courseId,
-          lesson_id: lessonId,
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
+      await apiPost('/courses/progress/lesson-status', {
+        learnerId: user.id, courseId, lessonId, status: 'completed',
+      });
 
-      if (error) {
-        console.error('Error marking lesson complete:', error);
-        return;
-      }
-
-      // Check if all lessons in the course are now completed
       await checkAndUpdateCourseCompletion();
 
       // Update learner streak after completing lesson
       try {
         const { getApiUrl } = await import('@/shared/api/apiUtils');
         const STREAK_API_URL = getApiUrl('streak');
-        const response = await fetch(`${STREAK_API_URL}/${user.id}/complete`, {
+        const response = await ssoClient.fetch(`${STREAK_API_URL}/${user.id}/complete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -481,37 +453,14 @@ const CoursePlayer = () => {
     if (!user?.id || !courseId || !course) return;
 
     try {
-      // Get total lessons count
       const totalLessons = course.modules?.reduce((acc, module) => acc + (module.lessons?.length || 0), 0) || 0;
       if (totalLessons === 0) return;
 
-      // Get completed lessons count from database
-      const { count: completedCount, error: countError } = await supabase
-        .from('learner_course_progress')
-        .select('*', { count: 'exact', head: true })
-        .eq('learner_id', user.id)
-        .eq('course_id', courseId)
-        .eq('status', 'completed');
+      const summaryRes = await apiGet(`/courses/progress/summary?learnerId=${encodeURIComponent(user.id)}&courseId=${encodeURIComponent(courseId)}`);
+      const completedCount = summaryRes?.data?.completedLessons || 0;
 
-      if (countError) {
-        console.error('Error checking completion:', countError);
-        return;
-      }
-
-      // If all lessons are completed, update course_enrollments.completed_at
       if (completedCount >= totalLessons) {
-        const { error: updateError } = await supabase
-          .from('course_enrollments')
-          .update({ completed_at: new Date().toISOString() })
-          .eq('learner_id', user.id)
-          .eq('course_id', courseId)
-          .is('completed_at', null); // Only update if not already completed
-
-        if (updateError) {
-          console.error('Error updating course completion:', updateError);
-        } else {
-          console.log('🎉 Course marked as completed!');
-        }
+        await apiPost('/courses/progress/course-complete', { learnerId: user.id, courseId });
       }
     } catch (error) {
       console.error('Error in checkAndUpdateCourseCompletion:', error);
@@ -529,52 +478,20 @@ const CoursePlayer = () => {
     console.log('📚 initializeLessonProgress for lesson:', currentLesson.title, 'ID:', currentLesson.id);
 
     try {
-      // Check if progress record exists
-      const { data: existing, error: fetchError } = await supabase
-        .from('learner_course_progress')
-        .select('*')
-        .eq('learner_id', user.id)
-        .eq('course_id', courseId)
-        .eq('lesson_id', currentLesson.id)
-        .maybeSingle();
+      const existingRes = await apiGet(`/courses/progress/lesson?learnerId=${encodeURIComponent(user.id)}&courseId=${encodeURIComponent(courseId)}&lessonId=${encodeURIComponent(currentLesson.id)}`);
+      const existing = existingRes?.data;
 
-      if (fetchError) {
-        console.error('Error fetching lesson progress:', fetchError);
-        return;
-      }
-
-      // If record exists, load accumulated time
       if (existing) {
         setAccumulatedTime(existing.time_spent_seconds || 0);
         console.log('📚 Loaded existing progress for lesson:', currentLesson.title, 'Time:', existing.time_spent_seconds);
 
-        // Update last_accessed
-        await supabase
-          .from('learner_course_progress')
-          .update({
-            last_accessed: new Date().toISOString(),
-            status: existing.status === 'completed' ? 'completed' : 'in_progress'
-          })
-          .eq('id', existing.id);
+        await apiPost('/courses/progress/lesson-status', {
+          learnerId: user.id, courseId, lessonId: currentLesson.id,
+          status: existing.status === 'completed' ? 'completed' : 'in_progress',
+        });
       } else {
-        // Create new progress record
         console.log('📚 Creating new progress record for lesson:', currentLesson.title);
         setAccumulatedTime(0);
-        
-        const { error: insertError } = await supabase
-          .from('learner_course_progress')
-          .insert({
-            learner_id: user.id,
-            course_id: courseId,
-            lesson_id: currentLesson.id,
-            status: 'in_progress',
-            time_spent_seconds: 0,
-            last_accessed: new Date().toISOString()
-          });
-          
-        if (insertError && insertError.code !== '23505') {
-          console.error('Error creating lesson progress:', insertError);
-        }
       }
 
       // Also update the course enrollment's last position
@@ -765,36 +682,16 @@ const CoursePlayer = () => {
     try {
       setLoading(true);
 
-      // Fetch course basic info
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('course_id', courseId)
-        .maybeSingle();
-
-      if (courseError) throw courseError;
+      const courseRes = await apiGet(`/courses/list/${encodeURIComponent(courseId)}`);
+      const courseData = courseRes?.data;
 
       if (!courseData) {
         navigate(getBackPath());
         return;
       }
 
-      // Fetch modules with lessons and resources
-      const { data: modulesData, error: modulesError } = await supabase
-        .from('course_modules')
-        .select(`
-          *,
-          lessons!fk_module (
-            *,
-            lesson_resources!fk_lesson (*)
-          )
-        `)
-        .eq('course_id', courseId)
-        .order('order_index', { ascending: true });
-
-      if (modulesError) {
-        console.error('Error fetching modules:', modulesError);
-      }
+      const modulesRes = await apiGet(`/courses/list/${encodeURIComponent(courseId)}/modules`);
+      const modulesData = modulesRes?.data;
 
       console.log('Raw modules data from Supabase:', modulesData);
 
@@ -1063,50 +960,35 @@ const CoursePlayer = () => {
 
     // Update course enrollment to completed status
     try {
-      const { error } = await supabase
-        .from('course_enrollments')
-        .update({ 
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          progress: 100
-        })
-        .eq('learner_id', user.id)
-        .eq('course_id', courseId);
+      await apiPost('/courses/course-complete', { learnerId: user.id, courseId });
+      console.log('🎉 Course completed successfully!');
 
-      if (error) {
-        console.error('Error completing course:', error);
+      // Generate certificate for the completed course
+      const learnerName = user?.name || user?.email?.split('@')[0] || 'Learner';
+      const courseName = course?.title || 'Course';
+      const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
+
+      console.log('📜 Generating certificate...');
+      const certResult = await generateCourseCertificate(
+        user.id,
+        learnerName,
+        courseId,
+        courseName,
+        educatorName
+      );
+
+      if (certResult.success) {
+        console.log('✅ Certificate generated:', certResult.credentialId);
+        navigate('/learner/my-learning', {
+          state: {
+            courseCompleted: true,
+            courseName,
+            certificateUrl: certResult.certificateUrl
+          }
+        });
       } else {
-        console.log('🎉 Course completed successfully!');
-        
-        // Generate certificate for the completed course
-        const learnerName = user?.name || user?.email?.split('@')[0] || 'Learner';
-        const courseName = course?.title || 'Course';
-        const educatorName = course?.educator_name || enrollment?.educator_name || 'Skill Ecosystem Platform';
-        
-        console.log('📜 Generating certificate...');
-        const certResult = await generateCourseCertificate(
-          user.id,
-          learnerName,
-          courseId,
-          courseName,
-          educatorName
-        );
-        
-        if (certResult.success) {
-          console.log('✅ Certificate generated:', certResult.credentialId);
-          // Navigate to my learning page with success message
-          navigate('/learner/my-learning', { 
-            state: { 
-              courseCompleted: true, 
-              courseName,
-              certificateUrl: certResult.certificateUrl 
-            } 
-          });
-        } else {
-          console.error('Certificate generation failed:', certResult.error);
-          // Still navigate even if certificate fails
-          navigate('/learner/my-learning');
-        }
+        console.error('Certificate generation failed:', certResult.error);
+        navigate('/learner/my-learning');
       }
     } catch (error) {
       console.error('Error in completeCourse:', error);

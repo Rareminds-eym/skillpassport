@@ -8,7 +8,7 @@ import { queryParser } from './queryParser';
 import { semanticSearch } from './semanticSearch';
 import { dataHealthCheck } from '../lib/dataHealthCheck';
 import { advancedIntentClassifier } from './advancedIntentClassifier';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Initialize OpenRouter client
 let openai: OpenAI | null = null;
@@ -384,10 +384,10 @@ Format:
         }
 
         // Fetch recruiter's opportunities
-        const { data: opportunities } = await supabase
-          .from('opportunities')
-          .select('id, job_title, company_name')
-          .eq('recruiter_id', recruiterId);
+        const opportunities = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-opportunities-basic',
+          recruiter_id: recruiterId,
+        });
         
         if (!opportunities || opportunities.length === 0) {
           return {
@@ -396,13 +396,13 @@ Format:
           };
         }
         
-        const oppIds = opportunities.map(o => o.id);
+        const oppIds = opportunities.map((o: any) => o.id);
         
         // STEP 1: Find matching learners first (proper name filtering)
-        const { data: matchinglearners } = await supabase
-          .from('learners')
-          .select('user_id, name, email, university, currentCgpa, city, state')
-          .ilike('name', `%${candidateName}%`);
+        const matchinglearners = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-learners',
+          name_filter: candidateName,
+        });
         
         if (!matchinglearners || matchinglearners.length === 0) {
           return {
@@ -411,21 +411,22 @@ Format:
           };
         }
         
-        const learnerIds = matchinglearners.map(s => s.user_id);
+        const learnerIds = matchinglearners.map((s: any) => s.user_id);
 
         // STEP 2: Get their applications in pipeline_candidates
-        const { data: pipelineCandidates } = await supabase
-          .from('pipeline_candidates')
-          .select('id, opportunity_id, learner_id, stage, status, created_at')
-          .in('opportunity_id', oppIds)
-          .in('learner_id', learnerIds);
+        const pipelineCandidates = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-pipeline-candidates',
+          opportunity_ids: oppIds,
+          learner_ids: learnerIds,
+        });
         
         // STEP 3: Get their formal applications
-        const { data: appliedJobs } = await supabase
-          .from('applied_jobs')
-          .select('id, learner_id, opportunity_id, application_status, applied_at')
-          .in('opportunity_id', oppIds)
-          .in('learner_id', learnerIds);
+        const appliedJobs = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-applied-jobs',
+          opportunity_ids: oppIds,
+          learner_ids: learnerIds,
+          limit: 1000,
+        });
         
         // Combine results with learner data
         const allMatches = [];
@@ -668,19 +669,11 @@ Format:
         }
         
         // Fetch all opportunities for this recruiter
-        const { data: opportunities, error: oppError } = await supabase
-          .from('opportunities')
-          .select('id, job_title, company_name')
-          .eq('recruiter_id', recruiterId)
-          .order('created_at', { ascending: false });
-        
-        if (oppError) {
-          return {
-            success: false,
-            message: 'Could not fetch your opportunities. Please try again.',
-            error: oppError.message
-          };
-        }
+        const opportunities = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-opportunities',
+          recruiter_id: recruiterId,
+          limit: 1000,
+        });
         
         if (!opportunities || opportunities.length === 0) {
           return {
@@ -699,25 +692,12 @@ Format:
         }
         
         // Fetch applicants from pipeline_candidates for these opportunities
-        const opportunityIds = opportunities.map(o => o.id);
-        const { data: applicants, error: applError } = await supabase
-          .from('pipeline_candidates')
-          .select(`
-            id,
-            opportunity_id,
-            learner_id,
-            stage,
-            status,
-            created_at,
-            learners:learner_id (
-              name,
-              email,
-              university,
-              currentCgpa
-            )
-          `)
-          .in('opportunity_id', opportunityIds)
-          .order('created_at', { ascending: false });
+        const opportunityIds = opportunities.map((o: any) => o.id);
+        const applicants = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-pipeline-with-learners',
+          opportunity_ids: opportunityIds,
+          limit: 1000,
+        });
         
         
         // Group applicants by opportunity
@@ -812,12 +792,12 @@ Format:
         }
         
         // Fetch recruiter's opportunities
-        const { data: opportunities } = await supabase
-          .from('opportunities')
-          .select('id, job_title, company_name, skills_required, description')
-          .eq('recruiter_id', recruiterId)
-          .order('created_at', { ascending: false })
-          .limit(5);
+        const opportunities = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-opportunities',
+          recruiter_id: recruiterId,
+          is_active: true,
+          limit: 5,
+        });
         
         if (!opportunities || opportunities.length === 0) {
           return {
@@ -827,29 +807,13 @@ Format:
         }
         
         // Fetch applicants from applied_jobs (using correct table)
-        const oppIds = opportunities.map(o => o.id);
-        const { data: applications } = await supabase
-          .from('applied_jobs')
-          .select(`
-            id,
-            learner_id,
-            opportunity_id,
-            application_status,
-            applied_at,
-            learners:learner_id (
-              user_id,
-              name,
-              email,
-              university,
-              currentCgpa,
-              city,
-              state,
-              resumeUrl
-            )
-          `)
-          .in('opportunity_id', oppIds)
-          .in('application_status', ['applied', 'viewed', 'under_review', 'interview_scheduled'])
-          .order('applied_at', { ascending: false });
+        const oppIds = opportunities.map((o: any) => o.id);
+        const applications = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-applied-jobs',
+          opportunity_ids: oppIds,
+          statuses: ['applied', 'viewed', 'under_review', 'interview_scheduled'],
+          limit: 1000,
+        });
         
         if (!applications || applications.length === 0) {
           return {
@@ -860,12 +824,11 @@ Format:
         }
         
         // Fetch skills for applicants
-        const learnerIds = applications.map(a => a.learner_id);
-        const { data: skills } = await supabase
-          .from('skills')
-          .select('learner_id, name, level')
-          .in('learner_id', learnerIds)
-          .eq('enabled', true);
+        const learnerIds = applications.map((a: any) => a.learner_id);
+        const skills = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-skills',
+          learner_ids: learnerIds,
+        });
         
         // Group skills by learner
         const skillsByLearner = new Map<string, any[]>();
@@ -961,28 +924,13 @@ Next Step: [action]
         const specificPosition = this.extractPositionName(query);
 
         // Fetch recruiter's opportunities with optional filtering
-        let opportunitiesQuery = supabase
-          .from('opportunities')
-          .select('id, job_title, company_name, skills_required, description, location, employment_type, experience_required, is_active')
-          .eq('recruiter_id', recruiterId)
-          .eq('is_active', true);
-        
-        // Filter by specific position if mentioned
-        if (specificPosition) {
-          opportunitiesQuery = opportunitiesQuery.ilike('job_title', `%${specificPosition}%`);
-        }
-        
-        const { data: opportunities, error: oppError } = await opportunitiesQuery
-          .order('created_at', { ascending: false })
-          .limit(specificPosition ? 3 : 10);
-        
-        if (oppError) {
-          return {
-            success: false,
-            message: 'Error fetching your opportunities.',
-            error: oppError.message
-          };
-        }
+        const opportunities = await apiPost<any[]>('/recruiter-copilot', {
+          action: 'fetch-opportunities',
+          recruiter_id: recruiterId,
+          is_active: true,
+          job_title_filter: specificPosition || undefined,
+          limit: specificPosition ? 3 : 10,
+        });
         
         if (!opportunities || opportunities.length === 0) {
           const message = specificPosition

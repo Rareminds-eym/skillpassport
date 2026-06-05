@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardContent,
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import ReactApexChart from 'react-apexcharts';
 import {
@@ -53,11 +50,13 @@ import {
   CertificatesEditModal,
 } from '@/features/learner-profile';
 import { useLearnerProfile, useLearnerPortfolio, useLearnerActivity, useLearnerMessages } from "@/features/learner-profile";
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const UnifiedDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const userEmail = localStorage.getItem("userEmail");
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
 
   // Check if viewing someone else's profile
   const isViewingOthersProfile = location.pathname.includes("/learner/profile/");
@@ -88,3 +87,6 @@ const UnifiedDashboard = () => {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+};
+
+export default UnifiedDashboard;

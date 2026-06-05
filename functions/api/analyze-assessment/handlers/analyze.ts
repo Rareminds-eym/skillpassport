@@ -3,12 +3,12 @@
  * Main handler for /analyze-assessment endpoint
  */
 
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import type { AssessmentData, AnalysisResult } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../shared/auth';
+import { jsonResponse } from '../../../lib/response';
+import { getContextUser } from '../../../lib/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { getSystemMessage } from '../prompts';
 import { buildHighSchoolPrompt } from '../prompts/high-school';
 import { buildMiddleSchoolPrompt } from '../prompts/middle-school';
@@ -915,7 +915,8 @@ async function analyzeAssessment(
  */
 export async function handleAnalyzeAssessment(
   request: Request,
-  env: PagesEnv
+  env: PagesEnv,
+  userId?: string
 ): Promise<Response> {
   console.log('[ASSESSMENT-API] === REQUEST RECEIVED ===');
   console.log('[ASSESSMENT-API] Method:', request.method);
@@ -940,15 +941,12 @@ export async function handleAnalyzeAssessment(
   if (isDevelopment) {
     learnerId = 'test-learner-' + Date.now();
     console.log('[ASSESSMENT-API] [DEV MODE] Bypassing authentication, using test learner ID:', learnerId);
-  } else {
-    console.log('[ASSESSMENT-API] Authenticating user...');
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('[ASSESSMENT-API] ❌ Authentication failed');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
-    learnerId = auth.user.id;
+  } else if (userId) {
+    learnerId = userId;
     console.log('[ASSESSMENT-API] ✅ Authenticated learner:', learnerId);
+  } else {
+    console.error('[ASSESSMENT-API] ❌ Authentication failed: Missing userId');
+    return jsonResponse({ error: 'Authentication required' }, 401);
   }
 
   // Rate limiting

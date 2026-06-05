@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('user-role-hook');
@@ -84,15 +84,11 @@ export const useUserRole = (authUser: User | null, authRole?: string) => {
 
         // Try to get role from teachers table
         if (userEmail) {
-          const { data: teacherData } = await supabase
-            .from('teachers')
-            .select('role')
-            .eq('email', userEmail)
-            .maybeSingle();
-
-          if (teacherData?.role) {
-            setRole(teacherData.role as UserRole);
-            setPermissions(ROLE_PERMISSIONS[teacherData.role as UserRole]);
+          const teacherResp: any = await apiPost('/user/actions', { action: 'get-teacher-role-by-email', email: userEmail });
+          const teacherRole = teacherResp?.data?.role;
+          if (teacherRole) {
+            setRole(teacherRole as UserRole);
+            setPermissions(ROLE_PERMISSIONS[teacherRole as UserRole]);
             setLoading(false);
             return;
           }
@@ -100,15 +96,11 @@ export const useUserRole = (authUser: User | null, authRole?: string) => {
 
         // Try to get role from school_educators table using email
         if (userEmail) {
-          const { data: educatorData } = await supabase
-            .from('school_educators')
-            .select('role')
-            .eq('email', userEmail)
-            .maybeSingle();
-
-          if (educatorData?.role) {
-            setRole(educatorData.role as UserRole);
-            setPermissions(ROLE_PERMISSIONS[educatorData.role as UserRole]);
+          const educatorResp: any = await apiPost('/user/actions', { action: 'get-educator-role-by-email', email: userEmail });
+          const educatorRole = educatorResp?.data?.role;
+          if (educatorRole) {
+            setRole(educatorRole as UserRole);
+            setPermissions(ROLE_PERMISSIONS[educatorRole as UserRole]);
             setLoading(false);
             return;
           }

@@ -8,7 +8,8 @@
  */
 
 import type { PagesFunction } from '@cloudflare/workers-types';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export const onRequestPost: PagesFunction = async (context) => {
   return handleUpdateRegistrationPaymentStatus(context);
@@ -26,12 +27,7 @@ export async function handleUpdateRegistrationPaymentStatus(context: any): Promi
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     const registrationId = body.registrationId as string;
@@ -41,16 +37,11 @@ export async function handleUpdateRegistrationPaymentStatus(context: any): Promi
     const errorMessage = body.error as string | undefined;
 
     if (!registrationId || !status) {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'registrationId and status are required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'registrationId and status are required', context.request);
     }
 
     // Create Supabase client
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = getServiceClient(env);
 
     // Get current record to append to payment_history
     const { data: currentRecord, error: fetchError } = await supabase
@@ -61,12 +52,7 @@ export async function handleUpdateRegistrationPaymentStatus(context: any): Promi
 
     if (fetchError) {
       console.error('[UpdateRegistrationPaymentStatus] Fetch error:', fetchError);
-      return new Response(
-        JSON.stringify({
-          error: { code: 'NOT_FOUND', message: 'Registration not found' },
-        }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(404, 'NOT_FOUND', 'Registration not found', context.request);
     }
 
     // Build payment history entry
@@ -106,30 +92,14 @@ export async function handleUpdateRegistrationPaymentStatus(context: any): Promi
 
     if (updateError) {
       console.error('[UpdateRegistrationPaymentStatus] Update error:', updateError);
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INTERNAL_ERROR', message: 'Failed to update registration payment status' },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to update registration payment status', context.request);
     }
 
     console.log(`[UpdateRegistrationPaymentStatus] Updated registration ${registrationId} to status: ${status}`);
 
-    return new Response(
-      JSON.stringify({ success: true, updated: true }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ updated: true }, context.request, 200);
   } catch (error) {
     console.error('[UpdateRegistrationPaymentStatus] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to update registration payment status',
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to update registration payment status', context.request);
   }
 }

@@ -7,8 +7,8 @@
  * Requirements: 4.1, 4.2, 1.4, 6.1, 2.5, 6.2, 3.1, 3.2, 7.1
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import {
   Question,
   GradeLevel,
@@ -110,50 +110,39 @@ async function getCachedQuestions(
   limit: number = 10,
   excludeIds: string[] = []
 ): Promise<Question[]> {
-  let query = supabase
-    .from('adaptive_aptitude_questions_cache')
-    .select('*')
-    .eq('grade_level', gradeLevel)
-    .eq('phase', phase)
-    .eq('is_active', true);
+  try {
+    const params = new URLSearchParams({
+      gradeLevel,
+      phase,
+      limit: String(limit),
+    });
+    if (difficulty !== undefined) params.set('difficulty', String(difficulty));
+    if (subtag !== undefined) params.set('subtag', subtag);
+    if (excludeIds.length > 0) params.set('excludeIds', excludeIds.join(','));
 
-  if (difficulty !== undefined) {
-    query = query.eq('difficulty', difficulty);
-  }
+    const response = await apiGet<any>(`/adaptive-cache?${params.toString()}`);
+    const data = response.data;
 
-  if (subtag !== undefined) {
-    query = query.eq('subtag', subtag);
-  }
+    if (!data || data.length === 0) {
+      return [];
+    }
 
-  if (excludeIds.length > 0) {
-    query = query.not('question_id', 'in', `(${excludeIds.join(',')})`);
-  }
-
-  query = query.order('usage_count', { ascending: true }).limit(limit);
-
-  const { data, error } = await query;
-
-  if (error) {
+    return data.map((record: any) => ({
+      id: record.question_id,
+      text: record.text,
+      options: record.options as Question['options'],
+      correctAnswer: record.correct_answer as Question['correctAnswer'],
+      difficulty: record.difficulty as DifficultyLevel,
+      subtag: record.subtag as Subtag,
+      gradeLevel: record.grade_level as GradeLevel,
+      phase: record.phase as TestPhase,
+      explanation: record.explanation || undefined,
+      createdAt: record.created_at,
+    }));
+  } catch (error) {
     console.error('Error fetching cached questions:', error);
     return [];
   }
-
-  if (!data || data.length === 0) {
-    return [];
-  }
-
-  return data.map((record) => ({
-    id: record.question_id,
-    text: record.text,
-    options: record.options as Question['options'],
-    correctAnswer: record.correct_answer as Question['correctAnswer'],
-    difficulty: record.difficulty as DifficultyLevel,
-    subtag: record.subtag as Subtag,
-    gradeLevel: record.grade_level as GradeLevel,
-    phase: record.phase as TestPhase,
-    explanation: record.explanation || undefined,
-    createdAt: record.created_at,
-  }));
 }
 
 /**
@@ -163,23 +152,12 @@ async function getCachedQuestions(
 async function cacheQuestions(questions: Question[]): Promise<void> {
   if (questions.length === 0) return;
 
-  const records = questions.map((q) => ({
-    question_id: q.id,
-    text: q.text,
-    options: q.options,
-    correct_answer: q.correctAnswer,
-    difficulty: q.difficulty,
-    subtag: q.subtag,
-    grade_level: q.gradeLevel,
-    phase: q.phase,
-    explanation: q.explanation || null,
-  }));
-
-  const { error } = await supabase
-    .from('adaptive_aptitude_questions_cache')
-    .upsert(records, { onConflict: 'question_id' });
-
-  if (error) {
+  try {
+    await apiPost('/adaptive-cache', {
+      action: 'cache-questions',
+      questions,
+    });
+  } catch (error) {
     console.error('Error caching questions:', error);
   }
 }
@@ -188,12 +166,13 @@ async function cacheQuestions(questions: Question[]): Promise<void> {
  * Updates usage count for questions
  */
 async function updateQuestionUsage(questionIds: string[]): Promise<void> {
-  for (const questionId of questionIds) {
-    try {
-      await supabase.rpc('update_question_usage', { p_question_id: questionId });
-    } catch {
-      // Ignore errors - usage tracking is non-critical
-    }
+  try {
+    await apiPost('/adaptive-cache', {
+      action: 'update-usage',
+      questionIds,
+    });
+  } catch {
+    // Ignore errors - usage tracking is non-critical
   }
 }
 

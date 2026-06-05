@@ -18,6 +18,8 @@ import { useNotificationBroadcast } from '@/features/broadcast';
 import { getLogger } from '@/shared/config/logging';
 
 import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
+import { useAuthStore } from '@/shared/model/authStore';
+
 const logger = getLogger('MessagesOptimized');
 
 // Constants
@@ -48,7 +50,7 @@ const Messages = () => {
   // Auth & User Data
   const user = useUser();
   const userEmail = useMemo(() => 
-    localStorage.getItem('userEmail') || user?.email, 
+    (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email, 
     [user?.email]
   );
   const { learnerData } = useLearnerDataByEmail(userEmail);

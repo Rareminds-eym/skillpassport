@@ -8,9 +8,11 @@ import {
   ChevronDownIcon,
 } from '@heroicons/react/24/outline'
 import NotificationPanel from './NotificationPanel'
-import { supabase } from '@/shared/api/supabaseClient'
+import { apiPost } from '@/shared/api/apiClient'
 import { useNotifications } from '@/features/notifications'
 import { getLogger } from '@/shared/config/logging'
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('EducatorHeader')
 
@@ -63,8 +65,8 @@ const Header: React.FC<HeaderProps> = ({
   const loadEducatorProfile = async () => {
     try {
       // Get email from localStorage (same method as ProfileFixed)
-      const storedUser = localStorage.getItem('user')
-      const storedEmail = localStorage.getItem('userEmail')
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
+      const storedEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
 
       let email = 'karthikeyan@rareminds.in' // Default fallback
 
@@ -82,14 +84,10 @@ const Header: React.FC<HeaderProps> = ({
       setEducatorEmail(email)
 
       // Fetch educator data
-      const { data: educatorData, error } = await supabase
-        .from('school_educators')
-        .select('first_name, last_name, photo_url, email, specialization')
-        .eq('email', email)
-        .maybeSingle()
+      const res = await apiPost('/educator/actions', { action: 'fetch-educator-by-email', email })
+      const educatorData = res?.data
 
-      if (error) {
-        logger.error('Failed to load educator profile', error as Error);
+      if (!educatorData) {
         return
       }
 

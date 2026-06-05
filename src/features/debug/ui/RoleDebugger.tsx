@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from "@/shared/api/supabaseClient";
-// Note: This debug component imports from higher layers - consider moving to features/debug
+import { apiPost } from '@/shared/api/apiClient';
 import { useUserRole } from '@/entities/user';
 import { useUser, useUserRole as useUserRoleFromStore } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
@@ -36,34 +35,30 @@ const RoleDebugger: React.FC = () => {
       setUserInfo(user || { error: 'No user found' });
 
       if (user && user.email) {
-        addDebugLog(`Fetching teacher data for email: ${user.email}`);
-        const { data: teacher, error: teacherError } = await supabase
-          .from('teachers')
-          .select('*')
-          .eq('email', user.email)
-          .maybeSingle();
-        
-        if (teacherError) {
-          addDebugLog(`Teacher query error: ${JSON.stringify(teacherError)}`);
-        } else {
-          addDebugLog(`Teacher data: ${JSON.stringify(teacher)}`);
-        }
-        setTeacherData(teacher);
+        addDebugLog(`Fetching debug data for email: ${user.email}`);
 
-        if (user.id) {
-          addDebugLog(`Fetching educator data for user_id: ${user.id}`);
-          const { data: educator, error: educatorError } = await supabase
-            .from('school_educators')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
-          
-          if (educatorError) {
-            addDebugLog(`Educator query error: ${JSON.stringify(educatorError)}`);
+        const payload: Record<string, string> = { email: user.email };
+        if (user.id) payload.userId = user.id;
+
+        try {
+          const result = await apiPost('/explorer/actions', { ...payload, action: 'role-debug' });
+          const data = result?.data || {};
+
+          if (data.teacher && !data.teacher.error) {
+            addDebugLog(`Teacher data: ${JSON.stringify(data.teacher)}`);
+            setTeacherData(data.teacher);
           } else {
-            addDebugLog(`Educator data: ${JSON.stringify(educator)}`);
+            addDebugLog(`Teacher query result: ${JSON.stringify(data.teacher)}`);
           }
-          setEducatorData(educator);
+
+          if (data.educator && !data.educator.error) {
+            addDebugLog(`Educator data: ${JSON.stringify(data.educator)}`);
+            setEducatorData(data.educator);
+          } else {
+            addDebugLog(`Educator query result: ${JSON.stringify(data.educator)}`);
+          }
+        } catch (fetchErr) {
+          addDebugLog(`API call error: ${(fetchErr as Error).message}`);
         }
       } else {
         addDebugLog('No user or email found');

@@ -84,12 +84,13 @@ import {
 import { useLearnerMessageNotifications, useLearnerUnreadCount, useLearnerDataByEmail } from '@/entities/learner';
 import { useLearnerAchievements } from '@/entities/learner';
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
-import { supabase } from '@/shared/api/supabaseClient';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { useUserRole } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
+import { apiPost } from '@/shared/api/apiClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import {
   useHasAssessment,
   useHasInProgressAssessment,
@@ -1299,17 +1300,14 @@ const LearnerDashboard = () => {
   useEffect(() => {
     if (!userEmail || isViewingOthersProfile) return;
 
-    // Subscribe to real-time changes in opportunities table
-    const channel = supabase
-      .channel("opportunities-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "opportunities",
-        },
-        (payload) => {
+    const sseClient = getWSClient();
+
+    // Subscribe to INSERT events on opportunities table
+    const unsubscribeInsert = sseClient.subscribe(
+      'opportunities',
+      { event: 'INSERT' },
+      (event) => {
+        if (event.type === 'change') {
           // Refresh opportunities list
           refreshOpportunities();
 
@@ -1318,23 +1316,24 @@ const LearnerDashboard = () => {
             refreshRecentUpdates();
           }, 1000); // Small delay to ensure DB trigger has fired
         }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "opportunities",
-        },
-        (payload) => {
+      }
+    );
+
+    // Subscribe to UPDATE events on opportunities table
+    const unsubscribeUpdate = sseClient.subscribe(
+      'opportunities',
+      { event: 'UPDATE' },
+      (event) => {
+        if (event.type === 'change') {
           refreshOpportunities();
         }
-      )
-      .subscribe();
+      }
+    );
 
-    // Cleanup subscription on unmount
+    // Cleanup subscriptions on unmount
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribeInsert();
+      unsubscribeUpdate();
     };
   }, [userEmail, isViewingOthersProfile]);
 
@@ -1357,9 +1356,7 @@ const LearnerDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
-        const { data, error, count } = await supabase
-          .from("opportunities")
-          .select("*", { count: "exact" });
+        await apiPost('/learner-pages/actions', { action: 'test-supabase-connectivity' });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
@@ -1633,23 +1630,11 @@ const LearnerDashboard = () => {
     }
 
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skillId);
-
-      if (error) {
-        logger.error('🔧 Dashboard - Database error', error);
-        throw error;
-      }
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId,
+        enabled: newState,
+      });
 
       // Refresh technical skills to get updated data
       if (refreshTechnicalSkills) {
@@ -1690,20 +1675,11 @@ const LearnerDashboard = () => {
     }
 
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skillId);
-
-      if (error) throw error;
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId,
+        enabled: newState,
+      });
 
       // Refresh soft skills to get updated data
       if (refreshSoftSkills) {
@@ -1936,19 +1912,7 @@ const LearnerDashboard = () => {
                         if (!window.confirm('DEV: Are you sure you want to clear your assessment data? This will delete all your assessment results.')) return;
 
                         try {
-                          const { error: resultsError } = await supabase
-                            .from('personal_assessment_results')
-                            .delete()
-                            .eq('learner_id', learnerId);
-
-                          if (resultsError) throw resultsError;
-
-                          const { error: attemptsError } = await supabase
-                            .from('personal_assessment_attempts')
-                            .delete()
-                            .eq('learner_id', learnerId);
-
-                          if (attemptsError) throw attemptsError;
+                          await apiPost('/learner-pages/actions', { action: 'clear-assessment-data', learnerId });
 
                           localStorage.removeItem('assessment_gemini_results');
                           localStorage.removeItem('assessment_section_timings');

@@ -4,7 +4,7 @@
  */
 
 import { callOpenRouterWithRetry, getAPIKeys, AI_MODELS } from '../../shared/ai-config';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 export interface JobMarketData {
   category: string;
@@ -244,7 +244,6 @@ The categories above were selected because they align with your ${riasecCode} pr
 export function extractCareerCategories(
   riasecCode: string,
   aptitudeLevel: number,
-  interests: string[],
   stream?: string
 ): string[] {
   const categories: string[] = [];

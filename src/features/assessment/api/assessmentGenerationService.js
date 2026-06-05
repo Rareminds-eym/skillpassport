@@ -1,3 +1,5 @@
+import { apiPost } from '@/shared/api/apiClient';
+
 /**
  * Assessment Generation Service
  * Generates dynamic assessments based on course name using AI
@@ -65,38 +67,15 @@ IMPORTANT: Generate questions that someone studying {{COURSE_NAME}} would expect
  */
 export async function saveGeneratedAssessment(courseName, courseId, assessment) {
   try {
-    const { supabase } = await import('@/shared/api/supabaseClient');
-    
-    console.log('💾 Saving generated assessment to database...', {
-      courseName,
-      courseId,
-      questionCount: assessment.questions?.length
+    const result = await apiPost('/assessment/actions', {
+      action: 'save-generated-assessment', courseName, courseId, assessment,
     });
 
-    const { data, error } = await supabase
-      .from('generated_external_assessment')
-      .insert({
-        certificate_name: courseName,
-        course_id: courseId,
-        assessment_level: assessment.level,
-        total_questions: assessment.questions.length,
-        questions: assessment.questions,
-        generated_by: 'AI'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      // If duplicate (already exists), that's okay
-      if (error.code === '23505') {
-        console.log('ℹ️ Assessment already exists in database');
-        return { success: true, data: null, alreadyExists: true };
-      }
-      throw error;
+    if (result?.data?.alreadyExists) {
+      return { success: true, data: null, alreadyExists: true };
     }
 
-    console.log('✅ Assessment saved to database:', data.id);
-    return { success: true, data, alreadyExists: false };
+    return { success: true, data: result?.data?.data || null, alreadyExists: false };
   } catch (error) {
     console.error('❌ Error saving assessment to database:', error);
     return { success: false, error: error.message };
@@ -108,40 +87,18 @@ export async function saveGeneratedAssessment(courseName, courseId, assessment) 
  */
 export async function loadGeneratedAssessment(courseName) {
   try {
-    const { supabase } = await import('@/shared/api/supabaseClient');
-    
-    console.log('🔍 Loading generated assessment from database...', courseName);
-
-    const { data, error } = await supabase
-      .from('generated_external_assessment')
-      .select('*')
-      .eq('certificate_name', courseName)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        console.log('ℹ️ No generated assessment found in database');
-        return null;
-      }
-      throw error;
-    }
-
-    console.log('✅ Loaded assessment from database:', {
-      id: data.id,
-      questionCount: data.questions?.length,
-      generatedAt: data.generated_at
+    const result = await apiPost('/assessment/actions', {
+      action: 'load-generated-assessment', courseName,
     });
 
-    // Transform to expected format
-    return {
-      course: data.certificate_name,
-      level: data.assessment_level,
-      total_questions: data.total_questions,
-      questions: data.questions
-    };
+    if (!result?.data) {
+      return { success: true, data: null, notFound: true };
+    }
+
+    return { success: true, data: result.data, notFound: false };
   } catch (error) {
     console.error('❌ Error loading assessment from database:', error);
-    return null;
+    return { success: false, error: error.message };
   }
 }
 
@@ -174,23 +131,23 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
       console.error('❌ API Error:', errorData);
-      
+
       if (response.status === 401) {
         throw new Error('Invalid API key on server. Please check server configuration.');
       }
-      
+
       throw new Error(errorData.error || `API Error (${response.status}): Failed to generate assessment`);
     }
 
     const assessment = await response.json();
-    
+
     console.log('✅ Generated assessment with AI:', {
       course: assessment.course,
       level: assessment.level,
       questionCount: assessment.questions?.length,
       firstQuestion: assessment.questions?.[0]?.question?.substring(0, 50) + '...'
     });
-    
+
     // Validate the assessment
     const validation = validateAssessment(assessment);
     if (!validation.valid) {
@@ -212,7 +169,7 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
  */
 export function validateAssessment(assessment) {
   const errors = [];
-  
+
   if (!assessment.course) errors.push('Missing course name');
   if (!['Beginner', 'Intermediate', 'Advanced'].includes(assessment.level)) {
     errors.push('Invalid level');
@@ -223,7 +180,7 @@ export function validateAssessment(assessment) {
   if (assessment.questions && assessment.questions.length !== assessment.total_questions) {
     errors.push('Question count mismatch');
   }
-  
+
   if (assessment.questions) {
     assessment.questions.forEach((q, idx) => {
       if (!q.id) errors.push(`Question ${idx + 1}: Missing id`);
@@ -231,13 +188,13 @@ export function validateAssessment(assessment) {
       if (!q.question) errors.push(`Question ${idx + 1}: Missing question text`);
       if (!q.correct_answer) errors.push(`Question ${idx + 1}: Missing correct answer`);
       if (!q.skill_tag) errors.push(`Question ${idx + 1}: Missing skill tag`);
-      
+
       if (q.type === 'mcq' && (!q.options || q.options.length < 2)) {
         errors.push(`Question ${idx + 1}: MCQ must have at least 2 options`);
       }
     });
   }
-  
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -263,18 +220,18 @@ export function getCachedAssessment(courseName) {
   try {
     const cacheKey = `assessment_${courseName.toLowerCase().replace(/\s+/g, '_')}`;
     const cached = localStorage.getItem(cacheKey);
-    
+
     if (cached) {
       const assessment = JSON.parse(cached);
       // Check if cache is less than 7 days old
       const cacheAge = Date.now() - new Date(assessment.cachedAt).getTime();
       const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-      
+
       if (cacheAge < maxAge) {
         return assessment;
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error loading cached assessment:', error);

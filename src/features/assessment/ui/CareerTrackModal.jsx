@@ -5,7 +5,7 @@ import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download,
 import { useRoleOverview } from '@/entities/user';
 import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counselling';
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import jsPDF from 'jspdf';
 
 /**
@@ -118,12 +118,9 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
             if (!coursesToMatch || coursesToMatch.length === 0) {
                 console.log('[CareerTrackModal] No courses in results, fetching from database...');
                 try {
-                    const { data: courses, error } = await supabase
-                        .from('courses')
-                        .select('*')
-                        .eq('status', 'Active')
-                        .is('deleted_at', null)
-                        .order('created_at', { ascending: false });
+                    const result = await apiPost('/learner-profile/actions', { action: 'fetch-courses' });
+                    const courses = result?.data || [];
+                    const error = result?.error;
                     
                     if (error) {
                         console.error('[CareerTrackModal] Failed to fetch courses:', error);

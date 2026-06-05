@@ -159,8 +159,8 @@
  * @see {@link validateSVGContent} for SVG XSS protection logic
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse } from '../../../lib/response';
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
 import {
@@ -176,9 +176,9 @@ import {
 import { validateFileSizeBackend } from '../utils/file-size-validator';
 import { getFileSizeLimit } from '../config/fileSizeLimits';
 import { VALID_UPLOAD_CONTEXTS } from '../config/uploadContexts';
-import { getLogger } from '../../../../src/shared/config/logging';
+import { createLogger } from '../../../lib/logger';
 
-const logger = getLogger('storage-upload');
+const logger = createLogger('storage-upload');
 
 /**
  * Allowed file types (MIME types)

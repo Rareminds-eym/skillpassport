@@ -3,9 +3,8 @@
  * Generate AI-powered career paths for degree programs
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../shared/auth';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
 
 interface CareerPath {
@@ -160,24 +159,12 @@ export async function handleGenerateProgramCareerPaths(
   env: PagesEnv
 ): Promise<Response> {
   try {
-    // Authenticate user
-    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!authResult) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
-
     // Parse request body
     const body = await request.json() as GenerateCareerPathsRequest;
 
     // Validate required fields
     if (!body.programName || !body.programCategory || !body.learnerProfile?.riasecScores) {
-      return jsonResponse(
-        {
-          success: false,
-          error: 'Missing required fields: programName, programCategory, learnerProfile.riasecScores',
-        },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: programName, programCategory, learnerProfile.riasecScores', request);
     }
 
     console.log(`🎓 Generating career paths for: ${body.programName}`);
@@ -186,13 +173,7 @@ export async function handleGenerateProgramCareerPaths(
     const { openRouter } = getAPIKeys(env);
 
     if (!openRouter) {
-      return jsonResponse(
-        {
-          success: false,
-          error: 'OpenRouter API key not configured',
-        },
-        500
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'OpenRouter API key not configured', request);
     }
 
     // Build prompt
@@ -222,18 +203,9 @@ export async function handleGenerateProgramCareerPaths(
 
     console.log(`✅ Generated ${careerPaths.length} career paths`);
 
-    return jsonResponse({
-      success: true,
-      careerPaths,
-    });
+    return apiSuccess({ careerPaths }, request);
   } catch (error: any) {
     console.error('❌ Error generating program career paths:', error);
-    return jsonResponse(
-      {
-        success: false,
-        error: error.message || 'Failed to generate career paths',
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error.message || 'Failed to generate career paths', request);
   }
 }

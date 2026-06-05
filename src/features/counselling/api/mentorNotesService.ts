@@ -1,13 +1,12 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export const mentorNotesService = {
   async deleteMentorNote(id: string) {
-    const { data, error } = await supabase
-      .from('mentor_notes')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    // Use backend API instead of direct Supabase call
+    const data = await apiPost('/college-admin/mentors', {
+      action: 'deleteMentorNote',
+      noteId: id,
+    });
     return data;
   }
 };

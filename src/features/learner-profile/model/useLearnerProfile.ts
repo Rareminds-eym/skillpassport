@@ -13,31 +13,30 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-profile');
-// TODO: Uncomment when CRUD functions are added to learnerProfileService
-// import { 
-//   getlearnerById,
-//   getlearnerByEmail,
-//   updateLearnerProfile,
-//   addEducation,
-//   updateEducation,
-//   deleteEducation,
-//   addTraining,
-//   updateTraining,
-//   deleteTraining,
-//   addExperience,
-//   updateExperience,
-//   deleteExperience,
-//   addTechnicalSkill,
-//   updateTechnicalSkill,
-//   deleteTechnicalSkill,
-//   addSoftSkill,
-//   updateSoftSkill,
-//   deleteSoftSkill
-// } from '@/features/learner-profile/api';
+import {
+  getlearnerById,
+  getlearnerByEmail,
+  updateLearnerProfile,
+  addEducation,
+  updateEducation,
+  deleteEducation,
+  addTraining,
+  updateTraining,
+  deleteTraining,
+  addExperience,
+  updateExperience,
+  deleteExperience,
+  addTechnicalSkill,
+  updateTechnicalSkill,
+  deleteTechnicalSkill,
+  addSoftSkill,
+  updateSoftSkill,
+  deleteSoftSkill
+} from '@/features/learner-profile/api';
 
 export interface UselearnerProfileOptions {
   learnerId?: string | null;
@@ -166,17 +165,12 @@ export const useLearnerProfile = ({ learnerId, email, enabled = true }: Uselearn
   }, [learnerId, email, enabled]);
 
   // Fetch education records
-  const fetchEducation = async (sid: string) => {
+  const fetchEducation = async (_sid: string) => {
     try {
-      const { data: eduData, error: eduError } = await supabase
-        .from('education')
-        .select('*')
-        .eq('learner_id', sid)
-        .order('created_at', { ascending: false });
+      const response = await apiPost('/learners/profile', { action: 'get-education' });
+      const eduData = response?.data ?? [];
 
-      if (eduError) throw eduError;
-
-      const transformedData = (eduData || []).map(item => ({
+      const transformedData = (eduData || []).map((item: any) => ({
         id: item.id,
         degree: item.degree,
         department: item.department,
@@ -205,17 +199,12 @@ export const useLearnerProfile = ({ learnerId, email, enabled = true }: Uselearn
   };
 
   // Fetch experience records
-  const fetchExperience = async (sid: string) => {
+  const fetchExperience = async (_sid: string) => {
     try {
-      const { data: expData, error: expError } = await supabase
-        .from('experience')
-        .select('*')
-        .eq('learner_id', sid)
-        .order('created_at', { ascending: false });
+      const response = await apiPost('/learners/profile', { action: 'get-experience' });
+      const expData = response?.data ?? [];
 
-      if (expError) throw expError;
-
-      const transformedData = (expData || []).map(item => ({
+      const transformedData = (expData || []).map((item: any) => ({
         id: item.id,
         organization: item.organization,
         role: item.role,
@@ -243,18 +232,12 @@ export const useLearnerProfile = ({ learnerId, email, enabled = true }: Uselearn
   };
 
   // Fetch skills (technical and soft)
-  const fetchSkills = async (sid: string) => {
+  const fetchSkills = async (_sid: string) => {
     try {
-      const { data: skillsData, error: skillsError } = await supabase
-        .from('skills')
-        .select('*')
-        .eq('learner_id', sid)
-        .is('training_id', null)
-        .order('created_at', { ascending: false });
+      const response = await apiPost('/learners/profile', { action: 'get-skills' });
+      const skillsData = response?.data ?? [];
 
-      if (skillsError) throw skillsError;
-
-      const transformedData = (skillsData || []).map(item => ({
+      const transformedData = (skillsData || []).map((item: any) => ({
         id: item.id,
         name: item.name,
         type: item.type,
@@ -271,8 +254,8 @@ export const useLearnerProfile = ({ learnerId, email, enabled = true }: Uselearn
         updatedAt: item.updated_at
       }));
 
-      setTechnicalSkills(transformedData.filter(s => s.type === 'technical'));
-      setSoftSkills(transformedData.filter(s => s.type === 'soft'));
+      setTechnicalSkills(transformedData.filter((s: any) => s.type === 'technical'));
+      setSoftSkills(transformedData.filter((s: any) => s.type === 'soft'));
     } catch (err) {
       logger.error('Error fetching skills', err as Error);
     }

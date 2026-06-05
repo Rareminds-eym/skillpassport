@@ -1,5 +1,7 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('opportunitiesService');
 
@@ -68,49 +70,18 @@ export interface OpportunityFilters {
 class OpportunitiesService {
   async getAllOpportunities(filters?: OpportunityFilters): Promise<Opportunity[]> {
     try {
-      let query = supabase
-        .from('opportunities')
-        .select('*');
-      
-      // Only exclude factory visits if not explicitly included
-      if (!filters?.includeFactoryVisits) {
-        query = query.neq('employment_type', 'factory_visit');
-      }
-      
-      query = query.order('created_at', { ascending: false });
-
-      // Apply filters
-      if (filters?.search) {
-        query = query.or(`title.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%,department.ilike.%${filters.search}%,job_title.ilike.%${filters.search}%`);
-      }
-
-      if (filters?.status) {
-        query = query.eq('status', filters.status);
-      }
-
-      if (filters?.employment_type) {
-        query = query.eq('employment_type', filters.employment_type);
-      }
-
-      if (filters?.mode) {
-        query = query.eq('mode', filters.mode);
-      }
-
-      if (filters?.department) {
-        query = query.eq('department', filters.department);
-      }
-
-      if (filters?.is_active !== undefined) {
-        query = query.eq('is_active', filters.is_active);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      return data || [];
+      const params = new URLSearchParams();
+      params.set('limit', '100');
+      params.set('sortBy', 'newest');
+      if (filters?.search) params.set('search', filters.search);
+      if (filters?.employment_type) params.set('employmentType', filters.employment_type);
+      if (filters?.mode) params.set('mode', filters.mode);
+      if (filters?.department) params.set('department', filters.department);
+      const response: any = await apiGet(`/opportunities?${params.toString()}`);
+      const opportunities = response?.data?.opportunities || [];
+      if (filters?.status) return opportunities.filter((o: any) => o.status === filters.status);
+      if (filters?.is_active !== undefined) return opportunities.filter((o: any) => o.is_active === filters.is_active);
+      return opportunities;
     } catch (error) {
       throw error;
     }
@@ -118,17 +89,9 @@ class OpportunitiesService {
 
   async getOpportunityById(id: number): Promise<Opportunity | null> {
     try {
-      const { data, error } = await supabase
-        .from('opportunities')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
+      const response: any = await apiGet(`/opportunities?id=${id}`);
+      if (response?.error) throw new Error(response.error.message);
+      return response?.data?.opportunity || null;
     } catch (error) {
       throw error;
     }
@@ -136,17 +99,9 @@ class OpportunitiesService {
 
   async createOpportunity(opportunity: Partial<Opportunity>): Promise<Opportunity> {
     try {
-      const { data, error } = await supabase
-        .from('opportunities')
-        .insert([opportunity])
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
+      const response: any = await apiPost('/opportunities', { action: 'create-opportunity', opportunity });
+      if (response?.error) throw new Error(response.error.message);
+      return response?.data?.opportunity;
     } catch (error) {
       throw error;
     }
@@ -154,18 +109,9 @@ class OpportunitiesService {
 
   async updateOpportunity(id: number, updates: Partial<Opportunity>): Promise<Opportunity> {
     try {
-      const { data, error } = await supabase
-        .from('opportunities')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
+      const response: any = await apiPost('/opportunities', { action: 'update-opportunity', id, ...updates });
+      if (response?.error) throw new Error(response.error.message);
+      return response?.data?.opportunity;
     } catch (error) {
       throw error;
     }
@@ -173,14 +119,8 @@ class OpportunitiesService {
 
   async deleteOpportunity(id: number): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('opportunities')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        throw error;
-      }
+      const response: any = await apiPost('/opportunities', { action: 'delete-opportunity', id });
+      if (response?.error) throw new Error(response.error.message);
     } catch (error) {
       throw error;
     }
@@ -189,26 +129,10 @@ class OpportunitiesService {
   async incrementViewCount(id: number): Promise<void> {
     try {
       // First get the current count
-      const { data: currentData, error: fetchError } = await supabase
-        .from('opportunities')
-        .select('views_count')
-        .eq('id', id)
-        .single();
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      const currentCount = currentData?.views_count || 0;
-      
-      // Then update with incremented count
-      const { error } = await supabase
-        .from('opportunities')
-        .update({ views_count: currentCount + 1 })
-        .eq('id', id);
-
-      if (error) {
-        throw error;
+      const response: any = await apiPost('/opportunities', { action: 'increment-view-count', id });
+      if (response?.error) {
+        logger.error('Failed to increment view count', new Error(response.error.message));
+        throw new Error(response.error.message);
       }
     } catch (error) {
       logger.error('Failed to increment view count', error as Error);
@@ -286,18 +210,10 @@ class OpportunitiesService {
   // Search opportunities by term
   async searchOpportunities(searchTerm: string): Promise<Opportunity[]> {
     try {
-      const { data, error } = await supabase
-        .from('opportunities')
-        .select('*')
-        .neq('employment_type', 'factory_visit') // Exclude factory visits from search results
-        .or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      return data || [];
+      const params = new URLSearchParams({ search: searchTerm, limit: '50' });
+      const response: any = await apiGet(`/opportunities?${params.toString()}`);
+      if (response?.error) throw new Error(response.error.message);
+      return response?.data?.opportunities || [];
     } catch (error) {
       logger.error('Failed to search opportunities', error as Error);
       throw error;
@@ -328,155 +244,24 @@ class OpportunitiesService {
         activeOnly = true
       } = options;
 
-      // Calculate offset
-      const offset = (page - 1) * pageSize;
+      const params = new URLSearchParams();
+      params.set('limit', String(pageSize));
+      params.set('offset', String((page - 1) * pageSize));
+      if (searchTerm) params.set('search', searchTerm);
+      params.set('sortBy', sortBy);
+      params.set('activeOnly', String(activeOnly));
+      if (filters.employmentType?.length) params.set('employmentType', filters.employmentType.join(','));
+      if (filters.experienceLevel?.length) params.set('experienceLevel', filters.experienceLevel.join(','));
+      if (filters.mode?.length) params.set('mode', filters.mode.join(','));
+      if (filters.department?.length) params.set('department', filters.department.join(','));
+      if (filters.salaryMin) params.set('salaryMin', filters.salaryMin);
+      if (filters.salaryMax) params.set('salaryMax', filters.salaryMax);
+      if (filters.postedWithin) params.set('postedWithin', filters.postedWithin);
 
-      // Build base query for BOTH count and data
-      const buildQuery = (selectFields: string = '*', includeRange: boolean = false) => {
-        let query = supabase.from('opportunities').select(selectFields, { count: 'exact', head: false });
-
-        // Exclude factory visits from regular opportunities
-        query = query.neq('employment_type', 'factory_visit');
-
-        // Apply active filter FIRST
-        if (activeOnly) {
-          query = query.eq('is_active', true);
-        }
-
-        // Filter to show only opportunities with applications_count > 0
-        query = query.gt('applications_count', 0);
-
-        // Apply employment type filter EARLY (before other filters)
-        if (filters.employmentType && filters.employmentType.length > 0) {
-          query = query.in('employment_type', filters.employmentType);
-        }
-
-        // Apply search term
-        if (searchTerm && searchTerm.trim()) {
-          query = query.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`);
-        }
-
-        // Apply other filters
-        if (filters.experienceLevel && filters.experienceLevel.length > 0) {
-          query = query.in('experience_level', filters.experienceLevel);
-        }
-
-        if (filters.mode && filters.mode.length > 0) {
-          query = query.in('mode', filters.mode);
-        }
-
-        if (filters.department && filters.department.length > 0) {
-          query = query.in('department', filters.department);
-        }
-
-        if (filters.salaryMin) {
-          query = query.gte('salary_range_min', parseInt(filters.salaryMin));
-        }
-
-        if (filters.salaryMax) {
-          query = query.lte('salary_range_max', parseInt(filters.salaryMax));
-        }
-
-        if (filters.postedWithin) {
-          const daysAgo = parseInt(filters.postedWithin);
-          const dateThreshold = new Date();
-          dateThreshold.setDate(dateThreshold.getDate() - daysAgo);
-          query = query.gte('created_at', dateThreshold.toISOString());
-        }
-
-        // Apply sorting BEFORE range
-        const ascending = sortBy === 'oldest';
-        query = query.order('created_at', { ascending });
-
-        // Apply pagination LAST (only if requested)
-        if (includeRange) {
-          query = query.range(offset, offset + pageSize - 1);
-        }
-
-        return query;
-      };
-
-      // WORKAROUND: Supabase count is unreliable with RLS, so we fetch ALL filtered IDs to get accurate count
-      // This is a lightweight query since we only fetch the 'id' field
-      let countQuery = supabase.from('opportunities').select('id', { count: 'exact', head: false });
-      
-      // Exclude factory visits from count
-      countQuery = countQuery.neq('employment_type', 'factory_visit');
-      
-      // Apply ALL the same filters as the data query
-      if (activeOnly) {
-        countQuery = countQuery.eq('is_active', true);
-      }
-      // Filter to show only opportunities with applications_count > 0
-      countQuery = countQuery.gt('applications_count', 0);
-      
-      if (filters.employmentType && filters.employmentType.length > 0) {
-        countQuery = countQuery.in('employment_type', filters.employmentType);
-      }
-      if (searchTerm && searchTerm.trim()) {
-        countQuery = countQuery.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`);
-      }
-      if (filters.experienceLevel && filters.experienceLevel.length > 0) {
-        countQuery = countQuery.in('experience_level', filters.experienceLevel);
-      }
-      if (filters.mode && filters.mode.length > 0) {
-        countQuery = countQuery.in('mode', filters.mode);
-      }
-      if (filters.department && filters.department.length > 0) {
-        countQuery = countQuery.in('department', filters.department);
-      }
-      if (filters.salaryMin) {
-        countQuery = countQuery.gte('salary_range_min', parseInt(filters.salaryMin));
-      }
-      if (filters.salaryMax) {
-        countQuery = countQuery.lte('salary_range_max', parseInt(filters.salaryMax));
-      }
-      if (filters.postedWithin) {
-        const daysAgo = parseInt(filters.postedWithin);
-        const dateThreshold = new Date();
-        dateThreshold.setDate(dateThreshold.getDate() - daysAgo);
-        countQuery = countQuery.gte('created_at', dateThreshold.toISOString());
-      }
-      
-      // Run count and data queries in parallel
-      const [countResult, dataResult] = await Promise.all([
-        countQuery,
-        buildQuery('*', true)
-      ]);
-      
-      const { data: allIds, error: countError } = countResult;
-      const { data, error } = dataResult;
-      
-      
-      const realCount = allIds?.length || 0;
-
-      // Check if the requested page is valid
-      const maxOffset = Math.max(0, realCount - 1);
-      if (offset > maxOffset && realCount > 0) {
-        return {
-          data: [],
-          count: realCount
-        };
-      }
-
-      // Handle 416 Range Not Satisfiable error gracefully
-      if (error) {
-        if (error.code === 'PGRST103' || error.message?.includes('Range Not Satisfiable') || error.message?.includes('416')) {
-          return {
-            data: [],
-            count: realCount
-          };
-        }
-        return {
-          data: [],
-          count: 0
-        };
-      }
-
-      return {
-        data: data || [],
-        count: realCount
-      };
+      const response: any = await apiGet(`/opportunities?${params.toString()}`);
+      const data = response?.data?.opportunities ?? [];
+      const total = response?.data?.total ?? data.length;
+      return { data, count: total };
     } catch (error: any) {
       if (error?.message?.includes('416') || error?.message?.includes('Range Not Satisfiable')) {
         return {
@@ -507,132 +292,13 @@ class OpportunitiesService {
       
       if (user) {
         // Try to get college_id from college_lecturers table
-        const { data: collegeLecturer } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .eq('user_id', user.id)
-          .single();
-        
-        currentCollegeId = collegeLecturer?.collegeId;
+        // College lookup handled server-side
       }
 
       // Get total learners from learners table (filter by college)
-      let learnersQuery = supabase
-        .from('learners')
-        .select('*', { count: 'exact', head: true });
-
-      // Add college filter if we have college_id
-      if (currentCollegeId) {
-        learnersQuery = learnersQuery.eq('college_id', currentCollegeId);
-      }
-
-      const { count: totallearners, error: totalError } = await learnersQuery;
-
-      if (totalError) {
-        logger.error('Failed to fetch total learners count', totalError as Error);
-        throw totalError;
-      }
-
-      // Get placement data directly from applied_jobs with accepted status
-      let placementQuery = supabase
-        .from('applied_jobs')
-        .select(`
-          id,
-          learner_id,
-          learners!fk_applied_jobs_learner (
-            id,
-            college_id,
-            name
-          ),
-          opportunities!fk_applied_jobs_opportunity (
-            salary_range_min,
-            salary_range_max,
-            employment_type
-          )
-        `)
-        .eq('application_status', 'accepted');
-
-      // Filter by college if we have college_id
-      if (currentCollegeId) {
-        // First get learner IDs from this college
-        const { data: collegelearners } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('college_id', currentCollegeId);
-
-        const learnerIds = collegelearners?.map(s => s.id) || [];
-        
-        if (learnerIds.length > 0) {
-          placementQuery = placementQuery.in('learner_id', learnerIds);
-        } else {
-          // No learners in this college, so no placements
-          return {
-            learnersPlaced: 0,
-            placementRate: 0,
-            totallearners: totallearners || 0,
-            avgCTC: 0,
-            medianCTC: 0,
-            highestCTC: 0
-          };
-        }
-      }
-
-      const { data: placements, error: placementError } = await placementQuery;
-
-      if (placementError) {
-        throw placementError;
-      }
-
-      // Count unique learners placed (not total offers)
-      const uniqueLearnerIds = new Set();
-      if (placements) {
-        placements.forEach(placement => {
-          uniqueLearnerIds.add(placement.learner_id);
-        });
-      }
-      
-      const learnersPlaced = uniqueLearnerIds.size;
-
-      // Calculate CTC statistics from salary data
-      const salaries: number[] = [];
-      
-      if (placements) {
-        for (const placement of placements) {
-          const opportunity = placement.opportunities as any;
-          if (opportunity) {
-            const salary = opportunity.salary_range_max || opportunity.salary_range_min || 0;
-            if (salary > 0) {
-              salaries.push(Number(salary));
-            }
-          }
-        }
-      }
-      
-      salaries.sort((a, b) => a - b);
-
-      const avgCTC = salaries.length > 0 
-        ? salaries.reduce((sum, salary) => sum + salary, 0) / salaries.length 
-        : 0;
-
-      const medianCTC = salaries.length > 0 
-        ? salaries.length % 2 === 0
-          ? (salaries[salaries.length / 2 - 1] + salaries[salaries.length / 2]) / 2
-          : salaries[Math.floor(salaries.length / 2)]
-        : 0;
-
-      const highestCTC = salaries.length > 0 ? Math.max(...salaries) : 0;
-
-      // Calculate placement rate
-      const placementRate = totallearners && totallearners > 0 ? (learnersPlaced / totallearners) * 100 : 0;
-
-      return {
-        learnersPlaced,
-        placementRate: Math.round(placementRate * 10) / 10, // Round to 1 decimal place
-        totallearners: totallearners || 0,
-        avgCTC,
-        medianCTC,
-        highestCTC
-      };
+      const response: any = await apiPost('/opportunities', { action: 'get-placement-stats' });
+      if (response?.error) throw new Error(response.error.message);
+      return response.data || { learnersPlaced: 0, placementRate: 0, totallearners: 0, avgCTC: 0, medianCTC: 0, highestCTC: 0 };
     } catch (error) {
       return {
         learnersPlaced: 0,
@@ -655,61 +321,9 @@ class OpportunitiesService {
   }> {
     try {
       // Get total count
-      const { count: total, error: totalError } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true });
-
-      if (totalError) {
-        throw totalError;
-      }
-
-      // Get active count (status = 'open' or is_active = true)
-      const { count: active, error: activeError } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true })
-        .or('status.eq.open,is_active.eq.true');
-
-      if (activeError) {
-        throw activeError;
-      }
-
-      // Get draft count
-      const { count: draft, error: draftError } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'draft');
-
-      if (draftError) {
-        throw draftError;
-      }
-
-      // Get closed count
-      const { count: closed, error: closedError } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'closed');
-
-      if (closedError) {
-        throw closedError;
-      }
-
-      // Get cancelled count
-      const { count: cancelled, error: cancelledError } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'cancelled');
-
-      if (cancelledError) {
-        throw cancelledError;
-      }
-
-      return {
-        total: total || 0,
-        active: active || 0,
-        draft: draft || 0,
-        closed: closed || 0,
-        cancelled: cancelled || 0,
-      };
+      const response: any = await apiPost('/opportunities', { action: 'get-opportunities-stats' });
+      if (response?.error) throw new Error(response.error.message);
+      return response.data || { total: 0, active: 0, draft: 0, closed: 0, cancelled: 0 };
     } catch (error) {
       throw error;
     }

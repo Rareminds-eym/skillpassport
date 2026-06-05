@@ -5,9 +5,9 @@
  * - POST /extract-content - Extract content from PDF resources
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';;
+import { createSupabaseClient } from '../../../lib/supabase';
 
 interface ExtractContentRequestBody {
   resourceId?: string;
@@ -30,7 +30,7 @@ interface ExtractionResult {
  */
 export const handleExtractContent: PagesFunction = async ({ request, env }) => {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
@@ -40,17 +40,14 @@ export const handleExtractContent: PagesFunction = async ({ request, env }) => {
       body = (await request.json()) as ExtractContentRequestBody;
     } catch (parseError) {
       console.error('[ExtractContent] Failed to parse request body:', parseError);
-      return jsonResponse({ error: 'Invalid JSON body' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', request);
     }
 
     const { resourceId, resourceIds, lessonId } = body;
 
     // Validate input - at least one parameter required
     if (!resourceId && (!resourceIds || resourceIds.length === 0) && !lessonId) {
-      return jsonResponse(
-        { error: 'Provide resourceId, resourceIds, or lessonId' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Provide resourceId, resourceIds, or lessonId', request);
     }
 
     // Create Supabase client
@@ -72,7 +69,7 @@ export const handleExtractContent: PagesFunction = async ({ request, env }) => {
 
     if (error || !resources) {
       console.error('[ExtractContent] Failed to fetch resources:', error);
-      return jsonResponse({ error: 'Resources not found' }, 404);
+      return apiError(404, 'NOT_FOUND', 'Resources not found', request);
     }
 
     console.log(`[ExtractContent] Processing ${resources.length} resources`);
@@ -141,18 +138,12 @@ export const handleExtractContent: PagesFunction = async ({ request, env }) => {
 
     console.log(`[ExtractContent] Completed: ${results.length} resources processed`);
 
-    return jsonResponse({
+    return apiSuccess({
       processed: results.length,
       results,
-    });
+    }, request);
   } catch (error) {
     console.error('[ExtractContent] Error:', error);
-    return jsonResponse(
-      {
-        error: 'Failed to extract content',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to extract content', request);
   }
 };

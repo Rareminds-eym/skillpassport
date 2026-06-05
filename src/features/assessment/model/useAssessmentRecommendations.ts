@@ -2,7 +2,6 @@
  * Hook to fetch and process assessment-based training recommendations
  */
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLatestResult, getInProgressAttempt } from '@/features/assessment';
 
 export const useAssessmentRecommendations = (learnerIdOrUserId, enabled = true) => {

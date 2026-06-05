@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
 import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 import {
   LibraryHeader,
   LibraryStatsCards,
@@ -255,7 +256,7 @@ export default function LibraryModule() {
       let userId: string | null = null;
       let universityId: string | null = null;
 
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);

@@ -10,7 +10,7 @@
  *
  * Uses service_role to bypass RLS. Requires SSO authentication.
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import { createLogger } from '../../lib/logger';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -22,10 +22,10 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
-  const user = context.data.user;
+  const user = getContextUser(context);
 
   try {
-    const userId = user.sub;
+    const userId = user.id;
     const userEmail = user.email;
     logger.info('Fetching AI recommendations', { userId, userEmail });
     
@@ -52,7 +52,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     // Step 2: Get learner's skills for matching
     const { data: skillsData, error: skillsError } = await supabase
       .from('skills')
-      .select('name, type, proficiency')
+      .select('name, type, proficiency_level')
       .eq('learner_id', learnerId)
       .is('training_id', null);
 

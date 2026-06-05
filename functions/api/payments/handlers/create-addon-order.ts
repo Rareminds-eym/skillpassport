@@ -9,16 +9,18 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
 import { ssoFetch } from '../../../lib/sso-client';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-addon-order');
 
 export async function handleCreateAddonOrder(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
@@ -26,24 +28,15 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     if (!body.feature_key || typeof body.feature_key !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'feature_key is required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'feature_key is required', context.request);
     }
 
     if (!body.billing_period || typeof body.billing_period !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'billing_period is required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
     // Look up addon from SSO Auth DB to get server-side price
@@ -52,10 +45,7 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
 
     if (!ssoResponse.ok) {
       logger.error('Addon lookup failed', { feature_key: body.feature_key, status: ssoResponse.status });
-      return new Response(
-        JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Addon not found or inactive' } }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(404, 'NOT_FOUND', 'Addon not found or inactive', context.request);
     }
 
     const addon = await ssoResponse.json() as Record<string, any>;
@@ -67,10 +57,7 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
 
     if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
       logger.error('Invalid addon price', { feature_key: body.feature_key, amount });
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Addon price is invalid' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Addon price is invalid', context.request);
     }
 
     const worker = getPaymentWorker(env);
@@ -80,7 +67,7 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
       notes: {
         addon_id: addon.id,
         addon_name: addon.feature_name,
-        user_id: user.sub,
+        user_id: user.id,
         user_email: (body.user_email as string) || user.email || '',
         type: 'addon',
       },
@@ -88,21 +75,12 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
 
     if (!order.key_id) {
       logger.error('Payment worker did not return key_id');
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Payment worker configuration error' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Payment worker configuration error', context.request);
     }
 
-    return new Response(JSON.stringify({
-      ...order,
-      razorpay_key_id: order.key_id,
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ ...order, razorpay_key_id: order.key_id }, context.request);
   } catch (error) {
     logger.error('Error creating addon order', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

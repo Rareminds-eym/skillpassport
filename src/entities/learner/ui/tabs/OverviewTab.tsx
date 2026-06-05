@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { Learner } from '@/shared/types';
 import { getLogger } from '@/shared/config/logging';
 import {
@@ -102,243 +102,41 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ learner }) => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      // Fetch Experience
-      const { data: expData } = await supabase
-        .from('experience')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('start_date', { ascending: false });
-      setExperience(expData || []);
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'fetch-learner-overview',
+        learnerId: learner.id,
+        userId: learner.user_id,
+        email: learner.email,
+        schoolId: learner.school_id,
+        collegeId: learner.college_id,
+      });
+      const d = result?.data || {};
 
-      // Fetch Trainings
-      const { data: trainingsData } = await supabase
-        .from('trainings')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('created_at', { ascending: false });
-      setTrainings(trainingsData || []);
-
-      // Fetch Applied Jobs
-      const { data: appliedData } = await supabase
-        .from('applied_jobs')
-        .select(`*, opportunity:opportunities (title, company_name, location, employment_type)`)
-        .eq('learner_id', learner.user_id)
-        .order('applied_at', { ascending: false })
-        .limit(10);
-      setAppliedJobs(appliedData || []);
-
-      // Fetch Saved Jobs
-      const { data: savedData } = await supabase
-        .from('saved_jobs')
-        .select(`*, opportunity:opportunities (title, company_name, location)`)
-        .eq('learner_id', learner.user_id)
-        .order('saved_at', { ascending: false })
-        .limit(10);
-      setSavedJobs(savedData || []);
-
-      // Fetch Skill Passport
-      const { data: passportData } = await supabase
-        .from('skill_passports')
-        .select('*')
-        .eq('learnerId', learner.user_id)
-        .single();
-      setSkillPassport(passportData);
-
-      // Fetch Streaks
-      const { data: streakData } = await supabase
-        .from('learner_streaks')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .single();
-      setStreaks(streakData);
-
-      // Fetch Assignments
-      const { data: assignmentsData } = await supabase
-        .from('learner_assignments')
-        .select(`*, assignment:assignments (title, course_name, due_date, total_points)`)
-        .eq('learner_id', learner.user_id)
-        .order('assigned_date', { ascending: false })
-        .limit(10);
-      setAssignments(assignmentsData || []);
-
-      // Fetch Attendance (for school learners)
-      if (learner.school_id) {
-        const { data: attendanceData } = await supabase
-          .from('attendance_records')
-          .select('*')
-          .eq('learner_id', learner.id)
-          .order('date', { ascending: false })
-          .limit(30);
-        setAttendance(attendanceData || []);
-      }
-
-      // Fetch College Events
-      if (learner.college_id) {
-        const { data: eventsData } = await supabase
-          .from('college_event_registrations')
-          .select(`*, event:college_events (title, event_type, start_date, end_date, venue)`)
-          .eq('learner_id', learner.id)
-          .order('registered_at', { ascending: false });
-        setEvents(eventsData || []);
-      }
-
-      // Fetch Skills
-      const { data: skillsData } = await supabase
-        .from('skills')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('created_at', { ascending: false });
-      setSkills(skillsData || []);
-
-      // Fetch Education
-      const { data: educationData } = await supabase
-        .from('education')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('year_of_passing', { ascending: false });
-      setEducation(educationData || []);
-
-      // Fetch Internships
-      const { data: internshipsData } = await supabase
-        .from('internships')
-        .select('*')
-        .eq('learner_id', learner.user_id)
-        .order('start_date', { ascending: false });
-      setInternships(internshipsData || []);
-
-      // Fetch Club Certificates
-      const { data: clubCertsData } = await supabase
-        .from('club_certificates')
-        .select('*, club:clubs(name), competition:competitions(name)')
-        .eq('learner_email', learner.email)
-        .order('issued_date', { ascending: false });
-      setClubCertificates(clubCertsData || []);
-
-      // Fetch Competition Results
-      const { data: compResultsData } = await supabase
-        .from('competition_results')
-        .select('*, competition:competitions(name, level, category, competition_date)')
-        .eq('learner_email', learner.email)
-        .order('recorded_at', { ascending: false });
-      setCompetitionResults(compResultsData || []);
-
-      // Fetch Skill Badges
-      const { data: badgesData } = await supabase
-        .from('learner_skill_badges')
-        .select('*, badge:skill_badges(name, description, icon, category, level)')
-        .eq('learner_email', learner.email)
-        .order('earned_at', { ascending: false });
-      setSkillBadges(badgesData || []);
-
-      // Fetch Course Progress
-      const { data: progressData } = await supabase
-        .from('learner_course_progress')
-        .select('*, course:courses(title, code), lesson:lessons(title)')
-        .eq('learner_id', learner.user_id)
-        .order('last_accessed', { ascending: false })
-        .limit(20);
-      setCourseProgress(progressData || []);
-
-      // Fetch Quiz Progress - Note: No FK relationship exists between learner_quiz_progress and quizzes
-      // So we need to fetch quiz details separately
-      const { data: quizProgressData, error: quizProgressError } = await supabase
-        .from('learner_quiz_progress')
-        .select('*')
-        .eq('learner_id', learner.user_id)
-        .order('started_at', { ascending: false })
-        .limit(10);
-
-      if (quizProgressError) {
-        logger.warn('Error fetching quiz progress', { error: quizProgressError.message });
-        setQuizProgress([]);
-      } else if (quizProgressData && quizProgressData.length > 0) {
-        // Fetch quiz titles separately
-        const quizIds = [...new Set(quizProgressData.map(q => q.quiz_id))];
-        const { data: quizzesData } = await supabase
-          .from('quizzes')
-          .select('id, title')
-          .in('id', quizIds);
-
-        // Map quiz titles to progress data
-        const quizMap = new Map(quizzesData?.map(q => [q.id, q.title]) || []);
-        const enrichedQuizData = quizProgressData.map(progress => ({
-          ...progress,
-          quiz: { title: quizMap.get(progress.quiz_id) || 'Unknown Quiz' }
-        }));
-        setQuizProgress(enrichedQuizData);
-      } else {
-        setQuizProgress([]);
-      }
-
-      // Fetch Career AI Conversations
-      const { data: careerData } = await supabase
-        .from('career_ai_conversations')
-        .select('id, title, created_at, updated_at')
-        .eq('learner_id', learner.user_id)
-        .order('updated_at', { ascending: false })
-        .limit(10);
-      setCareerConversations(careerData || []);
-
-      // Fetch Search History
-      const { data: searchData } = await supabase
-        .from('search_history')
-        .select('*')
-        .eq('learner_id', learner.user_id)
-        .order('last_searched_at', { ascending: false })
-        .limit(10);
-      setSearchHistory(searchData || []);
-
-      // Fetch Profile Views
-      const { data: viewsData } = await supabase
-        .from('profile_views')
-        .select('*')
-        .eq('learner_id', learner.user_id)
-        .order('viewed_at', { ascending: false })
-        .limit(20);
-      setProfileViews(viewsData || []);
-
-      // Fetch Notifications
-      const { data: notifData } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('recipient_id', learner.user_id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-      setNotifications(notifData || []);
-
-      // Fetch Conversations
-      const { data: convoData } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('learner_id', learner.user_id)
-        .order('last_message_at', { ascending: false })
-        .limit(10);
-      setConversations(convoData || []);
-
-      // Fetch Placements
-      const { data: placementsData } = await supabase
-        .from('placements')
-        .select('*, recruiter:recruiters(name)')
-        .eq('learnerId', learner.user_id)
-        .order('hiredDate', { ascending: false });
-      setPlacements(placementsData || []);
-
-      // Fetch Pipeline Status
-      const { data: pipelineData } = await supabase
-        .from('pipeline_candidates')
-        .select('*, opportunity:opportunities(title, company_name)')
-        .eq('learner_id', learner.user_id)
-        .order('stage_changed_at', { ascending: false });
-      setPipelineStatus(pipelineData || []);
-
-      // Fetch Interviews
-      const { data: interviewsData } = await supabase
-        .from('interviews')
-        .select('*')
-        .eq('learner_id', learner.user_id)
-        .order('date', { ascending: false });
-      setInterviews(interviewsData || []);
-
+      setExperience(d.experience || []);
+      setTrainings(d.trainings || []);
+      setAppliedJobs(d.appliedJobs || []);
+      setSavedJobs(d.savedJobs || []);
+      setSkillPassport(d.skillPassports || null);
+      setStreaks(d.learnerStreaks || null);
+      setAssignments(d.learnerAssignments || []);
+      setAttendance(d.attendanceRecords || []);
+      setEvents(d.collegeEventRegistrations || []);
+      setSkills(d.skills || []);
+      setEducation(d.education || []);
+      setInternships(d.internships || []);
+      setClubCertificates(d.clubCertificates || []);
+      setCompetitionResults(d.competitionResults || []);
+      setSkillBadges(d.learnerSkillBadges || []);
+      setCourseProgress(d.learnerCourseProgress || []);
+      setCareerConversations(d.careerAiConversations || []);
+      setSearchHistory(d.searchHistory || []);
+      setProfileViews(d.profileViews || []);
+      setNotifications(d.notifications || []);
+      setConversations(d.conversations || []);
+      setPlacements(d.placements || []);
+      setPipelineStatus(d.pipelineCandidates || []);
+      setInterviews(d.interviews || []);
+      setQuizProgress(d.personalAssessmentResults || []);
     } catch (error) {
       logger.error('Error fetching data', error as Error);
     } finally {

@@ -244,15 +244,6 @@ const PasswordReset = () => {
         }));
         return;
       }
-      } catch (fetchError) {
-        // Handle network errors, JSON parsing errors, etc.
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Network error. Please check your connection and try again.'
-        }));
-        return;
-      }
 
       if (!response.ok || !apiResult.success) {
         setState(prev => ({
@@ -315,13 +306,7 @@ const PasswordReset = () => {
         }));
         return;
       }
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Network error. Please check your connection and try again.'
-        }));
-        return;
-      }
+
 
       if (!response.ok || !apiResult.success) {
         setState(prev => ({

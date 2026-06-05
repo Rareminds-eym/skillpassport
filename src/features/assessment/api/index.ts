@@ -18,10 +18,7 @@
 // =============================================================================
 
 // Career Assessment Service (database operations)
-// @ts-ignore - JS file without type declarations
-export { default as assessmentService } from './assessmentService';
-// @ts-ignore - JS file without type declarations
-export * from './assessmentService';
+export * as assessmentApiService from './assessmentApiService';
 
 // Assessment Generation Service (AI-powered question generation)
 // @ts-ignore - JS file without type declarations

@@ -4,8 +4,8 @@
  * - Send interview reminder
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { generatePassword, validateEmail } from '../utils/helpers';
 import { sendWelcomeEmail, sendInterviewReminderEmail } from '../utils/email';
 import { roleMapping } from '../utils/constants';
@@ -29,14 +29,11 @@ export async function handleCreateEventUser(request: Request, env: any): Promise
   const { email, firstName, lastName, role, phone, registrationId, metadata } = body;
 
   if (!email || !firstName || !role || !registrationId) {
-    return jsonResponse(
-      { error: 'Missing required fields: email, firstName, role, registrationId' },
-      400
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: email, firstName, role, registrationId', request);
   }
 
   if (!validateEmail(email)) {
-    return jsonResponse({ error: 'Invalid email format' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
   }
 
   console.log(`Creating user for event registration: ${registrationId}, email: ${email}`);
@@ -52,12 +49,11 @@ export async function handleCreateEventUser(request: Request, env: any): Promise
       .update({ user_id: existingUser.id })
       .eq('id', registrationId);
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: 'User already exists',
       userId: existingUser.id,
       isExisting: true,
-    });
+    }, request);
   }
 
   // Generate temporary password
@@ -80,7 +76,7 @@ export async function handleCreateEventUser(request: Request, env: any): Promise
   });
 
   if (createError || !newUser.user) {
-    return jsonResponse({ error: createError?.message || 'Failed to create user' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', createError?.message || 'Failed to create user', request);
   }
 
   // Map role to database format
@@ -110,15 +106,14 @@ export async function handleCreateEventUser(request: Request, env: any): Promise
   const planName = (metadata?.plan as string) || 'Skill Passport';
   await sendWelcomeEmail(env, email, firstName, temporaryPassword, dbRole, `<strong>Plan:</strong> ${planName}`);
 
-  return jsonResponse({
-    success: true,
+  return apiSuccess({
     message: 'User created successfully',
     userId: newUser.user.id,
     temporaryPassword,
     isExisting: false,
     publicUserCreated: !usersError,
     registrationUpdated: !updateError,
-  });
+  }, request);
 }
 
 /**
@@ -137,10 +132,7 @@ export async function handleSendInterviewReminder(request: Request, env: any): P
   const { interviewId, recipientEmail, recipientName, interviewDetails } = body;
 
   if (!interviewId || !recipientEmail || !recipientName) {
-    return jsonResponse(
-      { error: 'Missing required fields: interviewId, recipientEmail, recipientName' },
-      400
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: interviewId, recipientEmail, recipientName', request);
   }
 
   const result = await sendInterviewReminderEmail(
@@ -151,7 +143,7 @@ export async function handleSendInterviewReminder(request: Request, env: any): P
   );
 
   if (!result.success) {
-    return jsonResponse({ error: result.error }, 500);
+    return apiError(500, 'INTERNAL_ERROR', result.error ?? 'Unknown error', request);
   }
 
   // Log reminder in database
@@ -163,9 +155,8 @@ export async function handleSendInterviewReminder(request: Request, env: any): P
     email_id: result.emailId || null,
   });
 
-  return jsonResponse({
-    success: true,
+  return apiSuccess({
     message: 'Interview reminder sent successfully',
     emailId: result.emailId,
-  });
+  }, request);
 }

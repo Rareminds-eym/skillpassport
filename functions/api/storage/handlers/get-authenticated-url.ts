@@ -9,11 +9,16 @@
  * Headers: Authorization: Bearer <jwt>
  */
 
-import { authenticateUser } from '../../shared/auth';
+import { apiError } from '../../../lib/response';
 import { checkCourseEnrollment, checkRateLimit } from '../utils/course-authorization';
 import { extractFileKey, generateMediaToken } from '../utils/token-crypto';
 
-type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
+interface StorageHandlerContext {
+  request: Request;
+  env: any;
+  user?: { id: string };
+  supabase?: any;
+}
 
 interface RequestBody {
   fileUrl?: string;
@@ -27,31 +32,19 @@ interface RequestBody {
 /**
  * Generate authenticated URL with session cookie for media access
  */
-export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env }) => {
+export const handleGetAuthenticatedUrl = async (context: StorageHandlerContext) => {
+  const { request, env } = context;
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
-    // Authenticate user
-    const authResult = await authenticateUser(request, env);
-    if (!authResult) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized - Please log in' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    const { user, supabase } = authResult;
+    const user = context.user!;
+    const supabase = context.supabase;
+    const userId = user.id;
 
     // Rate limiting
-    const rateLimit = checkRateLimit(user.id, 100, 3600);
+    const rateLimit = checkRateLimit(userId, 100, 3600);
     if (!rateLimit.allowed) {
       return new Response(
         JSON.stringify({
@@ -74,13 +67,7 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
     const { fileUrl, fileKey: providedKey, courseId, lessonId, fingerprint, sessionId } = body;
 
     if (!courseId) {
-      return new Response(
-        JSON.stringify({ error: 'Course ID is required' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Course ID is required', request);
     }
 
     let fileKey: string | undefined = providedKey;
@@ -90,44 +77,26 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
     }
 
     if (!fileKey) {
-      return new Response(
-        JSON.stringify({ error: 'File key or URL is required' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
     }
 
     // Check course enrollment
-    const authCheck = await checkCourseEnrollment(supabase, user.id, courseId);
+    const authCheck = await checkCourseEnrollment(supabase, userId, courseId);
     if (!authCheck.authorized) {
-      return new Response(
-        JSON.stringify({ error: authCheck.error || 'Access denied' }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(403, 'FORBIDDEN', authCheck.error || 'Access denied', request);
     }
 
     // Generate authenticated token with fingerprint
     const signingSecret = env.SIGNING_SECRET;
     if (!signingSecret) {
       console.error('[GetAuthUrl] SIGNING_SECRET not configured');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Server configuration error', request);
     }
 
     const userAgent = request.headers.get('User-Agent') || '';
     
     const token = await generateMediaToken(
-      user.id,
+      userId,
       courseId,
       fileKey,
       signingSecret,
@@ -159,15 +128,6 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
     );
   } catch (error) {
     console.error('[GetAuthUrl] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to generate authenticated URL',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { KPICard } from '@/features/analytics';
 import { DocumentViewerModal } from '@/features/school-admin';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser } from '@/shared/model/authStore';
 interface Teacher {
@@ -87,35 +87,11 @@ const TeacherListPage: React.FC = () => {
     }
 
     try {
-      // First, try to get school_id from school_educators table
-      const { data: educatorData, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('school_id')
-        .eq('email', user.email)
-        .maybeSingle();
-
-      if (educatorData?.school_id) {
-        setSchoolId(educatorData.school_id);
+      const result = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: user.email, user_id: user.id }) as any;
+      if (result?.school_id) {
+        setSchoolId(result.school_id);
         return;
       }
-
-      // If not found in school_educators, check organizations table
-      const { data: schoolData, error: schoolError } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('organization_type', 'school')
-        .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-        .maybeSingle();
-
-      if (schoolError) {
-        // Error handled silently
-      }
-
-      if (schoolData?.id) {
-        setSchoolId(schoolData.id);
-        return;
-      }
-
       setLoading(false);
     } catch (error) {
       setLoading(false);
@@ -130,17 +106,8 @@ const TeacherListPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("school_educators")
-        .select("*")
-        .eq("school_id", schoolId)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        // Error handled silently
-      } else if (data) {
-        setTeachers(data);
-      }
+      const data = await apiPost('/college-admin/school-admin', { action: 'get-teachers', school_id: schoolId }) as any;
+      if (data) setTeachers(data);
     } catch (error) {
       // Error handled silently
     } finally {
@@ -207,14 +174,12 @@ const TeacherListPage: React.FC = () => {
   };
 
   const updateTeacherStatus = async (teacherId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from("school_educators")
-      .update({ onboarding_status: newStatus })
-      .eq("id", teacherId);
-
-    if (!error) {
+    try {
+      await apiPost('/college-admin/school-admin', { action: 'update-teacher-status', teacher_id: teacherId, onboarding_status: newStatus });
       loadTeachers();
       setSelectedTeacher(null);
+    } catch (error) {
+      // Error handled silently
     }
   };
 

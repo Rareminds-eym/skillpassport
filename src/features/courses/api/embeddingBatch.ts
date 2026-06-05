@@ -5,7 +5,6 @@ import { ssoClient } from '@/shared/api/ssoClient';
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const EMBEDDING_API_URL = getApiUrl('career');

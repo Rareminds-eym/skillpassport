@@ -1,34 +1,15 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 
 export const courseDetailsService = {
   async getCourseSkills(courseIds: string[]) {
-    const { data, error } = await supabase
-      .from('course_skills')
-      .select('course_id, skill_name')
-      .in('course_id', courseIds);
-    
-    if (error) throw error;
-    return data;
+    return apiGet<any[]>(`/courses/details/skills?courseIds=${courseIds.join(',')}`);
   },
 
   async getCourseClasses(courseIds: string[]) {
-    const { data, error } = await supabase
-      .from('course_classes')
-      .select('course_id, class_name')
-      .in('course_id', courseIds);
-    
-    if (error) throw error;
-    return data;
+    return apiGet<any[]>(`/courses/details/classes?courseIds=${courseIds.join(',')}`);
   },
 
   async getCourseModules(courseIds: string[]) {
-    const { data, error } = await supabase
-      .from('course_modules')
-      .select('*, lessons(*, lesson_resources(*))')
-      .in('course_id', courseIds)
-      .order('order_index', { ascending: true });
-    
-    if (error) throw error;
-    return data;
+    return apiGet<any[]>(`/courses/details/modules?courseIds=${courseIds.join(',')}`);
   }
 };

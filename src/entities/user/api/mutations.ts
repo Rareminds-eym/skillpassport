@@ -1,33 +1,30 @@
-
-/**
- * User Entity - API Mutations
- * Data modification functions for user data
- */
-
-import { supabase } from '@/shared/api';
+import { apiPost, apiGet } from '@/shared/api/apiClient';
 import userApiService from '@/entities/user/api/userApiService';
-import type { 
-  User, 
-  CreateUserData, 
-  UpdateUserData, 
+import type {
+  User,
+  CreateUserData,
+  UpdateUserData,
   UserProfileExtended,
-  UserDocument,
-  BulkImportResult 
+  BulkImportResult,
 } from '..';
 import { mapRoleToWorkerAPI } from '../model/utils';
 
 const { unifiedSignup } = userApiService;
 
-// ============================================================================
-// User Mutations
-// ============================================================================
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => { const result = reader.result as string; resolve(result.split(',')[1] || result); };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export const createUser = async (userData: CreateUserData): Promise<User> => {
   const firstName = userData.firstName || '';
   const lastName = userData.lastName || '';
   const mappedRole = mapRoleToWorkerAPI(userData.role);
 
-  // Use Worker API for signup with proper rollback
   const result = await unifiedSignup({
     email: userData.email,
     password: userData.password,
@@ -41,137 +38,89 @@ export const createUser = async (userData: CreateUserData): Promise<User> => {
     throw new Error(result.error || 'Failed to create user');
   }
 
-  // Update user profile with additional metadata
-  const { data: user, error: updateError } = await supabase
-    .from('users')
-    .update({
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      role: userData.role,
-      metadata: userData.metadata,
-    })
-    .eq('id', result.data.userId)
-    .select()
-    .single();
+  const response: any = await apiPost('/user/update', {
+    id: result.data.userId,
+    firstName: userData.firstName,
+    lastName: userData.lastName,
+    role: userData.role,
+    metadata: userData.metadata,
+  });
+  const user = response?.data?.user;
+  if (!user) throw new Error('Failed to update user after creation');
 
-  if (updateError) throw updateError;
-
-  // Log activity
   await logActivity(result.data.userId, 'user_created', 'User account created');
-
   return user;
 };
 
 export const updateUser = async (userId: string, userData: UpdateUserData): Promise<User> => {
-  const { data, error } = await supabase
-    .from('users')
-    .update(userData)
-    .eq('id', userId)
-    .select()
-    .single();
+  const response: any = await apiPost('/user/update', { id: userId, ...userData });
+  const user = response?.data?.user;
+  if (!user) throw new Error('Failed to update user');
 
-  if (error) throw error;
-
-  // Log activity
   await logActivity(userId, 'profile_updated', 'User profile updated');
-
-  return data;
+  return user;
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {
-  const { error } = await supabase
-    .from('users')
-    .update({ isActive: false })
-    .eq('id', userId);
-
-  if (error) throw error;
-
-  // Log activity
+  await apiPost('/user/delete', { id: userId });
   await logActivity(userId, 'user_deactivated', 'User account deactivated');
 };
-
-// ============================================================================
-// User Role Mutations
-// ============================================================================
 
 export const changeUserRole = async (
   userId: string,
   newRole: string,
   reason?: string
 ): Promise<void> => {
-  const currentUser = useAuthStore.getState().user;
-  if (!currentUser.user) throw new Error('Not authenticated');
-
-  const { error } = await supabase.rpc('change_user_role', {
-    p_user_id: userId,
-    p_new_role: newRole,
-    p_reason: reason,
-    p_changed_by: currentUser.user.id,
+  await apiPost('/user/change-role', {
+    user_id: userId,
+    new_role: newRole,
+    reason,
   });
-
-  if (error) throw error;
 };
-
-// ============================================================================
-// User Profile Mutations
-// ============================================================================
 
 export const updateUserProfile = async (
   userId: string,
   profileData: Partial<UserProfileExtended>
 ): Promise<UserProfileExtended> => {
-  const { data, error } = await supabase
-    .from('user_profile_extended')
-    .upsert({
-      user_id: userId,
-      ...profileData,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/user/profile-extended', {
+    user_id: userId,
+    ...profileData,
+  });
+  const profile = response?.data?.profile;
+  if (!profile) throw new Error('Failed to update profile');
+  return profile;
 };
-
-// ============================================================================
-// User Document Mutations
-// ============================================================================
 
 export const uploadDocument = async (
   userId: string,
   file: File,
   documentType: string
-): Promise<UserDocument> => {
-  // Upload file to storage
+): Promise<any> => {
   const fileExt = file.name.split('.').pop();
   const fileName = `${userId}/${documentType}/${Date.now()}.${fileExt}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from('user-documents')
-    .upload(fileName, file);
+  const base64 = await fileToBase64(file);
+  const uploadResult: any = await apiPost('/college-admin/storage', {
+    action: 'upload', bucket: 'user-documents', path: fileName, file_base64: base64, content_type: file.type || 'application/octet-stream',
+  });
+  const publicUrl = uploadResult?.data?.publicUrl;
 
-  if (uploadError) throw uploadError;
+  const docResult: any = await apiPost('/user/actions', {
+    action: 'add-document',
+    p_user_id: userId,
+    p_document_type: documentType,
+    p_document_name: file.name,
+    p_document_url: publicUrl,
+    p_file_size: file.size,
+    p_file_type: file.type,
+  });
+  const docData = docResult?.data?.document;
 
-  const { data: urlData } = supabase.storage
-    .from('user-documents')
-    .getPublicUrl(fileName);
-
-  // Create document record
-  const { data, error } = await supabase
-    .from('user_documents')
-    .insert({
-      user_id: userId,
-      document_type: documentType,
-      document_name: file.name,
-      document_url: urlData.publicUrl,
-      file_size: file.size,
-      file_type: file.type,
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
+  const response: any = await apiPost('/user/update', {
+    id: userId,
+    documents: docData,
+  });
+  return response?.data;
 };
 
 export const verifyDocument = async (
@@ -179,30 +128,14 @@ export const verifyDocument = async (
   status: 'verified' | 'rejected',
   reason?: string
 ): Promise<void> => {
-  const currentUser = useAuthStore.getState().user;
-  if (!currentUser.user) throw new Error('Not authenticated');
-
-  const updateData: any = {
+  await apiPost('/user/actions', {
+    action: 'verify-document',
+    documentId,
     verification_status: status,
-    verified_by: currentUser.user.id,
     verified_at: new Date().toISOString(),
-  };
-
-  if (status === 'rejected' && reason) {
-    updateData.rejection_reason = reason;
-  }
-
-  const { error } = await supabase
-    .from('user_documents')
-    .update(updateData)
-    .eq('id', documentId);
-
-  if (error) throw error;
+    ...(status === 'rejected' && reason ? { rejection_reason: reason } : {}),
+  });
 };
-
-// ============================================================================
-// User Activity Mutations
-// ============================================================================
 
 export const logActivity = async (
   userId: string,
@@ -210,19 +143,13 @@ export const logActivity = async (
   description?: string,
   metadata?: Record<string, any>
 ): Promise<void> => {
-  const { error } = await supabase.rpc('log_user_activity', {
-    p_user_id: userId,
-    p_activity_type: activityType,
-    p_description: description,
-    p_metadata: metadata || {},
+  await apiPost('/user/log-activity', {
+    user_id: userId,
+    activity_type: activityType,
+    description: description || '',
+    metadata: metadata || {},
   });
-
-  if (error) throw error;
 };
-
-// ============================================================================
-// Password Mutations
-// ============================================================================
 
 export const resetUserPassword = async (userId: string, newPassword: string): Promise<void> => {
   const { ssoClient } = await import('@/shared/api/ssoClient');
@@ -255,39 +182,22 @@ export const updatePassword = async (newPassword: string, currentPassword?: stri
   }
 };
 
-// ============================================================================
-// Bulk Import Mutations
-// ============================================================================
-
 export const bulkImportUsers = async (file: File): Promise<BulkImportResult> => {
-  const currentUser = useAuthStore.getState().user;
+  const currentUser = (await import('@/shared/model/authStore')).useAuthStore.getState().user;
   if (!currentUser.user) throw new Error('Not authenticated');
 
-  // Upload CSV file
   const fileName = `bulk-imports/${Date.now()}_${file.name}`;
-  const { error: uploadError } = await supabase.storage
-    .from('user-documents')
-    .upload(fileName, file);
+  const base64 = await fileToBase64(file);
+  const uploadResult: any = await apiPost('/college-admin/storage', {
+    action: 'upload', bucket: 'user-documents', path: fileName, file_base64: base64, content_type: file.type || 'application/octet-stream',
+  });
+  const publicUrl = uploadResult?.data?.publicUrl;
 
-  if (uploadError) throw uploadError;
-
-  const { data: urlData } = supabase.storage
-    .from('user-documents')
-    .getPublicUrl(fileName);
-
-  // Create import job
-  const { data, error } = await supabase
-    .from('user_bulk_imports')
-    .insert({
-      imported_by: currentUser.user.id,
-      file_name: file.name,
-      file_url: urlData.publicUrl,
-      status: 'pending',
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  return data;
+  const response: any = await apiPost('/user/actions', {
+    action: 'create-bulk-import',
+    imported_by: currentUser.user.id,
+    file_name: file.name,
+    file_url: publicUrl,
+  });
+  return response?.data;
 };

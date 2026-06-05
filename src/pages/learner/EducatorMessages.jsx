@@ -26,6 +26,8 @@ import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 
 import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
+import { useAuthStore } from '@/shared/model/authStore';
+
 const EducatorMessages = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,7 +44,7 @@ const EducatorMessages = () => {
 
   // Get learner data
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData, loading: loadinglearnerData } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id || user?.id;
   const learnerName = learnerData?.profile?.name || user?.name || 'Learner';

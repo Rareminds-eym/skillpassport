@@ -11,6 +11,8 @@ import { addCandidateToPipeline, moveCandidateToStage } from '@/features/opportu
 import { PipelineFilters, PipelineSortOptions } from '@/shared/types/recruiter';
 import { getLogger } from '@/shared/config/logging';
 import toast from "react-hot-toast";
+import { useAuthStore } from '@/shared/model/authStore';
+
 const logger = getLogger('Pipelines');
 
 // Pipeline components
@@ -89,7 +91,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   // Get current recruiter ID
   let currentRecruiterId: string | null = null;
   try {
-    const userStr = localStorage.getItem('user');
+    const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
     if (userStr) {
       const user = JSON.parse(userStr);
       currentRecruiterId = user.id || user.recruiter_id;

@@ -18,7 +18,7 @@ import { SearchBar } from '@/shared/ui';
 import toast from 'react-hot-toast';
 import { useExams, UIExam, UIlearnerMark } from '@/features/exams';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Import components
 import { StatsCard, TypeBadge, ModalWrapper, ExamCard, CreateExamForm, ExamWorkflowManager, PerformanceTrends, EXAM_STATUSES } from '@/features/exams';
@@ -45,14 +45,9 @@ const ExamsAssessments: React.FC = () => {
     try {
       setLoadingSchoolId(true);
       
-      const { data: educatorData, error } = await supabase
-        .from('school_educators')
-        .select('school_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!error && educatorData?.school_id) {
-        setSchoolId(educatorData.school_id);
+      const resp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId' });
+      if (resp.data?.schoolId) {
+        setSchoolId(resp.data.schoolId);
       } else {
         logger.warn('No school_id found for user - this user may not be a school admin');
       }

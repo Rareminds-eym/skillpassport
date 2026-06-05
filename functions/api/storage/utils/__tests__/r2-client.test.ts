@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { R2Client } from '../r2-client';
-import type { PagesEnv } from '../../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../lib/types';
 
 // Mock aws4fetch
 vi.mock('aws4fetch', () => ({
@@ -210,7 +210,7 @@ describe('R2Client', () => {
     it('should use custom expiration time', async () => {
       const client = new R2Client(mockEnv);
 
-      const result = await client.generatePresignedUrl('test/file.txt', 'text/plain', 7200);
+      const result = await client.generatePresignedUrl('test/file.txt', 'text/plain');
 
       expect(result).toBeDefined();
       expect(result.headers).toBeDefined();

@@ -15,7 +15,7 @@ import {
     Users,
 } from 'lucide-react';
 import { ssoClient } from '@/shared/api/ssoClient';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/shared/model/authStore';
 
 interface CompanySignupState {
@@ -166,53 +166,38 @@ export const CompanySignup: React.FC = () => {
                 max_recruiters: 10
             });
 
-            const { data: orgData, error: orgError } = await supabase
-                .rpc('create_local_organization', {
-                    p_organization_id: orgId,
-                    p_organization_name: state.companyName,
-                    p_recruitment_enabled: true,
-                    p_max_recruiters: 10,
-                });
-
-            if (orgError) {
-                console.error('[CompanySignup] Failed to create local organization:', {
-                    code: orgError.code,
-                    message: orgError.message,
-                    details: orgError.details,
-                    hint: orgError.hint
-                });
-                throw new Error(`Failed to create organization: ${orgError.message}`);
-            }
+            const orgData = await apiPost('/organization/handler', {
+                action: 'createLocalOrganization',
+                p_organization_id: orgId,
+                p_organization_name: state.companyName,
+                p_recruitment_enabled: true,
+                p_max_recruiters: 10,
+            });
 
             console.log('[CompanySignup] Local organization record created successfully:', orgData);
 
             // Step 4: Create recruitment settings for the organization
             console.log('[CompanySignup] Creating recruitment settings...');
             const adminName = `${state.firstName} ${state.lastName}`.trim();
-            const { data: settingsData, error: settingsError } = await supabase
-                .rpc('create_organization_recruitment_settings', {
-                    p_organization_id: orgId,
-                    p_industry: state.industry,
-                    p_company_size: state.companySize,
-                    p_admin_name: adminName,
-                    p_phone: state.phone || null,
-                    p_email: state.workEmail,
-                    p_address: state.address,
-                });
-
-            if (settingsError) {
-                console.error('[CompanySignup] Failed to create recruitment settings:', settingsError);
-                throw new Error(`Failed to create recruitment settings: ${settingsError.message}`);
-            }
+            const settingsData = await apiPost('/organization/handler', {
+                action: 'createOrganizationRecruitmentSettings',
+                p_organization_id: orgId,
+                p_industry: state.industry,
+                p_company_size: state.companySize,
+                p_admin_name: adminName,
+                p_phone: state.phone || null,
+                p_email: state.workEmail,
+                p_address: state.address,
+            });
 
             console.log('[CompanySignup] Recruitment settings created:', settingsData);
 
             // Step 5: Create user profile in Supabase
             console.log('[CompanySignup] Creating user profile...');
 
-            const { error: userError } = await supabase
-                .from('users')
-                .insert({
+            try {
+                await apiPost('/user/handler', {
+                    action: 'createUserProfile',
                     id: userId,
                     email: state.workEmail,
                     firstName: state.firstName,
@@ -220,9 +205,8 @@ export const CompanySignup: React.FC = () => {
                     phone: state.phone || null,
                     role: 'recruiter',
                 });
-
-            if (userError) {
-                console.warn('[CompanySignup] Failed to create user profile:', userError.message);
+            } catch (userError: any) {
+                console.warn('[CompanySignup] Failed to create user profile:', userError?.message);
                 // Don't throw - user profile creation is not critical
             }
 

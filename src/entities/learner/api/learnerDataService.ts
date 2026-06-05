@@ -1,38 +1,35 @@
-/**
- * Learner Data Service
- * Handles fetching and managing complete learner profile data
- */
+import { apiPost } from '@/shared/api/apiClient';
 
-import { supabase } from '@/shared/api/supabaseClient';
+function postProfile(action: string, payload?: Record<string, unknown>) {
+  return apiPost<any>('/learners/profile', { action, ...payload });
+}
 
-/**
- * Get complete learner data including profile, education, training, experience, and skills
- */
+function extractAddArgs(first: any, second: any) {
+  return typeof first === 'string' ? { item: second } : { item: first };
+}
+
+function extractUpdateArgs(first: any, second: any, third?: any) {
+  return typeof first === 'string'
+    ? { itemId: second, updates: third }
+    : { itemId: first, updates: second };
+}
+
+function extractDeleteArgs(first: any, second?: any) {
+  return typeof first === 'string'
+    ? { itemId: second }
+    : { itemId: first };
+}
+
 export const getCompleteLearnerData = async (userId: string) => {
   try {
-    // Fetch learner profile
-    const { data: learner, error: learnerError } = await supabase
-      .from('learners')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (learnerError) {
-      return { errors: learnerError.message };
-    }
-
-    if (!learner) {
-      return { errors: 'Learner not found' };
-    }
-
-    // Return learner data with profile structure
+    const response = await postProfile('get');
     return {
-      profile: learner,
-      education: learner.profile?.education || [],
-      training: learner.profile?.training || [],
-      experience: learner.profile?.experience || [],
-      technicalSkills: learner.profile?.technicalSkills || [],
-      softSkills: learner.profile?.softSkills || [],
+      profile: response.data.profile,
+      education: response.data.education,
+      training: response.data.training,
+      experience: response.data.experience,
+      technicalSkills: response.data.technicalSkills,
+      softSkills: response.data.softSkills,
       opportunities: [],
       recentUpdates: [],
       suggestions: []
@@ -42,642 +39,146 @@ export const getCompleteLearnerData = async (userId: string) => {
   }
 };
 
-/**
- * Update learner profile
- */
 export const updateLearnerProfile = async (userId: string, updates: any) => {
   try {
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    const response = await postProfile('update-profile', { updates });
+    return { data: response.data.data, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Add education record
- */
-export const addEducation = async (userId: string, educationData: any) => {
+export const addEducation = async (userIdOrData: any, educationData?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const education = profile.education || [];
-    
-    const newEducation = {
-      id: Date.now(),
-      ...educationData,
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          education: [...education, newEducation]
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data: newEducation, error: null };
+    const response = await postProfile('add-education', extractAddArgs(userIdOrData, educationData));
+    return { data: response.data, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Update education record
- */
-export const updateEducation = async (userId: string, educationId: number, updates: any) => {
+export const updateEducation = async (first: any, second: any, third?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const education = profile.education || [];
-    
-    const updatedEducation = education.map((edu: any) =>
-      edu.id === educationId ? { ...edu, ...updates } : edu
-    );
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          education: updatedEducation
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('update-education', extractUpdateArgs(first, second, third));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Delete education record
- */
-export const deleteEducation = async (userId: string, educationId: number) => {
+export const deleteEducation = async (first: any, second?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const education = profile.education || [];
-    
-    const filteredEducation = education.filter((edu: any) => edu.id !== educationId);
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          education: filteredEducation
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('delete-education', extractDeleteArgs(first, second));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Add training record
- */
-export const addTraining = async (userId: string, trainingData: any) => {
+export const addTraining = async (userIdOrData: any, trainingData?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const training = profile.training || [];
-    
-    const newTraining = {
-      id: Date.now(),
-      ...trainingData,
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          training: [...training, newTraining]
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data: newTraining, error: null };
+    const response = await postProfile('add-training', extractAddArgs(userIdOrData, trainingData));
+    return { data: response.data, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Update training record
- */
-export const updateTraining = async (userId: string, trainingId: number, updates: any) => {
+export const updateTraining = async (first: any, second: any, third?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const training = profile.training || [];
-    
-    const updatedTraining = training.map((tr: any) =>
-      tr.id === trainingId ? { ...tr, ...updates } : tr
-    );
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          training: updatedTraining
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('update-training', extractUpdateArgs(first, second, third));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Delete training record
- */
-export const deleteTraining = async (userId: string, trainingId: number) => {
+export const deleteTraining = async (first: any, second?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const training = profile.training || [];
-    
-    const filteredTraining = training.filter((tr: any) => tr.id !== trainingId);
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          training: filteredTraining
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('delete-training', extractDeleteArgs(first, second));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Add experience record
- */
-export const addExperience = async (userId: string, experienceData: any) => {
+export const addExperience = async (userIdOrData: any, experienceData?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const experience = profile.experience || [];
-    
-    const newExperience = {
-      id: Date.now(),
-      ...experienceData,
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          experience: [...experience, newExperience]
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data: newExperience, error: null };
+    const response = await postProfile('add-experience', extractAddArgs(userIdOrData, experienceData));
+    return { data: response.data, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Update experience record
- */
-export const updateExperience = async (userId: string, experienceId: number, updates: any) => {
+export const updateExperience = async (first: any, second: any, third?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const experience = profile.experience || [];
-    
-    const updatedExperience = experience.map((exp: any) =>
-      exp.id === experienceId ? { ...exp, ...updates } : exp
-    );
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          experience: updatedExperience
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('update-experience', extractUpdateArgs(first, second, third));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Delete experience record
- */
-export const deleteExperience = async (userId: string, experienceId: number) => {
+export const deleteExperience = async (first: any, second?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const experience = profile.experience || [];
-    
-    const filteredExperience = experience.filter((exp: any) => exp.id !== experienceId);
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          experience: filteredExperience
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('delete-experience', extractDeleteArgs(first, second));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Add technical skill
- */
-export const addTechnicalSkill = async (userId: string, skillData: any) => {
+export const addTechnicalSkill = async (userIdOrData: any, skillData?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const technicalSkills = profile.technicalSkills || [];
-    
-    const newSkill = {
-      id: Date.now(),
-      ...skillData,
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          technicalSkills: [...technicalSkills, newSkill]
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data: newSkill, error: null };
+    const response = await postProfile('add-technical-skills', extractAddArgs(userIdOrData, skillData));
+    return { data: response.data, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Update technical skill
- */
-export const updateTechnicalSkill = async (userId: string, skillId: number, updates: any) => {
+export const updateTechnicalSkill = async (first: any, second: any, third?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const technicalSkills = profile.technicalSkills || [];
-    
-    const updatedSkills = technicalSkills.map((skill: any) =>
-      skill.id === skillId ? { ...skill, ...updates } : skill
-    );
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          technicalSkills: updatedSkills
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('update-technical-skills', extractUpdateArgs(first, second, third));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Delete technical skill
- */
-export const deleteTechnicalSkill = async (userId: string, skillId: number) => {
+export const deleteTechnicalSkill = async (first: any, second?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const technicalSkills = profile.technicalSkills || [];
-    
-    const filteredSkills = technicalSkills.filter((skill: any) => skill.id !== skillId);
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          technicalSkills: filteredSkills
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('delete-technical-skills', extractDeleteArgs(first, second));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Add soft skill
- */
-export const addSoftSkill = async (userId: string, skillData: any) => {
+export const addSoftSkill = async (userIdOrData: any, skillData?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const softSkills = profile.softSkills || [];
-    
-    const newSkill = {
-      id: Date.now(),
-      ...skillData,
-      created_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          softSkills: [...softSkills, newSkill]
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data: newSkill, error: null };
+    const response = await postProfile('add-soft-skills', extractAddArgs(userIdOrData, skillData));
+    return { data: response.data, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Update soft skill
- */
-export const updateSoftSkill = async (userId: string, skillId: number, updates: any) => {
+export const updateSoftSkill = async (first: any, second: any, third?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const softSkills = profile.softSkills || [];
-    
-    const updatedSkills = softSkills.map((skill: any) =>
-      skill.id === skillId ? { ...skill, ...updates } : skill
-    );
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          softSkills: updatedSkills
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('update-soft-skills', extractUpdateArgs(first, second, third));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };
 
-/**
- * Delete soft skill
- */
-export const deleteSoftSkill = async (userId: string, skillId: number) => {
+export const deleteSoftSkill = async (first: any, second?: any) => {
   try {
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('profile')
-      .eq('user_id', userId)
-      .single();
-
-    const profile = learner?.profile || {};
-    const softSkills = profile.softSkills || [];
-    
-    const filteredSkills = softSkills.filter((skill: any) => skill.id !== skillId);
-
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        profile: {
-          ...profile,
-          softSkills: filteredSkills
-        },
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      return { error: error.message, data: null };
-    }
-
-    return { data, error: null };
+    await postProfile('delete-soft-skills', extractDeleteArgs(first, second));
+    return { data: { error: null }, error: null };
   } catch (error) {
-    return { error: error.message, data: null };
+    return { error: (error as Error).message, data: null };
   }
 };

@@ -1,115 +1,28 @@
 import { EducatorContext } from '@/features/learner-profile/model';
-import { EducatorWithSchool } from '@/shared/types/database';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('EducatorContextBuilder');
 
-/**
- * Build educator context for AI prompts
- * Fetches real data from school_educators and schools tables
- * Uses only necessary columns for AI context
- */
 export const buildEducatorContext = async (educatorId: string): Promise<EducatorContext> => {
   try {
+    const result: any = await apiPost('/educator-copilot/actions', {
+      action: 'buildEducatorContext',
+      educatorId,
+    });
 
-    // Fetch educator profile with school details (only necessary columns)
-    const { data: educator, error: educatorError } = await supabase
-      .from('school_educators')
-      .select(`
-        id,
-        user_id,
-        school_id,
-        first_name,
-        last_name,
-        email,
-        designation,
-        department,
-        specialization,
-        qualification,
-        experience_years,
-        subjects_handled,
-        account_status,
-        schools (
-          id,
-          name,
-          code,
-          city,
-          state,
-          board
-        )
-      `)
-      .eq('user_id', educatorId)
-      .eq('account_status', 'active')
-      .single();
-
-    if (educatorError) {
-      logger.error('Failed to fetch educator from school_educators table', educatorError as Error);
+    if (!result?.data) {
+      logger.error('No educator data returned from API');
       return buildFallbackContext();
     }
 
-    if (!educator) {
-      logger.error('No educator data returned from query', new Error('Empty response'));
-      return buildFallbackContext();
-    }
-
-    const educatorData = educator as any as EducatorWithSchool;
-    
-    // Build full name
-    const fullName = [
-      educatorData.first_name,
-      educatorData.last_name
-    ].filter(Boolean).join(' ') || 'Educator';
-
-    // Get institution details
-    const institution = educatorData.schools?.name || 'Your Institution';
-    const institutionDetails = [
-      educatorData.schools?.city,
-      educatorData.schools?.state
-    ].filter(Boolean).join(', ');
-
-    // Get subjects taught (from subjects_handled array)
-    const subjects_taught = educatorData.subjects_handled || [];
-
-    // Count learners taught by this educator (from learners table)
-    const { count: learnerCount, error: countError } = await supabase
-      .from('learners')
-      .select('id', { count: 'exact', head: true })
-      .eq('universityId', educatorData.school_id);
-
-    if (countError) {
-      logger.error('Failed to count learners', countError as Error);
-    }
-
-    // Build rich context for AI
-    const context: EducatorContext = {
-      name: fullName,
-      institution: institutionDetails ? `${institution} (${institutionDetails})` : institution,
-      department: educatorData.department || undefined,
-      total_learners: learnerCount || 0,
-      active_classes: 1, // Can be enhanced if class data is tracked
-      subjects_taught: subjects_taught,
-      recent_activities: [
-        // Add context-rich activity information
-        ...(educatorData.designation ? [`Role: ${educatorData.designation}`] : []),
-        ...(educatorData.specialization ? [`Specialization: ${educatorData.specialization}`] : []),
-        ...(educatorData.qualification ? [`Qualification: ${educatorData.qualification}`] : []),
-        ...(educatorData.experience_years ? [`Experience: ${educatorData.experience_years} years`] : []),
-        ...(educatorData.schools?.board ? [`Board: ${educatorData.schools.board}`] : [])
-      ].filter(Boolean)
-    };
-
-
-    return context;
+    return result.data as EducatorContext;
   } catch (error) {
     logger.error('Failed to build educator context', error as Error);
     return buildFallbackContext();
   }
 };
 
-/**
- * Fallback context when database fetch fails
- */
 function buildFallbackContext(): EducatorContext {
   return {
     name: 'Educator',
@@ -121,32 +34,14 @@ function buildFallbackContext(): EducatorContext {
   };
 }
 
-/**
- * Extract class summary for AI context
- */
 export const buildClassContext = (classId: string): Promise<any> => {
-  // TODO: Implement class data fetching
   return Promise.resolve({
-    id: classId,
-    name: 'Class',
-    total_learners: 0,
-    active_learners: 0,
-    skill_distribution: [],
-    career_interests: []
+    id: classId, name: 'Class', total_learners: 0, active_learners: 0, skill_distribution: [], career_interests: []
   });
 };
 
-/**
- * Extract learner summary for AI context
- */
 export const buildlearnerContext = (learnerId: string): Promise<any> => {
-  // TODO: Implement learner data fetching
   return Promise.resolve({
-    id: learnerId,
-    name: 'Learner',
-    skills: [],
-    projects: [],
-    career_interests: [],
-    engagement_level: 'unknown'
+    id: learnerId, name: 'Learner', skills: [], projects: [], career_interests: [], engagement_level: 'unknown'
   });
 };

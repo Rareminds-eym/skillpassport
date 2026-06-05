@@ -16,12 +16,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { 
   CourseData,
   OpportunityData,
-  EmbeddingError,
-  SkillData,
-  CertificateData,
-  ProjectData,
-  CourseEnrollmentData,
-  TrainingData
+  EmbeddingError
 } from '../types';
 import { EMBEDDING_CONFIG } from '../config/constants';
 
@@ -63,51 +58,6 @@ interface LearnerRecord {
 
 // These interfaces document the expected Supabase response shape.
 // Actual data access uses safe property checks to handle schema drift.
-interface SkillRecord {
-  name: string;
-  level: number | null;
-  proficiency_level: string | null;
-  type: string | null;
-  description: string | null;
-}
-
-interface CertificateRecord {
-  title: string;
-  issuer: string | null;
-  level: string | null;
-  category: string | null;
-  description: string | null;
-  platform: string | null;
-  instructor: string | null;
-  trainings: { title: string } | null;
-}
-
-interface ProjectRecord {
-  title: string;
-  description: string | null;
-  tech_stack: string[] | null;
-  role: string | null;
-  organization: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  status: string | null;
-}
-
-interface CourseEnrollmentRecord {
-  course_title: string;
-  status: string;
-  skills_acquired: string[] | null;
-}
-
-interface TrainingRecord {
-  title: string;
-  organization: string | null;
-  description: string | null;
-  source: string | null;
-  status: string | null;
-  start_date: string | null;
-  end_date: string | null;
-}
 
 /**
  * Build ENRICHED text from learner record

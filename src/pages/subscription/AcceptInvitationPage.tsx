@@ -9,7 +9,7 @@
  */
 
 import { memberInvitationService, OrganizationInvitation } from '@/entities/organization';
-import { supabase } from '@/shared/api';
+import { apiGet } from '@/shared/api/apiClient';
 import { AlertCircle, Building2, Check, Clock, LogIn, RefreshCw, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -122,34 +122,18 @@ export default function AcceptInvitationPage() {
 
   const getOrganizationName = async (orgId: string, _orgType: string): Promise<string> => {
     try {
-      const { data } = await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', orgId)
-        .single();
-
-      return data?.name || 'Organization';
-    } catch (error) {
-      logger.error('Failed to fetch organization name', error as Error);
+      const resp: any = await apiGet(`/organization/handler?action=getOrganizationName&orgId=${orgId}`);
+      return resp.data || 'Organization';
+    } catch {
       return 'Organization';
     }
   };
 
   const checkIfUserExists = async (email: string): Promise<boolean> => {
-    try {
-      // Check if a user with this email exists in auth.users
-      const { data, error } = await supabase.rpc('check_user_exists', { user_email: email });
-
-      if (error) {
-        logger.warn('Failed to check if user exists, assuming they need to sign up', error);
-        return false;
-      }
-
-      return data === true;
-    } catch (error) {
-      logger.warn('Failed to check if user exists, assuming they need to sign up', error as Error);
-      return false;
-    }
+    // TODO(SSO-Migration): Implement user existence check via SSO API if needed.
+    // For now, default to false so the user is prompted to sign up,
+    // but they can click "Log in" if they already have an account.
+    return false;
   };
 
   const handleAcceptInvitation = async () => {

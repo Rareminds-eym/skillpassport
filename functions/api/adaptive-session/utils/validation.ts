@@ -2,7 +2,7 @@
  * Validation utilities for adaptive session API
  */
 
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseClient, createSupabaseAdminClient } from '../../../lib/supabase';
 
 /**
  * Validation result for duplicate detection

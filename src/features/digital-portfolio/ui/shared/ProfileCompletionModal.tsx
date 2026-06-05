@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, Plus, Trash2, Save } from 'lucide-react';
 import { useTheme } from '@/shared/model/themeStore';
 import { usePortfolio } from '@/features/digital-portfolio';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ProfileCompletionModal');
@@ -195,8 +195,10 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
             approval_authority: learner.school_id ? 'school_admin' : 'college_admin'
           }));
 
-          const { error } = await supabase.from('projects').insert(projectRecords);
-          if (error) throw error;
+          await apiPost('/college-admin/digital-portfolio', {
+            action: 'insert-projects',
+            records: projectRecords,
+          });
           hasUpdates = true;
         }
       }
@@ -235,12 +237,11 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
       }
 
       if (Object.keys(learnerUpdates).length > 0) {
-        const { error } = await supabase
-          .from('learners')
-          .update(learnerUpdates)
-          .eq('id', learner.id);
-
-        if (error) throw error;
+        await apiPost('/college-admin/digital-portfolio', {
+          action: 'update-learner',
+          id: learner.id,
+          ...learnerUpdates,
+        });
         hasUpdates = true;
       }
 
@@ -251,14 +252,13 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = React.memo
       }
 
       // Refresh learner data
-      const { data: updatedLearner } = await supabase
-        .from('learners')
-        .select('*')
-        .eq('id', learner.id)
-        .single();
+      const refreshResponse: any = await apiPost('/college-admin/digital-portfolio', {
+        action: 'get-learner',
+        id: learner.id,
+      });
 
-      if (updatedLearner) {
-        setLearner(updatedLearner as any);
+      if (refreshResponse?.data) {
+        setLearner(refreshResponse.data as any);
       }
 
       setEditMode(false);

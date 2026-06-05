@@ -15,7 +15,7 @@ import { ChangeEvent, FormEvent, useState, useEffect, useRef, useCallback } from
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/shared/model/authStore';
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { DatePicker } from '@/features/subscription';
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api/otpService';
@@ -256,26 +256,20 @@ export default function CompleteProfile() {
         setState(prev => ({ ...prev, loading: true, error: '' }));
 
         try {
-            // Update user profile in database
-            const { error: updateError } = await supabase
-                .from('users')
-                .update({
-                    phone: state.phone || null,
-                    metadata: {
-                        dateOfBirth: state.dateOfBirth,
-                        country: state.country,
-                        state: state.state,
-                        city: state.city,
-                        preferredLanguage: state.preferredLanguage,
-                        profileCompleted: true,
-                        profileCompletedAt: new Date().toISOString(),
-                    }
-                })
-                .eq('id', user.id);
-
-            if (updateError) {
-                throw new Error(updateError.message);
-            }
+            // Update user profile via API
+            await apiPost('/user/update', {
+                id: user.id,
+                phone: state.phone || null,
+                metadata: {
+                    dateOfBirth: state.dateOfBirth,
+                    country: state.country,
+                    state: state.state,
+                    city: state.city,
+                    preferredLanguage: state.preferredLanguage,
+                    profileCompleted: true,
+                    profileCompletedAt: new Date().toISOString(),
+                }
+            });
 
             toast.success('Profile completed successfully!');
 

@@ -1,73 +1,33 @@
-import { supabase } from '@/shared/api';
+import { apiGet } from '@/shared/api/apiClient';
 
-// Search universities only (using unified organizations table)
-export const searchUniversities = async (searchTerm) => {
+const orgTypeMap = {
+  university: 'University',
+  college: 'College',
+  school: 'School',
+};
+
+const searchOrganizations = async (searchTerm, orgType, typeLabel) => {
   try {
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('name, state, city')
-      .eq('organization_type', 'university')
-      .ilike('name', `%${searchTerm}%`)
-      .limit(10);
-
-    if (error) {
-      console.error('Error searching universities:', error);
-      return [];
-    }
-
-    // Add type field for consistency
-    return (data || []).map(item => ({ ...item, type: 'University' }));
+    const resp = await apiGet(
+      `/organization/handler?action=searchOrganizations&searchTerm=${encodeURIComponent(searchTerm)}&orgType=${orgType}`
+    );
+    // resp is { success, data, ... } from apiSuccess
+    const data = resp.data || [];
+    return data.map(item => ({ ...item, type: typeLabel }));
   } catch (error) {
-    console.error('Error in searchUniversities:', error);
+    console.error(`Error searching ${orgType}s:`, error);
     return [];
   }
 };
 
-// Search colleges only (using unified organizations table)
-export const searchColleges = async (searchTerm) => {
-  try {
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('name, city, state')
-      .eq('organization_type', 'college')
-      .ilike('name', `%${searchTerm}%`)
-      .limit(10);
+export const searchUniversities = (searchTerm) =>
+  searchOrganizations(searchTerm, 'university', 'University');
 
-    if (error) {
-      console.error('Error searching colleges:', error);
-      return [];
-    }
+export const searchColleges = (searchTerm) =>
+  searchOrganizations(searchTerm, 'college', 'College');
 
-    // Add type field for consistency
-    return (data || []).map(item => ({ ...item, type: 'College' }));
-  } catch (error) {
-    console.error('Error in searchColleges:', error);
-    return [];
-  }
-};
-
-// Search schools only (using unified organizations table)
-export const searchSchools = async (searchTerm) => {
-  try {
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('name, city, state')
-      .eq('organization_type', 'school')
-      .ilike('name', `%${searchTerm}%`)
-      .limit(10);
-
-    if (error) {
-      console.error('Error searching schools:', error);
-      return [];
-    }
-
-    // Add type field for consistency
-    return (data || []).map(item => ({ ...item, type: 'School' }));
-  } catch (error) {
-    console.error('Error in searchSchools:', error);
-    return [];
-  }
-};
+export const searchSchools = (searchTerm) =>
+  searchOrganizations(searchTerm, 'school', 'School');
 
 // Search colleges and schools (not universities)
 export const searchCollegesAndSchools = async (searchTerm) => {

@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export interface TeacherWorkload {
   total_periods: number;
@@ -7,34 +7,33 @@ export interface TeacherWorkload {
   consecutive_violation: boolean;
 }
 
+const API_PATH = '/college-admin/school-admin';
+
 export const timetableSlotsService = {
   async createSlot(slotData: any) {
-    const { error } = await supabase
-      .from('timetable_slots')
-      .insert(slotData);
-    
-    if (error) throw error;
+    const result = await apiPost(API_PATH, {
+      action: 'create-timetable-slot',
+      slot_data: slotData,
+    });
+    return result;
   },
 
-  /**
-   * Calculate teacher workload for a timetable
-   * @param teacherId - The teacher's ID
-   * @param timetableId - The timetable ID
-   * @returns Teacher workload data
-   */
+  async deleteSlot(slotId: string) {
+    await apiPost(API_PATH, {
+      action: 'delete-timetable-slot',
+      slot_id: slotId,
+    });
+  },
+
   async calculateTeacherWorkload(
     teacherId: string,
     timetableId: string
   ): Promise<TeacherWorkload | null> {
-    const { data, error } = await supabase.rpc('calculate_teacher_workload', {
-      p_teacher_id: teacherId,
-      p_timetable_id: timetableId,
+    const data = await apiPost(API_PATH, {
+      action: 'calculate-teacher-workload',
+      teacher_id: teacherId,
+      timetable_id: timetableId,
     });
-
-    if (error) {
-      throw error;
-    }
-
-    return data && data.length > 0 ? data[0] : null;
+    return data as TeacherWorkload | null;
   }
 };

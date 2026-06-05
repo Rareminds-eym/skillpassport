@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const logger = getLogger('realtime-progress');
 
@@ -16,7 +17,7 @@ export const useRealtimeProgress = (learnerId, courseId, options = {}) => {
   } = options;
 
   const [isConnected, setIsConnected] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState<{ type: string; event: string; data: any; timestamp: number } | null>(null);
   const channelRef = useRef(null);
   const enrollmentChannelRef = useRef(null);
 
@@ -24,98 +25,86 @@ export const useRealtimeProgress = (learnerId, courseId, options = {}) => {
   useEffect(() => {
     if (!enabled || !learnerId || !courseId) return;
 
+    const wsClient = getWSClient();
+    const unsubscribers: Array<() => void> = [];
+
     // Subscribe to learner_course_progress changes
-    const progressChannel = supabase
-      .channel(`progress:${learnerId}:${courseId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'learner_course_progress',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        (payload) => {
+    const unsubProgress = wsClient.subscribe(
+      'learner_course_progress',
+      { event: '*', filter: `learner_id=eq.${learnerId}` },
+      (event) => {
+        if (event.type === 'change') {
           setLastUpdate({
             type: 'progress',
-            event: payload.eventType,
-            data: payload.new,
+            event: event.event,
+            data: event.payload,
             timestamp: Date.now()
           });
 
           if (onProgressUpdate) {
-            onProgressUpdate(payload);
+            onProgressUpdate(event.payload);
           }
         }
-      )
-      .subscribe((status) => {
-        setIsConnected(status === 'SUBSCRIBED');
-      });
-
-    channelRef.current = progressChannel;
+      }
+    );
+    unsubscribers.push(unsubProgress);
 
     // Subscribe to enrollment changes
-    const enrollmentChannel = supabase
-      .channel(`enrollment:${learnerId}:${courseId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'course_enrollments',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        (payload) => {
+    const unsubEnrollment = wsClient.subscribe(
+      'course_enrollments',
+      { event: '*', filter: `learner_id=eq.${learnerId}` },
+      (event) => {
+        if (event.type === 'change') {
           setLastUpdate({
             type: 'enrollment',
-            event: payload.eventType,
-            data: payload.new,
+            event: event.event,
+            data: event.payload,
             timestamp: Date.now()
           });
 
           if (onEnrollmentUpdate) {
-            onEnrollmentUpdate(payload);
+            onEnrollmentUpdate(event.payload);
           }
         }
-      )
-      .subscribe();
+      }
+    );
+    unsubscribers.push(unsubEnrollment);
 
-    enrollmentChannelRef.current = enrollmentChannel;
+    setIsConnected(true);
 
     // Cleanup
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
-      if (enrollmentChannelRef.current) {
-        supabase.removeChannel(enrollmentChannelRef.current);
-      }
+      unsubscribers.forEach(unsub => unsub());
+      setIsConnected(false);
     };
   }, [enabled, learnerId, courseId, onProgressUpdate, onEnrollmentUpdate]);
 
-  // Broadcast progress to other devices
-  const broadcastProgress = useCallback(async (progressData) => {
-    if (!channelRef.current || !isConnected) return;
+  // Broadcast progress to other devices (via backend endpoint)
+  const broadcastProgress = useCallback(async (progressData: any) => {
+    if (!isConnected) return;
 
     try {
-      await channelRef.current.send({
-        type: 'broadcast',
-        event: 'progress_update',
+      const channelName = `progress:${learnerId}:${courseId}`;
+      await apiPost('/realtime-stream', {
+        action: 'send-broadcast',
+        channel: channelName,
+        eventType: 'progress_update',
         payload: {
           ...progressData,
+          learnerId,
+          courseId,
           timestamp: Date.now()
         }
       });
     } catch (error) {
       logger.error('Error broadcasting progress', error as Error);
     }
-  }, [isConnected]);
+  }, [isConnected, learnerId, courseId]);
 
   // Get connection status
   const getStatus = useCallback(() => ({
     isConnected,
-    lastUpdate,
-    channelState: channelRef.current?.state || 'disconnected'
+    lastUpdate
   }), [isConnected, lastUpdate]);
 
   return {
