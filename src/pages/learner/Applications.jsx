@@ -1,4 +1,3 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -32,7 +31,7 @@ import { useLearnerDataByEmail } from '@/entities/learner';
 
 import { getLogger } from '@/shared/config/logging';
 
-import { useUser } from '@/shared/model/authStore';
+import { useUser, useAuthStore } from '@/shared/model/authStore';
 const logger = getLogger('Applications');
 
 const Applications = () => {
@@ -809,7 +808,7 @@ const Applications = () => {
                                 // Fetch recruiter data to display name and email properly
                                 let recruiterData = null;
                                 try {
-                                  const res = await apiPost<any>('/learner-pages/actions', { action: 'fetch-recruiter', recruiterId: app.recruiterId });
+                                  const res = await apiPost('/learner-pages/actions', { action: 'fetch-recruiter', recruiterId: app.recruiterId });
 
                                   recruiterData = res.data;
                                   logger.info('Recruiter data fetched', { recruiterName: res.data?.name || res.data?.email });

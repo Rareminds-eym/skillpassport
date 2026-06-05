@@ -23,12 +23,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // COURSES
       // ──────────────────────────────────────────────
 
-      case 'get-all-courses': {
-        const { data, error } = await supabase
+      case 'get-all-courses':
+      case 'list-courses': {
+        const { status } = params;
+        let coursesQuery = supabase
           .from('courses')
           .select('*')
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false });
+          .is('deleted_at', null);
+        if (status?.in) {
+          coursesQuery = coursesQuery.in('status', status.in);
+        }
+        const { data, error } = await coursesQuery.order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
       }
@@ -78,6 +83,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }, context.request, { startTime });
       }
 
+      case 'get-course':
       case 'get-course-by-id': {
         const { courseId } = params;
         if (!courseId) return apiError(400, 'VALIDATION_ERROR', 'Missing courseId', context.request, { startTime });
@@ -92,6 +98,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('courses').select('school_id').eq('course_id', courseId).single();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'get-user-by-id': {
+        const { ids, select } = params;
+        if (!ids?.length) return apiError(400, 'VALIDATION_ERROR', 'Missing ids', context.request, { startTime });
+        const { data, error } = await supabase
+          .from('users')
+          .select(select || 'id, firstName, lastName')
+          .in('id', ids);
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || [], context.request, { startTime });
       }
 
       case 'create-course': {
@@ -495,9 +512,39 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess(data || [], context.request, { startTime });
       }
 
+      case 'list-mentor-notes': {
+        const { select, filters } = params;
+        if (!filters?.learner_id?.in) return apiError(400, 'VALIDATION_ERROR', 'Missing learner_id filter', context.request, { startTime });
+        let notesQuery = supabase.from('mentor_notes').select(select || '*').in('learner_id', filters.learner_id.in);
+        if (filters.note_date?.order) notesQuery = notesQuery.order('note_date', { ascending: filters.note_date.order === 'asc' });
+        const { data, error } = await notesQuery;
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || [], context.request, { startTime });
+      }
+
+      case 'update-mentor-note': {
+        const { id, values } = params;
+        if (!id || !values) return apiError(400, 'VALIDATION_ERROR', 'Missing id or values', context.request, { startTime });
+        const { data, error } = await supabase.from('mentor_notes').update(values).eq('id', id).select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data, context.request, { startTime });
+      }
+
       // ──────────────────────────────────────────────
       // EDUCATOR INFO
       // ──────────────────────────────────────────────
+
+      case 'get-organization-by-id': {
+        const { id, select } = params;
+        if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
+        const { data, error } = await supabase
+          .from('organizations')
+          .select(select || 'name')
+          .eq('id', id)
+          .maybeSingle();
+        if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
 
       case 'fetch-educator-school-info': {
         const { email, userId } = params;
@@ -568,19 +615,157 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess(data || null, context.request, { startTime });
       }
 
+      case 'get-school-educator-by-email':
       case 'fetch-school-educator-by-email': {
-        const { email } = params;
+        const { email, select } = params;
         if (!email) return apiError(400, 'VALIDATION_ERROR', 'Missing email', context.request, { startTime });
-        const { data, error } = await supabase.from('school_educators').select('school_id').eq('email', email).maybeSingle();
+        const { data, error } = await supabase.from('school_educators').select(select || 'school_id').eq('email', email).maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || null, context.request, { startTime });
       }
 
+      case 'get-school-educator-by-user-id':
       case 'fetch-school-educator-by-user-id': {
-        const { userId } = params;
+        const { userId, select } = params;
         if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
-        const { data, error } = await supabase.from('school_educators').select('school_id').eq('user_id', userId).maybeSingle();
+        const { data, error } = await supabase.from('school_educators').select(select || 'school_id').eq('user_id', userId).maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'get-school-educator-by-user-id-ilike': {
+        const { email } = params;
+        if (!email) return apiError(400, 'VALIDATION_ERROR', 'Missing email', context.request, { startTime });
+        const { data, error } = await supabase.from('school_educators').select('*').ilike('email', email).maybeSingle();
+        if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'get-school-educator-by-id': {
+        const { id, select } = params;
+        if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
+        const { data, error } = await supabase.from('school_educators').select(select || '*').eq('id', id).maybeSingle();
+        if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'create-school-educator': {
+        const { values } = params;
+        if (!values) return apiError(400, 'VALIDATION_ERROR', 'Missing values', context.request, { startTime });
+        const { data, error } = await supabase.from('school_educators').insert([values]).select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data, context.request, { startTime });
+      }
+
+      case 'update-school-educator': {
+        const { id, values } = params;
+        if (!id || !values) return apiError(400, 'VALIDATION_ERROR', 'Missing id or values', context.request, { startTime });
+        const { data, error } = await supabase.from('school_educators').update(values).eq('id', id).select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data, context.request, { startTime });
+      }
+
+      case 'update-school-educator-by-email': {
+        const { email, values } = params;
+        if (!email || !values) return apiError(400, 'VALIDATION_ERROR', 'Missing email or values', context.request, { startTime });
+        const { data, error } = await supabase.from('school_educators').update(values).eq('email', email).select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data, context.request, { startTime });
+      }
+
+      case 'delete-school-educator': {
+        const { id } = params;
+        if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
+        const { error } = await supabase.from('school_educators').delete().eq('id', id);
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ deleted: true }, context.request, { startTime });
+      }
+
+      case 'list-school-educators': {
+        const { select, filters } = params;
+        if (!filters?.school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id filter', context.request, { startTime });
+        let query = supabase.from('school_educators').select(select || '*').eq('school_id', filters.school_id);
+        if (filters.role) query = query.eq('role', filters.role);
+        const { data, error } = await query;
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || [], context.request, { startTime });
+      }
+
+      case 'get-college-lecturer-by-user-id':
+      case 'fetch-college-lecturer-by-user-id': {
+        const { userId, select } = params;
+        if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
+        const { data, error } = await supabase.from('college_lecturers').select(select || 'user_id').eq('user_id', userId).maybeSingle();
+        if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'get-university-educator-by-user-id': {
+        const { userId, select } = params;
+        if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
+        const { data, error } = await supabase.from('college_lecturers').select(select || 'user_id').eq('user_id', userId).maybeSingle();
+        if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'list-organizations': {
+        const { select, filters } = params;
+        let orgQuery = supabase.from('organizations').select(select || '*');
+        if (filters?.organization_type) orgQuery = orgQuery.eq('organization_type', filters.organization_type);
+        const { data, error } = await orgQuery;
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || [], context.request, { startTime });
+      }
+
+      case 'save-educator-profile': {
+        const { userId, email, updates, isCollege } = params;
+        if (!userId && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing userId or email', context.request, { startTime });
+        const table = isCollege ? 'college_lecturers' : 'school_educators';
+        const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
+        let query = supabase.from(table).update({ ...updates, [tsField]: new Date().toISOString() });
+        if (userId) query = query.eq('user_id', userId);
+        else if (email) query = query.eq('email', email);
+        const { data, error } = await query.select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'update-educator-media': {
+        const { userId, table, field, value } = params;
+        if (!userId || !table || !field) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, table, or field', context.request, { startTime });
+        if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
+        const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
+        const { data, error } = await supabase.from(table).update({ [field]: value, [tsField]: new Date().toISOString() }).eq('user_id', userId).select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'remove-educator-media': {
+        const { userId, table, field } = params;
+        if (!userId || !table || !field) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, table, or field', context.request, { startTime });
+        if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
+        const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
+        const { data, error } = await supabase.from(table).update({ [field]: null, [tsField]: new Date().toISOString() }).eq('user_id', userId).select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'remove-experience-letter': {
+        const { email, index, userId, isCollege } = params;
+        if ((!email && !userId) || index === undefined) return apiError(400, 'VALIDATION_ERROR', 'Missing email/userId or index', context.request, { startTime });
+        const table = isCollege ? 'college_lecturers' : 'school_educators';
+        const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
+        let educatorQuery = supabase.from(table).select('experience_letters_url');
+        if (userId) educatorQuery = educatorQuery.eq('user_id', userId);
+        else educatorQuery = educatorQuery.eq('email', email);
+        const { data: educator } = await educatorQuery.maybeSingle();
+        if (!educator) return apiError(404, 'NOT_FOUND', 'Educator not found', context.request, { startTime });
+        const urls = (educator.experience_letters_url || []).filter((_: any, i: number) => i !== index);
+        let updateQuery = supabase.from(table).update({ experience_letters_url: urls, [tsField]: new Date().toISOString() });
+        if (userId) updateQuery = updateQuery.eq('user_id', userId);
+        else updateQuery = updateQuery.eq('email', email);
+        const { data, error } = await updateQuery.select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || null, context.request, { startTime });
       }
 
@@ -647,6 +832,22 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ──────────────────────────────────────────────
       // CONVERSATIONS
       // ──────────────────────────────────────────────
+
+      case 'list-conversations': {
+        const { select, filters } = params;
+        if (!filters?.educator_id) return apiError(400, 'VALIDATION_ERROR', 'Missing educator_id', context.request, { startTime });
+        let query = supabase
+          .from('conversations')
+          .select(select || '*');
+        if (filters.educator_id) query = query.eq('educator_id', filters.educator_id);
+        if (filters.conversation_type) query = query.eq('conversation_type', filters.conversation_type);
+        if (filters.deleted_by_educator !== undefined) query = query.eq('deleted_by_educator', filters.deleted_by_educator);
+        if (filters.status) query = query.eq('status', filters.status);
+        if (filters.last_message_at?.order) query = query.order('last_message_at', { ascending: filters.last_message_at.order === 'asc' });
+        const { data, error } = await query;
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || [], context.request, { startTime });
+      }
 
       case 'fetch-educator-conversations': {
         const { userId, collegeId, userType, includeArchived } = params;
@@ -763,7 +964,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'fetch-learner-profiles-data': {
         const { schoolId, classIds } = params;
-        let query = supabase.from('learners').select('profile').eq('is_deleted', false);
+        let query = supabase.from('learners').select('profile, grade').eq('is_deleted', false);
         if (schoolId) query = query.eq('school_id', schoolId);
         if (classIds?.length) query = query.in('school_class_id', classIds);
         const { data, error } = await query;
@@ -800,6 +1001,45 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           }
         }
         return apiSuccess({ sent: true }, context.request, { startTime });
+      }
+
+      case 'db-select': {
+        const { table, select: dbSelect, filters: dbFilters } = params;
+        const allowedTables = ['learners', 'projects', 'trainings', 'certificates'];
+        if (!table || !allowedTables.includes(table)) return apiError(400, 'VALIDATION_ERROR', `Table not allowed: ${table}`, context.request, { startTime });
+        let dbQuery = supabase.from(table).select(dbSelect || '*');
+        if (dbFilters) {
+          if (dbFilters.school_id?.eq) dbQuery = dbQuery.eq('school_id', dbFilters.school_id.eq);
+          if (dbFilters.college_id?.eq) dbQuery = dbQuery.eq('college_id', dbFilters.college_id.eq);
+          if (dbFilters.school_class_id?.in) dbQuery = dbQuery.in('school_class_id', dbFilters.school_class_id.in);
+          if (dbFilters.is_deleted?.eq !== undefined) dbQuery = dbQuery.eq('is_deleted', dbFilters.is_deleted.eq);
+          if (dbFilters.learner_id?.in) dbQuery = dbQuery.in('learner_id', dbFilters.learner_id.in);
+          if (dbFilters.learner_id?.eq) dbQuery = dbQuery.eq('learner_id', dbFilters.learner_id.eq);
+        }
+        const { data, error } = await dbQuery;
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || [], context.request, { startTime });
+      }
+
+      case 'db-update': {
+        const { table, values, filters } = params;
+        const allowedUpdateTables = ['projects', 'trainings', 'certificates'];
+        if (!table || !allowedUpdateTables.includes(table)) return apiError(400, 'VALIDATION_ERROR', `Table not allowed: ${table}`, context.request, { startTime });
+        if (!values || !filters?.id?.eq) return apiError(400, 'VALIDATION_ERROR', 'Missing values or id filter', context.request, { startTime });
+        const { data, error } = await supabase.from(table).update(values).eq('id', filters.id.eq).select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      case 'update-educator-table': {
+        const { table, values, id, idField } = params;
+        const allowedTables2 = ['school_educators', 'college_lecturers'];
+        if (!table || !allowedTables2.includes(table)) return apiError(400, 'VALIDATION_ERROR', `Table not allowed: ${table}`, context.request, { startTime });
+        if (!values || !id || !idField) return apiError(400, 'VALIDATION_ERROR', 'Missing values, id, or idField', context.request, { startTime });
+        const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
+        const { data, error } = await supabase.from(table).update({ ...values, [tsField]: new Date().toISOString() }).eq(idField, id).select().maybeSingle();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || null, context.request, { startTime });
       }
 
       default:

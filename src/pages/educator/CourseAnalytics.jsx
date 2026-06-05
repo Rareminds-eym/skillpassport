@@ -1,8 +1,4 @@
 import { motion } from 'framer-motion';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('CourseAnalytics');
-
 import {
     Activity,
     Award,
@@ -18,6 +14,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import { apiPost } from '@/shared/api/apiClient';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('CourseAnalytics');
 
 const CourseAnalytics = () => {
   const { courseId } = useParams();
@@ -40,8 +39,8 @@ const CourseAnalytics = () => {
       setLoading(true);
 
       // Fetch course details
-      const courseResult = await apiPost<any>('/educator/actions', {
-        action: 'get-course',
+      const courseResult = await apiPost('/educator/actions', {
+        action: 'get-course-by-id',
         courseId
       });
 

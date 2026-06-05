@@ -28,6 +28,10 @@ import { storageService } from '@/shared/api';
 // @ts-ignore - JSX file without declaration
 import { SubscriptionSettingsSection } from '@/features/subscription';
 import { useUser, useUserRole } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('EducatorSettings');
 interface SettingsState {
   fullName: string;
   email: string;
@@ -70,6 +74,8 @@ interface SettingsState {
   preferredLanguage: string;
   autoGradeEnabled: boolean;
   enablePeerReview: boolean;
+  autoSkillTagging: boolean;
+  assignmentReminders: boolean;
   profileVisibility: 'public' | 'private' | 'institution-only';
   shareAnalytics: boolean;
 }
@@ -335,6 +341,8 @@ const Settings: React.FC = () => {
     preferredLanguage: 'English',
     autoGradeEnabled: false,
     enablePeerReview: true,
+    autoSkillTagging: true,
+    assignmentReminders: true,
     profileVisibility: 'institution-only',
     shareAnalytics: true,
   });
@@ -376,17 +384,12 @@ const Settings: React.FC = () => {
       logger.info('Fetching educator data', { userId, userEmail, userRole });
       
       // Try school educators first
-      const { data: schoolData, error: schoolError } = await supabase
-        .from('school_educators')
-        .select(`
-          *,
-          organizations(
-            name,
-            address
-          )
-        `)
-        .eq('user_id', userId)
-        .maybeSingle();
+      const schoolResp = await apiPost('/educator/actions', {
+        action: 'fetch-school-educator-by-user-id',
+        userId,
+        select: '*, organizations!school_educators_school_id_fkey(name, address)'
+      });
+      const schoolData = schoolResp?.data;
 
       if (schoolData) {
         logger.info('Found school educator data', { schoolData });
@@ -427,17 +430,12 @@ const Settings: React.FC = () => {
       }
 
       // If not found in school_educators, try college_lecturers
-      const { data: collegeData, error: collegeError } = await supabase
-        .from('college_lecturers')
-        .select(`
-          *,
-          organizations:collegeId (
-            name,
-            address
-          )
-        `)
-        .eq('user_id', userId)
-        .maybeSingle();
+      const collegeResp = await apiPost('/educator/actions', {
+        action: 'fetch-college-lecturer-by-user-id',
+        userId,
+        select: '*, organizations:collegeId(name, address)'
+      });
+      const collegeData = collegeResp?.data;
 
       if (collegeData) {
         logger.info('Found college lecturer data', { collegeData });
@@ -491,12 +489,14 @@ const Settings: React.FC = () => {
               ? JSON.parse(collegeData.experience_letters_url) 
               : []),
           resumeUrl: collegeData.resume_url || '',
+          // Load preferences from metadata if exists
+          ...collegeData.metadata?.preferences,
         }));
         return;
       }
 
       // No data found in either table
-      logger.warn('No educator data found', { userId, schoolError, collegeError });
+      logger.warn('No educator data found', { userId });
       setError('No educator profile found. Please contact your administrator.');
       
     } catch (error) {
@@ -539,18 +539,17 @@ const Settings: React.FC = () => {
       // Detect educator type and update appropriate table
       const isCollegeEducator = educatorData.collegeId !== undefined;
       const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
-      const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
       const photoField = isCollegeEducator ? 'profile_photo_url' : 'photo_url';
 
       // Update educator record with photo URL
-      const { error: updateError } = await supabase
-        .from(tableName)
-        .update({
-          [photoField]: uploadResult.url,
-          [timestampField]: new Date().toISOString()
-        })
-        .eq('user_id', userId);
-      if (updateError) {
+      const photoResp = await apiPost('/educator/actions', {
+        action: 'update-educator-media',
+        userId,
+        table: tableName,
+        field: photoField,
+        value: uploadResult.url
+      });
+      if (!photoResp?.data) {
         throw new Error('Failed to save photo URL to database');
       }
 
@@ -670,19 +669,15 @@ const Settings: React.FC = () => {
 
         // Detect educator type and update appropriate table
         const isCollegeEducator = educatorData.collegeId !== undefined;
-        const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
-        const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
 
         // Update database
-        const { error: updateError } = await supabase
-          .from(tableName)
-          .update({
-            experience_letters_url: updatedUrls,
-            [timestampField]: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-
-        if (updateError) {
+        const expResp = await apiPost('/educator/actions', {
+          action: 'save-educator-profile',
+          userId,
+          updates: { experience_letters_url: updatedUrls },
+          isCollege: isCollegeEducator
+        });
+        if (!expResp?.data) {
           throw new Error('Failed to save document URLs to database');
         }
 
@@ -703,19 +698,17 @@ const Settings: React.FC = () => {
         // Detect educator type and update appropriate table
         const isCollegeEducator = educatorData.collegeId !== undefined;
         const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
-        const updateField = isCollegeEducator ? 'resume_url' : 'resume_url';
-        const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
+        const updateField = 'resume_url';
 
         // Update database
-        const { error: updateError } = await supabase
-          .from(tableName)
-          .update({
-            [updateField]: result.url,
-            [timestampField]: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-
-        if (updateError) {
+        const resumeResp = await apiPost('/educator/actions', {
+          action: 'update-educator-media',
+          userId,
+          table: tableName,
+          field: updateField,
+          value: result.url
+        });
+        if (!resumeResp?.data) {
           throw new Error('Failed to save document URL to database');
         }
 
@@ -736,19 +729,17 @@ const Settings: React.FC = () => {
         // Detect educator type and update appropriate table
         const isCollegeEducator = educatorData.collegeId !== undefined;
         const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
-        const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
         const updateField = documentType === 'id-proof' ? 'id_proof_url' : 'degree_certificate_url';
 
         // Update database
-        const { error: updateError } = await supabase
-          .from(tableName)
-          .update({
-            [updateField]: result.url,
-            [timestampField]: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-
-        if (updateError) {
+        const docResp = await apiPost('/educator/actions', {
+          action: 'update-educator-media',
+          userId,
+          table: tableName,
+          field: updateField,
+          value: result.url
+        });
+        if (!docResp?.data) {
           throw new Error('Failed to save document URL to database');
         }
 
@@ -820,21 +811,20 @@ const Settings: React.FC = () => {
 
   // Remove experience letter
   const removeExperienceLetter = async (index: number) => {
-    if (!userEmail) return;
-
     try {
+      const isCollegeEducator = educatorData?.collegeId !== undefined;
+
       const updatedUrls = settings.experienceLettersUrl.filter((_, i) => i !== index);
 
       // Update database
-      const { error: updateError } = await supabase
-        .from('school_educators')
-        .update({
-          experience_letters_url: updatedUrls,
-          updated_at: new Date().toISOString()
-        })
-        .eq('email', userEmail);
+      const remResp = await apiPost('/educator/actions', {
+        action: 'remove-experience-letter',
+        userId,
+        ...(isCollegeEducator ? { isCollege: true } : {}),
+        index
+      });
 
-      if (updateError) {
+      if (!remResp?.data) {
         throw new Error('Failed to update database');
       }
 
@@ -870,26 +860,24 @@ const Settings: React.FC = () => {
       // Detect educator type and update appropriate table
       const isCollegeEducator = educatorData.collegeId !== undefined;
       const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
-      const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
       const photoField = isCollegeEducator ? 'profile_photo_url' : 'photo_url';
 
       // Update educator record to remove photo URL
-      const { error: updateError } = await supabase
-        .from(tableName)
-        .update({
-          [photoField]: null,
-          [timestampField]: new Date().toISOString()
-        })
-        .eq('user_id', userId);
-
-      if (updateError) {
+      const removeResp = await apiPost('/educator/actions', {
+        action: 'remove-educator-media',
+        userId,
+        table: tableName,
+        field: photoField
+      });
+      if (!removeResp?.data) {
         throw new Error('Failed to remove photo from database');
       }
 
       // Refresh educator data to show changes
       await fetchEducatorData();
 
-      // Show success aved');
+      // Show success saved
+      setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 3000);
 
     } catch (error) {
@@ -908,7 +896,7 @@ const Settings: React.FC = () => {
   }, [userId, authLoading]);
 
   const handleSave = async () => {
-    if (!userEmail || !educatorData) {
+    if (!educatorData || !userId) {
       setSaveStatus('error');
       return;
     }
@@ -929,7 +917,6 @@ const Settings: React.FC = () => {
         }));
       
       if (isCollegeEducator) {
-        // For college: store all address fields as JSON in single address column
         const addressData = {
           address: settings.officeLocation || '',
           city: settings.city || '',
@@ -937,11 +924,11 @@ const Settings: React.FC = () => {
           country: settings.country || '',
           pincode: settings.pincode || ''
         };
-        
-        // Update college_lecturers table with correct field names
-        const { error } = await supabase
-          .from('college_lecturers')
-          .update({
+        const collegeResp = await apiPost('/educator/actions', {
+          action: 'save-educator-profile',
+          userId,
+          isCollege: true,
+          updates: {
             first_name: settings.fullName.split(' ')[0] || '',
             last_name: settings.fullName.split(' ').slice(1).join(' ') || '',
             phone: settings.phone,
@@ -958,21 +945,36 @@ const Settings: React.FC = () => {
             metadata: {
               ...educatorData.metadata,
               bio: settings.bio,
+              preferences: {
+                ...educatorData.metadata?.preferences,
+                autoSkillTagging: settings.autoSkillTagging,
+                assignmentReminders: settings.assignmentReminders,
+                emailNotifications: settings.emailNotifications,
+                activityNotifications: settings.activityNotifications,
+                learnerSubmissionNotifications: settings.learnerSubmissionNotifications,
+                weeklyReportNotifications: settings.weeklyReportNotifications,
+                pushNotifications: settings.pushNotifications,
+                shareAnalytics: settings.shareAnalytics,
+                autoGradeEnabled: settings.autoGradeEnabled,
+                enablePeerReview: settings.enablePeerReview,
+                profileVisibility: settings.profileVisibility,
+                classTimeZone: settings.classTimeZone,
+                preferredLanguage: settings.preferredLanguage,
+              }
             },
-            updatedAt: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-
-        if (error) {
-          logger.error('Error updating college profile', error);
+          }
+        });
+        if (!collegeResp?.data) {
+          logger.error('Error updating college profile', collegeResp?.error || 'Unknown');
           setSaveStatus('error');
           return;
         }
       } else {
-        // For school: use separate columns for address fields
-        const { error } = await supabase
-          .from('school_educators')
-          .update({
+        const schoolResp = await apiPost('/educator/actions', {
+          action: 'save-educator-profile',
+          userId,
+          isCollege: false,
+          updates: {
             first_name: settings.fullName.split(' ')[0] || '',
             last_name: settings.fullName.split(' ').slice(1).join(' ') || '',
             phone_number: settings.phone,
@@ -995,14 +997,25 @@ const Settings: React.FC = () => {
               bio: settings.bio,
               preferences: {
                 ...educatorData.metadata?.preferences,
+                autoSkillTagging: settings.autoSkillTagging,
+                assignmentReminders: settings.assignmentReminders,
+                emailNotifications: settings.emailNotifications,
+                activityNotifications: settings.activityNotifications,
+                learnerSubmissionNotifications: settings.learnerSubmissionNotifications,
+                weeklyReportNotifications: settings.weeklyReportNotifications,
+                pushNotifications: settings.pushNotifications,
+                shareAnalytics: settings.shareAnalytics,
+                autoGradeEnabled: settings.autoGradeEnabled,
+                enablePeerReview: settings.enablePeerReview,
+                profileVisibility: settings.profileVisibility,
+                classTimeZone: settings.classTimeZone,
+                preferredLanguage: settings.preferredLanguage,
               }
-            },
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-
-        if (error) {
-          logger.error('Error updating school profile', error);
+            }
+          }
+        });
+        if (!schoolResp?.data) {
+          logger.error('Error updating school profile', schoolResp?.error || 'Unknown');
           setSaveStatus('error');
           return;
         }
@@ -1040,9 +1053,16 @@ const Settings: React.FC = () => {
     }
 
     setSaveStatus('saving');
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setSaveStatus('saved');
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    try {
+      const { updatePassword } = await import('@/entities/user/api/mutations');
+      await updatePassword(passwordData.newPassword, passwordData.currentPassword);
+      setSaveStatus('saved');
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : 'Failed to change password');
+      setSaveStatus('error');
+      return;
+    }
     setTimeout(() => setSaveStatus('idle'), 3000);
   };
 
@@ -2198,16 +2218,16 @@ const Settings: React.FC = () => {
                   <SettingToggle
                     label="Auto Skill Tagging"
                     description="Automatically tag learner submissions with relevant skill categories"
-                    enabled={settings.shareAnalytics}
-                    onChange={(value) => updateSetting('shareAnalytics', value)}
+                    enabled={settings.autoSkillTagging}
+                    onChange={(value) => updateSetting('autoSkillTagging', value)}
                   />
 
                   {/* Assignment Due Reminders */}
                   <SettingToggle
                     label="Assignment Due Reminders"
                     description="Send automated reminders to learners 24 hours before deadlines"
-                    enabled={settings.weeklyReportNotifications}
-                    onChange={(value) => updateSetting('weeklyReportNotifications', value)}
+                    enabled={settings.assignmentReminders}
+                    onChange={(value) => updateSetting('assignmentReminders', value)}
                   />
                 </div>
               </SettingsSection>

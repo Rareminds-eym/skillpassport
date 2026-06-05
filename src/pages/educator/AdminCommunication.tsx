@@ -119,8 +119,7 @@ const AdminCommunication = () => {
         }
       });
 
-      if (error) throw error;
-      return data || [];
+      return result?.data || [];
     },
     enabled: !!educatorRecordId,
     staleTime: 60000,
@@ -153,7 +152,7 @@ const AdminCommunication = () => {
   const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
 
   // Presence tracking for current conversation
-  const { } = useRealtimePresence({
+  useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
       userId: educatorId || '',
@@ -254,9 +253,7 @@ const AdminCommunication = () => {
       }
     );
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return subscription;
   }, [educatorRecordId, queryClient]);
 
   // Mark messages as read when conversation is selected

@@ -53,16 +53,9 @@ const BrowseCourses = () => {
       setLoading(true);
 
       // Fetch courses with status Active or Upcoming (learners shouldn't see Drafts)
-      // Also exclude deleted courses
-      const coursesResult = await apiPost<any>('/educator/actions', {
+      const coursesResult = await apiPost('/educator/actions', {
         action: 'list-courses',
-        select: '*',
-        filters: {
-          status: { in: ['Active', 'Upcoming'] },
-          deleted_at: { is: null }
-        },
-        orderBy: 'created_at',
-        orderDir: 'desc'
+        status: { in: ['Active', 'Upcoming'] }
       });
 
       if (!coursesResult?.data) throw new Error('Failed to fetch courses');
@@ -73,7 +66,7 @@ const BrowseCourses = () => {
       
       let educatorMap = {};
       if (educatorIds.length > 0) {
-        const usersResult = await apiPost<any>('/educator/actions', {
+        const usersResult = await apiPost('/educator/actions', {
           action: 'get-user-by-id',
           ids: educatorIds,
           select: 'id, firstName, lastName'
