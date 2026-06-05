@@ -14,6 +14,7 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000', 
   'http://localhost:8788',
+  'http://127.0.0.1:8787', // SSO worker local
   // Production domains from environment variables
   'https://skillpassport.rareminds.in',
   'https://app.skillpassport.rareminds.in',
