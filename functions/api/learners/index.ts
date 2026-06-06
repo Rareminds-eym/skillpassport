@@ -89,12 +89,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (body.id) {
-    // Update existing
+    // Update existing — allow if learner owns the record OR if org matches
     const { data, error } = await supabase
       .from('learners')
       .update(body)
       .eq('id', body.id)
-      .or(orgFilter)
+      .or(`user_id.eq.${user.id},${orgFilter}`)
       .select()
       .single();
 
