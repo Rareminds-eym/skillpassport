@@ -79,4 +79,4 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION create_organization_recruitment_settings IS 'Creates recruitment settings for a new organization during company signup';
+COMMENT ON FUNCTION create_organization_recruitment_settings(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) IS 'Creates recruitment settings for a new organization during company signup';
