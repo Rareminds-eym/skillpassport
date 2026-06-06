@@ -34,7 +34,7 @@
 import type { PagesFunction } from '../../lib/types';
 import { getCorsHeaders } from '../../lib/cors';
 import { apiSuccess, apiError } from '../../lib/response';
-import { withAuth, getContextUser } from '../../lib/auth';
+import { withAuth, withAuthAllowUnverified, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import {
   handleGetSchools,
@@ -119,8 +119,11 @@ export const onRequest: PagesFunction = async (context) => {
     // Route to handlers
 
     // Unified signup endpoint (authenticated - validates JWT sub against body.userId)
+    // NOTE: Uses withAuthAllowUnverified — the JWT is valid but is_email_verified
+    // is false at this point since the user just signed up. Email verification
+    // happens after the app profile is created.
     if (path === '/signup' && request.method === 'POST') {
-      return withAuth(async (authContext: AuthenticatedContext) => {
+      return withAuthAllowUnverified(async (authContext: AuthenticatedContext) => {
         const user = getContextUser(authContext);
         return await handleUnifiedSignup(authContext.request, authContext.env, user.id);
       })(context);

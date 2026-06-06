@@ -111,6 +111,26 @@ export function withAuth(handler: (context: AuthenticatedContext) => Promise<Res
   };
 }
 
+/**
+ * withAuth variant that does NOT enforce email verification.
+ *
+ * Used for endpoints that must be accessible immediately after signup
+ * (e.g., creating the app profile) before the user has verified their email.
+ *
+ * The JWT is still validated — the user must be authenticated. Only the
+ * email-verified gate is bypassed.
+ */
+export function withAuthAllowUnverified(handler: (context: AuthenticatedContext) => Promise<Response>) {
+  return async (context: any) => {
+    const env = context.env as Record<string, string | Fetcher>;
+    ensureAuthInitialized(env);
+
+    return withAuthCore(async (authContext) => {
+      return handler(authContext);
+    })(context);
+  };
+}
+
 export interface AuthUser extends SSOAuthUser {
   id: string;
 }
