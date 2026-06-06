@@ -74,9 +74,6 @@ const CONFIG = {
 /** Dashboard routes by role */
 const DASHBOARD_ROUTES = {
   // Admin roles
-  super_admin: '/admin/dashboard',
-  rm_admin: '/admin/dashboard',
-  rm_manager: '/admin/dashboard',
   admin: '/admin/dashboard',
   company_admin: '/admin/dashboard',
   // Institution admin roles
@@ -95,8 +92,6 @@ const DASHBOARD_ROUTES = {
 
 /** Subscription manage routes by role */
 const MANAGE_ROUTES = {
-  super_admin: '/admin/subscription/manage',
-  rm_admin: '/admin/subscription/manage',
   admin: '/admin/subscription/manage',
   school_admin: '/school-admin/subscription/manage',
   college_admin: '/college-admin/subscription/manage',

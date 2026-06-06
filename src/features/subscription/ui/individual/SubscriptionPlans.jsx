@@ -18,8 +18,6 @@ function getManagePath(userRole) {
   if (!userRole) return null; // Return null instead of default to prevent wrong redirects
 
   const manageRoutes = {
-    super_admin: '/admin/subscription/manage',
-    rm_admin: '/admin/subscription/manage',
     admin: '/admin/subscription/manage',
     school_admin: '/school-admin/subscription/manage',
     college_admin: '/college-admin/subscription/manage',
@@ -31,6 +29,28 @@ function getManagePath(userRole) {
     learner: '/learner/subscription/manage',
   };
   return manageRoutes[userRole] || null; // Return null instead of default to prevent wrong redirects
+}
+
+/**
+ * Get the dashboard path based on user role
+ */
+function getDashboardPath(userRole) {
+  if (!userRole) return '/learner/dashboard';
+
+  const dashboardRoutes = {
+    learner: '/learner/dashboard',
+    educator: '/educator/dashboard',
+    school_educator: '/educator/dashboard',
+    college_educator: '/educator/dashboard',
+    school_admin: '/school-admin/dashboard',
+    college_admin: '/college-admin/dashboard',
+    university_admin: '/university-admin/dashboard',
+    recruiter: '/recruitment/overview',
+    recruitment_admin: '/recruitment/admin/dashboard',
+    admin: '/admin/dashboard',
+    company_admin: '/admin/dashboard',
+  };
+  return dashboardRoutes[userRole] || '/learner/dashboard';
 }
 
 /**
@@ -57,10 +77,8 @@ function getManagePathFromType(type) {
     'university-admin': '/university-admin/subscription/manage',
     // Recruiter
     'recruiter': '/recruitment/subscription/manage',
-    // Generic admin (super_admin, rm_admin)
+    // Generic admin
     'admin': '/admin/subscription/manage',
-    'super_admin': '/admin/subscription/manage',
-    'rm_admin': '/admin/subscription/manage',
   };
 
   return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
@@ -938,7 +956,7 @@ function SubscriptionPlans() {
         await refreshSubscription();
         
         // Redirect to dashboard
-        const dashboardPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || '/learner/dashboard';
+        const dashboardPath = getDashboardPath(userRole) || '/learner/dashboard';
         navigate(dashboardPath, {
           state: { 
             message: 'Welcome! Upgrade anytime to unlock all features.' 
@@ -962,7 +980,7 @@ function SubscriptionPlans() {
       console.error('Error creating Freemium subscription:', error);
       toast.error('Failed to create subscription. Please try again.');
     }
-  }, [user, navigate, managePath, type, userRole, refreshSubscription]);
+  }, [user, navigate, userRole, refreshSubscription]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
