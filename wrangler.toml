@@ -77,24 +77,11 @@ SSO_DOMAIN = "https://sso-api.dark-mode-d021.workers.dev/"
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Pages Functions)
-EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
+EMAIL_WORKER_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
 EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
-PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
-
-# Email Worker API Key (for local dev)
-INTERNAL_API_KEY = "dev-test1232312"
-
-# Frontend URL (for invitation links)
-FRONTEND_URL = "http://localhost:5173"
-
-
 
 # Cloudflare R2 Configuration (Pages Functions)
 CLOUDFLARE_R2_BUCKET_NAME = "skill-echosystem"
-
-
-# ── Zoho ──────────────────────────────────────────────────────────────
-ZOHO_FLOW_WEBHOOK_URL="https://flow.zoho.in/60069206802/flow/webhook/"
 
 # ──────────────────────────────────────────────────────────────────────────
 # CLIENT VARIABLES (VITE_*) - Exposed to Frontend
@@ -128,15 +115,24 @@ VITE_GTM_ID = "GTM-M2N3952J"
 # - SUPABASE_ANON_KEY
 # - SUPABASE_SERVICE_ROLE_KEY
 # - VITE_SUPABASE_ANON_KEY
-# - SERVICE_AUTH_SECRET (Shared secret for authenticating with SSO worker)
+# - SERVICE_AUTH_SECRET (shared secret for authenticating with SSO worker)
 # - CLOUDFLARE_R2_ACCESS_KEY_ID
 # - CLOUDFLARE_R2_SECRET_ACCESS_KEY
+# - CLOUDFLARE_ACCOUNT_ID
 # - EMAIL_API_KEY
 # - EMBEDDING_API_KEY
 # - OPENROUTER_API_KEY (optional, for AI features)
 # - CLAUDE_API_KEY (optional, for AI features)
 # - GEMINI_API_KEY (optional, for AI features)
 # - SIGNING_SECRET (optional, for media access tokens)
+# - CRON_SECRET (for authenticating cron job requests)
+# - DEEPGRAM_API_KEY (optional, for audio transcription)
+# - GROQ_API_KEY (optional, for audio transcription)
+# - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (for direct SMTP email sending)
+# - FROM_EMAIL, FROM_NAME (default sender identity)
+# - ADMIN_EMAIL (admin notification recipient)
+# - APP_URL (public app base URL for email links)
+# - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (for AWS SDK usage)
 #
 # Note: Razorpay keys are NOT needed here - they are managed by the payment worker
 

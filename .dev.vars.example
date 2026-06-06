@@ -27,9 +27,9 @@ EMBEDDING_API_KEY=your_embedding_api_key_here
 
 # ==================== EMAIL WORKER CONFIGURATION ====================
 # URL of the email worker (standalone Cloudflare Worker on port 9001)
-EMAIL_API_URL=http://localhost:9001
+EMAIL_WORKER_URL=http://localhost:9001
 # API key for authenticating requests to the email worker
-EMAIL_API_KEY=your_EMAIL_API_KEY_here
+EMAIL_API_KEY=your_email_api_key_here
 # Admin email for event registration notifications
 ADMIN_EMAIL=admin@rareminds.in
 

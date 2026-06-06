@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import React, { useEffect, useId, useState } from "react"
 import { SubscriptionSettingsSection } from "@/features/subscription"
+import { PASSWORD_MIN } from '@/shared/constants';
 import { useAuth } from "@/features/auth"
 import { apiPost } from '@/shared/api/apiClient'
 import { getLogger } from '@/shared/config/logging'
@@ -288,7 +289,7 @@ export default function SettingsPage() {
             <div className="p-4 border rounded-xl">
               <p className="font-medium text-gray-900 mb-2">Change Password</p>
               <p className="text-sm text-gray-600 mb-4">
-                Use a strong password with at least 12 characters, numbers & symbols.
+                Use a strong password with at least {PASSWORD_MIN} characters, numbers & symbols.
               </p>
               <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border bg-white hover:bg-gray-100 transition">
                 <KeyRound className="w-4 h-4" />

@@ -25,6 +25,7 @@ import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 import { getLogger } from '@/shared/config/logging';
+import { PASSWORD_MIN } from '@/shared/constants';
 import { memberInvitationService, OrganizationInvitation } from '@/entities/organization';
 
 const logger = getLogger('invitation-signup');
@@ -130,8 +131,8 @@ export default function InvitationSignup() {
     };
 
     const validateForm = (): boolean => {
-        if (!state.password || state.password.length < 8) {
-            setState(prev => ({ ...prev, error: 'Password must be at least 8 characters' }));
+        if (!state.password || state.password.length < PASSWORD_MIN) {
+            setState(prev => ({ ...prev, error: `Password must be at least ${PASSWORD_MIN} characters` }));
             return false;
         }
         return true;

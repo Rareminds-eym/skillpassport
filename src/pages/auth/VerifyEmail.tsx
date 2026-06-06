@@ -17,6 +17,7 @@ const VerifyEmail = () => {
   const [error, setError] = useState('');
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  const [emailFailed] = useState(() => sessionStorage.getItem('email_sent_failed') === 'true');
 
   useEffect(() => {
     if (!token) return;
@@ -146,6 +147,7 @@ const VerifyEmail = () => {
 
   const handleResend = async () => {
     setResending(true);
+    sessionStorage.removeItem('email_sent_failed');
     try {
       await ssoClient.requestVerification({ redirect_url: window.location.origin });
       setResent(true);
@@ -199,6 +201,14 @@ const VerifyEmail = () => {
             <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Failed</h2>
             <p className="text-gray-600 mb-6">{error}</p>
+            {emailFailed && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <p className="text-red-700 text-sm">
+                  <strong>Delivery failed:</strong> The verification email could not be sent during signup.
+                  Click below to try again.
+                </p>
+              </div>
+            )}
             {isAuthenticated && !resent && (
               <button
                 onClick={handleResend}
@@ -242,6 +252,14 @@ const VerifyEmail = () => {
             <p className="text-gray-500 text-sm mb-6">
               Didn't receive the email? Check your spam folder or request a new one below.
             </p>
+            {emailFailed && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <p className="text-red-700 text-sm">
+                  <strong>Delivery failed:</strong> The verification email could not be sent during signup.
+                  Click below to try again.
+                </p>
+              </div>
+            )}
             {isAuthenticated && !resent && (
               <button
                 onClick={handleResend}

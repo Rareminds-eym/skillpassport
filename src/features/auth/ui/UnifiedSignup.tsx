@@ -32,6 +32,7 @@ import { AuthFetchError } from '@rareminds-eym/auth-client';
 import { OtpInput } from '@/shared/ui';
 import { isLocalhost } from '@/shared/lib';
 import { trackSignup } from '@/shared/lib/analytics';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 type UserRole = 'learner' | 'recruiter' | 'recruitment_admin' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
@@ -490,7 +491,7 @@ const UnifiedSignup = () => {
       if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     }
 
-    if (!state.password || state.password.length < 10) { setState(prev => ({ ...prev, error: 'Password must be at least 10 characters' })); return false; }
+    if (!state.password || state.password.length < PASSWORD_MIN) { setState(prev => ({ ...prev, error: `Password must be at least ${PASSWORD_MIN} characters` })); return false; }
     const typesCount = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter(r => r.test(state.password!)).length;
     if (typesCount < 3) { setState(prev => ({ ...prev, error: 'Password must contain at least 3 of: uppercase letters, lowercase letters, numbers, special characters' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
@@ -597,6 +598,9 @@ const UnifiedSignup = () => {
           redirect_url: window.location.origin,
         });
         ssoUserId = ssoResult.user.id;
+        if (ssoResult.email_sent === false) {
+          sessionStorage.setItem('email_sent_failed', 'true');
+        }
       } else {
         // Member signup (learner, educator, recruiter) — no org creation
         const ssoResult = await ssoClient.signupMember({
@@ -606,6 +610,9 @@ const UnifiedSignup = () => {
           redirect_url: window.location.origin,
         });
         ssoUserId = ssoResult.user.id;
+        if (ssoResult.email_sent === false) {
+          sessionStorage.setItem('email_sent_failed', 'true');
+        }
       }
 
       // Update auth store with the new user

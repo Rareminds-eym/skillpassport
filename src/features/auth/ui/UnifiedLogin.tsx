@@ -8,6 +8,7 @@ import { redirectToRoleDashboard } from '@/features/auth/lib';
 import { useAuthActions } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 import { trackLogin } from '@/shared/lib/analytics';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 interface LoginState {
   email: string;
@@ -112,8 +113,8 @@ const UnifiedLogin = () => {
       return;
     }
 
-    if (state.password.length < 8) {
-      setState((prev) => ({ ...prev, error: 'Password must be at least 8 characters' }));
+    if (state.password.length < PASSWORD_MIN) {
+      setState(prev => ({ ...prev, error: `Password must be at least ${PASSWORD_MIN} characters` }));
       return;
     }
 
@@ -415,7 +416,7 @@ const UnifiedLogin = () => {
                       type={state.showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       required
-                      minLength={8}
+                      minLength={PASSWORD_MIN}
                       value={state.password}
                       onChange={handleInputChange}
                       disabled={state.loading}

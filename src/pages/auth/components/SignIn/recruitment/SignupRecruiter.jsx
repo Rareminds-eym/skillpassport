@@ -65,7 +65,7 @@ export default function SignupRecruiter() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!formData.otp || formData.otp.length !== 6) return;
+    if (!formData.otp || formData.otp.length !== 4) return;
     setVerifyingOtp(true);
     try {
       const result = await verifyOtpApi(formData.phone, formData.otp);

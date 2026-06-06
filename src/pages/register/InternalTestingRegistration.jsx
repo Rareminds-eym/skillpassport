@@ -21,6 +21,7 @@ import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { signupLearner } from '@/entities/user/api/userApiService';
+import { PASSWORD_MIN } from '@/shared/constants';
 import { ssoClient } from '@/shared/api/ssoClient';
 
 const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 
@@ -40,8 +41,8 @@ const validateForm = (form) => {
   if (!form.phone?.trim() || !phoneRegex.test(form.phone.replace(/\D/g, ''))) {
     errors.phone = 'Please enter a valid 10-digit phone number';
   }
-  if (!form.password?.trim() || form.password.length < 6) {
-    errors.password = 'Password must be at least 6 characters';
+  if (!form.password?.trim() || form.password.length < PASSWORD_MIN) {
+    errors.password = `Password must be at least ${PASSWORD_MIN} characters`;
   }
 
   return errors;
@@ -485,7 +486,7 @@ export default function InternalTestingRegistration() {
                 type="password"
                 value={form.password}
                 onChange={(e) => updateField('password', e.target.value)}
-                placeholder="Create a password (min 6 characters)"
+                placeholder={`Create a password (min ${PASSWORD_MIN} characters)`}
                 error={errors.password}
               />
             </div>

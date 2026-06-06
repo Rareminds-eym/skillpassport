@@ -27,7 +27,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name, base_features').eq('plan_code', planCode).single();
       if (planError) return apiError(200, 'ERROR', 'PLAN_NOT_FOUND', context.request);
 
-      const addonsResp = await ssoFetch(env as any, new Request('http://sso-worker/api/addon-catalog', { method: 'GET' }));
+      const addonsResp = await ssoFetch(env as any, 'http://sso-worker/api/addon-catalog', { method: 'GET' });
       if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
       const { addons } = await addonsResp.json() as { addons: any[] };
 
@@ -45,7 +45,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const { data: subscription } = await supabase.from('subscription_cache').select('id, plan_id, status, created_at, plan_amount, plan_code, plan_name, features').eq('user_id', userId).eq('status', 'active').single();
       if (!subscription) return apiError(200, 'ERROR', 'NO_ACTIVE_SUBSCRIPTION', context.request);
 
-      const addonsResp = await ssoFetch(env as any, new Request('http://sso-worker/api/addon-catalog', { method: 'GET' }));
+      const addonsResp = await ssoFetch(env as any, 'http://sso-worker/api/addon-catalog', { method: 'GET' });
       if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
       const { addons } = await addonsResp.json() as { addons: any[] };
 
@@ -88,7 +88,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name').eq('id', subscription.plan_id).single();
       if (planError || !plan) return apiError(200, 'ERROR', 'PLAN_NOT_FOUND', context.request);
 
-      const mappingResp = await ssoFetch(env as any, new Request('http://sso-worker/api/addon-catalog', { method: 'GET' }));
+      const mappingResp = await ssoFetch(env as any, 'http://sso-worker/api/addon-catalog', { method: 'GET' });
       if (!mappingResp.ok) throw new Error(`SSO Worker addons error: ${mappingResp.status}`);
       const { addons } = await mappingResp.json() as { addons: any[] };
       const features = Array.isArray(plan.base_features) ? plan.base_features : [];

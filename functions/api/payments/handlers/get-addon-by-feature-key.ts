@@ -21,9 +21,7 @@ export async function handleGetAddonByFeatureKey(context: AuthenticatedContext):
 
   try {
     const ssoUrl = new URL(`http://sso-worker/api/addon-catalog/${encodeURIComponent(featureKey)}`);
-    const ssoResponse = await ssoFetch(env as any, new Request(ssoUrl.toString(), {
-      method: 'GET',
-    }));
+    const ssoResponse = await ssoFetch(env as any, ssoUrl.toString(), { method: 'GET' });
 
     if (!ssoResponse.ok) {
       if (ssoResponse.status === 404) {

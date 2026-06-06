@@ -28,6 +28,7 @@ import { SearchBar } from '@/shared/ui';
 import { SubscriptionSettingsSection } from '@/features/subscription';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 const logger = getLogger('school-admin-settings');
 
@@ -296,8 +297,8 @@ const UserManagementModal = ({
     if (!editUser && !password) {
       newErrors.password = "Password is required";
     }
-    if (password && password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+    if (password && password.length < PASSWORD_MIN) {
+      newErrors.password = `Password must be at least ${PASSWORD_MIN} characters`;
     }
 
     setErrors(newErrors);

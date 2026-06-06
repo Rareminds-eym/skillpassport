@@ -34,18 +34,18 @@ export async function sendEmail(
     env: Record<string, string>
 ): Promise<SendEmailResponse> {
     const emailWorkerUrl = env.EMAIL_WORKER_URL || 'http://127.0.0.1:9001';
-    const apiKey = env.INTERNAL_API_KEY;
+    const apiKey = env.EMAIL_API_KEY;
 
     console.log('[emailService] Environment check:', {
         hasEmailWorkerUrl: !!env.EMAIL_WORKER_URL,
-        hasInternalApiKey: !!env.INTERNAL_API_KEY,
+        hasInternalApiKey: !!env.EMAIL_API_KEY,
         emailWorkerUrl,
         envKeys: Object.keys(env),
     });
 
     if (!apiKey) {
-        console.error('[emailService] INTERNAL_API_KEY not found in env:', env);
-        throw new Error('INTERNAL_API_KEY environment variable is required');
+        console.error('[emailService] EMAIL_API_KEY not found in env:', env);
+        throw new Error('EMAIL_API_KEY environment variable is required');
     }
 
     try {

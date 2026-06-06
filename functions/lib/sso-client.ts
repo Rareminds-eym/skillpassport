@@ -171,9 +171,11 @@ export async function ssoRecordBundlePurchase(
 
 export async function ssoFetch(
   env: SsoClientEnv,
-  request: Request,
+  path: string,
+  init?: RequestInit,
 ): Promise<Response> {
-  return getSsoService(env).fetch(request);
+  const url = new URL(path, "http://sso-worker").toString();
+  return getSsoService(env).fetch(new Request(url, init));
 }
 
 /**
@@ -187,7 +189,7 @@ export async function ssoCreateMembership(
   const res = await ssoFetch(env, "/api/memberships/create", {
     method: "POST",
     body: JSON.stringify(data),
-  }, "", true);
+  });
 
   if (!res.ok) {
     const text = await res.text();
@@ -206,7 +208,7 @@ export async function ssoAssignMembershipRole(
   const res = await ssoFetch(env, "/api/memberships/assign-role", {
     method: "POST",
     body: JSON.stringify(data),
-  }, "", true);
+  });
 
   if (!res.ok) {
     const text = await res.text();
@@ -225,7 +227,7 @@ export async function ssoUpdateMembershipStatus(
   const res = await ssoFetch(env, "/api/memberships/update-status", {
     method: "PUT",
     body: JSON.stringify(data),
-  }, "", true);
+  });
 
   if (!res.ok) {
     const text = await res.text();

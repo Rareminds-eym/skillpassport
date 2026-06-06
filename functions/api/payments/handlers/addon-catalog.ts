@@ -18,7 +18,7 @@ export async function handleAddonCatalog(context: AuthenticatedContext): Promise
       const ssoUrl = new URL(`${INTERNAL_SSO_HOST}/api/bundles`);
       if (role) ssoUrl.searchParams.set('role', role);
 
-      const ssoResponse = await ssoFetch(env, new Request(ssoUrl.toString(), { method: 'GET' }));
+      const ssoResponse = await ssoFetch(env, ssoUrl.toString(), { method: 'GET' });
       if (!ssoResponse.ok) throw new Error(`SSO Worker error: ${ssoResponse.status}`);
       
       const { bundles } = await ssoResponse.json() as { bundles: Record<string, unknown>[] };
@@ -29,7 +29,7 @@ export async function handleAddonCatalog(context: AuthenticatedContext): Promise
       const bundleId = url.searchParams.get('bundleId');
       if (!bundleId) return apiError(400, 'VALIDATION_ERROR', 'Bundle ID required', context.request);
       
-      const bundlesResp = await ssoFetch(env, new Request(`${INTERNAL_SSO_HOST}/api/bundles`, { method: 'GET' }));
+      const bundlesResp = await ssoFetch(env, `${INTERNAL_SSO_HOST}/api/bundles`, { method: 'GET' });
       if (!bundlesResp.ok) throw new Error(`SSO Worker bundles error: ${bundlesResp.status}`);
       const { bundles } = await bundlesResp.json() as { bundles: Record<string, unknown>[] };
       
@@ -39,7 +39,7 @@ export async function handleAddonCatalog(context: AuthenticatedContext): Promise
       const featureKeys = (bundle.feature_keys as string[]) || [];
       if (featureKeys.length === 0) return apiSuccess({ totalIndividual: 0, bundlePrice: bundle.monthly_price, savings: 0 }, context.request);
       
-      const addonsResp = await ssoFetch(env, new Request(`${INTERNAL_SSO_HOST}/api/addon-catalog`, { method: 'GET' }));
+      const addonsResp = await ssoFetch(env, `${INTERNAL_SSO_HOST}/api/addon-catalog`, { method: 'GET' });
       if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
       const { addons } = await addonsResp.json() as { addons: Record<string, unknown>[] };
       

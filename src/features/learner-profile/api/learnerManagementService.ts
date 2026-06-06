@@ -325,7 +325,7 @@ export const attendanceService = {
   // Verify OTP (placeholder)
   async verifyOTP(_learnerId: string, otp: string): Promise<boolean> {
     // Implement actual OTP verification logic
-    return otp.length === 6;
+    return otp.length === 4;
   },
 
   // Get attendance for date range

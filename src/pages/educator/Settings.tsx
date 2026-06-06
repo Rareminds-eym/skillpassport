@@ -30,6 +30,7 @@ import { SubscriptionSettingsSection } from '@/features/subscription';
 import { useUser, useUserRole } from '@/shared/model/authStore';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 const logger = getLogger('EducatorSettings');
 interface SettingsState {
@@ -1042,8 +1043,8 @@ const Settings: React.FC = () => {
       return;
     }
 
-    if (passwordData.newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters long');
+    if (passwordData.newPassword.length < PASSWORD_MIN) {
+      setPasswordError(`New password must be at least ${PASSWORD_MIN} characters long`);
       return;
     }
 
@@ -2312,7 +2313,7 @@ const Settings: React.FC = () => {
                       setPasswordData({ ...passwordData, newPassword: value });
                       setPasswordError('');
                     }}
-                    placeholder="Enter your new password (min. 8 characters)"
+                    placeholder={`Enter your new password (min. ${PASSWORD_MIN} characters)`}
                     icon={<LockClosedIcon className="w-4 h-4" />}
                   />
 
@@ -2340,7 +2341,7 @@ const Settings: React.FC = () => {
 
                   <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-xs text-blue-800">
-                      <strong>Password Requirements:</strong> Must be at least 8 characters long and contain a mix of letters, numbers, and symbols for better security.
+                      <strong>Password Requirements:</strong> Must be at least {PASSWORD_MIN} characters long and contain a mix of letters, numbers, and symbols for better security.
                     </p>
                   </div>
                 </div>

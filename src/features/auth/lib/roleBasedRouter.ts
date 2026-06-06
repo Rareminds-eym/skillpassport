@@ -9,6 +9,7 @@ import { getOrgContext } from '@/entities/recruitment/api/orgContextService';
 const ROLE_ROUTES: Record<UserRole, string> = {
   learner: '/learner/dashboard',
   recruiter: '/recruitment/overview',
+  recruitment_admin: '/recruitment/admin/dashboard',
   educator: '/educator/dashboard',
   school_educator: '/educator/dashboard',
   college_educator: '/educator/dashboard',

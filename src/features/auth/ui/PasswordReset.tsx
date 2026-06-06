@@ -1,6 +1,7 @@
 import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
+import { PASSWORD_MIN } from '@/shared/constants';
 import { 
   Mail, 
   AlertCircle, 
@@ -199,8 +200,8 @@ const PasswordReset = () => {
       return;
     }
 
-    if (state.newPassword.length < 6) {
-      setState(prev => ({ ...prev, error: 'Password must be at least 6 characters long' }));
+    if (state.newPassword.length < PASSWORD_MIN) {
+      setState(prev => ({ ...prev, error: `Password must be at least ${PASSWORD_MIN} characters long` }));
       return;
     }
 

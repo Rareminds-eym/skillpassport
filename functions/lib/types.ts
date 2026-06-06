@@ -32,7 +32,7 @@ export interface PagesEnv {
   EMBEDDING_API_KEY?: string;
 
   // Email Worker configuration
-  EMAIL_API_URL?: string;
+  EMAIL_WORKER_URL?: string;
   EMAIL_API_KEY?: string;
   /** Cloudflare Service Binding to the Email worker */
   EMAIL_SERVICE?: {
