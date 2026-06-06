@@ -278,6 +278,9 @@ enabled = true
 port = 54327
 backend = "postgres"
 
+[vector]
+enabled = true
+
 [experimental]
 # OrioleDB is experimental and hosted-only.
 orioledb_version = ""
