@@ -31,7 +31,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   const isAdmin = user.roles.some((r: string) =>
-    ['admin', 'owner', 'school_admin', 'college_admin', 'university_admin'].includes(r)
+    ['admin', 'company_admin', 'owner', 'school_admin', 'college_admin', 'university_admin'].includes(r)
   );
 
   if (!isAdmin && !body.path.startsWith(`${user.id}/`)) {

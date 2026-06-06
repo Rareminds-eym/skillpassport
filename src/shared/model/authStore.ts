@@ -112,6 +112,7 @@ const isAdminRole = (roles: string[]): boolean =>
   roles.some(
     (r) =>
       r === 'admin' ||
+      r === 'company_admin' ||
       r === 'school_admin' ||
       r === 'college_admin' ||
       r === 'university_admin' ||
@@ -119,7 +120,7 @@ const isAdminRole = (roles: string[]): boolean =>
   );
 
 const isRecruiterRole = (roles: string[]): boolean =>
-  roles.some((r) => r === 'recruiter' || r === 'hr');
+  roles.some((r) => r === 'recruiter' || r === 'company_admin' || r === 'hr');
 
 /**
  * Pick the most specific role for the legacy `role` field.
@@ -133,6 +134,7 @@ function pickPrimaryRole(roles: string[]): string | null {
     'school_admin',
     'owner',
     'admin',
+    'company_admin',
     'college_educator',
     'school_educator',
     'educator',

@@ -63,7 +63,7 @@ export const onRequestGet = async (context: TypedContext) => {
     // Security check: Only allow users to fetch their own learner_type
     // unless they have admin privileges
     const isAdmin = authenticatedUser.roles?.some((role: string) => 
-      ['admin', 'school_admin', 'college_admin', 'university_admin', 'owner'].includes(role)
+      ['admin', 'company_admin', 'owner', 'school_admin', 'college_admin', 'university_admin'].includes(role)
     );
 
     if (requestedUserId && requestedUserId !== authenticatedUser.id && !isAdmin) {

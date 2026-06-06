@@ -246,7 +246,7 @@ const UnifiedLogin = () => {
       }
       if (!hasRole && state.selectedRole === 'recruiter') {
         hasRole = currentRoles.some(role =>
-          role === 'recruiter' || role === 'owner' || role === 'company_admin' || role === 'viewer' || role === 'member'
+          role === 'recruiter' || role === 'owner' || role === 'company_admin' || role === 'member'
         );
       }
 

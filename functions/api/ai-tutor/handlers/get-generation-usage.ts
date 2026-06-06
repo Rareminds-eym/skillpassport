@@ -17,10 +17,11 @@ const logger = createLogger('get-generation-usage');
 
 const ADMIN_ROLES = new Set([
   'admin',
+  'company_admin',
+  'owner',
   'school_admin',
   'college_admin',
   'university_admin',
-  'owner',
 ]);
 
 interface RequiredEnv {

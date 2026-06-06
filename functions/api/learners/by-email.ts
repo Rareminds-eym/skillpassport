@@ -28,7 +28,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   // Security: only allow fetching your own data (unless admin)
   const isAdmin = user.roles?.some((r: string) =>
-    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
+    ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'].includes(r)
   );
   if (!isAdmin && user.email !== email) {
     console.log(`[LearnersByEmail] BLOCKED: JWT email="${user.email}" tried to access "${email}"`);

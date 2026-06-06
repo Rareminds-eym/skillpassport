@@ -19,6 +19,8 @@ function getManagePath(userRole) {
 
   const manageRoutes = {
     admin: '/admin/subscription/manage',
+    company_admin: '/admin/subscription/manage',
+    owner: '/admin/subscription/manage',
     school_admin: '/school-admin/subscription/manage',
     college_admin: '/college-admin/subscription/manage',
     university_admin: '/university-admin/subscription/manage',
@@ -46,9 +48,9 @@ function getDashboardPath(userRole) {
     college_admin: '/college-admin/dashboard',
     university_admin: '/university-admin/dashboard',
     recruiter: '/recruitment/overview',
-    recruitment_admin: '/recruitment/admin/dashboard',
     admin: '/admin/dashboard',
     company_admin: '/admin/dashboard',
+    owner: '/admin/dashboard',
   };
   return dashboardRoutes[userRole] || '/learner/dashboard';
 }

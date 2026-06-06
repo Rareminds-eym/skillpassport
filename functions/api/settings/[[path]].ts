@@ -124,7 +124,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
 
   const isAdmin = user.roles?.some((r: string) =>
-    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
+    ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'].includes(r)
   );
   if (!isAdmin) {
     return apiError(403, 'FORBIDDEN', 'Only admins can modify settings', context.request);

@@ -84,7 +84,6 @@ const VerifyEmail = () => {
             userRole === 'recruiter' ||
             userRoles.includes('recruiter') ||
             userRoles.includes('company_admin') ||
-            userRoles.includes('viewer') ||
             userRoles.includes('owner');
 
           // Legacy flow: Check if there's an invitation token still in sessionStorage

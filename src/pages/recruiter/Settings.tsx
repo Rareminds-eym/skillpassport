@@ -1,8 +1,6 @@
 import {
     Bell,
     CheckCircle,
-    CheckCircle2,
-    Database,
     Globe,
     KeyRound,
     Lock,
@@ -302,31 +300,7 @@ export default function SettingsPage() {
         {/* Subscription & Billing */}
         <SubscriptionSettingsSection />
 
-        {/* System Management (super admin only) */}
-        {user?.role === "super_admin" && (
-          <SectionCard
-            icon={Database}
-            title="System Management"
-            subtitle="Admin-only utilities for analytics and data hygiene."
-          >
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 p-4 border rounded-xl">
-                <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5" />
-                <div>
-                  <p className="font-medium text-gray-900">Update Metrics Snapshot</p>
-                  <p className="text-sm text-gray-600">
-                    Calculate and save a snapshot in{" "}
-                    <code className="px-1 py-0.5 rounded bg-gray-100">metrics_snapshots</code> for trend analysis.
-                  </p>
-                </div>
-              </div>
-              <button className="flex items-center justify-center gap-2 w-full px-5 py-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
-                <RefreshCw className="w-4 h-4" />
-                Update Metrics Now
-              </button>
-            </div>
-          </SectionCard>
-        )}
+
       </div>
     </main>
   )

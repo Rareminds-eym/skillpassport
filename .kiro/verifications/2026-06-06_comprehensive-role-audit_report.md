@@ -1,71 +1,95 @@
 # Comprehensive Role Audit Report
 
-**Date**: 2026-06-06
-**Scope**: Full skillpassport codebase (`src/`, `functions/`, `supabase/`)
+**Date**: 2026-06-06 (Updated)
+**Scope**: Full skillpassport codebase (`src/`, `functions/`, `supabase/`) + sso-auth database
 **Files Examined**: ~200+ role-related locations across 50+ files
+
+> **🔴 CRITICAL CORRECTION**: The canonical source of truth for roles is the **sso-auth `roles` table** (16 roles), NOT the skillpassport DB `user_role` enum. Roles flow through: SSO `roles` table → `membership_roles` → `get_jwt_claims()` RPC → JWT claims → `user.roles` on frontend. See §1 for the complete list.
 
 ---
 
 ## Executive Summary
 
-The codebase has **7 distinct `UserRole` type definitions**, **14+ role-mapping route objects**, **15 inline admin-role arrays**, and **~50 files** containing role-checking logic. There is **no single source of truth** for what roles exist. The DB schema has values that the app code never handles (and vice versa), and the app code references roles that were never added to the DB enum.
+The canonical role set comes from the **sso-auth `roles` table** — 16 roles. The frontend and Cloudflare Functions code referenced several non-existent roles (`org_admin`, `recruitment_admin`, `viewer` as user_role) and were missing recognition for canonical roles (`company_admin`, `owner`). All discrepancies have been **fixed in this session**.
 
-### Critical Issues
+### Issues — Status After Fixes
 
-| # | Severity | Issue | Files Affected |
-|---|----------|-------|----------------|
-| 1 | 🔴 | **`RecruitmentRole` imported but never defined** — TypeScript `import type { RecruitmentRole }` resolves to nothing | `EmployeeList.tsx`, `InviteEmployeeModal.tsx`, `InvitationsList.tsx`, `ChangeRoleModal.tsx` |
-| 2 | 🔴 | **`college_lecturer` phantom role check** — `userRole === 'college_lecturer'` at Settings.tsx:1176 treats it as a `user_role` value. As a DB table name (`college_lecturers`) and educator type label, it appears correctly in 40+ files — the bug is only the role-comparison usage. | `src/pages/educator/Settings.tsx` (role check); 40+ files use `college_lecturers` table name correctly |
-| 3 | 🔴 | **`recruitment_admin` missing from `DASHBOARD_ROUTES`** — post-payment redirect wrong for this role | `PaymentSuccess.jsx` |
-| 4 | 🔴 | **6 different `UserRole` types** — no canonical union; each adds/removes roles inconsistently | 6 type definition files |
-| 5 | 🟡 | **`super_admin` in 12 backend function files** — admin role arrays include it; frontend removed but backend not | 12 `functions/` files |
-| 6 | 🟡 | **`admin` not in authoritative `UserRole` type** but used everywhere in route maps and role checks | `features/auth/api/index.ts` + 20+ files |
-| 7 | 🟡 | **`owner` role** — recognized by `pickPrimaryRole` and `isAdminRole` in auth store but missing from most route guards and role arrays | `authStore.ts`, 5 routes files |
-| 8 | 🟡 | **`hr` role** — in `VALID_ROLES` and `pickPrimaryRole` priority list but only referenced in `isRecruiterRole` — no routes, no dashboards | `validation.ts`, `authStore.ts` |
-| 9 | 🟡 | **`Viewer`, `College Admin`, `HoD`, etc.** — college staff roles checked via an array of display-name-style strings that don't match any enum | `college-admin/api/userManagementService.ts:84-85` |
-| 10 | 🟡 | **`viewer`/`member` used as `user_role` checks** — `VerifyEmail.tsx:87` does `userRoles.includes('viewer')` and `UnifiedLogin.tsx:249` checks `role === 'viewer'` / `role === 'member'`. These are SSO-only recruitment roles, not DB `user_role` values — checks always false. | `VerifyEmail.tsx`, `UnifiedLogin.tsx` |
+| # | Severity | Issue | Status |
+|---|----------|-------|--------|
+| 1 | 🔴 | **`RecruitmentRole` imported but never defined** | ❌ Still open — 4 files import it, not exported |
+| 2 | 🔴 | **`college_lecturer` phantom role check** at `Settings.tsx:1176` | ❌ Still open — role-comparison bug |
+| 3 | 🔴 | **`recruitment_admin` missing from `DASHBOARD_ROUTES`** | ✅ FIXED — role removed entirely (not an SSO role) |
+| 4 | 🔴 | **6 different `UserRole` types** | ❌ Still open — no canonical union |
+| 5 | 🟡 | **`super_admin` in backend arrays** | ✅ FIXED — removed from all 12 functions/ files + frontend |
+| 6 | 🟡 | **`admin` not in authoritative `UserRole` type** | ❌ Still open — `UserRole` type too narrow |
+| 7 | 🟡 | **`owner` missing from route guards and backend arrays** | ✅ FIXED — added to all manage/dashboard routes + backend ADMIN_ROLES |
+| 8 | 🟡 | **`hr` no routes or dashboards** | ❌ Still open — SSO role, no routes needed (falls through) |
+| 9 | 🟡 | **College staff display-name strings** | ❌ Still open — separate concern |
+| 10 | 🟡 | **`viewer`/`member` as user_role checks** | ✅ FIXED — removed `viewer` from VerifyEmail.tsx/UnifiedLogin.tsx; `member` kept (IS an SSO role) |
+| 11 | 🟡 | **`super_admin` in frontend app code** | ✅ FIXED — removed from recruiter/Settings.tsx |
+| 12 | 🟡 | **`company_admin` missing from auth store helpers** | ✅ FIXED — added to `isAdminRole`, `isRecruiterRole`, `pickPrimaryRole` |
+| 13 | 🟡 | **`org_admin` not an SSO role but in 10 backend files** | ✅ FIXED — replaced with `admin` |
+| 14 | 🟡 | **`recruitment_admin` not an SSO role but in dashboard routes** | ✅ FIXED — removed from dashboard/manage routes (still in signup UI as redirect label) |
+| 15 | 🟠 | **`authorization.security.test.ts` still references `super_admin`** | ⏳ Still open — test file, needs update if super_admin removed from DB
 
 ---
 
-## 1. DB Schema Role Enum (Ground Truth)
+## 1. Canonical Role Source — SSO Auth `roles` Table
+
+**Database**: `sso-auth` (separate Supabase project)
+**Table**: `public.roles`
+
+| # | Role | Description | Used In |
+|---|------|-------------|---------|
+| 1 | `admin` | Administrator with management access | Frontend routes, backend admin arrays |
+| 2 | `college_admin` | College administrator | Frontend routes, backend admin arrays |
+| 3 | `college_educator` | College-level educator | Frontend routes |
+| 4 | `company_admin` | Company-level admin | Frontend routes, auth store helpers ✅ (added) |
+| 5 | `educator` | General educator/teacher | Frontend routes (alias) |
+| 6 | `hr` | Human resources | Acknowledged, no specific routes |
+| 7 | `learner` | Self-directed learner | Frontend routes |
+| 8 | `member` | Regular organization member | Acknowledged in auth store, no routes |
+| 9 | `owner` | Organization owner with full access | Frontend routes, backend admin arrays ✅ (added) |
+| 10 | `recruiter` | Recruiter | Frontend routes |
+| 11 | `rm_admin` | Rareminds internal | Not in code (manual assign only) |
+| 12 | `rm_manager` | Rareminds internal | Not in code (manual assign only) |
+| 13 | `school_admin` | School administrator | Frontend routes, backend admin arrays |
+| 14 | `school_educator` | School-level educator | Frontend routes |
+| 15 | `super_admin` | (no description) | ❌ **Removed from code** (still in SSO table) |
+| 16 | `university_admin` | University administrator | Frontend routes, backend admin arrays |
+
+### SkillPassport DB `user_role` Enum (Legacy — separate from SSO)
 
 **File**: `supabase/migrations/20260526000000_schema.sql:367`
-**Type**: `public.user_role` (PostgreSQL ENUM)
+This PostgreSQL ENUM is a **separate legacy artifact** — not the source of truth for auth.
 
 ```sql
 CREATE TYPE "public"."user_role" AS ENUM (
-    'super_admin',      -- Still in DB, removed from frontend
-    'rm_admin',         -- Still in DB, removed from frontend
-    'rm_manager',       -- Still in DB, removed from frontend
+    'super_admin',      -- In SSO table too, removed from code
+    'rm_admin',         -- In SSO table too
+    'rm_manager',       -- In SSO table too
     'school_admin',
     'college_admin',
     'university_admin',
     'company_admin',
     'school_educator',
     'recruiter',
-    'school_student',   -- DEPRECATED (per comment), unused
-    'college_student',  -- DEPRECATED (per comment), unused
+    'school_student',   -- DEPRECATED — NOT in SSO roles table
+    'college_student',  -- DEPRECATED — NOT in SSO roles table
     'college_educator',
     'learner'
 );
 ```
 
-**Roles in DB but NOT in any TypeScript `UserRole` type**:
-- `super_admin` (in `functions/` backend only)
-- `rm_admin` (removed from all code; still in DB)
-- `rm_manager` (removed from all code; still in DB)
-- `company_admin` (in some route maps, not in type definition)
+### Roles NOT in SSO roles table (bug — now fixed)
 
-**Roles in code but NOT in DB enum**:
-- `admin` (alias role used in frontend routing)
-- `educator` (alias role used in frontend, maps to `school_educator`/`college_educator` in DB)
-- `owner` (SSO role, not a DB `user_role`)
-- `hr` (appears in validation, not in DB)
-- `principal`, `vice_principal`, `it_admin`, `class_teacher`, `subject_teacher`, `accountant`, `librarian`, `parent`, `career_counselor` (school vertical roles, not in DB enum)
-- `recruitment_admin` (used in route maps, not in DB enum)
-- `college_lecturer` (phantom — used in one file, not in DB or any type)
-- `org_admin` (used in 9+ `functions/` admin arrays, not in DB enum)
-- `viewer` (recruitment-specific, not a `user_role`)
+| Role | Was Used In | Fix |
+|------|-------------|-----|
+| `org_admin` | 10 `functions/` backend files | ✅ **Fixed**: Replaced with `admin` |
+| `recruitment_admin` | Frontend dashboard routes, signup UI | ✅ **Fixed**: Removed from routes (stays in signup as redirect label) |
+| `viewer` | `VerifyEmail.tsx`, `UnifiedLogin.tsx`, `AcceptInvitationPage.tsx` | ✅ **Fixed**: Removed from role checks (still valid as `recruitmentRole` in org context) |
+| `school_student` | DB enum only | ❌ Still in DB enum, not in SSO table |
+| `college_student` | DB enum only | ❌ Still in DB enum, not in SSO table |
 
 ---
 
@@ -190,31 +214,27 @@ Additionally, `member` is used as a role check in `UnifiedLogin.tsx:249` (see §
 
 ## 6. `ADMIN_ROLES` Arrays (Backend — functions/)
 
-### 6.1 Standard Pattern (9 files)
-```javascript
-['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin']
-```
-Used in: `settings/[[path]].ts`, `resume/save.ts`, `learners/trainings.ts` (×2), `learners/management.ts`, `learners/by-email.ts`, `learners/actions.ts`, `learners/data/[[path]].ts`, `learners/dashboard.ts`, `educator/dashboard/[[path]].ts`
+### 6.1 Canonical Pattern (All 14 occurrences — ✅ NOW FIXED)
 
-### 6.2 Storage Pattern (2 files)
-```javascript
-['admin', 'owner', 'school_admin', 'college_admin', 'university_admin']
-```
-Used in: `storage/upload-url.ts`, `storage/download-url.ts`
+All 14 occurrences across 12 files were updated to this single canonical array:
 
-### 6.3 AI Tutor Pattern
 ```javascript
-['admin', 'school_admin', 'college_admin', 'university_admin', 'owner']
+['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin']
 ```
-Used in: `ai-tutor/handlers/get-learner-type.ts:66`
 
-### 6.4 Generation Usage Pattern
-```javascript
-new Set(['admin', 'school_admin', 'college_admin', 'university_admin', 'owner'])
-```
-Used in: `ai-tutor/handlers/get-generation-usage.ts:18`
+**Changes applied**:
+- ✅ `org_admin` → `admin` (no longer referencing non-existent role)
+- ✅ `super_admin` removed (chosen to remove completely)
+- ✅ `company_admin` added (was missing despite being a valid SSO role)
+- ✅ `owner` added (was only in storage/ai-tutor patterns, now consistent everywhere)
 
-Note: `owner` appears in 3/4 backend admin patterns but `super_admin` only in the main pattern. `org_admin` appears in 9 files but is not a DB enum value.
+**Files updated** (14 occurrences in 12 files):
+- `settings/[[path]].ts`, `resume/save.ts`, `learners/trainings.ts` (×2), `learners/management.ts`, `learners/by-email.ts`, `learners/actions.ts`, `learners/data/[[path]].ts`, `learners/dashboard.ts`, `educator/dashboard/[[path]].ts`
+- `storage/upload-url.ts`, `storage/download-url.ts`
+- `ai-tutor/handlers/get-learner-type.ts`, `ai-tutor/handlers/get-generation-usage.ts`
+- `user/handlers/actions.ts` (special case: `['super_admin', 'company_admin']` → `['company_admin']`)
+
+### (All patterns now unified — no variants remain)
 
 ---
 
@@ -231,6 +251,13 @@ isRecruiterRole(roles): roles.some(r => r === 'recruiter' || r === 'hr')
 
 `isAdminRole` includes `owner` but NOT `company_admin` or `super_admin`.
 `isRecruiterRole` includes `hr` but NOT `company_admin`.
+
+**Critical gap (✅ NOW FIXED)**: `company_admin` was missing from all auth store helpers. Fixed:
+- ✅ `isAdminRole` now includes `company_admin`
+- ✅ `isRecruiterRole` now includes `company_admin`
+- ✅ `pickPrimaryRole` priority list now includes `company_admin` (after `admin`, before `college_educator`)
+
+Before fix: `isAdminRole(['company_admin'])` → `false`, `isRecruiterRole(['company_admin'])` → `false`, `pickPrimaryRole(['company_admin'])` → only worked by accident.
 
 ---
 
@@ -265,7 +292,15 @@ These are display-name-style strings with spaces and capital letters — they do
 12 `functions/` files reference `super_admin` in admin role arrays. The frontend has been cleaned of it. If a `super_admin` user exists in the DB, they would be authorized by the backend but would see no dashboard (frontend has no route for them).
 
 ### 8.5 `owner` in SSO Context
-The recruitment org context uses `'owner' | 'admin' | 'member'` as SSO role names (from the SSO system), which are different from the application `user_role` enum. The auth store's `pickPrimaryRole` includes `owner` in its priority list, and `isAdminRole` recognizes it, but no route guard or route map handles it.
+The `owner` role is an **SSO-level organization membership role**, NOT an application `user_role` from the DB. It comes from the `@rareminds-eym/auth-core` SSO system's org context (`ssoRoleName`):
+
+- `owner` — org creator/primary manager (has all permissions in recruitment context)
+- `admin` — org administrator (can manage members and settings)
+- `member` — standard org member (limited permissions)
+
+It is distinct from the DB `user_role` enum (`learner`, `recruiter`, `school_admin`, etc.). The `owner` role exists in the frontend's `userRoles` array only because SSO claims are merged into it at runtime. If the source of `userRoles` ever changes from SSO claims to the DB `user_role` column, all `userRoles.includes('owner')` checks silently break.
+
+The auth store's `pickPrimaryRole` includes `owner` in its priority list, and `isAdminRole` recognizes it, but no route guard or route map handles it.
 
 **Usage scope** (5+ frontend files treat `owner` as a legitimate role in user role arrays):
 - `VerifyEmail.tsx:88, 107, 177, 178` — `userRoles.includes('owner')` alongside `company_admin`, `recruiter`
@@ -411,6 +446,30 @@ The recruiter route guard allows `company_admin` through, but there is no separa
 `'owner'` is used across 5+ frontend files as a legitimate role check, but it's an SSO role name, not a DB `user_role`. These checks work because `userRoles` is currently populated from SSO claims (which include `owner`), but the dependency is undocumented. A future refactor that sources `userRoles` from the DB `user_role` column would silently break all `userRoles.includes('owner')` checks.
 
 ### 11.8 `college_lecturer` Role Check vs Table Name Confusion
+
+### 11.9 `super_admin` Still Present in Frontend App Code
+**File**: `src/pages/recruiter/Settings.tsx:306`
+```tsx
+{user?.role === "super_admin" && (
+  <SectionCard ... title="System Management">...</SectionCard>
+)}
+```
+This is a frontend application file (not subscription/routing) that was missed during the `super_admin` cleanup sweep. The `super_admin` role is still in the DB enum, so this condition can still trigger. However, if the intent is to remove `super_admin` from all frontend code, this needs to be changed to an admin role check.
+
+Additionally, `src/entities/organization/api/__tests__/security/authorization.security.test.ts` uses `super_admin` in test fixtures and assertions for security authorization testing. This is a test file and may be acceptable, but the `super_admin` role in tests creates coupling to a role that may be removed.
+
+### 11.10 `company_admin` Missing from Auth Store Helpers
+**File**: `src/shared/model/authStore.ts`
+
+`company_admin` is a valid DB `user_role` value used in 8+ frontend files for route mapping and role checks, but none of the auth store's role helpers recognize it:
+
+| Helper | Recognizes | Missing |
+|--------|-----------|---------|
+| `isAdminRole` | `admin`, `school_admin`, `college_admin`, `university_admin`, `owner` | `company_admin`, `super_admin` |
+| `isRecruiterRole` | `recruiter`, `hr` | `company_admin` |
+| `pickPrimaryRole` | 12 roles in priority list | `company_admin`, `recruitment_admin` |
+
+This means components that gate admin/recruiter UI behind `isAdminRole()` or `isRecruiterRole()` would incorrectly deny access to `company_admin` users. The role works at runtime only because the auth store's consumer code (`useUserRole`) may not rely on these helpers for `company_admin`-specific rendering.
 **File**: `Settings.tsx:1176`
 
 The role check `userRole === 'college_lecturer'` is a bug — `college_lecturer` is not a `user_role`. However, `college_lecturers` is a valid DB table queried in 40+ files, and `'college_lecturer'` is a valid educator type label in messaging. The only broken usage is the role-comparison at line 1176 — should likely be `college_educator` or removed.
@@ -421,23 +480,28 @@ The role check `userRole === 'college_lecturer'` is a bug — `college_lecturer`
 
 ### Must Fix (Breaking Behavior)
 1. **Define `RecruitmentRole`** as `export type RecruitmentRole = 'company_admin' | 'recruiter' | 'viewer';` in `entities/recruitment/model/types.ts`
-2. **Add `recruitment_admin` to `DASHBOARD_ROUTES`** in `PaymentSuccess.jsx`
-3. **Fix `college_lecturer` role check** at `Settings.tsx:1176` — either change to `college_educator` or remove. Do NOT change `college_lecturers` table/type references (those are correct).
+2. **Fix `college_lecturer` role check** at `Settings.tsx:1176` — either change to `college_educator` or remove. Do NOT change `college_lecturers` table/type references (those are correct).
 
 ### Should Fix (Consistency)
-4. **Consolidate `UserRole` types** into a single canonical type that includes all runtime roles
-5. **Extract duplicated route maps** to a shared constants file instead of 6 copies of `getManagePath`
-6. **Clean up functions/ backend `super_admin` references** (12 files) — decide if it's still a valid role
-7. **Add `admin`, `company_admin`** to the authoritative `UserRole` type
-8. **Remove duplicate `'learner'` entries** from `VALID_ROLES`
-9. **Audit `viewer`/`member` checks** in `VerifyEmail.tsx:87` and `UnifiedLogin.tsx:249` — replace SSO-role-dependent checks with proper `user_role`-based logic or document the SSO dependency explicitly
-10. **Document SSO role dependency** for `owner` checks across 5+ files (`VerifyEmail.tsx`, `CompleteProfile.tsx`, `CompanySignup.tsx`, `Recruiter/Profile.tsx`) — make explicit that `userRoles` includes SSO claim values, not just DB `user_role`
+3. **Consolidate `UserRole` types** into a single canonical type that includes all SSO roles
+4. **Extract duplicated route maps** to a shared constants file instead of 6 copies of `getManagePath` + 2 of `getDashboardPath`
+5. **Remove duplicate `'learner'` entries** from `VALID_ROLES`
+6. **Update `authorization.security.test.ts`** — remove `super_admin` test fixtures if the role is being removed from the system
+7. **Add missing SSO roles to `features/auth/api/index.ts` `UserRole` type** — currently missing `admin`, `company_admin`, `owner`, `hr`, `member`
+8. **Remove `school_student`/`college_student` from DB `user_role` enum** — not in SSO roles table, zero code references
 
-### Consider for Cleanup
-11. Decide fate of `org_admin` — role checked in 9 backend files but not in DB enum
-12. Decide fate of `hr`, `owner`, `member`, `viewer` — recognized by auth helpers but have no routes
-13. Clean up `school_student` and `college_student` from DB enum (marked deprecated)
-14. Align `ADMIN_ROLES` arrays across all 12 backend files (4 variants exist)
+### ✅ Completed This Session
+- **`super_admin` removed from all 12 functions/ backend files** — `ADMIN_ROLES` arrays cleaned
+- **`super_admin` removed from frontend** — `recruiter/Settings.tsx` System Management section removed
+- **`org_admin` fixed → `admin`** in all 10 backend files (was not an SSO role)
+- **`company_admin` added** to `isAdminRole`, `isRecruiterRole`, `pickPrimaryRole` in `authStore.ts`
+- **`company_admin` added** to `getManagePath`/`MANAGE_ROUTES` (6 files)
+- **`company_admin` added** to backend `ADMIN_ROLES` (was missing from all 12 files)
+- **`owner` added** to `getDashboardPath` (2 files), `getManagePath` (6 files), `ROLE_ROUTES` (1 file)
+- **`owner` added** to backend `ADMIN_ROLES` (was only in storage/ai-tutor patterns)
+- **`recruitment_admin` removed** from dashboard routes (2 files + `roleBasedRouter.ts` + `PaymentSuccess.jsx`) — not an SSO role
+- **`viewer` removed** from role checks in `VerifyEmail.tsx` and `UnifiedLogin.tsx` — not an SSO role (still valid as `recruitmentRole`)
+- **`roleBasedRouter.ts`** — widened from `Record<UserRole, string>` to `Record<string, string>` so all SSO roles work
 
 ---
 

@@ -37,7 +37,7 @@ interface SkillAnalytics {
   skillDistribution: { category: string; count: number }[];
 }
 
-const ADMIN_ROLES = ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'];
+const ADMIN_ROLES = ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'];
 
 function isAdmin(user: { roles?: string[] }): boolean {
   return user?.roles?.some((r: string) => ADMIN_ROLES.includes(r)) ?? false;

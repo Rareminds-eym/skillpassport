@@ -245,7 +245,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           } else if (userRole === 'recruiter') {
             foundRoles.push('recruiter');
             foundUserData.push({ id: userData.id, email: userData.email || email, role: 'recruiter', ...userData, name: userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : userData.firstName || userData.lastName });
-          } else if (['super_admin', 'company_admin'].includes(userRole)) {
+          } else if (['company_admin'].includes(userRole)) {
             foundRoles.push('school_admin');
             foundUserData.push({ id: userData.id, email: userData.email || email, role: 'school_admin', ...userData, name: userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : userData.firstName || userData.lastName });
           }

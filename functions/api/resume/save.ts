@@ -35,7 +35,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   // Verify user owns this learner record
   const isAdmin = user?.roles?.some((r: string) =>
-    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
+    ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'].includes(r)
   );
   if (!isAdmin) {
     const { data: learner } = await supabase

@@ -86,6 +86,8 @@ const DASHBOARD_ROUTES = {
   college_educator: '/educator/dashboard',
   // Recruiter role
   recruiter: '/recruitment/overview',
+  // Admin/owner roles
+  owner: '/admin/dashboard',
   // Learner roles
   learner: '/learner/dashboard',
 };
@@ -93,6 +95,8 @@ const DASHBOARD_ROUTES = {
 /** Subscription manage routes by role */
 const MANAGE_ROUTES = {
   admin: '/admin/subscription/manage',
+  company_admin: '/admin/subscription/manage',
+  owner: '/admin/subscription/manage',
   school_admin: '/school-admin/subscription/manage',
   college_admin: '/college-admin/subscription/manage',
   university_admin: '/university-admin/subscription/manage',

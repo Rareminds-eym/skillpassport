@@ -21,7 +21,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     logger.info('Fetching learner profile', { userId, userEmail, targetLearnerId });
 
     const isAdmin = user.roles?.some((r: string) =>
-      ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
+      ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'].includes(r)
     );
 
     if (targetEmail && !isAdmin && userEmail !== targetEmail) {

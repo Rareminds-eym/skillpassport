@@ -1,21 +1,22 @@
 import { NavigateFunction } from 'react-router-dom';
-import { UserRole } from '@/features/auth';
 import { getOrgContext } from '@/entities/recruitment/api/orgContextService';
 
 /**
  * Role-based routing configuration
  * Maps user roles to their respective dashboard routes
  */
-const ROLE_ROUTES: Record<UserRole, string> = {
+const ROLE_ROUTES: Record<string, string> = {
   learner: '/learner/dashboard',
   recruiter: '/recruitment/overview',
-  recruitment_admin: '/recruitment/admin/dashboard',
   educator: '/educator/dashboard',
   school_educator: '/educator/dashboard',
   college_educator: '/educator/dashboard',
   school_admin: '/school-admin/dashboard',
   college_admin: '/college-admin/dashboard',
   university_admin: '/university-admin/dashboard',
+  admin: '/admin/dashboard',
+  company_admin: '/admin/dashboard',
+  owner: '/admin/dashboard',
 };
 
 /**
@@ -23,7 +24,7 @@ const ROLE_ROUTES: Record<UserRole, string> = {
  * @param role - User role
  * @returns Dashboard route path
  */
-export const getRouteForRole = (role: UserRole): string => {
+export const getRouteForRole = (role: string): string => {
   return ROLE_ROUTES[role] || '/';
 };
 
@@ -34,7 +35,7 @@ export const getRouteForRole = (role: UserRole): string => {
  * @param navigate - React Router navigate function
  */
 export const redirectToRoleDashboard = async (
-  role: UserRole,
+  role: string,
   navigate: NavigateFunction
 ): Promise<void> => {
   console.log('[roleBasedRouter] Redirecting to dashboard', { role });
@@ -78,7 +79,7 @@ export const redirectToRoleDashboard = async (
  * @param route - Route to check
  * @returns True if route is valid for role
  */
-export const isValidRouteForRole = (role: UserRole, route: string): boolean => {
+export const isValidRouteForRole = (role: string, route: string): boolean => {
   const validRoute = ROLE_ROUTES[role];
   return route.startsWith(validRoute.split('/')[1]);
 };
