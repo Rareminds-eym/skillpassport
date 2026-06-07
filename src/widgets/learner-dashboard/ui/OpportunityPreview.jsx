@@ -1390,8 +1390,8 @@ const OpportunityPreview = ({
                     if (hasCurrentBacklogs && !isApplied) {
                       // Don't allow application if learner has current backlogs
                       return;
-                    } else if (!canApplyToJobs && !isApplied) {
-                      // Show upgrade prompt for freemium users BEFORE application modal
+                    } else if (!canAccessOpportunities && !isApplied) {
+                      // Show upgrade prompt for freemium users
                       setShowDetailsModal(false);
                       if (onShowUpgradePrompt) {
                         onShowUpgradePrompt();
