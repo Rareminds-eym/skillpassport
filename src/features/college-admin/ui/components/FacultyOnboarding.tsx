@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle, FileText, Loader2, Upload, X } from "lucide-r
 import React, { useEffect, useState } from "react";
 
 import { apiPost } from '@/shared/api/apiClient';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 import { uploadFile, uploadMultipleFiles, validateFile } from '@/shared/api';
 // @ts-ignore - userApiService is a .js file

@@ -222,7 +222,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         razorpay_order_id: body.razorpay_order_id as string,
         amount: planPrice,
         currency: 'INR',
-        status: 'success',
+        status: 'completed',
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
       });
     } catch (txError) {
