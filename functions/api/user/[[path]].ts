@@ -179,7 +179,11 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/create-college-staff' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
         const user = getContextUser(authContext);
-        return await handleCreateCollegeStaff(authContext.request, authContext.env, { id: user.id, email: user.email || '' });
+        return await handleCreateCollegeStaff(authContext.request, authContext.env, {
+          id: user.id,
+          email: user.email || '',
+          org_id: (user as any).org_id,
+        });
       })(context);
     }
     if (path === '/update-learner-documents' && request.method === 'POST') {
