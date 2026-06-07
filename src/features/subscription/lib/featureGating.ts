@@ -160,7 +160,7 @@ function checkFreemiumAccess(feature: string): FeatureAccessResult {
       hasAccess: false,
       reason: 'This feature requires a paid plan',
       upgradeRequired: true,
-      availableInPlans: ['basic', 'professional', 'enterprise'],
+      availableInPlans: ['basic', 'professional', 'premium', 'enterprise'],
     };
   }
 
@@ -174,7 +174,7 @@ function checkFreemiumAccess(feature: string): FeatureAccessResult {
     hasAccess: false,
     reason: 'Upgrade to a paid plan to unlock this feature',
     upgradeRequired: true,
-    availableInPlans: ['basic', 'professional', 'enterprise'],
+    availableInPlans: ['basic', 'professional', 'premium', 'enterprise'],
   };
 }
 

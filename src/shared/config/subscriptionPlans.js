@@ -17,6 +17,7 @@ export const PLAN_IDS = {
   FREEMIUM: 'freemium',
   BASIC: 'basic',
   PROFESSIONAL: 'professional',
+  PREMIUM: 'premium',
   ENTERPRISE: 'enterprise',
   ECOSYSTEM: 'enterprise_ecosystem',
 };
@@ -30,6 +31,7 @@ export const PLAN_HIERARCHY = [
   PLAN_IDS.FREEMIUM,
   PLAN_IDS.BASIC,
   PLAN_IDS.PROFESSIONAL,
+  PLAN_IDS.PREMIUM,
   PLAN_IDS.ENTERPRISE,
   PLAN_IDS.ECOSYSTEM,
 ];
@@ -43,9 +45,9 @@ export const PLAN_HIERARCHY_LEVELS = {
   'basic': 1,
   'professional': 2,
   'premium': 3,
-  'enterprise': 3,
-  'ecosystem': 3,
-  'enterprise_ecosystem': 3
+  'enterprise': 4,
+  'ecosystem': 4,
+  'enterprise_ecosystem': 4
 };
 
 /**
