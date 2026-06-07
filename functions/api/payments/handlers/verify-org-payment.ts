@@ -115,7 +115,7 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         razorpay_order_id: body.razorpay_order_id as string,
         amount: planAmount / 100,
         currency: (body.currency as string) || 'INR',
-        status: 'success',
+        status: 'completed',
         transaction_type: 'subscription',
         organization_id: body.org_id as string,
         is_bulk_purchase: true,

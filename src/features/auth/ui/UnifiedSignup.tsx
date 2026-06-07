@@ -319,7 +319,11 @@ const UnifiedSignup = () => {
 
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
-  const allRoles: UserRole[] = ['learner', 'recruiter', 'recruitment_admin', 'school_educator', 'college_educator', 'school_admin', 'college_admin', 'university_admin'];
+  // Educators (school_educator/college_educator) are intentionally excluded from
+  // self-signup: institutions onboard educators via the admin "Teacher/Educator
+  // onboarding" flow (seat-based), not the public b2c signup. Their roles still
+  // exist for login and admin-created accounts.
+  const allRoles: UserRole[] = ['learner', 'recruiter', 'recruitment_admin', 'school_admin', 'college_admin', 'university_admin'];
   // Note: 'recruitment_admin' role will redirect to company signup page
   // 'recruiter' role is for invitation-based signups (no company creation)
 
@@ -591,12 +595,17 @@ const UnifiedSignup = () => {
       if (isAdminRole) {
         // Admin signup creates user + org
         const orgName = `${state.firstName} ${state.lastName}'s Institution`;
+        // `role` is forwarded so the org creator's membership carries the
+        // selected admin role (school_admin/college_admin/university_admin) in
+        // addition to 'owner'. Cast: the published SignupPayload type doesn't
+        // declare `role` yet, but the SSO /auth/signup handler reads it.
         const ssoResult = await ssoClient.signup({
           email: emailToUse, // Use the forced email, not state.email
           password: state.password,
           org_name: orgName,
+          role: state.selectedRole!,
           redirect_url: window.location.origin,
-        });
+        } as Parameters<typeof ssoClient.signup>[0] & { role: string });
         ssoUserId = ssoResult.user.id;
         if (ssoResult.email_sent === false) {
           sessionStorage.setItem('email_sent_failed', 'true');

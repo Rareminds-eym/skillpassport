@@ -8,6 +8,7 @@
 
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
+import { ssoCreateMember } from '../../../lib/sso-client';
 import {
   calculateAge,
   deleteAuthUser,
@@ -235,7 +236,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
 /**
  * Handle admin creating a teacher
  */
-export async function handleCreateTeacher(request: Request, env: any, user: { id: string; email: string }): Promise<Response> {
+export async function handleCreateTeacher(request: Request, env: any, user: { id: string; email: string; org_id?: string }): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -311,15 +312,9 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     return apiError(400, 'VALIDATION_ERROR', 'School ID not found', request);
   }
 
-  // Check if email exists
-  const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
-  const emailExists = existingAuthUsers?.users?.some(
-    (u: any) => u.email === teacher.email.toLowerCase()
-  );
-  if (emailExists) {
-    return apiError(400, 'VALIDATION_ERROR', `User with email ${teacher.email} already exists`, request);
-  }
-
+  // Pre-check for an existing teacher profile in the app DB (fast, friendly error).
+  // The SSO worker is the source of truth for the auth user and will reject
+  // duplicate emails too.
   const { data: existingTeacher } = await supabaseAdmin
     .from('school_educators')
     .select('id')
@@ -329,30 +324,36 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     return apiError(400, 'VALIDATION_ERROR', `Teacher with email ${teacher.email} already exists`, request);
   }
 
+  // The new teacher must join the admin's organization in the SSO DB.
+  const ssoOrgId = user.org_id;
+  if (!ssoOrgId) {
+    return apiError(400, 'VALIDATION_ERROR', 'Admin organization not found in session', request);
+  }
+
   const teacherPassword = generatePassword();
 
-  // Create auth user
-  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: teacher.email.toLowerCase(),
-    password: teacherPassword,
-    email_confirm: true,
-    user_metadata: {
-      first_name: teacher.first_name,
-      last_name: teacher.last_name,
-      role: 'educator',
-      school_id: schoolId,
-      added_by: user.id,
-    },
-  });
-
-  if (authError || !authUser.user) {
-    return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
+  // ── Create the AUTH user in the SSO worker (never Supabase Auth) ──
+  // This makes the teacher a real, active SSO member of the school's org with
+  // the school_educator role, so they can log in via SSO. Access is granted
+  // through the organization's subscription/seats — no personal subscription.
+  let ssoUserId: string;
+  try {
+    const ssoMember = await ssoCreateMember(env, {
+      email: teacher.email.toLowerCase(),
+      password: teacherPassword,
+      role: 'school_educator',
+      org_id: ssoOrgId,
+    });
+    ssoUserId = ssoMember.user_id;
+  } catch (ssoErr) {
+    return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create teacher account', request);
   }
 
   try {
-    // Create public.users record
+    // Create app-DB users profile row (FK target for school_educators).
+    // Mirrors the SSO user id; this is a profile shadow, not an auth record.
     await supabaseAdmin.from('users').insert({
-      id: authUser.user.id,
+      id: ssoUserId,
       email: teacher.email.toLowerCase(),
       firstName: teacher.first_name,
       lastName: teacher.last_name,
@@ -370,7 +371,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
 
     // Create school_educators record
     const educatorData = {
-      user_id: authUser.user.id,
+      user_id: ssoUserId,
       school_id: schoolId,
       email: teacher.email.toLowerCase(),
       first_name: teacher.first_name,
@@ -419,17 +420,17 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
 
     return apiSuccess({
       message: `Teacher ${teacher.first_name} ${teacher.last_name} created successfully`,
-      data: {
-        authUserId: authUser.user.id,
-        teacherId: teacherRecord.id,
-        email: teacher.email,
-        name: `${teacher.first_name} ${teacher.last_name}`,
-        password: teacherPassword,
-        role: teacher.role,
-      },
+      authUserId: ssoUserId,
+      teacherId: teacherRecord.id,
+      email: teacher.email,
+      name: `${teacher.first_name} ${teacher.last_name}`,
+      password: teacherPassword,
+      role: teacher.role,
     }, request);
   } catch (error) {
-    await deleteAuthUser(supabaseAdmin, authUser.user.id);
+    // Best-effort rollback of the app-DB profile row. The SSO user already
+    // exists; it is reused on a corrected retry (duplicate email is rejected).
+    await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }

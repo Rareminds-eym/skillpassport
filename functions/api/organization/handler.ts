@@ -352,7 +352,11 @@ async function expireOldInvitations(context: AuthenticatedContext) {
 
 async function createOrganizationHandler(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
-  const { data, error } = await supabase.from('organizations').insert(body).select().single();
+  // `action` is the request-routing discriminator, not a column. Drop it (and
+  // any client-only fields) before insert so PostgREST doesn't reject the row
+  // with "Could not find the 'action' column of 'organizations'".
+  const { action: _action, ...orgFields } = body;
+  const { data, error } = await supabase.from('organizations').insert(orgFields).select().single();
   if (error) throw error;
   return apiSuccess(data, context.request);
 }

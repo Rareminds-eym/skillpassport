@@ -15,6 +15,7 @@ import { AssessmentReportDrawer } from '@/features/assessment';
 import { formatStreamId } from '@/shared/lib/utils/formatters';
 import { getLogger } from '@/shared/config/logging';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { supabase } from '@/shared/api/supabaseClient';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('EducatorAssessmentResults');

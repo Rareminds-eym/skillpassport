@@ -88,8 +88,10 @@ const TeacherListPage: React.FC = () => {
 
     try {
       const result = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: user.email, user_id: user.id }) as any;
-      if (result?.school_id) {
-        setSchoolId(result.school_id);
+      // apiPost returns the API envelope { success, data, error }; school_id is under `.data`.
+      const schoolIdValue = result?.data?.school_id ?? result?.school_id;
+      if (schoolIdValue) {
+        setSchoolId(schoolIdValue);
         return;
       }
       setLoading(false);
@@ -107,7 +109,9 @@ const TeacherListPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await apiPost('/college-admin/school-admin', { action: 'get-teachers', school_id: schoolId }) as any;
-      if (data) setTeachers(data);
+      // Unwrap the API envelope; the teachers array lives under `.data`.
+      const teachersList = data?.data ?? data;
+      if (Array.isArray(teachersList)) setTeachers(teachersList);
     } catch (error) {
       // Error handled silently
     } finally {

@@ -102,7 +102,7 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
         razorpay_order_id: body.razorpay_order_id as string,
         amount: priceAtPurchase,
         currency: (body.currency as string) || 'INR',
-        status: 'success',
+        status: 'completed',
         transaction_type: 'bundle',
         metadata: { bundle_id: body.bundle_id },
       });
