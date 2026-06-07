@@ -119,7 +119,13 @@ async function apiRequest<T>(
 
       try {
         const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error || errorJson.message || `API request failed: ${response.status}`;
+        // Error responses may be either the standard envelope
+        // ({ error: { code, message } }) or a plain { error/message } object.
+        errorMessage =
+          errorJson.error?.message ||
+          (typeof errorJson.error === 'string' ? errorJson.error : undefined) ||
+          errorJson.message ||
+          `API request failed: ${response.status}`;
       } catch {
         errorMessage = errorText || `API request failed: ${response.status}`;
       }
@@ -134,14 +140,20 @@ async function apiRequest<T>(
       throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    const json = await response.json();
     logger.info(`✅ [apiRequest] Response parsed successfully`, {
       method,
       url,
-      hasData: !!data,
+      hasData: !!json,
     });
 
-    return data;
+    // All adaptive-session handlers return the standard envelope
+    // ({ success, data, error, meta }). Unwrap to the payload so consumers
+    // (e.g. result.question, result.session, result.isCorrect) work directly.
+    // Defensive fallback to `json` for any non-enveloped response.
+    return (json && typeof json === 'object' && 'success' in json
+      ? (json as { data: T }).data
+      : json) as T;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     logger.error(`❌ [apiRequest] Request failed`, {
