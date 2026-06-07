@@ -1,7 +1,7 @@
-import { withAuth, getContextUser } from '../../lib/auth';
+import type { AuthenticatedContext, ContextWithUser } from '@rareminds-eym/auth-core';
+import { requireAdmin, withAuth } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError } from '../../lib/response';
 
 function getSubPath(url: URL): string {
   return url.pathname.replace(/^\/api\/settings\/?/, '');
@@ -36,13 +36,20 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     if (subPath === 'roles') {
+      // P4 task 20.3: read the role key from the app-owned `role_code` column
+      // (FK → school_internal_roles.code) instead of the legacy `role_type`
+      // (`user_role` enum). Correct once Expand (20.1) + backfill (20.2) are
+      // applied — the backfill sets role_code = role_type for every row, so this
+      // returns the SAME roles the old role_type read produced (behavior preserved).
+      // The external response field stays `roleType` for API-contract stability;
+      // it is now SOURCED from role_code (the two are equal post-backfill).
       const [permResult, scopeResult] = await Promise.all([
         supabase
           .from('college_role_module_permissions')
-          .select('role_type, college_setting_modules!inner(id, module_name), college_setting_permissions!inner(id, permission_name)'),
+          .select('role_code, college_setting_modules!inner(id, module_name), college_setting_permissions!inner(id, permission_name)'),
         supabase
           .from('college_role_scope_rules')
-          .select('role_type, scope_type, scope_value')
+          .select('role_code, scope_type, scope_value')
       ]);
 
       if (permResult.error) throw permResult.error;
@@ -54,10 +61,11 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       const roleMap = new Map<string, { moduleAccess: Record<string, string[]>; scopeRules: Record<string, string[]> }>();
 
       for (const item of rolePermissions as any[]) {
-        if (!roleMap.has(item.role_type)) {
-          roleMap.set(item.role_type, { moduleAccess: {}, scopeRules: {} });
+        if (item.role_code == null) continue; // skip un-backfilled legacy rows (defensive)
+        if (!roleMap.has(item.role_code)) {
+          roleMap.set(item.role_code, { moduleAccess: {}, scopeRules: {} });
         }
-        const role = roleMap.get(item.role_type)!;
+        const role = roleMap.get(item.role_code)!;
         const modName = item.college_setting_modules?.module_name;
         const permName = item.college_setting_permissions?.permission_name;
         if (modName && permName) {
@@ -69,10 +77,11 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       }
 
       for (const item of roleScopeRules as any[]) {
-        if (!roleMap.has(item.role_type)) {
-          roleMap.set(item.role_type, { moduleAccess: {}, scopeRules: {} });
+        if (item.role_code == null) continue; // skip un-backfilled legacy rows (defensive)
+        if (!roleMap.has(item.role_code)) {
+          roleMap.set(item.role_code, { moduleAccess: {}, scopeRules: {} });
         }
-        const role = roleMap.get(item.role_type)!;
+        const role = roleMap.get(item.role_code)!;
         if (!role.scopeRules[item.scope_type]) role.scopeRules[item.scope_type] = [];
         if (!role.scopeRules[item.scope_type].includes(item.scope_value)) {
           role.scopeRules[item.scope_type].push(item.scope_value);
@@ -116,19 +125,11 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   }
 });
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
+export const onRequestPost = withAuth(requireAdmin(async (context: ContextWithUser) => {
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
   const url = new URL(context.request.url);
   const subPath = getSubPath(url);
-  const user = getContextUser(context);
-
-  const isAdmin = user.roles?.some((r: string) =>
-    ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'].includes(r)
-  );
-  if (!isAdmin) {
-    return apiError(403, 'FORBIDDEN', 'Only admins can modify settings', context.request);
-  }
 
   let body: any;
   try {
@@ -145,9 +146,28 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiError(400, 'VALIDATION_ERROR', 'roleType is required', context.request);
       }
 
+      // P4 task 22.2 — single-key WRITE path (role_code only).
+      // ────────────────────────────────────────────────────────────────────
+      // The legacy `role_type` (`user_role` enum) columns were DROPPED in
+      // migration 20260603000007 (task 22.2), and `public.user_role` was dropped
+      // with them. `role_code` (FK → school_internal_roles.code) is now the SOLE
+      // role key on both college permission tables, matching the read paths
+      // (get-permissions, settings GET 'roles'). The earlier transition dual-write
+      // (role_type + role_code) is therefore removed: we write and delete by
+      // `role_code` only.
+      //
+      // FK PREREQUISITE: `roleType` here is the College-Admin-Settings role key —
+      // 'college_admin' or 'college_educator' (see Settings.tsx). Writing it into
+      // `role_code` requires those codes to exist in `school_internal_roles`; the
+      // 17.2/20.3 seed adds college_admin/college_educator/school_educator so this
+      // insert satisfies the role_code FK.
+      //
+      // DELETE-before-insert matches on `role_code`, removing ALL prior rows for
+      // the role so the re-insert cannot collide on the replacement
+      // UNIQUE(role_code, …) constraints (added in migration 20260603000007).
       const [deletePermResult, deleteScopeResult] = await Promise.all([
-        supabase.from('college_role_module_permissions').delete().eq('role_type', roleType),
-        supabase.from('college_role_scope_rules').delete().eq('role_type', roleType),
+        supabase.from('college_role_module_permissions').delete().eq('role_code', roleType),
+        supabase.from('college_role_scope_rules').delete().eq('role_code', roleType),
       ]);
 
       if (deletePermResult.error) throw deletePermResult.error;
@@ -167,7 +187,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           for (const permName of (ma.permissions || [])) {
             const permId = permMap.get(permName);
             if (permId) {
-              newPermissions.push({ role_type: roleType, module_id: moduleId, permission_id: permId });
+              // role_code is the sole role key (role_type dropped in 20260603000007).
+              newPermissions.push({ role_code: roleType, module_id: moduleId, permission_id: permId });
             }
           }
         }
@@ -177,12 +198,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (Array.isArray(scopeRules)) {
         for (const sr of scopeRules) {
           for (const value of (sr.values || [])) {
-            newScopeRules.push({ role_type: roleType, scope_type: sr.type, scope_value: value });
+            // role_code is the sole role key (role_type dropped in 20260603000007).
+            newScopeRules.push({ role_code: roleType, scope_type: sr.type, scope_value: value });
           }
         }
       }
 
-      const insertPromises: Promise<any>[] = [];
+      const insertPromises: PromiseLike<any>[] = [];
       if (newPermissions.length > 0) {
         insertPromises.push(supabase.from('college_role_module_permissions').insert(newPermissions));
       }
@@ -202,4 +224,4 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   } catch (error) {
     return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
-});
+}));

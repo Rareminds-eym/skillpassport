@@ -1,6 +1,6 @@
-import { ReactNode, useEffect, useState } from 'react';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
-import { useSubscriptionQuery, useSubscriptionPlansData } from '@/features/subscription/model';
+import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { ReactNode, useEffect, useState } from 'react';
 import { UpgradePrompt } from './UpgradePrompt';
 
 interface PlanFeatureGateProps {
@@ -10,18 +10,36 @@ interface PlanFeatureGateProps {
 }
 
 const FALLBACK_PLANS = [
-  { name: 'Basic',        price: 499,  duration: 'yearly', recommended: false },
-  { name: 'Professional', price: 749,  duration: 'yearly', recommended: true  },
-  { name: 'Premium',      price: 999,  duration: 'yearly', recommended: false },
+  { name: 'Basic', price: 499, duration: 'yearly', recommended: false },
+  { name: 'Professional', price: 749, duration: 'yearly', recommended: true },
+  { name: 'Premium', price: 999, duration: 'yearly', recommended: false },
 ];
 
 /**
- * PlanFeatureGate Component
- * 
- * Conditionally renders children based on user's subscription plan and feature access.
+ * PlanFeatureGate Component — UX-ONLY AFFORDANCE (NOT a security boundary).
+ *
+ * Conditionally renders `children` versus an upgrade prompt based on the user's
+ * subscription plan and feature access. This is a PRESENTATION control only: it
+ * decides what to SHOW, not what the user is allowed to DO.
+ *
+ * It MUST NEVER be treated as a security boundary:
+ *   - The `checkFeatureAccess` call below returns a UX hint; a client can bypass
+ *     this component (devtools, edited bundle, direct request) and it must not
+ *     grant access to gated data or operations.
+ *   - The AUTHORITATIVE entitlement gate is the Cloudflare Function serving the
+ *     request — `requireFeatureAccess(featureKey, handler)` → `entitlementCheck`
+ *     (`functions/lib/auth.ts` / `functions/lib/entitlements.ts`), enforced
+ *     server-side behind the verified JWT.
+ *   - This component SHALL NOT be the sole gate for protected functionality
+ *     (bug §9.2/§9.3, requirement E9.3).
+ *
  * Prices are sourced from the API via useSubscriptionPlansData.
  * FALLBACK_PLANS are ONLY used while the API call is in-flight.
- * 
+ *
+ * KNOWN GAP: server-side `requireFeatureAccess` is implemented (task 24.1) but
+ * its application to LIVE handlers is deferred (task 24.2); see the note in
+ * `functions/lib/auth.ts`.
+ *
  * @param feature - The feature key to check access for
  * @param fallback - Optional custom component to render when access is denied
  * @param children - Content to render when user has access
@@ -50,7 +68,7 @@ export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGate
   // Handle error state by denying access
   if (error) {
     console.error('FeatureGate: Error fetching subscription data', error);
-    
+
     // If custom fallback provided, use it
     if (fallback) {
       return <>{fallback}</>;
@@ -91,11 +109,11 @@ export function PlanFeatureGate({ feature, fallback, children }: PlanFeatureGate
   // Use API-fetched plans if loaded, fall back to static while loading
   const availablePlans = apiPlans && apiPlans.length > 0
     ? apiPlans.map((p: Record<string, unknown>) => ({
-        name: p.name as string,
-        price: p.price as number,
-        duration: p.duration as string,
-        recommended: p.recommended as boolean,
-      }))
+      name: p.name as string,
+      price: p.price as number,
+      duration: p.duration as string,
+      recommended: p.recommended as boolean,
+    }))
     : FALLBACK_PLANS;
 
   return (

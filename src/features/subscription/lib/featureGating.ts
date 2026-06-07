@@ -1,9 +1,39 @@
 /**
- * Feature Gating Utilities
- * Handles feature access control based on subscription status
+ * Feature Gating Utilities — UX-ONLY AFFORDANCE (NOT a security boundary).
+ *
+ * These helpers (`checkFeatureAccess`, `checkFreemiumAccess`, `hasFeatureAccess`,
+ * `getFeatureAccessLevel`, `isFeatureInBasePlan`, `getRequiredAddOn`) compute
+ * feature access HINTS so the UI can present the right affordance: show/hide a
+ * panel, blur+lock content, or surface an upgrade prompt. They exist purely for
+ * presentation and a smooth upgrade flow.
+ *
+ * They are NOT a trust boundary and MUST NEVER be relied on for security:
+ *   - A client can bypass every check here (devtools, edited bundle, direct
+ *     request) and it must not grant access to gated data or operations.
+ *   - The AUTHORITATIVE entitlement gate is the Cloudflare Function serving the
+ *     request: `requireFeatureAccess(featureKey, handler)` →
+ *     `entitlementCheck` (see `functions/lib/auth.ts` and
+ *     `functions/lib/entitlements.ts`), which reads the SSO-synced
+ *     `subscription_cache`/`plans_cache`/entitlement shadow state server-side
+ *     behind the verified JWT.
+ *   - These client checks SHALL NOT be the sole gate for protected
+ *     functionality (bug §9.2/§9.3, requirement E9.3).
+ *
+ * Note the deliberate fail-OPEN behaviour for paid plans below: that is an
+ * acceptable UX trade-off precisely BECAUSE this layer is not the gate — the
+ * server independently enforces entitlement, so a generous client hint cannot
+ * leak access.
+ *
+ * KNOWN GAP (tracked, not introduced here): the server guard
+ * `requireFeatureAccess` is implemented (task 24.1) but its application to LIVE
+ * feature-gated handlers is deferred until the entitlement shadow caches are
+ * broadly populated (task 24.2). Until then some feature gating is effectively
+ * client-only at runtime; this is a documented deferral, not a design where the
+ * client is intended to be authoritative. See `.kiro/verifications/` and the
+ * deferral note in `functions/lib/auth.ts`.
  */
 
-import { PLAN_IDS, FREEMIUM_FEATURES } from '@/shared/config/subscriptionPlans';
+import { FREEMIUM_FEATURES, PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import { createFeatureAccessErrorLog, logError } from '@/shared/lib/error-logging';
 
 /**

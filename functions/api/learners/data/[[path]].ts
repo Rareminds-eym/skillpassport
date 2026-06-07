@@ -1,10 +1,12 @@
-import { withAuth, getContextUser } from '../../../lib/auth';
-import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError, apiMethodNotAllowed } from '../../../lib/response';
+import { getContextUser, withAuth } from '../../../lib/auth';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { ADMIN_ROLES } from '../../../lib/roleCategories';
+import { getServiceClient } from '../../../lib/supabase';
 
-const ADMIN_ROLES = ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'];
-
+// `isAdmin` is an ownership BYPASS (admins may access any learner's data; a
+// learner accesses only their own). Non-guard role check → uses the shared
+// ADMIN_ROLES group, replacing the prior local inline literal (bug §7.1).
 function isAdmin(user: any): boolean {
   return user?.roles?.some((r: string) => ADMIN_ROLES.includes(r));
 }

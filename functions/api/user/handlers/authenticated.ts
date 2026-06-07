@@ -6,8 +6,8 @@
  * - Update learner documents
  */
 
+import { apiError, apiSuccess } from '../../../lib/response';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
-import { apiSuccess, apiError } from '../../../lib/response';
 import {
   calculateAge,
   deleteAuthUser,
@@ -55,6 +55,13 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
   }
 
   // Get current user data
+  // TODO(12.1 review / §7.3): the acting admin's role is read from the shadow
+  // `users.role` (looked up by the client-supplied `userEmail`, not the verified
+  // JWT) and branched on the SSO roles `college_admin`/`school_admin` below to
+  // decide institution scope. Proper fix is to use `getContextUser(context).roles`,
+  // but this handler is invoked without the auth context (request/env only) and
+  // keys off client-supplied email — threading the verified user requires a
+  // signature change. Deferred for safety; flagged for review.
   const { data: currentUserData } = await supabaseAdmin
     .from('users')
     .select('id, organizationId, role')

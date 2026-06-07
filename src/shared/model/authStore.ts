@@ -8,14 +8,14 @@
  * The public API (hooks and types) is preserved from the legacy store
  * so existing consumers continue to work without import changes.
  */
-import { useAuthStore } from '@/shared/model/authStore';
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 import { startTokenRefresh, stopTokenRefresh, tokenRefreshService } from '@/shared/services/tokenRefreshService';
-import type { MeResponse, LoginResponse } from '@rareminds-eym/auth-client';
+import { ROLE_CATEGORIES, type RoleCategory } from '@/shared/types/generated/roles';
+import type { LoginResponse, MeResponse } from '@rareminds-eym/auth-client';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import { immer } from 'zustand/middleware/immer';
 
 const logger = getLogger('auth-store');
 
@@ -102,31 +102,36 @@ interface AuthState {
 
 // ─── Role helpers ──────────────────────────────────────────────
 
-const isLearnerRole = (roles: string[]): boolean =>
-  roles.some((r) => r === 'learner');
-
-const isEducatorRole = (roles: string[]): boolean =>
-  roles.some((r) => r === 'educator' || r === 'school_educator' || r === 'college_educator');
-
-const isAdminRole = (roles: string[]): boolean =>
-  roles.some(
-    (r) =>
-      r === 'admin' ||
-      r === 'company_admin' ||
-      r === 'school_admin' ||
-      r === 'college_admin' ||
-      r === 'university_admin' ||
-      r === 'owner',
-  );
-
-const isRecruiterRole = (roles: string[]): boolean =>
-  roles.some((r) => r === 'recruiter' || r === 'company_admin' || r === 'hr');
+/**
+ * Derive whether any of `roles` belongs to the given role `category`, using the
+ * single shared `ROLE_CATEGORIES` grouping (the canonical, compile-time source
+ * of truth shared with the rest of the app). This replaces the previous
+ * hand-coded per-role helpers so category membership has ONE definition.
+ *
+ * Behaviour is identical to the old helpers because `ROLE_CATEGORIES` mirrors
+ * the same membership lists:
+ *   - admin    = ['admin','company_admin','owner','school_admin','college_admin','university_admin']
+ *   - educator = ['educator','school_educator','college_educator']
+ *   - recruiter= ['recruiter','company_admin','hr']
+ *   - learner  = ['learner']
+ *
+ * NOTE: these flags are UX-only render hints (see `computeRoleFlags`); runtime
+ * authorization is enforced server-side, never from this membership check.
+ */
+const isInCategory = (roles: string[], category: RoleCategory): boolean => {
+  const members = ROLE_CATEGORIES[category] as readonly string[];
+  return roles.some((r) => members.includes(r));
+};
 
 /**
  * Pick the most specific role for the legacy `role` field.
  * Prefers specific admin/learner/educator roles over generic ones.
+ *
+ * NOTE: exported additively for behavior-preservation testing (RBAC spec task
+ * 14.2 / Property 10, PC-3). The export is test-only surface — runtime consumers
+ * still use the store helpers; the priority list here is the golden contract.
  */
-function pickPrimaryRole(roles: string[]): string | null {
+export function pickPrimaryRole(roles: string[]): string | null {
   if (roles.length === 0) return null;
   const priority = [
     'university_admin',
@@ -163,12 +168,26 @@ function mapMeToUser(me: MeResponse): User {
   };
 }
 
-function computeRoleFlags(roles: string[]) {
+/**
+ * Compute the UX-only role booleans from the user's JWT-sourced roles.
+ *
+ * IMPORTANT: these booleans (`isLearner`/`isEducator`/`isAdmin`/`isRecruiter`)
+ * are UX-only render hints DERIVED from `user.roles` (which originate from the
+ * verified SSO JWT via `getMe()`). They are NOT an authorization boundary and
+ * are NOT persisted to localStorage as a trust signal — the server enforces
+ * all authorization. They are always re-derived at runtime (login, initialize,
+ * rehydrate, cross-tab sync) from the current roles.
+ *
+ * NOTE: exported additively for behavior-preservation testing (RBAC spec task
+ * 14.2 / Property 10, PC-4). Test-only surface; the boolean membership here is
+ * the golden contract that must equal the legacy hand-coded logic.
+ */
+export function computeRoleFlags(roles: string[]) {
   return {
-    isLearner: isLearnerRole(roles),
-    isEducator: isEducatorRole(roles),
-    isAdmin: isAdminRole(roles),
-    isRecruiter: isRecruiterRole(roles),
+    isLearner: isInCategory(roles, 'learner'),
+    isEducator: isInCategory(roles, 'educator'),
+    isAdmin: isInCategory(roles, 'admin'),
+    isRecruiter: isInCategory(roles, 'recruiter'),
   };
 }
 
@@ -182,160 +201,173 @@ const AUTH_STORAGE_VERSION = 1;
 export const useAuthStore = create<AuthState>()(
   persist(
     immer((set, get) => ({
-    // Initial state
-    user: null,
-    session: null,
-    loading: true,
-    isAuthenticated: false,
-    role: null,
-    isLearner: false,
-    isEducator: false,
-    isAdmin: false,
-    isRecruiter: false,
-    errorNotification: null,
+      // Initial state
+      user: null,
+      session: null,
+      loading: true,
+      isAuthenticated: false,
+      role: null,
+      isLearner: false,
+      isEducator: false,
+      isAdmin: false,
+      isRecruiter: false,
+      errorNotification: null,
 
-    /**
-     * login() accepts either:
-     *  - (email, password) — performs SSO login via auth-client
-     *  - (user, session?) — legacy signature; sets user directly (used by signup flows that already have user data)
-     */
-    login: async (emailOrUser, passwordOrSession) => {
-      // Legacy signature: called with (User, Session?)
-      if (typeof emailOrUser !== 'string') {
-        const userData = emailOrUser;
-        const sessionData = typeof passwordOrSession === 'string' ? null : (passwordOrSession ?? null);
-        const roles = userData.roles ?? (userData.role ? [userData.role] : []);
+      /**
+       * login() accepts either:
+       *  - (email, password) — performs SSO login via auth-client
+       *  - (user, session?) — legacy signature; sets user directly (used by signup flows that already have user data)
+       */
+      login: async (emailOrUser, passwordOrSession) => {
+        // Legacy signature: called with (User, Session?)
+        if (typeof emailOrUser !== 'string') {
+          const userData = emailOrUser;
+          const sessionData = typeof passwordOrSession === 'string' ? null : (passwordOrSession ?? null);
+          const roles = userData.roles ?? (userData.role ? [userData.role] : []);
+          set((state) => {
+            state.user = { ...state.user, ...userData };
+            if (sessionData) state.session = sessionData;
+            state.isAuthenticated = true;
+            state.role = userData.role ?? pickPrimaryRole(roles);
+            Object.assign(state, computeRoleFlags(roles));
+          });
+          // Start token refresh service after successful login
+          startTokenRefresh();
+          return;
+        }
+
+        // SSO signature: (email, password)
+        const email = emailOrUser;
+        const password = passwordOrSession as string;
+        const res = await ssoClient.login({ email, password });
+        const me = await ssoClient.getMe();
+        const user = mapMeToUser(me);
         set((state) => {
-          state.user = { ...state.user, ...userData };
-          if (sessionData) state.session = sessionData;
+          state.user = user;
           state.isAuthenticated = true;
-          state.role = userData.role ?? pickPrimaryRole(roles);
-          Object.assign(state, computeRoleFlags(roles));
+          state.role = user.role ?? null;
+          Object.assign(state, computeRoleFlags(me.roles));
         });
         // Start token refresh service after successful login
         startTokenRefresh();
-        return;
-      }
+        return res;
+      },
 
-      // SSO signature: (email, password)
-      const email = emailOrUser;
-      const password = passwordOrSession as string;
-      const res = await ssoClient.login({ email, password });
-      const me = await ssoClient.getMe();
-      const user = mapMeToUser(me);
-      set((state) => {
-        state.user = user;
-        state.isAuthenticated = true;
-        state.role = user.role ?? null;
-        Object.assign(state, computeRoleFlags(me.roles));
-      });
-      // Start token refresh service after successful login
-      startTokenRefresh();
-      return res;
-    },
+      logout: async () => {
+        // Stop token refresh service before logout
+        stopTokenRefresh();
 
-    logout: async () => {
-      // Stop token refresh service before logout
-      stopTokenRefresh();
-      
-      try {
-        await ssoClient.logout();
-      } catch (err) {
-        logger.error('SSO logout failed', err as Error);
-      }
-
-      set((state) => {
-        state.user = null;
-        state.session = null;
-        state.isAuthenticated = false;
-        state.role = null;
-        state.isLearner = false;
-        state.isEducator = false;
-        state.isAdmin = false;
-        state.isRecruiter = false;
-      });
-    },
-
-    updateUser: (userData) => {
-      set((state) => {
-        if (state.user) {
-          state.user = { ...state.user, ...userData };
-          if (userData.roles) {
-            state.role = pickPrimaryRole(userData.roles);
-            Object.assign(state, computeRoleFlags(userData.roles));
-          } else if (userData.role) {
-            state.role = userData.role;
-            Object.assign(state, computeRoleFlags([userData.role]));
-          }
+        try {
+          await ssoClient.logout();
+        } catch (err) {
+          logger.error('SSO logout failed', err as Error);
         }
-      });
-    },
 
-    setUser: (user) => {
-      set((state) => {
-        state.user = user;
-        state.isAuthenticated = !!user;
-        const roles = user?.roles ?? (user?.role ? [user.role] : []);
-        state.role = user?.role ?? pickPrimaryRole(roles);
-        Object.assign(state, computeRoleFlags(roles));
-      });
-    },
+        set((state) => {
+          state.user = null;
+          state.session = null;
+          state.isAuthenticated = false;
+          state.role = null;
+          state.isLearner = false;
+          state.isEducator = false;
+          state.isAdmin = false;
+          state.isRecruiter = false;
+        });
+      },
 
-    setSession: (session) => {
-      set((state) => {
-        state.session = session;
-      });
-    },
+      updateUser: (userData) => {
+        set((state) => {
+          if (state.user) {
+            state.user = { ...state.user, ...userData };
+            if (userData.roles) {
+              state.role = pickPrimaryRole(userData.roles);
+              Object.assign(state, computeRoleFlags(userData.roles));
+            } else if (userData.role) {
+              state.role = userData.role;
+              Object.assign(state, computeRoleFlags([userData.role]));
+            }
+          }
+        });
+      },
 
-    setLoading: (loading) => {
-      set((state) => {
-        state.loading = loading;
-      });
-    },
+      setUser: (user) => {
+        set((state) => {
+          state.user = user;
+          state.isAuthenticated = !!user;
+          const roles = user?.roles ?? (user?.role ? [user.role] : []);
+          state.role = user?.role ?? pickPrimaryRole(roles);
+          Object.assign(state, computeRoleFlags(roles));
+        });
+      },
 
-    showErrorNotification: (notification) => {
-      set((state) => {
-        state.errorNotification = notification;
-      });
-    },
+      setSession: (session) => {
+        set((state) => {
+          state.session = session;
+        });
+      },
 
-    dismissErrorNotification: () => {
-      set((state) => {
-        state.errorNotification = null;
-      });
-    },
+      setLoading: (loading) => {
+        set((state) => {
+          state.loading = loading;
+        });
+      },
 
-    /**
-     * Initialize auth state from the SSO worker.
-     * Called once at app startup before rendering protected routes.
-     *
-     * Strategy (for fast initial render):
-     *  1. Persisted user data from Zustand is already rehydrated (UI renders immediately).
-     *  2. Call initSession() to validate the session with SSO (refresh cookie).
-     *  3. If valid, fetch fresh /auth/me and update state.
-     *  4. If invalid, clear the persisted state.
-     */
-    initialize: async () => {
-      set((state) => {
-        state.loading = true;
-      });
+      showErrorNotification: (notification) => {
+        set((state) => {
+          state.errorNotification = notification;
+        });
+      },
 
-      try {
-        const { authenticated } = await ssoClient.initSession();
-        if (authenticated) {
-          const me = await ssoClient.getMe();
-          const user = mapMeToUser(me);
-          set((state) => {
-            state.user = user;
-            state.isAuthenticated = true;
-            state.role = user.role ?? null;
-            Object.assign(state, computeRoleFlags(me.roles));
-            state.loading = false;
-          });
-          // Start token refresh service after successful session restoration
-          startTokenRefresh();
-        } else {
-          // No valid session — clear any stale persisted state
+      dismissErrorNotification: () => {
+        set((state) => {
+          state.errorNotification = null;
+        });
+      },
+
+      /**
+       * Initialize auth state from the SSO worker.
+       * Called once at app startup before rendering protected routes.
+       *
+       * Strategy (for fast initial render):
+       *  1. Persisted user data from Zustand is already rehydrated (UI renders immediately).
+       *  2. Call initSession() to validate the session with SSO (refresh cookie).
+       *  3. If valid, fetch fresh /auth/me and update state.
+       *  4. If invalid, clear the persisted state.
+       */
+      initialize: async () => {
+        set((state) => {
+          state.loading = true;
+        });
+
+        try {
+          const { authenticated } = await ssoClient.initSession();
+          if (authenticated) {
+            const me = await ssoClient.getMe();
+            const user = mapMeToUser(me);
+            set((state) => {
+              state.user = user;
+              state.isAuthenticated = true;
+              state.role = user.role ?? null;
+              Object.assign(state, computeRoleFlags(me.roles));
+              state.loading = false;
+            });
+            // Start token refresh service after successful session restoration
+            startTokenRefresh();
+          } else {
+            // No valid session — clear any stale persisted state
+            set((state) => {
+              state.user = null;
+              state.isAuthenticated = false;
+              state.role = null;
+              state.isLearner = false;
+              state.isEducator = false;
+              state.isAdmin = false;
+              state.isRecruiter = false;
+              state.loading = false;
+            });
+          }
+        } catch (err) {
+          logger.error('Error initializing auth', err as Error);
           set((state) => {
             state.user = null;
             state.isAuthenticated = false;
@@ -347,53 +379,40 @@ export const useAuthStore = create<AuthState>()(
             state.loading = false;
           });
         }
-      } catch (err) {
-        logger.error('Error initializing auth', err as Error);
-        set((state) => {
-          state.user = null;
-          state.isAuthenticated = false;
-          state.role = null;
-          state.isLearner = false;
-          state.isEducator = false;
-          state.isAdmin = false;
-          state.isRecruiter = false;
-          state.loading = false;
-        });
-      }
-    },
+      },
 
-    refreshSession: async () => {
-      try {
-        await ssoClient.refresh();
-        const me = await ssoClient.getMe();
-        const user = mapMeToUser(me);
-        set((state) => {
-          state.user = user;
-          state.isAuthenticated = true;
-          state.role = user.role ?? null;
-          Object.assign(state, computeRoleFlags(me.roles));
-        });
-        return true;
-      } catch (err) {
-        logger.warn('Session refresh failed', { message: (err as Error).message });
-        return false;
-      }
-    },
+      refreshSession: async () => {
+        try {
+          await ssoClient.refresh();
+          const me = await ssoClient.getMe();
+          const user = mapMeToUser(me);
+          set((state) => {
+            state.user = user;
+            state.isAuthenticated = true;
+            state.role = user.role ?? null;
+            Object.assign(state, computeRoleFlags(me.roles));
+          });
+          return true;
+        } catch (err) {
+          logger.warn('Session refresh failed', { message: (err as Error).message });
+          return false;
+        }
+      },
 
-    checkSessionValidity: async () => {
-      // In SSO mode, we don't have a Session object. Return null always.
-      // Consumers should use isAuthenticated instead.
-      return get().session;
-    },
+      checkSessionValidity: async () => {
+        // In SSO mode, we don't have a Session object. Return null always.
+        // Consumers should use isAuthenticated instead.
+        return get().session;
+      },
 
-    restoreUserFromStorage: (sessionUser) => {
-      // Legacy method — no longer used in SSO mode. Return a minimal user.
-      return {
-        id: sessionUser?.id ?? sessionUser?.sub ?? '',
-        email: sessionUser?.email,
-      };
-    },
-  })),
+      restoreUserFromStorage: (sessionUser) => {
+        // Legacy method — no longer used in SSO mode. Return a minimal user.
+        return {
+          id: sessionUser?.id ?? sessionUser?.sub ?? '',
+          email: sessionUser?.email,
+        };
+      },
+    })),
     {
       name: AUTH_STORAGE_KEY,
       version: AUTH_STORAGE_VERSION,
@@ -404,25 +423,39 @@ export const useAuthStore = create<AuthState>()(
        * - Session objects (derived from SSO)
        * - Loading state (always starts fresh)
        * - Error notifications (ephemeral)
+       *
+       * IMPORTANT (§7.6/§7.9): the role BOOLEANS (`isLearner`/`isEducator`/
+       * `isAdmin`/`isRecruiter`) and the derived primary `role` string are NOT
+       * persisted. They are UX-only render hints derived at runtime from
+       * `user.roles` (verified JWT) — persisting them would treat them as a
+       * durable trust signal, which is the anti-pattern this fix removes.
+       * We still persist `user` (which carries `roles` + `role`) for fast
+       * initial render; the booleans and `role` are re-derived from
+       * `user.roles` on rehydrate (see `onRehydrateStorage`) and again by
+       * `initialize()` from a fresh `getMe()`.
        */
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        role: state.role,
-        isLearner: state.isLearner,
-        isEducator: state.isEducator,
-        isAdmin: state.isAdmin,
-        isRecruiter: state.isRecruiter,
       }),
       /**
-       * When rehydrating from storage, reset transient fields
-       * so the UI correctly shows a loading state until initialize() completes.
+       * When rehydrating from storage, reset transient fields so the UI
+       * correctly shows a loading state until initialize() completes.
+       *
+       * The role booleans and `role` are NOT persisted (see `partialize`), so
+       * we DERIVE them here from the persisted `user.roles` rather than trusting
+       * any persisted boolean. This avoids a flash of stale/false flags between
+       * rehydrate and the fresh recompute in `initialize()`.
        */
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.loading = true;
           state.session = null;
           state.errorNotification = null;
+
+          const roles = state.user?.roles ?? (state.user?.role ? [state.user.role] : []);
+          state.role = state.user?.role ?? pickPrimaryRole(roles);
+          Object.assign(state, computeRoleFlags(roles));
         }
       },
     },

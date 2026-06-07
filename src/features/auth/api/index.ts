@@ -1,4 +1,3 @@
-import { useAuthStore } from '@/shared/model/authStore';
 /**
  * Auth API Public Exports (SSO-only)
  *
@@ -7,15 +6,9 @@ import { useAuthStore } from '@/shared/model/authStore';
  */
 
 // Types (kept for backward compatibility with consumers)
-export type UserRole =
-  | 'learner'
-  | 'recruiter'
-  | 'educator'
-  | 'school_educator'
-  | 'college_educator'
-  | 'school_admin'
-  | 'college_admin'
-  | 'university_admin';
+// Re-export shim: `UserRole` is canonically defined ONCE in the generated module.
+// See Phase P1, task 6.2. Do not redeclare a local union here.
+export type { UserRole } from '@/shared/types/generated/roles';
 
 export interface AuthResult {
   success: boolean;

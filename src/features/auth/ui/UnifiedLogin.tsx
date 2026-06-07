@@ -1,14 +1,13 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
 import { ChangeEvent, FormEvent, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { UserRole } from '@/features/auth/api';
 import { redirectToRoleDashboard } from '@/features/auth/lib';
+import { PASSWORD_MIN } from '@/shared/constants';
+import { trackLogin } from '@/shared/lib/analytics';
 import { useAuthActions } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
-import { trackLogin } from '@/shared/lib/analytics';
-import { PASSWORD_MIN } from '@/shared/constants';
 
 interface LoginState {
   email: string;
@@ -28,7 +27,10 @@ const ALL_ROLES: UserRole[] = [
   'university_admin',
 ];
 
-const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
+// Display-name lookup for the login-selectable roles only (a subset of the
+// canonical 16 `UserRole`s). `Partial` keeps this a subset map after the
+// `UserRole` convergence in task 6.2 (it is not meant to be exhaustive).
+const ROLE_DISPLAY_NAMES: Partial<Record<UserRole, string>> = {
   learner: 'Learners',
   recruiter: 'Recruiter',
   educator: 'Educator',
@@ -68,14 +70,14 @@ const UnifiedLogin = () => {
 
   const handleRoleChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const newRole = (e.target.value || null) as UserRole | null;
-    
+
     // Fire login_start when user selects a role (captures true login intent)
     // Works reliably even with browser autofill/password managers
     if (!hasStartedLoginRef.current && newRole) {
       hasStartedLoginRef.current = true;
       trackLogin.start(newRole);
     }
-    
+
     setState((prev) => ({
       ...prev,
       selectedRole: newRole,

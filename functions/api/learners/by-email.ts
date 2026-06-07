@@ -8,10 +8,11 @@
  * 
  * Falls back to simpler queries if the complex JOIN fails.
  */
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
+import { ADMIN_ROLES } from '../../lib/roleCategories';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
@@ -26,10 +27,10 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     return apiError(400, 'INVALID_INPUT', 'Email is required', context.request, { startTime });
   }
 
-  // Security: only allow fetching your own data (unless admin)
-  const isAdmin = user.roles?.some((r: string) =>
-    ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'].includes(r)
-  );
+  // Ownership-scoped: a learner may fetch their OWN data by email; admins
+  // (shared ADMIN_ROLES group) may fetch anyone's. Non-guard role check →
+  // uses ADMIN_ROLES, replacing the inline literal (bug §7.1).
+  const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
   if (!isAdmin && user.email !== email) {
     console.log(`[LearnersByEmail] BLOCKED: JWT email="${user.email}" tried to access "${email}"`);
     return apiError(403, 'FORBIDDEN', 'You can only access your own data', context.request, { startTime });

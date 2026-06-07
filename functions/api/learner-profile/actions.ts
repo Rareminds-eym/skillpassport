@@ -1,8 +1,8 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth } from '../../lib/auth';
+import { notifyRealtime } from '../../lib/realtime';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import { notifyRealtime } from '../../lib/realtime';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -859,6 +859,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ──────────────────────────────────────────────
 
       case 'fetch-user-by-id': {
+        // TODO(§7.5/7.10 frontend-resolver reconciliation): lookup endpoint returning
+        // `users.role`/`organizationId` by arbitrary userId — NOT an in-handler authz
+        // decision; deferred (out of scope for 12.1).
         const { userId } = params;
         if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
         const { data, error } = await supabase.from('users').select('role, organizationId').eq('id', userId).maybeSingle();

@@ -1,7 +1,7 @@
-import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import { apiSuccess, apiError } from '../../lib/response';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(context.env as any);
@@ -86,8 +86,10 @@ async function handleInitUser(supabase: any, context: AuthenticatedContext, body
   const user = getContextUser(context);
   const result: any = { userId: user.id };
 
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
-  result.isSchoolAdmin = userData?.role === 'school_admin';
+  // §7.3 fix (task 12.1): authorize from the verified JWT roles (canonical SSO
+  // source) instead of the app-DB shadow `users.role` column. `school_admin` is
+  // a canonical SSO role, so this is a JWT-role authorization read.
+  result.isSchoolAdmin = user.roles.includes('school_admin');
 
   const { data: educator } = await supabase.from('school_educators').select('id, school_id').eq('user_id', user.id).maybeSingle();
   if (educator) {
@@ -106,11 +108,15 @@ async function handleFetchSchoolId(supabase: any, context: AuthenticatedContext,
   const user = getContextUser(context);
   let schoolId: string | null = null;
 
+  // §7.8 fix (task 12.1): do NOT trust the client-supplied stored-user role.
+  // The school_admin authorization decision now comes from the verified JWT
+  // roles only. (Residual: the client-hinted schoolId is still honored for a
+  // JWT-verified school_admin — flagged for review, not part of §7.8.)
   const storedUser = body.storedUser;
-  if (storedUser) {
+  if (storedUser && user.roles.includes('school_admin')) {
     try {
       const parsed = JSON.parse(storedUser);
-      if (parsed.role === 'school_admin' && parsed.schoolId) {
+      if (parsed.schoolId) {
         return apiSuccess({ schoolId: parsed.schoolId }, context.request);
       }
     } catch { /* ignore */ }
@@ -510,6 +516,12 @@ async function handleFetchCommunicationSchoolData(supabase: any, context: Authen
   const user = getContextUser(context);
   let schoolId: string | null = null;
 
+  // FINALIZED in P4 task 22.3: this is a DATA-SCOPE read, NOT an authorization use of
+  // `school_educators.role`. It resolves the current user's `school_id` (a COLUMN that
+  // `resolveSchoolRole` does not return), and the `role = 'school_admin'` clause is a query
+  // FILTER selecting the school-admin educator record — not a permission lookup against
+  // `college_role_module_permissions`. Authorization for this endpoint is enforced separately
+  // from the verified JWT. Preserved as-is (converting would change which `school_id` resolves).
   const { data: educator } = await supabase.from('school_educators').select('school_id').eq('user_id', user.id).eq('role', 'school_admin').maybeSingle();
   if (educator?.school_id) {
     schoolId = educator.school_id;

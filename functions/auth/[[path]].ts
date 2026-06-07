@@ -1,3 +1,4 @@
+// @public-endpoint: Proxies /auth/* to the SSO worker (SSO_SERVICE binding); authentication is the SSO worker's responsibility. (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Auth Proxy for Cloudflare Pages Functions
  * Proxies all /auth/* requests to the SSO_SERVICE worker binding

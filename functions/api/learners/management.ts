@@ -1,7 +1,8 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError, apiDbError } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiSuccess } from '../../lib/response';
+import { ADMIN_ROLES } from '../../lib/roleCategories';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
@@ -9,9 +10,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
-  const isAdmin = user.roles?.some((r: string) =>
-    ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'].includes(r)
-  );
+  // `isAdmin` gates the admin-only actions in the switch below (per-action,
+  // NOT a blanket handler gate — several actions are learner-facing). Non-guard
+  // role check → uses shared ADMIN_ROLES, replacing the inline literal (bug §7.1).
+  const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
 
   let body: any;
   try {

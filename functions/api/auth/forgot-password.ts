@@ -1,3 +1,4 @@
+// @public-endpoint: Pre-auth password reset request; the user is not yet authenticated. (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Password Reset Request API (SkillPassport Proxy)
  * POST /api/auth/forgot-password
@@ -6,9 +7,9 @@
  */
 
 import { z } from 'zod';
-import type { Env } from '../../lib/types';
-import { jsonResponse } from '../../lib/response';
 import { apiLogger } from '../../lib/logger';
+import { jsonResponse } from '../../lib/response';
+import type { Env } from '../../lib/types';
 
 const forgotPasswordSchema = z.object({
   email: z.string({ message: 'email is required' })
@@ -38,9 +39,9 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       body = result.data;
     } catch (error) {
       apiLogger.error('Invalid JSON in forgot password request', error as Error);
-      return jsonResponse({ 
-        success: false, 
-        error: 'Invalid JSON payload' 
+      return jsonResponse({
+        success: false,
+        error: 'Invalid JSON payload'
       }, 400);
     }
 
@@ -80,7 +81,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
         apiLogger.error('Failed to read error response', e as Error);
       }
       apiLogger.error('SSO Worker forgot password failed', new Error(errorText));
-      
+
       return jsonResponse({
         success: false,
         error: 'Failed to process password reset request'
@@ -98,14 +99,14 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
     return jsonResponse({
       success: true,
-      message: (ssoData && typeof ssoData === 'object' && 'message' in ssoData && typeof ssoData.message === 'string') 
-        ? ssoData.message 
+      message: (ssoData && typeof ssoData === 'object' && 'message' in ssoData && typeof ssoData.message === 'string')
+        ? ssoData.message
         : 'If an account exists, a reset email has been sent.'
     });
 
   } catch (error) {
     apiLogger.error('Error processing forgot password request', error as Error);
-    
+
     return jsonResponse({
       success: false,
       error: 'Internal server error'

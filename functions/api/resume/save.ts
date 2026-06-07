@@ -1,7 +1,8 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
+import { ADMIN_ROLES } from '../../lib/roleCategories';
+import { getServiceClient } from '../../lib/supabase';
 
 const LEVEL_MAP: Record<string, number> = {
   beginner: 1, '1': 1,
@@ -33,10 +34,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiError(400, 'VALIDATION_ERROR', 'learnerId is required', context.request);
   }
 
-  // Verify user owns this learner record
-  const isAdmin = user?.roles?.some((r: string) =>
-    ['admin', 'company_admin', 'owner', 'college_admin', 'university_admin', 'school_admin'].includes(r)
-  );
+  // Ownership-scoped: a learner saves their OWN resume data (learner.user_id ===
+  // user.id); admins (shared ADMIN_ROLES group) may save on behalf of any
+  // learner. This is a NON-GUARD role check (ownership bypass), so it uses
+  // ADMIN_ROLES rather than `requireAdmin` — replacing the prior inline admin
+  // literal (bug §7.1) while preserving the exact allow/deny outcome.
+  //
+  // REVIEW (deferred): the RBAC guard-matrix flags an ownership-vs-admin
+  // ambiguity here (should this be purely the learner's own resume?). That
+  // product question is intentionally NOT decided in task 11.2 — current
+  // behavior (own-resume OR admin) is preserved unchanged.
+  const isAdmin = user?.roles?.some((r: string) => ADMIN_ROLES.includes(r));
   if (!isAdmin) {
     const { data: learner } = await supabase
       .from('learners')

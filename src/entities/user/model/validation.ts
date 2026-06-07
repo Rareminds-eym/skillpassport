@@ -3,27 +3,28 @@
  * Validation rules and functions for user data
  */
 
-import { isValidEmail } from '@/shared/lib/validation';
 import { PASSWORD_MIN } from '@/shared/constants';
-import type { User, UserRole, CreateUserData, UpdateUserData } from '@/shared/types';
+import { isValidEmail } from '@/shared/lib/validation';
+import type { SchoolInternalRole } from '@/shared/types/permissions';
+import type { CreateUserData, UpdateUserData, User, UserRole } from './types';
 
 // ============================================================================
 // Role Validation
 // ============================================================================
 
-const VALID_ROLES: UserRole[] = [
+// `VALID_ROLES` spans BOTH the canonical SSO `UserRole` set and the
+// school-internal `SchoolInternalRole` taxonomy, because both kinds of role
+// strings are accepted as valid user roles by this validator.
+const VALID_ROLES: ReadonlyArray<UserRole | SchoolInternalRole> = [
   'learner',
   'recruiter',
   'educator',
   'school_admin',
   'college_admin',
   'university_admin',
-  'learner',
-  'learner',
   'school_educator',
   'college_educator',
   'admin',
-  'learner',
   'hr',
   'principal',
   'vice_principal',
@@ -32,8 +33,8 @@ const VALID_ROLES: UserRole[] = [
   'subject_teacher',
 ];
 
-export const isValidRole = (role: string): role is UserRole => {
-  return VALID_ROLES.includes(role as UserRole);
+export const isValidRole = (role: string): role is UserRole | SchoolInternalRole => {
+  return VALID_ROLES.includes(role as UserRole | SchoolInternalRole);
 };
 
 // ============================================================================

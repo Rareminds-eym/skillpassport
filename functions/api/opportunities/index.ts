@@ -1,11 +1,11 @@
 /**
  * Opportunities API — list with filters (ORG-SCOPED)
  */
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
-import { verifyOrgAccess } from '../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { verifyOrgAccess } from '../../lib/permissions';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'GET') return onRequestGet(context);
@@ -49,8 +49,8 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const limit = rawLimit;
   const offset = rawOffset;
 
-  const isRecruiter = ['recruiter', 'company_admin'].includes(user.role) || (user.roles && (user.roles.includes('recruiter') || user.roles.includes('company_admin')));
-  
+  const isRecruiter = !!user.roles && (user.roles.includes('recruiter') || user.roles.includes('company_admin'));
+
   let query = supabase
     .from('opportunities')
     .select('*', { count: 'exact' })
@@ -321,7 +321,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           candidate_phone: learner.contact_number || '', stage: 'sourced', source: 'direct_application',
           status: 'active', added_at: new Date().toISOString(), stage_changed_at: new Date().toISOString()
         }]);
-      } catch (_) {}
+      } catch (_) { }
 
       return apiSuccess({ success: true, message: 'Application submitted successfully!', data }, context.request);
     }

@@ -1,3 +1,4 @@
+// @public-endpoint: Post-payment status update for pre_registrations (called after Razorpay; no user yet). FLAG: add payment signature verification (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Update Registration Payment Status Handler
  *
@@ -8,8 +9,8 @@
  */
 
 import type { PagesFunction } from '@cloudflare/workers-types';
+import { apiError, apiSuccess } from '../../../lib/response';
 import { getServiceClient } from '../../../lib/supabase';
-import { apiSuccess, apiError } from '../../../lib/response';
 
 export const onRequestPost: PagesFunction = async (context) => {
   return handleUpdateRegistrationPaymentStatus(context);

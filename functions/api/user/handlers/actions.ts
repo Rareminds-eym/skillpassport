@@ -1,10 +1,11 @@
-import { withAuth, getContextUser } from '../../../lib/auth';
-import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
+import { getContextUser, withAuth } from '../../../lib/auth';
+import { apiDbError, apiError, apiSuccess } from '../../../lib/response';
+import { resolveSchoolRole } from '../../../lib/schoolRole';
+import { getServiceClient } from '../../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  getContextUser(context);
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -66,6 +67,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-current-user-role': {
+        // TODO(§7.5/7.10 frontend-resolver reconciliation): lookup endpoint returning
+        // `users.role` by arbitrary userId — NOT an in-handler authz decision; deferred.
         const { userId } = params;
         if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
         const { data, error } = await supabase.from('users').select('role').eq('id', userId).single();
@@ -74,15 +77,39 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-permissions': {
+        // SCHOOL-INTERNAL permission lookup — routed through `resolveSchoolRole`
+        // (task 12.2/19, bugfix §8.5). The permission `role_code` is now resolved for the
+        // CURRENT authenticated user instead of read from the shadow `users.role` column
+        // (which P4 drops): for SSO roles that are themselves permission codes
+        // (school_admin / college_admin / college_educator / school_educator) it comes
+        // straight from the verified JWT — the SAME value `users.role` carried for synced
+        // users; for genuinely school-internal sub-roles (principal / it_admin /
+        // class_teacher / …) it comes from `school_educators` (the chosen source per the
+        // decision record). The resolved code feeds the
+        // `college_role_module_permissions.role_code` join — P4 task 20 re-typed this lookup
+        // off the legacy `role_type` (`user_role` enum) column onto the app-owned
+        // `role_code` FK (→ `school_internal_roles.code`). This query is correct once the
+        // P4 Expand (20.1) + backfill (20.2) are applied; the school_internal_roles seed
+        // (17.2/20.3) now includes college_admin/college_educator/school_educator so EVERY
+        // value resolveSchoolRole can return is a valid role_code (behavior preserved vs the
+        // old role_type query — same role → same permission set).
+        //
+        // NOT an authorization decision (Property 7 / FC-10) — purely which feature-permission
+        // set applies. `null` (no role found) → empty permissions, matching the legacy
+        // `!userData?.role` branch; NO subject_teacher default is introduced.
+        //
+        // `userId` is still required for API-contract stability; resolution uses the
+        // authenticated user. The only caller (`permissionService.getUserPermissions`)
+        // passes the current user's own id, so this preserves behavior while removing the
+        // client-supplied-identity trust on the resolution path (spec §7.5/7.10 direction).
         const { userId } = params;
         if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
-        const { data: userData, error: userError } = await supabase.from('users').select('role').eq('id', userId).single();
-        if (userError) return apiDbError(userError, context.request, { startTime });
-        if (!userData?.role) return apiSuccess({ permissions: {} }, context.request, { startTime });
+        const roleCode = await resolveSchoolRole(supabase, user);
+        if (!roleCode) return apiSuccess({ permissions: {} }, context.request, { startTime });
         const { data: permissionsData, error: permError } = await supabase
           .from('college_role_module_permissions')
           .select(`college_setting_modules(module_name), college_setting_permissions(permission_name)`)
-          .eq('role_type', userData.role);
+          .eq('role_code', roleCode);
         if (permError) return apiDbError(permError, context.request, { startTime });
         const permissions: Record<string, string[]> = {};
         (permissionsData || []).forEach((item: any) => {
@@ -94,6 +121,30 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           }
         });
         return apiSuccess({ permissions }, context.request, { startTime });
+      }
+
+      case 'get-current-user-school-role': {
+        // CURRENT-USER, JWT-BACKED school-internal role resolution (task 13.1).
+        //
+        // Feeds the UX-only `useUserRole` hook (advisory display only — real
+        // authorization is enforced by the Functions guards). Resolves the
+        // AUTHENTICATED user's school-internal role via `resolveSchoolRole`
+        // (the same resolveSchoolRole-backed path `get-permissions` uses):
+        //   - SSO roles that ARE permission codes (school_admin / college_admin /
+        //     college_educator / school_educator) come straight from the verified
+        //     JWT — no DB read.
+        //   - genuinely school-internal sub-roles (principal / it_admin /
+        //     class_teacher / …) come from `school_educators` for THIS user.
+        //
+        // Takes NO email / userId / URL param — identity is the authenticated
+        // user only (`getContextUser(context)`), eliminating the client-supplied
+        // identity + URL-inference anti-patterns the legacy frontend resolver used.
+        //
+        // NOT an authorization decision (Property 7 / FC-10). `null` simply means
+        // "no school-internal role found" → the caller renders LEAST privilege;
+        // there is NO `subject_teacher` / `school_admin` default.
+        const roleCode = await resolveSchoolRole(supabase, user);
+        return apiSuccess({ role: roleCode }, context.request, { startTime });
       }
 
       case 'get-user-settings': {
@@ -143,37 +194,37 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'get-learner-name': {
         const { id, email } = params;
         if (!id && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing id or email', context.request, { startTime });
-        
+
         let query = supabase.from('learners').select('name');
         if (id) query = query.eq('user_id', id);
         else query = query.eq('email', email);
-        
+
         const { data, error } = await query.maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
-        
+
         return apiSuccess({ name: data?.name || null }, context.request, { startTime });
       }
 
       case 'update-learner-name': {
         const { id, email, fullName } = params;
         if (!fullName || (!id && !email)) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request, { startTime });
-        
+
         let learnerQuery = supabase.from('learners').update({ name: fullName });
         if (id) learnerQuery = learnerQuery.eq('user_id', id);
         else learnerQuery = learnerQuery.eq('email', email);
-        
+
         const { error: learnerError } = await learnerQuery;
         if (learnerError) return apiDbError(learnerError, context.request, { startTime });
-        
+
         if (id) {
           const nameParts = fullName.split(' ');
           const firstName = nameParts[0] || fullName;
           const lastName = nameParts.slice(1).join(' ') || '';
-          
+
           const { error: userError } = await supabase.from('users').update({ firstName, lastName }).eq('id', id);
           if (userError) return apiDbError(userError, context.request, { startTime });
         }
-        
+
         return apiSuccess({ success: true }, context.request, { startTime });
       }
 
@@ -186,6 +237,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-teacher-role-by-email': {
+        // TODO(§7.5/7.10): `teachers.role` lookup by email feeding the deviant frontend
+        // role resolver (useUserRole). School-internal taxonomy; reconciled to JWT/
+        // resolveSchoolRole separately. Not an in-handler authz decision; deferred.
         const { email } = params;
         if (!email) return apiError(400, 'VALIDATION_ERROR', 'Missing email', context.request, { startTime });
         const { data, error } = await supabase.from('teachers').select('role').eq('email', email).maybeSingle();
@@ -194,6 +248,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-educator-role-by-email': {
+        // TODO(§7.5/7.10): `school_educators.role` lookup by email feeding the deviant
+        // frontend role resolver. School-internal taxonomy; route via resolveSchoolRole
+        // (task 19). Not an in-handler authz decision; deferred.
         const { email } = params;
         if (!email) return apiError(400, 'VALIDATION_ERROR', 'Missing email', context.request, { startTime });
         const { data, error } = await supabase.from('school_educators').select('role').eq('email', email).maybeSingle();
@@ -202,6 +259,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'lookup-user-roles': {
+        // TODO(§7.10 frontend-resolver reconciliation): this IS the deviant role-
+        // resolution path (roleLookupService → lookup-user-roles). It resolves a user's
+        // roles by arbitrary userId across learners/recruiters/school_educators/users
+        // (incl. `users.role` branching on SSO roles). NOT an in-handler authz decision.
+        // To be reconciled to the SSO JWT as the canonical source separately; deferred.
         const { userId, email } = params;
         if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
         const foundRoles: string[] = [];

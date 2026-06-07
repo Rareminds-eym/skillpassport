@@ -65,6 +65,7 @@ type SsoFetcher = Fetcher & {
   syncSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   getUserTransactions(userId: string, subscriptionId?: string): Promise<Record<string, unknown>[]>;
   syncPlans(): Promise<{ plans: Record<string, unknown>[] }>;
+  listRoles(): Promise<{ roles: { id: string; name: string; description: string | null }[] }>;
   recordAddonPurchase(data: unknown): Promise<Record<string, unknown>>;
   recordBundlePurchase(data: unknown): Promise<Record<string, unknown>>;
 };
@@ -153,6 +154,20 @@ export async function ssoSyncPlans(
   env: SsoClientEnv,
 ): Promise<{ plans: Record<string, unknown>[] }> {
   return getSsoService(env).syncPlans();
+}
+
+/**
+ * Pull the canonical authorization roles from the sso-worker (source of truth).
+ *
+ * Mirrors {@link ssoSyncPlans}. Used by the roles-shadow sync
+ * (`sync-shadow.ts` → `syncRolesShadow`) for the scheduled reconcile and the
+ * on-demand cache-miss refresh. The returned list is read-only reference data,
+ * never an authorization source.
+ */
+export async function ssoListRoles(
+  env: SsoClientEnv,
+): Promise<{ roles: { id: string; name: string; description: string | null }[] }> {
+  return getSsoService(env).listRoles();
 }
 
 export async function ssoRecordAddonPurchase(

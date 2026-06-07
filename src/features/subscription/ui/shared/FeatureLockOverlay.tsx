@@ -1,19 +1,38 @@
 /**
- * FeatureLockOverlay Component
- * 
- * Displays a lock overlay on features that require a paid subscription.
- * Shows blurred content with upgrade prompt for Freemium users.
- * 
+ * FeatureLockOverlay Component — UX-ONLY AFFORDANCE (NOT a security boundary).
+ *
+ * Displays a lock overlay on features that require a paid subscription: it
+ * blurs the content and shows an upgrade prompt for users without access. This
+ * is a PRESENTATION control only — it changes how content LOOKS, not whether
+ * the user is authorized to obtain the underlying data/operation.
+ *
+ * It MUST NEVER be treated as a security boundary:
+ *   - The blur/overlay is cosmetic; the gated children are still rendered in the
+ *     DOM. A client can trivially reveal them. This component therefore MUST NOT
+ *     be the gate that protects sensitive data — only the affordance that nudges
+ *     toward upgrade.
+ *   - The AUTHORITATIVE entitlement gate is the Cloudflare Function serving the
+ *     request — `requireFeatureAccess(featureKey, handler)` → `entitlementCheck`
+ *     (`functions/lib/auth.ts` / `functions/lib/entitlements.ts`), enforced
+ *     server-side behind the verified JWT. Truly sensitive content must not be
+ *     fetched/returned by the server unless the user is entitled.
+ *   - This component SHALL NOT be the sole gate for protected functionality
+ *     (bug §9.2/§9.3, requirement E9.3).
+ *
+ * KNOWN GAP: server-side `requireFeatureAccess` is implemented (task 24.1) but
+ * its application to LIVE handlers is deferred (task 24.2); see the note in
+ * `functions/lib/auth.ts`.
+ *
  * Performance optimizations:
  * - useMemo for feature access checks
  * - Early return for access granted
  */
 
+import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
+import { useSubscriptionQuery } from '@/features/subscription/model';
 import { Lock, TrendingUp } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
-import { useSubscriptionQuery } from '@/features/subscription/model';
 
 interface FeatureLockOverlayProps {
   feature: string;
@@ -21,14 +40,14 @@ interface FeatureLockOverlayProps {
   children: React.ReactNode;
 }
 
-export function FeatureLockOverlay({ 
-  feature, 
-  featureName, 
-  children 
+export function FeatureLockOverlay({
+  feature,
+  featureName,
+  children
 }: FeatureLockOverlayProps) {
   const navigate = useNavigate();
   const { subscriptionData } = useSubscriptionQuery();
-  
+
   // Memoize feature access check to prevent unnecessary recalculations
   const accessResult = useMemo(
     () => checkFeatureAccess(subscriptionData?.plan || '', feature),
@@ -56,12 +75,12 @@ export function FeatureLockOverlay({
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center mb-4">
               <Lock className="h-8 w-8 text-white" />
             </div>
-            
+
             {/* Feature Name */}
             <h3 className="text-2xl font-bold text-slate-900 mb-2">
               {featureName}
             </h3>
-            
+
             {/* Upgrade Message */}
             <p className="text-slate-600 mb-6">
               {accessResult.reason || 'Upgrade to unlock this feature'}
@@ -72,7 +91,7 @@ export function FeatureLockOverlay({
               <div className="mb-6 text-sm text-slate-500">
                 Available in:{' '}
                 <span className="font-semibold text-slate-700">
-                  {accessResult.availableInPlans.map(plan => 
+                  {accessResult.availableInPlans.map(plan =>
                     plan.charAt(0).toUpperCase() + plan.slice(1)
                   ).join(', ')}
                 </span>
@@ -88,7 +107,7 @@ export function FeatureLockOverlay({
                 <TrendingUp className="h-5 w-5" />
                 View All Plans
               </button>
-              
+
               <button
                 onClick={() => window.history.back()}
                 className="w-full px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-all"

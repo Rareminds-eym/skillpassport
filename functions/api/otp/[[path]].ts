@@ -1,3 +1,4 @@
+// @public-endpoint: Pre-auth OTP send/verify/resend used during signup/login. (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * OTP API - Pages Function
  * Handles OTP generation, sending via AWS SNS, and verification
@@ -8,12 +9,13 @@
  * - POST /resend - Resend OTP
  */
 
+import { getCorsHeaders } from '../../lib/cors';
+import { apiError, apiSuccess } from '../../lib/response';
 import type { PagesFunction } from '../../lib/types';
-import { getCorsHeaders } from '../../lib/cors';;
-import { apiSuccess, apiError } from '../../lib/response';
+import { resendOtpHandler } from './handlers/resend';
 import { sendOtpHandler } from './handlers/send';
 import { verifyOtpHandler } from './handlers/verify';
-import { resendOtpHandler } from './handlers/resend';
+;
 
 // ==================== MAIN HANDLER ====================
 

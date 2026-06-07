@@ -1,7 +1,7 @@
-import { withAuth } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError } from '../../lib/response';
+import { withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
@@ -321,6 +321,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         let universityId = passedUniversityId;
 
         if (!schoolId && !collegeId && userId && email) {
+          // TODO(12.1 review / §7.5): role-based DATA SCOPING keyed by an arbitrary
+          // `userId` param (not guaranteed to be the current user). `users.role`
+          // selects college vs school scope. Deferred for safety — converting to JWT
+          // requires confirming userId === current user; flagged for review.
           const { data: userRecord } = await supabase
             .from('users')
             .select('role')
@@ -378,7 +382,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const { data: learners, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        
+
         return apiSuccess(learners, context.request, { startTime });
       }
 

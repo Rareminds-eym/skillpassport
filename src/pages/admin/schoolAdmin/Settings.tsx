@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import toast from 'react-hot-toast';
+import { SubscriptionSettingsSection } from '@/features/subscription';
+import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
+import { PASSWORD_MIN } from '@/shared/constants';
+import type { SchoolInternalRole } from '@/shared/types/permissions';
+import { SearchBar } from '@/shared/ui';
 import {
   AcademicCapIcon,
   ArrowDownTrayIcon,
@@ -11,7 +16,6 @@ import {
   ClockIcon,
   Cog6ToothIcon,
   CreditCardIcon,
-  DocumentTextIcon,
   ExclamationTriangleIcon,
   EyeIcon,
   EyeSlashIcon,
@@ -24,11 +28,7 @@ import {
   XMarkIcon
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
-import { SearchBar } from '@/shared/ui';
-import { SubscriptionSettingsSection } from '@/features/subscription';
-import { getLogger } from '@/shared/config/logging';
-import { apiPost } from '@/shared/api/apiClient';
-import { PASSWORD_MIN } from '@/shared/constants';
+import toast from 'react-hot-toast';
 
 const logger = getLogger('school-admin-settings');
 
@@ -36,22 +36,16 @@ const logger = getLogger('school-admin-settings');
 /* ==============================
    TYPES & INTERFACES
    ============================== */
-type UserRole =
-  | "school_admin"
-  | "principal"
-  | "vice_principal"
-  | "class_teacher"
-  | "subject_teacher"
-  | "accountant"
-  | "librarian"
-  | "it_admin"
-  | "career_counselor";
+// School-internal feature-permission roles (NOT SSO `UserRole`). Consolidated
+// in task 6.3 onto the shared `SchoolInternalRole` type from
+// `@/shared/types/permissions` (was an interim local copy introduced in task
+// 6.2). The canonical SSO `UserRole` lives only in the generated module.
 
 interface User {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  role: SchoolInternalRole;
   status: "active" | "inactive" | "suspended";
   lastLogin: string;
   permissions: string[];
@@ -222,7 +216,7 @@ const UserManagementModal = ({
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "class_teacher" as UserRole,
+    role: "class_teacher" as SchoolInternalRole,
     status: "active" as "active" | "inactive" | "suspended",
     permissions: [] as string[],
   });
@@ -254,7 +248,7 @@ const UserManagementModal = ({
     }
   }, [editUser, isOpen]);
 
-  const roleOptions: { value: UserRole; label: string }[] = [
+  const roleOptions: { value: SchoolInternalRole; label: string }[] = [
     { value: "principal", label: "Principal" },
     { value: "vice_principal", label: "Vice Principal" },
     { value: "class_teacher", label: "Class Teacher" },
@@ -407,7 +401,7 @@ const UserManagementModal = ({
           <select
             value={formData.role}
             onChange={(e) =>
-              setFormData({ ...formData, role: e.target.value as UserRole })
+              setFormData({ ...formData, role: e.target.value as SchoolInternalRole })
             }
             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
           >
@@ -1612,7 +1606,7 @@ const Settings = () => {
   >("users");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "suspended">("all");
-  const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | SchoolInternalRole>("all");
   const [showUserModal, setShowUserModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showAcademicModal, setShowAcademicModal] = useState(false);
@@ -1937,8 +1931,8 @@ const Settings = () => {
   };
 
   // Helper functions
-  const mapEducatorRoleToUserRole = (role: string): UserRole => {
-    const roleMap: Record<string, UserRole> = {
+  const mapEducatorRoleToUserRole = (role: string): SchoolInternalRole => {
+    const roleMap: Record<string, SchoolInternalRole> = {
       school_admin: "school_admin",
       principal: "principal",
       vice_principal: "vice_principal",
@@ -2332,8 +2326,8 @@ const Settings = () => {
   };
 
   // Helper Functions
-  const getRoleBadgeColor = (role: UserRole) => {
-    const colors: Record<UserRole, string> = {
+  const getRoleBadgeColor = (role: SchoolInternalRole) => {
+    const colors: Partial<Record<SchoolInternalRole, string>> = {
       school_admin: "bg-violet-100 text-violet-700 border-violet-300",
       principal: "bg-purple-100 text-purple-700 border-purple-300",
       vice_principal: "bg-indigo-100 text-indigo-700 border-indigo-300",
@@ -2344,11 +2338,11 @@ const Settings = () => {
       it_admin: "bg-red-100 text-red-700 border-red-300",
       career_counselor: "bg-pink-100 text-pink-700 border-pink-300",
     };
-    return colors[role];
+    return colors[role] ?? "bg-gray-100 text-gray-700 border-gray-300";
   };
 
-  const getRoleDisplayName = (role: UserRole): string => {
-    const displayNames: Record<UserRole, string> = {
+  const getRoleDisplayName = (role: SchoolInternalRole): string => {
+    const displayNames: Partial<Record<SchoolInternalRole, string>> = {
       school_admin: "School Admin",
       principal: "Principal",
       vice_principal: "Vice Principal",

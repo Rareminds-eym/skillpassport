@@ -1,6 +1,10 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
-import { UserRole } from './unifiedAuthService';
+// Canonical SSO `UserRole` — single source of truth (Phase P1, task 6.2).
+// The `lookup-user-roles` action returns SSO roles (learner / recruiter /
+// educator / school_admin / college_admin / university_admin — all members of
+// `SSO_ROLES`), so the canonical `UserRole` is the correct type here.
+import { UserRole } from '@/shared/types/generated/roles';
 
 const logger = getLogger('role-lookup-service');
 
@@ -22,9 +26,34 @@ export interface RoleLookupResult {
 }
 
 /**
- * Determine user role(s) by querying appropriate database tables
- * @param userId - Supabase auth user ID
- * @param email - User email
+ * Role Lookup Service — ADVISORY / UX (login-time role discovery).
+ *
+ * Thin client over the enforcing Function `/user/actions`
+ * (`action: 'lookup-user-roles'`). Used at login to discover which role(s) a
+ * user has so the app can route to the correct dashboard. It is NOT an
+ * authorization boundary: the destination Functions independently enforce
+ * access (auth-core guards + `resolveSchoolRole`), so this result only affects
+ * routing/UX, never a security decision.
+ *
+ * NOTE (§7.5/§7.10): `lookup-user-roles` is the legacy frontend-resolver path,
+ * allowlisted for task 13 in the JWT-only test (12.3). This task makes the
+ * CLIENT advisory only; fully neutralizing/replacing the server lookup endpoint
+ * (re-pointing to the SSO JWT as the canonical source) is broader and is
+ * deferred to the `lookup-user-roles` reconciliation per the handler's TODO.
+ * It must only ever be invoked for the current (authenticated) user. In
+ * practice the production login flow already resolves the role from the auth
+ * store (`features/auth/api` `getUserRole`), so this service is advisory-only.
+ */
+
+/**
+ * Determine user role(s) for login-time routing/UX (ADVISORY — not authz).
+ *
+ * Calls the enforcing Function `/user/actions` (`lookup-user-roles`). The
+ * returned role/roles drive dashboard routing only; the destination Functions
+ * enforce real authorization.
+ *
+ * @param userId - the (current) authenticated user's id
+ * @param email - the user's email
  * @returns RoleLookupResult with role(s) and user data
  */
 export const getUserRole = async (userId: string, email: string): Promise<RoleLookupResult> => {

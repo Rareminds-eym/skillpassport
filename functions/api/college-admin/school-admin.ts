@@ -2,10 +2,10 @@
  * School Admin API
  * POST: Action-based dispatch for school-level admin operations
  */
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -400,6 +400,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // ── User role lookup ──
       case 'get-user-role': {
+        // TODO(§7.5/7.10 frontend-resolver reconciliation): lookup endpoint returning
+        // `users.role` by arbitrary user_id — NOT an in-handler authz decision, so not
+        // a JWT replacement. Deferred (out of scope for 12.1).
         const { user_id } = params;
         const uid = user_id || user?.id;
         if (!uid) return apiError(400, 'VALIDATION_ERROR', 'Missing user_id', context.request, { startTime });
