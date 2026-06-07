@@ -1109,9 +1109,13 @@ export async function generateRoleOverview(
       });
 
       if (dbResponse.ok) {
-        const dbRaw = await dbResponse.json() as any;
         // Unwrap apiSuccess envelope: { success, data: { exists, data } }.
-        const payload = dbRaw?.data ?? dbRaw;
+        // Supports both the enveloped and a flat { exists, data } shape.
+        const dbRaw = await dbResponse.json() as {
+          exists?: boolean;
+          data?: { exists?: boolean; data?: RoleOverviewData } | RoleOverviewData;
+        } | null;
+        const payload = (dbRaw?.data ?? dbRaw) as { exists?: boolean; data?: RoleOverviewData } | null;
         if (payload?.exists && payload?.data) {
           return payload.data as RoleOverviewData;
         }
@@ -1145,7 +1149,7 @@ export async function generateRoleOverview(
 
     const result = await response.json() as {
       success: boolean;
-      data?: any;
+      data?: { data?: RoleOverviewData } & Partial<RoleOverviewData>;
       source?: string;
       error?: string;
     };
@@ -1154,9 +1158,9 @@ export async function generateRoleOverview(
     // under an envelope `data`. So the actual RoleOverviewData lives at
     // result.data.data. Unwrap defensively to also support a flat shape.
     const overview: RoleOverviewData | undefined =
-      result?.data?.data ?? result?.data;
+      (result?.data?.data ?? result?.data) as RoleOverviewData | undefined;
 
-    if (!result.success || !overview || !Array.isArray((overview as any).responsibilities)) {
+    if (!result.success || !overview || !Array.isArray(overview.responsibilities)) {
       logger.error('Role overview worker returned error', new Error(result.error || 'Worker returned no data'), { roleName });
       throw new Error(result.error || 'Worker returned no data');
     }

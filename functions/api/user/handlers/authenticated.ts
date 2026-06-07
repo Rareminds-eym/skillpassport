@@ -344,6 +344,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
       role: 'school_educator',
       org_id: ssoOrgId,
     });
+    if (!ssoMember?.user_id) throw new Error('SSO member creation returned invalid user_id');
     ssoUserId = ssoMember.user_id;
   } catch (ssoErr) {
     return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create teacher account', request);
@@ -430,7 +431,9 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
   } catch (error) {
     // Best-effort rollback of the app-DB profile row. The SSO user already
     // exists; it is reused on a corrected retry (duplicate email is rejected).
-    await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+    if (ssoUserId) {
+      await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+    }
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }
@@ -634,6 +637,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
       role: ssoRole,
       org_id: ssoOrgId,
     });
+    if (!ssoMember?.user_id) throw new Error('SSO member creation returned invalid user_id');
     ssoUserId = ssoMember.user_id;
   } catch (ssoErr) {
     return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create staff account', request);
@@ -714,7 +718,9 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
   } catch (error) {
     // Best-effort rollback of the app-DB profile row. The SSO user already
     // exists; it is reused on a corrected retry (duplicate email is rejected).
-    await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+    if (ssoUserId) {
+      await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+    }
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }

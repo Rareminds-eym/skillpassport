@@ -151,9 +151,10 @@ async function apiRequest<T>(
     // ({ success, data, error, meta }). Unwrap to the payload so consumers
     // (e.g. result.question, result.session, result.isCorrect) work directly.
     // Defensive fallback to `json` for any non-enveloped response.
-    return (json && typeof json === 'object' && 'success' in json
-      ? (json as { data: T }).data
-      : json) as T;
+    if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
+      return (json as { data: T }).data;
+    }
+    return json as T;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     logger.error(`❌ [apiRequest] Request failed`, {

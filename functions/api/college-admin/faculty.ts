@@ -949,19 +949,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             q = q.eq('email', email);
           }
 
-          const { data: org } = await q.maybeSingle();
+          const { data: org, error } = await q.maybeSingle();
+          if (error) return apiDbError(error, context.request, { startTime });
           if (org?.id) return apiSuccess({ college_id: org.id, college: org, source: 'organization' }, context.request, { startTime });
         }
 
         if (user_id) {
           // college_lecturers uses snake_case user_id (no userId column).
-          const { data: lecturer } = await supabase
+          const { data: lecturer, error: lecturerError } = await supabase
             .from('college_lecturers')
             .select('collegeId')
             .eq('user_id', user_id)
             .limit(1)
             .maybeSingle();
 
+          if (lecturerError) return apiDbError(lecturerError, context.request, { startTime });
           if (lecturer?.collegeId) {
             const { data: org } = await supabase
               .from('organizations')
