@@ -188,11 +188,11 @@ BEGIN
     RETURN QUERY
     SELECT
         o.id AS org_id,
-        o.name AS org_name,
-        o.name AS org_slug,
-        m.status AS membership_status,
-        m.role AS sso_role_name,
-        rrm.recruitment_role,
+        o.name::TEXT AS org_name,
+        o.name::TEXT AS org_slug,
+        m.status::TEXT AS membership_status,
+        m.role::TEXT AS sso_role_name,
+        rrm.recruitment_role::TEXT,
         COALESCE(o.recruitment_enabled, FALSE) AS recruitment_enabled
     FROM public.organization_members m
     JOIN public.organizations o ON o.id = m.organization_id

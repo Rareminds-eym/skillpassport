@@ -522,7 +522,7 @@ const LearnerCommunication = () => {
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [schoolId, queryClient]);
 

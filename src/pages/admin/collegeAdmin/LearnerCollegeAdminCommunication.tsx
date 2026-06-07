@@ -300,7 +300,7 @@ const LearnerCollegeAdminCommunication = () => {
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [collegeId, queryClient, collegeAdminId]);
 

@@ -136,6 +136,7 @@ export const CompanySignup: React.FC = () => {
                 email: state.workEmail,
                 password: state.password,
                 org_name: state.companyName,
+                role: 'owner',
                 redirect_url: window.location.origin,
             });
 

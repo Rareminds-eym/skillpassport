@@ -59,15 +59,15 @@ export const getMembers = async (
 
         logger.info('Fetching members', { orgId, url });
 
-        const response = await apiGet<{ data: FetchMembersResult }>(url);
+        const response = await apiGet<FetchMembersResult>(url);
 
         logger.info('Fetched members', {
             orgId,
-            count: response.data.members.length,
-            total: response.data.total,
+            count: response.members.length,
+            total: response.total,
         });
 
-        return response.data;
+        return response;
     } catch (error: any) {
         logger.error('Failed to fetch members', { error: error.message, orgId });
         throw error;

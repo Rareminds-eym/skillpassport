@@ -61,7 +61,7 @@ export const useLearnerCollegeAdminMessages = ({
   useEffect(() => {
     if (!conversationId || !enableRealtime) return;
 
-    const subscription = MessageService.subscribeToConversation(
+    const subscription = MessageService.subscribeToConversationMessages(
       conversationId,
       (newMessage) => {
         // Add message to cache optimistically
@@ -84,7 +84,7 @@ export const useLearnerCollegeAdminMessages = ({
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [conversationId, enableRealtime, queryClient, learnerId]);
 

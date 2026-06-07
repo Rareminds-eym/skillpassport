@@ -52,8 +52,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     console.log('[members API] ✓ Access verified for org:', orgId);
 
     try {
-        // Query organization_invitations that have been accepted
-        // This is more reliable than FDW which may have schema issues
+        // ── Fetch organization_invitations that have been accepted ──
         const { data: acceptedInvitations, error: invError } = await supabase
             .from('organization_invitations')
             .select('*')
@@ -67,16 +66,16 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         }
 
         // Get user details for each accepted invitation
-        const userIds = (acceptedInvitations || [])
+        const invitedUserIds = (acceptedInvitations || [])
             .map((inv: any) => inv.accepted_by_user_id)
             .filter(Boolean);
 
         let users: any[] = [];
-        if (userIds.length > 0) {
+        if (invitedUserIds.length > 0) {
             const { data: userData, error: userError } = await supabase
                 .from('users')
                 .select('id, email, firstName, lastName, role')
-                .in('id', userIds);
+                .in('id', invitedUserIds);
 
             if (userError) {
                 console.error('Error fetching user details:', userError);
@@ -85,11 +84,10 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             }
         }
 
-        // Create a map of userId -> user details
         const userMap = new Map(users.map((u: any) => [u.id, u]));
 
-        // Transform data to match frontend expectations
-        const members = (acceptedInvitations || [])
+        // Transform accepted invitations into member records
+        const membersFromInvitations = (acceptedInvitations || [])
             .filter((inv: any) => inv.accepted_by_user_id && userMap.has(inv.accepted_by_user_id))
             .map((inv: any) => {
                 const user = userMap.get(inv.accepted_by_user_id);
@@ -100,8 +98,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
                     organizationId: inv.organization_id,
                     name: fullName || inv.invitee_name || '',
                     email: user?.email || inv.invitee_email,
-                    ssoRoleName: 'member', // Default SSO role
-                    recruitmentRole: inv.invitee_role, // This is the recruitment role (company_admin, recruiter, viewer)
+                    ssoRoleName: 'member',
+                    recruitmentRole: inv.invitee_role,
                     membershipStatus: 'active',
                     isActive: true,
                     invitedBy: inv.invited_by,
@@ -111,6 +109,79 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
                     updatedAt: inv.updated_at || inv.accepted_at || inv.created_at,
                 };
             });
+
+        // ── Also fetch direct organization_members (not from invitations) ──
+        const { data: directMembers, error: directError } = await supabase
+            .from('organization_members')
+            .select(`
+                id,
+                user_id,
+                organization_id,
+                role,
+                status,
+                created_at,
+                updated_at
+            `)
+            .eq('organization_id', orgId)
+            .eq('status', 'active');
+
+        if (directError) {
+            console.error('Error fetching direct members:', directError);
+        }
+
+        // Get user details for direct members (skip those already covered by invitations)
+        const directUserIds = (directMembers || [])
+            .map((m: any) => m.user_id)
+            .filter((uid: string) => !invitedUserIds.includes(uid));
+
+        let directUsers: any[] = [];
+        if (directUserIds.length > 0) {
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('id, email, firstName, lastName, role')
+                .in('id', directUserIds);
+
+            if (userError) {
+                console.error('Error fetching direct user details:', userError);
+            } else {
+                directUsers = userData || [];
+            }
+        }
+
+        const directUserMap = new Map(directUsers.map((u: any) => [u.id, u]));
+
+        // Fetch recruitment role mapping for SSO role → recruitment role
+        const { data: roleMapping } = await supabase
+            .from('recruitment_role_mapping')
+            .select('sso_role_name, recruitment_role');
+
+        const roleMap = new Map<string, string>((roleMapping || []).map((r: any) => [r.sso_role_name, r.recruitment_role]));
+
+        const membersFromDirect = (directMembers || [])
+            .filter((m: any) => directUserMap.has(m.user_id))
+            .map((m: any) => {
+                const user = directUserMap.get(m.user_id);
+                const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+                return {
+                    id: m.id,
+                    userId: m.user_id,
+                    organizationId: m.organization_id,
+                    name: fullName || '',
+                    email: user?.email || '',
+                    ssoRoleName: m.role,
+                    recruitmentRole: roleMap.get(m.role) || null,
+                    membershipStatus: m.status,
+                    isActive: m.status === 'active',
+                    invitedBy: null,
+                    invitedAt: null,
+                    joinedAt: m.created_at,
+                    createdAt: m.created_at,
+                    updatedAt: m.updated_at,
+                };
+            });
+
+        // Merge: invitations first (higher priority), then direct members
+        const members = [...membersFromInvitations, ...membersFromDirect];
 
         // Apply filters
         let filteredMembers = members;

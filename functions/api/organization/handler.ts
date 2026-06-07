@@ -231,6 +231,21 @@ async function acceptInvitation(context: AuthenticatedContext, body: any) {
   const { error: updateError } = await supabase.from('organization_invitations').update({ status: 'accepted', accepted_at: new Date().toISOString(), accepted_by_user_id: acceptingUserId, updated_at: new Date().toISOString() }).eq('id', invitation.id);
   if (updateError) throw updateError;
 
+  // Map invitee_role to SSO role for organization_members
+  let memberRole = 'member';
+  if (invitation.invitee_role === 'owner') memberRole = 'owner';
+  else if (invitation.invitee_role.includes('admin')) memberRole = 'admin';
+
+  const { error: omError } = await supabase
+    .from('organization_members')
+    .upsert({
+      user_id: acceptingUserId,
+      organization_id: invitation.organization_id,
+      role: memberRole,
+      status: 'active',
+    }, { onConflict: 'user_id, organization_id' });
+  if (omError) console.error('[accept-invitation] Failed to upsert organization_members:', omError);
+
   await linkUserToOrganization(supabase, acceptingUserId, invitation.organization_id, invitation.organization_type, invitation.invitee_role, invitation.invitee_email);
 
   return apiSuccess(invitation, context.request);

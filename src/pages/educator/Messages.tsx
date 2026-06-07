@@ -392,7 +392,7 @@ const CollegeLecturerMessages = () => {
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [collegeLecturerRecordId, queryClient, collegeId]);
 

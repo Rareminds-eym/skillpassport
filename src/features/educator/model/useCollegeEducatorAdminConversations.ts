@@ -94,7 +94,7 @@ export const useCollegeEducatorAdminConversations = ({
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [enabled, userId, userType, collegeId, queryClient]);
 

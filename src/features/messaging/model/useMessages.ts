@@ -167,7 +167,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
   const messageStore = useMessageStore();
 
   // Track subscription cleanup
-  const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
+  const subscriptionRef = useRef<(() => void) | null>(null);
 
   // ========================================================================
   // Queries
@@ -516,7 +516,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
     }
 
     // Setup real-time subscription
-    const subscription = MessageService.subscribeToConversation(
+    const subscription = MessageService.subscribeToConversationMessages(
       conversationId,
       (newMessage: Message) => {
         // Check for duplicates
@@ -559,7 +559,7 @@ export function useMessages(options: UseMessagesOptions): UseMessagesReturn {
     // Cleanup subscription on unmount or conversationId change
     return () => {
       if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current();
         subscriptionRef.current = null;
       }
     };

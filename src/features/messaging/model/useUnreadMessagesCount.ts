@@ -64,7 +64,7 @@ export const useUnreadMessagesCount = (recruiterId: string | undefined) => {
 
     return () => {
       if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current();
         subscriptionRef.current = null;
       }
     };

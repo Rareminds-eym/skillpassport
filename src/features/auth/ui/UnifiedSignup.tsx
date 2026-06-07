@@ -638,17 +638,13 @@ const UnifiedSignup = () => {
       if (isAdminRole) {
         // Admin signup creates user + org
         const orgName = `${state.firstName} ${state.lastName}'s Institution`;
-        // `role` is forwarded so the org creator's membership carries the
-        // selected admin role (school_admin/college_admin/university_admin) in
-        // addition to 'owner'. Cast: the published SignupPayload type doesn't
-        // declare `role` yet, but the SSO /auth/signup handler reads it.
         const ssoResult = await ssoClient.signup({
-          email: emailToUse, // Use the forced email, not state.email
+          email: emailToUse,
           password: state.password,
           org_name: orgName,
           role: state.selectedRole!,
           redirect_url: window.location.origin,
-        } as Parameters<typeof ssoClient.signup>[0] & { role: string });
+        });
         ssoUserId = ssoResult.user.id;
         if (ssoResult.email_sent === false) {
           sessionStorage.setItem('email_sent_failed', 'true');
