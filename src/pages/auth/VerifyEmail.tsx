@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, AlertCircle, Loader2, Mail } from 'lucide-react';
 import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore, useIsAuthenticated } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
-import { useIsAuthenticated, useAuthStore } from '@/shared/model/authStore';
+import { AlertCircle, CheckCircle, Loader2, Mail } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type VerifyState = 'verifying' | 'success' | 'error' | 'no-token';
 
@@ -79,12 +79,34 @@ const VerifyEmail = () => {
             return;
           }
 
-          // Check if user has any recruitment vertical roles
+          // If the session didn't restore (email link opened without the
+          // refresh-token cookie), we can't know the user's role — send them to
+          // login. After login the role-based routing / subscription guard takes
+          // them to the correct plans page.
+          if (!useAuthStore.getState().isAuthenticated) {
+            console.log('[VerifyEmail] Not authenticated after verification, redirecting to login');
+            navigate('/login', { replace: true });
+            return;
+          }
+
+          // Institution admins (school/college/university) must be detected
+          // BEFORE the recruitment check: they also carry the 'owner' role
+          // (org creator), which would otherwise misroute them to recruitment.
+          const isInstitutionAdmin =
+            userRoles.includes('school_admin') ||
+            userRoles.includes('college_admin') ||
+            userRoles.includes('university_admin');
+
+          // Check if user has any recruitment vertical roles. Exclude
+          // institution admins so the shared 'owner' role doesn't match here.
           const isRecruitmentUser =
-            userRole === 'recruiter' ||
-            userRoles.includes('recruiter') ||
-            userRoles.includes('company_admin') ||
-            userRoles.includes('owner');
+            !isInstitutionAdmin && (
+              userRole === 'recruiter' ||
+              userRoles.includes('recruiter') ||
+              userRoles.includes('company_admin') ||
+              userRoles.includes('viewer') ||
+              userRoles.includes('owner')
+            );
 
           // Legacy flow: Check if there's an invitation token still in sessionStorage
           // (This shouldn't happen anymore with the new flow, but keep for safety)
@@ -99,6 +121,15 @@ const VerifyEmail = () => {
               hasInvitationToken: !!invitationToken
             });
             navigate('/login', { replace: true });
+          } else if (isInstitutionAdmin) {
+            // Institution admin who just signed up — send to institution
+            // subscription plans (b2b) for their role.
+            console.log('[VerifyEmail] Redirecting institution admin to subscription plans', {
+              userRole,
+              roles: userRoles,
+              orgId: currentUser?.orgId,
+            });
+            navigate(`/subscription/plans?type=${userRole}`, { replace: true });
           } else if (isRecruitmentUser) {
             // Recruitment user without invitation context
             // Company admins (owner role in SSO) who just signed up should see subscription plans first

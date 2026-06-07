@@ -509,7 +509,13 @@ export async function updateTeacherDocuments(
 export async function createCollegeStaff(staffData: any, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-college-staff`, {
     method: 'POST',
-        body: JSON.stringify(staffData),
+    headers: {
+      'Content-Type': 'application/json',
+      // create-college-staff requires an authenticated admin; forward the
+      // caller's SSO access token as a Bearer credential.
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(staffData),
   });
 
   if (!response.ok) {

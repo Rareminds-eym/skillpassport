@@ -63,12 +63,14 @@ type SignupRoleOption = UserRole | typeof RECRUITMENT_ADMIN_REDIRECT;
  * the display-name and entity-type maps below stay exhaustive (no missing keys)
  * without covering all 16 SSO roles.
  */
+// NOTE: Educators (school_educator / college_educator) are intentionally NOT
+// offered here. Institutions onboard educators via the admin "Teacher/Educator
+// onboarding" (seat-based) flow, not the public self-signup. Their roles still
+// exist for login and admin-created accounts.
 const SIGNUP_ROLE_OPTIONS = [
   'learner',
   'recruiter',
   RECRUITMENT_ADMIN_REDIRECT,
-  'school_educator',
-  'college_educator',
   'school_admin',
   'college_admin',
   'university_admin',
@@ -359,9 +361,10 @@ const UnifiedSignup = () => {
 
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
-  // `allRoles` is the curated set of options the signup dropdown offers.
-  // 'recruitment_admin' is the UI-only redirect label (NOT an SSO role): it
-  // redirects to the company signup page (see handleSubmit early-return).
+  // `allRoles` is the curated set of options the signup dropdown offers
+  // (SIGNUP_ROLE_OPTIONS above, which excludes educators — onboarded via the
+  // admin flow). 'recruitment_admin' is the UI-only redirect label (NOT an SSO
+  // role): it redirects to the company signup page (see handleSubmit early-return).
   // 'recruiter' is for invitation-based signups (no company creation).
   const allRoles = SIGNUP_ROLE_OPTIONS;
 
@@ -370,7 +373,6 @@ const UnifiedSignup = () => {
       learner: 'Learner',
       recruiter: 'Recruiter (I have an invitation)',
       recruitment_admin: 'Recruitment Admin',
-      school_educator: 'School Educator', college_educator: 'College Educator',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
     };
     return names[role];
@@ -636,12 +638,17 @@ const UnifiedSignup = () => {
       if (isAdminRole) {
         // Admin signup creates user + org
         const orgName = `${state.firstName} ${state.lastName}'s Institution`;
+        // `role` is forwarded so the org creator's membership carries the
+        // selected admin role (school_admin/college_admin/university_admin) in
+        // addition to 'owner'. Cast: the published SignupPayload type doesn't
+        // declare `role` yet, but the SSO /auth/signup handler reads it.
         const ssoResult = await ssoClient.signup({
           email: emailToUse, // Use the forced email, not state.email
           password: state.password,
           org_name: orgName,
+          role: state.selectedRole!,
           redirect_url: window.location.origin,
-        });
+        } as Parameters<typeof ssoClient.signup>[0] & { role: string });
         ssoUserId = ssoResult.user.id;
         if (ssoResult.email_sent === false) {
           sessionStorage.setItem('email_sent_failed', 'true');
@@ -709,8 +716,6 @@ const UnifiedSignup = () => {
       // Step 3: Redirect based on role
       const entityTypeMap: Record<OfferedSignupRole, string> = {
         learner: 'learner',
-        school_educator: 'educator',
-        college_educator: 'college-educator',
         recruiter: 'recruitment-recruiter',
         recruitment_admin: 'recruitment-recruiter',
         school_admin: 'school',

@@ -58,6 +58,8 @@ interface SsoTransactionData {
 type SsoFetcher = Fetcher & {
   createSubscription(data: unknown): Promise<Record<string, unknown>>;
   createFreemiumSubscription(data: unknown): Promise<Record<string, unknown>>;
+  createMember(data: { email: string; password: string; role: string; org_id: string }):
+    Promise<{ user_id: string; org_id: string; membership_id: string }>;
   updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   recordTransaction(data: unknown): Promise<Record<string, unknown>>;
@@ -103,6 +105,19 @@ export async function ssoCreateFreemiumSubscription(
   data: { user_id: string; email: string; full_name?: string },
 ): Promise<Record<string, unknown>> {
   return getSsoService(env).createFreemiumSubscription(data);
+}
+
+/**
+ * Admin-create a member user (e.g. school admin adding a teacher) in the SSO DB.
+ * Creates the SSO user + active membership + role. The caller is responsible for
+ * creating any app-DB profile rows (e.g. school_educators) using the returned
+ * user_id.
+ */
+export async function ssoCreateMember(
+  env: SsoClientEnv,
+  data: { email: string; password: string; role: string; org_id: string },
+): Promise<{ user_id: string; org_id: string; membership_id: string }> {
+  return getSsoService(env).createMember(data);
 }
 
 export async function ssoUpdateSubscriptionStatus(

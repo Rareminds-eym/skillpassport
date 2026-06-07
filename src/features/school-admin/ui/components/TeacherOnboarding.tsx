@@ -6,7 +6,6 @@ import RoleDebugger from '@/features/debug/ui/RoleDebugger';
 import { useUserRole } from "@/entities/user";
 import { apiPost } from '@/shared/api/apiClient';
 import { storageService } from '@/shared/api';
-import { createTeacher } from '@/features/educator-copilot';
 import { validateDocument } from "@/entities/user/lib/teacherValidation";
 
 import { getLogger } from '@/shared/config/logging';
@@ -429,7 +428,8 @@ const TeacherOnboardingPage: React.FC = () => {
       // Get school_id via API
       const currUser = useAuthStore.getState().user;
       const schoolResult = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: userEmail, user_id: currUser?.id }) as any;
-      let schoolId = schoolResult?.school_id;
+      // apiPost returns the API envelope { success, data, error }; school_id is under `.data`.
+      let schoolId = schoolResult?.data?.school_id ?? schoolResult?.school_id;
 
       if (!schoolId) {
         throw new Error("School ID not found. Please ensure you're logged in as a school admin.");
@@ -467,10 +467,21 @@ const TeacherOnboardingPage: React.FC = () => {
         }
       };
 
-      const teacherResult = await createTeacher(teacherData, ssoClient.getAccessToken());
+      // Calls the authenticated user-worker endpoint, which creates the teacher's
+      // auth account in the SSO worker (active member of the school's org with the
+      // school_educator role) and the app-DB profile rows. apiPost routes through
+      // ssoClient (JWT attached) and returns the API envelope { success, data }.
+      const teacherResult = await apiPost('/user/create-teacher', teacherData) as {
+        success: boolean;
+        data?: { authUserId: string; teacherId: string; password: string };
+        error?: any;
+      };
 
-      if (!teacherResult.success) {
-        throw new Error(teacherResult.error || "Failed to create teacher");
+      if (!teacherResult.success || !teacherResult.data) {
+        const msg = typeof teacherResult.error === 'string'
+          ? teacherResult.error
+          : teacherResult.error?.message;
+        throw new Error(msg || "Failed to create teacher");
       }
 
       const userId = teacherResult.data.authUserId;

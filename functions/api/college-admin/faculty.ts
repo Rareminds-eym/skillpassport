@@ -913,36 +913,36 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { user_id, email } = params;
         if (!user_id && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing user_id or email', context.request, { startTime });
 
-        if (user_id) {
-          const { data: org } = await supabase
+        // organizations has admin_id and email columns (no admin_email column).
+        if (user_id || email) {
+          let q = supabase
             .from('organizations')
             .select('id, name, code, email')
-            .eq('organization_type', 'college')
-            .or(`admin_id.eq.${user_id},admin_email.eq.${user_id}`)
-            .maybeSingle();
+            .eq('organization_type', 'college');
 
-          if (org?.id) return apiSuccess({ college_id: org.id, college: org, source: 'organization' }, context.request, { startTime });
-        }
+          if (user_id && email) {
+            q = q.or(`admin_id.eq.${user_id},email.eq.${email}`);
+          } else if (user_id) {
+            q = q.eq('admin_id', user_id);
+          } else {
+            q = q.eq('email', email);
+          }
 
-        if (!user_id && email) {
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id, name, code, email')
-            .eq('organization_type', 'college')
-            .or(`admin_email.eq.${email},email.eq.${email}`)
-            .maybeSingle();
-
+          const { data: org, error } = await q.maybeSingle();
+          if (error) return apiDbError(error, context.request, { startTime });
           if (org?.id) return apiSuccess({ college_id: org.id, college: org, source: 'organization' }, context.request, { startTime });
         }
 
         if (user_id) {
-          const { data: lecturer } = await supabase
+          // college_lecturers uses snake_case user_id (no userId column).
+          const { data: lecturer, error: lecturerError } = await supabase
             .from('college_lecturers')
             .select('collegeId')
-            .or(`user_id.eq.${user_id},userId.eq.${user_id}`)
+            .eq('user_id', user_id)
             .limit(1)
             .maybeSingle();
 
+          if (lecturerError) return apiDbError(lecturerError, context.request, { startTime });
           if (lecturer?.collegeId) {
             const { data: org } = await supabase
               .from('organizations')

@@ -220,7 +220,13 @@ export function useRoleOverview(
     }
 
     fetchRoleOverview(roleName, clusterTitle, attemptId);
-  }, [roleName, clusterTitle, attemptId, fetchRoleOverview, counsellingAPI]);
+    // NOTE: `counsellingAPI` is intentionally excluded — callers pass it as a new
+    // object literal each render, so including it re-fired this effect on every
+    // render, spawning duplicate generations whose results were discarded by the
+    // stale-request guard (leaving responsibilities empty). fetchRoleOverview is
+    // a stable useCallback that already closes over the API.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roleName, clusterTitle, attemptId, fetchRoleOverview]);
 
   return {
     responsibilities,

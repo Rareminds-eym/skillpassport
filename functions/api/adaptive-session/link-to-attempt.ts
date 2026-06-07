@@ -9,9 +9,9 @@
 import type { PagesFunction } from '../../lib/types';
 import { jsonResponse } from '../../lib/response';
 import { createSupabaseAdminClient } from '../../lib/supabase';
-import { getContextUser } from '../../lib/auth';
+import { getContextUser, withAuth } from '../../lib/auth';
 
-export const onRequestPost: PagesFunction = async (context) => {
+export const onRequestPost: PagesFunction = withAuth(async (context) => {
   const { request, env } = context;
 
   try {
@@ -146,4 +146,4 @@ export const onRequestPost: PagesFunction = async (context) => {
       500
     );
   }
-};
+});

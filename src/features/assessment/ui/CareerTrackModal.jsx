@@ -5,7 +5,7 @@ import { X, Zap, Target, Briefcase, BookOpen, TrendingUp, CheckCircle, Download,
 import { useRoleOverview } from '@/entities/user';
 import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counselling';
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
-import { apiPost } from '@/shared/api/apiClient';
+import { apiPost, apiGet } from '@/shared/api/apiClient';
 import jsPDF from 'jspdf';
 
 /**
@@ -118,17 +118,22 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
             if (!coursesToMatch || coursesToMatch.length === 0) {
                 console.log('[CareerTrackModal] No courses in results, fetching from database...');
                 try {
-                    const result = await apiPost('/learner-profile/actions', { action: 'fetch-courses' });
-                    const courses = result?.data || [];
-                    const error = result?.error;
-                    
-                    if (error) {
-                        console.error('[CareerTrackModal] Failed to fetch courses:', error);
-                        coursesToMatch = [];
-                    } else {
-                        console.log(`[CareerTrackModal] Fetched ${courses?.length || 0} courses from database`);
-                        coursesToMatch = courses || [];
-                    }
+                    // Fetch the active course catalog. apiGet returns the API envelope
+                    // { success, data: { courses, total } }.
+                    const result = await apiGet('/courses/list?limit=100&status=Active');
+                    const courses = result?.data?.courses || [];
+                    console.log(`[CareerTrackModal] Fetched ${courses.length} courses from database`);
+                    // Map to the shape matchCoursesForRole expects. IMPORTANT: keep
+                    // `embedding` — the RAG matcher filters out courses without it and
+                    // ranks by cosine similarity on it.
+                    coursesToMatch = courses.map((c) => ({
+                        course_id: c.course_id,
+                        title: c.title,
+                        description: c.description,
+                        category: c.category,
+                        skills: c.skills || c.skill_tags || [],
+                        embedding: c.embedding,
+                    }));
                 } catch (err) {
                     console.error('[CareerTrackModal] Error fetching courses:', err);
                     coursesToMatch = [];
