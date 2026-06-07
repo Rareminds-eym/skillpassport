@@ -1,13 +1,5 @@
-/**
- * Recruitment Permission Utilities
- * Helper functions for checking recruitment permissions via FDW
- */
-
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-/**
- * Organization context from database
- */
 export interface OrgContext {
     org_id: string;
     org_name: string;
@@ -18,13 +10,9 @@ export interface OrgContext {
     recruitment_enabled: boolean;
 }
 
-/**
- * Get user's organization contexts via FDW
- * Calls get_user_org_context() database function
- */
 export async function getUserOrgContexts(
     supabase: SupabaseClient,
-    userId: string
+    userId: string,
 ): Promise<OrgContext[]> {
     const { data, error } = await supabase.rpc('get_user_org_context', {
         p_user_id: userId,
@@ -38,13 +26,9 @@ export async function getUserOrgContexts(
     return (data || []) as OrgContext[];
 }
 
-/**
- * Get user's primary organization context
- * Returns first active organization with recruitment access
- */
 export async function getPrimaryOrgContext(
     supabase: SupabaseClient,
-    userId: string
+    userId: string,
 ): Promise<OrgContext | null> {
     const contexts = await getUserOrgContexts(supabase, userId);
 
@@ -52,7 +36,6 @@ export async function getPrimaryOrgContext(
         return null;
     }
 
-    // Find first active org with recruitment enabled
     const activeContext = contexts.find(
         (ctx) => ctx.membership_status === 'active' && ctx.recruitment_enabled && ctx.recruitment_role
     );
@@ -60,15 +43,11 @@ export async function getPrimaryOrgContext(
     return activeContext || contexts[0];
 }
 
-/**
- * Check if user has specific recruitment permission in organization
- * Calls has_recruitment_permission() database function
- */
 export async function hasRecruitmentPermission(
     supabase: SupabaseClient,
     userId: string,
     orgId: string,
-    permission: string
+    permission: string,
 ): Promise<boolean> {
     const { data, error } = await supabase.rpc('has_recruitment_permission', {
         p_user_id: userId,
@@ -84,14 +63,10 @@ export async function hasRecruitmentPermission(
     return data === true;
 }
 
-/**
- * Check if user is member of organization
- * Calls is_org_member() database function
- */
 export async function isOrgMember(
     supabase: SupabaseClient,
     userId: string,
-    orgId: string
+    orgId: string,
 ): Promise<boolean> {
     const { data, error } = await supabase.rpc('is_org_member', {
         p_user_id: userId,
@@ -106,14 +81,10 @@ export async function isOrgMember(
     return data === true;
 }
 
-/**
- * Get user's recruitment roles in organization
- * Calls get_user_recruitment_roles() database function
- */
 export async function getUserRecruitmentRoles(
     supabase: SupabaseClient,
     userId: string,
-    orgId: string
+    orgId: string,
 ): Promise<{
     sso_role_name: string;
     recruitment_role: string;
@@ -138,17 +109,12 @@ export async function getUserRecruitmentRoles(
     return data || [];
 }
 
-/**
- * Verify user has access to organization and specific permission
- * Returns error response if access denied
- */
 export async function verifyOrgAccess(
     supabase: SupabaseClient,
     userId: string,
     orgId: string,
-    requiredPermission?: string
+    requiredPermission?: string,
 ): Promise<{ allowed: boolean; error?: Response }> {
-    // Check if user is member of organization
     const isMember = await isOrgMember(supabase, userId, orgId);
 
     if (!isMember) {
@@ -161,13 +127,12 @@ export async function verifyOrgAccess(
         };
     }
 
-    // If specific permission required, check it
     if (requiredPermission) {
         const hasPermission = await hasRecruitmentPermission(
             supabase,
             userId,
             orgId,
-            requiredPermission
+            requiredPermission,
         );
 
         if (!hasPermission) {
@@ -184,9 +149,6 @@ export async function verifyOrgAccess(
     return { allowed: true };
 }
 
-/**
- * Permission constants matching database
- */
 export const PERMISSIONS = {
     MANAGE_TEAM: 'manage_team',
     CREATE_JOBS: 'create_jobs',

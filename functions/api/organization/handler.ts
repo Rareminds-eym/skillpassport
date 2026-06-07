@@ -383,12 +383,14 @@ async function deleteOrganizationHandler(context: AuthenticatedContext, body: an
 
 async function createLocalOrganizationHandler(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
+  const userId = getUserId(context);
   const { p_organization_id, p_organization_name, p_recruitment_enabled, p_max_recruiters } = body;
   const { data, error } = await supabase.rpc('create_local_organization', {
     p_organization_id,
     p_organization_name,
     p_recruitment_enabled: p_recruitment_enabled ?? true,
     p_max_recruiters: p_max_recruiters ?? 10,
+    p_created_by_user_id: userId,
   });
   if (error) throw error;
   return apiSuccess(data, context.request);

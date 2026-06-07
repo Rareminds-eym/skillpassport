@@ -43,7 +43,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has access to this organization
-    const access = await verifyOrgAccess(supabase, user.sub, orgId);
+    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
     if (!access.allowed) {
         console.error('[members API] ❌ Access denied:', access);
         return access.error!;
@@ -75,7 +75,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         if (userIds.length > 0) {
             const { data: userData, error: userError } = await supabase
                 .from('users')
-                .select('id, email, full_name, role')
+                .select('id, email, firstName, lastName, role')
                 .in('id', userIds);
 
             if (userError) {
@@ -93,11 +93,12 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             .filter((inv: any) => inv.accepted_by_user_id && userMap.has(inv.accepted_by_user_id))
             .map((inv: any) => {
                 const user = userMap.get(inv.accepted_by_user_id);
+                const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
                 return {
                     id: inv.id,
                     userId: inv.accepted_by_user_id,
                     organizationId: inv.organization_id,
-                    name: user?.full_name || inv.invitee_name || '',
+                    name: fullName || inv.invitee_name || '',
                     email: user?.email || inv.invitee_email,
                     ssoRoleName: 'member', // Default SSO role
                     recruitmentRole: inv.invitee_role, // This is the recruitment role (company_admin, recruiter, viewer)
@@ -125,7 +126,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             const searchLower = search.toLowerCase();
             filteredMembers = filteredMembers.filter((m: any) =>
                 m.email.toLowerCase().includes(searchLower) ||
-                (m.fullName && m.fullName.toLowerCase().includes(searchLower))
+                (m.name && m.name.toLowerCase().includes(searchLower))
             );
         }
 
@@ -164,7 +165,7 @@ export const onRequestGet_stats = withAuth(async (context: AuthenticatedContext)
     }
 
     // Verify user has access
-    const access = await verifyOrgAccess(supabase, user.sub, orgId);
+    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
     if (!access.allowed) {
         return access.error!;
     }

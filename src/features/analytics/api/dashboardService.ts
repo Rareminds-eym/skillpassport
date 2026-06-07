@@ -75,7 +75,7 @@ export const getSavedSearches = async () => {
 export const getDashboardData = async () => {
   try {
     const response: any = await callDashboard('get-dashboard-data');
-    return { data: response.data, error: { kpis: null, alerts: null, recentActivity: null, shortlists: null, savedSearches: null } };
+    return { data: response.data, error: null };
   } catch (error) {
     logger.error('Error fetching dashboard data', error instanceof Error ? error : new Error(String(error)));
     return { data: null, error };

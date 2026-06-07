@@ -32,7 +32,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has access to this organization
-    const access = await verifyOrgAccess(supabase, user.sub, orgId);
+    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
     if (!access.allowed) {
         console.error('[profile API] Access denied');
         return access.error!;

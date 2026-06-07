@@ -66,7 +66,7 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify recruiter has access to this organization
-    const access = await verifyOrgAccess(supabase, user.sub, orgId);
+    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
     if (!access.allowed) {
       return access.error!;
     }

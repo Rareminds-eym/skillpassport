@@ -157,8 +157,23 @@ export const CompanySignup: React.FC = () => {
                 membershipStatus: me.membership_status
             });
 
-            // Step 3: Create local organization record in SkillPassport database
-            // This is required for get_user_org_context to work (it joins with public.organizations)
+            // Step 3: Create user profile in Supabase
+            // Must run before createLocalOrganization because organization_members
+            // has a FK constraint referencing public.users(id)
+            console.log('[CompanySignup] Creating user profile...');
+            await apiPost('/user/handler', {
+                action: 'createUserProfile',
+                id: userId,
+                email: state.workEmail,
+                firstName: state.firstName,
+                lastName: state.lastName,
+                phone: state.phone || null,
+                role: 'recruiter',
+            });
+            console.log('[CompanySignup] User profile created successfully');
+
+            // Step 4: Create local organization record in SkillPassport database
+            // This also inserts the creator as 'owner' in organization_members
             console.log('[CompanySignup] Creating local organization record...', {
                 orgId,
                 companyName: state.companyName,
@@ -176,7 +191,7 @@ export const CompanySignup: React.FC = () => {
 
             console.log('[CompanySignup] Local organization record created successfully:', orgData);
 
-            // Step 4: Create recruitment settings for the organization
+            // Step 5: Create recruitment settings for the organization
             console.log('[CompanySignup] Creating recruitment settings...');
             const adminName = `${state.firstName} ${state.lastName}`.trim();
             const settingsData = await apiPost('/organization/handler', {
@@ -191,24 +206,6 @@ export const CompanySignup: React.FC = () => {
             });
 
             console.log('[CompanySignup] Recruitment settings created:', settingsData);
-
-            // Step 5: Create user profile in Supabase
-            console.log('[CompanySignup] Creating user profile...');
-
-            try {
-                await apiPost('/user/handler', {
-                    action: 'createUserProfile',
-                    id: userId,
-                    email: state.workEmail,
-                    firstName: state.firstName,
-                    lastName: state.lastName,
-                    phone: state.phone || null,
-                    role: 'recruiter',
-                });
-            } catch (userError: any) {
-                console.warn('[CompanySignup] Failed to create user profile:', userError?.message);
-                // Don't throw - user profile creation is not critical
-            }
 
             // Step 6: Set auth store with recruiter role
             // Note: The user has 'owner' role in SSO, but we map it to 'recruiter' in the app

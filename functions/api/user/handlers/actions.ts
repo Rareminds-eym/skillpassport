@@ -1,8 +1,43 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getContextUser, withAuth } from '../../../lib/auth';
+import { getContextUser, withAuth, withAuthAllowUnverified } from '../../../lib/auth';
 import { apiDbError, apiError, apiSuccess } from '../../../lib/response';
 import { resolveSchoolRole } from '../../../lib/schoolRole';
 import { getServiceClient } from '../../../lib/supabase';
+
+export const onRequestPostUnverified = withAuthAllowUnverified(async (context: AuthenticatedContext) => {
+  const user = getContextUser(context);
+  const env = context.env as Record<string, string>;
+  const supabase = getServiceClient(env as any);
+
+  let body: Record<string, any>;
+  try { body = await context.request.json() as any; } catch { return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', context.request); }
+
+  const { action, ...params } = body;
+  if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action', context.request);
+
+  const startTime = Date.now();
+
+  try {
+    switch (action) {
+
+      case 'createUserProfile': {
+        const { id, email, firstName, lastName, phone, role } = params;
+        if (!id || !email) return apiError(400, 'VALIDATION_ERROR', 'Missing id or email', context.request, { startTime });
+        const { data, error } = await supabase.from('users').upsert({
+          id, email, firstName, lastName, phone: phone || null, role: role || 'recruiter',
+        }).select().single();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data, context.request, { startTime });
+      }
+
+      default:
+        return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
+    }
+  } catch (error: any) {
+    console.error(`[user/actions] action=${action}:`, error?.message || error);
+    return apiDbError(error, context.request, { startTime });
+  }
+});
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);

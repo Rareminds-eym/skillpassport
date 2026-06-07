@@ -55,7 +55,7 @@ import {
   handleUpdateLearnerDocuments,
 } from './handlers/authenticated';
 import { handleResetPassword } from './handlers/password';
-import { onRequestPost } from './handlers/actions';
+import { onRequestPost, onRequestPostUnverified } from './handlers/actions';
 import {
   handleGetProfileExtended,
   handleUpsertProfileExtended,
@@ -258,9 +258,14 @@ export const onRequest: PagesFunction = async (context) => {
       })(context);
     }
 
-    // Actions dispatch endpoint
+    // Actions dispatch endpoint (authenticated)
     if (path === '/actions' && request.method === 'POST') {
       return onRequestPost(context);
+    }
+
+    // Handler endpoint (allow-unverified - used during signup flow before email verification)
+    if (path === '/handler' && request.method === 'POST') {
+      return onRequestPostUnverified(context);
     }
 
     return apiError(404, 'NOT_FOUND', 'Not found', request);
