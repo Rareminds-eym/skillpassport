@@ -354,13 +354,19 @@ export async function createLearner(learnerData: any, token?: string): Promise<a
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
 
-    logger.error('API error creating learner', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status });
+    // Extract error message properly from nested structure
+    const errorMessage = errorDetails.error?.message || 
+                        (typeof errorDetails.error === 'string' ? errorDetails.error : null) ||
+                        errorDetails.message ||
+                        `Failed to create learner (${response.status})`;
+
+    logger.error('API error creating learner', new Error(errorMessage), { status: response.status });
 
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
 
-    throw new Error(errorDetails.error || `Failed to create learner (${response.status})`);
+    throw new Error(errorMessage);
   }
 
   const result = await response.json();

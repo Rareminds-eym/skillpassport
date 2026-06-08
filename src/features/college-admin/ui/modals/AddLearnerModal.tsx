@@ -422,14 +422,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         }
       }, token)
 
-      // Check if operation failed
-      if (!data?.success) {
-        logger.error('Function returned error', new Error(JSON.stringify(data)))
-        throw new Error(data?.error || data?.details || 'Failed to create learner')
-      }
-
-      const learnerId = data.learnerId || data.authUserId
+      // Extract learner ID from the response
+      // API returns: { success: true, data: { learnerId, authUserId, ... } }
+      const learnerId = data.data?.learnerId || data.data?.authUserId
       if (!learnerId) {
+        logger.error('No learner ID in response', new Error(JSON.stringify(data)))
         throw new Error('Learner created but no ID returned')
       }
 
