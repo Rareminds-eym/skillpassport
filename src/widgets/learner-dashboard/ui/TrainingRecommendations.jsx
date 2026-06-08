@@ -37,14 +37,12 @@ const TrainingRecommendations = ({ recommendations }) => {
   const topCourses = useMemo(() => {
     if (savedCourses.length > 0) {
       return savedCourses
-        .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
-        .slice(0, 3);
+        .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
     }
     if (!recommendations?.coursesByType) return [];
     const { technical = [], soft = [] } = recommendations.coursesByType;
     return [...technical, ...soft]
-      .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
-      .slice(0, 3);
+      .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
   }, [savedCourses, recommendations]);
 
   const handleCourseClick = useCallback((courseId) => {
@@ -54,76 +52,73 @@ const TrainingRecommendations = ({ recommendations }) => {
   if (topCourses.length === 0) return null;
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 border-2 border-dashed border-blue-300 shadow-sm">
-      <div className="flex items-center gap-3 mb-4">
-        <div
-          className="w-14 h-14 rounded-lg  flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
-          style={{
-            boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
-          }}
-        >
-          <img
-            src="/assets/HomePage/Ai Logo.png"
-            alt="AI Logo"
-            className="w-12 h-12 object-contain"
-          />
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-dashed border-blue-300 shadow-sm">
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div
+            className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
+            style={{
+              boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <img
+              src="/assets/HomePage/Ai Logo.png"
+              alt="AI Logo"
+              className="w-9 h-9 object-contain"
+            />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">
+              Recommended Courses
+            </h3>
+            <p className="text-[11px] text-gray-500 font-medium">Based on your assessment</p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-base font-bold text-gray-900">
-            Recommended Courses
-          </h3>
-          <p className="text-xs text-gray-900 font-medium">Based on your assessment</p>
-        </div>
-      </div>
 
-      <div className="space-y-3 max-h-[200px] overflow-y-auto blue-scrollbar">
-        {topCourses.map((course, idx) => {
-          const isTopPick = idx === 0;
-          return (
-            <div
-              key={course.course_id || idx}
-              onClick={() => handleCourseClick(course.course_id)}
-              className={`bg-gradient-to-r from-blue-50 to-white rounded-xl p-4 border-l-4 border border-gray-200 shadow-sm cursor-pointer hover:shadow-md transition-all ${
-                isTopPick ? 'border-l-blue-500' : 'border-l-blue-400'
-              }`}
-            >
-              <div className="flex items-start">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2 flex-wrap flex-1">
-                      <h4 className="text-base font-bold text-gray-900">
+        <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1 blue-scrollbar">
+          {topCourses.map((course, idx) => {
+            const isTopPick = idx === 0;
+            return (
+              <div
+                key={course.course_id || idx}
+                onClick={() => handleCourseClick(course.course_id)}
+                className="bg-white rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:shadow-md hover:border-blue-300 transition-all"
+              >
+                <div className="flex items-center justify-between gap-2 px-3.5 py-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="text-sm font-semibold text-gray-900 truncate">
                         {course.title}
                       </h4>
                       {isTopPick && (
-                        <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs px-2.5 py-0.5 rounded-full font-semibold shadow-sm">
+                        <Badge className="shrink-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full font-semibold shadow-sm">
                           Top Pick
                         </Badge>
                       )}
                     </div>
-                    <ChevronRight className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                      {course.code && (
+                        <span className="font-medium">{course.code}</span>
+                      )}
+                      {course.duration && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-blue-500" />
+                          <span>{course.duration}</span>
+                        </div>
+                      )}
+                      {course.skill_type && (
+                        <Badge className="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded font-medium">
+                          {course.skill_type}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-
-                  <div className="flex items-center gap-4 text-sm text-gray-900 font-medium flex-wrap">
-                    {course.code && (
-                      <span className="font-medium">{course.code}</span>
-                    )}
-                    {course.duration && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4 text-blue-600" />
-                        <span>{course.duration}</span>
-                      </div>
-                    )}
-                    {course.skill_type && (
-                      <Badge className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-medium">
-                        {course.skill_type}
-                      </Badge>
-                    )}
-                  </div>
+                  <ChevronRight className="w-4 h-4 text-blue-500 shrink-0" />
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
