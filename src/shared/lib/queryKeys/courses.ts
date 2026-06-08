@@ -27,6 +27,8 @@ export const coursesKeys = {
             ['courses', 'performance', courseId] as const,
         byLearner: (learnerId: string, courseId: string): QueryKey =>
             ['courses', 'performance', learnerId, courseId] as const,
+        byPreset: (preset: string, options?: { startDate?: string; endDate?: string; limit?: number }): QueryKey =>
+            ['courses', 'performance', 'preset', preset, options].filter(Boolean) as QueryKey,
     },
 
     // Course progress

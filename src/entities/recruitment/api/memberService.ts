@@ -79,11 +79,11 @@ export const getMembers = async (
  */
 export const getMemberById = async (userId: string): Promise<RecruitmentMember> => {
     try {
-        const response = await apiGet<{ data: RecruitmentMember }>(
+        const response = await apiGet<RecruitmentMember>(
             `/recruitment/members/${userId}`
         );
 
-        return response.data;
+        return response;
     } catch (error: any) {
         logger.error('Failed to fetch member', { error: error.message, userId });
         throw error;
@@ -103,7 +103,7 @@ export const updateMemberRole = async (
             newRole: request.newRole,
         });
 
-        const response = await apiPut<{ data: { success: boolean; message: string } }>(
+        const response = await apiPut<{ success: boolean; message: string }>(
             `/recruitment/members/${request.userId}/role`,
             { role: request.newRole }
         );
@@ -113,7 +113,7 @@ export const updateMemberRole = async (
             newRole: request.newRole,
         });
 
-        return response.data;
+        return response;
     } catch (error: any) {
         logger.error('Failed to update member role', {
             error: error.message,
@@ -136,7 +136,7 @@ export const updateMemberStatus = async (
             isActive: request.isActive,
         });
 
-        const response = await apiPut<{ data: { success: boolean; message: string } }>(
+        const response = await apiPut<{ success: boolean; message: string }>(
             `/recruitment/members/${request.userId}/status`,
             { isActive: request.isActive }
         );
@@ -146,7 +146,7 @@ export const updateMemberStatus = async (
             isActive: request.isActive,
         });
 
-        return response.data;
+        return response;
     } catch (error: any) {
         logger.error('Failed to update member status', {
             error: error.message,
@@ -166,13 +166,13 @@ export const removeMember = async (
     try {
         logger.info('Removing member', { userId });
 
-        const response = await apiDelete<{ data: { success: boolean; message: string } }>(
+        const response = await apiDelete<{ success: boolean; message: string }>(
             `/recruitment/members/${userId}`
         );
 
         logger.info('Member removed successfully', { userId });
 
-        return response.data;
+        return response;
     } catch (error: any) {
         logger.error('Failed to remove member', { error: error.message, userId });
         throw error;
@@ -191,16 +191,14 @@ export const getMemberStats = async (): Promise<{
 }> => {
     try {
         const response = await apiGet<{
-            data: {
-                total: number;
-                admins: number;
-                recruiters: number;
-                active: number;
-                inactive: number;
-            };
+            total: number;
+            admins: number;
+            recruiters: number;
+            active: number;
+            inactive: number;
         }>('/recruitment/members/stats');
 
-        return response.data;
+        return response;
     } catch (error: any) {
         logger.error('Failed to fetch member stats', { error: error.message });
         throw error;

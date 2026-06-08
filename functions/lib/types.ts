@@ -43,12 +43,20 @@ export interface PagesEnv {
       text?: string;
       from?: string;
       fromName?: string;
+      replyTo?: string;
+      cc?: string[];
+      bcc?: string[];
+      metadata?: Record<string, unknown>;
     }): Promise<{
       success: boolean;
       messageId?: string;
       customMessageId?: string;
       recipient?: string | string[];
       timestamp?: string;
+      error?: string;
+      errorCode?: string;
+      errorType?: string;
+      shouldRetry?: boolean;
     }>;
   };
   ADMIN_EMAIL?: string;

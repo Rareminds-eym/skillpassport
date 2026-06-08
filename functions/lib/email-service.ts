@@ -55,6 +55,10 @@ export async function sendEmail(
       fromName: payload.fromName || FROM_NAME,
     });
 
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to send email');
+    }
+
     // Validate the result structure using Zod
     let validatedResult;
     try {

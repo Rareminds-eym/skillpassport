@@ -6,7 +6,7 @@
 
 import { withAuth } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
-import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
+import { verifyOrgAccess } from '../../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 /**
@@ -186,7 +186,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         // Apply filters
         let filteredMembers = members;
         if (role && role !== 'all') {
-            filteredMembers = filteredMembers.filter((m: any) => m.ssoRoleName === role);
+            filteredMembers = filteredMembers.filter((m: any) => m.recruitmentRole === role);
         }
         if (isActive === 'true') {
             filteredMembers = filteredMembers.filter((m: any) => m.isActive);
@@ -242,32 +242,57 @@ export const onRequestGet_stats = withAuth(async (context: AuthenticatedContext)
     }
 
     try {
-        // Query accepted invitations for stats (same approach as main GET)
-        const { data: acceptedInvitations, error } = await supabase
+        const { data: acceptedInvitations, error: invError } = await supabase
             .from('organization_invitations')
             .select('invitee_role, status')
             .eq('organization_id', orgId)
             .eq('status', 'accepted');
 
-        if (error) {
-            console.error('Error fetching member stats:', error);
-            return Response.json({ error: error.message }, { status: 500 });
+        if (invError) {
+            console.error('Error fetching member stats (invitations):', invError);
+            return Response.json({ error: invError.message }, { status: 500 });
         }
 
-        const members = acceptedInvitations || [];
+        const { data: directMembers, error: directError } = await supabase
+            .from('organization_members')
+            .select('role, status')
+            .eq('organization_id', orgId)
+            .eq('status', 'active');
 
-        // Calculate statistics
-        const total = members.length;
-        const active = total; // All accepted invitations are considered active
-        const inactive = 0; // We don't track inactive members in this model
+        if (directError) {
+            console.error('Error fetching member stats (direct):', directError);
+            return Response.json({ error: directError.message }, { status: 500 });
+        }
 
-        // Count by role
-        const admins = members.filter((m: any) =>
+        const { data: roleMapping } = await supabase
+            .from('recruitment_role_mapping')
+            .select('sso_role_name, recruitment_role');
+
+        const roleMap = new Map<string, string>((roleMapping || []).map((r: any) => [r.sso_role_name, r.recruitment_role]));
+
+        const directCounts = (directMembers || []).reduce((acc: any, m: any) => {
+            const recruitmentRole = roleMap.get(m.role) || null;
+            if (recruitmentRole && ['company_admin', 'owner'].includes(recruitmentRole)) {
+                acc.admins++;
+            } else if (recruitmentRole && ['recruiter', 'viewer'].includes(recruitmentRole)) {
+                acc.recruiters++;
+            }
+            return acc;
+        }, { admins: 0, recruiters: 0 });
+
+        const inviteMembers = acceptedInvitations || [];
+        const inviteAdmins = inviteMembers.filter((m: any) =>
             ['owner', 'company_admin'].includes(m.invitee_role)
         ).length;
-        const recruiters = members.filter((m: any) =>
+        const inviteRecruiters = inviteMembers.filter((m: any) =>
             ['recruiter', 'viewer'].includes(m.invitee_role)
         ).length;
+
+        const total = inviteMembers.length + (directMembers || []).length;
+        const active = total;
+        const inactive = 0;
+        const admins = inviteAdmins + directCounts.admins;
+        const recruiters = inviteRecruiters + directCounts.recruiters;
 
         return Response.json({
             total,
