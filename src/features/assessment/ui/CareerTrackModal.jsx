@@ -70,9 +70,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     };
 
     const goToPage = (pageId) => {
-        if (pageId <= currentPage || pageId === currentPage + 1) {
-            setCurrentPage(pageId);
-        }
+        setCurrentPage(pageId);
     };
 
     // Helper function to get role name
@@ -716,21 +714,18 @@ END:VCALENDAR`;
                                 const Icon = page.icon;
                                 const isActive = currentPage === page.id;
                                 const isCompleted = currentPage > page.id;
-                                const isClickable = page.id <= currentPage || page.id === currentPage + 1;
                                 
                                 return (
                                     <div key={page.id} className="relative">
                                         <button
-                                            onClick={() => isClickable && goToPage(page.id)}
-                                            disabled={!isClickable}
+                                            onClick={() => goToPage(page.id)}
+                                            disabled={false}
                                             className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 text-left ${
                                                 isActive 
                                                     ? 'bg-white text-slate-900' 
                                                     : isCompleted
                                                         ? 'bg-white/10 text-white hover:bg-white/20'
-                                                        : isClickable
-                                                            ? 'bg-white/5 text-white/60 hover:bg-white/10'
-                                                            : 'bg-transparent text-white/30 cursor-not-allowed'
+                                                        : 'bg-white/5 text-white/60 hover:bg-white/10'
                                             }`}
                                         >
                                             <div 

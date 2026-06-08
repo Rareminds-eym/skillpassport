@@ -446,8 +446,23 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
   if (path === '/recommendations/saved' && method === 'GET') {
     const learnerId = url.searchParams.get('learnerId');
     const status = url.searchParams.get('status');
-    const assessmentResultId = url.searchParams.get('assessmentResultId');
+    let assessmentResultId = url.searchParams.get('assessmentResultId');
     if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'learnerId required', request);
+
+    // Auto-scope to the latest assessment result when not specified
+    // (prevents mixing stale recommendations from old assessments)
+    if (!assessmentResultId) {
+      const { data: latest } = await supabase
+        .from('learner_course_recommendations')
+        .select('assessment_result_id')
+        .eq('learner_id', learnerId)
+        .order('recommended_at', { ascending: false })
+        .limit(1);
+      if (latest?.length > 0) {
+        assessmentResultId = latest[0].assessment_result_id;
+      }
+    }
+
     let q = supabase.from('learner_course_recommendations').select('*, course:courses(course_id, title, code, description, duration, category, status)').eq('learner_id', learnerId).order('relevance_score', { ascending: false });
     if (status) q = q.eq('status', status);
     if (assessmentResultId) q = q.eq('assessment_result_id', assessmentResultId);

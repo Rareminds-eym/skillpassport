@@ -1,24 +1,52 @@
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Badge } from '@/shared/ui/Badge';
 import { ChevronRight, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useMemo, useCallback } from 'react';
+import { useAuthStore } from '@/shared/model/authStore';
+import { apiGet } from '@/shared/api/apiClient';
 
 const TrainingRecommendations = ({ recommendations }) => {
   const navigate = useNavigate();
+  const authUser = useAuthStore((state) => state.user);
+  const [savedCourses, setSavedCourses] = useState([]);
 
-  // Memoize top courses calculation to avoid re-sorting on every render
+  useEffect(() => {
+    const fetchSavedCourses = async () => {
+      if (!authUser?.id) return;
+      try {
+        const result = await apiGet(`/courses/recommendations/saved?learnerId=${authUser.id}&status=active`);
+        if (result?.data?.length > 0) {
+          setSavedCourses(
+            result.data.map(r => ({
+              course_id: r.course_id,
+              title: r.course?.title || r.course?.name || '',
+              description: r.course?.description || '',
+              duration: r.course?.duration || '',
+              relevance_score: r.relevance_score || 0,
+              skill_type: r.course?.category || '',
+            }))
+          );
+        }
+      } catch (err) {
+        console.warn('[TrainingRecommendations] Failed to fetch saved course recs:', err);
+      }
+    };
+    fetchSavedCourses();
+  }, [authUser?.id]);
+
   const topCourses = useMemo(() => {
+    if (savedCourses.length > 0) {
+      return savedCourses
+        .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
+        .slice(0, 3);
+    }
     if (!recommendations?.coursesByType) return [];
-
     const { technical = [], soft = [] } = recommendations.coursesByType;
-
-    // Combine and sort by relevance_score (highest first), show top 3
     return [...technical, ...soft]
       .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
       .slice(0, 3);
-  }, [recommendations]);
+  }, [savedCourses, recommendations]);
 
-  // Memoize click handler to prevent recreation on every render
   const handleCourseClick = useCallback((courseId) => {
     navigate(`/learner/courses/${courseId}/learn`);
   }, [navigate]);
@@ -27,9 +55,8 @@ const TrainingRecommendations = ({ recommendations }) => {
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 border-2 border-dashed border-blue-300 shadow-sm">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <div 
+        <div
           className="w-14 h-14 rounded-lg  flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
           style={{
             boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
@@ -49,7 +76,6 @@ const TrainingRecommendations = ({ recommendations }) => {
         </div>
       </div>
 
-      {/* Top Course */}
       <div className="space-y-3 max-h-[200px] overflow-y-auto blue-scrollbar">
         {topCourses.map((course, idx) => {
           const isTopPick = idx === 0;
@@ -77,7 +103,6 @@ const TrainingRecommendations = ({ recommendations }) => {
                     <ChevronRight className="w-5 h-5 text-blue-600 flex-shrink-0" />
                   </div>
 
-                  {/* Course Code, Duration & Skill Type */}
                   <div className="flex items-center gap-4 text-sm text-gray-900 font-medium flex-wrap">
                     {course.code && (
                       <span className="font-medium">{course.code}</span>
