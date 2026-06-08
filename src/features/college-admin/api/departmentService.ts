@@ -73,14 +73,14 @@ export interface Faculty {
 export const departmentService = {
   // Get all departments for a college with real faculty counts and programs
   async getDepartments(collegeId: string): Promise<DepartmentWithStats[]> {
-    const response = await apiPost('/college-admin/academic', { action: 'get-departments', collegeId });
+    const response = await apiPost('/college-admin/academic', { action: 'get-departments', college_id: collegeId });
     if (!response.success) throw new Error(response.error || 'Failed to fetch departments');
     return response.data || [];
   },
 
   // Get single department by ID
   async getDepartment(id: string): Promise<DepartmentWithStats | null> {
-    const response = await apiPost('/college-admin/academic', { action: 'get-department', id });
+    const response = await apiPost('/college-admin/academic', { action: 'get-department', department_id: id });
     if (!response.success) throw new Error(response.error || 'Failed to fetch department');
     return response.data || null;
   },
@@ -105,7 +105,7 @@ export const departmentService = {
 
     const response = await apiPost('/college-admin/academic', {
       action: 'update-department',
-      id,
+      department_id: id,
       ...updates,
       updated_by: user?.id,
     });
@@ -115,20 +115,20 @@ export const departmentService = {
 
   // Delete department
   async deleteDepartment(id: string): Promise<void> {
-    const response = await apiPost('/college-admin/academic', { action: 'delete-department', id });
+    const response = await apiPost('/college-admin/academic', { action: 'delete-department', department_id: id });
     if (!response.success) throw new Error(response.error || 'Failed to delete department');
   },
 
   // Get department faculty
   async getDepartmentFaculty(departmentId: string): Promise<Faculty[]> {
-    const response = await apiPost('/college-admin/academic', { action: 'get-department-faculty', departmentId });
+    const response = await apiPost('/college-admin/academic', { action: 'get-department-faculty', department_id: departmentId });
     if (!response.success) throw new Error(response.error || 'Failed to fetch department faculty');
     return response.data || [];
   },
 
   // Get all available faculty for a college
   async getCollegeFaculty(collegeId: string): Promise<Faculty[]> {
-    const response = await apiPost('/college-admin/academic', { action: 'get-college-faculty', collegeId });
+    const response = await apiPost('/college-admin/academic', { action: 'get-college-faculty', college_id: collegeId });
     if (!response.success) throw new Error(response.error || 'Failed to fetch college faculty');
     return response.data || [];
   },
@@ -142,9 +142,9 @@ export const departmentService = {
 
     const response = await apiPost('/college-admin/academic', {
       action: 'assign-hod',
-      departmentId,
-      lecturerId,
-      assignedBy: user?.id,
+      department_id: departmentId,
+      lecturer_id: lecturerId,
+      assigned_by: user?.id,
     });
     if (!response.success) throw new Error(response.error || 'Failed to assign HOD');
   },
@@ -157,30 +157,30 @@ export const departmentService = {
   ): Promise<void> {
     const response = await apiPost('/college-admin/academic', {
       action: 'assign-faculty',
-      departmentId,
-      lecturerIds,
-      assignedBy,
+      department_id: departmentId,
+      lecturer_ids: lecturerIds,
+      assigned_by: assignedBy,
     });
     if (!response.success) throw new Error(response.error || 'Failed to assign faculty');
   },
 
   // Get department learners
   async getDepartmentlearners(departmentId: string) {
-    const response = await apiPost('/college-admin/academic', { action: 'get-department-learners', departmentId });
+    const response = await apiPost('/college-admin/academic', { action: 'get-department-learners', department_id: departmentId });
     if (!response.success) throw new Error(response.error || 'Failed to fetch department learners');
     return response.data || [];
   },
 
   // Get department programs
   async getDepartmentPrograms(departmentId: string) {
-    const response = await apiPost('/college-admin/academic', { action: 'get-department-programs', departmentId });
+    const response = await apiPost('/college-admin/academic', { action: 'get-department-programs', department_id: departmentId });
     if (!response.success) throw new Error(response.error || 'Failed to fetch department programs');
     return response.data || [];
   },
 
   // Get department courses
   async getDepartmentCourses(departmentId: string) {
-    const response = await apiPost('/college-admin/academic', { action: 'get-department-courses', departmentId });
+    const response = await apiPost('/college-admin/academic', { action: 'get-department-courses', department_id: departmentId });
     if (!response.success) throw new Error(response.error || 'Failed to fetch department courses');
     return response.data || [];
   },
@@ -202,7 +202,7 @@ export const departmentService = {
   async searchDepartments(collegeId: string, query: string): Promise<DepartmentWithStats[]> {
     const response = await apiPost('/college-admin/academic', {
       action: 'search-departments',
-      collegeId,
+      college_id: collegeId,
       query,
     });
     if (!response.success) throw new Error(response.error || 'Failed to search departments');
@@ -213,9 +213,9 @@ export const departmentService = {
   async validateDepartmentCode(collegeId: string, code: string, excludeDepartmentId?: string): Promise<{ isValid: boolean; message?: string }> {
     const response = await apiPost('/college-admin/academic', {
       action: 'validate-department-code',
-      collegeId,
+      college_id: collegeId,
       code,
-      excludeDepartmentId,
+      exclude_department_id: excludeDepartmentId,
     });
     if (!response.success) {
       return { isValid: false, message: response.error || 'Error validating department code. Please try again.' };
@@ -240,9 +240,9 @@ export const departmentService = {
 
     const response = await apiPost('/college-admin/academic', {
       action: 'add-learners-to-department',
-      departmentId,
+      department_id: departmentId,
       learners,
-      createdBy: user?.id,
+      created_by: user?.id,
     });
     if (!response.success) throw new Error(response.error || 'Failed to add learners');
   },
