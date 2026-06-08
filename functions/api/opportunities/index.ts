@@ -13,6 +13,19 @@ export const onRequest = async (context: any) => {
   return apiMethodNotAllowed();
 };
 
+async function findOpportunityById(supabase: any, id: number | string, select = '*') {
+  const rawId = String(id || '').trim();
+  if (!rawId) {
+    return { data: null, error: null };
+  }
+
+  return supabase
+    .from('opportunities')
+    .select(select)
+    .eq('id', rawId)
+    .maybeSingle();
+}
+
 const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
@@ -22,12 +35,9 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   const id = url.searchParams.get('id');
   if (id) {
-    const { data, error } = await supabase
-      .from('opportunities')
-      .select('*')
-      .eq('id', parseInt(id))
-      .single();
+    const { data, error } = await findOpportunityById(supabase, id);
     if (error) return apiDbError(error, context.request);
+    if (!data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
     return apiSuccess({ opportunity: data }, context.request);
   }
 
@@ -206,9 +216,13 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     case 'update-opportunity': {
-      const { id, ...updates } = body;
+      const { action: _action, id, updates: nestedUpdates, ...flatUpdates } = body;
+      const updates = nestedUpdates || flatUpdates;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { data, error } = await supabase.from('opportunities').update(updates).eq('id', id).select().single();
+      const existing = await findOpportunityById(supabase, id, 'id');
+      if (existing.error) return apiDbError(existing.error, context.request);
+      if (!existing.data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+      const { data, error } = await supabase.from('opportunities').update(updates).eq('id', existing.data.id).select().single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ opportunity: data }, context.request);
     }
@@ -216,7 +230,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'delete-opportunity': {
       const { id } = body;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { error } = await supabase.from('opportunities').delete().eq('id', id);
+      const existing = await findOpportunityById(supabase, id, 'id');
+      if (existing.error) return apiDbError(existing.error, context.request);
+      if (!existing.data) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
+      const { error } = await supabase.from('opportunities').delete().eq('id', existing.data.id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ deleted: true }, context.request);
     }
@@ -224,10 +241,11 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'increment-view-count': {
       const { id } = body;
       if (!id) return apiError(400, 'VALIDATION_ERROR', 'id required', context.request);
-      const { data: currentData, error: fetchError } = await supabase.from('opportunities').select('views_count').eq('id', id).single();
+      const { data: currentData, error: fetchError } = await findOpportunityById(supabase, id, 'id, views_count');
       if (fetchError) return apiDbError(fetchError, context.request);
+      if (!currentData) return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request);
       const currentCount = currentData?.views_count || 0;
-      const { error } = await supabase.from('opportunities').update({ views_count: currentCount + 1 }).eq('id', id);
+      const { error } = await supabase.from('opportunities').update({ views_count: currentCount + 1 }).eq('id', currentData.id);
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ incremented: true }, context.request);
     }
