@@ -9,6 +9,7 @@ import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
 import { getLogger } from '@/shared/config/logging'
 import { useAuthStore } from '@/shared/model/authStore';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 
 interface DocumentUploadProgress {
