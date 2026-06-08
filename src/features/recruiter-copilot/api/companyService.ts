@@ -1,4 +1,4 @@
-import { apiPost, apiGet } from '@/shared/api/apiClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export interface Company {
   id: string;
@@ -59,7 +59,9 @@ export interface CompanyFormData {
 class CompanyService {
   async getAllCompanies(): Promise<Company[]> {
     try {
-      return await apiPost<Company[]>('/recruiter-copilot', { action: 'companies-get-all' });
+      const response = await apiPost<any>('/recruiter-copilot', { action: 'companies-get-all' });
+      // Backend returns { success, data, error, meta } format
+      return Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
     } catch {
       return [];
     }
@@ -72,39 +74,47 @@ class CompanyService {
     accountStatus?: string;
   }): Promise<Company[]> {
     try {
-      return await apiPost<Company[]>('/recruiter-copilot', {
+      const response = await apiPost<any>('/recruiter-copilot', {
         action: 'companies-get-filtered',
         search_term: filters.searchTerm,
         industry: filters.industry,
         company_size: filters.companySize,
         account_status: filters.accountStatus,
       });
+      // Backend returns { success, data, error, meta } format
+      return Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
     } catch {
       return [];
     }
   }
 
   async addCompany(companyData: CompanyFormData): Promise<Company> {
-    return await apiPost<Company>('/recruiter-copilot', {
+    const response = await apiPost<any>('/recruiter-copilot', {
       action: 'companies-add',
       ...companyData,
     });
+    // Backend returns { success, data, error, meta } format
+    return response?.data || response;
   }
 
   async updateCompany(id: string, companyData: Partial<CompanyFormData>): Promise<Company> {
-    return await apiPost<Company>('/recruiter-copilot', {
+    const response = await apiPost<any>('/recruiter-copilot', {
       action: 'companies-update',
       id,
       ...companyData,
     });
+    // Backend returns { success, data, error, meta } format
+    return response?.data || response;
   }
 
   async updateCompanyStatus(id: string, status: string): Promise<Company> {
-    return await apiPost<Company>('/recruiter-copilot', {
+    const response = await apiPost<any>('/recruiter-copilot', {
       action: 'companies-update-status',
       id,
       status,
     });
+    // Backend returns { success, data, error, meta } format
+    return response?.data || response;
   }
 
   async deleteCompany(id: string): Promise<void> {
@@ -113,10 +123,12 @@ class CompanyService {
 
   async getCompanyById(id: string): Promise<Company | null> {
     try {
-      return await apiPost<Company | null>('/recruiter-copilot', {
+      const response = await apiPost<any>('/recruiter-copilot', {
         action: 'companies-get-by-id',
         id,
       });
+      // Backend returns { success, data, error, meta } format
+      return response?.data || response || null;
     } catch {
       return null;
     }
@@ -133,7 +145,9 @@ class CompanyService {
     blacklisted: number;
   }> {
     try {
-      const data = await apiPost<any[]>('/recruiter-copilot', { action: 'companies-stats' });
+      const response = await apiPost<any>('/recruiter-copilot', { action: 'companies-stats' });
+      // Backend returns { success, data, error, meta } format
+      const data = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
 
       const stats = {
         total: data?.length || 0,
