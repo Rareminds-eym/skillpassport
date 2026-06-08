@@ -26,13 +26,23 @@ export const collegeKeys = {
             ['college', 'admin', 'messages', conversationId] as const,
         school: (schoolAdminId: string): QueryKey =>
             ['college', 'admin', 'school', schoolAdminId] as const,
-        conversations: {
-            all: ['college', 'admin', 'conversations'] as const,
-            byEducator: (educatorId: string, collegeId: string, status?: string): QueryKey =>
-                status
-                    ? ['college', 'admin', 'conversations', educatorId, collegeId, status] as const
-                    : ['college', 'admin', 'conversations', educatorId, collegeId] as const,
-        },
+        conversations: Object.assign(
+            // Main function for direct calls with collegeId and status
+            (collegeId?: string, status?: string): QueryKey =>
+                collegeId && status
+                    ? ['college', 'admin', 'conversations', collegeId, status] as const
+                    : collegeId
+                    ? ['college', 'admin', 'conversations', collegeId] as const
+                    : ['college', 'admin', 'conversations'] as const,
+            {
+                // Nested properties for additional query patterns
+                all: ['college', 'admin', 'conversations'] as const,
+                byEducator: (educatorId: string, collegeId: string, status?: string): QueryKey =>
+                    status
+                        ? ['college', 'admin', 'conversations', educatorId, collegeId, status] as const
+                        : ['college', 'admin', 'conversations', educatorId, collegeId] as const,
+            }
+        ),
     },
 
     // Departments

@@ -339,7 +339,11 @@ export async function checkCompanyCode(code: string): Promise<any> {
 export async function createLearner(learnerData: any, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-learner`, {
     method: 'POST',
-        body: JSON.stringify(learnerData),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(learnerData),
   });
 
   if (!response.ok) {
@@ -366,7 +370,11 @@ export async function createLearner(learnerData: any, token?: string): Promise<a
 export async function createTeacher(teacherData: any, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-teacher`, {
     method: 'POST',
-        body: JSON.stringify(teacherData),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(teacherData),
   });
 
   if (!response.ok) {
@@ -388,7 +396,11 @@ interface ResetPasswordParams {
 export async function resetPassword(params: ResetPasswordParams, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/reset-password`, {
     method: 'POST',
-        body: JSON.stringify(params),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -412,7 +424,11 @@ interface CreateEventUserParams {
 export async function createEventUser(params: CreateEventUserParams, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-event-user`, {
     method: 'POST',
-        body: JSON.stringify(params),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -433,7 +449,11 @@ interface InterviewReminderParams {
 export async function sendInterviewReminder(params: InterviewReminderParams, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/send-interview-reminder`, {
     method: 'POST',
-        body: JSON.stringify(params),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(params),
   });
 
   if (!response.ok) {
@@ -451,7 +471,11 @@ export async function updatelearnerDocuments(
 ): Promise<any> {
   const response = await fetch(`${API_URL}/update-learner-documents`, {
     method: 'POST',
-        body: JSON.stringify({ learnerId, documents }),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ learnerId, documents }),
   });
 
   if (!response.ok) {
@@ -482,7 +506,11 @@ export async function updateTeacherDocuments(
 ): Promise<any> {
   const response = await fetch(`${API_URL}/update-teacher-documents`, {
     method: 'POST',
-        body: JSON.stringify({ teacherId, documents }),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ teacherId, documents }),
   });
 
   if (!response.ok) {
