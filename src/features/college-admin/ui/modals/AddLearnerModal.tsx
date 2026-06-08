@@ -8,7 +8,8 @@ import userApiService from '@/entities/user/api/userApiService'
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/file-validation'
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
 import { getLogger } from '@/shared/config/logging'
-import { useAuthStore } from '@/shared/model/authStore';
+import { useAuthStore } from '@/shared/model/authStore'
+import { ssoClient } from '@/shared/api/ssoClient';
 
 
 interface DocumentUploadProgress {
@@ -421,14 +422,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         }
       }, token)
 
-      // Check if operation failed
-      if (!data?.success) {
-        logger.error('Function returned error', new Error(JSON.stringify(data)))
-        throw new Error(data?.error || data?.details || 'Failed to create learner')
-      }
-
-      const learnerId = data.data?.learnerId || data.data?.authUserId
+      // Extract learner ID from the response
+      // API returns: { success: true, data: { message, data: { learnerId, authUserId, ... } } }
+      const learnerId = data.data?.data?.learnerId
       if (!learnerId) {
+        logger.error('No learner ID in response', new Error(JSON.stringify(data)))
         throw new Error('Learner created but no ID returned')
       }
 
