@@ -1670,6 +1670,8 @@ const AssessmentResult = () => {
                                             roadmap={roadmap}
                                             results={results}
                                             attemptId={effectiveAttemptId}
+                                            assessmentResultId={resultData?._rawDatabaseFields?.id || ''}
+                                            learnerId={learnerInfo?.id || ''}
                                         />
                                     )}
                                 </div>
@@ -2271,6 +2273,8 @@ const AssessmentResult = () => {
                                     roadmap={roadmap}
                                     results={results}
                                     attemptId={effectiveAttemptId}
+                                    assessmentResultId={resultData?._rawDatabaseFields?.id || ''}
+                                    learnerId={learnerInfo?.id || ''}
                                 />
                             )}
                         </div>
@@ -2311,6 +2315,8 @@ const AssessmentResult = () => {
                                     roadmap={roadmap}
                                     results={results}
                                     attemptId={effectiveAttemptId}
+                                    assessmentResultId={resultData?._rawDatabaseFields?.id || ''}
+                                    learnerId={learnerInfo?.id || ''}
                                 />
                             )}
                         </div>

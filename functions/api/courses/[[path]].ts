@@ -442,13 +442,15 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
 
   // ─── RECOMMENDATIONS ──────────────────────────────────────────────
 
-  // GET /api/courses/recommendations/saved?learnerId=&status=
+  // GET /api/courses/recommendations/saved?learnerId=&status=&assessmentResultId=
   if (path === '/recommendations/saved' && method === 'GET') {
     const learnerId = url.searchParams.get('learnerId');
     const status = url.searchParams.get('status');
+    const assessmentResultId = url.searchParams.get('assessmentResultId');
     if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'learnerId required', request);
     let q = supabase.from('learner_course_recommendations').select('*, course:courses(course_id, title, code, description, duration, category, status)').eq('learner_id', learnerId).order('relevance_score', { ascending: false });
     if (status) q = q.eq('status', status);
+    if (assessmentResultId) q = q.eq('assessment_result_id', assessmentResultId);
     const { data } = await q;
     return apiSuccess(data || [], request);
   }
@@ -457,13 +459,17 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
   if (path === '/recommendations/save' && method === 'POST') {
     const { learnerId, recommendations, assessmentResultId, recommendationType } = await parseBody(request);
     if (!learnerId || !recommendations?.length) return apiError(400, 'VALIDATION_ERROR', 'learnerId and recommendations required', request);
+    console.log('[Save] Request:', { learnerId, assessmentResultId, courseIds: recommendations.map((r: any) => r.course_id), recommendationType });
     const records = recommendations.map((rec: any) => ({
       learner_id: learnerId, course_id: rec.course_id, assessment_result_id: assessmentResultId || null,
       relevance_score: rec.relevance_score, match_reasons: rec.match_reasons || [], skill_gaps_addressed: rec.skill_gaps_addressed || [],
       recommendation_type: recommendationType || 'assessment', status: 'active', recommended_at: new Date().toISOString(),
     }));
     const { data, error } = await supabase.from('learner_course_recommendations').upsert(records, { onConflict: 'learner_id,course_id,assessment_result_id', ignoreDuplicates: false }).select();
-    if (error) return apiDbError(error, request);
+    if (error) {
+      console.error('[Save] DB Error details:', { code: error.code, message: error.message, details: error.details, hint: error.hint });
+      return apiDbError(error, request);
+    }
     return apiSuccess(data || [], request);
   }
 
