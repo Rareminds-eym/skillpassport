@@ -123,7 +123,8 @@ const TimetableBuilderEnhanced: React.FC = () => {
       }
 
       const result = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: user.email, user_id: user.id }) as any;
-      return result?.school_id || null;
+      // Handle both direct response and wrapped response
+      return result?.data?.school_id || result?.school_id || null;
     } catch (error) {
       logger.error("Error fetching school ID", error as Error);
       return null;
@@ -138,9 +139,15 @@ const TimetableBuilderEnhanced: React.FC = () => {
     }
 
     // Load teachers from school_educators
-    const data = await apiPost('/college-admin/school-admin', { action: 'get-teachers-dropdown', school_id: schoolId }) as any;
+    const response = await apiPost('/college-admin/school-admin', { action: 'get-teachers-dropdown', school_id: schoolId }) as any;
     
-    if (data) setTeachers(data);
+    // Handle both direct response and wrapped response
+    const data = response?.data || response;
+    if (Array.isArray(data)) {
+      setTeachers(data);
+    } else {
+      setTeachers([]);
+    }
   };
 
   // const loadClasses = async () => {
@@ -170,10 +177,16 @@ const loadClasses = async () => {
     }
 
     // Load classes with room_number
-    const data = await apiPost('/college-admin/school-admin', { action: 'get-classes', school_id: schoolId }) as any;
+    const response = await apiPost('/college-admin/school-admin', { action: 'get-classes', school_id: schoolId }) as any;
     
+    // Handle both direct response and wrapped response
+    const data = response?.data || response;
     logger.info('Loaded classes', { count: data?.length || 0 });
-    if (data) setClasses(data);
+    if (Array.isArray(data)) {
+      setClasses(data);
+    } else {
+      setClasses([]);
+    }
   };
   const loadOrCreateTimetable = async () => {
     const schoolId = await getSchoolId();
@@ -184,8 +197,10 @@ const loadClasses = async () => {
 
     const currentYear = new Date().getFullYear();
     const yearStr = `${currentYear}-${currentYear + 1}`;
-    const result = await apiPost('/college-admin/school-admin', { action: 'get-or-create-timetable', school_id: schoolId, academic_year: yearStr, term: 'Term 1', start_date: `${currentYear}-06-01`, end_date: `${currentYear}-12-31`, status: 'draft' }) as any;
+    const response = await apiPost('/college-admin/school-admin', { action: 'get-or-create-timetable', school_id: schoolId, academic_year: yearStr, term: 'Term 1', start_date: `${currentYear}-06-01`, end_date: `${currentYear}-12-31`, status: 'draft' }) as any;
 
+    // Handle both direct response and wrapped response
+    const result = response?.data || response;
     if (result?.id) {
       logger.info('Found/created timetable', { timetableId: result.id });
       setTimetableId(result.id);
@@ -202,10 +217,16 @@ const loadSubjects = async () => {
     return;
   }
 
-  const data = await apiPost('/college-admin/school-admin', { action: 'get-subjects', school_id: schoolId }) as any;
+  const response = await apiPost('/college-admin/school-admin', { action: 'get-subjects', school_id: schoolId }) as any;
   
+  // Handle both direct response and wrapped response
+  const data = response?.data || response;
   logger.info('Loaded subjects', { count: data?.length || 0 });
-  if (data) setSubjects(data);
+  if (Array.isArray(data)) {
+    setSubjects(data);
+  } else {
+    setSubjects([]);
+  }
 };
 
 // Add loadSubjects to the initial useEffect

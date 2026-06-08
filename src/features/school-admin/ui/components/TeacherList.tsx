@@ -88,8 +88,10 @@ const TeacherListPage: React.FC = () => {
 
     try {
       const result = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: user.email, user_id: user.id }) as any;
-      if (result?.school_id) {
-        setSchoolId(result.school_id);
+      // Handle both direct response and wrapped response
+      const schoolIdValue = result?.data?.school_id || result?.school_id;
+      if (schoolIdValue) {
+        setSchoolId(schoolIdValue);
         return;
       }
       setLoading(false);
@@ -106,10 +108,17 @@ const TeacherListPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const data = await apiPost('/college-admin/school-admin', { action: 'get-teachers', school_id: schoolId }) as any;
-      if (data) setTeachers(data);
+      const response = await apiPost('/college-admin/school-admin', { action: 'get-teachers', school_id: schoolId }) as any;
+      // Handle both direct response and wrapped response
+      const data = response?.data || response;
+      if (Array.isArray(data)) {
+        setTeachers(data);
+      } else {
+        setTeachers([]);
+      }
     } catch (error) {
       // Error handled silently
+      setTeachers([]);
     } finally {
       setLoading(false);
     }

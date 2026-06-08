@@ -4,6 +4,7 @@ import Papa from 'papaparse'
 import React, { useEffect, useState } from 'react'
 import { apiPost } from '@/shared/api/apiClient'
 import storageService from '@/shared/api/storageService'
+import { ssoClient } from '@/shared/api/ssoClient'
 import userApiService from '@/entities/user/api/userApiService'
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/file-validation'
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
@@ -424,11 +425,14 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       // Check if operation failed
       if (!data?.success) {
         logger.error('Function returned error', new Error(JSON.stringify(data)))
-        throw new Error(data?.error || data?.details || 'Failed to create learner')
+        throw new Error(data?.error?.message || data?.error || 'Failed to create learner')
       }
 
-      const learnerId = data.data?.learnerId || data.data?.authUserId
+      // Response structure: { success: true, data: { message, data: { learnerId, authUserId } } }
+      const responseData = data.data?.data || data.data
+      const learnerId = responseData?.learnerId || responseData?.authUserId
       if (!learnerId) {
+        console.error('Response data:', data)
         throw new Error('Learner created but no ID returned')
       }
 

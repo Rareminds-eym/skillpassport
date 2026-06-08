@@ -429,7 +429,8 @@ const TeacherOnboardingPage: React.FC = () => {
       // Get school_id via API
       const currUser = useAuthStore.getState().user;
       const schoolResult = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: userEmail, user_id: currUser?.id }) as any;
-      let schoolId = schoolResult?.school_id;
+      // Handle both direct response and wrapped response
+      let schoolId = schoolResult?.data?.school_id || schoolResult?.school_id;
 
       if (!schoolId) {
         throw new Error("School ID not found. Please ensure you're logged in as a school admin.");

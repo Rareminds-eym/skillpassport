@@ -55,8 +55,10 @@ const SchoolFinanceModule: React.FC = () => {
         const user = useAuthStore.getState().user;
         if (user) {
           const schoolResult = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: user.email, user_id: user.id }) as any;
-          if (schoolResult?.school_id) {
-            setSchoolId(schoolResult.school_id);
+          // Handle both direct response and wrapped response
+          const schoolIdValue = schoolResult?.data?.school_id || schoolResult?.school_id;
+          if (schoolIdValue) {
+            setSchoolId(schoolIdValue);
             return;
           }
           if (user.user_metadata?.school_id) {

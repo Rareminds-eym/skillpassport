@@ -146,6 +146,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   // For school/college educators: show all items
   const coursesItem = { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon };
   
+  // Learners item - shown for all educator types
+  const learnersItem = { name: "Learners", path: "/educator/learners", icon: UserGroupIcon };
+  
   const bottomItems = isRaremindsEducator 
     ? [
         // Rareminds educators only see these items
@@ -218,27 +221,49 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span className="ml-auto text-xs font-semibold px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full flex-shrink-0">NEW</span>
         </button>
 
-        {/* 📚 Courses - Only shown as standalone for Rareminds educators */}
+        {/* 📚 Courses & Learners - Only shown as standalone for Rareminds educators */}
         {isRaremindsEducator && (
-          <button
-            onClick={() => handleNavigation(coursesItem.name, coursesItem.path)}
-            className={classNames(
-              location.pathname.startsWith(coursesItem.path)
-                ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
-                : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
-              "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
-            )}
-          >
-            <coursesItem.icon
+          <>
+            <button
+              onClick={() => handleNavigation(coursesItem.name, coursesItem.path)}
               className={classNames(
                 location.pathname.startsWith(coursesItem.path)
-                  ? "text-indigo-600"
-                  : "text-gray-400 group-hover:text-indigo-500",
-                "h-5 w-5 flex-shrink-0"
+                  ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
+                "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
               )}
-            />
-            <span>{coursesItem.name}</span>
-          </button>
+            >
+              <coursesItem.icon
+                className={classNames(
+                  location.pathname.startsWith(coursesItem.path)
+                    ? "text-indigo-600"
+                    : "text-gray-400 group-hover:text-indigo-500",
+                  "h-5 w-5 flex-shrink-0"
+                )}
+              />
+              <span>{coursesItem.name}</span>
+            </button>
+            
+            <button
+              onClick={() => handleNavigation(learnersItem.name, learnersItem.path)}
+              className={classNames(
+                location.pathname.startsWith(learnersItem.path)
+                  ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
+                "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
+              )}
+            >
+              <learnersItem.icon
+                className={classNames(
+                  location.pathname.startsWith(learnersItem.path)
+                    ? "text-indigo-600"
+                    : "text-gray-400 group-hover:text-indigo-500",
+                  "h-5 w-5 flex-shrink-0"
+                )}
+              />
+              <span>{learnersItem.name}</span>
+            </button>
+          </>
         )}
 
         {/* 2️⃣ Dropdowns - Only shown for school/college educators */}

@@ -681,7 +681,8 @@ const ClassManagement = () => {
         throw resp.error
       }
 
-      const data = resp.data?.classes || []
+      // Handle both response formats: { data: { classes: [...] } } or { data: [...] }
+      const data = Array.isArray(resp.data) ? resp.data : (resp.data?.classes || [])
 
       logger.info("Fetched classes", { count: data.length })
 

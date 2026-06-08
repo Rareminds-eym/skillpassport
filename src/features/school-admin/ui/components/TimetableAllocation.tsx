@@ -134,10 +134,12 @@ const TimetableAllocationPage: React.FC = () => {
       } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
 
-      const userRoleData = await apiPost('/college-admin/school-admin', { action: 'get-user-role', user_id: user.id }) as any;
+      const userRoleResponse = await apiPost('/college-admin/school-admin', { action: 'get-user-role', user_id: user.id }) as any;
+      const userRoleData = userRoleResponse?.data || userRoleResponse;
 
       if (userRoleData?.role === "school_admin") {
-        const schoolData = await apiPost('/college-admin/school-admin', { action: 'get-school-by-owner', user_id: user.id }) as any;
+        const schoolResponse = await apiPost('/college-admin/school-admin', { action: 'get-school-by-owner', user_id: user.id }) as any;
+        const schoolData = schoolResponse?.data || schoolResponse;
         if (schoolData?.id) {
           setSchoolId(schoolData.id);
           return;
@@ -145,7 +147,8 @@ const TimetableAllocationPage: React.FC = () => {
       }
 
       if (userRoleData?.role === "school_educator") {
-        const educatorData = await apiPost('/college-admin/school-admin', { action: 'get-educator-by-email', email: user?.email }) as any;
+        const educatorResponse = await apiPost('/college-admin/school-admin', { action: 'get-educator-by-email', email: user?.email }) as any;
+        const educatorData = educatorResponse?.data || educatorResponse;
         if (educatorData?.school_id) {
           setSchoolId(educatorData.school_id);
           return;
@@ -159,27 +162,42 @@ const TimetableAllocationPage: React.FC = () => {
   const loadTeachers = async () => {
     if (!schoolId) return;
 
-    const data = await apiPost('/college-admin/school-admin', { action: 'get-teachers-dropdown', school_id: schoolId }) as any;
-    if (data) setTeachers(data);
+    const response = await apiPost('/college-admin/school-admin', { action: 'get-teachers-dropdown', school_id: schoolId }) as any;
+    // Handle both direct response and wrapped response
+    const data = response?.data || response;
+    if (Array.isArray(data)) {
+      setTeachers(data);
+    } else {
+      setTeachers([]);
+    }
   };
 
   const loadClasses = async () => {
     if (!schoolId) return;
 
-    const data = await apiPost('/college-admin/school-admin', { action: 'get-classes', school_id: schoolId }) as any;
-    if (data) setClasses(data);
+    const response = await apiPost('/college-admin/school-admin', { action: 'get-classes', school_id: schoolId }) as any;
+    // Handle both direct response and wrapped response
+    const data = response?.data || response;
+    if (Array.isArray(data)) {
+      setClasses(data);
+    } else {
+      setClasses([]);
+    }
+  };
   };
 
   const loadOrCreateTimetable = async () => {
     const currentYear = new Date().getFullYear();
     const yearStr = `${currentYear}-${currentYear + 1}`;
-    const existing = await apiPost('/college-admin/school-admin', { action: 'get-or-create-timetable', academic_year: yearStr, status: 'draft', term: 'Term 1', start_date: `${currentYear}-06-01`, end_date: `${currentYear}-12-31` }) as any;
+    const response = await apiPost('/college-admin/school-admin', { action: 'get-or-create-timetable', academic_year: yearStr, status: 'draft', term: 'Term 1', start_date: `${currentYear}-06-01`, end_date: `${currentYear}-12-31` }) as any;
+    const existing = response?.data || response;
     if (existing?.id) setTimetableId(existing.id);
   };
 
   const loadSlots = async () => {
-    const data = await apiPost('/college-admin/school-admin', { action: 'get-timetable-slots', timetable_id: timetableId, educator_id: selectedTeacher, class_id: selectedClass }) as any;
-    if (data) {
+    const response = await apiPost('/college-admin/school-admin', { action: 'get-timetable-slots', timetable_id: timetableId, educator_id: selectedTeacher, class_id: selectedClass }) as any;
+    const data = response?.data || response;
+    if (Array.isArray(data)) {
       const mappedSlots = data.map((slot: any) => ({
         ...slot,
         class_name: slot.school_classes
