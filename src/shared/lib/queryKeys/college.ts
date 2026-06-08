@@ -26,21 +26,24 @@ export const collegeKeys = {
             ['college', 'admin', 'messages', conversationId] as const,
         school: (schoolAdminId: string): QueryKey =>
             ['college', 'admin', 'school', schoolAdminId] as const,
+        // Conversations can be called as a function OR access nested methods
         conversations: Object.assign(
-            // Main function for direct calls with collegeId and status
-            (collegeId?: string, status?: string): QueryKey =>
-                collegeId && status
-                    ? ['college', 'admin', 'conversations', collegeId, status] as const
-                    : collegeId
-                    ? ['college', 'admin', 'conversations', collegeId] as const
-                    : ['college', 'admin', 'conversations'] as const,
+            // Main function: conversations(collegeId, status)
+            (collegeId?: string, status?: string): QueryKey => {
+                if (!collegeId && !status) {
+                    return ['college', 'admin', 'conversations'] as const;
+                }
+                if (!status) {
+                    return ['college', 'admin', 'conversations', collegeId] as const;
+                }
+                return ['college', 'admin', 'conversations', collegeId, status] as const;
+            },
             {
-                // Nested properties for additional query patterns
                 all: ['college', 'admin', 'conversations'] as const,
                 byEducator: (educatorId: string, collegeId: string, status?: string): QueryKey =>
                     status
-                        ? ['college', 'admin', 'conversations', educatorId, collegeId, status] as const
-                        : ['college', 'admin', 'conversations', educatorId, collegeId] as const,
+                        ? ['college', 'admin', 'conversations', 'educator', educatorId, collegeId, status] as const
+                        : ['college', 'admin', 'conversations', 'educator', educatorId, collegeId] as const,
             }
         ),
     },

@@ -110,8 +110,18 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
     try {
       setIsLoading(true);
       const companiesData = await companyService.getAllCompanies();
-      setCompanies(companiesData);
+      
+      // Ensure we always set an array, even if API returns something else
+      if (Array.isArray(companiesData)) {
+        setCompanies(companiesData);
+      } else {
+        console.error('getAllCompanies did not return an array:', companiesData);
+        setCompanies([]);
+        toast.error('Unexpected data format received');
+      }
     } catch (error) {
+      console.error('Error loading companies:', error);
+      setCompanies([]); // Set empty array on error
       toast.error('Failed to load companies');
     } finally {
       setIsLoading(false);
@@ -119,6 +129,13 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
   };
 
   const applyFilters = () => {
+    // Ensure companies is an array before filtering
+    if (!Array.isArray(companies)) {
+       setFilteredCompanies([]);
+      setTotalItems(0);
+      return;
+    }
+
     let filtered = [...companies];
 
     // Search filter
@@ -153,13 +170,31 @@ const CompanyRegistration: React.FC<CompanyRegistrationProps> = ({ onStatsUpdate
 
   // Get paginated data
   const getPaginatedCompanies = () => {
+    // Safety check: ensure filteredCompanies is an array
+    if (!Array.isArray(filteredCompanies)) {
+      console.warn('filteredCompanies is not an array:', filteredCompanies);
+      return [];
+    }
+    
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredCompanies.slice(startIndex, endIndex);
   };
 
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1; // Ensure at least 1 page
   const paginatedCompanies = getPaginatedCompanies();
+
+  // Early safety check - if paginatedCompanies is not an array, prevent rendering errors
+  if (!Array.isArray(paginatedCompanies)) {
+    console.error('paginatedCompanies is not an array:', paginatedCompanies);
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800">Error loading companies. Please refresh the page.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
