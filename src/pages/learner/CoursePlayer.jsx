@@ -1007,7 +1007,7 @@ const CoursePlayer = () => {
 
       const courseData = fullRes?.data;
       if (!courseData) {
-        navigate(getBackPath());
+        navigate(getBackPath(), { replace: true });
         return;
       }
 
@@ -1066,7 +1066,7 @@ const CoursePlayer = () => {
       // Check if course has no lessons - redirect to coming soon page
       const totalLessons = transformedModules.reduce((acc, m) => acc + m.lessons.length, 0);
       if (totalLessons === 0) {
-        navigate('/learner/coming-soon');
+        navigate('/learner/coming-soon', { replace: true });
         return;
       }
 
@@ -1110,7 +1110,7 @@ const CoursePlayer = () => {
       }
     } catch (error) {
       console.error('Error fetching course:', error);
-      navigate(getBackPath());
+      navigate(getBackPath(), { replace: true });
     } finally {
       setLoading(false);
     }
