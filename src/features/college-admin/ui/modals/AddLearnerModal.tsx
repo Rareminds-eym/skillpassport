@@ -423,8 +423,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }, token)
 
       // Extract learner ID from the response
-      // API returns: { success: true, data: { learnerId, authUserId, ... } }
-      const learnerId = data.data?.learnerId || data.data?.authUserId
+      // API returns: { success: true, data: { message, data: { learnerId, authUserId, ... } } }
+      const learnerId = data.data?.data?.learnerId
       if (!learnerId) {
         logger.error('No learner ID in response', new Error(JSON.stringify(data)))
         throw new Error('Learner created but no ID returned')

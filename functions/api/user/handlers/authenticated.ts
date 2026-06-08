@@ -222,14 +222,16 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
 
     return apiSuccess({
       message: `Learner ${learner.name} created successfully`,
-      authUserId: authUser.user.id,
-      learnerId: learnerRecord.id,
-      email: learner.email,
-      name: learner.name,
-      password: learnerPassword,
-      institutionType,
-      schoolId,
-      collegeId,
+      data: {
+        authUserId: authUser.user.id,
+        learnerId: learnerRecord.id,
+        email: learner.email,
+        name: learner.name,
+        password: learnerPassword,
+        institutionType,
+        schoolId,
+        collegeId,
+      },
     }, request);
   } catch (error) {
     // Rollback auth user
