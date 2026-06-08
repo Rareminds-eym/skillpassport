@@ -27,7 +27,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has access
-    const access = await verifyOrgAccess(supabase, user.sub, orgId);
+    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
     if (!access.allowed) {
         return access.error!;
     }

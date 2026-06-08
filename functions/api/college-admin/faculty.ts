@@ -2,10 +2,10 @@
  * College Admin - Faculty Management API
  * POST: Action-based dispatch for faculty, lecturers, leaves, substitutions, users, budget, organizations
  */
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -377,37 +377,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess(data, context.request, { startTime });
       }
 
-      case 'get-user-roles': {
-        const { user_id } = params;
-        if (!user_id) return apiError(400, 'VALIDATION_ERROR', 'Missing user_id', context.request, { startTime });
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('*, role:role_id(id, name, slug)')
-          .eq('user_id', user_id);
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
-      }
-
-      case 'assign-role': {
-        const { user_id, role_id } = params;
-        if (!user_id || !role_id) return apiError(400, 'VALIDATION_ERROR', 'Missing user_id or role_id', context.request, { startTime });
-        const { data: existing } = await supabase
-          .from('user_roles')
-          .select('id')
-          .eq('user_id', user_id)
-          .eq('role_id', role_id)
-          .maybeSingle();
-        if (existing) {
-          return apiError(409, 'DUPLICATE', 'User already has this role assigned', context.request, { startTime });
-        }
-        const { data, error } = await supabase
-          .from('user_roles')
-          .insert([{ user_id, role_id, assigned_by: user.id, assigned_at: new Date().toISOString() }])
-          .select()
-          .single();
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data, context.request, { startTime });
-      }
+      // NOTE: the `get-user-roles` and `assign-role` actions were REMOVED here
+      // (P4 task 22.1). They queried/wrote a PHANTOM `public.user_roles` table
+      // (no CREATE TABLE in any migration; absent from the live DB — confirmed in
+      // .kiro/verifications/2026-06-07_p3-role-tables-verification.md §2), so every
+      // call errored at runtime (PostgREST PGRST205). No frontend code references
+      // either action. Role ASSIGNMENT is owned by the sso-worker `membership_roles`
+      // (surfaced via the JWT); use the SSO membership RPCs (e.g. ssoAssignMembershipRole)
+      // for assignment. Unknown actions fall through to the default case below.
 
       case 'get-organization-users': {
         const { organization_id } = params;
@@ -753,6 +730,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-user-role': {
+        // TODO(§7.5/7.10 frontend-resolver reconciliation): lookup endpoint returning
+        // `users.role` by arbitrary user_id — NOT an in-handler authz decision; deferred.
         const { user_id } = params;
         if (!user_id) return apiError(400, 'VALIDATION_ERROR', 'Missing user_id', context.request, { startTime });
         const { data, error } = await supabase
@@ -934,36 +913,36 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { user_id, email } = params;
         if (!user_id && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing user_id or email', context.request, { startTime });
 
-        if (user_id) {
-          const { data: org } = await supabase
+        // organizations has admin_id and email columns (no admin_email column).
+        if (user_id || email) {
+          let q = supabase
             .from('organizations')
             .select('id, name, code, email')
-            .eq('organization_type', 'college')
-            .or(`admin_id.eq.${user_id},admin_email.eq.${user_id}`)
-            .maybeSingle();
+            .eq('organization_type', 'college');
 
-          if (org?.id) return apiSuccess({ college_id: org.id, college: org, source: 'organization' }, context.request, { startTime });
-        }
+          if (user_id && email) {
+            q = q.or(`admin_id.eq.${user_id},email.eq.${email}`);
+          } else if (user_id) {
+            q = q.eq('admin_id', user_id);
+          } else {
+            q = q.eq('email', email);
+          }
 
-        if (!user_id && email) {
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id, name, code, email')
-            .eq('organization_type', 'college')
-            .or(`admin_email.eq.${email},email.eq.${email}`)
-            .maybeSingle();
-
+          const { data: org, error } = await q.maybeSingle();
+          if (error) return apiDbError(error, context.request, { startTime });
           if (org?.id) return apiSuccess({ college_id: org.id, college: org, source: 'organization' }, context.request, { startTime });
         }
 
         if (user_id) {
-          const { data: lecturer } = await supabase
+          // college_lecturers uses snake_case user_id (no userId column).
+          const { data: lecturer, error: lecturerError } = await supabase
             .from('college_lecturers')
             .select('collegeId')
-            .or(`user_id.eq.${user_id},userId.eq.${user_id}`)
+            .eq('user_id', user_id)
             .limit(1)
             .maybeSingle();
 
+          if (lecturerError) return apiDbError(lecturerError, context.request, { startTime });
           if (lecturer?.collegeId) {
             const { data: org } = await supabase
               .from('organizations')

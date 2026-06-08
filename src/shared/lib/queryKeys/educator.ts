@@ -40,4 +40,8 @@ export const educatorKeys = {
     // Activities
     activities: (entityId: string): QueryKey =>
         ['educator', 'activities', entityId] as const,
+
+    // Assessment results
+    results: (educatorId: string): QueryKey =>
+        ['educator', 'results', educatorId] as const,
 } as const;

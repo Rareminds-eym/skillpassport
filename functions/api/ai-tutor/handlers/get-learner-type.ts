@@ -29,9 +29,10 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
-import { apiSuccess, apiError } from '../../../lib/response';
-import type { PagesEnv } from '../../../lib/types';
 import { createLogger } from '../../../lib/logger';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { ADMIN_ROLES } from '../../../lib/roleCategories';
+import type { PagesEnv } from '../../../lib/types';
 
 const logger = createLogger('get-learner-type');
 
@@ -52,7 +53,7 @@ export const onRequestGet = async (context: TypedContext) => {
     // Parse query parameters
     const url = new URL(request.url);
     const requestedUserId = url.searchParams.get('userId');
-    
+
     // Use requested userId or fall back to authenticated user
     const userId = requestedUserId || authenticatedUser.id;
 
@@ -60,11 +61,10 @@ export const onRequestGet = async (context: TypedContext) => {
       return apiError(400, 'VALIDATION_ERROR', 'Missing userId parameter', request);
     }
 
-    // Security check: Only allow users to fetch their own learner_type
-    // unless they have admin privileges
-    const isAdmin = authenticatedUser.roles?.some((role: string) => 
-      ['admin', 'school_admin', 'college_admin', 'university_admin', 'owner'].includes(role)
-    );
+    // Ownership-scoped: any user may fetch their OWN learner type; admins
+    // (shared ADMIN_ROLES group) may fetch anyone's. Non-guard role check →
+    // uses ADMIN_ROLES, replacing the inline literal (bug §7.1).
+    const isAdmin = authenticatedUser.roles?.some((role: string) => ADMIN_ROLES.includes(role));
 
     if (requestedUserId && requestedUserId !== authenticatedUser.id && !isAdmin) {
       return apiError(403, 'FORBIDDEN', 'Forbidden: You can only fetch your own learner type', request);

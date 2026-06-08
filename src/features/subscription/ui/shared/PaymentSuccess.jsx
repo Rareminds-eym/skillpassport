@@ -74,9 +74,6 @@ const CONFIG = {
 /** Dashboard routes by role */
 const DASHBOARD_ROUTES = {
   // Admin roles
-  super_admin: '/admin/dashboard',
-  rm_admin: '/admin/dashboard',
-  rm_manager: '/admin/dashboard',
   admin: '/admin/dashboard',
   company_admin: '/admin/dashboard',
   // Institution admin roles
@@ -89,15 +86,17 @@ const DASHBOARD_ROUTES = {
   college_educator: '/educator/dashboard',
   // Recruiter role
   recruiter: '/recruitment/overview',
+  // Admin/owner roles
+  owner: '/admin/dashboard',
   // Learner roles
   learner: '/learner/dashboard',
 };
 
 /** Subscription manage routes by role */
 const MANAGE_ROUTES = {
-  super_admin: '/admin/subscription/manage',
-  rm_admin: '/admin/subscription/manage',
   admin: '/admin/subscription/manage',
+  company_admin: '/admin/subscription/manage',
+  owner: '/admin/subscription/manage',
   school_admin: '/school-admin/subscription/manage',
   college_admin: '/college-admin/subscription/manage',
   university_admin: '/university-admin/subscription/manage',

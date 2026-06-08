@@ -1,7 +1,7 @@
-import { withAuth } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
+import { withAuth } from '../../lib/auth';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 async function handleAction(action: string, params: Record<string, any>, context: AuthenticatedContext): Promise<Response> {
   const env = context.env as Record<string, string>;
@@ -110,7 +110,7 @@ async function handleAction(action: string, params: Record<string, any>, context
         departments!learner_branch_field_fkey (id, name),
         programs!learner_course_name_fkey (id, name, code),
         program_sections!learner_section_id_fkey (id, name, semester)
-      `)        .eq('college_id', org_id);
+      `).eq('college_id', org_id);
       if (department) query = query.eq('branch_field', department);
       if (program) query = query.eq('course_name', program);
       if (program_section) query = query.eq('section_id', program_section);
@@ -285,6 +285,10 @@ async function handleAction(action: string, params: Record<string, any>, context
     }
 
     case 'get-user-role': {
+      // TODO(§7.5/7.10 frontend-resolver reconciliation): lookup endpoint returning
+      // `users.role` by arbitrary email — NOT an in-handler authz decision, so not a
+      // JWT replacement. Becomes obsolete once the frontend stops the deviant
+      // role-resolution path and consumes JWT roles. Deferred (out of scope for 12.1).
       const { email } = params;
       if (!email) return apiError(400, 'VALIDATION_ERROR', 'email required', context.request, { startTime });
       const { data, error } = await supabase.from('users').select('role').eq('email', email).single();

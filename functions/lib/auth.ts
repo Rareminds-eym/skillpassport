@@ -1,9 +1,10 @@
 /// <reference types="@cloudflare/workers-types" />
-import { initAuth, verifyJWT, withAuth as withAuthCore, requireRole, requireProduct } from '@rareminds-eym/auth-core';
-import type { AuthenticatedContext, AuthUser as SSOAuthUser } from '@rareminds-eym/auth-core';
-import { createClient } from '@supabase/supabase-js';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { AuthenticatedContext, ContextWithUser, AuthUser as SSOAuthUser } from '@rareminds-eym/auth-core';
+import { initAuth, requireFeature, requireProduct, requireRole, withAuth as withAuthCore } from '@rareminds-eym/auth-core';
+import { hasAnyFeature } from './entitlements';
+import { ADMIN_ROLES } from './roleCategories';
 import { getServiceClient } from './supabase';
+import type { PagesEnv } from './types';
 
 // ---------------------------------------------------------------------------
 // Module-level lazy singleton for auth-core initialization.
@@ -111,6 +112,26 @@ export function withAuth(handler: (context: AuthenticatedContext) => Promise<Res
   };
 }
 
+/**
+ * withAuth variant that does NOT enforce email verification.
+ *
+ * Used for endpoints that must be accessible immediately after signup
+ * (e.g., creating the app profile) before the user has verified their email.
+ *
+ * The JWT is still validated — the user must be authenticated. Only the
+ * email-verified gate is bypassed.
+ */
+export function withAuthAllowUnverified(handler: (context: AuthenticatedContext) => Promise<Response>) {
+  return async (context: any) => {
+    const env = context.env as Record<string, string | Fetcher>;
+    ensureAuthInitialized(env);
+
+    return withAuthCore(async (authContext) => {
+      return handler(authContext);
+    })(context);
+  };
+}
+
 export interface AuthUser extends SSOAuthUser {
   id: string;
 }
@@ -141,5 +162,109 @@ export function getContextUser(context: { data?: { user?: SSOAuthUser } }): Auth
   return { ...user, id: user.sub };
 }
 
-export { requireRole, requireProduct, getServiceClient };
+export { getServiceClient, requireFeature, requireProduct, requireRole };
 
+// ══════════════════════════════════════════════════════════════
+// App-side role-group guard: requireAdmin
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Guard requiring the authenticated user to hold ANY role in the ADMIN role
+ * group. Equivalent to `requireRole(ADMIN_ROLES, handler)` — the admin group
+ * is sourced from the SINGLE shared definition in `./roleCategories`
+ * (mirroring `src/shared/types/generated/roles.ts` ROLE_CATEGORIES.admin),
+ * NOT an inline `['admin','company_admin',...]` literal duplicated per handler
+ * (that duplication is bug §3.4 / §7.1, which this P2 work eliminates).
+ *
+ * Like `requireRole`, this reads ONLY the verified JWT roles
+ * (`context.data.user.roles`) — no shadow-store / DB authorization read.
+ *
+ * Usage (handlers converted in task 11.x):
+ *   export const onRequestPost = withAuth(requireAdmin(async (context) => { ... }));
+ *
+ * ── P3 FOLLOW-UP (tasks 15–18) ────────────────────────────────────────────
+ * The admin group is currently a STATIC list (`ADMIN_ROLES`). In Phase P3 it
+ * will be resolved at RUNTIME from the app-DB `role_categories` shadow table
+ * (design's `rolesInCategory(env, 'admin')`, ~60s in-isolate cache) so a
+ * role's category membership becomes a DB-only change (no regen/redeploy,
+ * E3.2/E3.3). At that point this becomes:
+ *   requireAdmin = (handler) => async (context) => {
+ *     const adminRoles = await rolesInCategory(context.env, 'admin');
+ *     return requireRole(adminRoles, handler)(context);
+ *   };
+ * The signature below is intentionally shaped to make that swap a no-op for
+ * callers.
+ */
+export function requireAdmin(
+  handler: (context: ContextWithUser) => Promise<Response> | Response
+) {
+  return requireRole([...ADMIN_ROLES], handler);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// App-side feature/entitlement guard: requireFeatureAccess
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Server-side entitlement predicate bound into auth-core's GENERIC
+ * `requireFeature`. auth-core deliberately knows nothing about subscriptions,
+ * plans, or add-ons — the concrete decision lives here, in the app, where the
+ * shadow tables (`subscription_cache`/`plans_cache`/`user_entitlements`) and the
+ * `getServiceClient` binding are available. (Design §"Feature": canonical state
+ * stays SSO-side, surfaced locally via `sso-client.ts` RPC + `sync-shadow.ts`.)
+ *
+ * IMPLEMENTATION (task 24.1 / Phase P5)
+ * ----------------------------------------------------------------------------
+ * Delegates to `hasAnyFeature` (`functions/lib/entitlements.ts`), which reads
+ * the canonical server-side shadow state:
+ *   - `subscription_cache` + `plans_cache` (active plan features + freemium
+ *     baseline) via the self-healing `checkServerFeatureAccess` helper, and
+ *   - `user_entitlements` (purchased add-ons, the app-DB shadow of the SSO
+ *     `addon_purchases`).
+ * It grants when ANY of `keys` resolves and FAILS CLOSED (deny) on missing
+ * identity, empty/invalid keys, DB errors, or unexpected throws — so this can
+ * never become a silently-open gate (CC-2).
+ *
+ * NOTE (live-enforcement deferral): `requireFeatureAccess` is intentionally not
+ * yet applied to any live handler (that is task 24.2). Because the
+ * subscription/entitlement shadow caches are not yet broadly populated by the
+ * SSO entitlement sync/backfill, wiring this guard onto live endpoints now would
+ * deny real users. Per the task-23 precedent (user-approved), the canonical read
+ * is implemented + unit-tested + documented here, while live wrapping waits for
+ * the SSO entitlement sync to populate the caches. See
+ * `.kiro/verifications/` for the deferral note.
+ */
+async function entitlementCheck(
+  context: ContextWithUser,
+  keys: string[]
+): Promise<boolean> {
+  const supabase = getServiceClient(context.env as unknown as PagesEnv);
+  const userId = getContextUser(context).id;
+
+  // Reads ONLY the server-side shadow (subscription_cache/plans_cache/
+  // user_entitlements); grants on ANY key; fails closed otherwise.
+  return hasAnyFeature(supabase, userId, keys);
+}
+
+/**
+ * Guard requiring the authenticated user to be entitled to a given feature (or
+ * ANY feature in a list). Binds the GENERIC auth-core `requireFeature` to the
+ * app's server-side `entitlementCheck`, mirroring how `requireAdmin` binds
+ * `requireRole`. On deny, auth-core responds 403; otherwise the wrapped handler
+ * runs.
+ *
+ * Intended usage (handlers wrapped in task 24.2, behind `withAuth`):
+ *   export const onRequestGet = withAuth(requireFeatureAccess('advanced-reports', async (context) => { ... }));
+ *
+ * `entitlementCheck` is now implemented (task 24.1): it grants when the user has
+ * ANY of the requested feature keys via the server-side shadow read and fails
+ * closed otherwise. Applying this guard to LIVE handlers is task 24.2 and is
+ * deferred until the SSO entitlement sync populates the shadow caches (see the
+ * deferral note under `.kiro/verifications/`), so it is not yet wrapped on any
+ * endpoint.
+ */
+export const requireFeatureAccess = (
+  featureKey: string | string[],
+  handler: (context: ContextWithUser) => Promise<Response> | Response
+) => requireFeature(featureKey, entitlementCheck, handler);

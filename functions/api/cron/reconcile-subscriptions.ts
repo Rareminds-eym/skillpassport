@@ -1,3 +1,4 @@
+// @public-endpoint: Internal cron invoked by the SSO worker scheduled handler; gated by X-Cron-Secret. FLAG: fail-open if CRON_SECRET is unset (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Reconcile Subscriptions
  *
@@ -5,15 +6,17 @@
  *
  * Called by sso-worker's scheduled handler to reconcile subscription_cache
  * with the auth DB source of truth. Detects drift (stale entries, missing
- * entries, status mismatches) and self-heals.
+ * entries, status mismatches) and self-heals. Also reconciles the read-only
+ * `public.roles` shadow from the sso-worker (roles change ~never, so a periodic
+ * reconcile here is sufficient — design.md "Sync Mechanism").
  *
  * Protected by a shared cron secret — not accessible to end users.
  */
 
-import { apiSuccess, apiError } from '../../lib/response';
+import { apiError, apiSuccess } from '../../lib/response';
+import { ssoSyncPlans, ssoSyncSubscription } from '../../lib/sso-client';
 import { getServiceClient } from '../../lib/supabase';
-import { ssoSyncSubscription, ssoSyncPlans } from '../../lib/sso-client';
-import { syncSubscriptionCache, syncAllPlansCache } from '../../lib/sync-shadow';
+import { syncAllPlansCache, syncRolesShadow, syncSubscriptionCache } from '../../lib/sync-shadow';
 
 interface ReconcileEnv {
   SUPABASE_URL: string;
@@ -36,6 +39,8 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
     subscriptions_checked: 0,
     subscriptions_synced: 0,
     plans_synced: 0,
+    roles_synced: 0,
+    roles_deleted: 0,
     errors: [] as string[],
   };
 
@@ -49,6 +54,23 @@ export async function onRequestPost(context: { request: Request; env: ReconcileE
       }
     } catch (planErr: any) {
       results.errors.push(`Plans sync failed: ${planErr.message}`);
+    }
+
+    // 1b. Reconcile the read-only roles shadow from the sso-worker (source of
+    //     truth). Roles change ~never, so a periodic reconcile alongside plans
+    //     is sufficient (design.md "Sync Mechanism"). FAIL-SOFT: syncRolesShadow
+    //     never throws — it logs and returns a summary with an optional error.
+    try {
+      const rolesResult = await syncRolesShadow(supabase, env);
+      results.roles_synced = rolesResult.synced;
+      results.roles_deleted = rolesResult.deleted;
+      if (rolesResult.error) {
+        results.errors.push(`Roles sync: ${rolesResult.error}`);
+      }
+    } catch (rolesErr: any) {
+      // Defensive: syncRolesShadow is already fail-soft, but never let a roles
+      // hiccup abort the subscription reconcile.
+      results.errors.push(`Roles sync failed: ${rolesErr.message}`);
     }
 
     // 2. Find stale subscription_cache entries

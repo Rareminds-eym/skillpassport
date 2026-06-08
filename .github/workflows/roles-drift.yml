@@ -1,0 +1,73 @@
+# RBAC role-type drift check (spec: rbac-architecture-violations-fix, task 18.2 / Property 4 / FC-7)
+#
+# Fails CI if the committed `src/shared/types/generated/roles.ts` is stale relative
+# to the app DB (`public.roles` + `public.role_categories`). The generated file is the
+# single source of truth for the role taxonomy and MUST be regenerated + committed
+# whenever the role tables change.
+#
+# DB DEPENDENCY (documented):
+#   The drift check reads from the app DB, so this job starts a LOCAL Supabase stack
+#   (Docker is available on ubuntu-latest runners) and applies migrations + seeds via
+#   `supabase db reset`. The seeds (`supabase/seed/seed_rbac_role_categories.sql`)
+#   bootstrap the canonical 16 roles and their categories, giving a deterministic DB
+#   state that the generator reads. The generator/check is READ-ONLY (SELECT only) and
+#   uses the default local URL (http://127.0.0.1:54321) + local service-role key.
+#
+#   This job does NOT pass `--allow-db-unavailable`, so if Supabase fails to start the
+#   check FAILS (never a false-green). A real drift (file != DB) also fails. The only
+#   way the check passes is: DB up + committed file byte-identical to the generator output.
+
+name: roles-drift
+
+on:
+  push:
+    paths:
+      - 'src/shared/types/generated/roles.ts'
+      - 'scripts/generate-role-types.ts'
+      - 'supabase/migrations/**'
+      - 'supabase/seed/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/roles-drift.yml'
+  pull_request:
+    paths:
+      - 'src/shared/types/generated/roles.ts'
+      - 'scripts/generate-role-types.ts'
+      - 'supabase/migrations/**'
+      - 'supabase/seed/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/roles-drift.yml'
+
+jobs:
+  roles-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase (app DB)
+        run: supabase start
+
+      - name: Apply migrations + seeds (deterministic DB state)
+        run: supabase db reset --no-confirm
+
+      - name: Check role types for drift (FC-7)
+        run: npm run check:roles
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup || true

@@ -1,3 +1,4 @@
+// @public-endpoint: Pre-registration payment flow (no user exists yet); writes pre_registrations. (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Create Registration Order Handler
  *
@@ -9,10 +10,10 @@
  */
 
 import type { PagesFunction } from '@cloudflare/workers-types';
-import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
-import { getServiceClient } from '../../../lib/supabase';
 import { createLogger } from '../../../lib/logger';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { getServiceClient } from '../../../lib/supabase';
+import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
 const logger = createLogger('payments:create-registration-order');
 
@@ -94,7 +95,7 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
     // Update pre_registration with razorpay_order_id
     const { error: updateError } = await supabase
       .from('pre_registrations')
-      .update({ 
+      .update({
         razorpay_order_id: order.id,
         updated_at: new Date().toISOString(),
       })

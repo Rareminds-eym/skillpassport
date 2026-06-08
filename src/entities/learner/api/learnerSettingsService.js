@@ -5,6 +5,7 @@
  * Notification and privacy settings are stored in user_settings table
  */
 
+import { PASSWORD_MIN } from '@/shared/constants';
 import { apiPost } from '@/shared/api/apiClient';
 
 /**
@@ -337,7 +338,7 @@ export const updatelearnerPassword = async (email, currentPassword, newPassword)
       return { success: false, error: 'New password must be different from your current password.' };
     }
     if (msg.includes('too weak') || msg.includes('8 characters')) {
-      return { success: false, error: 'Password must be at least 8 characters long.' };
+      return { success: false, error: `Password must be at least ${PASSWORD_MIN} characters long.` };
     }
     return { success: false, error: msg || 'An unexpected error occurred. Please try again.' };
   }

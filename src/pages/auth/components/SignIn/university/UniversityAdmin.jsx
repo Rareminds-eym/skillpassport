@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { State, City } from 'country-state-city';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 const UniversityAdmin = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -257,8 +258,8 @@ const UniversityAdmin = () => {
         if (!value) {
           newErrors.password = 'Password is required';
           newSuccess.password = false;
-        } else if (value.length < 8) {
-          newErrors.password = 'Password must be at least 8 characters long';
+        } else if (value.length < PASSWORD_MIN) {
+          newErrors.password = `Password must be at least ${PASSWORD_MIN} characters long`;
           newSuccess.password = false;
         } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(value)) {
           newErrors.password = 'Password must contain uppercase, lowercase, number and special character';

@@ -291,17 +291,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-dashboard-data': {
-        const [kpisResult, alertsResult, activityResult, shortlistsResult, searchesResult] = await Promise.all([
+        const [kpisResult, , activityResult, shortlistsResult] = await Promise.all([
           supabase.from('learners').select('*', { count: 'exact', head: true }).eq('is_deleted', false),
           Promise.resolve({ data: [] }),
           supabase.from('pipeline_activities').select('*').order('created_at', { ascending: false }).limit(5),
           supabase.from('shortlists').select('*').order('created_date', { ascending: false }).limit(3),
-          Promise.resolve({ data: [] })
         ]);
 
         return apiSuccess({
           kpis: { newProfiles: kpisResult.count || 0, newProfilesTrend: 0, shortlisted: 0, shortlistedTrend: 0, interviewsScheduled: 0, interviewsTrend: 0, offersExtended: 0, offersTrend: 0, timeToHire: 15, timeToHireTrend: 0 },
-          alerts: alertsResult,
+          alerts: [],
           recentActivity: [],
           shortlists: [],
           savedSearches: []

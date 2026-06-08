@@ -80,7 +80,7 @@ export function getEmailWorkerConfig(env: PagesEnv): EmailWorkerConfig {
   // Type-safe extraction with validation
   const url = getRequiredEnvVar(
     env,
-    'EMAIL_API_URL',
+    'EMAIL_WORKER_URL',
     'URL of the email worker service endpoint'
   );
 
@@ -91,7 +91,7 @@ export function getEmailWorkerConfig(env: PagesEnv): EmailWorkerConfig {
   );
 
   // Validate URL format
-  validateUrl(url, 'EMAIL_API_URL');
+  validateUrl(url, 'EMAIL_WORKER_URL');
 
   return {
     url,

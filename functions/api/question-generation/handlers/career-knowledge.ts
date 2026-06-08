@@ -9,6 +9,7 @@ import {
 } from '../../shared/ai-config';
 
 // All utility functions are now imported from centralized ai-config.ts
+const STREAM_KNOWLEDGE_QUESTION_COUNT = 20;
 
 /**
  * Calculate similarity between two strings using Levenshtein distance
@@ -57,12 +58,18 @@ export async function generateKnowledgeQuestions(
     streamId: string,
     streamName: string,
     topics: string[] | string | null,
-    questionCount: number = 50,
+    questionCount: number = STREAM_KNOWLEDGE_QUESTION_COUNT,  // Default to 20 questions for stream knowledge test
     learnerId?: string,
     attemptId?: string,
     gradeLevel?: string,
     isCollegeLearner?: boolean
 ) {
+    const requestedQuestionCount = questionCount;
+    questionCount = STREAM_KNOWLEDGE_QUESTION_COUNT;
+    if (requestedQuestionCount !== questionCount) {
+        console.log(`[Knowledge] Requested question count ignored: ${requestedQuestionCount}; using ${questionCount}`);
+    }
+
     console.log('🎓 ============================================');
     console.log('🎓 KNOWLEDGE QUESTION GENERATION STARTED');
     console.log('🎓 ============================================');
@@ -209,11 +216,11 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
             continue;
         }
         
-        // Check for similar questions (80% similarity threshold)
+        // Check for similar questions (RELAXED: 95% similarity threshold - only near-exact matches)
         let isSimilar = false;
         for (const seenText of seenTexts) {
             const similarity = calculateSimilarity(normalizedText, seenText);
-            if (similarity > 0.80) {
+            if (similarity > 0.95) {
                 console.warn(`⚠️ Filtered similar question (${(similarity * 100).toFixed(0)}% match): "${normalizedText.substring(0, 50)}..."`);
                 filteredCount++;
                 isSimilar = true;
@@ -222,17 +229,16 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
         }
         if (isSimilar) continue;
         
-        // Check for image references
+        // Check for image references (REFINED: only explicit image references)
         const imageKeywords = [
-            'graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 
-            'shown below', 'shown above', 'visual', 'illustration', 'drawing',
-            'sketch', 'photo', 'photograph', 'display', 'depicts', 'shows',
-            'given figure', 'following figure', 'above figure', 'below figure',
-            'mirror image', 'reflection', 'rotate', 'flip', 'shape', 'pattern',
-            'look at', 'observe', 'see the', 'view the', 'refer to',
-            'as shown', 'as depicted', 'as illustrated'
+            'shown below', 'shown above', 'given figure', 'following figure', 
+            'above figure', 'below figure', 'see the diagram', 'see the image',
+            'look at the diagram', 'look at the image', 'refer to the diagram',
+            'refer to the image', 'as depicted in the figure', 'as shown in the figure',
+            'observe the diagram', 'observe the image'
         ];
-        if (imageKeywords.some(keyword => normalizedText.includes(keyword))) {
+        const hasImageReference = imageKeywords.some(keyword => normalizedText.includes(keyword));
+        if (hasImageReference) {
             console.warn(`⚠️ Filtered question with image reference: "${normalizedText.substring(0, 50)}..."`);
             filteredCount++;
             continue;
@@ -244,40 +250,58 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
         
         // Check all 4 options exist (handle both array and object formats)
         let optionValues: string[];
+        let isValid = true;
+        
         if (Array.isArray(options)) {
             if (options.length !== 4) {
                 console.warn(`⚠️ Filtered question with ${options.length} options (need 4): "${normalizedText.substring(0, 50)}..."`);
                 filteredCount++;
                 continue;
             }
-            optionValues = options.map((v: any) => String(v).toLowerCase().trim());
+            optionValues = options.map((v: any) => String(v || '').toLowerCase().trim()).filter(v => v.length > 0);
+            
+            if (optionValues.length < 4) {
+                console.warn(`⚠️ Filtered question with empty options: "${normalizedText.substring(0, 50)}..."`);
+                filteredCount++;
+                continue;
+            }
         } else {
             const requiredOptions = ['A', 'B', 'C', 'D'];
+            const optionEntries: [string, string][] = [];
+            
             for (const opt of requiredOptions) {
-                if (!options[opt] || typeof options[opt] !== 'string' || options[opt].trim().length === 0) {
+                const optValue = options[opt];
+                if (!optValue || typeof optValue !== 'string' || optValue.trim().length === 0) {
                     console.warn(`⚠️ Filtered question missing or empty option ${opt}: "${normalizedText.substring(0, 50)}..."`);
-                    filteredCount++;
-                    continue;
+                    isValid = false;
+                    break;
                 }
+                optionEntries.push([opt, String(optValue).toLowerCase().trim()]);
             }
-            optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+            
+            if (!isValid) {
+                filteredCount++;
+                continue;
+            }
+            
+            optionValues = optionEntries.map(([_, v]) => v);
         }
         
-        // Validate answer options are unique
+        // Validate answer options are unique (allow minor variations)
         const uniqueOptions = new Set(optionValues);
         
         if (uniqueOptions.size < optionValues.length) {
-            console.warn(`⚠️ Filtered question with duplicate options: "${normalizedText.substring(0, 50)}..."`);
-            console.warn(`   Options: ${JSON.stringify(options)}`);
-            filteredCount++;
-            continue;
-        }
-        
-        // Validate all options are non-empty
-        if (optionValues.some(v => !v || v.length === 0)) {
-            console.warn(`⚠️ Filtered question with empty options: "${normalizedText.substring(0, 50)}..."`);
-            filteredCount++;
-            continue;
+            // Check if duplicates are significant (not just minor variations)
+            const hasTrueDuplicates = optionValues.some((v1, i1) => 
+                optionValues.some((v2, i2) => i1 !== i2 && v1 === v2)
+            );
+            
+            if (hasTrueDuplicates) {
+                console.warn(`⚠️ Filtered question with duplicate options: "${normalizedText.substring(0, 50)}..."`);
+                console.warn(`   Options: ${JSON.stringify(options)}`);
+                filteredCount++;
+                continue;
+            }
         }
         
         // CRITICAL: Validate correct answer exists in options
@@ -353,78 +377,138 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
     
     console.log(`🔍 After validation: ${uniqueQuestions.length}/${allQuestions.length} valid questions (filtered: ${filteredCount})`);
     
-    // If we don't have enough questions, generate more to reach the target
+    // STRICT REQUIREMENT: Must have EXACTLY the requested question count (typically 20)
     if (uniqueQuestions.length < questionCount) {
         const needed = questionCount - uniqueQuestions.length;
-        console.warn(`⚠️ Only ${uniqueQuestions.length}/${questionCount} valid questions. Generating ${needed} more...`);
+        console.warn(`⚠️ CRITICAL: Only ${uniqueQuestions.length}/${questionCount} valid questions. Need ${needed} more.`);
+        console.warn(`⚠️ Generating additional batch to reach exactly ${questionCount} questions...`);
+        
+        // Request 50% more to account for filtering
+        const requestAmount = Math.ceil(needed * 1.5);
+        console.log(`📡 Requesting ${requestAmount} questions (50% buffer) to get ${needed} valid ones`);
         
         const learnerLevel = gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university';
         const additionalPrompt = usesDynamicTopics && !topics
-            ? `Generate EXACTLY ${needed} additional multiple-choice knowledge questions for a ${learnerLevel} learner studying ${streamName}.
+            ? `🎯 CRITICAL: Generate EXACTLY ${requestAmount} additional multiple-choice knowledge questions for a ${learnerLevel} learner studying ${streamName}.
 
-⚠️ CRITICAL: ALL questions MUST be about ${streamName} - DO NOT generate questions about other subjects!
-
-Requirements:
-1. All questions must be MCQ with exactly 4 options
-2. Each question must have exactly ONE correct answer
-3. ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
-4. The correct answer MUST be one of the 4 options provided
-5. Difficulty distribution: 30% easy, 50% medium, 20% hard
-6. Test practical understanding and application
-7. Questions should be appropriate for ${learnerLevel} learners
-
-Output Format - Respond with ONLY valid JSON (no markdown):
-{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}`
-            : `Generate EXACTLY ${needed} additional multiple-choice questions about ${streamName}.
+⚠️ ALL questions MUST be about ${streamName} - DO NOT generate questions about other subjects!
+⚠️ DO NOT use image references like "shown below", "given figure", "refer to the diagram"
+⚠️ ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
 
 Requirements:
-1. All questions must be MCQ with exactly 4 options
+1. All questions must be MCQ with exactly 4 unique options
 2. Each question must have exactly ONE correct answer
-3. ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
-4. Difficulty distribution: 30% easy, 50% medium, 20% hard
+3. Difficulty distribution: 30% easy, 50% medium, 20% hard
+4. Test practical understanding and application
+5. Questions should be appropriate for ${learnerLevel} learners
 
 Output Format - Respond with ONLY valid JSON (no markdown):
-{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}`;
+{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}
 
-        const additionalSystemPrompt = `You are an expert educational assessment creator. Generate EXACTLY ${needed} questions. Generate ONLY valid JSON with no markdown.`;
+Generate EXACTLY ${requestAmount} questions.`
+            : `🎯 CRITICAL: Generate EXACTLY ${requestAmount} additional multiple-choice questions about ${streamName}.
+
+⚠️ DO NOT use image references
+⚠️ ALL 4 OPTIONS MUST BE UNIQUE
+
+Requirements:
+1. All questions must be MCQ with exactly 4 unique options
+2. Each question must have exactly ONE correct answer
+3. Difficulty distribution: 30% easy, 50% medium, 20% hard
+
+Output Format - Respond with ONLY valid JSON (no markdown):
+{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}
+
+Generate EXACTLY ${requestAmount} questions.`;
+
+        const additionalSystemPrompt = `You are an expert educational assessment creator. 
+
+🎯 CRITICAL: Generate ${requestAmount} HIGH-QUALITY questions with NO duplicates, NO image references, and VALID unique options.
+Generate ONLY valid JSON with no markdown.`;
 
         try {
+            console.log(`🔄 Generating additional batch with ${requestAmount} questions...`);
+            
             const additionalJsonText = await callOpenRouterWithRetry(openRouterKey, [
                 { role: 'system', content: additionalSystemPrompt },
                 { role: 'user', content: additionalPrompt }
             ], {
-                maxTokens: needed * 150 + 500
+                maxTokens: requestAmount * 150 + 500
             });
 
             const additionalParsed = repairAndParseJSON(additionalJsonText);
             const additionalQuestions = additionalParsed.questions || additionalParsed;
 
+            console.log(`✅ Additional batch generated: ${additionalQuestions?.length || 0} questions`);
+
             if (Array.isArray(additionalQuestions)) {
+                let addedCount = 0;
                 // Validate additional questions with same criteria
                 for (const q of additionalQuestions) {
+                    // Stop if we've reached the target
+                    if (uniqueQuestions.length >= questionCount) break;
+                    
                     const normalizedText = q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '';
                     
                     if (!normalizedText || seenTexts.has(normalizedText)) continue;
                     
+                    // Check for image references
+                    const imageKeywords = [
+                        'shown below', 'shown above', 'given figure', 'following figure', 
+                        'above figure', 'below figure', 'see the diagram', 'see the image',
+                        'look at the diagram', 'look at the image', 'refer to the diagram',
+                        'refer to the image', 'as depicted in the figure', 'as shown in the figure'
+                    ];
+                    if (imageKeywords.some(keyword => normalizedText.includes(keyword))) continue;
+                    
                     const options = q.options || {};
                     if (Array.isArray(options) && options.length === 4) {
-                        const optionValues = options.map((v: any) => String(v).toLowerCase().trim());
-                        const uniqueOptions = new Set(optionValues);
+                        const optionValues = options.map((v: any) => String(v || '').toLowerCase().trim()).filter(v => v.length > 0);
+                        const uniqueOptionsSet = new Set(optionValues);
                         
-                        if (uniqueOptions.size === 4 && optionValues.every(v => v && v.length > 0)) {
+                        if (uniqueOptionsSet.size === 4 && optionValues.length === 4 && optionValues.every(v => v && v.length > 0)) {
                             seenTexts.add(normalizedText);
                             uniqueQuestions.push(q);
+                            addedCount++;
+                        }
+                    } else if (typeof options === 'object') {
+                        const hasAllOptions = ['A', 'B', 'C', 'D'].every(opt => 
+                            options[opt] && typeof options[opt] === 'string' && options[opt].trim().length > 0
+                        );
+                        
+                        if (hasAllOptions) {
+                            const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+                            const uniqueOptionsSet = new Set(optionValues);
                             
-                            if (uniqueQuestions.length >= questionCount) break;
+                            if (uniqueOptionsSet.size === 4) {
+                                seenTexts.add(normalizedText);
+                                uniqueQuestions.push(q);
+                                addedCount++;
+                            }
                         }
                     }
                 }
-                console.log(`✅ Added ${uniqueQuestions.length - (questionCount - needed)} additional valid questions`);
+                console.log(`✅ Added ${addedCount} additional valid questions (total now: ${uniqueQuestions.length}/${questionCount})`);
             }
         } catch (error) {
             console.error(`❌ Failed to generate additional questions:`, error);
         }
     }
+    
+    // Final check - if still short, throw error
+    if (uniqueQuestions.length < questionCount) {
+        const deficit = questionCount - uniqueQuestions.length;
+        console.error(`❌ FAILED: Only generated ${uniqueQuestions.length}/${questionCount} questions (${deficit} short)`);
+        throw new Error(`Failed to generate required ${questionCount} questions. Only got ${uniqueQuestions.length} valid questions. AI quality may be insufficient.`);
+    }
+    
+    // If we have more than needed, trim to exact count
+    if (uniqueQuestions.length > questionCount) {
+        console.log(`✂️ Trimming ${uniqueQuestions.length} questions down to exactly ${questionCount}`);
+        uniqueQuestions.splice(questionCount);
+    }
+    
+    console.log(`✅ FINAL COUNT: ${uniqueQuestions.length} questions (target was ${questionCount})`);
     
     // If more than 20% were filtered, log warning
     if (filteredCount > allQuestions.length * 0.2) {
@@ -455,7 +539,7 @@ Output Format - Respond with ONLY valid JSON (no markdown):
                 question_type: 'knowledge',
                 questions: processedQuestions,
                 stream_id: streamId,
-                attempt_id: attemptId || null,
+                attempt_id: null,
                 created_at: new Date().toISOString()
             }, {
                 onConflict: 'learner_id, stream_id, question_type',

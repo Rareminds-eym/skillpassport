@@ -3,11 +3,10 @@
  * Form for admins to invite new recruiters/admins to the organization
  */
 
-import React, { useState } from 'react';
-import { XMarkIcon, EnvelopeIcon, UserPlusIcon } from '@heroicons/react/24/outline';
-import { useCreateInvitation } from '@/entities/recruitment/model/useRecruitmentInvitations';
-import { getRoleDisplayName } from '@/entities/recruitment/lib/permissions';
 import type { RecruitmentRole } from '@/entities/recruitment/model/types';
+import { useCreateInvitation } from '@/entities/recruitment/model/useRecruitmentInvitations';
+import { EnvelopeIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useState } from 'react';
 
 interface InviteEmployeeModalProps {
     isOpen: boolean;
@@ -33,7 +32,6 @@ export const InviteEmployeeModal: React.FC<InviteEmployeeModalProps> = ({
                 email,
                 role,
                 name: name || undefined,
-                message: message || undefined,
             });
 
             // Reset form

@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { PASSWORD_MIN } from '@/shared/constants';
 import {
     AlertCircle,
     BookOpen,
@@ -96,7 +97,7 @@ export default function LoginEducator() {
             type={showPassword ? "text" : "password"}
             id="password"
             required
-            minLength={8}
+            minLength={PASSWORD_MIN}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"

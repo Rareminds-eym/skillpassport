@@ -229,7 +229,7 @@ const EducatorCommunication = () => {
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [schoolId, queryClient]);
   

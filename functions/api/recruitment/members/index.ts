@@ -6,7 +6,7 @@
 
 import { withAuth } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
-import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
+import { verifyOrgAccess } from '../../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 /**
@@ -43,7 +43,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     // Verify user has access to this organization
-    const access = await verifyOrgAccess(supabase, user.sub, orgId);
+    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
     if (!access.allowed) {
         console.error('[members API] ❌ Access denied:', access);
         return access.error!;
@@ -52,8 +52,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     console.log('[members API] ✓ Access verified for org:', orgId);
 
     try {
-        // Query organization_invitations that have been accepted
-        // This is more reliable than FDW which may have schema issues
+        // ── Fetch organization_invitations that have been accepted ──
         const { data: acceptedInvitations, error: invError } = await supabase
             .from('organization_invitations')
             .select('*')
@@ -67,16 +66,16 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         }
 
         // Get user details for each accepted invitation
-        const userIds = (acceptedInvitations || [])
+        const invitedUserIds = (acceptedInvitations || [])
             .map((inv: any) => inv.accepted_by_user_id)
             .filter(Boolean);
 
         let users: any[] = [];
-        if (userIds.length > 0) {
+        if (invitedUserIds.length > 0) {
             const { data: userData, error: userError } = await supabase
                 .from('users')
-                .select('id, email, full_name, role')
-                .in('id', userIds);
+                .select('id, email, firstName, lastName, role')
+                .in('id', invitedUserIds);
 
             if (userError) {
                 console.error('Error fetching user details:', userError);
@@ -85,22 +84,22 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             }
         }
 
-        // Create a map of userId -> user details
         const userMap = new Map(users.map((u: any) => [u.id, u]));
 
-        // Transform data to match frontend expectations
-        const members = (acceptedInvitations || [])
+        // Transform accepted invitations into member records
+        const membersFromInvitations = (acceptedInvitations || [])
             .filter((inv: any) => inv.accepted_by_user_id && userMap.has(inv.accepted_by_user_id))
             .map((inv: any) => {
                 const user = userMap.get(inv.accepted_by_user_id);
+                const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
                 return {
                     id: inv.id,
                     userId: inv.accepted_by_user_id,
                     organizationId: inv.organization_id,
-                    name: user?.full_name || inv.invitee_name || '',
+                    name: fullName || inv.invitee_name || '',
                     email: user?.email || inv.invitee_email,
-                    ssoRoleName: 'member', // Default SSO role
-                    recruitmentRole: inv.invitee_role, // This is the recruitment role (company_admin, recruiter, viewer)
+                    ssoRoleName: 'member',
+                    recruitmentRole: inv.invitee_role,
                     membershipStatus: 'active',
                     isActive: true,
                     invitedBy: inv.invited_by,
@@ -111,10 +110,83 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
                 };
             });
 
+        // ── Also fetch direct organization_members (not from invitations) ──
+        const { data: directMembers, error: directError } = await supabase
+            .from('organization_members')
+            .select(`
+                id,
+                user_id,
+                organization_id,
+                role,
+                status,
+                created_at,
+                updated_at
+            `)
+            .eq('organization_id', orgId)
+            .eq('status', 'active');
+
+        if (directError) {
+            console.error('Error fetching direct members:', directError);
+        }
+
+        // Get user details for direct members (skip those already covered by invitations)
+        const directUserIds = (directMembers || [])
+            .map((m: any) => m.user_id)
+            .filter((uid: string) => !invitedUserIds.includes(uid));
+
+        let directUsers: any[] = [];
+        if (directUserIds.length > 0) {
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('id, email, firstName, lastName, role')
+                .in('id', directUserIds);
+
+            if (userError) {
+                console.error('Error fetching direct user details:', userError);
+            } else {
+                directUsers = userData || [];
+            }
+        }
+
+        const directUserMap = new Map(directUsers.map((u: any) => [u.id, u]));
+
+        // Fetch recruitment role mapping for SSO role → recruitment role
+        const { data: roleMapping } = await supabase
+            .from('recruitment_role_mapping')
+            .select('sso_role_name, recruitment_role');
+
+        const roleMap = new Map<string, string>((roleMapping || []).map((r: any) => [r.sso_role_name, r.recruitment_role]));
+
+        const membersFromDirect = (directMembers || [])
+            .filter((m: any) => directUserMap.has(m.user_id))
+            .map((m: any) => {
+                const user = directUserMap.get(m.user_id);
+                const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ');
+                return {
+                    id: m.id,
+                    userId: m.user_id,
+                    organizationId: m.organization_id,
+                    name: fullName || '',
+                    email: user?.email || '',
+                    ssoRoleName: m.role,
+                    recruitmentRole: roleMap.get(m.role) || null,
+                    membershipStatus: m.status,
+                    isActive: m.status === 'active',
+                    invitedBy: null,
+                    invitedAt: null,
+                    joinedAt: m.created_at,
+                    createdAt: m.created_at,
+                    updatedAt: m.updated_at,
+                };
+            });
+
+        // Merge: invitations first (higher priority), then direct members
+        const members = [...membersFromInvitations, ...membersFromDirect];
+
         // Apply filters
         let filteredMembers = members;
         if (role && role !== 'all') {
-            filteredMembers = filteredMembers.filter((m: any) => m.ssoRoleName === role);
+            filteredMembers = filteredMembers.filter((m: any) => m.recruitmentRole === role);
         }
         if (isActive === 'true') {
             filteredMembers = filteredMembers.filter((m: any) => m.isActive);
@@ -125,7 +197,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
             const searchLower = search.toLowerCase();
             filteredMembers = filteredMembers.filter((m: any) =>
                 m.email.toLowerCase().includes(searchLower) ||
-                (m.fullName && m.fullName.toLowerCase().includes(searchLower))
+                (m.name && m.name.toLowerCase().includes(searchLower))
             );
         }
 
@@ -164,38 +236,63 @@ export const onRequestGet_stats = withAuth(async (context: AuthenticatedContext)
     }
 
     // Verify user has access
-    const access = await verifyOrgAccess(supabase, user.sub, orgId);
+    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
     if (!access.allowed) {
         return access.error!;
     }
 
     try {
-        // Query accepted invitations for stats (same approach as main GET)
-        const { data: acceptedInvitations, error } = await supabase
+        const { data: acceptedInvitations, error: invError } = await supabase
             .from('organization_invitations')
             .select('invitee_role, status')
             .eq('organization_id', orgId)
             .eq('status', 'accepted');
 
-        if (error) {
-            console.error('Error fetching member stats:', error);
-            return Response.json({ error: error.message }, { status: 500 });
+        if (invError) {
+            console.error('Error fetching member stats (invitations):', invError);
+            return Response.json({ error: invError.message }, { status: 500 });
         }
 
-        const members = acceptedInvitations || [];
+        const { data: directMembers, error: directError } = await supabase
+            .from('organization_members')
+            .select('role, status')
+            .eq('organization_id', orgId)
+            .eq('status', 'active');
 
-        // Calculate statistics
-        const total = members.length;
-        const active = total; // All accepted invitations are considered active
-        const inactive = 0; // We don't track inactive members in this model
+        if (directError) {
+            console.error('Error fetching member stats (direct):', directError);
+            return Response.json({ error: directError.message }, { status: 500 });
+        }
 
-        // Count by role
-        const admins = members.filter((m: any) =>
+        const { data: roleMapping } = await supabase
+            .from('recruitment_role_mapping')
+            .select('sso_role_name, recruitment_role');
+
+        const roleMap = new Map<string, string>((roleMapping || []).map((r: any) => [r.sso_role_name, r.recruitment_role]));
+
+        const directCounts = (directMembers || []).reduce((acc: any, m: any) => {
+            const recruitmentRole = roleMap.get(m.role) || null;
+            if (recruitmentRole && ['company_admin', 'owner'].includes(recruitmentRole)) {
+                acc.admins++;
+            } else if (recruitmentRole && ['recruiter', 'viewer'].includes(recruitmentRole)) {
+                acc.recruiters++;
+            }
+            return acc;
+        }, { admins: 0, recruiters: 0 });
+
+        const inviteMembers = acceptedInvitations || [];
+        const inviteAdmins = inviteMembers.filter((m: any) =>
             ['owner', 'company_admin'].includes(m.invitee_role)
         ).length;
-        const recruiters = members.filter((m: any) =>
+        const inviteRecruiters = inviteMembers.filter((m: any) =>
             ['recruiter', 'viewer'].includes(m.invitee_role)
         ).length;
+
+        const total = inviteMembers.length + (directMembers || []).length;
+        const active = total;
+        const inactive = 0;
+        const admins = inviteAdmins + directCounts.admins;
+        const recruiters = inviteRecruiters + directCounts.recruiters;
 
         return Response.json({
             total,

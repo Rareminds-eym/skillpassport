@@ -6,8 +6,9 @@
  * - Update learner documents
  */
 
+import { apiError, apiSuccess } from '../../../lib/response';
+import { ssoCreateMember } from '../../../lib/sso-client';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
-import { apiSuccess, apiError } from '../../../lib/response';
 import {
   calculateAge,
   deleteAuthUser,
@@ -55,6 +56,13 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
   }
 
   // Get current user data
+  // TODO(12.1 review / §7.3): the acting admin's role is read from the shadow
+  // `users.role` (looked up by the client-supplied `userEmail`, not the verified
+  // JWT) and branched on the SSO roles `college_admin`/`school_admin` below to
+  // decide institution scope. Proper fix is to use `getContextUser(context).roles`,
+  // but this handler is invoked without the auth context (request/env only) and
+  // keys off client-supplied email — threading the verified user requires a
+  // signature change. Deferred for safety; flagged for review.
   const { data: currentUserData } = await supabaseAdmin
     .from('users')
     .select('id, organizationId, role')
@@ -235,7 +243,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
 /**
  * Handle admin creating a teacher
  */
-export async function handleCreateTeacher(request: Request, env: any, user: { id: string; email: string }): Promise<Response> {
+export async function handleCreateTeacher(request: Request, env: any, user: { id: string; email: string; org_id?: string }): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -311,15 +319,9 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     return apiError(400, 'VALIDATION_ERROR', 'School ID not found', request);
   }
 
-  // Check if email exists
-  const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
-  const emailExists = existingAuthUsers?.users?.some(
-    (u: any) => u.email === teacher.email.toLowerCase()
-  );
-  if (emailExists) {
-    return apiError(400, 'VALIDATION_ERROR', `User with email ${teacher.email} already exists`, request);
-  }
-
+  // Pre-check for an existing teacher profile in the app DB (fast, friendly error).
+  // The SSO worker is the source of truth for the auth user and will reject
+  // duplicate emails too.
   const { data: existingTeacher } = await supabaseAdmin
     .from('school_educators')
     .select('id')
@@ -329,30 +331,37 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     return apiError(400, 'VALIDATION_ERROR', `Teacher with email ${teacher.email} already exists`, request);
   }
 
+  // The new teacher must join the admin's organization in the SSO DB.
+  const ssoOrgId = user.org_id;
+  if (!ssoOrgId) {
+    return apiError(400, 'VALIDATION_ERROR', 'Admin organization not found in session', request);
+  }
+
   const teacherPassword = generatePassword();
 
-  // Create auth user
-  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: teacher.email.toLowerCase(),
-    password: teacherPassword,
-    email_confirm: true,
-    user_metadata: {
-      first_name: teacher.first_name,
-      last_name: teacher.last_name,
-      role: 'educator',
-      school_id: schoolId,
-      added_by: user.id,
-    },
-  });
-
-  if (authError || !authUser.user) {
-    return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
+  // ── Create the AUTH user in the SSO worker (never Supabase Auth) ──
+  // This makes the teacher a real, active SSO member of the school's org with
+  // the school_educator role, so they can log in via SSO. Access is granted
+  // through the organization's subscription/seats — no personal subscription.
+  let ssoUserId: string;
+  try {
+    const ssoMember = await ssoCreateMember(env, {
+      email: teacher.email.toLowerCase(),
+      password: teacherPassword,
+      role: 'school_educator',
+      org_id: ssoOrgId,
+    });
+    if (!ssoMember?.user_id) throw new Error('SSO member creation returned invalid user_id');
+    ssoUserId = ssoMember.user_id;
+  } catch (ssoErr) {
+    return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create teacher account', request);
   }
 
   try {
-    // Create public.users record
+    // Create app-DB users profile row (FK target for school_educators).
+    // Mirrors the SSO user id; this is a profile shadow, not an auth record.
     await supabaseAdmin.from('users').insert({
-      id: authUser.user.id,
+      id: ssoUserId,
       email: teacher.email.toLowerCase(),
       firstName: teacher.first_name,
       lastName: teacher.last_name,
@@ -370,7 +379,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
 
     // Create school_educators record
     const educatorData = {
-      user_id: authUser.user.id,
+      user_id: ssoUserId,
       school_id: schoolId,
       email: teacher.email.toLowerCase(),
       first_name: teacher.first_name,
@@ -419,17 +428,19 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
 
     return apiSuccess({
       message: `Teacher ${teacher.first_name} ${teacher.last_name} created successfully`,
-      data: {
-        authUserId: authUser.user.id,
-        teacherId: teacherRecord.id,
-        email: teacher.email,
-        name: `${teacher.first_name} ${teacher.last_name}`,
-        password: teacherPassword,
-        role: teacher.role,
-      },
+      authUserId: ssoUserId,
+      teacherId: teacherRecord.id,
+      email: teacher.email,
+      name: `${teacher.first_name} ${teacher.last_name}`,
+      password: teacherPassword,
+      role: teacher.role,
     }, request);
   } catch (error) {
-    await deleteAuthUser(supabaseAdmin, authUser.user.id);
+    // Best-effort rollback of the app-DB profile row. The SSO user already
+    // exists; it is reused on a corrected retry (duplicate email is rejected).
+    if (ssoUserId) {
+      await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+    }
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }
@@ -512,7 +523,7 @@ export async function handleUpdateLearnerDocuments(request: Request, env: any): 
  * Handle college admin creating a staff member
  * Supports roles: College Admin, HoD, Faculty, Lecturer, Exam Cell, Finance Admin, Placement Officer
  */
-export async function handleCreateCollegeStaff(request: Request, env: any, user: { id: string; email: string }): Promise<Response> {
+export async function handleCreateCollegeStaff(request: Request, env: any, user: { id: string; email: string; org_id?: string }): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -544,95 +555,61 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
     return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
   }
 
-  // Get college ID from request or current user context
+  // ── Resolve the APP-DB college id (organizations row) ──
+  // This is the FK target for college_lecturers.collegeId. It is distinct from
+  // the SSO org id used for membership below.
   let collegeId = requestCollegeId || null;
 
-  // First, try to get organizationId from users table
   if (!collegeId) {
     const { data: userData } = await supabaseAdmin
       .from('users')
       .select('organizationId')
       .eq('id', user.id)
       .maybeSingle();
-
-    if (userData?.organizationId) {
-      collegeId = userData.organizationId;
-    }
+    if (userData?.organizationId) collegeId = userData.organizationId;
   }
 
-  // Try to find college from organizations table
   if (!collegeId) {
-    const { data: collegeData } = await supabaseAdmin
+    // organizations has admin_id and email columns (no admin_email column).
+    let q = supabaseAdmin
       .from('organizations')
       .select('id')
-      .eq('organization_type', 'college')
-      .or(`admin_id.eq.${user.id},email.ilike.${user.email || ''}`)
-      .maybeSingle();
-
-    if (collegeData?.id) {
-      collegeId = collegeData.id;
-    }
+      .eq('organization_type', 'college');
+    q = user.email
+      ? q.or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
+      : q.eq('admin_id', user.id);
+    const { data: collegeData } = await q.maybeSingle();
+    if (collegeData?.id) collegeId = collegeData.id;
   }
 
-  // Try to get from college_lecturers table by userId
   if (!collegeId) {
-    const { data: lecturerByUserId } = await supabaseAdmin
-      .from('college_lecturers')
-      .select('collegeId')
-      .eq('userId', user.id)
-      .maybeSingle();
-
-    if (lecturerByUserId?.collegeId) {
-      collegeId = lecturerByUserId.collegeId;
-    }
-  }
-
-  // Try to get from college_lecturers table by user_id
-  if (!collegeId) {
-    const { data: lecturerByUser_id } = await supabaseAdmin
+    // college_lecturers uses snake_case user_id (there is no userId column).
+    const { data: lecturer } = await supabaseAdmin
       .from('college_lecturers')
       .select('collegeId')
       .eq('user_id', user.id)
       .maybeSingle();
-
-    if (lecturerByUser_id?.collegeId) {
-      collegeId = lecturerByUser_id.collegeId;
-    }
-  }
-
-  // Try to get from college_lecturers by email in metadata
-  if (!collegeId && user.email) {
-    const { data: lecturerByEmail } = await supabaseAdmin
-      .from('college_lecturers')
-      .select('collegeId')
-      .eq('metadata->>email', user.email.toLowerCase())
-      .maybeSingle();
-
-    if (lecturerByEmail?.collegeId) {
-      collegeId = lecturerByEmail.collegeId;
-    }
+    if (lecturer?.collegeId) collegeId = lecturer.collegeId;
   }
 
   if (!collegeId) {
     return apiError(400, 'VALIDATION_ERROR', 'College ID not found. Please ensure you are logged in as a college admin.', request);
   }
 
-  // Check if email already exists in auth
-  const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
-  const emailExists = existingAuthUsers?.users?.some(
-    (u: any) => u.email?.toLowerCase() === staff.email.toLowerCase()
-  );
-  if (emailExists) {
-    return apiError(400, 'VALIDATION_ERROR', `User with email ${staff.email} already exists`, request);
+  // The new staff member must join the admin's organization in the SSO DB.
+  const ssoOrgId = user.org_id;
+  if (!ssoOrgId) {
+    return apiError(400, 'VALIDATION_ERROR', 'Admin organization not found in session', request);
   }
 
-  // Check if email exists in college_lecturers
+  // Pre-check for an existing staff profile in the app DB (fast, friendly error).
+  // The SSO worker is the source of truth for the auth user and rejects
+  // duplicate emails too.
   const { data: existingLecturer } = await supabaseAdmin
     .from('college_lecturers')
     .select('id')
     .eq('metadata->>email', staff.email.toLowerCase())
     .maybeSingle();
-
   if (existingLecturer) {
     return apiError(400, 'VALIDATION_ERROR', `Staff member with email ${staff.email} already exists`, request);
   }
@@ -640,7 +617,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
   const staffPassword = generatePassword();
   const { firstName, lastName } = splitName(staff.name);
 
-  // Map role to internal role format
+  // Map the selected UI role to the app-DB internal role string.
   const roleMap: Record<string, string> = {
     'College Admin': 'college_admin',
     'HoD': 'hod',
@@ -650,56 +627,63 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
     'Finance Admin': 'finance_admin',
     'Placement Officer': 'placement_officer',
   };
-
   const primaryRole = roleMap[staff.roles[0]] || 'faculty';
 
-  // Create auth user
-  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: staff.email.toLowerCase(),
-    password: staffPassword,
-    email_confirm: true,
-    user_metadata: {
-      name: staff.name,
-      first_name: firstName,
-      last_name: lastName,
-      role: primaryRole,
-      roles: staff.roles,
-      college_id: collegeId,
-      added_by: user.id,
-    },
-  });
+  // SSO role must be a valid name in the SSO roles table. A College Admin staff
+  // member maps to college_admin; all other college staff map to college_educator.
+  const ssoRole = primaryRole === 'college_admin' ? 'college_admin' : 'college_educator';
 
-  if (authError || !authUser.user) {
-    return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
+  // ── Create the AUTH user in the SSO worker (never Supabase Auth) ──
+  // Makes the staff a real, active SSO member of the college's org. Access is
+  // granted through the organization's subscription/seats — no personal sub.
+  let ssoUserId: string;
+  try {
+    const ssoMember = await ssoCreateMember(env, {
+      email: staff.email.toLowerCase(),
+      password: staffPassword,
+      role: ssoRole,
+      org_id: ssoOrgId,
+    });
+    if (!ssoMember?.user_id) throw new Error('SSO member creation returned invalid user_id');
+    ssoUserId = ssoMember.user_id;
+  } catch (ssoErr) {
+    return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create staff account', request);
   }
 
   try {
-    // Create public.users record
-    await supabaseAdmin.from('users').insert({
-      id: authUser.user.id,
+    // Create app-DB users profile row (FK target). Mirrors the SSO user id;
+    // this is a profile shadow, not an auth record. users.role is the
+    // user_role enum (college_admin | college_educator); the fine-grained staff
+    // role (faculty/hod/lecturer/...) is preserved in metadata.
+    const { error: userInsertError } = await supabaseAdmin.from('users').insert({
+      id: ssoUserId,
       email: staff.email.toLowerCase(),
       firstName,
       lastName,
-      role: primaryRole,
+      role: ssoRole,
       organizationId: collegeId,
       isActive: true,
       metadata: {
         source: 'college_admin_added',
         collegeId,
         addedBy: user.id,
+        staffRole: primaryRole,
         roles: staff.roles,
-        password: staffPassword,
         fullName: staff.name,
         entityType: 'college_staff',
       },
     });
 
-    // Create college_lecturers record
+    if (userInsertError) {
+      throw new Error(`Failed to create user profile: ${userInsertError.message}`);
+    }
+
+    // Create college_lecturers record (snake_case user_id; other columns are
+    // camelCase per the table schema).
     const { data: staffRecord, error: staffError } = await supabaseAdmin
       .from('college_lecturers')
       .insert({
-        userId: authUser.user.id,
-        user_id: authUser.user.id,
+        user_id: ssoUserId,
         collegeId: collegeId,
         employeeId: staff.employee_id || null,
         department: staff.department_id || null,
@@ -726,21 +710,24 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
       throw new Error(`Failed to create staff profile: ${staffError.message}`);
     }
 
+    // Flat shape (matches handleCreateTeacher) so the frontend can read
+    // result.data.authUserId / staffId / password directly.
     return apiSuccess({
       message: `Staff member ${staff.name} created successfully`,
-      data: {
-        authUserId: authUser.user.id,
-        staffId: staffRecord.id,
-        email: staff.email,
-        name: staff.name,
-        roles: staff.roles,
-        password: staffPassword,
-        collegeId,
-      },
+      authUserId: ssoUserId,
+      staffId: staffRecord.id,
+      email: staff.email,
+      name: staff.name,
+      roles: staff.roles,
+      password: staffPassword,
+      collegeId,
     }, request);
   } catch (error) {
-    // Rollback auth user
-    await deleteAuthUser(supabaseAdmin, authUser.user.id);
+    // Best-effort rollback of the app-DB profile row. The SSO user already
+    // exists; it is reused on a corrected retry (duplicate email is rejected).
+    if (ssoUserId) {
+      await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+    }
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }

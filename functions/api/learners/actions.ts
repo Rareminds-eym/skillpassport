@@ -1,20 +1,16 @@
-import { withAuth, getContextUser } from '../../lib/auth';
+import type { ContextWithUser } from '@rareminds-eym/auth-core';
+import { getContextUser, requireAdmin, withAuth } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError } from '../../lib/response';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
+// Admin-gated learner actions (approve/reject/promote/graduate). The caller
+// authorization is the shared admin role group, enforced by `requireAdmin`
+// (replaces the prior inline `['admin','company_admin',...]` literal — bug §7.1).
+export const onRequestPost = withAuth(requireAdmin(async (context: ContextWithUser) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
   const startTime = Date.now();
-
-  const isAdmin = user.roles?.some((r: string) =>
-    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
-  );
-  if (!isAdmin) {
-    return apiError(403, 'FORBIDDEN', 'Only admins can perform learner actions', context.request, { startTime });
-  }
 
   let body: any;
   try {
@@ -149,4 +145,4 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     console.error('[Actions] Error:', error);
     return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', context.request, { startTime });
   }
-});
+}));

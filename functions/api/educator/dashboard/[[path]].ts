@@ -1,8 +1,10 @@
-import { withAuth, getContextUser } from '../../../lib/auth';
-import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { apiSuccess, apiError, apiMethodNotAllowed } from '../../../lib/response';
+import { getContextUser, withAuth, type AuthUser } from '../../../lib/auth';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { ADMIN_ROLES } from '../../../lib/roleCategories';
+import { resolveSchoolRole } from '../../../lib/schoolRole';
+import { getServiceClient } from '../../../lib/supabase';
 
 interface EducatorInfo {
   user: { id: string; email: string; roles?: string[] };
@@ -37,8 +39,11 @@ interface SkillAnalytics {
   skillDistribution: { category: string; count: number }[];
 }
 
-const ADMIN_ROLES = ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'];
-
+// `isAdmin` only WIDENS data scope (admins see all learners in scope; educators
+// see their assigned classes). This endpoint is gated by educator registration
+// (`getAuthenticatedEducator` throws otherwise), NOT by an admin guard — so the
+// role check uses the shared ADMIN_ROLES group (non-guard), replacing the prior
+// local inline literal (bug §7.1).
 function isAdmin(user: { roles?: string[] }): boolean {
   return user?.roles?.some((r: string) => ADMIN_ROLES.includes(r)) ?? false;
 }
@@ -59,18 +64,31 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-async function getAuthenticatedEducator(supabase: SupabaseClient, user: { id: string; email: string; roles?: string[] }): Promise<EducatorInfo> {
+async function getAuthenticatedEducator(supabase: SupabaseClient, user: AuthUser): Promise<EducatorInfo> {
   const admin = isAdmin(user);
 
+  // SCHOOL-INTERNAL data-scope read (task 12.2/19; finalized in P4 task 22.3). This row
+  // supplies `id` and `school_id` only (data `resolveSchoolRole` does NOT return), used below
+  // to scope class assignments and learner queries.
+  //
+  // `school_educators.role` is NO LONGER read here (task 22.3 — authority de-shadowing). The
+  // school-wide-scope decision derives ENTIRELY from the verified JWT via `isAdmin(user)`:
+  // the `school_educators.role` CHECK constraint permits only
+  // {school_admin, principal, it_admin, class_teacher, subject_teacher} — never the legacy
+  // `'admin'` literal the old `role !== 'admin'` clause compared against — so that comparison
+  // was always true for the school path and contributed nothing beyond `!admin`. The synthetic
+  // `educatorData.role` returned below is fixed to a non-`'admin'` sentinel so the downstream
+  // `educatorData.role === 'admin'` data-scope checks keep their exact (school-path) outcomes
+  // without consulting the shadow store (CC-2: authorization stays on the JWT).
   const { data: schoolEducatorData } = await supabase
     .from('school_educators')
-    .select('id, school_id, role')
+    .select('id, school_id')
     .eq('user_id', user.id)
     .maybeSingle();
 
   if (schoolEducatorData?.school_id) {
     let assignedClassIds: string[] = [];
-    if (!admin && schoolEducatorData.role !== 'admin') {
+    if (!admin) {
       const { data: classAssignments } = await supabase
         .from('school_educator_class_assignments')
         .select('class_id')
@@ -79,7 +97,12 @@ async function getAuthenticatedEducator(supabase: SupabaseClient, user: { id: st
         assignedClassIds = classAssignments.map(a => a.class_id);
       }
     }
-    return { user: user as any, educatorData: schoolEducatorData, educatorType: 'school', assignedClassIds };
+    return {
+      user: user as any,
+      educatorData: { id: schoolEducatorData.id, school_id: schoolEducatorData.school_id, role: 'educator' },
+      educatorType: 'school',
+      assignedClassIds,
+    };
   }
 
   const { data: collegeLecturerData } = await supabase
@@ -114,13 +137,28 @@ async function getAuthenticatedEducator(supabase: SupabaseClient, user: { id: st
     .eq('id', user.id)
     .maybeSingle();
 
-  if (userData?.role) {
-    const userRole = userData.role as string;
-    if (userRole === 'college_educator' || userRole === 'school_educator') {
+  // Identity/scoping fallback (task 12.2/19): the educator-TYPE branch now derives from the
+  // CURRENT user's verified JWT via `resolveSchoolRole`, not the shadow `users.role` column
+  // (which P4 drops). For the SSO roles this path cares about (`college_educator` /
+  // `school_educator`) resolveSchoolRole returns them straight from the JWT — the SAME value
+  // `users.role` carried for synced users — so educatorType resolution is preserved. The
+  // `users` row is still read for `id` / `organizationId` (scoping data the resolver does not
+  // provide). A `null` result or any non-educator permission code falls through to the
+  // "not registered" throw, exactly as a non-educator `users.role` did.
+  //
+  // ⚠️ task 14 preservation flag: (a) a user whose `users.role` is NULL/non-educator but whose
+  // JWT carries an educator role is now treated as an educator (intended de-shadowing); and
+  // (b) for a multi-role user, resolveSchoolRole applies admin-over-educator precedence, so a
+  // JWT holding both an admin and an educator code resolves to the admin code (→ throw) where
+  // a single `users.role` of the educator code previously returned educator info. Both are
+  // inconsistent-data edges; synced single-role users are unaffected.
+  if (userData?.id) {
+    const roleCode = await resolveSchoolRole(supabase, user);
+    if (roleCode === 'college_educator' || roleCode === 'school_educator') {
       return {
         user: user as any,
         educatorData: { id: userData.id, school_id: userData.organizationId, role: 'educator' },
-        educatorType: userRole === 'college_educator' ? 'college' : 'school',
+        educatorType: roleCode === 'college_educator' ? 'college' : 'school',
         assignedClassIds: [],
       };
     }

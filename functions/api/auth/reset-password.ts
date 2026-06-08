@@ -1,3 +1,4 @@
+// @public-endpoint: Pre-auth reset completion; the reset token is the gate, not a session. (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Password Reset Completion API (SkillPassport Proxy)
  * POST /api/auth/reset-password
@@ -6,9 +7,9 @@
  */
 
 import { z } from 'zod';
-import type { Env } from '../../lib/types';
-import { jsonResponse } from '../../lib/response';
 import { apiLogger } from '../../lib/logger';
+import { jsonResponse } from '../../lib/response';
+import type { Env } from '../../lib/types';
 
 const resetPasswordSchema = z.object({
   token: z.string({ message: 'token is required' })
@@ -43,9 +44,9 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       body = result.data;
     } catch (error) {
       apiLogger.error('Invalid JSON in reset password request', error as Error);
-      return jsonResponse({ 
-        success: false, 
-        error: 'Invalid JSON payload' 
+      return jsonResponse({
+        success: false,
+        error: 'Invalid JSON payload'
       }, 400);
     }
 
@@ -82,7 +83,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
         apiLogger.error('Failed to read error response', e as Error);
       }
       apiLogger.error('SSO Worker reset password failed', new Error(errorText));
-      
+
       // Parse error message from SSO Worker
       let errorMessage = 'Failed to reset password';
       try {
@@ -91,7 +92,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       } catch {
         // Use default error message
       }
-      
+
       return jsonResponse({
         success: false,
         error: errorMessage
@@ -99,7 +100,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
     }
 
     const ssoData = await ssoResponse.json();
-    
+
     // Validate SSO response using Zod
     let validatedData: z.infer<typeof ssoResponseSchema>;
     try {
@@ -119,7 +120,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
   } catch (error) {
     apiLogger.error('Error processing reset password request', error as Error);
-    
+
     return jsonResponse({
       success: false,
       error: 'Internal server error'

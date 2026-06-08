@@ -14,8 +14,10 @@
  * Plan code identifiers — must match plan_code values in Supabase subscription_plans table.
  */
 export const PLAN_IDS = {
+  FREEMIUM: 'freemium',
   BASIC: 'basic',
   PROFESSIONAL: 'professional',
+  PREMIUM: 'premium',
   ENTERPRISE: 'enterprise',
   ECOSYSTEM: 'enterprise_ecosystem',
 };
@@ -26,8 +28,10 @@ export const PLAN_IDS = {
  * NOT used for pricing — prices always come from the database.
  */
 export const PLAN_HIERARCHY = [
+  PLAN_IDS.FREEMIUM,
   PLAN_IDS.BASIC,
   PLAN_IDS.PROFESSIONAL,
+  PLAN_IDS.PREMIUM,
   PLAN_IDS.ENTERPRISE,
   PLAN_IDS.ECOSYSTEM,
 ];

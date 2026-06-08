@@ -1,7 +1,7 @@
-import { getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import { apiSuccess, apiError, apiNotFound } from '../../lib/response';
 
 function getSupabase(context: AuthenticatedContext) {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -174,6 +174,10 @@ async function inviteMember(context: AuthenticatedContext, body: any) {
   const { data: existing } = await supabase.from('organization_invitations').select('*').eq('organization_id', organizationId).eq('invitee_email', email.toLowerCase()).eq('status', 'pending').maybeSingle();
   if (existing) return apiError(409, 'DUPLICATE', 'An invitation is already pending for this email', context.request);
 
+  // TODO(12.1 review): NOT an authz allow/deny — `invited_by_role` is audit
+  // metadata recording the inviter's role. It reads the current user's single
+  // shadow `users.role`; converting to the JWT `roles[]` would require selecting a
+  // primary role (a semantic change). Deferred; flagged for review.
   const { data: userData } = await supabase.from('users').select('role').eq('id', user).single();
   const invitedByRole = userData?.role || 'school_admin';
   const inviteeRole = memberType === 'educator'
@@ -226,6 +230,21 @@ async function acceptInvitation(context: AuthenticatedContext, body: any) {
 
   const { error: updateError } = await supabase.from('organization_invitations').update({ status: 'accepted', accepted_at: new Date().toISOString(), accepted_by_user_id: acceptingUserId, updated_at: new Date().toISOString() }).eq('id', invitation.id);
   if (updateError) throw updateError;
+
+  // Map invitee_role to SSO role for organization_members
+  let memberRole = 'member';
+  if (invitation.invitee_role === 'owner') memberRole = 'owner';
+  else if (invitation.invitee_role.includes('admin')) memberRole = 'admin';
+
+  const { error: omError } = await supabase
+    .from('organization_members')
+    .upsert({
+      user_id: acceptingUserId,
+      organization_id: invitation.organization_id,
+      role: memberRole,
+      status: 'active',
+    }, { onConflict: 'user_id, organization_id' });
+  if (omError) console.error('[accept-invitation] Failed to upsert organization_members:', omError);
 
   await linkUserToOrganization(supabase, acceptingUserId, invitation.organization_id, invitation.organization_type, invitation.invitee_role, invitation.invitee_email);
 
@@ -352,7 +371,11 @@ async function expireOldInvitations(context: AuthenticatedContext) {
 
 async function createOrganizationHandler(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
-  const { data, error } = await supabase.from('organizations').insert(body).select().single();
+  // `action` is the request-routing discriminator, not a column. Drop it (and
+  // any client-only fields) before insert so PostgREST doesn't reject the row
+  // with "Could not find the 'action' column of 'organizations'".
+  const { action: _action, ...orgFields } = body;
+  const { data, error } = await supabase.from('organizations').insert(orgFields).select().single();
   if (error) throw error;
   return apiSuccess(data, context.request);
 }
@@ -375,12 +398,14 @@ async function deleteOrganizationHandler(context: AuthenticatedContext, body: an
 
 async function createLocalOrganizationHandler(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
+  const userId = getUserId(context);
   const { p_organization_id, p_organization_name, p_recruitment_enabled, p_max_recruiters } = body;
   const { data, error } = await supabase.rpc('create_local_organization', {
     p_organization_id,
     p_organization_name,
     p_recruitment_enabled: p_recruitment_enabled ?? true,
     p_max_recruiters: p_max_recruiters ?? 10,
+    p_created_by_user_id: userId,
   });
   if (error) throw error;
   return apiSuccess(data, context.request);
@@ -712,14 +737,14 @@ async function removeMemberHandler(context: AuthenticatedContext, body: any) {
     if (educator.school_id !== organizationId) return apiSuccess({ success: false, message: 'Educator does not belong to this organization' }, context.request);
     await supabase.from('school_educators').update({ school_id: null }).eq('id', memberId);
     if (educator.user_id) await revokeMemberLicenses(supabase, educator.user_id, organizationId, revokedBy, 'Educator removed from organization');
-    return apiSuccess({ success: true, message: `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Educator'} , context.request);
+    return apiSuccess({ success: true, message: `${educator.first_name || ''} ${educator.last_name || ''}`.trim() || 'Educator' }, context.request);
   } else if (organizationType === 'college') {
     const { data: lecturer } = await supabase.from('college_lecturers').select('id, collegeId, email, first_name, last_name, user_id').eq('id', memberId).single();
     if (!lecturer) return apiSuccess({ success: false, message: 'Lecturer not found' }, context.request);
     if (lecturer.collegeId !== organizationId) return apiSuccess({ success: false, message: 'Lecturer does not belong to this organization' }, context.request);
     await supabase.from('college_lecturers').update({ collegeId: null }).eq('id', memberId);
     if (lecturer.user_id) await revokeMemberLicenses(supabase, lecturer.user_id, organizationId, revokedBy, 'Lecturer removed from organization');
-    return apiSuccess({ success: true, message: `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Lecturer'} , context.request);
+    return apiSuccess({ success: true, message: `${lecturer.first_name || ''} ${lecturer.last_name || ''}`.trim() || 'Lecturer' }, context.request);
   }
   return apiSuccess({ success: false, message: 'Unsupported operation' }, context.request);
 }

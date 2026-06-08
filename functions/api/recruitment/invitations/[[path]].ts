@@ -436,7 +436,19 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
             console.log('[accept-invitation] ✓ Invitation status updated');
         }
 
-        // 8. Get organization name
+        // 8. Insert into local organization_members table
+        const memberRole = ssoRoleName === 'admin' ? 'admin' : 'member';
+        const { error: omError } = await supabase
+            .from('organization_members')
+            .upsert({
+                user_id: actualUserId,
+                organization_id: invitation.organization_id,
+                role: memberRole,
+                status: 'active',
+            }, { onConflict: 'user_id, organization_id' });
+        if (omError) console.error('[accept-invitation] Failed to upsert organization_members:', omError);
+
+        // 9. Get organization name
         console.log('[accept-invitation] Step 10: Fetching organization name');
         const { data: orgData } = await supabase
             .from('organizations')

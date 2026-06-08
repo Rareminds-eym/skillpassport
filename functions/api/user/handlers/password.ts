@@ -3,6 +3,7 @@
  * Handles OTP-based password reset flow
  */
 
+import { PASSWORD_MIN } from '../../../lib/constants';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { sendPasswordResetEmail } from '../utils/email';
@@ -117,8 +118,8 @@ export async function handleResetPassword(request: Request, env: any): Promise<R
     const normalizedEmail = email.trim().toLowerCase();
 
     // Validate password strength
-    if (newPassword.length < 6) {
-      return apiError(400, 'VALIDATION_ERROR', 'Password must be at least 6 characters long', request);
+    if (newPassword.length < PASSWORD_MIN) {
+      return apiError(400, 'VALIDATION_ERROR', `Password must be at least ${PASSWORD_MIN} characters long`, request);
     }
 
     // Verify OTP again

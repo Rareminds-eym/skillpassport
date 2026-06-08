@@ -15,6 +15,7 @@ import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 
+import { PASSWORD_MIN } from '@/shared/constants';
 import { useLearnerSettings } from '@/entities/learner';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { useLearnerCertificates } from '@/entities/learner';
@@ -1279,8 +1280,8 @@ const MainSettings = () => {
       return;
     }
 
-    if (passwordData.newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters long");
+    if (passwordData.newPassword.length < PASSWORD_MIN) {
+      toast.error(`Password must be at least ${PASSWORD_MIN} characters long`);
       return;
     }
 

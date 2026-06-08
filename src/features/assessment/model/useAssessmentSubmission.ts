@@ -14,6 +14,7 @@ import { analyzeAssessmentWithGemini } from '../api/geminiAssessmentService';
 import * as assessmentService from '../api/assessmentApiService';
 import type { GradeLevel } from '../model/types';
 import { useAssessmentStore } from './assessmentStore';
+import { supabase } from '@/shared/api/supabaseClient';
 
 // Import static question banks for fallback
 // @ts-ignore - JS exports

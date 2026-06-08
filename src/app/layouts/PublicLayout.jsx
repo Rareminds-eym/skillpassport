@@ -78,7 +78,7 @@ const PublicLayoutContent = () => {
         }
 
         // Admin roles
-        if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'rm_admin' ||
+        if (userRole === 'admin' ||
           userRole === 'school_admin' || userRole === 'college_admin' || userRole === 'university_admin') {
           return (
             <AdminHeader

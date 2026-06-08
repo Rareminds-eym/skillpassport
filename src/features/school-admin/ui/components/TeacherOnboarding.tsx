@@ -6,7 +6,6 @@ import RoleDebugger from '@/features/debug/ui/RoleDebugger';
 import { useUserRole } from "@/entities/user";
 import { apiPost } from '@/shared/api/apiClient';
 import { storageService } from '@/shared/api';
-import { createTeacher } from '@/features/educator-copilot';
 import { validateDocument } from "@/entities/user/lib/teacherValidation";
 
 import { getLogger } from '@/shared/config/logging';
@@ -468,10 +467,21 @@ const TeacherOnboardingPage: React.FC = () => {
         }
       };
 
-      const teacherResult = await createTeacher(teacherData, ssoClient.getAccessToken());
+      // Calls the authenticated user-worker endpoint, which creates the teacher's
+      // auth account in the SSO worker (active member of the school's org with the
+      // school_educator role) and the app-DB profile rows. apiPost routes through
+      // ssoClient (JWT attached) and returns the API envelope { success, data }.
+      const teacherResult = await apiPost('/user/create-teacher', teacherData) as {
+        success: boolean;
+        data?: { authUserId: string; teacherId: string; password: string };
+        error?: any;
+      };
 
-      if (!teacherResult.success) {
-        throw new Error(teacherResult.error || "Failed to create teacher");
+      if (!teacherResult.success || !teacherResult.data) {
+        const msg = typeof teacherResult.error === 'string'
+          ? teacherResult.error
+          : teacherResult.error?.message;
+        throw new Error(msg || "Failed to create teacher");
       }
 
       const userId = teacherResult.data.authUserId;

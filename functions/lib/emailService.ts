@@ -27,49 +27,25 @@ interface SendEmailResponse {
 }
 
 /**
- * Send an email via the email-worker
+ * Send an email via the email-worker service binding
  */
 export async function sendEmail(
     request: SendEmailRequest,
-    env: Record<string, string>
+    env: { EMAIL_SERVICE?: { sendEmail: Function } }
 ): Promise<SendEmailResponse> {
-    const emailWorkerUrl = env.EMAIL_WORKER_URL || 'http://127.0.0.1:9001';
-    const apiKey = env.INTERNAL_API_KEY;
-
-    console.log('[emailService] Environment check:', {
-        hasEmailWorkerUrl: !!env.EMAIL_WORKER_URL,
-        hasInternalApiKey: !!env.INTERNAL_API_KEY,
-        emailWorkerUrl,
-        envKeys: Object.keys(env),
-    });
-
-    if (!apiKey) {
-        console.error('[emailService] INTERNAL_API_KEY not found in env:', env);
-        throw new Error('INTERNAL_API_KEY environment variable is required');
+    const emailService = env.EMAIL_SERVICE;
+    if (!emailService) {
+        throw new Error('EMAIL_SERVICE binding is not configured');
     }
 
     try {
-        const response = await fetch(`${emailWorkerUrl}/send`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Internal-Api-Key': apiKey,
-            },
-            body: JSON.stringify(request),
-        });
+        const result = await emailService.sendEmail(request) as SendEmailResponse;
 
-        const data = await response.json() as SendEmailResponse;
-
-        if (!response.ok) {
-            console.error('[emailService] Email send failed:', {
-                status: response.status,
-                error: data.error,
-                errorCode: data.errorCode,
-            });
-            throw new Error(data.error || 'Failed to send email');
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to send email');
         }
 
-        return data;
+        return result;
     } catch (error: any) {
         console.error('[emailService] Error sending email:', error);
         throw error;
@@ -87,7 +63,7 @@ export async function sendRecruitmentInvitationEmail(
         role: string;
         invitationUrl: string;
     },
-    env: Record<string, string>
+    env: { EMAIL_SERVICE?: { sendEmail: Function } }
 ): Promise<SendEmailResponse> {
     const { email, inviterName, organizationName, role, invitationUrl } = params;
 

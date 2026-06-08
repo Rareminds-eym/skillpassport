@@ -117,11 +117,11 @@ export const useCollegeEducatorAdminMessages = ({
 
     // Clean up existing subscription
     if (subscriptionRef.current) {
-      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current();
     }
 
     // Create new subscription
-    subscriptionRef.current = MessageService.subscribeToConversation(
+    subscriptionRef.current = MessageService.subscribeToConversationMessages(
       conversationId,
       (newMessage) => {
         // Add new message to cache
@@ -145,7 +145,7 @@ export const useCollegeEducatorAdminMessages = ({
 
     return () => {
       if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current();
         subscriptionRef.current = null;
       }
     };

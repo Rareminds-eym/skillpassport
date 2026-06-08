@@ -3,7 +3,6 @@ import {
   AlertCircle,
   ArrowRight,
   Award,
-  Building2,
   CheckCircle,
   ChevronDown,
   Clock,
@@ -18,22 +17,66 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 // @ts-ignore - JS module without types
 import {
   formatRegistrationDate,
+  FULL_REGISTRATION_START_DATE,
   getTimeUntilFullRegOpens,
-  isFullRegistrationOpen,
-  FULL_REGISTRATION_START_DATE
+  isFullRegistrationOpen
 } from '@/shared/config/registrationConfig';
 // Import OTP functions directly from otpService (not from index which has stubs)
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api/otpService';
 // @ts-ignore - JS module without types
 import { DatePicker } from '@/features/subscription';
 import { ssoClient } from '@/shared/api/ssoClient';
-import { useAuthStore } from '@/shared/model/authStore';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
-import { OtpInput } from '@/shared/ui';
+import { PASSWORD_MIN } from '@/shared/constants';
 import { isLocalhost } from '@/shared/lib';
 import { trackSignup } from '@/shared/lib/analytics';
+import { useAuthStore } from '@/shared/model/authStore';
+import { OtpInput } from '@/shared/ui';
+import { AuthFetchError } from '@rareminds-eym/auth-client';
+// `UserRole` is canonically defined ONCE in the generated module (task 6.2).
+import type { UserRole } from '@/shared/types/generated/roles';
 
-type UserRole = 'learner' | 'recruiter' | 'recruitment_admin' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
+/**
+ * UI-ONLY redirect label — NOT a canonical SSO `UserRole`.
+ *
+ * `recruitment_admin` is never sent to the SSO backend and is NEVER used in any
+ * authorization / role check. Selecting it in the signup dropdown simply means
+ * "I want to create a company": `handleSubmit` redirects to `/signup/company`
+ * and returns early before any SSO signup call (see the early `return` below).
+ *
+ * It is deliberately kept OUT of the canonical `UserRole` so the phantom role is
+ * never reintroduced into the authorization type (RBAC migration §2.4 / §6.4).
+ */
+const RECRUITMENT_ADMIN_REDIRECT = 'recruitment_admin' as const;
+
+/**
+ * The set of options the signup dropdown can offer: a curated subset of real
+ * SSO `UserRole`s plus the UI-only `recruitment_admin` redirect label above.
+ * This is a UI concern, distinct from the canonical `UserRole`.
+ */
+type SignupRoleOption = UserRole | typeof RECRUITMENT_ADMIN_REDIRECT;
+
+/**
+ * The concrete, ordered list of roles offered by the signup dropdown.
+ * `satisfies readonly SignupRoleOption[]` validates every real role against the
+ * canonical `UserRole` (typo-safe) while permitting the `recruitment_admin`
+ * redirect label. `OfferedSignupRole` is the exact union of these options, so
+ * the display-name and entity-type maps below stay exhaustive (no missing keys)
+ * without covering all 16 SSO roles.
+ */
+// NOTE: Educators (school_educator / college_educator) are intentionally NOT
+// offered here. Institutions onboard educators via the admin "Teacher/Educator
+// onboarding" (seat-based) flow, not the public self-signup. Their roles still
+// exist for login and admin-created accounts.
+const SIGNUP_ROLE_OPTIONS = [
+  'learner',
+  'recruiter',
+  RECRUITMENT_ADMIN_REDIRECT,
+  'school_admin',
+  'college_admin',
+  'university_admin',
+] as const satisfies readonly SignupRoleOption[];
+
+type OfferedSignupRole = (typeof SIGNUP_ROLE_OPTIONS)[number];
 
 interface SignupState {
   firstName: string;
@@ -44,7 +87,7 @@ interface SignupState {
   countryCode: string;
   password: string;
   confirmPassword: string;
-  selectedRole: UserRole | null;
+  selectedRole: OfferedSignupRole | null;
   country: string;
   state: string;
   city: string;
@@ -318,16 +361,18 @@ const UnifiedSignup = () => {
 
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
-  const allRoles: UserRole[] = ['learner', 'recruiter', 'recruitment_admin', 'school_educator', 'college_educator', 'school_admin', 'college_admin', 'university_admin'];
-  // Note: 'recruitment_admin' role will redirect to company signup page
-  // 'recruiter' role is for invitation-based signups (no company creation)
+  // `allRoles` is the curated set of options the signup dropdown offers
+  // (SIGNUP_ROLE_OPTIONS above, which excludes educators — onboarded via the
+  // admin flow). 'recruitment_admin' is the UI-only redirect label (NOT an SSO
+  // role): it redirects to the company signup page (see handleSubmit early-return).
+  // 'recruiter' is for invitation-based signups (no company creation).
+  const allRoles = SIGNUP_ROLE_OPTIONS;
 
-  const getRoleDisplayName = (role: UserRole): string => {
-    const names: Record<UserRole, string> = {
+  const getRoleDisplayName = (role: OfferedSignupRole): string => {
+    const names: Record<OfferedSignupRole, string> = {
       learner: 'Learner',
       recruiter: 'Recruiter (I have an invitation)',
       recruitment_admin: 'Recruitment Admin',
-      school_educator: 'School Educator', college_educator: 'College Educator',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
     };
     return names[role];
@@ -490,7 +535,7 @@ const UnifiedSignup = () => {
       if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     }
 
-    if (!state.password || state.password.length < 10) { setState(prev => ({ ...prev, error: 'Password must be at least 10 characters' })); return false; }
+    if (!state.password || state.password.length < PASSWORD_MIN) { setState(prev => ({ ...prev, error: `Password must be at least ${PASSWORD_MIN} characters` })); return false; }
     const typesCount = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter(r => r.test(state.password!)).length;
     if (typesCount < 3) { setState(prev => ({ ...prev, error: 'Password must contain at least 3 of: uppercase letters, lowercase letters, numbers, special characters' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
@@ -553,7 +598,10 @@ const UnifiedSignup = () => {
       console.error('[UnifiedSignup] Using invitation email:', emailToUse);
     }
 
-    // If user selected Recruitment Admin, redirect to company signup with their details
+    // If user selected the UI-only Recruitment Admin label, redirect to company
+    // signup with their details. NOTE: `recruitment_admin` is never sent to the
+    // SSO backend and is not a real role — this branch returns early so every
+    // value passed to the backend below is a genuine SSO `UserRole`.
     if (state.selectedRole === 'recruitment_admin') {
       navigate('/signup/company', {
         state: {
@@ -591,12 +639,16 @@ const UnifiedSignup = () => {
         // Admin signup creates user + org
         const orgName = `${state.firstName} ${state.lastName}'s Institution`;
         const ssoResult = await ssoClient.signup({
-          email: emailToUse, // Use the forced email, not state.email
+          email: emailToUse,
           password: state.password,
           org_name: orgName,
+          role: state.selectedRole!,
           redirect_url: window.location.origin,
         });
         ssoUserId = ssoResult.user.id;
+        if (ssoResult.email_sent === false) {
+          sessionStorage.setItem('email_sent_failed', 'true');
+        }
       } else {
         // Member signup (learner, educator, recruiter) — no org creation
         const ssoResult = await ssoClient.signupMember({
@@ -606,6 +658,9 @@ const UnifiedSignup = () => {
           redirect_url: window.location.origin,
         });
         ssoUserId = ssoResult.user.id;
+        if (ssoResult.email_sent === false) {
+          sessionStorage.setItem('email_sent_failed', 'true');
+        }
       }
 
       // Update auth store with the new user
@@ -655,10 +710,8 @@ const UnifiedSignup = () => {
       }
 
       // Step 3: Redirect based on role
-      const entityTypeMap: Record<UserRole, string> = {
+      const entityTypeMap: Record<OfferedSignupRole, string> = {
         learner: 'learner',
-        school_educator: 'educator',
-        college_educator: 'college-educator',
         recruiter: 'recruitment-recruiter',
         recruitment_admin: 'recruitment-recruiter',
         school_admin: 'school',

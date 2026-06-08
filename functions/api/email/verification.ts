@@ -1,3 +1,4 @@
+// @public-endpoint: Sends a verification email; intended to be called by the SSO worker. FLAG: add an internal shared-secret header (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Email Verification Template API
  * POST /api/email/verification
@@ -6,21 +7,21 @@
  */
 
 import { z } from 'zod';
-import type { Env } from '../../lib/types';
-import { jsonResponse } from '../../lib/response';
-import { sendEmail, isEmailConfigured } from '../../lib/email-service';
+import { isEmailConfigured, sendEmail } from '../../lib/email-service';
 import { apiLogger } from '../../lib/logger';
+import { jsonResponse } from '../../lib/response';
+import type { Env } from '../../lib/types';
 
 // HTML attribute escaping function to prevent XSS
 const escapeHtmlAttribute = (str: string): string =>
   str.replace(/[&<>"']/g, c =>
-    ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;',
-    }[c]!)
+  ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[c]!)
   );
 
 const verificationEmailSchema = z.object({
@@ -64,9 +65,9 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       body = result.data;
     } catch (error) {
       apiLogger.error('Invalid JSON in verification email request', error as Error);
-      return jsonResponse({ 
-        success: false, 
-        error: 'Invalid JSON payload' 
+      return jsonResponse({
+        success: false,
+        error: 'Invalid JSON payload'
       }, 400);
     }
 
@@ -78,7 +79,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
     // Generate beautiful HTML email
     const html = generateVerificationEmailHtml({ verifyUrl: body.verifyUrl });
-    
+
     // Generate plain text version
     const text = `Verify your email address - SkillPassport
 
@@ -133,7 +134,7 @@ The SkillPassport Team
       });
     } else {
       apiLogger.error('Failed to send email verification', new Error(result.error));
-      
+
       return jsonResponse({
         success: false,
         error: result.error || 'Failed to send email'
@@ -142,7 +143,7 @@ The SkillPassport Team
 
   } catch (error) {
     apiLogger.error('Error processing email verification request', error as Error);
-    
+
     return jsonResponse({
       success: false,
       error: 'Internal server error'
@@ -153,10 +154,10 @@ The SkillPassport Team
 // Generate verification email HTML template
 function generateVerificationEmailHtml(data: { verifyUrl: string }): string {
   const { verifyUrl } = data;
-  
+
   // Escape the URL to prevent XSS attacks
   const safeUrl = escapeHtmlAttribute(verifyUrl);
-  
+
   return `
 <!DOCTYPE html>
 <html lang="en">

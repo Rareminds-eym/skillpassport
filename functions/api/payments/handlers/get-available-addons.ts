@@ -21,9 +21,7 @@ export async function handleGetAvailableAddons(context: AuthenticatedContext): P
     if (category) ssoUrl.searchParams.set('category', category);
     if (role) ssoUrl.searchParams.set('role', role);
 
-    const ssoResponse = await ssoFetch(env as any, new Request(ssoUrl.toString(), {
-      method: 'GET',
-    }));
+    const ssoResponse = await ssoFetch(env as any, ssoUrl.toString(), { method: 'GET' });
 
     if (!ssoResponse.ok) {
       const errText = await ssoResponse.text();

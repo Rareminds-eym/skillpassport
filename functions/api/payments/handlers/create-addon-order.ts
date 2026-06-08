@@ -41,7 +41,7 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
 
     // Look up addon from SSO Auth DB to get server-side price
     const ssoUrl = new URL(`http://sso-worker/api/addon-catalog/${encodeURIComponent(body.feature_key as string)}`);
-    const ssoResponse = await ssoFetch(env as any, new Request(ssoUrl.toString(), { method: 'GET' }));
+    const ssoResponse = await ssoFetch(env as any, ssoUrl.toString(), { method: 'GET' });
 
     if (!ssoResponse.ok) {
       logger.error('Addon lookup failed', { feature_key: body.feature_key, status: ssoResponse.status });

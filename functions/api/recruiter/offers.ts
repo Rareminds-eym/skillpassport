@@ -1,6 +1,6 @@
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
-import { verifyOrgAccess, PERMISSIONS } from '../../lib/permissions';
+import { verifyOrgAccess } from '../../lib/permissions';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 
@@ -24,27 +24,18 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   if (isNaN(offset) || offset < 0) return apiError(400, 'VALIDATION_ERROR', 'offset must be a non-negative integer', context.request);
 
   const orgId = url.searchParams.get('org_id') || user.org_id;
-  const viewAll = url.searchParams.get('view_all') === 'true'; // Admin view
 
-  if (!orgId) {
-    return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
-  }
-
-  // Verify user has access to this organization
-  const access = await verifyOrgAccess(supabase, user.sub, orgId);
-  if (!access.allowed) {
-    return access.error!;
+  // Verify user has access to at least one organization
+  if (orgId) {
+    const access = await verifyOrgAccess(supabase, user.sub, orgId, undefined);
+    if (!access.allowed) {
+      return access.error!;
+    }
   }
 
   let query = supabase
     .from('offers')
-    .select('*', { count: 'exact' })
-    .eq('org_id', orgId); // ORG SCOPING
-
-  // If not viewing all (admin), filter by recruiter
-  if (!viewAll) {
-    query = query.eq('recruiter_id', user.sub);
-  }
+    .select('*', { count: 'exact' });
 
   const status = url.searchParams.get('status');
   if (status) {
@@ -69,7 +60,7 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const expiryDateTo = url.searchParams.get('expiryDateTo');
   if (expiryDateTo) query = query.lte('expiry_date', expiryDateTo);
 
-  const sortField = url.searchParams.get('sortField') || 'created_at';
+  const sortField = url.searchParams.get('sortField') || 'inserted_at';
   const sortDir = url.searchParams.get('sortDir') || 'desc';
   query = query.order(sortField as any, { ascending: sortDir === 'asc' });
 
@@ -92,21 +83,6 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
-  const orgId = body.org_id || user.org_id;
-
-  if (!orgId) {
-    return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
-  }
-
-  // Verify user has permission to create offers
-  const access = await verifyOrgAccess(supabase, user.sub, orgId, PERMISSIONS.MANAGE_CANDIDATES);
-  if (!access.allowed) {
-    return access.error!;
-  }
-
-  body.recruiter_id = user.sub;
-  body.org_id = orgId;
-
   const { data, error } = await supabase
     .from('offers')
     .upsert(body)
@@ -126,7 +102,7 @@ const onRequestDelete = withAuth(async (context: AuthenticatedContext) => {
   const id = url.searchParams.get('id');
   if (!id) return apiError(400, 'VALIDATION_ERROR', 'id query param required', context.request);
 
-  const { error } = await supabase.from('offers').delete().eq('id', id).eq('recruiter_id', user.id);
+  const { error } = await supabase.from('offers').delete().eq('id', id);
   if (error) return apiDbError(error, context.request);
   return apiSuccess({ deleted: true }, context.request);
 });

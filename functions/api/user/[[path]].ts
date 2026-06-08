@@ -34,7 +34,7 @@
 import type { PagesFunction } from '../../lib/types';
 import { getCorsHeaders } from '../../lib/cors';
 import { apiSuccess, apiError } from '../../lib/response';
-import { withAuth, getContextUser } from '../../lib/auth';
+import { withAuth, withAuthAllowUnverified, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import {
   handleGetSchools,
@@ -47,23 +47,6 @@ import {
   handleCheckCompanyCode,
   handleCheckEmail,
 } from './handlers/utility';
-import {
-  handleSchoolAdminSignup,
-  handleEducatorSignup,
-  handleLearnerSignup,
-} from './handlers/school';
-import {
-  handleCollegeAdminSignup,
-  handleCollegeEducatorSignup,
-} from './handlers/college';
-import {
-  handleUniversityAdminSignup,
-  handleUniversityEducatorSignup,
-} from './handlers/university';
-import {
-  handleRecruiterAdminSignup,
-  handleRecruiterSignup,
-} from './handlers/recruiter';
 import { handleUnifiedSignup } from './handlers/unified';
 import {
   handleCreateLearner,
@@ -71,12 +54,8 @@ import {
   handleCreateCollegeStaff,
   handleUpdateLearnerDocuments,
 } from './handlers/authenticated';
-import {
-  handleCreateEventUser,
-  handleSendInterviewReminder,
-} from './handlers/events';
 import { handleResetPassword } from './handlers/password';
-import { onRequestPost } from './handlers/actions';
+import { onRequestPost, onRequestPostUnverified } from './handlers/actions';
 import {
   handleGetProfileExtended,
   handleUpsertProfileExtended,
@@ -122,10 +101,6 @@ export const onRequest: PagesFunction = async (context) => {
         endpoints: {
           signup: {
             unified: ['/signup'],
-            school: ['/signup/school-admin', '/signup/educator', '/signup/learner'],
-            college: ['/signup/college-admin', '/signup/college-educator'],
-            university: ['/signup/university-admin', '/signup/university-educator'],
-            recruiter: ['/signup/recruiter-admin', '/signup/recruiter'],
           },
           utility: [
             '/schools', '/colleges', '/universities', '/companies',
@@ -134,7 +109,7 @@ export const onRequest: PagesFunction = async (context) => {
           ],
           authenticated: [
             '/create-learner', '/create-teacher', '/create-college-staff',
-            '/create-event-user', '/send-interview-reminder', '/reset-password',
+            '/reset-password',
           ],
         },
         timestamp: new Date().toISOString(),
@@ -143,46 +118,15 @@ export const onRequest: PagesFunction = async (context) => {
 
     // Route to handlers
 
-    // Unified signup endpoint
+    // Unified signup endpoint (authenticated - validates JWT sub against body.userId)
+    // NOTE: Uses withAuthAllowUnverified — the JWT is valid but is_email_verified
+    // is false at this point since the user just signed up. Email verification
+    // happens after the app profile is created.
     if (path === '/signup' && request.method === 'POST') {
-      return await handleUnifiedSignup(request, env);
-    }
-
-    // School signup endpoints
-    if (path === '/signup/school-admin' && request.method === 'POST') {
-      return await handleSchoolAdminSignup(request, env);
-    }
-    if (path === '/signup/educator' && request.method === 'POST') {
-      return await handleEducatorSignup(request, env);
-    }
-    if (path === '/signup/learner' && request.method === 'POST') {
-      return await handleLearnerSignup(request, env);
-    }
-
-    // College signup endpoints
-    if (path === '/signup/college-admin' && request.method === 'POST') {
-      return await handleCollegeAdminSignup(request, env);
-    }
-    if (path === '/signup/college-educator' && request.method === 'POST') {
-      return await handleCollegeEducatorSignup(request, env);
-    }
-
-
-    // University signup endpoints
-    if (path === '/signup/university-admin' && request.method === 'POST') {
-      return await handleUniversityAdminSignup(request, env);
-    }
-    if (path === '/signup/university-educator' && request.method === 'POST') {
-      return await handleUniversityEducatorSignup(request, env);
-    }
-
-
-    // Recruiter signup endpoints
-    if (path === '/signup/recruiter-admin' && request.method === 'POST') {
-      return await handleRecruiterAdminSignup(request, env);
-    }
-    if (path === '/signup/recruiter' && request.method === 'POST') {
-      return await handleRecruiterSignup(request, env);
+      return withAuthAllowUnverified(async (authContext: AuthenticatedContext) => {
+        const user = getContextUser(authContext);
+        return await handleUnifiedSignup(authContext.request, authContext.env, user.id);
+      })(context);
     }
 
     // Utility GET endpoints - Institution lists
@@ -225,28 +169,26 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/create-teacher' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
         const user = getContextUser(authContext);
-        return await handleCreateTeacher(authContext.request, authContext.env, { id: user.id, email: user.email || '' });
+        return await handleCreateTeacher(authContext.request, authContext.env, {
+          id: user.id,
+          email: user.email || '',
+          org_id: (user as any).org_id,
+        });
       })(context);
     }
     if (path === '/create-college-staff' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
         const user = getContextUser(authContext);
-        return await handleCreateCollegeStaff(authContext.request, authContext.env, { id: user.id, email: user.email || '' });
+        return await handleCreateCollegeStaff(authContext.request, authContext.env, {
+          id: user.id,
+          email: user.email || '',
+          org_id: (user as any).org_id,
+        });
       })(context);
     }
     if (path === '/update-learner-documents' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
         return await handleUpdateLearnerDocuments(authContext.request, authContext.env);
-      })(context);
-    }
-    if (path === '/create-event-user' && request.method === 'POST') {
-      return withAuth(async (authContext: AuthenticatedContext) => {
-        return await handleCreateEventUser(authContext.request, authContext.env);
-      })(context);
-    }
-    if (path === '/send-interview-reminder' && request.method === 'POST') {
-      return withAuth(async (authContext: AuthenticatedContext) => {
-        return await handleSendInterviewReminder(authContext.request, authContext.env);
       })(context);
     }
     if (path === '/reset-password' && request.method === 'POST') {
@@ -316,9 +258,14 @@ export const onRequest: PagesFunction = async (context) => {
       })(context);
     }
 
-    // Actions dispatch endpoint
+    // Actions dispatch endpoint (authenticated)
     if (path === '/actions' && request.method === 'POST') {
       return onRequestPost(context);
+    }
+
+    // Handler endpoint (allow-unverified - used during signup flow before email verification)
+    if (path === '/handler' && request.method === 'POST') {
+      return onRequestPostUnverified(context);
     }
 
     return apiError(404, 'NOT_FOUND', 'Not found', request);

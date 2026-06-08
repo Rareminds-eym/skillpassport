@@ -7,22 +7,13 @@
 // Core User Types
 // ============================================================================
 
-export type UserRole = 
-  | 'learner' 
-  | 'recruiter' 
-  | 'educator' 
-  | 'school_admin' 
-  | 'college_admin' 
-  | 'university_admin'
-  | 'school_educator'
-  | 'college_educator'
-  | 'admin'
-  | 'hr'
-  | 'principal'
-  | 'vice_principal'
-  | 'it_admin'
-  | 'class_teacher'
-  | 'subject_teacher';
+// Re-export shim: `UserRole` is canonically defined ONCE in the generated
+// module (src/shared/types/generated/roles.ts). See Phase P1, task 6.2.
+// NOTE: this previously also listed school-internal roles (principal,
+// vice_principal, it_admin, class_teacher, subject_teacher). Those are NOT
+// SSO roles — they belong to `SchoolInternalRole` (introduced in task 6.3).
+export type { UserRole } from '@/shared/types/generated/roles';
+import type { UserRole } from '@/shared/types/generated/roles';
 
 export interface User {
   id: string;

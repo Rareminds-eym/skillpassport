@@ -1,3 +1,4 @@
+// @public-endpoint: CORS-bypass fetch of public certificate pages; restricted by an SSRF domain allow-list. FLAG: consider requiring withAuth to curb anonymous use of the fetch proxy (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Fetch Certificate API - Pages Function
  * Fetches certificate pages from external platforms (bypasses CORS)
@@ -6,9 +7,10 @@
  * - POST / - Fetch certificate page HTML and metadata
  */
 
+import { getCorsHeaders } from '../../lib/cors';
+import { apiError, apiSuccess } from '../../lib/response';
 import type { PagesFunction } from '../../lib/types';
-import { apiSuccess, apiError } from '../../lib/response';
-import { getCorsHeaders } from '../../lib/cors';;
+;
 
 const ALLOWED_DOMAINS = [
   'udemy.com',

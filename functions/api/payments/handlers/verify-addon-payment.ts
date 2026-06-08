@@ -103,7 +103,7 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
         razorpay_order_id: body.razorpay_order_id as string,
         amount: priceAtPurchase,
         currency: (body.currency as string) || 'INR',
-        status: 'success',
+        status: 'completed',
         transaction_type: 'addon',
         metadata: { feature_key: body.feature_key },
       });

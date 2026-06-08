@@ -1,7 +1,7 @@
-import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import { apiSuccess, apiError } from '../../lib/response';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(context.env as any);
@@ -50,7 +50,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 async function handleFetchCurrentSchool(supabase: any, context: AuthenticatedContext, body: any) {
   const user = getContextUser(context);
 
-  const { data: educator } = await supabase.from('school_educators').select('school_id, role').eq('user_id', user.id).maybeSingle();
+  // Resolves the current user's `school_id` (data-scope) only. `role` is NOT selected/read here
+  // (task 22.3 — no `school_educators.role` authority use); authorization is enforced separately
+  // from the verified JWT. `handleFetchSchoolEducators` below still selects `role` purely for the
+  // school-admin roster DISPLAY (never an authz decision).
+  const { data: educator } = await supabase.from('school_educators').select('school_id').eq('user_id', user.id).maybeSingle();
   let schoolId = educator?.school_id;
 
   if (!schoolId) {

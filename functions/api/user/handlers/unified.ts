@@ -27,8 +27,9 @@ import {
  * 2. Role-specific record (learners, school_educators, recruiters, etc.)
  * 
  * The `userId` field in the request body is the SSO user ID (from ssoClient.signup/signupMember).
+ * The `authenticatedUserId` is extracted from the JWT via withAuth middleware.
  */
-export async function handleUnifiedSignup(request: Request, env: PagesEnv): Promise<Response> {
+export async function handleUnifiedSignup(request: Request, env: PagesEnv, authenticatedUserId?: string): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   try {
@@ -41,6 +42,11 @@ export async function handleUnifiedSignup(request: Request, env: PagesEnv): Prom
 
     if (!body.userId) {
       return apiError(400, 'VALIDATION_ERROR', 'Missing userId. The SSO user must be created first.', request);
+    }
+
+    // Security: validate that the JWT sub matches the claimed userId
+    if (authenticatedUserId && body.userId !== authenticatedUserId) {
+      return apiError(403, 'USER_ID_MISMATCH', 'Authenticated user does not match the claimed userId', request);
     }
 
     if (!validateEmail(body.email)) {

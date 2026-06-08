@@ -8,20 +8,13 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { createLogger } from '../../../lib/logger';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { ADMIN_ROLES } from '../../../lib/roleCategories';
 import type { PagesEnv } from '../../../lib/types';
 import { getGenerationUsage } from '../utils/generation-limit';
-import { createLogger } from '../../../lib/logger';
 
 const logger = createLogger('get-generation-usage');
-
-const ADMIN_ROLES = new Set([
-  'admin',
-  'school_admin',
-  'college_admin',
-  'university_admin',
-  'owner',
-]);
 
 interface RequiredEnv {
   SUPABASE_URL: string;
@@ -39,7 +32,7 @@ export const onRequestGet = async (context: TypedContext) => {
     // Parse query parameters
     const url = new URL(request.url);
     const requestedUserId = url.searchParams.get('userId');
-    
+
     // Use requested userId or fall back to authenticated user
     const userId = requestedUserId || authenticatedUser.id;
 
@@ -47,11 +40,13 @@ export const onRequestGet = async (context: TypedContext) => {
       return apiError(400, 'VALIDATION_ERROR', 'Missing userId parameter', request);
     }
 
-    // Security check: Only allow users to fetch their own generation usage unless admin
+    // Security check: Only allow users to fetch their own generation usage unless admin.
+    // Ownership-scoped bypass — non-guard role check uses the shared ADMIN_ROLES
+    // group, replacing the prior local inline literal Set (bug §7.1).
     const isAdmin =
       Array.isArray(authenticatedUser.roles) &&
       authenticatedUser.roles.some(
-        (role: unknown) => typeof role === 'string' && ADMIN_ROLES.has(role)
+        (role: unknown) => typeof role === 'string' && ADMIN_ROLES.includes(role)
       );
 
     if (requestedUserId && requestedUserId !== authenticatedUser.id && !isAdmin) {

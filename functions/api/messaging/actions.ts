@@ -1,8 +1,8 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
 import { notifyRealtime } from '../../lib/realtime';
+import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 async function convertApplicationId(supabase: any, applicationId: number | string | undefined): Promise<number | undefined> {
   if (!applicationId) return undefined;
@@ -216,7 +216,7 @@ async function handleGetUserConversations(supabase: any, params: any): Promise<a
     } else {
       query = query.eq(deletedColumn, false);
     }
-  } catch (e) {}
+  } catch (e) { }
 
   if (conversationType) query = query.eq('conversation_type', conversationType);
   if (!includeArchived) query = query.neq('status', 'archived');
@@ -268,6 +268,15 @@ async function handleMarkConversationAsRead(supabase: any, params: any): Promise
     const isEducator = conversation.educator_id === userId;
 
     if (conversation.conversation_type === 'learner_admin') {
+      // FINALIZED (task 22.3 / deferred display reconciliation to task 13): this is a
+      // participant-identity EXISTENCE check keyed by the `userId` PARAM (the user marking the
+      // thread read — not necessarily the current authenticated user) AND org-scoped to
+      // `conversation.school_id`. It is NOT an authorization use of `school_educators.role`:
+      // `resolveSchoolRole` resolves the CURRENT user's permission role from the JWT and does
+      // NOT (a) operate on an arbitrary param user, nor (b) reproduce the
+      // `school_id = conversation.school_id` scoping of this membership probe — so routing it
+      // through the resolver would change semantics (and could clear the wrong school's
+      // counter). Endpoint authorization is enforced separately from the verified JWT.
       const { data: schoolAdmin } = await supabase.from('school_educators').select('user_id').eq('user_id', userId).eq('role', 'school_admin').eq('school_id', conversation.school_id).single();
       if (schoolAdmin) {
         await supabase.from('conversations').update({ admin_unread_count: 0 }).eq('id', conversationId);

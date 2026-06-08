@@ -1,3 +1,4 @@
+// @public-endpoint: Sends a password-reset email; intended to be called server-side by the SSO worker. FLAG: add an internal shared-secret header (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Password Reset Email Template API
  * POST /api/email/password-reset
@@ -6,12 +7,12 @@
  */
 
 import { z } from 'zod';
-import type { Env } from '../../lib/types';
-import { jsonResponse } from '../../lib/response';
-import { sendEmail, isEmailConfigured } from '../../lib/email-service';
-import { generatePasswordResetLinkHtml } from './services/templates';
+import { isEmailConfigured, sendEmail } from '../../lib/email-service';
 import { apiLogger } from '../../lib/logger';
+import { jsonResponse } from '../../lib/response';
+import type { Env } from '../../lib/types';
 import { isValidEmail } from '../../lib/validation';
+import { generatePasswordResetLinkHtml } from './services/templates';
 
 const passwordResetEmailSchema = z.object({
   to: z.string({ message: 'to email address is required' })
@@ -53,9 +54,9 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       body = result.data;
     } catch (error) {
       apiLogger.error('Invalid JSON in password reset email request', error as Error);
-      return jsonResponse({ 
-        success: false, 
-        error: 'Invalid JSON payload' 
+      return jsonResponse({
+        success: false,
+        error: 'Invalid JSON payload'
       }, 400);
     }
 
@@ -67,7 +68,7 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
 
     // Generate beautiful HTML email
     const html = generatePasswordResetLinkHtml({ resetUrl: body.resetUrl });
-    
+
     // Generate plain text version
     const text = `Reset your password - SkillPassport
 
@@ -122,7 +123,7 @@ The SkillPassport Team
       });
     } else {
       apiLogger.error('Failed to send password reset email', new Error(result.error));
-      
+
       return jsonResponse({
         success: false,
         error: result.error || 'Failed to send email'
@@ -131,7 +132,7 @@ The SkillPassport Team
 
   } catch (error) {
     apiLogger.error('Error processing password reset email request', error as Error);
-    
+
     return jsonResponse({
       success: false,
       error: 'Internal server error'

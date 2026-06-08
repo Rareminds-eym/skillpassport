@@ -58,6 +58,8 @@ interface SsoTransactionData {
 type SsoFetcher = Fetcher & {
   createSubscription(data: unknown): Promise<Record<string, unknown>>;
   createFreemiumSubscription(data: unknown): Promise<Record<string, unknown>>;
+  createMember(data: { email: string; password: string; role: string; org_id: string }):
+    Promise<{ user_id: string; org_id: string; membership_id: string }>;
   updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   recordTransaction(data: unknown): Promise<Record<string, unknown>>;
@@ -65,6 +67,7 @@ type SsoFetcher = Fetcher & {
   syncSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   getUserTransactions(userId: string, subscriptionId?: string): Promise<Record<string, unknown>[]>;
   syncPlans(): Promise<{ plans: Record<string, unknown>[] }>;
+  listRoles(): Promise<{ roles: { id: string; name: string; description: string | null }[] }>;
   recordAddonPurchase(data: unknown): Promise<Record<string, unknown>>;
   recordBundlePurchase(data: unknown): Promise<Record<string, unknown>>;
 };
@@ -102,6 +105,19 @@ export async function ssoCreateFreemiumSubscription(
   data: { user_id: string; email: string; full_name?: string },
 ): Promise<Record<string, unknown>> {
   return getSsoService(env).createFreemiumSubscription(data);
+}
+
+/**
+ * Admin-create a member user (e.g. school admin adding a teacher) in the SSO DB.
+ * Creates the SSO user + active membership + role. The caller is responsible for
+ * creating any app-DB profile rows (e.g. school_educators) using the returned
+ * user_id.
+ */
+export async function ssoCreateMember(
+  env: SsoClientEnv,
+  data: { email: string; password: string; role: string; org_id: string },
+): Promise<{ user_id: string; org_id: string; membership_id: string }> {
+  return getSsoService(env).createMember(data);
 }
 
 export async function ssoUpdateSubscriptionStatus(
@@ -155,6 +171,20 @@ export async function ssoSyncPlans(
   return getSsoService(env).syncPlans();
 }
 
+/**
+ * Pull the canonical authorization roles from the sso-worker (source of truth).
+ *
+ * Mirrors {@link ssoSyncPlans}. Used by the roles-shadow sync
+ * (`sync-shadow.ts` → `syncRolesShadow`) for the scheduled reconcile and the
+ * on-demand cache-miss refresh. The returned list is read-only reference data,
+ * never an authorization source.
+ */
+export async function ssoListRoles(
+  env: SsoClientEnv,
+): Promise<{ roles: { id: string; name: string; description: string | null }[] }> {
+  return getSsoService(env).listRoles();
+}
+
 export async function ssoRecordAddonPurchase(
   env: SsoClientEnv,
   data: Record<string, unknown>,
@@ -171,9 +201,11 @@ export async function ssoRecordBundlePurchase(
 
 export async function ssoFetch(
   env: SsoClientEnv,
-  request: Request,
+  path: string,
+  init?: RequestInit,
 ): Promise<Response> {
-  return getSsoService(env).fetch(request);
+  const url = new URL(path, "http://sso-worker").toString();
+  return getSsoService(env).fetch(new Request(url, init));
 }
 
 /**
@@ -187,7 +219,7 @@ export async function ssoCreateMembership(
   const res = await ssoFetch(env, "/api/memberships/create", {
     method: "POST",
     body: JSON.stringify(data),
-  }, "", true);
+  });
 
   if (!res.ok) {
     const text = await res.text();
@@ -206,7 +238,7 @@ export async function ssoAssignMembershipRole(
   const res = await ssoFetch(env, "/api/memberships/assign-role", {
     method: "POST",
     body: JSON.stringify(data),
-  }, "", true);
+  });
 
   if (!res.ok) {
     const text = await res.text();
@@ -225,7 +257,7 @@ export async function ssoUpdateMembershipStatus(
   const res = await ssoFetch(env, "/api/memberships/update-status", {
     method: "PUT",
     body: JSON.stringify(data),
-  }, "", true);
+  });
 
   if (!res.ok) {
     const text = await res.text();

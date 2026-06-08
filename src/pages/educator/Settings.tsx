@@ -1,35 +1,35 @@
 import {
-    AcademicCapIcon,
-    ArrowDownTrayIcon,
-    ArrowPathIcon,
-    BellIcon,
-    BriefcaseIcon,
-    BuildingOfficeIcon,
-    CheckCircleIcon,
-    ChevronRightIcon,
-    ClockIcon,
-    CogIcon,
-    CreditCardIcon,
-    DocumentTextIcon,
-    EnvelopeIcon,
-    ExclamationTriangleIcon,
-    EyeIcon,
-    GlobeAltIcon,
-    LockClosedIcon,
-    PhotoIcon,
-    PlusCircleIcon,
-    ShieldCheckIcon,
-    UserIcon
+  AcademicCapIcon,
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  BellIcon,
+  BriefcaseIcon,
+  BuildingOfficeIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  CogIcon,
+  CreditCardIcon,
+  DocumentTextIcon,
+  EnvelopeIcon,
+  ExclamationTriangleIcon,
+  EyeIcon,
+  GlobeAltIcon,
+  LockClosedIcon,
+  PhotoIcon,
+  PlusCircleIcon,
+  ShieldCheckIcon,
+  UserIcon
 } from '@heroicons/react/24/outline';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { validateFile, uploadFile, getDocumentUrl } from '@/shared/api';
-import { storageService } from '@/shared/api';
+import { getDocumentUrl, storageService, uploadFile, validateFile } from '@/shared/api';
 // @ts-ignore - JSX file without declaration
 import { SubscriptionSettingsSection } from '@/features/subscription';
-import { useUser, useUserRole } from '@/shared/model/authStore';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { PASSWORD_MIN } from '@/shared/constants';
+import { useUser, useUserRole } from '@/shared/model/authStore';
 
 const logger = getLogger('EducatorSettings');
 interface SettingsState {
@@ -140,26 +140,24 @@ const AccordionSection: React.FC<{
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <ChevronRightIcon 
-              className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${
-                isExpanded ? 'rotate-90' : ''
-              }`} 
+            <ChevronRightIcon
+              className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''
+                }`}
             />
           </div>
         </div>
       </button>
-      
+
       {/* Content */}
-      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
-        isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-      }`}>
+      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+        }`}>
         <div className="px-6 py-6 bg-white">
           {children}
-          
+
           {/* Save/Cancel Buttons */}
           {showSaveButtons && isExpanded && (
             <div className="flex items-center justify-end gap-3 pt-6 mt-6 border-t border-slate-200">
-              <button 
+              <button
                 onClick={onCancel}
                 className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
               >
@@ -284,7 +282,7 @@ const Settings: React.FC = () => {
   const authLoading = false; // Zustand doesn't have loading state for auth
   const userEmail = (user as any)?.email;
   const userId = (user as any)?.user_id || (user as any)?.id;
-  
+
   // Add loading and error states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -294,10 +292,10 @@ const Settings: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Document upload states
-  const [documentUploading, setDocumentUploading] = useState<{[key: string]: boolean}>({});
-  const [documentErrors, setDocumentErrors] = useState<{[key: string]: string}>({});
-  const [pendingDocuments, setPendingDocuments] = useState<{[key: string]: File[]}>({});
-  const [showDocumentConfirmation, setShowDocumentConfirmation] = useState<{[key: string]: boolean}>({});
+  const [documentUploading, setDocumentUploading] = useState<{ [key: string]: boolean }>({});
+  const [documentErrors, setDocumentErrors] = useState<{ [key: string]: string }>({});
+  const [pendingDocuments, setPendingDocuments] = useState<{ [key: string]: File[] }>({});
+  const [showDocumentConfirmation, setShowDocumentConfirmation] = useState<{ [key: string]: boolean }>({});
   const idProofInputRef = useRef<HTMLInputElement>(null);
   const degreeInputRef = useRef<HTMLInputElement>(null);
   const experienceInputRef = useRef<HTMLInputElement>(null);
@@ -357,7 +355,7 @@ const Settings: React.FC = () => {
   const [passwordError, setPasswordError] = useState<string>('');
 
   // Accordion state for collapsible sections
-  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
+  const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     photo: true,
     personal: true,
     professional: false,
@@ -376,13 +374,13 @@ const Settings: React.FC = () => {
   // Data fetching function
   const fetchEducatorData = async () => {
     if (!userId) return;
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       logger.info('Fetching educator data', { userId, userEmail, userRole });
-      
+
       // Try school educators first
       const schoolResp = await apiPost('/educator/actions', {
         action: 'fetch-school-educator-by-user-id',
@@ -394,7 +392,7 @@ const Settings: React.FC = () => {
       if (schoolData) {
         logger.info('Found school educator data', { schoolData });
         setEducatorData(schoolData);
-        
+
         // Map school educator fields to form fields
         setSettings(prev => ({
           ...prev,
@@ -440,7 +438,7 @@ const Settings: React.FC = () => {
       if (collegeData) {
         logger.info('Found college lecturer data', { collegeData });
         setEducatorData(collegeData);
-        
+
         // Parse address - it's already a JSONB object, not a string
         let addressData = { address: '', city: '', state: '', country: '', pincode: '' };
         if (collegeData.address) {
@@ -457,7 +455,7 @@ const Settings: React.FC = () => {
             }
           }
         }
-        
+
         // Map college lecturer fields to form fields (using snake_case field names)
         setSettings(prev => ({
           ...prev,
@@ -483,10 +481,10 @@ const Settings: React.FC = () => {
           subjectExpertise: collegeData.subject_expertise || [],
           idProofUrl: collegeData.id_proof_url || '',
           degreeCertificateUrl: collegeData.degree_certificate_url || '',
-          experienceLettersUrl: Array.isArray(collegeData.experience_letters_url) 
-            ? collegeData.experience_letters_url 
-            : (typeof collegeData.experience_letters_url === 'string' 
-              ? JSON.parse(collegeData.experience_letters_url) 
+          experienceLettersUrl: Array.isArray(collegeData.experience_letters_url)
+            ? collegeData.experience_letters_url
+            : (typeof collegeData.experience_letters_url === 'string'
+              ? JSON.parse(collegeData.experience_letters_url)
               : []),
           resumeUrl: collegeData.resume_url || '',
           // Load preferences from metadata if exists
@@ -498,7 +496,7 @@ const Settings: React.FC = () => {
       // No data found in either table
       logger.warn('No educator data found', { userId });
       setError('No educator profile found. Please contact your administrator.');
-      
+
     } catch (error) {
       logger.error('Error in fetchEducatorData', error);
       setError('Failed to load profile data');
@@ -579,7 +577,7 @@ const Settings: React.FC = () => {
 
   // Document upload handlers
   const handleDocumentUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>, 
+    event: React.ChangeEvent<HTMLInputElement>,
     documentType: 'id-proof' | 'degree' | 'experience' | 'resume'
   ) => {
     const files = event.target.files;
@@ -649,15 +647,15 @@ const Settings: React.FC = () => {
 
     try {
       const teacherId = educatorData.id || educatorData.user_id;
-      
+
       if (documentType === 'experience') {
         // Handle multiple experience letters
-        const uploadPromises = files.map(file => 
+        const uploadPromises = files.map(file =>
           storageService.uploadTeacherDocument(file, teacherId, documentType)
         );
 
         const results = await Promise.all(uploadPromises);
-        
+
         // Check if all uploads succeeded
         const failedUploads = results.filter(result => !result.success);
         if (failedUploads.length > 0) {
@@ -687,7 +685,7 @@ const Settings: React.FC = () => {
       } else if (documentType === 'resume') {
         // Handle single resume document
         const file = files[0];
-        
+
         // Upload to storage
         const result = await storageService.uploadTeacherDocument(file, teacherId, documentType);
 
@@ -718,7 +716,7 @@ const Settings: React.FC = () => {
       } else {
         // Handle single document (ID proof or degree)
         const file = files[0];
-        
+
         // Upload to storage
         const result = await storageService.uploadTeacherDocument(file, teacherId, documentType);
 
@@ -769,7 +767,7 @@ const Settings: React.FC = () => {
         ...prev,
         [documentType]: false
       }));
-      
+
       // Clear pending documents
       setPendingDocuments(prev => ({
         ...prev,
@@ -784,7 +782,7 @@ const Settings: React.FC = () => {
       ...prev,
       [documentType]: false
     }));
-    
+
     setPendingDocuments(prev => ({
       ...prev,
       [documentType]: []
@@ -902,11 +900,11 @@ const Settings: React.FC = () => {
     }
 
     setSaveStatus('saving');
-    
+
     try {
       // Detect educator type based on educatorData
       const isCollegeEducator = educatorData.collegeId !== undefined;
-      
+
       // Filter and format subject expertise to ensure valid data
       const formattedSubjectExpertise = settings.subjectExpertise
         .filter(subject => subject.name && subject.name.trim() !== '')
@@ -915,7 +913,7 @@ const Settings: React.FC = () => {
           proficiency: subject.proficiency || '',
           years_experience: parseInt(String(subject.years_experience)) || 0
         }));
-      
+
       if (isCollegeEducator) {
         const addressData = {
           address: settings.officeLocation || '',
@@ -1022,15 +1020,15 @@ const Settings: React.FC = () => {
       }
 
       setSaveStatus('saved');
-      
+
       // Refresh the data
       await fetchEducatorData();
-      
+
     } catch (error) {
       logger.error('Error in handleSave', error);
       setSaveStatus('error');
     }
-    
+
     setTimeout(() => setSaveStatus('idle'), 3000);
   };
 
@@ -1042,8 +1040,8 @@ const Settings: React.FC = () => {
       return;
     }
 
-    if (passwordData.newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters long');
+    if (passwordData.newPassword.length < PASSWORD_MIN) {
+      setPasswordError(`New password must be at least ${PASSWORD_MIN} characters long`);
       return;
     }
 
@@ -1114,7 +1112,7 @@ const Settings: React.FC = () => {
               Manage your personal, teaching, and privacy preferences here.
             </p>
           </div>
-          
+
           {/* Settings Dropdown Menu */}
           <div className="relative">
             <button
@@ -1125,13 +1123,12 @@ const Settings: React.FC = () => {
               <span className="text-sm font-medium text-slate-700">
                 {tabs.find(tab => tab.id === activeTab)?.label || 'Settings'}
               </span>
-              <ChevronRightIcon 
-                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                  showSettingsDropdown ? 'rotate-90' : ''
-                }`} 
+              <ChevronRightIcon
+                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showSettingsDropdown ? 'rotate-90' : ''
+                  }`}
               />
             </button>
-            
+
             {/* Dropdown Menu */}
             {showSettingsDropdown && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg border border-slate-200 shadow-lg z-50">
@@ -1149,11 +1146,10 @@ const Settings: React.FC = () => {
                           setActiveTab(tab.id as typeof activeTab);
                           setShowSettingsDropdown(false);
                         }}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          isActive
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
                             ? 'bg-blue-50 text-blue-700 border border-blue-200'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        }`}
+                          }`}
                       >
                         <IconComponent className="w-4 h-4" />
                         <span>{tab.label}</span>
@@ -1172,7 +1168,7 @@ const Settings: React.FC = () => {
         {/* Content Area - Full Width */}
         <div className="space-y-6">
           {/* College Educator Notice */}
-          {(userRole === 'college_lecturer' || userRole === 'college_admin') && (
+          {(userRole === 'college_educator' || userRole === 'college_admin') && (
             <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-amber-50 border-amber-200">
               <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
@@ -1183,7 +1179,7 @@ const Settings: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           {/* Save Status Alert */}
           {saveStatus !== 'idle' && (
             <div
@@ -1231,7 +1227,7 @@ const Settings: React.FC = () => {
                     <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mr-2" />
                     <span className="text-red-800">{error}</span>
                   </div>
-                  <button 
+                  <button
                     onClick={fetchEducatorData}
                     className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
                   >
@@ -1277,20 +1273,19 @@ const Settings: React.FC = () => {
                               style={{ opacity: 0 }}
                             />
                           ) : null}
-                          
+
                           {/* Fallback initials - always rendered but conditionally shown */}
-                          <div 
-                            className={`absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-xl ${
-                              getPhotoUrl() ? 'opacity-0' : 'opacity-100'
-                            } transition-opacity duration-200`}
+                          <div
+                            className={`absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-xl ${getPhotoUrl() ? 'opacity-0' : 'opacity-100'
+                              } transition-opacity duration-200`}
                             style={{ display: getPhotoUrl() ? 'none' : 'flex' }}
                           >
                             {getInitials(settings.fullName || 'ED')}
                           </div>
                         </div>
-                        
+
                         {/* Photo upload overlay button */}
-                        <button 
+                        <button
                           onClick={triggerPhotoUpload}
                           disabled={photoUploading}
                           className="absolute -bottom-2 -right-2 p-2.5 bg-white rounded-xl shadow-lg border border-slate-200 hover:bg-slate-50 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
@@ -1303,11 +1298,11 @@ const Settings: React.FC = () => {
                           )}
                         </button>
                       </div>
-                      
+
                       <div className="flex-1">
                         {/* Upload and Remove buttons */}
                         <div className="flex gap-3">
-                          <button 
+                          <button
                             onClick={triggerPhotoUpload}
                             disabled={photoUploading}
                             className="inline-flex items-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1324,10 +1319,10 @@ const Settings: React.FC = () => {
                               </>
                             )}
                           </button>
-                          
+
                           {/* Remove Photo Button - only show if photo exists */}
                           {getPhotoUrl() && (
-                            <button 
+                            <button
                               onClick={() => setShowRemovePhotoConfirmation(true)}
                               disabled={photoRemoving}
                               className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 text-sm font-medium border border-red-200 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1348,7 +1343,7 @@ const Settings: React.FC = () => {
                             </button>
                           )}
                         </div>
-                        
+
                         {/* File input (hidden) */}
                         <input
                           ref={fileInputRef}
@@ -1357,16 +1352,16 @@ const Settings: React.FC = () => {
                           onChange={handlePhotoUpload}
                           className="hidden"
                         />
-                        
+
                         <p className="text-xs text-slate-500 mt-2">JPG, PNG or GIF. Maximum file size 5MB.</p>
-                        
+
                         {/* Photo upload error */}
                         {photoError && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
                             <p className="text-xs text-red-600">{photoError}</p>
                           </div>
                         )}
-                        
+
                         {/* Current photo status */}
                         {getPhotoUrl() && (
                           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -1375,14 +1370,14 @@ const Settings: React.FC = () => {
                               <p className="text-sm text-green-700 font-medium">Profile photo active</p>
                             </div>
                             <p className="text-xs text-green-600 mt-1">
-                              Accessible via: {getDocumentUrl(getPhotoUrl()!, 'inline').length > 50 
-                                ? `${getDocumentUrl(getPhotoUrl()!, 'inline').substring(0, 50)}...` 
+                              Accessible via: {getDocumentUrl(getPhotoUrl()!, 'inline').length > 50
+                                ? `${getDocumentUrl(getPhotoUrl()!, 'inline').substring(0, 50)}...`
                                 : getDocumentUrl(getPhotoUrl()!, 'inline')
                               }
                             </p>
                           </div>
                         )}
-                        
+
                         {!getPhotoUrl() && !photoUploading && (
                           <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <div className="flex items-center gap-2">
@@ -1394,7 +1389,7 @@ const Settings: React.FC = () => {
                             </p>
                           </div>
                         )}
-                        
+
                         {/* Remove Photo Confirmation Dialog */}
                         {showRemovePhotoConfirmation && (
                           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -1583,7 +1578,7 @@ const Settings: React.FC = () => {
                       <SettingInput
                         label="Verification Status"
                         value={settings.verificationStatus || 'Not Set'}
-                        onChange={() => {}} // No-op since it's readonly
+                        onChange={() => { }} // No-op since it's readonly
                         readonly={true}
                         placeholder="Verification status from database"
                       />
@@ -1675,7 +1670,7 @@ const Settings: React.FC = () => {
                           </div>
                         </div>
                       ))}
-                      
+
                       <button
                         onClick={() => {
                           const newExpertise = [...settings.subjectExpertise, {
@@ -1710,7 +1705,7 @@ const Settings: React.FC = () => {
                             <h4 className="text-sm font-semibold text-slate-900">ID Proof</h4>
                             <p className="text-xs text-slate-600">Government issued ID document</p>
                           </div>
-                          <button 
+                          <button
                             onClick={() => triggerDocumentUpload('id-proof')}
                             disabled={documentUploading['id-proof']}
                             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1718,7 +1713,7 @@ const Settings: React.FC = () => {
                             {documentUploading['id-proof'] ? 'Uploading...' : 'Upload'}
                           </button>
                         </div>
-                        
+
                         {/* Hidden file input */}
                         <input
                           ref={idProofInputRef}
@@ -1727,12 +1722,12 @@ const Settings: React.FC = () => {
                           onChange={(e) => handleDocumentUpload(e, 'id-proof')}
                           className="hidden"
                         />
-                        
+
                         {settings.idProofUrl ? (
                           <div className="flex items-center gap-2 text-sm text-green-600">
                             <CheckCircleIcon className="w-4 h-4" />
                             <span>Document uploaded</span>
-                            <button 
+                            <button
                               onClick={() => viewDocument(settings.idProofUrl)}
                               className="text-blue-600 hover:underline ml-2"
                             >
@@ -1742,7 +1737,7 @@ const Settings: React.FC = () => {
                         ) : (
                           <p className="text-sm text-slate-500">No document uploaded</p>
                         )}
-                        
+
                         {/* Upload error */}
                         {documentErrors['id-proof'] && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
@@ -1789,7 +1784,7 @@ const Settings: React.FC = () => {
                             <h4 className="text-sm font-semibold text-slate-900">Degree Certificate</h4>
                             <p className="text-xs text-slate-600">Highest education degree certificate</p>
                           </div>
-                          <button 
+                          <button
                             onClick={() => triggerDocumentUpload('degree')}
                             disabled={documentUploading['degree']}
                             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1797,7 +1792,7 @@ const Settings: React.FC = () => {
                             {documentUploading['degree'] ? 'Uploading...' : 'Upload'}
                           </button>
                         </div>
-                        
+
                         {/* Hidden file input */}
                         <input
                           ref={degreeInputRef}
@@ -1806,12 +1801,12 @@ const Settings: React.FC = () => {
                           onChange={(e) => handleDocumentUpload(e, 'degree')}
                           className="hidden"
                         />
-                        
+
                         {settings.degreeCertificateUrl ? (
                           <div className="flex items-center gap-2 text-sm text-green-600">
                             <CheckCircleIcon className="w-4 h-4" />
                             <span>Document uploaded</span>
-                            <button 
+                            <button
                               onClick={() => viewDocument(settings.degreeCertificateUrl)}
                               className="text-blue-600 hover:underline ml-2"
                             >
@@ -1821,7 +1816,7 @@ const Settings: React.FC = () => {
                         ) : (
                           <p className="text-sm text-slate-500">No document uploaded</p>
                         )}
-                        
+
                         {/* Upload error */}
                         {documentErrors['degree'] && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
@@ -1868,7 +1863,7 @@ const Settings: React.FC = () => {
                             <h4 className="text-sm font-semibold text-slate-900">Experience Letters</h4>
                             <p className="text-xs text-slate-600">Previous employment experience letters (multiple files allowed)</p>
                           </div>
-                          <button 
+                          <button
                             onClick={() => triggerDocumentUpload('experience')}
                             disabled={documentUploading['experience']}
                             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1876,7 +1871,7 @@ const Settings: React.FC = () => {
                             {documentUploading['experience'] ? 'Uploading...' : 'Upload'}
                           </button>
                         </div>
-                        
+
                         {/* Hidden file input */}
                         <input
                           ref={experienceInputRef}
@@ -1886,7 +1881,7 @@ const Settings: React.FC = () => {
                           onChange={(e) => handleDocumentUpload(e, 'experience')}
                           className="hidden"
                         />
-                        
+
                         {settings.experienceLettersUrl.length > 0 ? (
                           <div className="space-y-2">
                             {settings.experienceLettersUrl.map((url, index) => (
@@ -1896,7 +1891,7 @@ const Settings: React.FC = () => {
                                   <span>Experience Letter {index + 1}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <button 
+                                  <button
                                     onClick={() => viewDocument(url)}
                                     className="text-blue-600 hover:underline text-sm"
                                   >
@@ -1916,7 +1911,7 @@ const Settings: React.FC = () => {
                         ) : (
                           <p className="text-sm text-slate-500">No documents uploaded</p>
                         )}
-                        
+
                         {/* Upload error */}
                         {documentErrors['experience'] && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
@@ -1959,7 +1954,7 @@ const Settings: React.FC = () => {
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Upload info */}
                         <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
                           <p className="text-xs text-blue-800">
@@ -1975,7 +1970,7 @@ const Settings: React.FC = () => {
                             <h4 className="text-sm font-semibold text-slate-900">Resume/CV</h4>
                             <p className="text-xs text-slate-600">Your current resume or curriculum vitae</p>
                           </div>
-                          <button 
+                          <button
                             onClick={() => triggerDocumentUpload('resume')}
                             disabled={documentUploading['resume']}
                             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1983,7 +1978,7 @@ const Settings: React.FC = () => {
                             {documentUploading['resume'] ? 'Uploading...' : 'Upload'}
                           </button>
                         </div>
-                        
+
                         {/* Hidden file input */}
                         <input
                           ref={resumeInputRef}
@@ -1992,12 +1987,12 @@ const Settings: React.FC = () => {
                           onChange={(e) => handleDocumentUpload(e, 'resume')}
                           className="hidden"
                         />
-                        
+
                         {settings.resumeUrl ? (
                           <div className="flex items-center gap-2 text-sm text-green-600">
                             <CheckCircleIcon className="w-4 h-4" />
                             <span>Resume uploaded</span>
-                            <button 
+                            <button
                               onClick={() => viewDocument(settings.resumeUrl)}
                               className="text-blue-600 hover:underline ml-2"
                             >
@@ -2007,7 +2002,7 @@ const Settings: React.FC = () => {
                         ) : (
                           <p className="text-sm text-slate-500">No resume uploaded</p>
                         )}
-                        
+
                         {/* Upload error */}
                         {documentErrors['resume'] && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
@@ -2312,7 +2307,7 @@ const Settings: React.FC = () => {
                       setPasswordData({ ...passwordData, newPassword: value });
                       setPasswordError('');
                     }}
-                    placeholder="Enter your new password (min. 8 characters)"
+                    placeholder={`Enter your new password (min. ${PASSWORD_MIN} characters)`}
                     icon={<LockClosedIcon className="w-4 h-4" />}
                   />
 
@@ -2340,7 +2335,7 @@ const Settings: React.FC = () => {
 
                   <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <p className="text-xs text-blue-800">
-                      <strong>Password Requirements:</strong> Must be at least 8 characters long and contain a mix of letters, numbers, and symbols for better security.
+                      <strong>Password Requirements:</strong> Must be at least {PASSWORD_MIN} characters long and contain a mix of letters, numbers, and symbols for better security.
                     </p>
                   </div>
                 </div>

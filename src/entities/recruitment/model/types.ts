@@ -4,6 +4,17 @@
  */
 
 // ============================================================================
+// Role Types
+// ============================================================================
+
+/**
+ * Recruitment role within an organization.
+ * Canonical set of assignable recruitment roles used across invitations,
+ * membership, and permission mapping.
+ */
+export type RecruitmentRole = 'company_admin' | 'recruiter' | 'viewer';
+
+// ============================================================================
 // Organization Context Types
 // ============================================================================
 

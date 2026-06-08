@@ -36,8 +36,11 @@ export const onRequest: PagesFunction = async (context) => {
   const method = request.method;
 
   try {
-    // All endpoints require authentication
-    return withAuth(async () => {
+    // All endpoints require authentication.
+    // withAuth passes the AUTHENTICATED context (with data.user) to this callback —
+    // we must forward THAT to handlers that read getContextUser (e.g. link-to-attempt),
+    // not the outer un-authenticated `context`.
+    return withAuth(async (authContext: typeof context) => {
     // POST /initialize - Start new test session
     if (method === 'POST' && path === '/initialize') {
       return initializeHandler(context);
@@ -84,8 +87,9 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     // POST /link-to-attempt - Link adaptive session to assessment attempt
+    // Uses getContextUser → needs the authenticated context.
     if (method === 'POST' && path === '/link-to-attempt') {
-      return linkToAttemptHandler(context);
+      return linkToAttemptHandler(authContext);
     }
 
     // 404 for unknown routes

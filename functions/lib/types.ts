@@ -32,7 +32,7 @@ export interface PagesEnv {
   EMBEDDING_API_KEY?: string;
 
   // Email Worker configuration
-  EMAIL_API_URL?: string;
+  EMAIL_WORKER_URL?: string;
   EMAIL_API_KEY?: string;
   /** Cloudflare Service Binding to the Email worker */
   EMAIL_SERVICE?: {
@@ -43,12 +43,20 @@ export interface PagesEnv {
       text?: string;
       from?: string;
       fromName?: string;
+      replyTo?: string;
+      cc?: string[];
+      bcc?: string[];
+      metadata?: Record<string, unknown>;
     }): Promise<{
       success: boolean;
       messageId?: string;
       customMessageId?: string;
       recipient?: string | string[];
       timestamp?: string;
+      error?: string;
+      errorCode?: string;
+      errorType?: string;
+      shouldRetry?: boolean;
     }>;
   };
   ADMIN_EMAIL?: string;

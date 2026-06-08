@@ -14,7 +14,7 @@ export class SchoolAdminNotificationService {
         school_id: schoolId,
         unread_only: options.unreadOnly || false,
       });
-      return data as any[] || [];
+      return (data as any)?.data as any[] || [];
     } catch (error) {
       logger.error('Failed to fetch school admin notifications', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
@@ -27,7 +27,7 @@ export class SchoolAdminNotificationService {
         action: 'get-unread-count',
         school_id: schoolId,
       });
-      return (data as number) || 0;
+      return ((data as any)?.data as number) || 0;
     } catch (error) {
       logger.error('Failed to fetch unread notification count', error instanceof Error ? error : new Error('Unknown error'));
       return 0;
@@ -40,7 +40,9 @@ export class SchoolAdminNotificationService {
         action: 'get-pending-trainings',
         school_id: schoolId,
       });
-      return (data as any[]) || [];
+      // apiPost returns the API envelope { success, data, error }; the array
+      // payload lives under `.data`.
+      return ((data as any)?.data as any[]) || [];
     } catch (error) {
       logger.error('Failed to fetch pending trainings', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
@@ -53,7 +55,9 @@ export class SchoolAdminNotificationService {
         action: 'get-pending-experiences',
         school_id: schoolId,
       });
-      return (data as any[]) || [];
+      // apiPost returns the API envelope { success, data, error }; the array
+      // payload lives under `.data`.
+      return ((data as any)?.data as any[]) || [];
     } catch (error) {
       logger.error('Failed to fetch pending experiences', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
@@ -145,7 +149,9 @@ export class SchoolAdminNotificationService {
         action: 'get-pending-projects',
         school_id: schoolId,
       });
-      return (data as any[]) || [];
+      // apiPost returns the API envelope { success, data, error }; the array
+      // payload lives under `.data`.
+      return ((data as any)?.data as any[]) || [];
     } catch (error) {
       logger.error('Failed to fetch pending projects', error instanceof Error ? error : new Error('Unknown error'));
       throw error;

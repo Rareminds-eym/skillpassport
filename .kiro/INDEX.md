@@ -102,7 +102,7 @@ skillpassport/.kiro/
 ### Package Configuration
 - **`package.json`**: Dependencies and scripts
   - `@rareminds-eym/auth-core@1.0.2`
-  - `@rareminds-eym/auth-client@1.0.5`
+  - `@rareminds-eym/auth-client@1.0.7`
   - `jose@^6.2.3`
 
 ---
@@ -110,7 +110,7 @@ skillpassport/.kiro/
 ## 🔐 Authentication Architecture
 
 ### Current Implementation
-- **Client**: `@rareminds-eym/auth-client@1.0.5`
+- **Client**: `@rareminds-eym/auth-client@1.0.7`
 - **Server**: `@rareminds-eym/auth-core@1.0.2`
 - **JWT Library**: `jose@^6.2.3`
 

@@ -652,7 +652,7 @@ const Communication = () => {
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [educatorId, queryClient]);
 

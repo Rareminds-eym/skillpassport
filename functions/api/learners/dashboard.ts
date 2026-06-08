@@ -1,8 +1,9 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
-import { createLogger } from '../../lib/logger';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { createLogger } from '../../lib/logger';
+import { apiError, apiSuccess } from '../../lib/response';
+import { ADMIN_ROLES } from '../../lib/roleCategories';
+import { getServiceClient } from '../../lib/supabase';
 
 const logger = createLogger('learner-dashboard-api');
 
@@ -20,9 +21,10 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     const userEmail = user.email;
     logger.info('Fetching learner profile', { userId, userEmail, targetLearnerId });
 
-    const isAdmin = user.roles?.some((r: string) =>
-      ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
-    );
+    // Ownership-scoped: a learner sees their OWN dashboard; admins (shared
+    // ADMIN_ROLES group) may view any learner. Non-guard role check → uses
+    // ADMIN_ROLES, replacing the inline literal (bug §7.1).
+    const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
 
     if (targetEmail && !isAdmin && userEmail !== targetEmail) {
       logger.warn('Email mismatch - blocked', { userEmail, targetEmail });

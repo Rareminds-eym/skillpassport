@@ -166,6 +166,7 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType,
       const { data: newOrg } = await apiPost('/organization', {
         action: 'createOrganization',
         ...formData,
+        organization_type: organizationType,
         admin_id: user.id,
       });
 

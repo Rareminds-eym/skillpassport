@@ -108,7 +108,7 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
   useEffect(() => {
     if (!conversationId || !enabled) return;
 
-    const subscription = MessageService.subscribeToConversation(
+    const subscription = MessageService.subscribeToConversationMessages(
       conversationId,
       (newMessage) => {
         // Update messages cache
@@ -135,7 +135,7 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [conversationId, enabled, queryClient]);
 

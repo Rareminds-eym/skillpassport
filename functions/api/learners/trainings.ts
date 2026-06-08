@@ -1,8 +1,9 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
-import { createLogger } from '../../lib/logger';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { createLogger } from '../../lib/logger';
+import { apiError, apiSuccess } from '../../lib/response';
+import { ADMIN_ROLES } from '../../lib/roleCategories';
+import { getServiceClient } from '../../lib/supabase';
 
 const logger = createLogger('learner-trainings-api');
 
@@ -17,9 +18,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     let learnerId = url.searchParams.get('learner_id') || null;
 
     if (learnerId) {
-      const isAdmin = user.roles?.some((r: string) =>
-        ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
-      );
+      const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
       if (!isAdmin) {
         const { data: ownLearner } = await supabase
           .from('learners')
@@ -111,9 +110,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiError(400, 'VALIDATION_ERROR', 'learnerId is required', context.request, { startTime });
   }
 
-  const isAdmin = user.roles?.some((r: string) =>
-    ['admin', 'super_admin', 'org_admin', 'college_admin', 'university_admin', 'school_admin'].includes(r)
-  );
+  const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
   if (!isAdmin) {
     const { data: ownLearner } = await supabase
       .from('learners')

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Label } from '@/shared/ui/Label';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/ButtonNew';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 const ADMIN_ROLES: UserRole[] = ['school_admin', 'college_admin', 'university_admin'];
 
@@ -79,7 +80,7 @@ const LoginAdmin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN}
                   autoComplete="current-password"
                 />
               </div>

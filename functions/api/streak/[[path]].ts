@@ -10,13 +10,14 @@
  * - POST /reset-daily - Reset daily flags (cron)
  */
 
-import type { PagesFunction } from '../../lib/types';
-import { getCorsHeaders } from '../../lib/cors';
-import { apiSuccess, apiError } from '../../lib/response';
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { getCorsHeaders } from '../../lib/cors';
+import { apiError, apiSuccess } from '../../lib/response';
+import { ADMIN_ROLES } from '../../lib/roleCategories';
+import { getServiceClient } from '../../lib/supabase';
+import type { PagesFunction } from '../../lib/types';
 
 // ==================== GET LEARNER STREAK ====================
 
@@ -43,7 +44,7 @@ async function handleGetStreak(supabase: SupabaseClient, learnerId: string): Pro
         },
       }, undefined);
     }
-return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error instanceof Error ? error.message : String(error)}`, undefined);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error instanceof Error ? error.message : String(error)}`, undefined);
   }
 
   return apiSuccess({
@@ -65,7 +66,7 @@ async function handleCompleteStreak(supabase: SupabaseClient, learnerId: string)
     });
 
   if (error) {
-return apiError(500, 'INTERNAL_ERROR', `Failed to update streak: ${error.message}`, undefined);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to update streak: ${error.message}`, undefined);
   }
 
   return apiSuccess({
@@ -89,7 +90,7 @@ async function handleGetNotifications(supabase: SupabaseClient, learnerId: strin
     .limit(limit);
 
   if (error) {
-return apiError(500, 'INTERNAL_ERROR', `Failed to get notification history: ${error.message}`, undefined);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to get notification history: ${error.message}`, undefined);
   }
 
   return apiSuccess({
@@ -164,7 +165,7 @@ async function handleProcessStreak(supabase: SupabaseClient, learnerId: string):
       }, undefined);
     }
   } catch (error) {
-return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error instanceof Error ? error.message : String(error)}`, undefined);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error instanceof Error ? error.message : String(error)}`, undefined);
   }
 }
 
@@ -175,7 +176,7 @@ async function handleResetDailyFlags(supabase: SupabaseClient): Promise<Response
     .rpc('reset_daily_streak_flags');
 
   if (error) {
-return apiError(500, 'INTERNAL_ERROR', `Failed to reset daily flags: ${error.message}`, undefined);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to reset daily flags: ${error.message}`, undefined);
   }
 
   return apiSuccess({
@@ -225,9 +226,14 @@ export const onRequest: PagesFunction = async (context) => {
       const user = getContextUser(authContext);
       const supabase = getServiceClient(authContext.env as unknown as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string }) as unknown as SupabaseClient;
 
-      // POST /reset-daily - require admin role
+      // POST /reset-daily - require admin role.
+      // Sourced from the shared ADMIN_ROLES group (NOT an inline literal — bug
+      // §7.1). NOTE: this normalizes the prior single-literal `roles.includes('admin')`
+      // check to the full admin role-category group; the own-streak routes below
+      // remain ownership-scoped (authenticated-only).
       if (pathParts.length === 1 && pathParts[0] === 'reset-daily' && request.method === 'POST') {
-        if (!user.roles?.includes('admin')) {
+        const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
+        if (!isAdmin) {
           return apiError(403, 'FORBIDDEN', 'Forbidden: Admin access required', request);
         }
         return await handleResetDailyFlags(supabase);
@@ -286,6 +292,6 @@ export const onRequest: PagesFunction = async (context) => {
     })(context);
   } catch (error) {
     console.error('Streak API Error:', error);
-return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Internal server error', undefined);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Internal server error', undefined);
   }
 };

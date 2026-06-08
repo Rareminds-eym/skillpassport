@@ -1,7 +1,7 @@
-import { withAuth, getContextUser } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { apiSuccess, apiError } from '../../lib/response';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
+import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -187,6 +187,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     case 'resolve-admin-context': {
+      // TODO(task 13): LEFT for task 13 (§7.5/7.10), NOT converted in task 12.2. This is an
+      // admin-context RESOLUTION endpoint keyed by an arbitrary `identifier` (email/userId) — it resolves
+      // SOMEONE ELSE'S context, not the current authenticated user, so it is NOT a simple
+      // JWT/`resolveSchoolRole` replacement (the resolver is built around `getContextUser`).
+      // It also needs `school_id`/`organizationId` COLUMNS and uses `role = 'admin'` /
+      // `users.role = '<sso role>'` as query FILTERS, none of which `resolveSchoolRole`
+      // reproduces. The `school_educators.role` read here is a DATA-SCOPE filter, NOT an
+      // authority use (task 22.3 finalized: not an authz decision); the `users.role` reads
+      // feed the frontend role-resolution path being neutralized in task 13.
       const { identifier } = body;
       if (!identifier) {
         return apiSuccess({ userId: null, schoolId: null, collegeId: null, adminType: null }, context.request);

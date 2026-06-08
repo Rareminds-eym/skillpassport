@@ -1,7 +1,7 @@
-import { withAuth, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
-import { apiSuccess, apiError } from '../../lib/response';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(context.env as any);
@@ -37,8 +37,10 @@ async function handleInitUser(supabase: any, context: AuthenticatedContext, body
   const user = getContextUser(context);
   const result: any = { userId: user.id };
 
-  const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
-  result.isSchoolAdmin = userData?.role === 'school_admin';
+  // §7.3 fix (task 12.1): authorize from the verified JWT roles (canonical SSO
+  // source) instead of the app-DB shadow `users.role` column. `school_admin` is
+  // a canonical SSO role, so this is a JWT-role authorization read.
+  result.isSchoolAdmin = user.roles.includes('school_admin');
 
   const { data: educator } = await supabase.from('school_educators').select('id, school_id').eq('user_id', user.id).maybeSingle();
   if (educator) {
