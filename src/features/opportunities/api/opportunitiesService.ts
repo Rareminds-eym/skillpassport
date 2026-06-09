@@ -5,8 +5,20 @@ import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('opportunitiesService');
 
+// API Response wrapper type
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error: any;
+  meta: {
+    requestId: string;
+    timestamp: string;
+    durationMs?: number;
+  };
+}
+
 export interface Opportunity {
-  id: number;
+  id:string;
   title: string;
   company_name: string;
   company_logo?: string;
@@ -77,62 +89,91 @@ class OpportunitiesService {
       if (filters?.employment_type) params.set('employmentType', filters.employment_type);
       if (filters?.mode) params.set('mode', filters.mode);
       if (filters?.department) params.set('department', filters.department);
-      const response: any = await apiGet(`/opportunities?${params.toString()}`);
+      const response = await apiGet<ApiResponse<{ opportunities: Opportunity[] }>>(`/opportunities?${params.toString()}`);
       const opportunities = response?.data?.opportunities || [];
       if (filters?.status) return opportunities.filter((o: any) => o.status === filters.status);
       if (filters?.is_active !== undefined) return opportunities.filter((o: any) => o.is_active === filters.is_active);
       return opportunities;
     } catch (error) {
+      console.error('Error in getAllOpportunities:', error);
       throw error;
     }
   }
 
-  async getOpportunityById(id: number): Promise<Opportunity | null> {
+  async getOpportunityById(id: number | string): Promise<Opportunity | null> {
     try {
-      const response: any = await apiGet(`/opportunities?id=${id}`);
-      if (response?.error) throw new Error(response.error.message);
-      return response?.data?.opportunity || null;
+      const response = await apiGet<ApiResponse<{ opportunity: Opportunity }>>(`/opportunities?id=${id}`);
+      console.log('getOpportunityById response:', response);
+      if (!response || !response.data) {
+        console.error('Invalid response structure:', response);
+        throw new Error('Invalid response from server');
+      }
+      if (response.error) throw new Error(response.error.message || 'Failed to fetch opportunity');
+      return response.data.opportunity || null;
     } catch (error) {
+      console.error('Error in getOpportunityById:', error);
       throw error;
     }
   }
 
   async createOpportunity(opportunity: Partial<Opportunity>): Promise<Opportunity> {
     try {
-      const response: any = await apiPost('/opportunities', { action: 'create-opportunity', opportunity });
-      if (response?.error) throw new Error(response.error.message);
-      return response?.data?.opportunity;
+      const response = await apiPost<ApiResponse<{ opportunity: Opportunity }>>('/opportunities', { action: 'create-opportunity', opportunity });
+      if (!response || !response.data) {
+        console.error('Invalid response structure:', response);
+        throw new Error('Invalid response from server');
+      }
+      if (response.error) throw new Error(response.error.message || 'Failed to create opportunity');
+      return response.data.opportunity;
     } catch (error) {
+      console.error('Error in createOpportunity:', error);
       throw error;
     }
   }
 
-  async updateOpportunity(id: number, updates: Partial<Opportunity>): Promise<Opportunity> {
+  async updateOpportunity(id: number | string, updates: Partial<Opportunity>): Promise<Opportunity> {
     try {
-      const response: any = await apiPost('/opportunities', { action: 'update-opportunity', id, ...updates });
-      if (response?.error) throw new Error(response.error.message);
-      return response?.data?.opportunity;
+      console.log('updateOpportunity called with:', { id, updates });
+      const response = await apiPost<ApiResponse<{ opportunity: Opportunity }>>('/opportunities', { action: 'update-opportunity', id, updates });
+      console.log('updateOpportunity response:', response);
+      if (!response || !response.data) {
+        console.error('Invalid response structure:', response);
+        throw new Error('Invalid response from server');
+      }
+      if (response.error) throw new Error(response.error.message || 'Failed to update opportunity');
+      return response.data.opportunity;
     } catch (error) {
+      console.error('Error in updateOpportunity:', error);
       throw error;
     }
   }
 
-  async deleteOpportunity(id: number): Promise<void> {
+  async deleteOpportunity(id: number | string): Promise<void> {
     try {
-      const response: any = await apiPost('/opportunities', { action: 'delete-opportunity', id });
-      if (response?.error) throw new Error(response.error.message);
+      const response = await apiPost<ApiResponse<{ deleted: boolean }>>('/opportunities', { action: 'delete-opportunity', id });
+      if (!response || !response.data) {
+        console.error('Invalid response structure:', response);
+        throw new Error('Invalid response from server');
+      }
+      if (response.error) throw new Error(response.error.message || 'Failed to delete opportunity');
     } catch (error) {
+      console.error('Error in deleteOpportunity:', error);
       throw error;
     }
   }
 
-  async incrementViewCount(id: number): Promise<void> {
+  async incrementViewCount(id: number | string): Promise<void> {
     try {
-      // First get the current count
-      const response: any = await apiPost('/opportunities', { action: 'increment-view-count', id });
-      if (response?.error) {
-        logger.error('Failed to increment view count', new Error(response.error.message));
-        throw new Error(response.error.message);
+      console.log('incrementViewCount called with id:', id);
+      const response = await apiPost<ApiResponse<{ incremented: boolean }>>('/opportunities', { action: 'increment-view-count', id });
+      console.log('incrementViewCount response:', response);
+      if (!response || !response.data) {
+        console.error('Invalid response structure:', response);
+        throw new Error('Invalid response from server');
+      }
+      if (response.error) {
+        logger.error('Failed to increment view count', new Error(response.error.message || 'Unknown error'));
+        throw new Error(response.error.message || 'Failed to increment view count');
       }
     } catch (error) {
       logger.error('Failed to increment view count', error as Error);
@@ -211,7 +252,7 @@ class OpportunitiesService {
   async searchOpportunities(searchTerm: string): Promise<Opportunity[]> {
     try {
       const params = new URLSearchParams({ search: searchTerm, limit: '50' });
-      const response: any = await apiGet(`/opportunities?${params.toString()}`);
+      const response = await apiGet<ApiResponse<{ opportunities: Opportunity[] }>>(`/opportunities?${params.toString()}`);
       if (response?.error) throw new Error(response.error.message);
       return response?.data?.opportunities || [];
     } catch (error) {
@@ -258,11 +299,12 @@ class OpportunitiesService {
       if (filters.salaryMax) params.set('salaryMax', filters.salaryMax);
       if (filters.postedWithin) params.set('postedWithin', filters.postedWithin);
 
-      const response: any = await apiGet(`/opportunities?${params.toString()}`);
+      const response = await apiGet<ApiResponse<{ opportunities: Opportunity[]; total: number }>>(`/opportunities?${params.toString()}`);
       const data = response?.data?.opportunities ?? [];
       const total = response?.data?.total ?? data.length;
       return { data, count: total };
     } catch (error: any) {
+      console.error('Error in getPaginatedOpportunities:', error);
       if (error?.message?.includes('416') || error?.message?.includes('Range Not Satisfiable')) {
         return {
           data: [],
@@ -296,10 +338,18 @@ class OpportunitiesService {
       }
 
       // Get total learners from learners table (filter by college)
-      const response: any = await apiPost('/opportunities', { action: 'get-placement-stats' });
+      const response = await apiPost<ApiResponse<{
+        learnersPlaced: number;
+        placementRate: number;
+        totallearners: number;
+        avgCTC: number;
+        medianCTC: number;
+        highestCTC: number;
+      }>>('/opportunities', { action: 'get-placement-stats' });
       if (response?.error) throw new Error(response.error.message);
       return response.data || { learnersPlaced: 0, placementRate: 0, totallearners: 0, avgCTC: 0, medianCTC: 0, highestCTC: 0 };
     } catch (error) {
+      console.error('Error in getPlacementStats:', error);
       return {
         learnersPlaced: 0,
         placementRate: 0,
@@ -321,10 +371,17 @@ class OpportunitiesService {
   }> {
     try {
       // Get total count
-      const response: any = await apiPost('/opportunities', { action: 'get-opportunities-stats' });
+      const response = await apiPost<ApiResponse<{
+        total: number;
+        active: number;
+        draft: number;
+        closed: number;
+        cancelled: number;
+      }>>('/opportunities', { action: 'get-opportunities-stats' });
       if (response?.error) throw new Error(response.error.message);
       return response.data || { total: 0, active: 0, draft: 0, closed: 0, cancelled: 0 };
     } catch (error) {
+      console.error('Error in getOpportunitiesStats:', error);
       throw error;
     }
   }

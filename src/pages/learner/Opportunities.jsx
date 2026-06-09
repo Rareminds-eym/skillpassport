@@ -460,7 +460,9 @@ const Opportunities = () => {
     // NOTE: Database stores employment_type with capital first letter (e.g., "Internship", "Full-time")
     if (learnerType.isMiddleSchool) {
       // Middle school: No regular opportunities, only industrial visits
-      filters.employmentType = []; // Will show no opportunities
+      // Don't set employmentType filter - let it show no results naturally
+      // or set to a non-existent type to explicitly exclude all
+      filters.employmentType = ['__NONE__']; // Invalid type to exclude all opportunities
     } else if (learnerType.isHighSchool) {
       // High school (9-12): Only internships
       filters.employmentType = ['Internship'];
@@ -476,7 +478,8 @@ const Opportunities = () => {
       if (advancedFilters.employmentType.length > 0) {
         filters.employmentType = advancedFilters.employmentType;
       }
-      // No filter means show all (internships and jobs)
+      // If no advanced filter, don't set employmentType to show all (internships and full-time jobs)
+      // But we need to exclude factory_visit which is already handled by the API
     } else if (advancedFilters.employmentType.length > 0) {
       filters.employmentType = advancedFilters.employmentType;
     }

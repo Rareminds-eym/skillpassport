@@ -56,13 +56,25 @@ export interface CompanyFormData {
   specialRequirements?: string;
 }
 
+// API Response wrapper type
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error: any;
+  meta: {
+    requestId: string;
+    timestamp: string;
+    durationMs?: number;
+  };
+}
+
 class CompanyService {
   async getAllCompanies(): Promise<Company[]> {
     try {
-      const response = await apiPost<any>('/recruiter-copilot', { action: 'companies-get-all' });
-      // Backend returns { success, data, error, meta } format
-      return Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
-    } catch {
+      const response = await apiPost<ApiResponse<Company[]>>('/recruiter-copilot', { action: 'companies-get-all' });
+      return response.data || [];
+    } catch (error) {
+      console.error('Error in getAllCompanies:', error);
       return [];
     }
   }
@@ -74,62 +86,59 @@ class CompanyService {
     accountStatus?: string;
   }): Promise<Company[]> {
     try {
-      const response = await apiPost<any>('/recruiter-copilot', {
+      const response = await apiPost<ApiResponse<Company[]>>('/recruiter-copilot', {
         action: 'companies-get-filtered',
         search_term: filters.searchTerm,
         industry: filters.industry,
         company_size: filters.companySize,
         account_status: filters.accountStatus,
       });
-      // Backend returns { success, data, error, meta } format
-      return Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
-    } catch {
+      return response.data || [];
+    } catch (error) {
+      console.error('Error in getFilteredCompanies:', error);
       return [];
     }
   }
 
   async addCompany(companyData: CompanyFormData): Promise<Company> {
-    const response = await apiPost<any>('/recruiter-copilot', {
+    const response = await apiPost<ApiResponse<Company>>('/recruiter-copilot', {
       action: 'companies-add',
       ...companyData,
     });
-    // Backend returns { success, data, error, meta } format
-    return response?.data || response;
+    return response.data;
   }
 
   async updateCompany(id: string, companyData: Partial<CompanyFormData>): Promise<Company> {
-    const response = await apiPost<any>('/recruiter-copilot', {
+    const response = await apiPost<ApiResponse<Company>>('/recruiter-copilot', {
       action: 'companies-update',
       id,
       ...companyData,
     });
-    // Backend returns { success, data, error, meta } format
-    return response?.data || response;
+    return response.data;
   }
 
   async updateCompanyStatus(id: string, status: string): Promise<Company> {
-    const response = await apiPost<any>('/recruiter-copilot', {
+    const response = await apiPost<ApiResponse<Company>>('/recruiter-copilot', {
       action: 'companies-update-status',
       id,
       status,
     });
-    // Backend returns { success, data, error, meta } format
-    return response?.data || response;
+    return response.data;
   }
 
   async deleteCompany(id: string): Promise<void> {
-    await apiPost('/recruiter-copilot', { action: 'companies-delete', id });
+    await apiPost<ApiResponse<{ deleted: boolean }>>('/recruiter-copilot', { action: 'companies-delete', id });
   }
 
   async getCompanyById(id: string): Promise<Company | null> {
     try {
-      const response = await apiPost<any>('/recruiter-copilot', {
+      const response = await apiPost<ApiResponse<Company>>('/recruiter-copilot', {
         action: 'companies-get-by-id',
         id,
       });
-      // Backend returns { success, data, error, meta } format
-      return response?.data || response || null;
-    } catch {
+      return response.data || null;
+    } catch (error) {
+      console.error('Error in getCompanyById:', error);
       return null;
     }
   }
@@ -145,24 +154,24 @@ class CompanyService {
     blacklisted: number;
   }> {
     try {
-      const response = await apiPost<any>('/recruiter-copilot', { action: 'companies-stats' });
-      // Backend returns { success, data, error, meta } format
-      const data = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
+      const response = await apiPost<ApiResponse<any[]>>('/recruiter-copilot', { action: 'companies-stats' });
+      const data = response.data || [];
 
       const stats = {
-        total: data?.length || 0,
+        total: data.length,
         active: 0, pending: 0, approved: 0,
         rejected: 0, inactive: 0, suspended: 0, blacklisted: 0,
       };
 
-      data?.forEach((company: any) => {
+      data.forEach((company: any) => {
         if (company.accountStatus) {
           stats[company.accountStatus as keyof typeof stats]++;
         }
       });
 
       return stats;
-    } catch {
+    } catch (error) {
+      console.error('Error in getCompaniesStats:', error);
       return {
         total: 0, active: 0, pending: 0, approved: 0,
         rejected: 0, inactive: 0, suspended: 0, blacklisted: 0,
