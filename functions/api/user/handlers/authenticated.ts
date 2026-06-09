@@ -7,7 +7,7 @@
  */
 
 import { apiError, apiSuccess } from '../../../lib/response';
-import { ssoCreateMember } from '../../../lib/sso-client';
+import { ssoCreateMember, ssoCreateMemberWithId, ssoFetch } from '../../../lib/sso-client';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import {
   calculateAge,
@@ -20,7 +20,7 @@ import {
 /**
  * Handle admin creating a learner
  */
-export async function handleCreateLearner(request: Request, env: any): Promise<Response> {
+export async function handleCreateLearner(request: Request, env: any, user?: { id: string; email: string; org_id?: string }): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -123,7 +123,73 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     return apiError(400, 'VALIDATION_ERROR', 'School/College ID not found', request);
   }
 
-  // Check if email already exists
+  // Get or create the SSO organization ID
+  let ssoOrgId: string | null = user?.org_id || null;
+  
+  try {
+    if (!ssoOrgId) {
+      // First, try to get sso_org_id from organization metadata
+      const { data: organizationData } = await supabaseAdmin
+        .from('organizations')
+        .select('metadata')
+        .eq('id', schoolId || collegeId)
+        .maybeSingle();
+
+      ssoOrgId = organizationData?.metadata?.sso_org_id || null;
+
+    // If no sso_org_id found, we need to get it from the SSO database
+    // The SSO org should already exist (created during school/college signup)
+    // We'll look it up by matching the organization name or slug
+    if (!ssoOrgId && env.SSO_SERVICE) {
+      const { data: orgDetails } = await supabaseAdmin
+        .from('organizations')
+        .select('name, slug')
+        .eq('id', schoolId || collegeId)
+        .maybeSingle();
+
+      if (orgDetails) {
+        // Query SSO database to find matching organization
+        // Using the SSO service binding to query
+        try {
+          const ssoOrgs = await ssoFetch(env, `/api/orgs?slug=${encodeURIComponent(orgDetails.slug)}`, {
+            method: 'GET',
+          });
+          
+          if (ssoOrgs.ok) {
+            const orgsData = await ssoOrgs.json() as { organizations: { id: string }[] };
+            if (orgsData.organizations && orgsData.organizations.length > 0) {
+              ssoOrgId = orgsData.organizations[0].id;
+              
+              // Save the sso_org_id back to skillpassport metadata for future use
+              await supabaseAdmin
+                .from('organizations')
+                .update({
+                  metadata: {
+                    ...organizationData?.metadata,
+                    sso_org_id: ssoOrgId,
+                  },
+                })
+                .eq('id', schoolId || collegeId);
+                
+              console.log('[CREATE_LEARNER] Found and saved SSO org_id:', ssoOrgId);
+            }
+          }
+        } catch (ssoLookupError) {
+          console.warn('[CREATE_LEARNER] Failed to lookup SSO organization:', ssoLookupError);
+        }
+      }
+    }
+
+    if (!ssoOrgId) {
+      console.warn('[CREATE_LEARNER] No SSO org_id found for organization, learner will only be created in skillpassport database');
+    }
+    } // Close the outer if (!ssoOrgId) block
+  } catch (error) {
+    console.error('[CREATE_LEARNER] Error getting SSO org_id:', error);
+    // Continue without SSO sync
+  }
+
+  // Check if email already exists in skillpassport database
   const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
   const emailExists = existingAuthUsers?.users?.some(
     (u: any) => u.email === learner.email.toLowerCase()
@@ -142,9 +208,9 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
   }
 
   const learnerPassword = generatePassword();
-  const learnerRole = institutionType === 'college' ? 'learner' : 'learner';
+  const learnerRole = 'learner';
 
-  // Create auth user
+  // Create auth user in skillpassport database
   const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email: learner.email.toLowerCase(),
     password: learnerPassword,
@@ -162,12 +228,14 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
   }
 
+  const authUserId = authUser.user.id;
+
   try {
-    // Create public.users record
+    // Create public.users record in skillpassport database
     const { firstName, lastName } = splitName(learner.name);
 
     await supabaseAdmin.from('users').insert({
-      id: authUser.user.id,
+      id: authUserId,
       email: learner.email.toLowerCase(),
       firstName,
       lastName,
@@ -183,13 +251,13 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
       },
     });
 
-    // Create learners record
+    // Create learners record in skillpassport database
     const age = calculateAge(learner.dateOfBirth || '');
 
     const { data: learnerRecord, error: learnerError } = await supabaseAdmin
       .from('learners')
       .insert({
-        user_id: authUser.user.id,
+        user_id: authUserId,
         email: learner.email.toLowerCase(),
         name: learner.name,
         contactNumber: learner.contactNumber,
@@ -220,10 +288,76 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
       throw new Error(`Failed to create learner profile: ${learnerError.message}`);
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // SAVE TO SSO DATABASE (using ssoCreateMemberWithId RPC via binding)
+    // ══════════════════════════════════════════════════════════════
+    
+    if (ssoOrgId && env.SSO_SERVICE) {
+      try {
+        console.log('[CREATE_LEARNER] Creating learner in SSO database with same user_id', {
+          user_id: authUserId,
+          email: learner.email.toLowerCase(),
+          org_id: ssoOrgId,
+          role: 'learner',
+        });
+
+        // Use SSO service binding to create member WITH SAME USER_ID
+        // This creates: user + membership + role assignment in SSO database
+        // CRITICAL: Pass authUserId from Skillpassport to ensure SAME user_id in both databases
+        const ssoResult = await ssoCreateMemberWithId(env, {
+          user_id: authUserId,
+          email: learner.email.toLowerCase(),
+          password: learnerPassword,
+          role: 'learner',
+          org_id: ssoOrgId,
+        });
+
+        console.log('[CREATE_LEARNER] Successfully created learner in SSO database with same user_id', {
+          sso_user_id: ssoResult.user_id,
+          skillpassport_user_id: authUserId,
+          same_id: ssoResult.user_id === authUserId,
+        });
+
+        // Update learner metadata to track SSO sync
+        await supabaseAdmin
+          .from('learners')
+          .update({
+            metadata: {
+              ...learnerRecord.metadata,
+              sso_synced: true,
+              sso_org_id: ssoOrgId,
+              sso_user_id: ssoResult.user_id,
+              sso_membership_id: ssoResult.membership_id,
+              sso_synced_at: new Date().toISOString(),
+            },
+          })
+          .eq('id', learnerRecord.id);
+
+      } catch (ssoError) {
+        // Log error but don't fail the operation
+        console.error('[CREATE_LEARNER] Failed to create learner in SSO database:', ssoError);
+        
+        // Update metadata to indicate sync failure
+        await supabaseAdmin
+          .from('learners')
+          .update({
+            metadata: {
+              ...learnerRecord.metadata,
+              sso_synced: false,
+              sso_sync_error: ssoError instanceof Error ? ssoError.message : String(ssoError),
+              sso_sync_failed_at: new Date().toISOString(),
+            },
+          })
+          .eq('id', learnerRecord.id);
+      }
+    } else {
+      console.warn('[CREATE_LEARNER] No SSO org_id or SSO_SERVICE binding found, skipping SSO sync');
+    }
+
     return apiSuccess({
       message: `Learner ${learner.name} created successfully`,
       data: {
-        authUserId: authUser.user.id,
+        authUserId: authUserId,
         learnerId: learnerRecord.id,
         email: learner.email,
         name: learner.name,
@@ -235,7 +369,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     }, request);
   } catch (error) {
     // Rollback auth user
-    await deleteAuthUser(supabaseAdmin, authUser.user.id);
+    await deleteAuthUser(supabaseAdmin, authUserId);
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }

@@ -60,6 +60,8 @@ type SsoFetcher = Fetcher & {
   createFreemiumSubscription(data: unknown): Promise<Record<string, unknown>>;
   createMember(data: { email: string; password: string; role: string; org_id: string }):
     Promise<{ user_id: string; org_id: string; membership_id: string }>;
+  createMemberWithId(data: { user_id: string; email: string; password: string; role: string; org_id: string }):
+    Promise<{ user_id: string; org_id: string; membership_id: string }>;
   updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   recordTransaction(data: unknown): Promise<Record<string, unknown>>;
@@ -118,6 +120,22 @@ export async function ssoCreateMember(
   data: { email: string; password: string; role: string; org_id: string },
 ): Promise<{ user_id: string; org_id: string; membership_id: string }> {
   return getSsoService(env).createMember(data);
+}
+
+/**
+ * Admin-create a member user with a SPECIFIC user_id in the SSO DB.
+ * Used when creating users in Skillpassport first, then syncing to SSO with
+ * the SAME user_id to maintain data consistency across both databases.
+ * 
+ * Creates the SSO user + active membership + role using the provided user_id.
+ * The caller is responsible for creating any app-DB profile rows using this
+ * same user_id.
+ */
+export async function ssoCreateMemberWithId(
+  env: SsoClientEnv,
+  data: { user_id: string; email: string; password: string; role: string; org_id: string },
+): Promise<{ user_id: string; org_id: string; membership_id: string }> {
+  return getSsoService(env).createMemberWithId(data);
 }
 
 export async function ssoUpdateSubscriptionStatus(

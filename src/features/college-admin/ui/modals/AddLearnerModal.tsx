@@ -788,22 +788,46 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
             })
 
-          // Check which classes exist in database and store their IDs (only for schools)
+          // Check which classes exist in database and store their IDs
           const existingClasses = new Set<string>()
           const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
 
+          // Only check classes for schools (not colleges)
           if (schoolId && classesToCheck.size > 0) {
-            const classResult = await apiPost<any>('/college-admin/classes', {
-              action: 'get-school-classes',
-              school_id: schoolId,
-            })
-            const classes = classResult?.data || []
+            try {
+              const classResult = await apiPost<any>('/college-admin/classes', {
+                action: 'get-school-classes',
+                school_id: schoolId,
+              })
+              const classes = classResult?.data || []
 
-            classes.forEach((cls: any) => {
-              const key = `${cls.grade}-${cls.section}`
-              existingClasses.add(key)
-              classIdMap.set(key, cls.id)
-            })
+              classes.forEach((cls: any) => {
+                const key = `${cls.grade}-${cls.section}`
+                existingClasses.add(key)
+                classIdMap.set(key, cls.id)
+              })
+            } catch (error) {
+              logger.error('Error fetching school classes', error instanceof Error ? error : new Error(String(error)))
+              // Continue without class validation if fetch fails
+            }
+          } else if (collegeId && classesToCheck.size > 0) {
+            // For colleges, fetch college classes
+            try {
+              const classResult = await apiPost<any>('/college-admin/classes', {
+                action: 'get-college-classes',
+                college_id: collegeId,
+              })
+              const classes = classResult?.data || []
+
+              classes.forEach((cls: any) => {
+                const key = `${cls.grade}-${cls.section}`
+                existingClasses.add(key)
+                classIdMap.set(key, cls.id)
+              })
+            } catch (error) {
+              logger.error('Error fetching college classes', error instanceof Error ? error : new Error(String(error)))
+              // Continue without class validation if fetch fails
+            }
           }
 
           // Validate ALL rows and create enhanced preview
@@ -826,19 +850,27 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               errors.push('Invalid phone format')
             }
 
-            // Validate class exists if grade and section provided
+            // Validate class exists if grade and section provided (for schools/colleges that use classes)
             const grade = learner.grade || learner.class
             const section = learner.section || learner.division
             let schoolClassId: string | null = null
+            let collegeClassId: string | null = null
 
             if (grade && section) {
               const classKey = `${grade}-${section}`
               const exists = existingClasses.has(classKey)
-              if (!exists) {
+              
+              // Only validate class existence if we have a school or college ID
+              if ((schoolId || collegeId) && !exists) {
                 errors.push(`Class ${grade}-${section} does not exist. Please create the class first.`)
-              } else {
+              } else if (exists) {
                 // Get the class ID
-                schoolClassId = classIdMap.get(classKey) || null
+                const classId = classIdMap.get(classKey) || null
+                if (schoolId) {
+                  schoolClassId = classId
+                } else if (collegeId) {
+                  collegeClassId = classId
+                }
               }
             } else if (grade && !section) {
               errors.push('Section is required when grade is provided')
@@ -854,8 +886,9 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
             }
 
-            // Store the schoolClassId in the learner data
+            // Store the class IDs in the learner data
             learner.schoolClassId = schoolClassId
+            learner.collegeClassId = collegeClassId
 
             return {
               rowNumber: rowNum,
@@ -981,17 +1014,33 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             }
 
             // Fetch class IDs for mapping
-            const classResult = await apiPost<any>('/college-admin/classes', {
-              action: 'get-school-classes',
-              school_id: schoolId,
-            })
-            const classesData = classResult?.data || []
-
             const classIdMap = new Map<string, string>()
-            classesData.forEach((cls: any) => {
-              const key = `${cls.grade}-${cls.section}`
-              classIdMap.set(key, cls.id)
-            })
+            
+            if (schoolId) {
+              // Fetch school classes
+              const classResult = await apiPost<any>('/college-admin/classes', {
+                action: 'get-school-classes',
+                school_id: schoolId,
+              })
+              const classesData = classResult?.data || []
+
+              classesData.forEach((cls: any) => {
+                const key = `${cls.grade}-${cls.section}`
+                classIdMap.set(key, cls.id)
+              })
+            } else if (collegeId) {
+              // Fetch college classes
+              const classResult = await apiPost<any>('/college-admin/classes', {
+                action: 'get-college-classes',
+                college_id: collegeId,
+              })
+              const classesData = classResult?.data || []
+
+              classesData.forEach((cls: any) => {
+                const key = `${cls.grade}-${cls.section}`
+                classIdMap.set(key, cls.id)
+              })
+            }
 
             // Validate and prepare learners data
             const validlearners: any[] = []
@@ -1031,11 +1080,17 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               const grade = learner.grade || learner.class || null
               const section = learner.section || learner.division || null
 
-              // Look up the class ID
+              // Look up the class ID (for either school or college)
               let schoolClassId: string | null = null
+              let collegeClassId: string | null = null
               if (grade && section) {
                 const classKey = `${grade}-${section}`
-                schoolClassId = classIdMap.get(classKey) || null
+                const classId = classIdMap.get(classKey) || null
+                if (schoolId) {
+                  schoolClassId = classId
+                } else if (collegeId) {
+                  collegeClassId = classId
+                }
               }
 
               validlearners.push({
@@ -1056,7 +1111,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   grade: grade,
                   section: section,
                   academicYear: learner.academicyear || learner.year || null,
-                  schoolClassId: schoolClassId, // Use the looked-up class ID
+                  schoolClassId: schoolClassId, // Use the looked-up class ID for schools
+                  collegeClassId: collegeClassId, // Use the looked-up class ID for colleges
                   guardianName: guardianName,
                   guardianPhone: guardianPhone,
                   guardianEmail: guardianEmail,
