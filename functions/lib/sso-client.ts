@@ -62,6 +62,7 @@ type SsoFetcher = Fetcher & {
     Promise<{ user_id: string; org_id: string; membership_id: string }>;
   createMemberWithId(data: { user_id: string; email: string; password: string; role: string; org_id: string }):
     Promise<{ user_id: string; org_id: string; membership_id: string }>;
+  getOrgBySlug(slug: string): Promise<{ id: string; name: string; slug: string } | null>;
   updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   recordTransaction(data: unknown): Promise<Record<string, unknown>>;

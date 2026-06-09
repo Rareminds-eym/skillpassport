@@ -55,6 +55,39 @@ interface LearnerFormData {
   bloodGroup: string
   district: string
   documents: File[]
+  // Rich profile data
+  projects: Array<{
+    title: string
+    description: string
+    start_date: string
+    end_date: string
+    tech_stack: string
+    demo_link: string
+    github_link: string
+    role: string
+  }>
+  certifications: Array<{
+    title: string
+    issuer: string
+    issued_on: string
+    credential_id: string
+    link: string
+    platform: string
+  }>
+  skills: Array<{
+    name: string
+    type: string
+    level: string
+    proficiency_level: string
+  }>
+  education: Array<{
+    level: string
+    degree: string
+    department: string
+    university: string
+    year_of_passing: string
+    cgpa: string
+  }>
 }
 
 const logger = getLogger('add-learner-modal')
@@ -70,6 +103,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1) // 1=Basic, 2=Projects, 3=Certs, 4=Skills, 5=Education
 
   const [formData, setFormData] = useState<LearnerFormData>({
     name: '',
@@ -92,7 +126,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     pincode: '',
     bloodGroup: '',
     district: '',
-    documents: []
+    documents: [],
+    projects: [],
+    certifications: [],
+    skills: [],
+    education: []
   })
 
   useEffect(() => {
@@ -118,7 +156,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         pincode: '',
         bloodGroup: '',
         district: '',
-        documents: []
+        documents: [],
+        projects: [],
+        certifications: [],
+        skills: [],
+        education: []
       })
       setError(null)
       setSuccess(null)
@@ -129,6 +171,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       setShowEnhancedPreview(false)
       setDocumentUploadProgress([])
       setIsUploadingDocuments(false)
+      setCurrentStep(1)
     }
   }, [isOpen])
 
@@ -155,19 +198,18 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       // University/College template
       filename = 'college_learner_import_template.csv'
       sampleData = [
-        ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'category', 'quota', 'academicYear', 'bloodGroup', 'district', 'university', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
-        ['Priya Sharma', 'priya.sharma@university.edu', '919876501234', '919876543299', '2002-04-15', 'Female', 'UNI2024101', 'REG2024101', 'CS2024001', 'ADM2024101', 'General', 'Merit', '2024-25', 'O+', 'Mumbai', 'Mumbai University', 'https://i.pravatar.cc/150?img=25', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053'],
-        ['Arjun Patel', 'arjun.patel@university.edu', '919876502345', '', '2001-08-22', 'Male', 'UNI2024102', 'REG2024102', 'ME2024002', 'ADM2024102', 'OBC', 'Merit', '2024-25', 'A+', 'Pune', 'Pune University', 'https://i.pravatar.cc/150?img=33', 'Priya Patel', '919877654322', 'priya.patel@parent.com', 'Mother', 'Bungalow 12 Green Valley Society Borivali', 'Pune', 'Maharashtra', 'India', '411001'],
-        ['Meera Reddy', 'meera.reddy@university.edu', '919876503456', '919876543298', '2003-12-10', 'Female', 'UNI2024103', 'REG2024103', 'EC2024003', 'ADM2024103', 'SC', 'Sports', '2024-25', 'B+', 'Bangalore', 'Bangalore University', 'https://i.pravatar.cc/150?img=47', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Electronic City', 'Bangalore', 'Karnataka', 'India', '560100']
+        ['name', 'email', 'contact_number', 'date_of_birth', 'gender', 'enrollment_number', 'admission_number', 'course_name', 'semester', 'branch_field', 'address', 'city', 'state', 'country', 'pincode', 'guardian_name', 'guardian_phone', 'guardian_email', 'guardian_relation', 'current_cgpa', 'learner_type', 'college_name', 'university_name', 'experience_1_organization', 'experience_1_role', 'experience_1_start_date', 'experience_1_end_date', 'experience_1_description', 'experience_2_organization', 'experience_2_role', 'experience_2_start_date', 'experience_2_end_date', 'experience_2_description', 'project_1_title', 'project_1_description', 'project_1_start_date', 'project_1_end_date', 'project_1_tech_stack', 'project_1_demo_link', 'project_1_github_link', 'project_1_role', 'project_2_title', 'project_2_description', 'project_2_start_date', 'project_2_end_date', 'project_2_tech_stack', 'project_2_demo_link', 'project_2_github_link', 'project_2_role', 'certificate_1_title', 'certificate_1_issuer', 'certificate_1_issued_on', 'certificate_1_credential_id', 'certificate_1_link', 'certificate_1_platform', 'certificate_2_title', 'certificate_2_issuer', 'certificate_2_issued_on', 'certificate_2_credential_id', 'certificate_2_link', 'certificate_2_platform', 'education_1_level', 'education_1_degree', 'education_1_department', 'education_1_university', 'education_1_year_of_passing', 'education_1_cgpa', 'education_2_level', 'education_2_degree', 'education_2_department', 'education_2_university', 'education_2_year_of_passing', 'education_2_cgpa', 'skill_1_name', 'skill_1_type', 'skill_1_proficiency_level', 'skill_1_level', 'skill_2_name', 'skill_2_type', 'skill_2_proficiency_level', 'skill_2_level', 'skill_3_name', 'skill_3_type', 'skill_3_proficiency_level', 'skill_3_level', 'skill_4_name', 'skill_4_type', 'skill_4_proficiency_level', 'skill_4_level', 'skill_5_name', 'skill_5_type', 'skill_5_proficiency_level', 'skill_5_level'],
+        ['Harikrishna Pradeeep', 'harikrishnapradeep12@gmail.com', '8590846566', '2002-04-15', 'Male', 'CSE2021001', 'ADM2021001', 'B.Tech', '8th Sem', 'Computer Science and Engineering', '123 Main Street', 'Bangalore', 'Karnataka', 'India', '560049', 'Mr. Pradeeep', '9876543210', 'parent@example.com', 'Father', '7.5', 'College', 'S.E.A College of Engineering and Technology', 'Visvesvaraya Technological University (VTU)', '', '', '', '', '', '', '', '', '', '', 'Placement Readiness Portal - HarikrishnaP', 'Built a role-based campus placement web app with student profiles, drive tracking, recruiter shortlists and admin analytics.', '1/1/2025', '2/28/2025', 'React, Node.js, Express, MongoDB, JWT', '', '', 'Full Stack Developer', 'Online Lab Evaluation System - HarikrishnaP', 'Designed a system for coding lab submissions, rubric-based evaluation and automated marks consolidation.', '3/1/2025', '4/28/2025', 'Python Flask, SQLite, HTML, CSS', '', '', 'Backend Developer', 'Full Stack Web Development', 'IBM SkillsBuild', '3/15/2025', 'COM-001-A', '', 'IBM SkillsBuild', 'Database Management Systems', 'NPTEL', '7/20/2025', 'COM-001-B', '', 'SWAYAM-NPTEL', 'Bachelor', 'B.tech Engineering', 'Computer Science', 'VTU', '2025', '7.5', '', '', '', '', '', '', 'Java Programming', 'Technical', 'Advanced', '4', 'Data Structures and Algorithms', 'Technical', 'Advanced', '4', 'Database Design', 'Technical', 'Intermediate', '3', 'REST API Development', 'Technical', 'Intermediate', '3', 'Git and Version Control', 'Tool', 'Intermediate', '3'],
+        ['Priya Sharma', 'priya.sharma@university.edu', '9876501234', '2002-08-22', 'Female', 'CSE2021002', 'ADM2021002', 'B.Tech', '6th Sem', 'Computer Science', '456 Park Avenue', 'Mumbai', 'Maharashtra', 'India', '400053', 'Mr. Sharma', '9876543211', 'sharma@example.com', 'Father', '8.5', 'College', 'Mumbai University', 'Mumbai University', '', '', '', '', '', '', '', '', '', '', 'E-Commerce Platform', 'Full-stack e-commerce application with payment integration', '1/1/2024', '5/1/2024', 'React, Node.js, MongoDB, Express', 'https://demo.example.com', 'https://github.com/user/ecommerce', 'Full Stack Developer', '', '', '', '', '', '', '', '', 'AWS Certified Developer', 'Amazon Web Services', '3/15/2024', 'AWS-DEV-123456', 'https://aws.amazon.com/verification', 'AWS', '', '', '', '', '', '', 'Bachelor', 'B.Tech in Computer Science', 'Computer Science', 'Mumbai University', '2024', '8.5', '', '', '', '', '', '', 'JavaScript', 'Technical', 'Expert', '5', 'React', 'Technical', 'Expert', '5', 'Node.js', 'Technical', 'Advanced', '4', 'AWS', 'Technical', 'Advanced', '4', '', '', '', '']
       ]
     } else {
       // School template
       filename = 'learner_import_template.csv'
       sampleData = [
-        ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'category', 'quota', 'grade', 'section', 'academicYear', 'bloodGroup', 'district', 'collegeSchoolName', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode'],
-        ['Aarav Sharma', 'aarav.sharma@school.com', '919876501234', '919876543299', '2010-04-15', 'Male', 'ENR2024101', 'REG2024101', '1', 'ADM2024101', 'General', 'Merit', '10', 'A', '2024-25', 'O+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=12', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053'],
-        ['Diya Patel', 'diya.patel@school.com', '919876502345', '', '2011-08-22', 'Female', 'ENR2024102', 'REG2024102', '2', 'ADM2024102', 'OBC', 'Merit', '9', 'B', '2024-25', 'A+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=47', 'Priya Patel', '919877654322', 'priya.patel@parent.com', 'Mother', 'Bungalow 12 Green Valley Society Borivali', 'Mumbai', 'Maharashtra', 'India', '400092'],
-        ['Arjun Reddy', 'arjun.reddy@school.com', '919876503456', '919876543298', '2012-12-10', 'Male', 'ENR2024103', 'REG2024103', '3', 'ADM2024103', 'SC', 'Sports', '8', 'C', '2024-25', 'B+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=33', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Goregaon East', 'Mumbai', 'Maharashtra', 'India', '400063']
+        ['name', 'email', 'contactNumber', 'alternateNumber', 'dateOfBirth', 'gender', 'enrollmentNumber', 'registrationNumber', 'rollNumber', 'admissionNumber', 'category', 'quota', 'grade', 'section', 'academicYear', 'bloodGroup', 'district', 'collegeSchoolName', 'profilePicture', 'guardianName', 'guardianPhone', 'guardianEmail', 'guardianRelation', 'address', 'city', 'state', 'country', 'pincode', 'project1Title', 'project1Description', 'project1StartDate', 'project1EndDate', 'project1TechStack', 'project1DemoLink', 'project1GithubLink', 'project1Role', 'project2Title', 'project2Description', 'project2StartDate', 'project2EndDate', 'project2TechStack', 'project2DemoLink', 'project2GithubLink', 'project2Role', 'certificate1Title', 'certificate1Issuer', 'certificate1IssuedOn', 'certificate1CredentialId', 'certificate1Link', 'certificate1Platform', 'certificate2Title', 'certificate2Issuer', 'certificate2IssuedOn', 'certificate2CredentialId', 'certificate2Link', 'certificate2Platform', 'skill1Name', 'skill1Type', 'skill1Level', 'skill1ProficiencyLevel', 'skill2Name', 'skill2Type', 'skill2Level', 'skill2ProficiencyLevel', 'skill3Name', 'skill3Type', 'skill3Level', 'skill3ProficiencyLevel', 'skill4Name', 'skill4Type', 'skill4Level', 'skill4ProficiencyLevel', 'skill5Name', 'skill5Type', 'skill5Level', 'skill5ProficiencyLevel', 'education1Level', 'education1Degree', 'education1Department', 'education1University', 'education1YearOfPassing', 'education1CGPA', 'education2Level', 'education2Degree', 'education2Department', 'education2University', 'education2YearOfPassing', 'education2CGPA'],
+        ['Aarav Sharma', 'aarav.sharma@school.com', '919876501234', '919876543299', '2010-04-15', 'Male', 'ENR2024101', 'REG2024101', '1', 'ADM2024101', 'General', 'Merit', '10', 'A', '2024-25', 'O+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=12', 'Rajesh Sharma', '919877654321', 'rajesh.sharma@parent.com', 'Father', 'Flat 301 Sunrise Apartments Andheri West', 'Mumbai', 'Maharashtra', 'India', '400053', 'Science Fair Project', 'Solar powered water purifier', '2024-01-10', '2024-03-15', 'Arduino,Solar Energy', '', '', 'Team Lead', 'Math Competition Winner', 'State level mathematics competition', '2023-11-01', '2023-11-01', '', '', '', '', 'National Science Olympiad Gold', 'Science Olympiad Foundation', '2024-02-10', 'NSO-2024-12345', '', 'SOF', 'Mathematics Olympiad Silver', 'Math Olympiad', '2023-12-05', 'MO-2023-67890', '', 'Regional Board', 'Mathematics', 'academic', '5', 'Expert', 'Science', 'academic', '4', 'Advanced', 'Programming', 'technical', '3', 'Intermediate', 'Public Speaking', 'soft-skill', '4', 'Advanced', 'Leadership', 'soft-skill', '4', 'Advanced', 'Secondary', '10th Standard', 'General', 'CBSE Board', '2024', '95', '', '', '', '', '', ''],
+        ['Diya Patel', 'diya.patel@school.com', '919876502345', '', '2011-08-22', 'Female', 'ENR2024102', 'REG2024102', '2', 'ADM2024102', 'OBC', 'Merit', '9', 'B', '2024-25', 'A+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=47', 'Priya Patel', '919877654322', 'priya.patel@parent.com', 'Mother', 'Bungalow 12 Green Valley Society Borivali', 'Mumbai', 'Maharashtra', 'India', '400092', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'English', 'academic', '5', 'Expert', 'Hindi', 'academic', '4', 'Advanced', 'Art', 'creative', '5', 'Expert', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        ['Arjun Reddy', 'arjun.reddy@school.com', '919876503456', '919876543298', '2012-12-10', 'Male', 'ENR2024103', 'REG2024103', '3', 'ADM2024103', 'SC', 'Sports', '8', 'C', '2024-25', 'B+', 'Mumbai', 'Delhi Public School Mumbai', 'https://i.pravatar.cc/150?img=33', 'Venkatesh Reddy', '919877654323', 'venkatesh.reddy@parent.com', 'Father', 'Tower B 1502 Oberoi Heights Goregaon East', 'Mumbai', 'Maharashtra', 'India', '400063', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'State Football Champion', 'State Sports Association', '2023-10-20', 'FOOTBALL-2023-999', '', 'Sports Authority', '', '', '', '', '', '', 'Football', 'sports', '5', 'Expert', 'Cricket', 'sports', '4', 'Advanced', 'Physical Education', 'academic', '5', 'Expert', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']
       ]
     }
 
@@ -417,7 +459,40 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           district: formData.district.trim() || null,
           bloodGroup: formData.bloodGroup || null,
           approval_status: 'approved',
-          learner_type: 'educator_added'
+          learner_type: 'educator_added',
+          // Rich profile data
+          projects: formData.projects.map(p => ({
+            title: p.title,
+            description: p.description || null,
+            start_date: p.start_date || null,
+            end_date: p.end_date || null,
+            tech_stack: p.tech_stack ? p.tech_stack.split(',').map(t => t.trim()) : [],
+            demo_link: p.demo_link || null,
+            github_link: p.github_link || null,
+            role: p.role || null,
+          })),
+          certifications: formData.certifications.map(c => ({
+            title: c.title,
+            issuer: c.issuer || null,
+            issued_on: c.issued_on || null,
+            credential_id: c.credential_id || null,
+            link: c.link || null,
+            platform: c.platform || null,
+          })),
+          skills: formData.skills.map(s => ({
+            name: s.name,
+            type: s.type || 'technical',
+            level: s.level ? parseInt(s.level) : null,
+            proficiency_level: s.proficiency_level || null,
+          })),
+          education: formData.education.map(e => ({
+            level: e.level || null,
+            degree: e.degree,
+            department: e.department || null,
+            university: e.university || null,
+            year_of_passing: e.year_of_passing || null,
+            cgpa: e.cgpa || null,
+          })),
           // Note: No documents sent initially
         }
       }, token)
@@ -544,6 +619,119 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setFormData(prev => ({
       ...prev,
       documents: prev.documents.filter((_, i) => i !== index)
+    }))
+  }
+
+  // Helper functions for managing rich profile data
+  const addProject = () => {
+    setFormData(prev => ({
+      ...prev,
+      projects: [...prev.projects, {
+        title: '',
+        description: '',
+        start_date: '',
+        end_date: '',
+        tech_stack: '',
+        demo_link: '',
+        github_link: '',
+        role: ''
+      }]
+    }))
+  }
+
+  const removeProject = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      projects: prev.projects.filter((_, i) => i !== index)
+    }))
+  }
+
+  const updateProject = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      projects: prev.projects.map((p, i) => i === index ? { ...p, [field]: value } : p)
+    }))
+  }
+
+  const addCertification = () => {
+    setFormData(prev => ({
+      ...prev,
+      certifications: [...prev.certifications, {
+        title: '',
+        issuer: '',
+        issued_on: '',
+        credential_id: '',
+        link: '',
+        platform: ''
+      }]
+    }))
+  }
+
+  const removeCertification = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      certifications: prev.certifications.filter((_, i) => i !== index)
+    }))
+  }
+
+  const updateCertification = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      certifications: prev.certifications.map((c, i) => i === index ? { ...c, [field]: value } : c)
+    }))
+  }
+
+  const addSkill = () => {
+    setFormData(prev => ({
+      ...prev,
+      skills: [...prev.skills, {
+        name: '',
+        type: 'technical',
+        level: '',
+        proficiency_level: ''
+      }]
+    }))
+  }
+
+  const removeSkill = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      skills: prev.skills.filter((_, i) => i !== index)
+    }))
+  }
+
+  const updateSkill = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      skills: prev.skills.map((s, i) => i === index ? { ...s, [field]: value } : s)
+    }))
+  }
+
+  const addEducation = () => {
+    setFormData(prev => ({
+      ...prev,
+      education: [...prev.education, {
+        level: '',
+        degree: '',
+        department: '',
+        university: '',
+        year_of_passing: '',
+        cgpa: ''
+      }]
+    }))
+  }
+
+  const removeEducation = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      education: prev.education.filter((_, i) => i !== index)
+    }))
+  }
+
+  const updateEducation = (index: number, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      education: prev.education.map((e, i) => i === index ? { ...e, [field]: value } : e)
     }))
   }
 
@@ -1093,6 +1281,108 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 }
               }
 
+              // Extract rich profile data
+              const projects = [];
+              for (let i = 1; i <= 2; i++) {
+                if (learner[`project${i}title`] && learner[`project${i}title`].trim()) {
+                  const project = {
+                    title: learner[`project${i}title`].trim(),
+                    description: learner[`project${i}description`]?.trim() || null,
+                    start_date: convertDateFormat(learner[`project${i}startdate`]) || null,
+                    end_date: convertDateFormat(learner[`project${i}enddate`]) || null,
+                    tech_stack: learner[`project${i}techstack`] ? learner[`project${i}techstack`].split(',').map((t: string) => t.trim()) : [],
+                    demo_link: learner[`project${i}demolink`]?.trim() || null,
+                    github_link: learner[`project${i}githublink`]?.trim() || null,
+                    role: learner[`project${i}role`]?.trim() || null,
+                  };
+                  projects.push(project);
+                  console.log(`[CSV] Extracted project ${i}:`, project);
+                }
+              }
+
+              const certifications = [];
+              for (let i = 1; i <= 2; i++) {
+                if (learner[`certificate${i}title`] && learner[`certificate${i}title`].trim()) {
+                  const cert = {
+                    title: learner[`certificate${i}title`].trim(),
+                    issuer: learner[`certificate${i}issuer`]?.trim() || null,
+                    issued_on: convertDateFormat(learner[`certificate${i}issuedon`]) || null,
+                    credential_id: learner[`certificate${i}credentialid`]?.trim() || null,
+                    link: learner[`certificate${i}link`]?.trim() || null,
+                    platform: learner[`certificate${i}platform`]?.trim() || null,
+                  };
+                  certifications.push(cert);
+                  console.log(`[CSV] Extracted certificate ${i}:`, cert);
+                }
+              }
+
+              const skills = [];
+              for (let i = 1; i <= 5; i++) {
+                if (learner[`skill${i}name`] && learner[`skill${i}name`].trim()) {
+                  // Handle both numeric levels and text proficiency levels
+                  // If skill_X_level is a number, use it as level
+                  // If skill_X_level is text (Advanced/Intermediate/Expert), use it as proficiency_level
+                  let levelValue = null;
+                  let proficiencyValue = null;
+                  
+                  const rawLevel = learner[`skill${i}level`]?.trim();
+                  const rawProficiency = learner[`skill${i}proficiencylevel`]?.trim();
+                  
+                  // Check if level is a number
+                  if (rawLevel && !isNaN(parseInt(rawLevel))) {
+                    levelValue = parseInt(rawLevel);
+                  } else if (rawLevel) {
+                    // If level is text, treat it as proficiency
+                    proficiencyValue = rawLevel;
+                  }
+                  
+                  // Use proficiency_level if provided and not used above
+                  if (rawProficiency && !proficiencyValue) {
+                    proficiencyValue = rawProficiency;
+                  }
+                  
+                  // Normalize skill type to lowercase and map 'Tool' to 'technical'
+                  let skillType = (learner[`skill${i}type`]?.trim() || 'technical').toLowerCase();
+                  if (skillType === 'tool') {
+                    skillType = 'technical'; // Map 'Tool' to 'technical' since DB only accepts 'technical' or 'soft'
+                  } else if (skillType !== 'technical' && skillType !== 'soft') {
+                    skillType = 'technical'; // Default to 'technical' for any invalid type
+                  }
+                  
+                  const skill = {
+                    name: learner[`skill${i}name`].trim(),
+                    type: skillType,
+                    level: levelValue,
+                    proficiency_level: proficiencyValue,
+                  };
+                  skills.push(skill);
+                  console.log(`[CSV] Extracted skill ${i}:`, skill);
+                }
+              }
+
+              const education = [];
+              for (let i = 1; i <= 2; i++) {
+                if (learner[`education${i}degree`] && learner[`education${i}degree`].trim()) {
+                  const edu = {
+                    level: learner[`education${i}level`]?.trim() || null,
+                    degree: learner[`education${i}degree`].trim(),
+                    department: learner[`education${i}department`]?.trim() || null,
+                    university: learner[`education${i}university`]?.trim() || null,
+                    year_of_passing: learner[`education${i}yearofpassing`]?.trim() || null,
+                    cgpa: learner[`education${i}cgpa`]?.trim() || null,
+                  };
+                  education.push(edu);
+                  console.log(`[CSV] Extracted education ${i}:`, edu);
+                }
+              }
+
+              console.log(`[CSV] Row ${rowNum} rich data summary:`, {
+                projects: projects.length,
+                certifications: certifications.length,
+                skills: skills.length,
+                education: education.length
+              });
+
               validlearners.push({
                 row: rowNum,
                 data: {
@@ -1111,6 +1401,10 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   grade: grade,
                   section: section,
                   academicYear: learner.academicyear || learner.year || null,
+                  semester: learner.semester || null,
+                  courseName: learner.coursename || null,
+                  branchField: learner.branchfield || null,
+                  currentCgpa: learner.currentcgpa || null,
                   schoolClassId: schoolClassId, // Use the looked-up class ID for schools
                   collegeClassId: collegeClassId, // Use the looked-up class ID for colleges
                   guardianName: guardianName,
@@ -1119,8 +1413,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   guardianRelation: guardianRelation,
                   bloodGroup: learner.bloodgroup || null,
                   district: learner.district || null,
-                  university: learner.university || null,
-                  collegeSchoolName: learner.collegeschoolname || null,
+                  university: learner.universityname || learner.university || null,
+                  collegeSchoolName: learner.collegename || learner.collegeschoolname || null,
                   profilePicture: learner.profilepicture || null,
                   address: learner.address || null,
                   city: learner.city || null,
@@ -1128,7 +1422,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   country: learner.country || 'India',
                   pincode: learner.pincode || null,
                   approval_status: 'approved',
-                  learner_type: 'csv_import'
+                  learner_type: learner.learnertype || 'csv_import',
+                  projects: projects,
+                  certifications: certifications,
+                  skills: skills,
+                  education: education
                 }
               })
             })
@@ -1156,6 +1454,28 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
                   if (!token) {
                     throw new Error('No authentication token available')
+                  }
+
+                  console.log(`[CSV] Sending learner data for row ${row}:`, {
+                    name: data.name,
+                    email: data.email,
+                    projects: data.projects?.length || 0,
+                    certifications: data.certifications?.length || 0,
+                    skills: data.skills?.length || 0,
+                    education: data.education?.length || 0,
+                  });
+                  
+                  if (data.projects && data.projects.length > 0) {
+                    console.log(`[CSV] Projects being sent:`, data.projects);
+                  }
+                  if (data.skills && data.skills.length > 0) {
+                    console.log(`[CSV] Skills being sent:`, data.skills);
+                  }
+                  if (data.certifications && data.certifications.length > 0) {
+                    console.log(`[CSV] Certifications being sent:`, data.certifications);
+                  }
+                  if (data.education && data.education.length > 0) {
+                    console.log(`[CSV] Education being sent:`, data.education);
                   }
 
                   const response = await userApiService.createLearner({

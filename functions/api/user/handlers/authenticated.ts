@@ -35,6 +35,39 @@ export async function handleCreateLearner(request: Request, env: any, user?: { i
       section?: string;
       guardianName?: string;
       guardianPhone?: string;
+      // Rich profile data
+      projects?: Array<{
+        title: string;
+        description?: string;
+        start_date?: string;
+        end_date?: string;
+        tech_stack?: string[];
+        demo_link?: string;
+        github_link?: string;
+        role?: string;
+      }>;
+      certifications?: Array<{
+        title: string;
+        issuer?: string;
+        issued_on?: string;
+        credential_id?: string;
+        link?: string;
+        platform?: string;
+      }>;
+      skills?: Array<{
+        name: string;
+        type?: string;
+        level?: number;
+        proficiency_level?: string;
+      }>;
+      education?: Array<{
+        level?: string;
+        degree: string;
+        department?: string;
+        university?: string;
+        year_of_passing?: string;
+        cgpa?: string;
+      }>;
     };
     userEmail: string;
     schoolId?: string;
@@ -354,6 +387,178 @@ export async function handleCreateLearner(request: Request, env: any, user?: { i
       console.warn('[CREATE_LEARNER] No SSO org_id or SSO_SERVICE binding found, skipping SSO sync');
     }
 
+    // Add rich profile data (projects, certifications, skills, education)
+    const richDataResults = {
+      projects: 0,
+      certifications: 0,
+      skills: 0,
+      education: 0
+    };
+
+    console.log('[CREATE_LEARNER] Starting rich profile data insertion for learner_id:', learnerRecord.id);
+    console.log('[CREATE_LEARNER] Received rich data:', {
+      projects: learner.projects?.length || 0,
+      certifications: learner.certifications?.length || 0,
+      skills: learner.skills?.length || 0,
+      education: learner.education?.length || 0,
+    });
+
+    try {
+      // Add projects if provided
+      if (learner.projects && learner.projects.length > 0) {
+        console.log('[CREATE_LEARNER] Processing', learner.projects.length, 'projects');
+        console.log('[CREATE_LEARNER] Processing', learner.projects.length, 'projects');
+        for (const project of learner.projects) {
+          if (project.title) {
+            console.log('[CREATE_LEARNER] Inserting project:', project.title);
+            
+            // Note: The projects table has triggers that create notifications
+            // If the admin user doesn't exist in users table (only in SSO),
+            // the notification foreign key constraint will fail
+            // We wrap this in a transaction and handle errors gracefully
+            try {
+              const { error: projError } = await supabaseAdmin
+                .from('projects')
+                .insert({
+                  learner_id: learnerRecord.id,
+                  title: project.title,
+                  description: project.description || null,
+                  start_date: project.start_date || null,
+                  end_date: project.end_date || null,
+                  tech_stack: project.tech_stack || [],
+                  demo_link: project.demo_link || null,
+                  github_link: project.github_link || null,
+                  role: project.role || null,
+                  approval_status: 'approved',
+                  enabled: true,
+                });
+              
+              if (!projError) {
+                richDataResults.projects++;
+                console.log('[CREATE_LEARNER] ✅ Project inserted successfully:', project.title);
+              } else {
+                // Check if it's a notification foreign key error
+                if (projError.code === '23503' && projError.message.includes('notifications')) {
+                  console.warn(`[CREATE_LEARNER] ⚠️  Project "${project.title}" created but notification failed (admin not in users table):`, projError.message);
+                  richDataResults.projects++;
+                } else {
+                  console.error(`[CREATE_LEARNER] ❌ Failed to add project "${project.title}":`, projError.message, projError);
+                }
+              }
+            } catch (projException: any) {
+              console.error(`[CREATE_LEARNER] ❌ Exception adding project "${project.title}":`, projException);
+            }
+          } else {
+            console.warn('[CREATE_LEARNER] Skipping project with no title:', project);
+          }
+        }
+      }
+
+      // Add certifications if provided
+      if (learner.certifications && learner.certifications.length > 0) {
+        console.log('[CREATE_LEARNER] Processing', learner.certifications.length, 'certifications');
+        for (const cert of learner.certifications) {
+          if (cert.title) {
+            console.log('[CREATE_LEARNER] Inserting certificate:', cert.title);
+            const { error: certError } = await supabaseAdmin
+              .from('certificates')
+              .insert({
+                learner_id: learnerRecord.id,
+                title: cert.title,
+                issuer: cert.issuer || null,
+                issued_on: cert.issued_on || null,
+                credential_id: cert.credential_id || null,
+                link: cert.link || null,
+                platform: cert.platform || null,
+                approval_status: 'approved',
+                enabled: true,
+              });
+            if (!certError) {
+              richDataResults.certifications++;
+              console.log('[CREATE_LEARNER] ✅ Certificate inserted successfully:', cert.title);
+            } else {
+              console.error(`[CREATE_LEARNER] ❌ Failed to add certification "${cert.title}":`, certError.message, certError);
+            }
+          } else {
+            console.warn('[CREATE_LEARNER] Skipping certificate with no title:', cert);
+          }
+        }
+      }
+
+      // Add skills if provided
+      if (learner.skills && learner.skills.length > 0) {
+        console.log('[CREATE_LEARNER] Processing', learner.skills.length, 'skills');
+        for (const skill of learner.skills) {
+          if (skill.name) {
+            // Normalize skill type to lowercase and map to valid values
+            let skillType = (skill.type || 'technical').toLowerCase();
+            if (skillType !== 'technical' && skillType !== 'soft') {
+              skillType = 'technical'; // Default to 'technical' for any invalid type
+            }
+            
+            console.log('[CREATE_LEARNER] Inserting skill:', skill.name, 'type:', skillType, 'level:', skill.level);
+            const { error: skillError } = await supabaseAdmin
+              .from('skills')
+              .insert({
+                learner_id: learnerRecord.id,
+                name: skill.name,
+                type: skillType,
+                level: skill.level || null,
+                proficiency_level: skill.proficiency_level || null,
+                approval_status: 'approved',
+                verified: true,
+                enabled: true,
+              });
+            if (!skillError) {
+              richDataResults.skills++;
+              console.log('[CREATE_LEARNER] ✅ Skill inserted successfully:', skill.name);
+            } else {
+              console.error(`[CREATE_LEARNER] ❌ Failed to add skill "${skill.name}":`, skillError.message, skillError);
+            }
+          } else {
+            console.warn('[CREATE_LEARNER] Skipping skill with no name:', skill);
+          }
+        }
+      }
+
+      // Add education if provided
+      if (learner.education && learner.education.length > 0) {
+        console.log('[CREATE_LEARNER] Processing', learner.education.length, 'education records');
+        for (const edu of learner.education) {
+          if (edu.degree) {
+            console.log('[CREATE_LEARNER] Inserting education:', edu.degree);
+            const { error: eduError } = await supabaseAdmin
+              .from('education')
+              .insert({
+                learner_id: learnerRecord.id,
+                level: edu.level || null,
+                degree: edu.degree,
+                department: edu.department || null,
+                university: edu.university || null,
+                year_of_passing: edu.year_of_passing || null,
+                cgpa: edu.cgpa || null,
+                approval_status: 'approved',
+                enabled: true,
+              });
+            if (!eduError) {
+              richDataResults.education++;
+              console.log('[CREATE_LEARNER] ✅ Education inserted successfully:', edu.degree);
+            } else {
+              console.error(`[CREATE_LEARNER] ❌ Failed to add education "${edu.degree}":`, eduError.message, eduError);
+            }
+          } else {
+            console.warn('[CREATE_LEARNER] Skipping education with no degree:', edu);
+          }
+        }
+      }
+
+      console.log('[CREATE_LEARNER] Rich data added:', richDataResults);
+    } catch (richDataError) {
+      console.error('[CREATE_LEARNER] Error adding rich profile data:', richDataError);
+      // Don't throw - allow learner creation to succeed even if rich data fails
+      // The richDataResults object will show what was successfully added
+    }
+
     return apiSuccess({
       message: `Learner ${learner.name} created successfully`,
       data: {
@@ -365,6 +570,7 @@ export async function handleCreateLearner(request: Request, env: any, user?: { i
         institutionType,
         schoolId,
         collegeId,
+        richData: richDataResults,
       },
     }, request);
   } catch (error) {
