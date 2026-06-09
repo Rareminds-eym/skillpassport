@@ -5,6 +5,9 @@
 
 import { apiPost } from '@/shared/api/apiClient';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('LearnerPipelineService');
 
 export class LearnerPipelineService {
   /**
@@ -22,13 +25,15 @@ export class LearnerPipelineService {
       // result.data contains the actual array
       const statusArray = result?.data || [];
       if (!Array.isArray(statusArray)) {
-        console.error('[LearnerPipelineService] getlearnerPipelineStatus - Expected array but got:', typeof statusArray);
-        return [];
+        const error = new Error('Invalid response format: expected array');
+        error.details = { type: typeof statusArray, data: statusArray };
+        logger.error('getlearnerPipelineStatus - Invalid response format:', error.details);
+        throw error;
       }
       return statusArray;
     } catch (error) {
-      console.error('Error in getlearnerPipelineStatus:', error);
-      return [];
+      logger.error('Error in getlearnerPipelineStatus:', error);
+      throw error;
     }
   }
 
@@ -45,13 +50,15 @@ export class LearnerPipelineService {
       // Backend returns array directly via apiSuccess(data, ...)
       const activitiesArray = result?.data || [];
       if (!Array.isArray(activitiesArray)) {
-        console.error('[LearnerPipelineService] getlearnerPipelineActivities - Expected array but got:', typeof activitiesArray);
-        return [];
+        const error = new Error('Invalid response format: expected array');
+        error.details = { type: typeof activitiesArray, data: activitiesArray };
+        logger.error('getlearnerPipelineActivities - Invalid response format:', error.details);
+        throw error;
       }
       return activitiesArray;
     } catch (error) {
-      console.error('Error in getlearnerPipelineActivities:', error);
-      return [];
+      logger.error('Error in getlearnerPipelineActivities:', error);
+      throw error;
     }
   }
 
@@ -68,13 +75,15 @@ export class LearnerPipelineService {
       // Backend returns array directly via apiSuccess(data, ...)
       const interviewsArray = result?.data || [];
       if (!Array.isArray(interviewsArray)) {
-        console.error('[LearnerPipelineService] getlearnerInterviews - Expected array but got:', typeof interviewsArray);
-        return [];
+        const error = new Error('Invalid response format: expected array');
+        error.details = { type: typeof interviewsArray, data: interviewsArray };
+        logger.error('getlearnerInterviews - Invalid response format:', error.details);
+        throw error;
       }
       return interviewsArray;
     } catch (error) {
-      console.error('Error in getlearnerInterviews:', error);
-      return [];
+      logger.error('Error in getlearnerInterviews:', error);
+      throw error;
     }
   }
 
@@ -93,21 +102,22 @@ export class LearnerPipelineService {
       
       // Backend wraps response in { success, data, error, meta } via apiSuccess()
       // result.data contains the actual array
-      console.log('[LearnerPipelineService] Raw result:', result);
-      console.log('[LearnerPipelineService] result.data:', result?.data);
-      console.log('[LearnerPipelineService] Is array?:', Array.isArray(result?.data));
+      logger.info('Raw result:', { hasData: !!result?.data, dataType: typeof result?.data, isArray: Array.isArray(result?.data) });
       
       // Ensure we return an array
       const applicationsArray = result?.data || [];
       if (!Array.isArray(applicationsArray)) {
-        console.error('[LearnerPipelineService] Expected array but got:', typeof applicationsArray, applicationsArray);
-        return [];
+        const error = new Error('Invalid response format: expected array');
+        error.details = { type: typeof applicationsArray, data: applicationsArray };
+        logger.error('getlearnerApplicationsWithPipeline - Invalid response format:', error.details);
+        throw error;
       }
       
+      logger.info('Returning applications array:', { count: applicationsArray.length });
       return applicationsArray;
     } catch (error) {
-      console.error('Error in getlearnerApplicationsWithPipeline:', error);
-      return []; // Return empty array on error instead of throwing
+      logger.error('Error in getlearnerApplicationsWithPipeline:', error);
+      throw error;
     }
   }
 
@@ -138,7 +148,7 @@ export class LearnerPipelineService {
 
       return stageChanges;
     } catch (error) {
-      console.error('Error in getStageChangeNotifications:', error);
+      logger.error('Error in getStageChangeNotifications:', error);
       throw error;
     }
   }

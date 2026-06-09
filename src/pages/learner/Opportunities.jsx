@@ -689,7 +689,9 @@ const Opportunities = () => {
       setFilteredApplications(transformedApplications);
     } catch (err) {
       logger.error('Error fetching applications:', err);
-      // Set empty arrays on error to prevent UI crashes
+      // Show user-friendly error message
+      toast.error('Failed to load applications. Please try again.');
+      // Set empty arrays to prevent UI crashes
       setApplications([]);
       setFilteredApplications([]);
     }
