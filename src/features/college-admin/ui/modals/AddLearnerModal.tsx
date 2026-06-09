@@ -1282,8 +1282,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
 
               // Extract rich profile data
-              console.log(`[CSV] Row ${rowNum} - All available keys:`, Object.keys(learner).sort());
-              console.log(`[CSV] Row ${rowNum} - Education-related keys:`, Object.keys(learner).filter(k => k.includes('education')).sort());
+              if (rowNum === 2) { // Log only first data row to avoid spam
+                console.log(`[CSV] Row ${rowNum} - All available keys (first 20):`, Object.keys(learner).sort().slice(0, 20));
+                console.log(`[CSV] Row ${rowNum} - Education-related keys:`, Object.keys(learner).filter(k => k.includes('education')).sort());
+                console.log(`[CSV] Row ${rowNum} - Sample learner object:`, learner);
+              }
               
               const projects = [];
               for (let i = 1; i <= 2; i++) {
