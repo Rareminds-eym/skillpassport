@@ -1,4 +1,4 @@
-import { apiPost, apiGet } from '@/shared/api/apiClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export interface Company {
   id: string;

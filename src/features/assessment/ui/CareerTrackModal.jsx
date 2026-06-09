@@ -6,6 +6,7 @@ import { useRoleOverview } from '@/entities/user';
 import { generateRoleOverview, getFallbackRoleOverview } from '@/features/counselling';
 import { matchCoursesForRole as matchCoursesForRoleRAG } from '@/features/courses';
 import { apiPost, apiGet } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import jsPDF from 'jspdf';
 
 /**
@@ -13,8 +14,12 @@ import jsPDF from 'jspdf';
  * Multi-step wizard with VERTICAL sidebar navigation
  * Steps: Role Selection → Overview → Roadmap → Courses → Strengths → Get Started
  */
-const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, attemptId }) => {
+const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, attemptId, learnerId, assessmentResultId: assessmentResultIdProp }) => {
     const navigate = useNavigate();
+    const authUser = useAuthStore.getState().user;
+    const effectiveLearnerId = authUser?.id || learnerId || '';
+    const effectiveAssessmentResultId = assessmentResultIdProp || attemptId || '';
+    console.log('[CareerTrackModal] Debug IDs:', { authUserId: authUser?.id, learnerId, effectiveLearnerId, attemptId, assessmentResultIdProp, effectiveAssessmentResultId });
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
     const [showReminderModal, setShowReminderModal] = useState(false);
@@ -65,9 +70,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     };
 
     const goToPage = (pageId) => {
-        if (pageId <= currentPage || pageId === currentPage + 1) {
-            setCurrentPage(pageId);
-        }
+        setCurrentPage(pageId);
     };
 
     // Helper function to get role name
@@ -112,6 +115,42 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     // RAG-powered course matching - fetch when role is selected and platform courses are available
     useEffect(() => {
         const fetchAIMatchedCourses = async () => {
+            // Check if recommendations already exist for this assessment attempt + current role
+            if (effectiveLearnerId && attemptId && selectedRole) {
+                try {
+                    const roleName = getRoleName(selectedRole);
+                    const existing = await apiGet(`/courses/recommendations/saved?learnerId=${effectiveLearnerId}&assessmentResultId=${effectiveAssessmentResultId}&status=active`);
+                    if (existing?.data?.length > 0) {
+                        const matchesCurrentRole = existing.data.some(r =>
+                            r.match_reasons?.some((reason) =>
+                                reason.toLowerCase().includes(roleName.toLowerCase())
+                            )
+                        );
+                        if (matchesCurrentRole) {
+                            console.log(`[CareerTrackModal] Found ${existing.data.length} stored recommendations for current role (${roleName}), skipping RAG`);
+                            const stored = existing.data.map(r => ({
+                                course_id: r.course_id,
+                                id: r.course_id,
+                                title: r.course?.title || '',
+                                name: r.course?.title || '',
+                                description: r.course?.description || '',
+                                duration: r.course?.duration || '',
+                                category: r.course?.category || '',
+                                relevance_score: r.relevance_score,
+                                match_reason: r.match_reasons?.[0] || '',
+                                skill_gaps_addressed: r.skill_gaps_addressed || [],
+                                skills: []
+                            }));
+                            setAiMatchedCourses(stored.slice(0, 4));
+                            return;
+                        }
+                        console.log('[CareerTrackModal] Stored recommendations exist but for a different role, running RAG');
+                    }
+                } catch (err) {
+                    console.warn('[CareerTrackModal] Failed to fetch stored recommendations:', err);
+                }
+            }
+
             // Fetch platform courses from database if not in results
             let coursesToMatch = results?.platformCourses;
             
@@ -266,39 +305,41 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
     // Use RAG-matched courses (or empty array while loading)
     const relevantCourses = aiMatchedCourses;
 
-    // Store matched courses to DB when they're generated
+    // Store matched courses to learner_course_recommendations when they're generated
     useEffect(() => {
         const storeMatchedCourses = async () => {
-            if (!aiMatchedCourses || aiMatchedCourses.length === 0 || !selectedRole || !attemptId) {
+            if (!aiMatchedCourses || aiMatchedCourses.length === 0 || !selectedRole || !attemptId || !effectiveLearnerId) {
                 return;
             }
 
             const roleName = getRoleName(selectedRole);
-            console.log(`[CareerTrackModal] Storing ${aiMatchedCourses.length} matched courses for: ${roleName}`);
+            console.log(`[CareerTrackModal] Saving ${aiMatchedCourses.length} matched courses for: ${roleName}`);
 
             try {
-                const response = await fetch('/api/role-overview/storage', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        attemptId,
-                        roleName,
-                        roleOverview: {
-                            matchedPlatformCourses: aiMatchedCourses
-                        }
-                    })
+                const recommendations = aiMatchedCourses.map(c => ({
+                    course_id: c.course_id || c.id,
+                    relevance_score: c.relevance_score || 50,
+                    match_reasons: [c.match_reason || `Matched for ${roleName} role`],
+                    skill_gaps_addressed: c.skill_gaps_addressed || []
+                }));
+
+                const response = await apiPost('/courses/recommendations/save', {
+                    learnerId: effectiveLearnerId,
+                    recommendations,
+                    assessmentResultId: effectiveAssessmentResultId,
+                    recommendationType: 'assessment'
                 });
 
-                if (!response.ok) {
-                    console.error('[CareerTrackModal] Failed to store matched courses:', await response.text());
+                if (!response?.success) {
+                    console.error('[CareerTrackModal] Failed to save matched courses:', response);
                 }
             } catch (error) {
-                console.error('[CareerTrackModal] Error storing matched courses:', error);
+                console.error('[CareerTrackModal] Error saving matched courses:', error);
             }
         };
 
         storeMatchedCourses();
-    }, [aiMatchedCourses, selectedRole, attemptId]);
+    }, [aiMatchedCourses, selectedRole, attemptId, learnerId]);
 
     const getSalary = (role) => {
         if (typeof role === 'object' && role?.salary) {
@@ -673,21 +714,18 @@ END:VCALENDAR`;
                                 const Icon = page.icon;
                                 const isActive = currentPage === page.id;
                                 const isCompleted = currentPage > page.id;
-                                const isClickable = page.id <= currentPage || page.id === currentPage + 1;
                                 
                                 return (
                                     <div key={page.id} className="relative">
                                         <button
-                                            onClick={() => isClickable && goToPage(page.id)}
-                                            disabled={!isClickable}
+                                            onClick={() => goToPage(page.id)}
+                                            disabled={false}
                                             className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 text-left ${
                                                 isActive 
                                                     ? 'bg-white text-slate-900' 
                                                     : isCompleted
                                                         ? 'bg-white/10 text-white hover:bg-white/20'
-                                                        : isClickable
-                                                            ? 'bg-white/5 text-white/60 hover:bg-white/10'
-                                                            : 'bg-transparent text-white/30 cursor-not-allowed'
+                                                        : 'bg-white/5 text-white/60 hover:bg-white/10'
                                             }`}
                                         >
                                             <div 
