@@ -17,25 +17,6 @@ const { Client } = pg;
 const SSO_DB_URL = process.env.SSO_DB_URL || 'postgresql://postgres:postgres@127.0.0.1:54332/postgres';
 const SSO_API_URL = process.env.SSO_API_URL || 'http://127.0.0.1:8787';
 
-// Test accounts from seed data
-const TEST_ACCOUNTS = [
-  {
-    email: 'seainfo@seaedu.ac.in',
-    password: 'seainfo@seaedu.ac.in',
-    name: 'SEA College Admin',
-  },
-  {
-    email: 'seaeduinfo@seaedu.ac.in',
-    password: 'seaeduinfo@seaedu.ac.in',
-    name: 'SEA College Admin 2',
-  },
-  {
-    email: 'admin@freshtest1780937941574.edu',
-    password: 'admin@freshtest1780937941574.edu',
-    name: 'Test University Admin',
-  },
-];
-
 const COLORS = {
   reset: '\x1b[0m',
   green: '\x1b[32m',
@@ -58,10 +39,33 @@ async function checkDatabase() {
     const count = result.rows[0].count;
     
     log(`✅ Database connected (${count} users found)`, 'green');
-    return true;
+    return { success: true, count };
   } catch (error) {
     log(`❌ Database connection failed: ${error.message}`, 'red');
-    return false;
+    return { success: false, count: 0 };
+  } finally {
+    await client.end();
+  }
+}
+
+async function getAllUsers() {
+  const client = new Client({ connectionString: SSO_DB_URL });
+  
+  try {
+    await client.connect();
+    // Get all non-blocked users with their emails
+    const result = await client.query(
+      'SELECT email, is_blocked, id FROM users WHERE is_blocked = false ORDER BY email'
+    );
+    
+    return result.rows.map(row => ({
+      email: row.email,
+      password: row.email, // Password is set to email
+      id: row.id,
+    }));
+  } catch (error) {
+    log(`❌ Failed to fetch users: ${error.message}`, 'red');
+    return [];
   } finally {
     await client.end();
   }
@@ -128,22 +132,33 @@ async function runTests() {
   
   // Check prerequisites
   log('\n📋 Checking Prerequisites:', 'cyan');
-  const dbOk = await checkDatabase();
+  const dbCheck = await checkDatabase();
   const ssoOk = await checkSSOWorker();
   
-  if (!dbOk || !ssoOk) {
+  if (!dbCheck.success || !ssoOk) {
     log('\n❌ Prerequisites not met. Please fix the issues above and try again.', 'red');
     process.exit(1);
   }
 
+  // Fetch all users from database
+  log('\n📥 Fetching users from database...', 'cyan');
+  const testAccounts = await getAllUsers();
+  
+  if (testAccounts.length === 0) {
+    log('❌ No users found in database!', 'red');
+    log('💡 Run: npm run update-passwords to create test users', 'yellow');
+    process.exit(1);
+  }
+  
+  log(`✅ Found ${testAccounts.length} active users to test\n`, 'green');
+
   let passed = 0;
   let failed = 0;
 
-  // Test successful logins
-  log('\n✅ Testing Successful Logins:', 'cyan');
-  for (const account of TEST_ACCOUNTS) {
-    log(`\n  Testing: ${account.name}`, 'cyan');
-    log(`  Email: ${account.email}`, 'gray');
+  // Test successful logins for ALL users
+  log('✅ Testing Successful Logins:', 'cyan');
+  for (const account of testAccounts) {
+    log(`\n  Testing: ${account.email}`, 'cyan');
     
     const result = await testLogin(account.email, account.password, true);
     if (result.success) {
@@ -162,9 +177,12 @@ async function runTests() {
   // Test failed login scenarios
   log('\n❌ Testing Failed Login Scenarios:', 'cyan');
   
+  // Use first user for wrong password test
+  const firstUser = testAccounts[0];
+  
   // Wrong password
-  log(`\n  Testing: Wrong Password`, 'cyan');
-  const wrongPasswordResult = await testLogin(TEST_ACCOUNTS[0].email, 'wrongpassword', false);
+  log(`\n  Testing: Wrong Password (${firstUser.email})`, 'cyan');
+  const wrongPasswordResult = await testLogin(firstUser.email, 'wrongpassword', false);
   wrongPasswordResult.success ? passed++ : failed++;
 
   // Non-existent user
@@ -183,7 +201,7 @@ async function runTests() {
     const response = await fetch(`${SSO_API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: TEST_ACCOUNTS[0].email }),
+      body: JSON.stringify({ email: firstUser.email }),
     });
     
     if (!response.ok) {
