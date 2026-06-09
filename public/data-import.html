@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Import - University & College Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800">Data Import Center</h1>
+                    <p class="text-gray-600 mt-2">Import universities, colleges, and student data via Excel files</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <label class="text-sm font-medium text-gray-700 mr-2">Environment:</label>
+                        <select id="environment" class="border border-gray-300 rounded-md px-3 py-2 bg-white text-sm">
+                            <option value="local">Local (Docker) - SAFE TESTING</option>
+                            <option value="production">Production - ⚠️ LIVE DATA</option>
+                        </select>
+                    </div>
+                    <div id="envStatus" class="flex items-center">
+                        <i class="fas fa-circle text-green-500 mr-2"></i>
+                        <span class="text-sm text-gray-600">Local Environment - Safe Testing</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Universities Import -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="bg-blue-500 text-white p-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-university text-2xl mr-3"></i>
+                        <div>
+                            <h3 class="text-xl font-semibold">Universities</h3>
+                            <p class="text-blue-100 text-sm">Import university data</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="mb-4">
+                        <button onclick="downloadTemplate('universities')" 
+                                class="w-full bg-blue-100 text-blue-700 px-4 py-2 rounded-md hover:bg-blue-200 transition-colors mb-3">
+                            <i class="fas fa-download mr-2"></i>Download CSV Template
+                        </button>
+                        <input type="file" id="universitiesFile" accept=".csv,.json" class="hidden" 
+                               onchange="handleFileSelect('universities', this)">
+                        <button onclick="document.getElementById('universitiesFile').click()" 
+                                class="w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-upload mr-2"></i>Upload CSV File
+                        </button>
+                    </div>
+                    <div id="universitiesPreview" class="hidden">
+                        <h4 class="font-medium text-gray-700 mb-2">Preview:</h4>
+                        <div id="universitiesData" class="bg-gray-50 p-3 rounded text-sm max-h-32 overflow-y-auto"></div>
+                        <button onclick="importData('universities')" 
+                                class="w-full bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors mt-3">
+                            <i class="fas fa-check mr-2"></i>Import Universities
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colleges Import -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="bg-green-500 text-white p-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-building text-2xl mr-3"></i>
+                        <div>
+                            <h3 class="text-xl font-semibold">Colleges</h3>
+                            <p class="text-green-100 text-sm">Import college data</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="mb-4">
+                        <button onclick="downloadTemplate('colleges')" 
+                                class="w-full bg-green-100 text-green-700 px-4 py-2 rounded-md hover:bg-green-200 transition-colors mb-3">
+                            <i class="fas fa-download mr-2"></i>Download CSV Template
+                        </button>
+                        <input type="file" id="collegesFile" accept=".csv,.json" class="hidden" 
+                               onchange="handleFileSelect('colleges', this)">
+                        <button onclick="document.getElementById('collegesFile').click()" 
+                                class="w-full bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors">
+                            <i class="fas fa-upload mr-2"></i>Upload CSV File
+                        </button>
+                    </div>
+                    <div id="collegesPreview" class="hidden">
+                        <h4 class="font-medium text-gray-700 mb-2">Preview:</h4>
+                        <div id="collegesData" class="bg-gray-50 p-3 rounded text-sm max-h-32 overflow-y-auto"></div>
+                        <button onclick="importData('colleges')" 
+                                class="w-full bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors mt-3">
+                            <i class="fas fa-check mr-2"></i>Import Colleges
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students Import -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="bg-purple-500 text-white p-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-users text-2xl mr-3"></i>
+                        <div>
+                            <h3 class="text-xl font-semibold">Students</h3>
+                            <p class="text-purple-100 text-sm">Import student data</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <div class="mb-4">
+                        <button onclick="downloadTemplate('students')" 
+                                class="w-full bg-purple-100 text-purple-700 px-4 py-2 rounded-md hover:bg-purple-200 transition-colors mb-3">
+                            <i class="fas fa-download mr-2"></i>Download CSV Template
+                        </button>
+                        <input type="file" id="studentsFile" accept=".csv,.json" class="hidden" 
+                               onchange="handleFileSelect('students', this)">
+                        <button onclick="document.getElementById('studentsFile').click()" 
+                                class="w-full bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 transition-colors">
+                            <i class="fas fa-upload mr-2"></i>Upload CSV File
+                        </button>
+                    </div>
+                    <div id="studentsPreview" class="hidden">
+                        <h4 class="font-medium text-gray-700 mb-2">Preview:</h4>
+                        <div id="studentsData" class="bg-gray-50 p-3 rounded text-sm max-h-32 overflow-y-auto"></div>
+                        <button onclick="importData('students')" 
+                                class="w-full bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors mt-3">
+                            <i class="fas fa-check mr-2"></i>Import Students
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress and Results -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Import Progress & Results</h3>
+            
+            <!-- Progress Bar -->
+            <div id="progressSection" class="hidden mb-6">
+                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                    <span id="progressText">Processing...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                    <div id="progressBar" class="bg-blue-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsSection" class="hidden">
+                <div id="importResults"></div>
+            </div>
+
+            <!-- Instructions -->
+            <div id="instructions" class="text-gray-600">
+                <h4 class="font-medium mb-3">Instructions:</h4>
+                <ol class="list-decimal list-inside space-y-2 text-sm">
+                    <li><strong>Download Template:</strong> Click the "Download CSV Template" button for each data type to get the proper CSV format</li>
+                    <li><strong>Fill Data:</strong> Open the template in Excel, fill in your data, and save as CSV format</li>
+                    <li><strong>Upload File:</strong> Use "Upload CSV File" to select your completed CSV file</li>
+                    <li><strong>Preview:</strong> Review the parsed data in the preview section</li>
+                    <li><strong>Import:</strong> Click the import button to process the data</li>
+                    <li><strong>Environment:</strong> Use "Local" for testing with Docker Supabase, "Production" for live data</li>
+                </ol>
+                
+                <div class="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-400">
+                    <div class="flex">
+                        <i class="fas fa-exclamation-triangle text-yellow-400 mr-3 mt-1"></i>
+                        <div>
+                            <h4 class="font-medium text-yellow-800">Important Notes:</h4>
+                            <ul class="text-sm text-yellow-700 mt-2 space-y-1">
+                                <li>• Import universities first, then colleges, then students</li>
+                                <li>• Currently using CSV format (Excel support coming soon)</li>
+                                <li>• You can create data in Excel and save as CSV</li>
+                                <li>• Default password for all students: <code class="bg-yellow-200 px-1 rounded">rareminds123!</code></li>
+                                <li>• Students will need to change passwords on first login</li>
+                                <li>• Email verification is automatically set to true (no verification required)</li>
+                                <li>• Make sure college names and university names match exactly in the data</li>
+                                <li>• Test with local environment first before using production</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div id="loadingModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-sm mx-4">
+            <div class="flex items-center">
+                <i class="fas fa-spinner fa-spin text-blue-500 text-2xl mr-3"></i>
+                <div>
+                    <h3 class="font-medium">Processing...</h3>
+                    <p class="text-sm text-gray-600" id="loadingText">Please wait while we import your data</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = {};
+
+        // Environment selection
+        document.getElementById('environment').addEventListener('change', function() {
+            const env = this.value;
+            const status = document.getElementById('envStatus');
+            const statusText = status.querySelector('span');
+            const statusIcon = status.querySelector('i');
+            
+            if (env === 'local') {
+                statusIcon.className = 'fas fa-circle text-green-500 mr-2';
+                statusText.textContent = 'Local Environment - Safe Testing';
+            } else {
+                statusIcon.className = 'fas fa-circle text-red-500 mr-2';
+                statusText.textContent = 'Production Environment - LIVE DATA';
+                
+                // Show warning for production
+                showNotification('⚠️ Production mode selected! This will modify live data. Use local mode for testing.', 'error');
+            }
+        });
+
+        // Download template function
+        async function downloadTemplate(dataType) {
+            try {
+                showLoading('Generating template...');
+                const response = await fetch(`/api/data-import?action=template&dataType=${dataType}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to generate template');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${dataType}-template.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                hideLoading();
+                showNotification(`Template for ${dataType} downloaded successfully!`, 'success');
+            } catch (error) {
+                hideLoading();
+                showNotification(`Failed to download template: ${error.message}`, 'error');
+            }
+        }
+
+        // Handle file selection
+        function handleFileSelect(dataType, input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            showLoading('Reading file...');
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let jsonData;
+                    
+                    if (file.name.endsWith('.csv')) {
+                        // Parse CSV file
+                        const csvText = e.target.result;
+                        jsonData = parseCSV(csvText);
+                    } else if (file.name.endsWith('.json')) {
+                        // Parse JSON file
+                        jsonData = JSON.parse(e.target.result);
+                    } else {
+                        throw new Error('Unsupported file format. Please upload CSV or JSON files.');
+                    }
+
+                    currentData[dataType] = {
+                        file: file,
+                        data: jsonData
+                    };
+
+                    displayPreview(dataType, jsonData);
+                    hideLoading();
+                    showNotification(`File loaded successfully! ${jsonData.length} records found.`, 'success');
+                } catch (error) {
+                    hideLoading();
+                    showNotification(`Failed to read file: ${error.message}`, 'error');
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        // Parse CSV content
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length < 2) return [];
+            
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            
+            return lines.slice(1).map(line => {
+                const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                return row;
+            });
+        }
+
+        // Display data preview
+        function displayPreview(dataType, data) {
+            const previewDiv = document.getElementById(`${dataType}Preview`);
+            const dataDiv = document.getElementById(`${dataType}Data`);
+            
+            if (data.length === 0) {
+                dataDiv.innerHTML = '<p class="text-gray-500">No data found in file</p>';
+                return;
+            }
+
+            const headers = Object.keys(data[0]);
+            const preview = data.slice(0, 3); // Show first 3 rows
+            
+            let html = `<div class="text-xs"><strong>Columns:</strong> ${headers.join(', ')}</div>`;
+            html += `<div class="mt-2"><strong>Sample Data:</strong></div>`;
+            
+            preview.forEach((row, index) => {
+                html += `<div class="mt-1"><strong>Row ${index + 1}:</strong> ${headers.slice(0, 3).map(h => `${h}: ${row[h] || 'N/A'}`).join(', ')}...</div>`;
+            });
+            
+            html += `<div class="mt-2 text-blue-600"><strong>Total Records: ${data.length}</strong></div>`;
+            
+            dataDiv.innerHTML = html;
+            previewDiv.classList.remove('hidden');
+        }
+
+        // Import data function
+        async function importData(dataType) {
+            if (!currentData[dataType]) {
+                showNotification('Please select a file first', 'error');
+                return;
+            }
+
+            const environment = document.getElementById('environment').value;
+            
+            // Confirm production import
+            if (environment === 'production') {
+                const confirmed = confirm(`
+🚨 PRODUCTION ENVIRONMENT WARNING 🚨
+
+You are about to import data to your LIVE PRODUCTION databases.
+This will create REAL data that affects your live application.
+
+Are you absolutely sure you want to proceed?
+
+- This action CANNOT be undone
+- Data will be visible to all users immediately  
+- Consider testing in local environment first
+
+Type 'CONFIRM PRODUCTION' in the prompt if you're certain:
+                `);
+                
+                if (!confirmed) {
+                    return;
+                }
+                
+                const confirmText = prompt('Type "CONFIRM PRODUCTION" to proceed:');
+                if (confirmText !== 'CONFIRM PRODUCTION') {
+                    showNotification('Production import cancelled. Use local environment for testing.', 'info');
+                    return;
+                }
+            }
+
+            try {
+                showProgress(true);
+                updateProgress('Uploading file...', 10);
+                
+                const formData = new FormData();
+                formData.append('file', currentData[dataType].file);
+                formData.append('dataType', dataType);
+                
+                const response = await fetch(`/api/data-import?env=${environment}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                updateProgress('Processing data...', 50);
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || 'Import failed');
+                }
+
+                updateProgress('Import completed!', 100);
+                
+                setTimeout(() => {
+                    showProgress(false);
+                    displayResults(result, dataType);
+                    showNotification(result.message, 'success');
+                }, 1000);
+
+            } catch (error) {
+                showProgress(false);
+                showNotification(`Import failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Display import results
+        function displayResults(result, dataType) {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsDiv = document.getElementById('importResults');
+            
+            let html = `<div class="mb-4">
+                <h4 class="font-medium text-lg text-gray-800 mb-2">Import Results for ${dataType}</h4>
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        <span class="text-green-700">${result.message}</span>
+                    </div>
+                </div>
+            </div>`;
+
+            if (result.data && result.data.length > 0) {
+                const successful = result.data.filter(item => item.success).length;
+                const failed = result.data.filter(item => !item.success).length;
+                
+                html += `<div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div class="text-green-700 font-medium">Successful</div>
+                        <div class="text-2xl font-bold text-green-600">${successful}</div>
+                    </div>
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <div class="text-red-700 font-medium">Failed</div>
+                        <div class="text-2xl font-bold text-red-600">${failed}</div>
+                    </div>
+                </div>`;
+
+                if (failed > 0) {
+                    html += '<div class="bg-red-50 border border-red-200 rounded-lg p-4">';
+                    html += '<h5 class="font-medium text-red-800 mb-2">Failed Records:</h5>';
+                    html += '<div class="max-h-40 overflow-y-auto text-sm">';
+                    
+                    result.data.filter(item => !item.success).forEach(item => {
+                        html += `<div class="mb-2 p-2 bg-red-100 rounded">
+                            <div class="font-medium">${item.data?.name || item.data?.email || 'Unknown'}</div>
+                            <div class="text-red-600">${item.error}</div>
+                        </div>`;
+                    });
+                    
+                    html += '</div></div>';
+                }
+            }
+
+            resultsDiv.innerHTML = html;
+            resultsSection.classList.remove('hidden');
+            document.getElementById('instructions').classList.add('hidden');
+        }
+
+        // Progress functions
+        function showProgress(show) {
+            const section = document.getElementById('progressSection');
+            if (show) {
+                section.classList.remove('hidden');
+            } else {
+                section.classList.add('hidden');
+            }
+        }
+
+        function updateProgress(text, percent) {
+            document.getElementById('progressText').textContent = text;
+            document.getElementById('progressPercent').textContent = `${percent}%`;
+            document.getElementById('progressBar').style.width = `${percent}%`;
+        }
+
+        // Loading modal functions
+        function showLoading(text = 'Processing...') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingModal').classList.remove('hidden');
+            document.getElementById('loadingModal').classList.add('flex');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingModal').classList.add('hidden');
+            document.getElementById('loadingModal').classList.remove('flex');
+        }
+
+        // Notification function
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 max-w-sm p-4 rounded-lg shadow-lg z-50 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${
+                        type === 'success' ? 'fa-check-circle' :
+                        type === 'error' ? 'fa-exclamation-circle' :
+                        'fa-info-circle'
+                    } mr-2"></i>
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-4">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

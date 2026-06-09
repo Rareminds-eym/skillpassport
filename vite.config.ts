@@ -34,7 +34,7 @@ export default defineConfig({
   build: {
     sourcemap: false,
     minify: 'esbuild',
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 1500, // Increase to 1.5MB to be more realistic
     rollupOptions: {
       maxParallelFileOps: 3,
       output: {

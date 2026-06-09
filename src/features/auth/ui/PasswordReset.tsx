@@ -58,11 +58,7 @@ interface PasswordResetState {
   canResend: boolean;
 }
 
-interface ApiResponse {
-  success: boolean;
-  error?: string;
-  message?: string;
-}
+
 
 const PasswordReset = () => {
   const navigate = useNavigate();
@@ -151,15 +147,6 @@ const PasswordReset = () => {
           ...prev,
           loading: false,
           error: errorMessage
-        }));
-        return;
-      }
-
-      if (!response.ok || !apiResult.success) {
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: apiResult.error || 'Failed to send reset code'
         }));
         return;
       }

@@ -13,6 +13,8 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:8788',
+  'http://127.0.0.1:8788',
+  'https://skillpassport.com:3002',
   'https://sso-auth.skillpassport.pages.dev',
   'https://skillpassport.pages.dev',
   'https://skillpassport.rareminds.in',
@@ -68,4 +70,30 @@ export function addCorsHeaders(response: Response, request?: Request): Response 
     statusText: response.statusText,
     headers: newHeaders,
   });
+}
+
+/**
+ * Generic request handler with CORS support
+ */
+export async function handleRequest(
+  context: any,
+  handler: (params: { request: Request; env: any; ctx: any }) => Promise<Response>
+): Promise<Response> {
+  try {
+    const { request, env, ctx } = context;
+    const response = await handler({ request, env, ctx });
+    return addCorsHeaders(response);
+  } catch (error) {
+    console.error('Request handler error:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      }), 
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      }
+    );
+  }
 }
