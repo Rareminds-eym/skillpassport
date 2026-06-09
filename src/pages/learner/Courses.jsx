@@ -976,9 +976,12 @@ const Courses = () => {
                         transition={{ duration: 0.3 }}
                       />
                     ) : (
-                      <div className={`w-full h-full flex flex-col items-center justify-center bg-slate-100 ${!canAccessCourse(course) ? 'opacity-60' : ''}`}>
-                        <BookOpen className="h-12 w-12 text-slate-400 mb-2" />
-                        <span className="text-slate-500 text-xs font-medium">No Image</span>
+                      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 ${!canAccessCourse(course) ? 'opacity-60' : ''}`}>
+                        <img
+                          src="/assets/HomePage/RMLogo.webp"
+                          alt="RareMinds"
+                          className="w-20 h-20 object-contain opacity-40"
+                        />
                       </div>
                     )}
                     
@@ -1195,9 +1198,12 @@ const Courses = () => {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
-                            <BookOpen className="h-10 w-10 text-slate-400 mb-1" />
-                            <span className="text-slate-500 text-xs font-medium">No Image</span>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                            <img
+                              src="/assets/HomePage/RMLogo.webp"
+                              alt="RareMinds"
+                              className="w-16 h-16 object-contain opacity-40"
+                            />
                           </div>
                         )}
                         {/* Badges */}
