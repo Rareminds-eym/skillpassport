@@ -1381,29 +1381,31 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               });
               
               for (let i = 1; i <= 2; i++) {
-                // Try multiple possible key formats due to CSV header transformation
-                const possibleKeys = [
-                  `education${i}degree`,           // education1degree
-                  `education_${i}_degree`,         // education_1_degree (if not transformed)
-                  `education${i}Degree`,           // camelCase variant
-                ];
+                const degreeKey = `education${i}degree`;
+                const levelKey = `education${i}level`;
                 
-                let degreeValue = null;
-                let degreeKey = null;
+                // Get both degree and level
+                let degreeValue = learner[degreeKey];
+                const levelValue = learner[levelKey];
                 
-                for (const key of possibleKeys) {
-                  if (learner[key]) {
-                    degreeValue = learner[key];
-                    degreeKey = key;
-                    break;
+                console.log(`[CSV] Education ${i} - degree: "${degreeValue}", level: "${levelValue}"`);
+                
+                // WORKAROUND: If degree is empty but level has data that looks like a degree
+                if ((!degreeValue || degreeValue.trim() === '') && levelValue && levelValue.trim() !== '') {
+                  const levelLower = levelValue.toLowerCase();
+                  if (levelLower.includes('b.tech') || levelLower.includes('bachelor') || 
+                      levelLower.includes('master') || levelLower.includes('m.tech') ||
+                      levelLower.includes('engineering') || levelLower.includes('diploma') ||
+                      levelLower.includes('degree') || levelLower.includes('12th') ||
+                      levelLower.includes('10th') || levelLower.includes('higher secondary')) {
+                    console.log(`[CSV] ⚠️  Data misaligned - using level as degree: "${levelValue}"`);
+                    degreeValue = levelValue;
                   }
                 }
                 
-                console.log(`[CSV] Education ${i} - tried keys:`, possibleKeys, `found: ${degreeKey}="${degreeValue}"`);
-                
                 if (degreeValue && typeof degreeValue === 'string' && degreeValue.trim()) {
                   const edu = {
-                    level: learner[`education${i}level`]?.trim() || null,
+                    level: learner[levelKey]?.trim() || null,
                     degree: degreeValue.trim(),
                     department: learner[`education${i}department`]?.trim() || null,
                     university: learner[`education${i}university`]?.trim() || null,
@@ -1413,7 +1415,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   education.push(edu);
                   console.log(`[CSV] ✅ Extracted education ${i}:`, edu);
                 } else {
-                  console.log(`[CSV] ⚠️  Skipping education ${i}: no degree found (value: "${degreeValue}")`);
+                  console.log(`[CSV] ⚠️  Skipping education ${i}: no degree (degree: "${degreeValue}", level: "${levelValue}")`);
                 }
               }
 
