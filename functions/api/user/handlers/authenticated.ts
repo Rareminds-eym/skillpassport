@@ -524,32 +524,48 @@ export async function handleCreateLearner(request: Request, env: any, user?: { i
       // Add education if provided
       if (learner.education && learner.education.length > 0) {
         console.log('[CREATE_LEARNER] Processing', learner.education.length, 'education records');
+        console.log('[CREATE_LEARNER] Education data received:', JSON.stringify(learner.education, null, 2));
+        
         for (const edu of learner.education) {
+          console.log('[CREATE_LEARNER] Processing education record:', JSON.stringify(edu, null, 2));
+          
           if (edu.degree) {
             console.log('[CREATE_LEARNER] Inserting education:', edu.degree);
-            const { error: eduError } = await supabaseAdmin
+            
+            const educationData = {
+              learner_id: learnerRecord.id,
+              level: edu.level || null,
+              degree: edu.degree,
+              department: edu.department || null,
+              university: edu.university || null,
+              year_of_passing: edu.year_of_passing || null,
+              cgpa: edu.cgpa || null,
+              approval_status: 'approved',
+              enabled: true,
+            };
+            
+            console.log('[CREATE_LEARNER] Education data to insert:', JSON.stringify(educationData, null, 2));
+            
+            const { data: insertedEdu, error: eduError } = await supabaseAdmin
               .from('education')
-              .insert({
-                learner_id: learnerRecord.id,
-                level: edu.level || null,
-                degree: edu.degree,
-                department: edu.department || null,
-                university: edu.university || null,
-                year_of_passing: edu.year_of_passing || null,
-                cgpa: edu.cgpa || null,
-                approval_status: 'approved',
-                enabled: true,
-              });
+              .insert(educationData)
+              .select();
+              
             if (!eduError) {
               richDataResults.education++;
-              console.log('[CREATE_LEARNER] ✅ Education inserted successfully:', edu.degree);
+              console.log('[CREATE_LEARNER] ✅ Education inserted successfully:', edu.degree, 'ID:', insertedEdu?.[0]?.id);
             } else {
               console.error(`[CREATE_LEARNER] ❌ Failed to add education "${edu.degree}":`, eduError.message, eduError);
+              console.error(`[CREATE_LEARNER] Failed education data was:`, JSON.stringify(educationData, null, 2));
             }
           } else {
-            console.warn('[CREATE_LEARNER] Skipping education with no degree:', edu);
+            console.warn('[CREATE_LEARNER] ⚠️  Skipping education with no degree:', JSON.stringify(edu, null, 2));
           }
         }
+        
+        console.log('[CREATE_LEARNER] Education processing complete. Added:', richDataResults.education);
+      } else {
+        console.log('[CREATE_LEARNER] No education data provided or empty array');
       }
 
       console.log('[CREATE_LEARNER] Rich data added:', richDataResults);

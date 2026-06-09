@@ -1282,6 +1282,9 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
 
               // Extract rich profile data
+              console.log(`[CSV] Row ${rowNum} - All available keys:`, Object.keys(learner).sort());
+              console.log(`[CSV] Row ${rowNum} - Education-related keys:`, Object.keys(learner).filter(k => k.includes('education')).sort());
+              
               const projects = [];
               for (let i = 1; i <= 2; i++) {
                 if (learner[`project${i}title`] && learner[`project${i}title`].trim()) {
@@ -1361,18 +1364,53 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
 
               const education = [];
+              
+              // Debug: Log all education-related keys available
+              const educationKeys = Object.keys(learner).filter(k => k.includes('education'));
+              console.log(`[CSV] Available education keys:`, educationKeys);
+              console.log(`[CSV] Sample education values:`, {
+                'education1level': learner['education1level'],
+                'education1degree': learner['education1degree'],
+                'education1department': learner['education1department'],
+                'education1university': learner['education1university'],
+                'education1yearofpassing': learner['education1yearofpassing'],
+                'education1cgpa': learner['education1cgpa'],
+              });
+              
               for (let i = 1; i <= 2; i++) {
-                if (learner[`education${i}degree`] && learner[`education${i}degree`].trim()) {
+                // Try multiple possible key formats due to CSV header transformation
+                const possibleKeys = [
+                  `education${i}degree`,           // education1degree
+                  `education_${i}_degree`,         // education_1_degree (if not transformed)
+                  `education${i}Degree`,           // camelCase variant
+                ];
+                
+                let degreeValue = null;
+                let degreeKey = null;
+                
+                for (const key of possibleKeys) {
+                  if (learner[key]) {
+                    degreeValue = learner[key];
+                    degreeKey = key;
+                    break;
+                  }
+                }
+                
+                console.log(`[CSV] Education ${i} - tried keys:`, possibleKeys, `found: ${degreeKey}="${degreeValue}"`);
+                
+                if (degreeValue && typeof degreeValue === 'string' && degreeValue.trim()) {
                   const edu = {
                     level: learner[`education${i}level`]?.trim() || null,
-                    degree: learner[`education${i}degree`].trim(),
+                    degree: degreeValue.trim(),
                     department: learner[`education${i}department`]?.trim() || null,
                     university: learner[`education${i}university`]?.trim() || null,
                     year_of_passing: learner[`education${i}yearofpassing`]?.trim() || null,
                     cgpa: learner[`education${i}cgpa`]?.trim() || null,
                   };
                   education.push(edu);
-                  console.log(`[CSV] Extracted education ${i}:`, edu);
+                  console.log(`[CSV] ✅ Extracted education ${i}:`, edu);
+                } else {
+                  console.log(`[CSV] ⚠️  Skipping education ${i}: no degree found (value: "${degreeValue}")`);
                 }
               }
 
@@ -1473,6 +1511,9 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   }
                   if (data.certifications && data.certifications.length > 0) {
                     console.log(`[CSV] Certifications being sent:`, data.certifications);
+                  }
+                  if (data.education && data.education.length > 0) {
+                    console.log(`[CSV] Education being sent:`, data.education);
                   }
                   if (data.education && data.education.length > 0) {
                     console.log(`[CSV] Education being sent:`, data.education);
