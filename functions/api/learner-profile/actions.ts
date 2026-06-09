@@ -792,7 +792,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           program_section_id, semester, section, expectedGraduationDate, enrollmentDate, user_id,
           approval_status, created_at, updated_at, gap_in_studies, gap_years, gap_reason,
           work_experience, aadhar_number, backlogs_history, current_backlogs, interests,
-          languages, hobbies,
+          languages, hobbies, learner_type,
           school:organizations!learners_school_id_fkey(id, name, code, city, state, organization_type),
           college:organizations!learners_college_id_fkey(id, name, code, city, state, organization_type),
           universityOrganization:organizations!learners_universityid_fkey(id, name, code, city, state, organization_type),

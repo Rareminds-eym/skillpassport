@@ -526,6 +526,7 @@ export const getlearnerByEmail = async (email: string): Promise<ServiceResponse>
 
       users: data.users || null,
       userRole: data.users?.role || null,
+      learner_type: data.learner_type || null,
 
       school_id: data.school_id,
       university_college_id: data.university_college_id,

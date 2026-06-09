@@ -5,6 +5,9 @@
 
 import { apiPost } from '@/shared/api/apiClient';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('LearnerPipelineService');
 
 export class LearnerPipelineService {
   /**
@@ -18,9 +21,18 @@ export class LearnerPipelineService {
       const result = await apiPost('/learners/pipeline', {
         action: 'get-pipeline-status', learnerId, learnerEmail,
       });
-      return result?.data || [];
+      // Backend returns array directly via apiSuccess(data, ...)
+      // result.data contains the actual array
+      const statusArray = result?.data || [];
+      if (!Array.isArray(statusArray)) {
+        const error = new Error('Invalid response format: expected array');
+        error.details = { type: typeof statusArray, data: statusArray };
+        logger.error('getlearnerPipelineStatus - Invalid response format:', error.details);
+        throw error;
+      }
+      return statusArray;
     } catch (error) {
-      console.error('Error in getlearnerPipelineStatus:', error);
+      logger.error('Error in getlearnerPipelineStatus:', error);
       throw error;
     }
   }
@@ -35,9 +47,17 @@ export class LearnerPipelineService {
       const result = await apiPost('/learners/pipeline', {
         action: 'get-pipeline-activities', learnerId,
       });
-      return result?.data || [];
+      // Backend returns array directly via apiSuccess(data, ...)
+      const activitiesArray = result?.data || [];
+      if (!Array.isArray(activitiesArray)) {
+        const error = new Error('Invalid response format: expected array');
+        error.details = { type: typeof activitiesArray, data: activitiesArray };
+        logger.error('getlearnerPipelineActivities - Invalid response format:', error.details);
+        throw error;
+      }
+      return activitiesArray;
     } catch (error) {
-      console.error('Error in getlearnerPipelineActivities:', error);
+      logger.error('Error in getlearnerPipelineActivities:', error);
       throw error;
     }
   }
@@ -52,9 +72,17 @@ export class LearnerPipelineService {
       const result = await apiPost('/learners/pipeline', {
         action: 'get-interviews', learnerId,
       });
-      return result?.data || [];
+      // Backend returns array directly via apiSuccess(data, ...)
+      const interviewsArray = result?.data || [];
+      if (!Array.isArray(interviewsArray)) {
+        const error = new Error('Invalid response format: expected array');
+        error.details = { type: typeof interviewsArray, data: interviewsArray };
+        logger.error('getlearnerInterviews - Invalid response format:', error.details);
+        throw error;
+      }
+      return interviewsArray;
     } catch (error) {
-      console.error('Error in getlearnerInterviews:', error);
+      logger.error('Error in getlearnerInterviews:', error);
       throw error;
     }
   }
@@ -71,9 +99,24 @@ export class LearnerPipelineService {
       const result = await apiPost('/learners/pipeline', {
         action: 'get-applications-with-pipeline', learnerId, learnerEmail,
       });
-      return result?.data || [];
+      
+      // Backend wraps response in { success, data, error, meta } via apiSuccess()
+      // result.data contains the actual array
+      logger.info('Raw result:', { hasData: !!result?.data, dataType: typeof result?.data, isArray: Array.isArray(result?.data) });
+      
+      // Ensure we return an array
+      const applicationsArray = result?.data || [];
+      if (!Array.isArray(applicationsArray)) {
+        const error = new Error('Invalid response format: expected array');
+        error.details = { type: typeof applicationsArray, data: applicationsArray };
+        logger.error('getlearnerApplicationsWithPipeline - Invalid response format:', error.details);
+        throw error;
+      }
+      
+      logger.info('Returning applications array:', { count: applicationsArray.length });
+      return applicationsArray;
     } catch (error) {
-      console.error('Error in getlearnerApplicationsWithPipeline:', error);
+      logger.error('Error in getlearnerApplicationsWithPipeline:', error);
       throw error;
     }
   }
@@ -105,7 +148,7 @@ export class LearnerPipelineService {
 
       return stageChanges;
     } catch (error) {
-      console.error('Error in getStageChangeNotifications:', error);
+      logger.error('Error in getStageChangeNotifications:', error);
       throw error;
     }
   }

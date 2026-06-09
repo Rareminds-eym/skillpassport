@@ -42,7 +42,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         else if (learnerEmail) query = query.eq('candidate_email', learnerEmail);
         const { data, error } = await query;
         if (error) return apiError(500, 'DB_ERROR', error.message, context.request, { startTime });
-        return apiSuccess({ data: data || [] }, context.request, { startTime });
+        return apiSuccess(data || [], context.request, { startTime });
       }
 
       case 'get-pipeline-activities': {
@@ -50,13 +50,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: candidates, error: candidatesError } = await supabase
           .from('pipeline_candidates').select('id').eq('learner_id', learnerId);
         if (candidatesError) return apiError(500, 'DB_ERROR', candidatesError.message, context.request, { startTime });
-        if (!candidates || candidates.length === 0) return apiSuccess({ data: [] }, context.request, { startTime });
+        if (!candidates || candidates.length === 0) return apiSuccess([], context.request, { startTime });
         const candidateIds = candidates.map((c: any) => c.id);
         const { data: activities, error: activitiesError } = await supabase
           .from('pipeline_activities').select('*').in('pipeline_candidate_id', candidateIds)
           .order('created_at', { ascending: false });
         if (activitiesError) return apiError(500, 'DB_ERROR', activitiesError.message, context.request, { startTime });
-        return apiSuccess({ data: activities || [] }, context.request, { startTime });
+        return apiSuccess(activities || [], context.request, { startTime });
       }
 
       case 'get-interviews': {
@@ -66,7 +66,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .in('status', ['scheduled', 'confirmed', 'pending'])
           .order('date', { ascending: true });
         if (error) return apiError(500, 'DB_ERROR', error.message, context.request, { startTime });
-        return apiSuccess({ data: data || [] }, context.request, { startTime });
+        return apiSuccess(data || [], context.request, { startTime });
       }
 
       case 'get-applications-with-pipeline': {
@@ -107,7 +107,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return { ...app, pipeline_status: pipelineStatus, interviews: jobInterviews || [], has_pipeline_status: !!pipelineStatus, pipeline_stage: pipelineStatus?.stage || null, pipeline_stage_changed_at: pipelineStatus?.stage_changed_at || null, rejection_reason: pipelineStatus?.rejection_reason || null, next_action: pipelineStatus?.next_action || null, next_action_date: pipelineStatus?.next_action_date || null, pipeline_recruiter_id: pipelineStatus?.assigned_to || pipelineStatus?.opportunities?.recruiter_id || null };
         });
 
-        return apiSuccess({ data: combinedData }, context.request, { startTime });
+        return apiSuccess(combinedData, context.request, { startTime });
       }
 
       case 'get-stage-change-notifications': {
@@ -115,7 +115,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: candidates, error: candidatesError } = await supabase
           .from('pipeline_candidates').select('id').eq('learner_id', learnerId);
         if (candidatesError) return apiError(500, 'DB_ERROR', candidatesError.message, context.request, { startTime });
-        if (!candidates || candidates.length === 0) return apiSuccess({ data: [] }, context.request, { startTime });
+        if (!candidates || candidates.length === 0) return apiSuccess([], context.request, { startTime });
         const candidateIds = candidates.map((c: any) => c.id);
         const { data: activities, error: activitiesError } = await supabase
           .from('pipeline_activities').select('*').in('pipeline_candidate_id', candidateIds)
@@ -125,7 +125,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .filter((a: any) => a.activity_type === 'stage_change')
           .slice(0, limit)
           .map((a: any) => ({ id: a.id, from_stage: a.from_stage, to_stage: a.to_stage, changed_at: a.created_at, changed_by: a.performed_by, details: a.activity_details, type: 'stage_change' }));
-        return apiSuccess({ data: stageChanges }, context.request, { startTime });
+        return apiSuccess(stageChanges, context.request, { startTime });
       }
 
       default:
