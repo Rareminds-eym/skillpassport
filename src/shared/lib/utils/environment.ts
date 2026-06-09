@@ -29,13 +29,14 @@ const BUILD_MODE = import.meta.env.MODE;
 
 /**
  * All recognised environment names.
- * "unknown" is returned when the build mode is not one of the three
+ * "unknown" is returned when the build mode is not one of the four
  * well-known values — never falls back silently to "development".
  */
 export type EnvironmentName =
   | 'production'
   | 'staging'
   | 'development'
+  | 'demo'
   | 'localhost'
   | 'unknown';
 
@@ -86,6 +87,14 @@ export const isProduction = (): boolean => BUILD_MODE === 'production';
  */
 export const isStaging = (): boolean => BUILD_MODE === 'staging';
 
+/**
+ * Returns `true` when Vite built the app in **demo** mode
+ * (`MODE === "demo"`).
+ *
+ * @returns `true` if `MODE === "demo"`.
+ */
+export const isDemo = (): boolean => BUILD_MODE === 'demo';
+
 // ---------------------------------------------------------------------------
 // Runtime hostname checks (browser-only)
 // ---------------------------------------------------------------------------
@@ -123,18 +132,20 @@ export const isLocalhost = (): boolean => {
  *
  * Priority order:
  * 1. `"production"`  — build mode is production
- * 2. `"staging"`     — build mode is staging
- * 3. `"development"` — build mode is development
- * 4. `"localhost"`   — runtime hostname is localhost (any build mode)
- * 5. `"unknown"`     — none of the above matched
+ * 2. `"demo"`        — build mode is demo
+ * 3. `"staging"`     — build mode is staging
+ * 4. `"development"` — build mode is development
+ * 5. `"localhost"`   — runtime hostname is localhost (any build mode)
+ * 6. `"unknown"`     — none of the above matched
  *
- * `"localhost"` is placed *after* the three build-mode checks so that a
+ * `"localhost"` is placed *after* the build-mode checks so that a
  * production build served locally still reports `"production"`.
  *
  * @returns One of the {@link EnvironmentName} literals.
  */
 export const getEnvironment = (): EnvironmentName => {
   if (isProduction()) return 'production';
+  if (isDemo()) return 'demo';
   if (isStaging()) return 'staging';
   if (isDevelopment()) return 'development';
   if (isLocalhost()) return 'localhost';

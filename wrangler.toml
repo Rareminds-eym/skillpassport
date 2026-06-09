@@ -4,6 +4,7 @@
 name = "skill-passport-portal"
 compatibility_date = "2026-05-25"
 compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
 
 # ============================================================================
 # R2 BUCKET BINDING
@@ -26,21 +27,21 @@ bucket_name = "skill-echosystem"
 
 [[services]]
 binding = "PAYMENT_WORKER"
-service = "razorpay-api"
+service = "razorpay-api-production"
 entrypoint = "PaymentService"
 
 # SSO worker — authentication service, zero-latency internal routing
 # RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]
 binding = "SSO_SERVICE"
-service = "sso-api"
+service = "sso-api-production"
 entrypoint = "SsoWorker"
 
 # Realtime worker — WebSocket hub, zero-latency internal routing
 # RPC-style binding (WorkerEntrypoint) for WebSocket upgrade delegation
 [[services]]
 binding = "REALTIME_WORKER"
-service = "realtime-worker"
+service = "realtime-worker-production"
 
 # ============================================================================
 # QUEUE PRODUCER — Realtime Events
@@ -55,7 +56,7 @@ queue = "realtime-events-queue"
 # RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]
 binding = "EMAIL_SERVICE"
-service = "shared-email-api"
+service = "shared-email-api-production"
 entrypoint = "EmailService"
 
 # ============================================================================
@@ -70,16 +71,21 @@ entrypoint = "EmailService"
 # ──────────────────────────────────────────────────────────────────────────
 # NON-SECRET CONFIGURATION 
 # ──────────────────────────────────────────────────────────────────────────
+# ENVIRONMENT is set per-branch in Cloudflare Pages dashboard:
+#   main branch    → ENVIRONMENT=production
+#   staging branch → ENVIRONMENT=staging
+#   demo branch    → ENVIRONMENT=demo
+ENVIRONMENT = "production"
 
 # SSO / Auth Configuration (Pages Functions)
-SSO_DOMAIN = "https://sso-api.dark-mode-d021.workers.dev/"
+SSO_DOMAIN = "https://sso-api-production.dark-mode-d021.workers.dev/"
 
 # Supabase Configuration (Pages Functions)
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Pages Functions)
-EMAIL_WORKER_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
-EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
+EMAIL_WORKER_URL = "https://shared-email-api-production.dark-mode-d021.workers.dev"
+EMBEDDING_API_URL = "https://embedding-worker-production.dark-mode-d021.workers.dev"
 
 # Cloudflare R2 Configuration (Pages Functions)
 CLOUDFLARE_R2_BUCKET_NAME = "skill-echosystem"
@@ -91,15 +97,15 @@ CLOUDFLARE_R2_BUCKET_NAME = "skill-echosystem"
 # Only include non-sensitive configuration here.
 
 # SSO / Auth (Frontend)
-VITE_SSO_URL = "https://sso-api.dark-mode-d021.workers.dev/"
+VITE_SSO_URL = "https://sso-api-production.dark-mode-d021.workers.dev/"
 
 # Supabase (Frontend)
 VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Frontend)
-VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
-VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
-VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
+VITE_EMAIL_API_URL = "https://shared-email-api-production.dark-mode-d021.workers.dev"
+VITE_EMBEDDING_API_URL = "https://embedding-worker-production.dark-mode-d021.workers.dev"
+VITE_PAYMENTS_API_URL = "https://razorpay-api-production.dark-mode-d021.workers.dev/"
 
 # Analytics 
 VITE_GTM_ID = "GTM-M2N3952J"
