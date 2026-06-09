@@ -88,7 +88,8 @@ export const useProfileCompletion = (learnerId, enabled = true) => {
   };
 
   // Check if profile meets minimum requirements for job applications
-  const canApplyToJobs = profileStatus.isComplete || profileStatus.completionPercentage >= 80;
+  // Reduced threshold from 80% to 70% to be more lenient
+  const canApplyToJobs = profileStatus.isComplete || profileStatus.completionPercentage >= 70;
 
   return {
     ...profileStatus,
@@ -98,7 +99,7 @@ export const useProfileCompletion = (learnerId, enabled = true) => {
     canApplyToJobs,
     // Convenience methods
     isProfileComplete: profileStatus.isComplete,
-    needsProfileCompletion: !profileStatus.isComplete && profileStatus.completionPercentage < 80
+    needsProfileCompletion: !profileStatus.isComplete && profileStatus.completionPercentage < 70
   };
 };
 

@@ -512,10 +512,8 @@ const Opportunities = () => {
 
   // Determine if we should fetch opportunities based on learner type and active tab
   const shouldFetchOpportunities = React.useMemo(() => {
-    if (!learnerData) return false;
-    // Fetch opportunities for high school, college learners, and learners when on my-jobs tab
-    return (learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && activeTab === 'my-jobs';
-  }, [learnerData, learnerType.isHighSchool, learnerType.isUniversityLearner, learnerType.isLearner, activeTab]);
+    return activeTab === 'my-jobs';
+  }, [activeTab]);
 
   const {
     opportunities,
@@ -652,6 +650,14 @@ const Opportunities = () => {
         userEmail
       );
 
+      // Ensure applicationsData is an array
+      if (!Array.isArray(applicationsData)) {
+        logger.error('applicationsData is not an array:', applicationsData);
+        setApplications([]);
+        setFilteredApplications([]);
+        return;
+      }
+
       const transformedApplications = applicationsData.map(app => ({
         id: app.id,
         learnerId: app.learner_id,
@@ -683,6 +689,9 @@ const Opportunities = () => {
       setFilteredApplications(transformedApplications);
     } catch (err) {
       logger.error('Error fetching applications:', err);
+      // Set empty arrays on error to prevent UI crashes
+      setApplications([]);
+      setFilteredApplications([]);
     }
   }, [learnerId, userEmail]);
 

@@ -18,10 +18,17 @@ export class LearnerPipelineService {
       const result = await apiPost('/learners/pipeline', {
         action: 'get-pipeline-status', learnerId, learnerEmail,
       });
-      return result?.data || [];
+      // Backend returns array directly via apiSuccess(data, ...)
+      // result.data contains the actual array
+      const statusArray = result?.data || [];
+      if (!Array.isArray(statusArray)) {
+        console.error('[LearnerPipelineService] getlearnerPipelineStatus - Expected array but got:', typeof statusArray);
+        return [];
+      }
+      return statusArray;
     } catch (error) {
       console.error('Error in getlearnerPipelineStatus:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -35,10 +42,16 @@ export class LearnerPipelineService {
       const result = await apiPost('/learners/pipeline', {
         action: 'get-pipeline-activities', learnerId,
       });
-      return result?.data || [];
+      // Backend returns array directly via apiSuccess(data, ...)
+      const activitiesArray = result?.data || [];
+      if (!Array.isArray(activitiesArray)) {
+        console.error('[LearnerPipelineService] getlearnerPipelineActivities - Expected array but got:', typeof activitiesArray);
+        return [];
+      }
+      return activitiesArray;
     } catch (error) {
       console.error('Error in getlearnerPipelineActivities:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -52,10 +65,16 @@ export class LearnerPipelineService {
       const result = await apiPost('/learners/pipeline', {
         action: 'get-interviews', learnerId,
       });
-      return result?.data || [];
+      // Backend returns array directly via apiSuccess(data, ...)
+      const interviewsArray = result?.data || [];
+      if (!Array.isArray(interviewsArray)) {
+        console.error('[LearnerPipelineService] getlearnerInterviews - Expected array but got:', typeof interviewsArray);
+        return [];
+      }
+      return interviewsArray;
     } catch (error) {
       console.error('Error in getlearnerInterviews:', error);
-      throw error;
+      return [];
     }
   }
 
@@ -71,10 +90,24 @@ export class LearnerPipelineService {
       const result = await apiPost('/learners/pipeline', {
         action: 'get-applications-with-pipeline', learnerId, learnerEmail,
       });
-      return result?.data || [];
+      
+      // Backend wraps response in { success, data, error, meta } via apiSuccess()
+      // result.data contains the actual array
+      console.log('[LearnerPipelineService] Raw result:', result);
+      console.log('[LearnerPipelineService] result.data:', result?.data);
+      console.log('[LearnerPipelineService] Is array?:', Array.isArray(result?.data));
+      
+      // Ensure we return an array
+      const applicationsArray = result?.data || [];
+      if (!Array.isArray(applicationsArray)) {
+        console.error('[LearnerPipelineService] Expected array but got:', typeof applicationsArray, applicationsArray);
+        return [];
+      }
+      
+      return applicationsArray;
     } catch (error) {
       console.error('Error in getlearnerApplicationsWithPipeline:', error);
-      throw error;
+      return []; // Return empty array on error instead of throwing
     }
   }
 

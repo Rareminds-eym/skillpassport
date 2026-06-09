@@ -304,17 +304,14 @@ class OpportunitiesService {
       const total = response?.data?.total ?? data.length;
       return { data, count: total };
     } catch (error: any) {
-      console.error('Error in getPaginatedOpportunities:', error);
+      console.error('[opportunitiesService] Error in getPaginatedOpportunities:', error);
       if (error?.message?.includes('416') || error?.message?.includes('Range Not Satisfiable')) {
         return {
           data: [],
           count: 0
         };
       }
-      return {
-        data: [],
-        count: 0
-      };
+      throw error;
     }
   }
 
