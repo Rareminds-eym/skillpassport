@@ -5,11 +5,10 @@
  *
  * Queries Supabase directly for all active subscription plans.
  * Transforms the raw DB schema into the shape the frontend expects.
- * Requires SSO authentication.
+ * Does NOT require SSO authentication — this is public catalog data.
  */
 
 
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 
@@ -78,7 +77,7 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
   };
 }
 
-export async function handleSubscriptionPlans(context: AuthenticatedContext): Promise<Response> {
+export async function handleSubscriptionPlans(context: { request: Request; env: Record<string, unknown> }): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
