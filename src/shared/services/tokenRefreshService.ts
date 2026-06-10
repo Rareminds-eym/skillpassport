@@ -20,11 +20,13 @@ const logger = getLogger('token-refresh-service');
 const ACCESS_TOKEN_LIFETIME_MS = 15 * 60 * 1000; // 15 minutes
 const REFRESH_THRESHOLD = 0.8; // Refresh at 80% of lifetime (12 minutes)
 const REFRESH_INTERVAL_MS = ACCESS_TOKEN_LIFETIME_MS * REFRESH_THRESHOLD;
+const MAX_CONSECUTIVE_FAILURES = 5; // Stop after 5 consecutive transient failures
 
 class TokenRefreshService {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private isRefreshing = false;
   private isActive = false;
+  private consecutiveFailures = 0;
 
   /**
    * Start the automatic token refresh cycle.
@@ -55,6 +57,7 @@ class TokenRefreshService {
     }
     this.isActive = false;
     this.isRefreshing = false;
+    this.consecutiveFailures = 0; // Reset failure counter
     logger.info('Token refresh service stopped');
   }
 
@@ -109,16 +112,62 @@ class TokenRefreshService {
       await ssoClient.refresh();
       logger.info('Token refresh successful');
 
-      // Schedule the next refresh
+      // Reset consecutive failure counter on success
+      this.consecutiveFailures = 0;
+
+      // Schedule the next refresh at normal interval
       this.scheduleNextRefresh();
       return true;
     } catch (error) {
-      logger.error('Token refresh failed', error instanceof Error ? error : new Error(String(error)));
+      const errorObj = error instanceof Error ? error : new Error(String(error));
 
-      // On refresh failure, the session is likely expired
-      // The ssoClient will trigger onSessionExpired callback
-      // which redirects to login, so we stop the service
+      // Check if this is a transient error (network, timeout, 5xx, 429)
+      const isTransient =
+        errorObj.name === 'AbortError' ||
+        errorObj.message.includes('timeout') ||
+        errorObj.message.includes('network') ||
+        ('status' in errorObj && ((errorObj as any).status >= 500 || (errorObj as any).status === 429));
+
+      if (isTransient) {
+        this.consecutiveFailures++;
+        logger.warn(`Token refresh failed (transient error ${this.consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES})`, {
+          errorName: errorObj.name,
+          errorMessage: errorObj.message
+        });
+
+        if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+          logger.error('Max consecutive refresh failures reached, stopping service', errorObj);
+          this.stop();
+          // Session is likely expired - ssoClient will trigger onSessionExpired
+          return false;
+        }
+
+        // Reschedule with exponential backoff for transient failures
+        const backoffMs = Math.min(
+          REFRESH_INTERVAL_MS,
+          300 * Math.pow(2, this.consecutiveFailures - 1) + Math.random() * 100
+        );
+        logger.info(`Rescheduling refresh with backoff: ${Math.round(backoffMs)}ms`);
+
+        if (!this.isActive) return false;
+
+        // Clear any existing timer
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+        }
+
+        // Schedule retry with backoff
+        this.refreshTimer = setTimeout(async () => {
+          await this.performRefresh();
+        }, backoffMs);
+
+        return false;
+      }
+
+      // Definitive auth error (401/403) - stop service
+      logger.error('Token refresh failed (definitive error), stopping service', errorObj);
       this.stop();
+      // The ssoClient will trigger onSessionExpired callback which redirects to login
       return false;
     } finally {
       this.isRefreshing = false;
