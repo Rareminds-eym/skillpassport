@@ -34,7 +34,7 @@ entrypoint = "PaymentService"
 # RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]
 binding = "SSO_SERVICE"
-service = "sso-api-production"
+service = "sso-api"
 entrypoint = "SsoWorker"
 
 # Realtime worker — WebSocket hub, zero-latency internal routing

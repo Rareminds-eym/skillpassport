@@ -162,7 +162,10 @@ export class WSRealtimeClient {
     this.ws.onopen = () => {
       if (gen !== this.connectionGen) return; // Stale connection
       this.connecting = false;
-      this.reconnectAttempts = 0;
+      // NOTE: Do NOT reset reconnectAttempts here. The TCP handshake succeeded
+      // but the server may immediately close (e.g. auth failure). We only reset
+      // after receiving the 'connected' event from the server, proving we have
+      // a stable, authenticated connection.
       console.info('[WS] Connected');
 
       // Re-subscribe to all tracked subscriptions
@@ -175,6 +178,8 @@ export class WSRealtimeClient {
         const data = JSON.parse(event.data as string) as WSEvent;
         if (data.type === 'connected') {
           this.connId = (data as WSConnectedEvent).connId;
+          // Server confirmed the connection — NOW it's safe to reset backoff.
+          this.reconnectAttempts = 0;
         }
         this.dispatchEvent(data);
       } catch {
@@ -182,10 +187,16 @@ export class WSRealtimeClient {
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (ev) => {
       if (gen !== this.connectionGen) return;
       this.connecting = false;
       this.ws = null;
+
+      // Log close details so we can diagnose server-side rejections
+      if (ev.code !== 1000) {
+        console.warn(`[WS] Closed: code=${ev.code} reason=${ev.reason || '(none)'}`);
+      }
+
       this.connId = null;
 
       if (!this.intentionalDisconnect) {

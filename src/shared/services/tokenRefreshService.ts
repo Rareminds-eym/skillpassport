@@ -138,7 +138,11 @@ class TokenRefreshService {
         if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
           logger.error('Max consecutive refresh failures reached, stopping service', errorObj);
           this.stop();
-          // Session is likely expired - ssoClient will trigger onSessionExpired
+          // Session is likely expired or network is completely down.
+          // Trigger logout so the application surfaces the session expiration.
+          ssoClient.logout().catch((err: Error) => {
+             logger.error('Failed to trigger session expiration after max refresh failures', err);
+          });
           return false;
         }
 
