@@ -24,7 +24,7 @@ import React, { useEffect, useState } from 'react';
 import { AdvancedRequisitionFilters } from '@/features/recruiter';
 import { RequisitionImport } from '@/features/recruiter';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { RequisitionFilters } from '@/shared/types/recruiter';
 import { getLogger } from '@/shared/config/logging';
 
@@ -125,18 +125,8 @@ useEffect(() => {
 
   const loadRecruiters = async () => {
     try {
-      const { data, error } = await supabase
-        .from('recruiters')
-        .select('id, name, email')
-        .eq('isactive', true)
-        .order('name');
-
-      if (error) {
-        logger.error('Error loading recruiters', error);
-        return;
-      }
-
-      setRecruiters(data || []);
+      const result = await apiPost<any>('/recruiter/actions', { action: 'list-recruiters' });
+      setRecruiters(result.data || []);
     } catch (error) {
       logger.error('Error loading recruiters', error);
     }
@@ -146,19 +136,9 @@ useEffect(() => {
     if (!user?.email) return;
     
     try {
-      const { data, error } = await supabase
-        .from('recruiters')
-        .select('id')
-        .eq('email', user.email)
-        .maybeSingle();
-
-      if (error) {
-        logger.error('Error loading current recruiter', error);
-        return;
-      }
-
-      if (data) {
-        setCurrentRecruiterId(data.id);
+      const result = await apiPost<any>('/recruiter/actions', { action: 'get-current-recruiter', email: user.email });
+      if (result.data) {
+        setCurrentRecruiterId(result.data.id);
       }
     } catch (error) {
       logger.error('Error loading current recruiter', error);
@@ -168,104 +148,21 @@ useEffect(() => {
   const loadRequisitions = async () => {
     setLoading(true);
     try {
-      // Build Supabase query with SQL-optimized filters
-      // let query = supabase
-      //   .from('opportunities')
-      //   .select('*');
-      let query = supabase
-  .from('opportunities')
-  .select('*', { count: 'exact' });
+      const result = await apiPost<any>('/recruiter/actions', {
+        action: 'list-opportunities',
+        searchQuery,
+        statusFilter,
+        advancedFilters,
+        sortField,
+        sortDirection,
+        currentPage,
+        itemsPerPage,
+      });
 
-      // Apply search query filter (case-insensitive)
-      if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`);
-      }
+      logger.info("Fetched cards from DB", { count: result.data?.data?.length, total: result.data?.total });
+      setTotalCount(result.data?.total || 0);
 
-      // Apply basic status filter
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-
-      // Apply advanced filters with SQL optimization
-      if (advancedFilters.status.length > 0) {
-        query = query.in('status', advancedFilters.status);
-      }
-
-      if (advancedFilters.departments.length > 0) {
-        query = query.in('department', advancedFilters.departments);
-      }
-
-      if (advancedFilters.locations.length > 0) {
-        query = query.in('location', advancedFilters.locations);
-      }
-
-      if (advancedFilters.employmentTypes.length > 0) {
-        query = query.in('employment_type', advancedFilters.employmentTypes);
-      }
-
-      if (advancedFilters.experienceLevels.length > 0) {
-        query = query.in('experience_level', advancedFilters.experienceLevels);
-      }
-
-      // Salary range filters
-      if (advancedFilters.salaryRange.min) {
-        query = query.gte('salary_range_min', advancedFilters.salaryRange.min);
-      }
-      if (advancedFilters.salaryRange.max) {
-        query = query.lte('salary_range_max', advancedFilters.salaryRange.max);
-      }
-
-      // Application count filter with smart ranges
-      if (advancedFilters.applicationCountRange && advancedFilters.applicationCountRange !== 'all') {
-        const rangeMap: Record<string, { min: number; max: number | null }> = {
-          '0': { min: 0, max: 0 },
-          '1-5': { min: 1, max: 5 },
-          '6-20': { min: 6, max: 20 },
-          '21-50': { min: 21, max: 50 },
-          '50+': { min: 51, max: null },
-        };
-        
-        const range = rangeMap[advancedFilters.applicationCountRange];
-        if (range) {
-          query = query.gte('applications_count', range.min);
-          if (range.max !== null) {
-            query = query.lte('applications_count', range.max);
-          }
-        }
-      }
-
-      // Date range filters
-      if (advancedFilters.dateRange.startDate) {
-        query = query.gte('posted_date', advancedFilters.dateRange.startDate);
-      }
-      if (advancedFilters.dateRange.endDate) {
-        query = query.lte('posted_date', advancedFilters.dateRange.endDate);
-      }
-
-      // Apply sorting (SQL-optimized)
-      query = query.order(sortField, { ascending: sortDirection === 'asc' });
-
-      // const { data, error } = await query;
-      // 🆕 ADD THESE 5 LINES HERE:
-// Apply pagination
-const from = (currentPage - 1) * itemsPerPage;
-const to = from + itemsPerPage - 1;
-query = query.range(from, to);
-
-const { data, error, count } = await query;  // ✅ CHANGED: Added 'count'
-// 🆕 ADD THIS LINE HERE
-logger.info("Fetched cards from DB", { count: data?.length, total: count });
-// 🆕 ADD THIS LINE HERE:
-// Set total count for pagination
-setTotalCount(count || 0);
-
-      if (error) {
-        logger.error('Error loading opportunities', error);
-        return;
-      }
-
-      // Transform the data to match our interface
-      const transformedData: Opportunity[] = (data || []).map(opp => ({
+      const transformedData: Opportunity[] = (result.data?.data || []).map((opp: any) => ({
         ...opp,
         job_title: opp.title || opp.job_title || '',
         requirements: opp.requirements || [],
@@ -966,7 +863,6 @@ const goToPage = (page: number) => {
           onImportComplete={() => {
             loadRequisitions();
           }}
-          userId={user?.id}
         />
       )}
     </div>

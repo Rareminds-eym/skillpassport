@@ -3,84 +3,86 @@
  *
  * POST /api/payments/create-bundle-order
  *
- * Creates a Razorpay order for a bundle purchase via the payment-worker RPC binding.
+ * Accepts a bundle_id and billing_period, looks up the bundle from
+ * the database to get the correct price (server-side), then creates
+ * a Razorpay order via the payment-worker RPC binding.
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleCreateBundleOrder(context);
-});
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
+import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { getServiceClient } from '../../../lib/supabase';
+import { createLogger } from '../../../lib/logger';
+import { apiSuccess, apiError } from '../../../lib/response';
+
+const logger = createLogger('payments:create-bundle-order');
 
 export async function handleCreateBundleOrder(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv;
 
   try {
-    // Parse request body
     let body: Record<string, unknown>;
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate required fields
-    if (!body.amount || typeof body.amount !== 'number') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'amount is required and must be a number' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     if (!body.bundle_id || typeof body.bundle_id !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'bundle_id is required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'bundle_id is required', context.request);
     }
 
-    if (!body.bundle_name || typeof body.bundle_name !== 'string') {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'bundle_name is required' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (!body.billing_period || typeof body.billing_period !== 'string') {
+      return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
-    // Ensure RAZORPAY_KEY_ID is available for frontend checkout
-    if (!env.RAZORPAY_KEY_ID) {
-      return new Response(
-        JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'RAZORPAY_KEY_ID is not configured' } }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+    const supabase = getServiceClient(env);
+
+    const { data: bundle, error: lookupError } = await supabase
+      .from('bundles')
+      .select('id, name, monthly_price, annual_price')
+      .eq('id', body.bundle_id)
+      .eq('is_active', true)
+      .single();
+
+    if (lookupError || !bundle) {
+      logger.error('Bundle not found', { bundle_id: body.bundle_id, error: lookupError });
+      return apiError(404, 'NOT_FOUND', 'Bundle not found or inactive', context.request);
     }
 
-    // Call payment-worker via Service Binding RPC
+    // DB stores prices in rupees (3558.40 = ₹3,558.40); Razorpay expects paise
+    const amount = Math.round((body.billing_period === 'annual'
+      ? parseFloat(bundle.annual_price)
+      : parseFloat(bundle.monthly_price)) * 100);
+
+    if (typeof amount !== 'number' || amount <= 0) {
+      logger.error('Invalid bundle price', { bundle_id: body.bundle_id, amount });
+      return apiError(400, 'VALIDATION_ERROR', 'Bundle price is invalid', context.request);
+    }
+
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({
-      amount: body.amount as number,
+      amount,
       currency: (body.currency as string) || undefined,
       notes: {
         bundle_id: body.bundle_id as string,
-        bundle_name: body.bundle_name as string,
-        user_id: user.sub,
+        bundle_name: bundle.name,
+        user_id: user.id,
         type: 'bundle',
       },
     });
 
-    // Return order with Razorpay key for frontend checkout initialization
-    return new Response(JSON.stringify({ ...order, key: env.RAZORPAY_KEY_ID }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    if (!order.key_id) {
+      logger.error('Payment worker did not return key_id');
+      return apiError(500, 'INTERNAL_ERROR', 'Payment worker configuration error', context.request);
+    }
+
+    return apiSuccess({ ...order, razorpay_key_id: order.key_id }, context.request);
   } catch (error) {
-    console.error('[CreateBundleOrder] Error:', error);
-    return rpcErrorResponse(error);
+    logger.error('Error creating bundle order', error);
+    return rpcErrorResponse(error, context.request);
   }
 }

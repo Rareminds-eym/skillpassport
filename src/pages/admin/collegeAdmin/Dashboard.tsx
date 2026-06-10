@@ -20,9 +20,9 @@ import {
 } from "lucide-react";
 import { KPICard } from '@/features/analytics';
 import { useNavigate } from "react-router-dom";
-import { supabase } from '@/shared/api/supabaseClient';
 
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-dashboard');
@@ -61,28 +61,27 @@ const Dashboard: React.FC = () => {
       
       setLoading(true);
       try {
-        // Get college_id for current user
-        let collegeId = null;
+        // Get college_id - try orgId first, then resolve via API
+        let collegeId = user.orgId || null;
 
-        // First check college_lecturers table
-        const { data: collegeLecturer } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
-
-        collegeId = collegeLecturer?.collegeId;
-
-        // If not found, check organizations table for college admin
         if (!collegeId) {
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('admin_id', user.id)
-            .eq('organization_type', 'college')
-            .maybeSingle();
+          // Try resolving from college_lecturers
+          const lecturerRes: any = await apiPost('/college-admin/actions', {
+            action: 'get-college-lecturer-by-email',
+            email: user.email,
+            select: 'collegeId'
+          });
+          collegeId = lecturerRes?.data?.collegeId;
+        }
 
-          collegeId = org?.id;
+        if (!collegeId) {
+          // Try resolving from organizations
+          const orgRes: any = await apiPost('/college-admin/actions', {
+            action: 'get-org-by-admin-or-email',
+            userId: user.id,
+            email: user.email
+          });
+          collegeId = orgRes?.data?.id;
         }
 
         if (!collegeId) {
@@ -91,122 +90,24 @@ const Dashboard: React.FC = () => {
           return;
         }
 
-        // Calculate date ranges for comparison
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-        // Fetch current learners count
-        const { count: learnersCount } = await supabase
-          .from('learners')
-          .select('*', { count: 'exact', head: true })
-          .eq('college_id', collegeId);
-
-        // Fetch learners count from 30 days ago
-        const { count: learnersCountPrevious } = await supabase
-          .from('learners')
-          .select('*', { count: 'exact', head: true })
-          .eq('college_id', collegeId)
-          .lte('created_at', thirtyDaysAgo.toISOString());
-
-        // Calculate learners change percentage
-        const learnersChange = learnersCountPrevious && learnersCountPrevious > 0
-          ? Math.round(((learnersCount || 0) - learnersCountPrevious) / learnersCountPrevious * 100)
-          : 0;
-
-        // Fetch current faculty count from college_lecturers
-        const { count: facultyCount } = await supabase
-          .from('college_lecturers')
-          .select('*', { count: 'exact', head: true })
-          .eq('collegeId', collegeId);
-
-        // Fetch faculty count from 30 days ago
-        const { count: facultyCountPrevious } = await supabase
-          .from('college_lecturers')
-          .select('*', { count: 'exact', head: true })
-          .eq('collegeId', collegeId)
-          .lte('created_at', thirtyDaysAgo.toISOString());
-
-        // Calculate faculty change percentage
-        const facultyChange = facultyCountPrevious && facultyCountPrevious > 0
-          ? Math.round(((facultyCount || 0) - facultyCountPrevious) / facultyCountPrevious * 100)
-          : 0;
-
-        // Fetch current departments count
-        const { count: departmentsCount } = await supabase
-          .from('departments')
-          .select('*', { count: 'exact', head: true })
-          .eq('college_id', collegeId);
-
-        // Fetch departments count from 30 days ago
-        const { count: departmentsCountPrevious } = await supabase
-          .from('departments')
-          .select('*', { count: 'exact', head: true })
-          .eq('college_id', collegeId)
-          .lte('created_at', thirtyDaysAgo.toISOString());
-
-        // Calculate departments change percentage
-        const departmentsChange = departmentsCountPrevious && departmentsCountPrevious > 0
-          ? Math.round(((departmentsCount || 0) - departmentsCountPrevious) / departmentsCountPrevious * 100)
-          : 0;
-
-        // Calculate placement rate using the same logic as placement management
-        // Filter by learners from this college
-        const { data: collegelearners } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('college_id', collegeId);
-
-        const learnerIds = collegelearners?.map(s => s.id) || [];
-        
-        let totalPlaced = 0;
-        let totalPlacedPrevious = 0;
-        
-        if (learnerIds.length > 0) {
-          // Count unique learners placed (not total offers) - current
-          const { data: placedlearners } = await supabase
-            .from('applied_jobs')
-            .select('learner_id')
-            .eq('application_status', 'accepted')
-            .in('learner_id', learnerIds);
-          
-          const uniqueLearnerIds = new Set(placedlearners?.map(p => p.learner_id) || []);
-          totalPlaced = uniqueLearnerIds.size;
-
-          // Count unique learners placed 30 days ago
-          const { data: placedlearnersPrevious } = await supabase
-            .from('applied_jobs')
-            .select('learner_id')
-            .eq('application_status', 'accepted')
-            .in('learner_id', learnerIds)
-            .lte('updated_at', thirtyDaysAgo.toISOString());
-          
-          const uniqueLearnerIdsPrevious = new Set(placedlearnersPrevious?.map(p => p.learner_id) || []);
-          totalPlacedPrevious = uniqueLearnerIdsPrevious.size;
-        }
-
-        const placementRate = learnersCount && learnersCount > 0 
-          ? Math.round(((totalPlaced || 0) / learnersCount) * 100 * 10) / 10 // Round to 1 decimal place
-          : 0;
-
-        const placementRatePrevious = learnersCountPrevious && learnersCountPrevious > 0
-          ? Math.round(((totalPlacedPrevious || 0) / learnersCountPrevious) * 100 * 10) / 10
-          : 0;
-
-        // Calculate placement rate change (absolute difference, not percentage)
-        const placementRateChange = placementRatePrevious > 0
-          ? Math.round((placementRate - placementRatePrevious) * 10) / 10
-          : 0;
-
-        setStats({
-          totallearners: learnersCount || 0,
-          totalFaculty: facultyCount || 0,
-          totalDepartments: departmentsCount || 0,
-          placementRate: placementRate,
-          learnersChange: learnersChange,
-          facultyChange: facultyChange,
-          departmentsChange: departmentsChange,
-          placementRateChange: placementRateChange,
+        // Fetch all stats in a single backend call
+        const res: any = await apiPost('/college-admin/actions', {
+          action: 'get-dashboard-stats',
+          college_id: collegeId
         });
+
+        if (res.success && res.data) {
+          setStats({
+            totallearners: res.data.totalLearners || 0,
+            totalFaculty: res.data.totalFaculty || 0,
+            totalDepartments: res.data.totalDepartments || 0,
+            placementRate: res.data.placementRate || 0,
+            learnersChange: res.data.learnersChange || 0,
+            facultyChange: res.data.facultyChange || 0,
+            departmentsChange: res.data.departmentsChange || 0,
+            placementRateChange: res.data.placementRateChange || 0,
+          });
+        }
       } catch (error) {
         logger.error('Error fetching dashboard data:', error as Error);
       } finally {

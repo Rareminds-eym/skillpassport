@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, Building2, MessageCircle } from 'lucide-react';
 import { getLogger } from '@/shared/config/logging';
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 import { ConversationType, getConversationConfig } from '../lib/conversationConfig';
 
 const logger = getLogger('ConversationModal');
@@ -266,72 +266,12 @@ export const ConversationModal: React.FC<ConversationModalProps> = ({
   const fetchRecipients = async () => {
     setLoading(true);
     try {
-      let data: any[] = [];
-      
-      // Fetch based on conversation type
-      if (conversationType === 'learner-educator' || conversationType === 'admin-educator') {
-        // Fetch educators
-        const { data: educatorData, error } = await supabase
-          .from('school_educators')
-          .select('id, user_id, first_name, last_name, email, photo_url, role, subject_expertise')
-          .eq('school_id', contextId)
-          .order('first_name');
-        
-        if (!error && educatorData) {
-          data = educatorData.map(e => ({
-            id: e.id,
-            userId: e.user_id,
-            name: `${e.first_name} ${e.last_name}`,
-            email: e.email,
-            photo_url: e.photo_url,
-            type: 'school_educator',
-            role: e.role,
-            specialization: Array.isArray(e.subject_expertise) ? 
-              e.subject_expertise.map((s: any) => s.subject || s).join(', ') : 
-              e.subject_expertise
-          }));
-        }
-      } else if (conversationType === 'admin-learner' || conversationType === 'college-admin-learner') {
-        // Fetch learners
-        const { data: learnerData, error } = await supabase
-          .from('learners')
-          .select('id, name, email, university, branch_field, grade, section')
-          .eq(conversationType === 'admin-learner' ? 'school_id' : 'university_college_id', contextId)
-          .order('name');
-        
-        if (!error && learnerData) {
-          data = learnerData.map(s => ({
-            id: s.id,
-            name: s.name || 'Unnamed Learner',
-            email: s.email,
-            university: s.university,
-            branch_field: s.branch_field,
-            grade: s.grade,
-            section: s.section
-          }));
-        }
-      } else if (conversationType === 'college-lecturer') {
-        // Fetch college lecturers
-        const { data: lecturerData, error } = await supabase
-          .from('college_lecturers')
-          .select('id, first_name, last_name, email, department, specialization, user_id')
-          .eq('collegeId', contextId)
-          .order('first_name');
-        
-        if (!error && lecturerData) {
-          data = lecturerData.map(l => ({
-            id: l.id,
-            userId: l.user_id,
-            name: `${l.first_name} ${l.last_name}`,
-            email: l.email,
-            type: 'college_lecturer',
-            department: l.department,
-            specialization: l.specialization
-          }));
-        }
-      }
-      
-      setRecipients(data);
+      const res = await apiPost('/messaging/actions', {
+        action: 'fetch-recipients',
+        conversationType,
+        contextId,
+      });
+      setRecipients(res?.data || []);
     } catch (error) {
       logger.error('Failed to fetch recipients', error as Error);
       setRecipients([]);

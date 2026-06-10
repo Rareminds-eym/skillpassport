@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { FeatureGate } from '@/features/subscription';
 import { useCurriculum } from '@/features/college-admin/model/useCurriculum';
 import * as curriculumService from '@/features/college-admin';
-import { authSessionService } from '@/features/auth';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-curriculum-wrapper');
@@ -198,16 +198,11 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
   const handleSubmitForApproval = async () => {
     try {
       // Check if user is school_admin to show appropriate message - use maybeSingle() to avoid 406 error
-      const { user } = await authSessionService.getUser();
+      const { user } = { data: { user: useAuthStore.getState().user } };
       let isSchoolAdmin = false;
       
       if (user) {
-        const { data: userData } = await curriculumService.supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
-        isSchoolAdmin = userData?.role === 'school_admin';
+        isSchoolAdmin = user.role === 'school_admin';
       }
 
       await submitForApproval();

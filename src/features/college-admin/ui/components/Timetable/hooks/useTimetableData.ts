@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { Faculty, CollegeClass, ScheduleSlot, Break, TimePeriod, Substitution, Department } from '@/features/learner-profile/model';
 import { DEFAULT_PERIODS } from "../constants";
 
@@ -21,226 +21,116 @@ export const useTimetableData = ({ collegeId }: UseTimetableDataProps) => {
 
   const loadDepartments = async () => {
     if (!collegeId) return;
-    const { data } = await supabase
-      .from("departments")
-      .select("id, name, code")
-      .eq("college_id", collegeId)
-      .eq("status", "active")
-      .order("name");
-    if (data) setDepartments(data);
+    try {
+      const response = await apiPost('/college-admin/academic', {
+        action: 'get-mapping-departments',
+        college_id: collegeId,
+      });
+      if (response.data) setDepartments(response.data);
+    } catch {}
   };
 
   const loadFaculty = async () => {
     if (!collegeId) return;
-    
-    // Load faculty with department assignments
-    const { data: lecturers } = await supabase
-      .from("college_lecturers")
-      .select("id, first_name, last_name, employeeId, subject_expertise")
-      .eq("collegeId", collegeId)
-      .eq("accountStatus", "active")
-      .order("first_name");
-    
-    if (lecturers) {
-      // Get department assignments
-      const { data: assignments } = await supabase
-        .from("department_faculty_assignments")
-        .select("lecturer_id, department_id, is_hod")
-        .eq("is_active", true);
-      
-      const facultyWithDept = lecturers.map(f => {
-        const assignment = assignments?.find(a => a.lecturer_id === f.id);
-        return {
-          ...f,
-          department_id: assignment?.department_id || null,
-          is_hod: assignment?.is_hod || false
-        };
+    try {
+      const response = await apiPost('/college-admin/faculty', {
+        action: 'get-faculty-with-departments',
+        college_id: collegeId,
       });
-      
-      setFaculty(facultyWithDept);
-    }
+      if (response.data) setFaculty(response.data);
+    } catch {}
   };
 
   const loadClasses = async () => {
     if (!collegeId) return;
-    const { data } = await supabase
-      .from("college_classes")
-      .select("id, name, grade, section, department_id")
-      .eq("college_id", collegeId)
-      .eq("status", "active")
-      .order("grade");
-    if (data) setClasses(data);
+    try {
+      const response = await apiPost('/college-admin/classes', {
+        action: 'get-college-classes',
+        college_id: collegeId,
+      });
+      if (response.data) setClasses(response.data);
+    } catch {}
   };
 
   const loadFacultyClasses = async (facultyId: string): Promise<CollegeClass[]> => {
     if (!collegeId) return [];
-    
-    // First try to get from faculty_class_assignments table
-    const { data: assignments } = await supabase
-      .from("college_faculty_class_assignments")
-      .select("class_id, college_classes(id, name, grade, section)")
-      .eq("faculty_id", facultyId)
-      .eq("college_id", collegeId);
 
-    if (assignments && assignments.length > 0) {
-      const assignedClasses = assignments
-        .map((a: any) => a.college_classes)
-        .filter(Boolean);
-      return assignedClasses;
+    try {
+      const response = await apiPost('/college-admin/classes', {
+        action: 'get-faculty-classes',
+        college_id: collegeId,
+        faculty_id: facultyId,
+      });
+      return response.data || [];
+    } catch {
+      return classes;
     }
-
-    // Fallback: Get distinct classes from existing timetable slots
-    if (timetableId) {
-      const { data: slotClasses } = await supabase
-        .from("college_timetable_slots")
-        .select("class_id")
-        .eq("educator_id", facultyId)
-        .eq("timetable_id", timetableId);
-
-      if (slotClasses && slotClasses.length > 0) {
-        const classIds = [...new Set(slotClasses.map((s: { class_id: string }) => s.class_id))];
-        const { data: classDetails } = await supabase
-          .from("college_classes")
-          .select("id, name, grade, section")
-          .in("id", classIds)
-          .eq("status", "active");
-
-        if (classDetails) return classDetails;
-      }
-    }
-
-    // No assignments yet - return all classes
-    return classes;
   };
 
   const loadOrCreateTimetable = async () => {
     if (!collegeId) return;
-    
-    const currentYear = new Date().getFullYear();
-    const academicYear = `${currentYear}-${currentYear + 1}`;
 
-    const { data: existing, error } = await supabase
-      .from("college_timetables")
-      .select("id, status")
-      .eq("academic_year", academicYear)
-      .eq("college_id", collegeId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    try {
+      const response = await apiPost('/college-admin/classes', {
+        action: 'get-or-create-timetable',
+        college_id: collegeId,
+      });
 
-    if (existing) {
-      setTimetableId(existing.id);
-      setPublishStatus(existing.status);
-    } else if (!error) {
-      const { data: newTimetable, error: insertError } = await supabase
-        .from("college_timetables")
-        .insert({
-          college_id: collegeId,
-          academic_year: academicYear,
-          term: "Term 1",
-          start_date: `${currentYear}-06-01`,
-          end_date: `${currentYear + 1}-05-31`,
-          status: "draft",
-        })
-        .select("id")
-        .single();
-
-      if (newTimetable && !insertError) {
-        setTimetableId(newTimetable.id);
-      } else if (insertError?.code === "23505") {
-        const { data: retryData } = await supabase
-          .from("college_timetables")
-          .select("id, status")
-          .eq("academic_year", academicYear)
-          .eq("college_id", collegeId)
-          .limit(1)
-          .single();
-        if (retryData) {
-          setTimetableId(retryData.id);
-          setPublishStatus(retryData.status);
-        }
+      if (response.data) {
+        setTimetableId(response.data.id);
+        setPublishStatus(response.data.status);
       }
-    }
+    } catch {}
   };
 
   const loadSlots = async () => {
     if (!timetableId) return;
-    const { data } = await supabase
-      .from("college_timetable_slots")
-      .select("*")
-      .eq("timetable_id", timetableId)
-      .order("day_of_week")
-      .order("period_number");
-    if (data) setSlots(data);
+    try {
+      const response = await apiPost('/college-admin/classes', {
+        action: 'get-timetable-slots',
+        timetable_id: timetableId,
+      });
+      if (response.data) setSlots(response.data);
+    } catch {}
   };
 
   const loadBreaks = async () => {
     if (!collegeId) return;
-    const { data } = await supabase
-      .from("college_breaks")
-      .select("*")
-      .eq("college_id", collegeId)
-      .order("start_date");
-    if (data) setBreaks(data);
+    try {
+      const response = await apiPost('/college-admin/events', {
+        action: 'get-breaks',
+        college_id: collegeId,
+      });
+      if (response.data) setBreaks(response.data);
+    } catch {}
   };
 
   const loadSubstitutions = async (startDate?: string, endDate?: string) => {
     if (!collegeId) return;
-    
-    let query = supabase
-      .from("college_faculty_substitutions")
-      .select(`
-        id,
-        substitution_date,
-        period_number,
-        class_id,
-        subject_name,
-        original_faculty_id,
-        substitute_faculty_id,
-        status,
-        original:college_lecturers!original_faculty_id(first_name, last_name),
-        substitute:college_lecturers!substitute_faculty_id(first_name, last_name)
-      `)
-      .eq("college_id", collegeId)
-      .in("status", ["assigned", "confirmed"]);
 
-    // Filter by date range if provided
-    if (startDate) {
-      query = query.gte("substitution_date", startDate);
-    }
-    if (endDate) {
-      query = query.lte("substitution_date", endDate);
-    }
+    try {
+      const response = await apiPost('/college-admin/classes', {
+        action: 'get-substitutions-with-details',
+        college_id: collegeId,
+        ...(startDate ? { start_date: startDate } : {}),
+        ...(endDate ? { end_date: endDate } : {}),
+      });
 
-    const { data } = await query.order("substitution_date");
-    
-    if (data) {
-      const processed: Substitution[] = data.map((s: any) => ({
-        id: s.id,
-        substitution_date: s.substitution_date,
-        period_number: s.period_number,
-        class_id: s.class_id,
-        subject_name: s.subject_name,
-        original_faculty_id: s.original_faculty_id,
-        original_faculty_name: s.original ? `${s.original.first_name || ''} ${s.original.last_name || ''}`.trim() : '',
-        substitute_faculty_id: s.substitute_faculty_id,
-        substitute_faculty_name: s.substitute ? `${s.substitute.first_name || ''} ${s.substitute.last_name || ''}`.trim() : null,
-        status: s.status,
-      }));
-      setSubstitutions(processed);
-    }
+      if (response.data) setSubstitutions(response.data);
+    } catch {}
   };
 
   const loadPeriods = async () => {
     if (!timetableId) return;
-    const { data } = await supabase
-      .from("college_time_periods")
-      .select("*")
-      .eq("timetable_id", timetableId)
-      .order("period_number");
-    if (data && data.length > 0) {
-      setPeriods(data);
-    }
+    try {
+      const response = await apiPost('/college-admin/classes', {
+        action: 'get-time-periods',
+        timetable_id: timetableId,
+      });
+      if (response.data && response.data.length > 0) {
+        setPeriods(response.data);
+      }
+    } catch {}
   };
 
   const savePeriods = async (newPeriods: TimePeriod[]) => {
@@ -250,38 +140,19 @@ export const useTimetableData = ({ collegeId }: UseTimetableDataProps) => {
 
     setLoading(true);
     try {
-      // Delete existing periods for this timetable
-      await supabase
-        .from("college_time_periods")
-        .delete()
-        .eq("timetable_id", timetableId);
-
-      // Insert new periods
-      const periodsToInsert = newPeriods.map((p, index) => ({
+      const response = await apiPost('/college-admin/classes', {
+        action: 'save-time-periods',
         timetable_id: timetableId,
         college_id: collegeId,
-        period_number: index + 1,
-        period_name: p.period_name,
-        start_time: p.start_time,
-        end_time: p.end_time,
-        is_break: p.is_break,
-        break_type: p.break_type || null,
-      }));
+        periods: newPeriods,
+      });
 
-      const { error } = await supabase
-        .from("college_time_periods")
-        .insert(periodsToInsert);
-
-      if (error) throw error;
-
-      // Reload periods from database
-      await loadPeriods();
+      if (response.data) setPeriods(response.data);
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial data load
   useEffect(() => {
     if (collegeId) {
       loadDepartments();
@@ -293,7 +164,6 @@ export const useTimetableData = ({ collegeId }: UseTimetableDataProps) => {
     }
   }, [collegeId]);
 
-  // Load slots and periods when timetableId changes
   useEffect(() => {
     if (timetableId) {
       loadSlots();

@@ -1,5 +1,4 @@
 // import { useState, useEffect } from 'react';
-// import { supabase } from '@/shared/api/supabaseClient';
 
 // export const useLearnerProjects = (learnerId, enabled = true) => {
 //   const [projects, setProjects] = useState([]);
@@ -80,7 +79,7 @@
 //   };
 // };
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export const useLearnerProjects = (learnerId, enabled = true) => {
   const [projects, setProjects] = useState([]);
@@ -88,27 +87,17 @@ export const useLearnerProjects = (learnerId, enabled = true) => {
   const [error, setError] = useState(null);
 
   const fetchProjects = async () => {
-    if (!learnerId || !enabled) {
-      return;
-    }
+    if (!learnerId || !enabled) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('learner_id', learnerId)
-        // Fetch ALL projects (including hidden and pending) - filtering happens in display components
-        .order('created_at', { ascending: false });
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'fetch-projects', learnerId,
+      });
+      const data = result?.data || [];
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Transform data to match UI expectations
-      // Include versioning fields for proper display logic
       const transformedData = data.map(item => ({
         id: item.id,
         title: item.title || item.name,

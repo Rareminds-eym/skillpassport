@@ -4,12 +4,11 @@
  * Provides subscription data and management functions.
  * 
  * READ operations use subscriptionService (direct Supabase)
- * WRITE operations use paymentsApiService (via Cloudflare Worker)
+ * WRITE operations use paymentsApiService (auto-authenticated via ssoClient.fetch)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 
-import { getCurrentSession } from '@/shared/api/authUtils';
 import { getActiveSubscription } from '../api/subscriptionService';
 import { paymentsApiService } from '@/features/subscription';
 
@@ -85,14 +84,9 @@ export const useSubscription = () => {
     fetchSubscription();
   }, [fetchSubscription]);
 
-  // Get auth token (via SSO, not Supabase auth which is disabled)
-  const getToken = async () => {
-    const { data: { session } } = await getCurrentSession();
-    return session?.access_token;
-  };
-
   /**
    * Cancel subscription via Worker
+   * Auth is handled automatically by paymentsApiService.
    * @param {string} reason - Cancellation reason
    * @returns {Promise<{ success: boolean, error?: string }>}
    */
@@ -103,16 +97,13 @@ export const useSubscription = () => {
 
     try {
       setActionLoading(true);
-      const token = await getToken();
 
       const result = await paymentsApiService.deactivateSubscription(
         subscriptionData.id,
-        reason,
-        token
+        reason
       );
 
       if (result.success) {
-        // Refresh subscription data
         await fetchSubscription();
         return { success: true };
       }
@@ -128,6 +119,7 @@ export const useSubscription = () => {
 
   /**
    * Pause subscription via Worker
+   * Auth is handled automatically by paymentsApiService.
    * @param {number} months - Number of months to pause (1-3)
    * @returns {Promise<{ success: boolean, error?: string }>}
    */
@@ -142,18 +134,16 @@ export const useSubscription = () => {
 
     try {
       setActionLoading(true);
-      const token = await getToken();
 
       const result = await paymentsApiService.pauseSubscription(
         subscriptionData.id,
-        months,
-        token
+        months
       );
 
       if (result.success) {
-        // Refresh subscription data
         await fetchSubscription();
-        return { success: true, pausedUntil: result.paused_until };
+        // apiSuccess wraps data at { success, data: { subscription: { paused_until, ... } } }
+        return { success: true, pausedUntil: result.data?.subscription?.paused_until };
       }
 
       return { success: false, error: result.error || 'Failed to pause subscription' };
@@ -167,6 +157,7 @@ export const useSubscription = () => {
 
   /**
    * Resume paused subscription via Worker
+   * Auth is handled automatically by paymentsApiService.
    * @returns {Promise<{ success: boolean, error?: string }>}
    */
   const resumeSubscription = useCallback(async () => {
@@ -180,15 +171,12 @@ export const useSubscription = () => {
 
     try {
       setActionLoading(true);
-      const token = await getToken();
 
       const result = await paymentsApiService.resumeSubscription(
-        subscriptionData.id,
-        token
+        subscriptionData.id
       );
 
       if (result.success) {
-        // Refresh subscription data
         await fetchSubscription();
         return { success: true };
       }

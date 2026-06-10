@@ -3,12 +3,12 @@
  * Main handler for /analyze-assessment endpoint
  */
 
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import type { AssessmentData, AnalysisResult } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../shared/auth';
+import { jsonResponse } from '../../../lib/response';
+import { getContextUser } from '../../../lib/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { getSystemMessage } from '../prompts';
 import { buildHighSchoolPrompt } from '../prompts/high-school';
 import { buildMiddleSchoolPrompt } from '../prompts/middle-school';
@@ -51,14 +51,22 @@ const ASSESSMENT_CONFIG = {
 /**
  * Pre-calculate RIASEC scores from answers
  * This ensures accuracy before AI processing
+ * 
+ * Scoring system:
+ * - Each RIASEC type has 8 questions
+ * - Each question is rated 1-5
+ * - Scoring: 1-2 = 0 points, 3 = 1 point, 4 = 2 points, 5 = 3 points
+ * - Max score per type: 8 questions × 3 points = 24 points
  */
 function calculateRiasecScores(riasecAnswers: Record<string, any>): { 
   scores: { R: number; I: number; A: number; S: number; E: number; C: number }; 
   percentages: { R: number; I: number; A: number; S: number; E: number; C: number }; 
   code: string; 
-  maxScore: number 
+  maxScore: number;
+  maxScorePerType: number;
 } {
   const scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+  const questionCounts = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 }; // Track questions per type
   let totalQuestions = 0;
   
   console.log('[RIASEC] === CALCULATING RIASEC SCORES ===');
@@ -74,6 +82,7 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
       answer: question.answer,
       answerType: typeof question.answer,
       riasecType: question.riasecType,
+      mappingType: question.categoryMapping?.type,
       hasCategoryMapping: !!question.categoryMapping
     });
   });
@@ -82,7 +91,9 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
   Object.values(riasecAnswers).forEach((question: any) => {
     const answer = question.answer;
     const mapping = question.categoryMapping;
-    const riasecType = question.riasecType; // Direct RIASEC type from question
+    const mappedType = mapping?.type;
+    const riasecType = question.riasecType ||
+      (typeof mappedType === 'string' && scores.hasOwnProperty(mappedType) ? mappedType : null);
     let questionAnswered = false;
     
     // Handle numeric rating answers (1-5 scale) - for college/after12/after10
@@ -97,13 +108,12 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
         points = answer - 2; // 3->1, 4->2, 5->3
       }
       
-      console.log(`[RIASEC] Processing: type=${riasecType}, answer=${answer}, points=${points}, before=${scores[riasecType]}`);
-      
       scores[riasecType] += points;
+      questionCounts[riasecType]++;
       questionAnswered = true;
       totalQuestions++;
       
-      console.log(`[RIASEC] After: type=${riasecType}, score=${scores[riasecType]}`);
+      console.log(`[RIASEC] Processing: type=${riasecType}, answer=${answer}, points=${points}, total=${scores[riasecType]}, count=${questionCounts[riasecType]}`);
     }
     // Handle array answers (multiselect) - for middle/high school
     else if (Array.isArray(answer) && answer.length > 0 && mapping) {
@@ -129,13 +139,13 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
     }
   });
   
-  // Calculate max possible score (2 points per question)
-  const maxScore = totalQuestions * 2;
+  // Max score per type: 8 questions × 3 points = 24
+  const maxScorePerType = 24;
   
-  // Calculate percentages
+  // Calculate percentages (out of 24)
   const percentages = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
   (Object.keys(scores) as Array<keyof typeof scores>).forEach(key => {
-    percentages[key] = maxScore > 0 ? Math.round((scores[key] / maxScore) * 100) : 0;
+    percentages[key] = Math.round((scores[key] / maxScorePerType) * 100);
   });
   
   // Determine RIASEC code (top 3 types by score, alphabetical order for ties)
@@ -152,11 +162,13 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
     .map(([type]) => type);
   const code = sortedTypes.join('');
   
-  console.log('[RIASEC] Pre-calculated scores:', scores);
+  console.log('[RIASEC] Scores (out of 24):', scores);
+  console.log('[RIASEC] Question counts:', questionCounts);
   console.log('[RIASEC] Percentages:', percentages);
   console.log('[RIASEC] Code:', code);
   
-  return { scores, percentages, code, maxScore };
+  // maxScore should be per type (24), not total across all types (144)
+  return { scores, percentages, code, maxScore: maxScorePerType, maxScorePerType };
 }
 
 /**
@@ -903,7 +915,8 @@ async function analyzeAssessment(
  */
 export async function handleAnalyzeAssessment(
   request: Request,
-  env: PagesEnv
+  env: PagesEnv,
+  userId?: string
 ): Promise<Response> {
   console.log('[ASSESSMENT-API] === REQUEST RECEIVED ===');
   console.log('[ASSESSMENT-API] Method:', request.method);
@@ -928,15 +941,12 @@ export async function handleAnalyzeAssessment(
   if (isDevelopment) {
     learnerId = 'test-learner-' + Date.now();
     console.log('[ASSESSMENT-API] [DEV MODE] Bypassing authentication, using test learner ID:', learnerId);
-  } else {
-    console.log('[ASSESSMENT-API] Authenticating user...');
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('[ASSESSMENT-API] ❌ Authentication failed');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
-    learnerId = auth.user.id;
+  } else if (userId) {
+    learnerId = userId;
     console.log('[ASSESSMENT-API] ✅ Authenticated learner:', learnerId);
+  } else {
+    console.error('[ASSESSMENT-API] ❌ Authentication failed: Missing userId');
+    return jsonResponse({ error: 'Authentication required' }, 401);
   }
 
   // Rate limiting
@@ -996,7 +1006,7 @@ export async function handleAnalyzeAssessment(
   console.log('[ASSESSMENT-API] Total Aptitude Questions:', assessmentData.totalAptitudeQuestions);
 
   // Pre-calculate RIASEC scores for validation
-  console.log('[ASSESSMENT-API] 🧮 Pre-calculating RIASEC scores...');
+  console.log('[ASSESSMENT-API] 🧮 Calculating all scores from raw answers...');
   console.log('[ASSESSMENT-API] Has riasecAnswers:', !!assessmentData.riasecAnswers);
   console.log('[ASSESSMENT-API] riasecAnswers keys:', assessmentData.riasecAnswers ? Object.keys(assessmentData.riasecAnswers).length : 0);
   
@@ -1009,7 +1019,10 @@ export async function handleAnalyzeAssessment(
   let precalculatedRiasec = emptyRiasec;
   let canValidateRiasec = false;
   
+  // Calculate RIASEC from riasecAnswers (backend has full question metadata)
   if (assessmentData.riasecAnswers && Object.keys(assessmentData.riasecAnswers).length > 0) {
+    console.log('[ASSESSMENT-API] 🧮 Calculating RIASEC from answers...');
+    
     // Check if we have valid data for RIASEC calculation
     // College/after12/after10: questions have riasecType (R, I, A, S, E, C)
     // Middle/high school: questions have categoryMapping
@@ -1023,11 +1036,11 @@ export async function handleAnalyzeAssessment(
     if (hasValidMapping || hasRiasecType) {
       precalculatedRiasec = calculateRiasecScores(assessmentData.riasecAnswers);
       canValidateRiasec = true;
-      console.log('[ASSESSMENT-API] ✅ Pre-calculated RIASEC:', precalculatedRiasec.code);
+      console.log('[ASSESSMENT-API] ✅ RIASEC calculated:', precalculatedRiasec.code);
       console.log('[ASSESSMENT-API] ✅ RIASEC scores:', precalculatedRiasec.scores);
       console.log('[ASSESSMENT-API] ✅ RIASEC validation enabled');
     } else {
-      console.warn('[ASSESSMENT-API] ⚠️ riasecAnswers missing both categoryMapping and riasecType - cannot pre-calculate');
+      console.warn('[ASSESSMENT-API] ⚠️ riasecAnswers missing both categoryMapping and riasecType - cannot calculate');
       console.warn('[ASSESSMENT-API] ⚠️ RIASEC validation DISABLED - will trust AI output');
       canValidateRiasec = false;
     }
@@ -1269,6 +1282,20 @@ export async function handleAnalyzeAssessment(
       }
       
       console.log('[ASSESSMENT] ✅ Adaptive test data populated:', Object.keys(results.aptitude.adaptiveTest).length, 'subtags');
+    }
+    
+    // ============================================================================
+    // ADD PRE-CALCULATED RIASEC TO RESPONSE
+    // Include pre-calculated scores for reference
+    // ============================================================================
+    if (canValidateRiasec && precalculatedRiasec.code) {
+      results.preCalculatedRiasec = {
+        scores: { ...precalculatedRiasec.scores },
+        percentages: { ...precalculatedRiasec.percentages },
+        code: precalculatedRiasec.code,
+        maxScore: precalculatedRiasec.maxScore
+      };
+      console.log('[ASSESSMENT] ✅ Added preCalculatedRiasec to response');
     }
     
     const response: AnalysisResult = {

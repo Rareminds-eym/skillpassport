@@ -7,8 +7,6 @@ import type {
   Response,
   DifficultyLevel,
   Subtag,
-  ALL_DIFFICULTY_LEVELS,
-  ALL_SUBTAGS,
 } from '../types';
 
 /**

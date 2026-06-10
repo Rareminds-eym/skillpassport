@@ -1,10 +1,11 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { AlertTriangle, Edit2, Filter, Grid3X3, List, Save, Search, Send, Sparkles, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getAllTimetableConflicts, validateTimetableSlot, ValidationConflict } from '@/features/courses';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+
 
 const logger = getLogger('school-admin-timetable-builder');
 
@@ -115,47 +116,14 @@ const TimetableBuilderEnhanced: React.FC = () => {
 
   const getSchoolId = async (): Promise<string | null> => {
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         logger.error('No user found');
         return null;
       }
 
-      // Get user role first
-      const { data: userData } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      // For school_admin: lookup school from organizations table
-      if (userData?.role === "school_admin") {
-        const { data: schoolData } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("organization_type", "school")
-          .eq("admin_id", user.id)
-          .maybeSingle();
-
-        if (schoolData?.id) {
-          return schoolData.id;
-        }
-      }
-
-      // For school_educator: lookup from school_educators table
-      if (userData?.role === "school_educator") {
-        const { data: educatorData } = await supabase
-          .from("school_educators")
-          .select("school_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (educatorData?.school_id) {
-          return educatorData.school_id;
-        }
-      }
-
-      return null;
+      const result = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: user.email, user_id: user.id }) as any;
+      return result?.school_id || null;
     } catch (error) {
       logger.error("Error fetching school ID", error as Error);
       return null;
@@ -170,12 +138,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
     }
 
     // Load teachers from school_educators
-    const { data } = await supabase
-      .from("school_educators")
-      .select("id, teacher_id, first_name, last_name")
-      .eq("school_id", schoolId)
-      .eq("account_status", "active")
-      .order("first_name");
+    const data = await apiPost('/college-admin/school-admin', { action: 'get-teachers-dropdown', school_id: schoolId }) as any;
     
     if (data) setTeachers(data);
   };
@@ -207,13 +170,7 @@ const loadClasses = async () => {
     }
 
     // Load classes with room_number
-    const { data } = await supabase
-      .from("school_classes")
-      .select("id, name, grade, section, room_no")
-      .eq("school_id", schoolId)
-      .eq("account_status", "active")
-      .order("grade")
-      .order("section");
+    const data = await apiPost('/college-admin/school-admin', { action: 'get-classes', school_id: schoolId }) as any;
     
     logger.info('Loaded classes', { count: data?.length || 0 });
     if (data) setClasses(data);
@@ -226,43 +183,15 @@ const loadClasses = async () => {
     }
 
     const currentYear = new Date().getFullYear();
-    const { data: existing } = await supabase
-      .from("timetables")
-      .select("id, status")
-      .eq("school_id", schoolId)
-      .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const yearStr = `${currentYear}-${currentYear + 1}`;
+    const result = await apiPost('/college-admin/school-admin', { action: 'get-or-create-timetable', school_id: schoolId, academic_year: yearStr, term: 'Term 1', start_date: `${currentYear}-06-01`, end_date: `${currentYear}-12-31`, status: 'draft' }) as any;
 
-    if (existing) {
-      logger.info('Found existing timetable', { timetableId: existing.id });
-      setTimetableId(existing.id);
-      setPublishStatus(existing.status);
+    if (result?.id) {
+      logger.info('Found/created timetable', { timetableId: result.id });
+      setTimetableId(result.id);
+      setPublishStatus(result.status || 'draft');
     } else {
-      logger.info('Creating new timetable for school', { schoolId });
-      const { data: newTimetable, error } = await supabase
-        .from("timetables")
-        .insert({
-          school_id: schoolId,
-          academic_year: `${currentYear}-${currentYear + 1}`,
-          term: "Term 1",
-          start_date: `${currentYear}-06-01`,
-          end_date: `${currentYear}-12-31`,
-          status: "draft",
-        })
-        .select("id")
-        .single();
-      
-      if (error) {
-        logger.error('Error creating timetable', error);
-        return;
-      }
-      
-      if (newTimetable) {
-        logger.info('Created new timetable', { timetableId: newTimetable.id });
-        setTimetableId(newTimetable.id);
-      }
+      logger.error('Error creating timetable');
     }
   };
 // Add this function with other load functions
@@ -273,13 +202,7 @@ const loadSubjects = async () => {
     return;
   }
 
-  const { data } = await supabase
-    .from("curriculum_subjects")
-    .select("id, name, description")
-    .eq("school_id", schoolId)
-    .eq("is_active", true)
-    .order("display_order")
-    .order("name");
+  const data = await apiPost('/college-admin/school-admin', { action: 'get-subjects', school_id: schoolId }) as any;
   
   logger.info('Loaded subjects', { count: data?.length || 0 });
   if (data) setSubjects(data);
@@ -318,20 +241,11 @@ useEffect(() => {
     loadRooms();
   }
 }, [classes]);
-const loadAllSlots = async () => {
-    const { data, error } = await supabase
-      .from("timetable_slots")
-      .select(`
-        *,
-        school_educators!timetable_slots_educator_id_fkey(first_name, last_name),
-        school_classes!timetable_slots_class_id_fkey(name)
-      `)
-      .eq("timetable_id", timetableId)
-      .order("day_of_week")
-      .order("period_number");
+  const loadAllSlots = async () => {
+    const data = await apiPost('/college-admin/school-admin', { action: 'get-timetable-slots', timetable_id: timetableId }) as any;
     
-    if (error) {
-      logger.error("Error loading slots", error);
+    if (!data) {
+      logger.error("Error loading slots");
       return;
     }
     
@@ -399,15 +313,7 @@ const loadAllSlots = async () => {
     setLoading(true);
     try {
       // Update slot position
-      const { error } = await supabase
-        .from("timetable_slots")
-        .update({
-          day_of_week: day,
-          period_number: period,
-        })
-        .eq("id", draggedSlot.id);
-
-      if (error) throw error;
+      await apiPost('/college-admin/school-admin', { action: 'update-timetable-slot', id: draggedSlot.id, day_of_week: day, period_number: period });
       
       await loadAllSlots();
       setDraggedSlot(null);
@@ -456,11 +362,7 @@ const loadAllSlots = async () => {
         }
       });
 
-      const { error } = await supabase
-        .from("timetable_slots")
-        .insert(newSlots);
-
-      if (error) throw error;
+      await apiPost('/college-admin/school-admin', { action: 'batch-create-slots', slots: newSlots });
       
       await loadAllSlots();
       toast.success("Timetable generated successfully!");
@@ -476,12 +378,7 @@ const loadAllSlots = async () => {
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("timetables")
-        .update({ status: "published" })
-        .eq("id", timetableId);
-
-      if (error) throw error;
+      await apiPost('/college-admin/school-admin', { action: 'publish-timetable', timetable_id: timetableId });
       
       setPublishStatus("published");
       toast.success("Timetable published successfully!");
@@ -599,21 +496,17 @@ const loadAllSlots = async () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("timetable_slots")
-        .insert({
-          timetable_id: timetableId,
-          educator_id: newSlot.teacher_id,
-          class_id: newSlot.class_id,
-          day_of_week: selectedCell.day,
-          period_number: selectedCell.period,
-          start_time: startTime,
-          end_time: endTime,
-          subject_name: newSlot.subject_name,
-          room_number: newSlot.room_number || `R${selectedCell.period}`,
-        });
-
-      if (error) throw error;
+      await apiPost('/college-admin/school-admin', { action: 'create-timetable-slot', slot_data: {
+        timetable_id: timetableId,
+        educator_id: newSlot.teacher_id,
+        class_id: newSlot.class_id,
+        day_of_week: selectedCell.day,
+        period_number: selectedCell.period,
+        start_time: startTime,
+        end_time: endTime,
+        subject_name: newSlot.subject_name,
+        room_number: newSlot.room_number || `R${selectedCell.period}`,
+      }});
       
       await loadAllSlots();
       setShowAddModal(false);
@@ -631,12 +524,7 @@ const loadAllSlots = async () => {
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("timetable_slots")
-        .delete()
-        .eq("id", slotId);
-
-      if (error) throw error;
+      await apiPost('/college-admin/school-admin', { action: 'delete-timetable-slot', slot_id: slotId });
       
       await loadAllSlots();
       toast.success('Slot deleted successfully');
@@ -710,17 +598,7 @@ const loadAllSlots = async () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("timetable_slots")
-        .update({
-          educator_id: editSlot.teacher_id,
-          class_id: editSlot.class_id,
-          subject_name: editSlot.subject_name,
-          room_number: editSlot.room_number || `R${editingSlot.period_number}`,
-        })
-        .eq("id", editingSlot.id);
-
-      if (error) throw error;
+      await apiPost('/college-admin/school-admin', { action: 'update-timetable-slot', id: editingSlot.id, educator_id: editSlot.teacher_id, class_id: editSlot.class_id, subject_name: editSlot.subject_name, room_number: editSlot.room_number || `R${editingSlot.period_number}` });
       
       await loadAllSlots();
       setShowEditModal(false);

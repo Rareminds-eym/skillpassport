@@ -339,7 +339,10 @@ export async function checkCompanyCode(code: string): Promise<any> {
 export async function createLearner(learnerData: any, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-learner`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(learnerData),
   });
 
@@ -351,13 +354,19 @@ export async function createLearner(learnerData: any, token?: string): Promise<a
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
 
-    logger.error('API error creating learner', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status });
+    // Extract error message properly from nested structure
+    const errorMessage = errorDetails.error?.message || 
+                        (typeof errorDetails.error === 'string' ? errorDetails.error : null) ||
+                        errorDetails.message ||
+                        `Failed to create learner (${response.status})`;
+
+    logger.error('API error creating learner', new Error(errorMessage), { status: response.status });
 
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
 
-    throw new Error(errorDetails.error || `Failed to create learner (${response.status})`);
+    throw new Error(errorMessage);
   }
 
   const result = await response.json();
@@ -367,7 +376,10 @@ export async function createLearner(learnerData: any, token?: string): Promise<a
 export async function createTeacher(teacherData: any, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-teacher`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(teacherData),
   });
 
@@ -390,7 +402,10 @@ interface ResetPasswordParams {
 export async function resetPassword(params: ResetPasswordParams, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/reset-password`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(params),
   });
 
@@ -415,7 +430,10 @@ interface CreateEventUserParams {
 export async function createEventUser(params: CreateEventUserParams, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-event-user`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(params),
   });
 
@@ -437,7 +455,10 @@ interface InterviewReminderParams {
 export async function sendInterviewReminder(params: InterviewReminderParams, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/send-interview-reminder`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(params),
   });
 
@@ -456,7 +477,10 @@ export async function updatelearnerDocuments(
 ): Promise<any> {
   const response = await fetch(`${API_URL}/update-learner-documents`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ learnerId, documents }),
   });
 
@@ -488,7 +512,10 @@ export async function updateTeacherDocuments(
 ): Promise<any> {
   const response = await fetch(`${API_URL}/update-teacher-documents`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ teacherId, documents }),
   });
 
@@ -516,7 +543,12 @@ export async function updateTeacherDocuments(
 export async function createCollegeStaff(staffData: any, token?: string): Promise<any> {
   const response = await fetch(`${API_URL}/create-college-staff`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: {
+      'Content-Type': 'application/json',
+      // create-college-staff requires an authenticated admin; forward the
+      // caller's SSO access token as a Bearer credential.
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(staffData),
   });
 

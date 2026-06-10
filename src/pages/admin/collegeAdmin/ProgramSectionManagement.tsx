@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from "react";
 import {
   PlusCircleIcon,
@@ -11,10 +12,9 @@ import {
   MagnifyingGlassIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from '@/shared/api/supabaseClient';
 import toast from "react-hot-toast";
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface ProgramSection {
   id: string;
@@ -72,30 +72,18 @@ const ProgramSectionManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchCollegeId = async () => {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) return;
       
       try {
-        const { data: lecturerData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
+        const orgRes: any = await apiPost('/college-admin/actions', {
+          action: 'get-org-by-admin-or-email',
+          userId: user.id,
+          email: user.email
+        });
 
-        if (lecturerData?.collegeId) {
-          setCollegeId(lecturerData.collegeId);
-          return;
-        }
-
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('admin_id', user.id)
-          .eq('organization_type', 'college')
-          .maybeSingle();
-
-        if (orgData?.id) {
-          setCollegeId(orgData.id);
+        if (orgRes.success && orgRes.data?.id) {
+          setCollegeId(orgRes.data.id);
         }
       } catch (error) {
         logger.error('Error fetching college ID:', error as Error);
@@ -117,80 +105,26 @@ const ProgramSectionManagement: React.FC = () => {
     try {
       setLoading(true);
 
-      // Load departments
-      const { data: deptData, error: deptError } = await supabase
-        .from("departments")
-        .select("*")
-        .eq("college_id", collegeId)
-        .eq("status", "active");
-      
-      if (deptError) throw deptError;
-      setDepartments(deptData || []);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-program-sections-data',
+        college_id: collegeId
+      });
 
-      // Load programs (filter by departments from this college)
-      const { data: progData, error: progError } = await supabase
-        .from("programs")
-        .select(`
-          *,
-          departments!inner (
-            college_id
-          )
-        `)
-        .eq("departments.college_id", collegeId)
-        .eq("status", "active");
-      
-      if (progError) throw progError;
+      if (!res.success) throw new Error(res.error || 'Failed to load program sections data');
+
+      const { deptData, progData, facultyData, sectionsData } = res.data;
+
+      setDepartments(deptData || []);
       setPrograms(progData || []);
 
-      // Load faculty from college_lecturers
-      const { data: facultyData, error: facultyError } = await supabase
-        .from("college_lecturers")
-        .select(`
-          id,
-          user_id,
-          users!fk_college_lecturers_user (
-            firstName,
-            lastName,
-            email
-          )
-        `)
-        .eq("collegeId", collegeId)
-        .eq("accountStatus", "active");
-      
-      if (facultyError) {
-        logger.error("Error loading faculty:", facultyError as Error);
-        // Continue without faculty data
-        setFaculty([]);
-      } else {
-        // Transform the data to match Faculty interface
-        const transformedFaculty = (facultyData || []).map((f: any) => ({
-          id: f.user_id,
-          name: f.users ? `${f.users.firstName || ''} ${f.users.lastName || ''}`.trim() || f.users.email : 'Unknown',
-          email: f.users?.email || '',
-        }));
-        setFaculty(transformedFaculty);
-      }
+      const transformedFaculty = (facultyData || []).map((f: any) => ({
+        id: f.user_id,
+        name: f.users ? `${f.users.firstName || ''} ${f.users.lastName || ''}`.trim() || f.users.email : 'Unknown',
+        email: f.users?.email || '',
+      }));
+      setFaculty(transformedFaculty);
 
-      // Load sections - query program_sections table directly and join with departments
-      const { data: sectionsData, error: sectionsError } = await supabase
-        .from("program_sections")
-        .select(`
-          *,
-          programs!inner (
-            name,
-            code,
-            departments!inner (
-              name,
-              college_id
-            )
-          )
-        `)
-        .eq("programs.departments.college_id", collegeId)
-        .order("semester", { ascending: true })
-        .order("section", { ascending: true });
-      
-      if (sectionsError) {
-        logger.error("Error loading sections:", sectionsError as Error);
+      if (!sectionsData) {
         setSections([]);
       } else {
         const formattedSections: ProgramSection[] = (sectionsData || []).map((s: any) => ({
@@ -230,50 +164,17 @@ const ProgramSectionManagement: React.FC = () => {
 
   const handleSaveSection = async (data: Partial<ProgramSection>) => {
     try {
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       
-      if (selectedSection) {
-        // Update existing section
-        const { error } = await supabase
-          .from("program_sections")
-          .update({
-            department_id: data.department_id,
-            program_id: data.program_id,
-            semester: data.semester,
-            section: data.section,
-            max_learners: data.max_learners,
-            faculty_id: data.faculty_id || null,
-            status: data.status,
-            updated_by: user?.id,
-          })
-          .eq("id", selectedSection.id);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'save-program-section',
+        section_id: selectedSection?.id,
+        data: data,
+        user_id: user?.id
+      });
 
-        if (error) throw error;
-        toast.success("Section updated successfully");
-      } else {
-        // Create new section
-        const currentYear = new Date().getFullYear();
-        const nextYear = (currentYear + 1).toString().slice(-2);
-        const academicYear = `${currentYear}-${nextYear}`;
-
-        const { error } = await supabase
-          .from("program_sections")
-          .insert({
-            department_id: data.department_id,
-            program_id: data.program_id,
-            semester: data.semester,
-            section: data.section,
-            max_learners: data.max_learners,
-            faculty_id: data.faculty_id || null,
-            academic_year: academicYear,
-            status: data.status || "active",
-            current_learners: 0,
-            created_by: user?.id,
-          });
-
-        if (error) throw error;
-        toast.success("Section created successfully");
-      }
+      if (!res.success) throw new Error(res.error || 'Failed to save section');
+      toast.success(selectedSection ? "Section updated successfully" : "Section created successfully");
       
       setIsModalOpen(false);
       loadData(); // Reload data to show changes

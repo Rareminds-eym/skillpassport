@@ -1,4 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip } from 'lucide-react';
 
@@ -32,7 +32,6 @@ import {
 
 // Import assignment card interface
 import { Assignment } from '@/features/myclass';
-import { supabase } from '@/shared/api/supabaseClient';
 
 import { useUser } from '@/shared/model/authStore';
 type CollegeTabType = 'overview' | 'classmates' | 'assignments';
@@ -47,7 +46,7 @@ type CollegeTabType = 'overview' | 'classmates' | 'assignments';
  */
 const CollegeMyClass: React.FC = () => {
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id;
 
@@ -211,13 +210,10 @@ const CollegeMyClass: React.FC = () => {
 
     try {
       // Get user token from Supabase session
-      const { data: { session }, error: sessionError } = await getCurrentSession();
+      const user = useAuthStore.getState().user;
+    const sessionError = null;
 
-      if (!session?.access_token) {
-        showNotificationModal('error', 'Authentication Required', 'Authentication required. Please log in again.');
-        return;
-      }
-
+      
       // Simulate initial progress
       setUploadProgress(10);
 

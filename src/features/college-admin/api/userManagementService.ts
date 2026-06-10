@@ -1,11 +1,9 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-import { supabase } from '@/shared/api/supabaseClient';
-import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 // @ts-ignore - userApiService is a .js file
 import type { ApiResponse, BulkImportResult, User } from '@/shared/types/college';
 import userApiService from '@/entities/user/api/userApiService';
-
-const logger = getLogger('user-management-service');
+import { useAuthStore } from '@/shared/model/authStore';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 /**
  * User Management Service
@@ -43,13 +41,9 @@ export const userManagementService = {
       }
 
       // Check for duplicate email in users table
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', userData.email)
-        .maybeSingle();
+      const duplicateResult = await apiPost('/college-admin/faculty', { action: 'check-duplicate-email', email: userData.email });
 
-      if (existingUser) {
+      if (!duplicateResult.success) {
         return {
           success: false,
           error: {
@@ -61,41 +55,29 @@ export const userManagementService = {
       }
 
       // Get auth token for worker API
-      const { data: { session } } = await getCurrentSession();
-      if (!session?.access_token) {
+      const token = ssoClient.getAccessToken();
+      if (!token) {
         return {
           success: false,
           error: {
             code: 'AUTH_ERROR',
-            message: 'Not authenticated. Please log in again.',
+            message: 'Authentication required. Please log in.',
           },
         };
       }
 
       // Get college ID from current user context
-      const { data: { user: currentUser } } = await getCurrentUser();
+      const currentUser = useAuthStore.getState().user;
       let collegeId = null;
 
       if (currentUser?.id || currentUser?.email) {
-        const { data: collegeData } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'college')
-          .or(`admin_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
-          .maybeSingle();
-
-        collegeId = collegeData?.id;
+        const collegeResult = await apiPost('/college-admin/faculty', { action: 'get-college-by-admin', admin_id: currentUser.id, email: currentUser.email });
+        collegeId = collegeResult?.data?.id;
       }
 
       if (!collegeId) {
-        const { data: firstCollege } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'college')
-          .limit(1)
-          .maybeSingle();
-        
-        collegeId = firstCollege?.id;
+        const firstCollegeResult = await apiPost('/college-admin/faculty', { action: 'get-first-college' });
+        collegeId = firstCollegeResult?.data?.id;
       }
 
       // Determine role for worker API
@@ -117,7 +99,7 @@ export const userManagementService = {
           employeeId: userData.employee_id,
           department: userData.department_id,
           role: userData.roles[0]?.toLowerCase().replace(' ', '_') || 'lecturer',
-        }, session.access_token);
+        }, ssoClient.getAccessToken());
 
         if (!staffResult.success) {
           return {
@@ -179,7 +161,6 @@ export const userManagementService = {
         return { success: true, data: createdUser };
       }
     } catch (error: any) {
-      logger.error('Error creating user', error as Error);
       return {
         success: false,
         error: {
@@ -216,14 +197,11 @@ export const userManagementService = {
         };
       }
 
-      const { data, error } = await supabase
-        .from('college_lecturers')
-        .update(updateData)
-        .eq('id', userId)
-        .select()
-        .single();
+      const result = await apiPost('/college-admin/faculty', { action: 'update-user', user_id: userId, ...updateData });
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error || 'Failed to update user');
+
+      const data = result.data;
 
       // Transform back to User format
       const updatedUser: User = {
@@ -256,12 +234,9 @@ export const userManagementService = {
    */
   async deactivateUser(userId: string): Promise<ApiResponse<void>> {
     try {
-      const { error } = await supabase
-        .from('college_lecturers')
-        .update({ accountStatus: 'deactivated' })
-        .eq('id', userId);
+      const result = await apiPost('/college-admin/faculty', { action: 'deactivate-user', user_id: userId });
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error || 'Failed to deactivate user');
 
       return { success: true, data: undefined };
     } catch (error: any) {
@@ -356,33 +331,9 @@ export const userManagementService = {
    */
   async resetPassword(userId: string): Promise<ApiResponse<void>> {
     try {
-      // Get user email from college_lecturers
-      const { data: lecturer, error: fetchError } = await supabase
-        .from('college_lecturers')
-        .select('email')
-        .eq('id', userId)
-        .maybeSingle();
+      const result = await apiPost('/college-admin/faculty', { action: 'reset-password', user_id: userId });
 
-      if (fetchError) throw fetchError;
-      if (!lecturer) throw new Error('User not found');
-
-      if (!lecturer?.email) {
-        throw new Error('User email not found');
-      }
-
-      // Generate new temporary password
-      const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
-
-      // Update temporary password in college_lecturers
-      const { error: updateError } = await supabase
-        .from('college_lecturers')
-        .update({
-          temporary_password: tempPassword,
-          password_created_at: new Date().toISOString(),
-        })
-        .eq('id', userId);
-
-      if (updateError) throw updateError;
+      if (!result.success) throw new Error(result.error || 'Failed to reset password');
 
       return { success: true, data: undefined };
     } catch (error: any) {
@@ -402,15 +353,11 @@ export const userManagementService = {
    */
   async getUsersByRole(role: string): Promise<ApiResponse<User[]>> {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .contains('roles', [role])
-        .eq('status', 'active');
+      const result = await apiPost('/college-admin/faculty', { action: 'get-users-by-role', role });
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error || 'Failed to fetch users');
 
-      return { success: true, data: data || [] };
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
       return {
         success: false,
@@ -437,34 +384,23 @@ export const userManagementService = {
       const users: User[] = [];
 
       // Get current user's college ID
-      const { data: { user: currentUser } } = await getCurrentUser();
+      const currentUser = useAuthStore.getState().user;
       if (!currentUser) {
         throw new Error('Not authenticated');
       }
 
       // Check college_lecturers table first
-      const { data: lecturerData } = await supabase
-        .from('college_lecturers')
-        .select('collegeId')
-        .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
-        .maybeSingle();
+      const lecturerCollegeResult = await apiPost('/college-admin/faculty', { action: 'get-lecturer-college', user_id: currentUser.id, email: currentUser.email });
 
-      let collegeId = lecturerData?.collegeId;
+      let collegeId = lecturerCollegeResult?.data?.collegeId;
 
       // If not found, check organizations table
       if (!collegeId) {
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('admin_id', currentUser.id)
-          .eq('organization_type', 'college')
-          .maybeSingle();
-
-        collegeId = orgData?.id;
+        const orgResult = await apiPost('/college-admin/faculty', { action: 'get-college-by-admin', admin_id: currentUser.id });
+        collegeId = orgResult?.data?.id;
       }
 
       if (!collegeId) {
-        logger.error('No college ID found for current user', new Error('College ID lookup failed'));
         return {
           users: [],
           total: 0,
@@ -474,56 +410,29 @@ export const userManagementService = {
       }
 
       // Fetch lecturers from college_lecturers table - FILTER BY COLLEGE
-      let lecturersQuery = supabase
-        .from('college_lecturers')
-        .select(`
-          id,
-          user_id,
-          collegeId,
-          employeeId,
-          department,
-          specialization,
-          qualification,
-          experienceYears,
-          dateOfJoining,
-          accountStatus,
-          createdAt,
-          updatedAt,
-          metadata,
-          first_name,
-          last_name,
-          email
-        `)
-        .eq('collegeId', collegeId);
+      const lecturersResult = await apiPost('/college-admin/faculty', {
+        action: 'get-lecturers',
+        college_id: collegeId,
+        status: filters.status,
+        department_id: filters.department_id,
+      });
 
-      if (filters.status) {
-        lecturersQuery = lecturersQuery.eq('accountStatus', filters.status);
-      }
+      const lecturers = lecturersResult?.data || [];
 
-      if (filters.department_id) {
-        lecturersQuery = lecturersQuery.eq('department', filters.department_id);
-      }
-
-      const { data: lecturers, error: lecturersError } = await lecturersQuery;
-
-      if (lecturersError) {
-        logger.error('Error fetching lecturers', lecturersError as Error, { collegeId });
-      } else if (lecturers && lecturers.length > 0) {
+      if (lecturers && lecturers.length > 0) {
         // Fetch user details separately for each lecturer
         const userIds = lecturers
-          .map(l => l.user_id)
+          .map((l: any) => l.user_id)
           .filter(Boolean);
 
         let usersMap: Record<string, any> = {};
         
         if (userIds.length > 0) {
-          const { data: usersData } = await supabase
-            .from('users')
-            .select('id, email, full_name, name')
-            .in('id', userIds);
+          const usersResult = await apiPost('/college-admin/faculty', { action: 'get-users-by-ids', user_ids: userIds });
+          const usersData = usersResult?.data || [];
 
           if (usersData) {
-            usersMap = usersData.reduce((acc, user) => {
+            usersMap = usersData.reduce((acc: Record<string, any>, user: any) => {
               acc[user.id] = user;
               return acc;
             }, {} as Record<string, any>);
@@ -629,14 +538,11 @@ export const userManagementService = {
    */
   async calculateFacultyWorkload(facultyId: string): Promise<ApiResponse<number>> {
     try {
-      const { data, error } = await supabase
-        .from('course_mappings')
-        .select('credits')
-        .eq('faculty_id', facultyId);
+      const result = await apiPost('/college-admin/faculty', { action: 'calculate-faculty-workload', faculty_id: facultyId });
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error || 'Failed to calculate workload');
 
-      const totalCredits = data?.reduce((sum, course) => sum + course.credits, 0) || 0;
+      const totalCredits = result.data?.totalCredits || 0;
 
       return { success: true, data: totalCredits };
     } catch (error: any) {

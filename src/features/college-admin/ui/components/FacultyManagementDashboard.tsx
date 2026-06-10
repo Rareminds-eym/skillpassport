@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { getFacultyStatistics } from '@/features/college-admin';
 import FacultyLeaveManagement from '@/features/college-admin/ui/FacultyLeaveManagement';
@@ -50,45 +50,14 @@ const FacultyManagementDashboard: React.FC = () => {
     }
 
     try {
-      // First, try to get college_id from college_lecturers table
-      const { data: educatorData } = await supabase
-        .from('college_lecturers')
-        .select('collegeId')
-        .eq('email', user.email)
-        .maybeSingle();
+      const result = await apiPost('/college-admin/faculty', {
+        action: 'resolve-user-college',
+        user_id: user.id,
+        email: user.email,
+      });
 
-      if (educatorData?.collegeId) {
-        setCollegeId(educatorData.collegeId);
-        return;
-      }
-
-      // If not found in college_lecturers, check if user is a college admin in organizations table
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('organization_type', 'college')
-        .eq('email', user.email)
-        .maybeSingle();
-
-      if (orgError) {
-        logger.error('Error fetching from organizations', orgError);
-      }
-
-      if (orgData?.id) {
-        setCollegeId(orgData.id);
-        return;
-      }
-
-      // Also try admin_id field
-      const { data: orgByAdmin } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('organization_type', 'college')
-        .eq('admin_id', user.id)
-        .maybeSingle();
-
-      if (orgByAdmin?.id) {
-        setCollegeId(orgByAdmin.id);
+      if (result.data?.college_id) {
+        setCollegeId(result.data.college_id);
         return;
       }
 

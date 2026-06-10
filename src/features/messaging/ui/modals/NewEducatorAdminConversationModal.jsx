@@ -1,7 +1,7 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { X, Search, ShieldCheck, MessageCircle } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
-import { getCurrentUser } from '@/shared/api/authUtils';
+import { apiPost } from '@/shared/api/apiClient';
 
 const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConversationCreated }) => {
   const [school, setSchool] = useState(null);
@@ -39,92 +39,34 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
     setLoading(true);
     try {
       console.log('🔍 Fetching school for educator ID:', educatorId);
-      
-      // Get educator's school information from organizations table
-      let { data: educatorData, error } = await supabase
-        .from('school_educators')
-        .select(`
-          school_id,
-          school:organizations!school_educators_school_id_fkey (
-            id,
-            name,
-            city,
-            state,
-            organization_type
-          )
-        `)
-        .eq('user_id', educatorId)
-        .single();
 
-      console.log('📋 Educator query result:', { educatorData, error });
+      // Get educator's school information
+      const { data: educatorContext } = await apiPost('/messaging/actions', { action: 'resolve-user-context', userId: educatorId, type: 'educator' });
 
-      // If first attempt fails, try by email (in case user_id doesn't match)
-      if (error && error.code === 'PGRST116') {
-        console.log('🔄 First attempt failed, trying by email...');
-        
-        // Get current user email from auth
-        const { data: { user }, error: userError } = await getCurrentUser();
-        
-        if (!userError && user?.email) {
-          console.log('📧 Trying with email:', user.email);
-          
-          const { data: educatorByEmail, error: emailError } = await supabase
-            .from('school_educators')
-            .select(`
-              school_id,
-              user_id,
-              school:organizations!school_educators_school_id_fkey (
-                id,
-                name,
-                city,
-                state,
-                organization_type
-              )
-            `)
-            .eq('email', user.email)
-            .single();
-          
-          console.log('📋 Email attempt result:', { educatorByEmail, emailError });
-          
-          if (!emailError && educatorByEmail) {
-            educatorData = educatorByEmail;
-            error = null;
-            
-            // Update the user_id in the auth system if it doesn't match
-            if (educatorByEmail.user_id !== educatorId) {
-              console.log('⚠️ User ID mismatch detected:', {
-                authUserId: educatorId,
-                dbUserId: educatorByEmail.user_id
-              });
-            }
-          } else {
-            error = emailError;
+      let schoolId = educatorContext?.school_id;
+
+      // Fallback: try by email if user_id lookup failed
+      if (!schoolId) {
+        console.log('🔄 User_id lookup failed, trying by email...');
+        const user = useAuthStore.getState().user;
+        if (user?.email) {
+          const { data: educatorByEmail } = await apiPost('/messaging/actions', { action: 'resolve-educator-by-email', email: user.email });
+          if (educatorByEmail?.school_id) {
+            schoolId = educatorByEmail.school_id;
           }
         }
       }
 
-      if (error) {
-        console.error('❌ Database error:', error);
-        
-        if (error.code === 'PGRST116') {
-          console.log('🔄 No educator record found for this user');
-          setSchool(null);
-          return;
-        }
-        
-        throw error;
-      }
-
-      if (educatorData?.school) {
-        // Map the organization data to match expected school structure
+      if (schoolId) {
+        const { data: schoolOrg } = await apiPost('/messaging/actions', { action: 'fetch-organization', id: schoolId });
         const schoolData = {
-          id: educatorData.school.id,
-          name: educatorData.school.name,
-          address: educatorData.school.city && educatorData.school.state 
-            ? `${educatorData.school.city}, ${educatorData.school.state}` 
+          id: schoolOrg.id,
+          name: schoolOrg.name,
+          address: schoolOrg.city && schoolOrg.state
+            ? `${schoolOrg.city}, ${schoolOrg.state}`
             : null,
-          phone: null, // Organizations table doesn't have phone
-          email: null  // Organizations table doesn't have email
+          phone: null,
+          email: null
         };
         console.log('✅ School found:', schoolData);
         setSchool(schoolData);

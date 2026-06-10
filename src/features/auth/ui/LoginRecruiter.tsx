@@ -1,3 +1,4 @@
+import { PASSWORD_MIN } from '@/shared/constants';
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -98,7 +99,7 @@ export default function LoginRecruiter() {
             type={showPassword ? "text" : "password"}
             id="password"
             required
-            minLength={8}
+            minLength={PASSWORD_MIN}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"

@@ -14,7 +14,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { opportunitiesService } from '@/features/opportunities';
 import { 
   placementAnalyticsService, 
@@ -67,81 +67,14 @@ const PlacementAnalytics: React.FC = () => {
       // Use the same service as main placement stats for consistency
       const stats = await opportunitiesService.getPlacementStats();
       
-      // Get recent placements using the same logic
-      const { data: recentPlacementsData, error: recentError } = await supabase
-        .from('applied_jobs')
-        .select(`
-          id,
-          application_status,
-          applied_at,
-          learners!fk_applied_jobs_learner (
-            name,
-            learner_id,
-            branch_field,
-            course_name
-          ),
-          opportunities!fk_applied_jobs_opportunity (
-            title,
-            company_name,
-            employment_type,
-            location,
-            salary_range_min,
-            salary_range_max
-          )
-        `)
-        .eq('application_status', 'accepted')
-        .order('applied_at', { ascending: false })
-        .limit(10);
+      const recentData = await apiPost('/placement/actions', { action: 'get-recent-placements', limit: 10 });
+      const transformedRecentPlacements = recentData?.data || [];
 
-      if (recentError) {
-        logger.error('Error fetching recent placements', recentError);
-      }
+      const allLearnersData = await apiPost('/placement/actions', { action: 'get-all-learners-analytics' });
+      const alllearnersData = allLearnersData?.data || [];
 
-      // Transform recent placements data
-      const transformedRecentPlacements = (recentPlacementsData || []).map(record => ({
-        id: record.id.toString(),
-        learner_name: record.learners?.name || 'Unknown Learner',
-        learner_id: record.learners?.learner_id || '',
-        company_name: record.opportunities?.company_name || '',
-        job_title: record.opportunities?.title || '',
-        department: record.learners?.branch_field || record.learners?.course_name || '',
-        employment_type: record.opportunities?.employment_type as 'Full-time' | 'Internship',
-        salary_offered: record.opportunities?.salary_range_max || record.opportunities?.salary_range_min || 0,
-        placement_date: record.applied_at,
-        status: record.application_status as any,
-        location: record.opportunities?.location || ''
-      }));
-
-      // Get all learners by department for department analytics
-      const { data: alllearnersData, error: learnersError } = await supabase
-        .from('learners')
-        .select('branch_field, course_name, id');
-
-      if (learnersError) {
-        logger.error('Error fetching all learners', learnersError);
-      }
-
-      // Get all placements for department analytics
-      const { data: allPlacementsData, error: placementsError } = await supabase
-        .from('applied_jobs')
-        .select(`
-          id,
-          learner_id,
-          learners!fk_applied_jobs_learner (
-            branch_field,
-            course_name
-          ),
-          opportunities!fk_applied_jobs_opportunity (
-            employment_type,
-            salary_range_min,
-            salary_range_max
-          )
-        `)
-        .eq('application_status', 'accepted');
-
-      if (placementsError) {
-        logger.error('Error fetching all placements', placementsError);
-      }
+      const allPlacementsData = await apiPost('/placement/actions', { action: 'get-all-placements-analytics' });
+      const allPlacementsRawData = allPlacementsData?.data || [];
 
       // Calculate department-wise analytics
       const departmentStats: { [key: string]: any } = {};
@@ -165,7 +98,7 @@ const PlacementAnalytics: React.FC = () => {
       // Count placements by department (count unique learners, not total offers)
       const uniquelearnersByDept: { [key: string]: Set<number> } = {};
       
-      (allPlacementsData || []).forEach(placement => {
+      (allPlacementsRawData || []).forEach(placement => {
         const dept = placement.learners?.branch_field || placement.learners?.course_name || 'Unknown';
         if (departmentStats[dept]) {
           // Use Set to track unique learner IDs
@@ -230,8 +163,8 @@ const PlacementAnalytics: React.FC = () => {
         avgCTC: stats.avgCTC,
         medianCTC: stats.medianCTC,
         highestCTC: stats.highestCTC,
-        totalInternships: transformedRecentPlacements.filter(p => p.employment_type === 'Internship').length,
-        totalFullTime: transformedRecentPlacements.filter(p => p.employment_type === 'Full-time').length,
+        totalInternships: (allPlacementsRawData || []).filter((p: any) => p.opportunities?.employment_type === 'Internship').length,
+        totalFullTime: (allPlacementsRawData || []).filter((p: any) => p.opportunities?.employment_type === 'Full-time').length,
         placementRate: stats.placementRate
       });
 
@@ -241,14 +174,21 @@ const PlacementAnalytics: React.FC = () => {
       // Set department analytics
       setDepartmentAnalytics(departmentAnalytics);
 
-      // Calculate CTC distribution
-      const fullTimePlacements = transformedRecentPlacements.filter(p => p.employment_type === 'Full-time');
-      const internships = transformedRecentPlacements.filter(p => p.employment_type === 'Internship');
-      const totalPlacements = transformedRecentPlacements.length;
+      // Calculate CTC distribution (from full dataset, not just top 10)
+      const allPlacementsForCTC = allPlacementsRawData || [];
+      const fullTimePlacements = allPlacementsForCTC.filter((p: any) => p.opportunities?.employment_type === 'Full-time');
+      const internships = allPlacementsForCTC.filter((p: any) => p.opportunities?.employment_type === 'Internship');
+      const totalPlacements = allPlacementsForCTC.length;
 
-      const above10L = fullTimePlacements.filter(p => p.salary_offered >= 1000000).length;
-      const between5L10L = fullTimePlacements.filter(p => p.salary_offered >= 500000 && p.salary_offered < 1000000).length;
-      const below5L = fullTimePlacements.filter(p => p.salary_offered > 0 && p.salary_offered < 500000).length;
+      const above10L = fullTimePlacements.filter((p: any) => (p.opportunities?.salary_range_max || p.opportunities?.salary_range_min || 0) >= 1000000).length;
+      const between5L10L = fullTimePlacements.filter((p: any) => {
+        const salary = p.opportunities?.salary_range_max || p.opportunities?.salary_range_min || 0;
+        return salary >= 500000 && salary < 1000000;
+      }).length;
+      const below5L = fullTimePlacements.filter((p: any) => {
+        const salary = p.opportunities?.salary_range_max || p.opportunities?.salary_range_min || 0;
+        return salary > 0 && salary < 500000;
+      }).length;
 
       setCTCDistribution({
         above10L: {

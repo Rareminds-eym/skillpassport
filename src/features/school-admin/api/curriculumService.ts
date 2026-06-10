@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('curriculumService');
@@ -12,31 +12,25 @@ export interface CopyCurriculumParams {
   createdBy: string;
 }
 
-class CurriculumService {
-  /**
-   * Copy a curriculum template to a new curriculum
-   * @param params - Copy curriculum parameters
-   * @returns The new curriculum ID
-   */
-  async copyCurriculumTemplate(params: CopyCurriculumParams): Promise<string> {
-    const { data: newCurriculumId, error } = await supabase.rpc(
-      'copy_curriculum_template',
-      {
-        p_source_curriculum_id: params.sourceCurriculumId,
-        p_target_school_id: params.targetSchoolId,
-        p_target_subject: params.targetSubject,
-        p_target_class: params.targetClass,
-        p_target_academic_year: params.targetAcademicYear,
-        p_created_by: params.createdBy,
-      }
-    );
+const API_PATH = '/college-admin/school-admin';
 
-    if (error) {
+class CurriculumService {
+  async copyCurriculumTemplate(params: CopyCurriculumParams): Promise<string> {
+    try {
+      const result = await apiPost(API_PATH, {
+        action: 'copy-curriculum-template',
+        source_curriculum_id: params.sourceCurriculumId,
+        target_school_id: params.targetSchoolId,
+        target_subject: params.targetSubject,
+        target_class: params.targetClass,
+        target_academic_year: params.targetAcademicYear,
+        created_by: params.createdBy,
+      });
+      return result as string;
+    } catch (error) {
       logger.error('Failed to copy curriculum template', error as Error);
       throw error;
     }
-
-    return newCurriculumId;
   }
 }
 

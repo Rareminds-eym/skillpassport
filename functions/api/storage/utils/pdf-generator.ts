@@ -24,7 +24,7 @@
  *   Box border  #E2E8F0  → rgb(226, 232, 240)
  */
 
-import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -376,7 +376,7 @@ export async function generateReceiptPDF(data: ReceiptData): Promise<Uint8Array>
     yFromTop += mm(7);
 
     text('Billing Cycle:', leftCol, yFromTop, { size: 9, bold: true, color: C.labelGrey });
-    text(subscription.billing_cycle || 'N/A', leftCol + labelW, yFromTop, { size: 9, color: C.darkText });
+    text(subscription.billing_cycle ?? 'N/A', leftCol + labelW, yFromTop, { size: 9, color: C.darkText });
     yFromTop += mm(7);
 
     text('Start Date:', leftCol, yFromTop, { size: 9, bold: true, color: C.labelGrey });

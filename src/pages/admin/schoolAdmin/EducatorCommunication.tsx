@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -22,7 +23,6 @@ import {
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import MessageService, { Conversation } from '@/features/messaging';
-import { supabase } from '@/shared/api/supabaseClient';
 import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -32,7 +32,7 @@ import { useTypingIndicator } from '@/shared/lib/hooks';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+
 
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useUser } from '@/shared/model/authStore';
@@ -87,7 +87,7 @@ const EducatorCommunication = () => {
       }
       
       // Fallback: Check organizations table for school admins
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (user) {
         const { data: org } = await supabase
           .from('organizations')
@@ -229,7 +229,7 @@ const EducatorCommunication = () => {
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [schoolId, queryClient]);
   

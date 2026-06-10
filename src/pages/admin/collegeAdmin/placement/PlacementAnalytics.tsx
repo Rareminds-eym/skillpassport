@@ -14,7 +14,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
 import { opportunitiesService } from '@/features/opportunities';
 import { 
   placementAnalyticsService, 
@@ -23,6 +22,7 @@ import {
   PlacementStats 
 } from '@/features/placement';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('placement-analytics');
 
@@ -67,38 +67,16 @@ const PlacementAnalytics: React.FC = () => {
       // Use the same service as main placement stats for consistency
       const stats = await opportunitiesService.getPlacementStats();
       
-      // Get recent placements using the same logic
-      const { data: recentPlacementsData, error: recentError } = await supabase
-        .from('applied_jobs')
-        .select(`
-          id,
-          application_status,
-          applied_at,
-          learners!fk_applied_jobs_learner (
-            name,
-            learner_id,
-            branch_field,
-            course_name
-          ),
-          opportunities!fk_applied_jobs_opportunity (
-            title,
-            company_name,
-            employment_type,
-            location,
-            salary_range_min,
-            salary_range_max
-          )
-        `)
-        .eq('application_status', 'accepted')
-        .order('applied_at', { ascending: false })
-        .limit(10);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-placement-analytics-data'
+      });
 
-      if (recentError) {
-        logger.error('Error fetching recent placements:', recentError as Error);
-      }
+      if (!res.success) throw new Error(res.error || 'Failed to fetch placement data');
+
+      const { recentPlacementsData, alllearnersData, allPlacementsData } = res.data;
 
       // Transform recent placements data
-      const transformedRecentPlacements = (recentPlacementsData || []).map(record => ({
+      const transformedRecentPlacements = (recentPlacementsData || []).map((record: any) => ({
         id: record.id.toString(),
         learner_name: record.learners?.name || 'Unknown Learner',
         learner_id: record.learners?.learner_id || '',
@@ -111,37 +89,6 @@ const PlacementAnalytics: React.FC = () => {
         status: record.application_status as any,
         location: record.opportunities?.location || ''
       }));
-
-      // Get all learners by department for department analytics
-      const { data: alllearnersData, error: learnersError } = await supabase
-        .from('learners')
-        .select('branch_field, course_name, id');
-
-      if (learnersError) {
-        logger.error('Error fetching learners data:', learnersError as Error);
-      }
-
-      // Get all placements for department analytics
-      const { data: allPlacementsData, error: placementsError } = await supabase
-        .from('applied_jobs')
-        .select(`
-          id,
-          learner_id,
-          learners!fk_applied_jobs_learner (
-            branch_field,
-            course_name
-          ),
-          opportunities!fk_applied_jobs_opportunity (
-            employment_type,
-            salary_range_min,
-            salary_range_max
-          )
-        `)
-        .eq('application_status', 'accepted');
-
-      if (placementsError) {
-        logger.error('Error fetching placements data:', placementsError as Error);
-      }
 
       // Calculate department-wise analytics
       const departmentStats: { [key: string]: any } = {};

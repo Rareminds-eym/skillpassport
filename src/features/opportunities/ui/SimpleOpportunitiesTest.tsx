@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 const SimpleOpportunitiesTest = () => {
   const [data, setData] = useState(null);
@@ -11,17 +11,8 @@ const SimpleOpportunitiesTest = () => {
       try {
         
         // Test 1: Basic connection
-        const { data: testData, error: testError } = await supabase
-          .from('opportunities')
-          .select('id, title, company_name, employment_type')
-          .limit(5);
-
-        if (testError) {
-          setError(testError.message);
-          return;
-        }
-
-        setData(testData);
+        const response: any = await apiPost('/opportunities', { action: 'get-all-opportunities' });
+        setData(response?.data?.opportunities?.slice(0, 5) || []);
       } catch (err) {
         setError(err.message);
       } finally {

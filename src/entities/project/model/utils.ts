@@ -3,7 +3,6 @@
  */
 
 import type {
-import { formatBudget } from '..\..\..\shared\lib\format';
   Project,
   ProjectStatus,
   ProjectCategory,

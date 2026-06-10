@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Small Message Modal Component
 const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
@@ -225,46 +225,21 @@ const NewSchoolAdminEducatorConversationModal = ({ isOpen, onClose, schoolId, on
     setLoading(true);
     try {
       console.log('🔍 Fetching educators for school ID:', schoolId);
-      
-      // Get all educators for this school
-      const { data: educatorData, error } = await supabase
-        .from('school_educators')
-        .select(`
-          id,
-          user_id,
-          first_name,
-          last_name,
-          email,
-          phone_number,
-          photo_url,
-          role,
-          subject_expertise
-        `)
-        .eq('school_id', schoolId)
-        .neq('role', 'school_admin') // Exclude school admins
-        .order('first_name');
 
-      console.log('📋 Educators query result:', { educatorData, error, schoolId });
+      const { data: rawEducators } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'admin-educator', contextId: schoolId });
 
-      if (error) {
-        console.error('❌ Database error:', error);
-        throw error;
-      }
+      // Filter out school admins (backend fetch-recipients doesn't exclude them)
+      const filteredRaw = Array.isArray(rawEducators) ? rawEducators.filter((e) => e.role !== 'school_admin') : [];
 
-      // Transform the data
-      const transformedEducators = educatorData?.map(educator => ({
+      const transformedEducators = filteredRaw.map((educator) => ({
         id: educator.id,
-        userId: educator.user_id,
-        name: `${educator.first_name} ${educator.last_name}`.trim(),
+        userId: educator.userId,
+        name: educator.name,
         email: educator.email,
-        phone: educator.phone_number,
+        phone: educator.phone,
         photo_url: educator.photo_url,
         role: educator.role,
-        specialization: educator.subject_expertise ? 
-          (Array.isArray(educator.subject_expertise) ? 
-            educator.subject_expertise.map(s => s.subject || s).join(', ') : 
-            educator.subject_expertise) : 
-          null
+        specialization: educator.specialization || null
       })) || [];
 
       console.log('✅ Transformed educators:', transformedEducators);

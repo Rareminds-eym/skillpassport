@@ -1,8 +1,4 @@
 import { motion } from 'framer-motion';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('CourseAnalytics');
-
 import {
     Activity,
     Award,
@@ -16,8 +12,11 @@ import {
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('CourseAnalytics');
 
 const CourseAnalytics = () => {
   const { courseId } = useParams();
@@ -40,14 +39,13 @@ const CourseAnalytics = () => {
       setLoading(true);
 
       // Fetch course details
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('course_id', courseId)
-        .maybeSingle();
+      const courseResult = await apiPost('/educator/actions', {
+        action: 'get-course-by-id',
+        courseId
+      });
 
-      if (courseError) throw courseError;
-      setCourse(courseData);
+      if (!courseResult?.data) throw new Error('Course not found');
+      setCourse(courseResult.data);
 
       // Fetch enrollments
       const enrollResult = await courseEnrollmentService.getCourseEnrollments(courseId);

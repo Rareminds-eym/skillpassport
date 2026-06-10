@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useState, useMemo, useEffect } from "react";
 import { 
   Search, Users, Calendar, Trophy, Plus, X, 
@@ -11,14 +12,12 @@ import {
   MoreVertical,
   Trash2
 } from "lucide-react";
-import { supabase } from '@/shared/api/supabaseClient';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import toast from "react-hot-toast";
 import * as collegeAssignmentService from "@/features/college-admin";
 import { getDocumentUrl, uploadMultipleFiles } from '@/shared/api';
 import { deleteFile } from '@/shared/api/storageApiService';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
 
 const logger = getLogger('CollegeSkillTasks');
 
@@ -226,7 +225,7 @@ export default function CollegeSkillTasks() {
             setLoading(true);
             
             // Get current user
-            const { data: { user } } = await authSessionService.getUser();
+            const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (!user) {
                 toast.error('User not authenticated');
                 return;
@@ -252,7 +251,7 @@ export default function CollegeSkillTasks() {
         if (!educatorCollege?.id) return;
         
         // Get current user
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (!user) return;
         
         const { data, error } = await collegeAssignmentService.fetchEducatorDepartments(user.id);
@@ -268,7 +267,7 @@ export default function CollegeSkillTasks() {
         if (!educatorCollege?.id) return;
         
         // Get current user
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (!user) return;
         
         const { data, error } = await collegeAssignmentService.fetchEducatorPrograms(
@@ -492,7 +491,7 @@ export default function CollegeSkillTasks() {
         // Fetch programs for this department
         if (departmentId) {
             logger.info('Fetching programs for department', { departmentId });
-            const { data: { user } } = await authSessionService.getUser();
+            const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (user) {
                 logger.info('User ID', { userId: user.id });
                 const { data, error } = await collegeAssignmentService.fetchEducatorPrograms(user.id, departmentId);
@@ -536,7 +535,7 @@ export default function CollegeSkillTasks() {
         // Fetch courses for this program
         if (programId) {
             logger.info('Fetching courses for program', { programId });
-            const { data: { user } } = await authSessionService.getUser();
+            const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (user) {
                 logger.info('User ID', { userId: user.id });
                 const { data, error } = await collegeAssignmentService.fetchEducatorCoursesByProgram(user.id, programId);
@@ -627,7 +626,7 @@ export default function CollegeSkillTasks() {
                 return;
             }
 
-            const { data: { user } } = await authSessionService.getUser();
+            const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (!user) {
                 toast.error("User not authenticated");
                 return;
@@ -790,7 +789,7 @@ export default function CollegeSkillTasks() {
             setSelectedAssignment(null);
             
             // Refresh statistics
-            const { data: { user } } = await authSessionService.getUser();
+            const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (user) {
                 await fetchStatistics(user.id);
             }
@@ -1001,7 +1000,7 @@ export default function CollegeSkillTasks() {
             });
             
             // Refresh assignments
-            const { data: { user } } = await authSessionService.getUser();
+            const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (user) {
                 await fetchAssignments(user.id);
                 await fetchStatistics(user.id);
@@ -1028,7 +1027,7 @@ export default function CollegeSkillTasks() {
             setSelectedAssignment(null);
             
             // Refresh assignments
-            const { data: { user } } = await authSessionService.getUser();
+            const { data: { user } } = { data: { user: useAuthStore.getState().user } };
             if (user) {
                 await fetchAssignments(user.id);
                 await fetchStatistics(user.id);

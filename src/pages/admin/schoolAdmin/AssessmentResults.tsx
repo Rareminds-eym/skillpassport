@@ -14,7 +14,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { SearchBar } from '@/shared/ui';
 import { AssessmentReportDrawer } from '@/features/assessment';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { formatStreamId } from '@/shared/lib/utils/formatters';
 import { getLogger } from '@/shared/config/logging';
 
@@ -335,19 +335,15 @@ const SchoolAdminAssessmentResults: React.FC = () => {
     readiness: [] as string[],
   });
 
-  // Test Supabase connection
+  // Test connection via API
   const testConnection = async () => {
     try {
-      logger.info('Testing Supabase connection');
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('count')
-        .limit(1);
-      
-      logger.info('Supabase connection test result', { hasData: !!data, hasError: !!error });
-      return !error;
+      logger.info('Testing connection');
+      const resp: any = await apiPost('/school-admin/actions', { action: 'testConnection' });
+      logger.info('Connection test result', { ok: !!resp.data?.connected });
+      return resp.data?.connected === true;
     } catch (err) {
-      logger.error('Supabase connection test failed', err as Error);
+      logger.error('Connection test failed', err as Error);
       return false;
     }
   };
@@ -369,144 +365,18 @@ const SchoolAdminAssessmentResults: React.FC = () => {
 
       logger.info('Fetching results for user', { userEmail });
 
-      // Find school by matching email in organizations table (case-insensitive)
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .select('id, name, email')
-        .eq('organization_type', 'school')
-        .ilike('email', userEmail)
-        .maybeSingle();
+      // Fetch assessment results via API
+      const resp: any = await apiPost('/school-admin/actions', { action: 'fetchAssessmentResults' });
 
-      if (orgError) {
-        logger.error('Organization fetch error', orgError as Error);
-        
-        // Handle specific error types
-        if (orgError.message?.includes('Invalid login credentials')) {
-          setError('Authentication expired. Please log in again.');
-          // Optionally redirect to login
-          // window.location.href = '/login';
-          return;
-        } else if (orgError.message?.includes('CORS') || orgError.message?.includes('NetworkError')) {
-          setError('Connection error. Please check your internet connection and try again.');
-          return;
-        } else {
-          setError(`Database error: ${orgError.message}`);
-          return;
-        }
-      }
-
-      if (!org?.id) {
-        logger.error('No school found for email');
+      if (!resp.data?.results && !resp.data?.schoolName) {
         setError('No school associated with your account. Please contact support.');
         setLoading(false);
         return;
       }
 
-      logger.info('Found school', { schoolName: org.name, schoolId: org.id });
-      const schoolId = org.id;
-      
-      // Set school name from the already fetched organization data
-      setSchoolName(org.name);
-
-      // Get learners from this school
-      const { data: learnersData, error: learnersError } = await supabase
-        .from('learners')
-        .select(`
-          user_id, 
-          name, 
-          email, 
-          enrollmentNumber, 
-          grade, 
-          program_id,
-          programs (
-            id,
-            name
-          )
-        `)
-        .eq('school_id', schoolId);
-
-      if (learnersError) throw learnersError;
-
-      if (!learnersData || learnersData.length === 0) {
-        setResults([]);
-        setLoading(false);
-        return;
-      }
-
-      // Filter out learners with null user_id to avoid UUID parsing errors
-      const validlearners = learnersData.filter((s) => s.user_id != null);
-      
-      if (validlearners.length === 0) {
-        setResults([]);
-        setLoading(false);
-        return;
-      }
-
-      const learnerIds = validlearners.map((s) => s.user_id);
-      const learnerMap = new Map(validlearners.map((s) => [s.user_id, s]));
-
-      // Fetch assessment results for these learners
-      const { data, error: fetchError } = await supabase
-        .from('personal_assessment_results')
-        .select(`
-          id,
-          learner_id,
-          stream_id,
-          riasec_code,
-          riasec_scores,
-          aptitude_overall,
-          aptitude_scores,
-          employability_readiness,
-          knowledge_score,
-          status,
-          created_at,
-          career_fit,
-          skill_gap,
-          gemini_results,
-          overall_summary,
-          platform_courses,
-          roadmap,
-          profile_snapshot,
-          personal_assessment_streams (
-            name
-          )
-        `)
-        .in('learner_id', learnerIds)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      const enrichedResults = (data || []).map((r) => {
-        const learner = learnerMap.get(r.learner_id);
-        return {
-          ...r,
-          learner_name: learner?.name || null,
-          learner_email: learner?.email || null,
-          school_id: schoolId,
-          school_name: org.name || null,
-          enrollmentNumber: learner?.enrollmentNumber || null,
-          learner_grade: learner?.grade || null,
-          program_id: learner?.program_id || null,
-          program_name: (() => {
-            if (!learner?.programs) return null;
-            // Handle both single object and array cases
-            if (Array.isArray(learner.programs)) {
-              return learner.programs.length > 0 ? learner.programs[0].name : null;
-            }
-            return (learner.programs as any).name || null;
-          })(),
-          stream_name: (() => {
-            if (!r.personal_assessment_streams) return null;
-            // Handle both single object and array cases
-            if (Array.isArray(r.personal_assessment_streams)) {
-              return r.personal_assessment_streams.length > 0 ? r.personal_assessment_streams[0].name : null;
-            }
-            return (r.personal_assessment_streams as any).name || null;
-          })(),
-        };
-      });
-
-      setResults(enrichedResults as AssessmentResult[]);
+      const { schoolName, results } = resp.data;
+      setSchoolName(schoolName);
+      setResults(results || []);
     } catch (err: any) {
       logger.error('Error fetching assessment results', err);
       setError(err?.message || 'Failed to load assessment results');

@@ -17,18 +17,18 @@ vi.mock('@/shared/api/supabaseClient', () => ({
 }));
 
 // Mock embedding service for controlled testing
-vi.mock('../courseRecommendation/embeddingService', () => ({
+vi.mock('../embeddingService', () => ({
   generateEmbedding: vi.fn(),
   generateSkillEmbedding: vi.fn()
 }));
 
 // Mock vectorUtils for cosine similarity
-vi.mock('../../utils/vectorUtils', () => ({
+vi.mock('@/shared/lib/vectorUtils', () => ({
   cosineSimilarity: vi.fn()
 }));
 
 import { supabase } from '@/shared/api/supabaseClient';
-import { generateEmbedding } from '../courseRecommendation/embeddingService';
+import { generateEmbedding } from '../embeddingService';
 import { cosineSimilarity } from '@/shared/lib/vectorUtils';
 import {
   getRecommendedCourses,
@@ -166,8 +166,8 @@ describe('Course Recommendation Integration Tests', () => {
      * Integration test: Profile text is built correctly from assessment results
      * Validates: Requirements 2.1, 2.2
      */
-    it('should build profile text containing skill gaps and career clusters', () => {
-      const profileText = buildProfileText(sampleAssessmentResults);
+    it('should build profile text containing skill gaps and career clusters', async () => {
+      const profileText = await buildProfileText(sampleAssessmentResults);
 
       // Verify skill gaps are included
       expect(profileText).toContain('Python Programming');
@@ -421,7 +421,7 @@ describe('Course Recommendation Integration Tests', () => {
       };
 
       // buildProfileText should throw for empty results
-      expect(() => buildProfileText(emptyResults)).toThrow();
+      await expect(buildProfileText(emptyResults)).rejects.toThrow();
     });
   });
 
@@ -429,7 +429,7 @@ describe('Course Recommendation Integration Tests', () => {
     /**
      * Test profile text with minimal data
      */
-    it('should build profile text with only skill gaps', () => {
+    it('should build profile text with only skill gaps', async () => {
       const minimalResults = {
         skillGap: {
           priorityA: [{ skill: 'JavaScript' }],
@@ -437,29 +437,29 @@ describe('Course Recommendation Integration Tests', () => {
         }
       };
 
-      const profileText = buildProfileText(minimalResults);
+      const profileText = await buildProfileText(minimalResults);
       expect(profileText).toContain('JavaScript');
     });
 
     /**
      * Test profile text with only career clusters
      */
-    it('should build profile text with only career clusters', () => {
+    it('should build profile text with only career clusters', async () => {
       const minimalResults = {
         careerFit: {
           clusters: [{ title: 'Software Development' }]
         }
       };
 
-      const profileText = buildProfileText(minimalResults);
+      const profileText = await buildProfileText(minimalResults);
       expect(profileText).toContain('Software Development');
     });
 
     /**
      * Test profile text includes all relevant sections
      */
-    it('should include employability areas in profile text', () => {
-      const profileText = buildProfileText(sampleAssessmentResults);
+    it('should include employability areas in profile text', async () => {
+      const profileText = await buildProfileText(sampleAssessmentResults);
       
       // Should include improvement areas
       expect(profileText).toContain('Technical Skills');

@@ -4,14 +4,10 @@
  * GET /api/payments/get-user-entitlements
  */
 
-import { withAuth } from '../../../lib/auth';
+import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
-
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleGetUserEntitlements(context);
-});
 
 export async function handleGetUserEntitlements(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
@@ -19,11 +15,13 @@ export async function handleGetUserEntitlements(context: AuthenticatedContext): 
 
   try {
     const supabase = getServiceClient(env);
+    const user = getContextUser(context);
+    const userId = user.id;
 
     const { data, error } = await supabase
       .from('user_entitlements')
       .select('*')
-      .eq('user_id', context.data.user.sub)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) return apiDbError(error, context.request, { startTime });

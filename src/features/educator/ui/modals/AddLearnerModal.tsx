@@ -1,11 +1,12 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+
 import { ArrowDownTrayIcon, CheckCircleIcon, DocumentArrowUpIcon, ExclamationTriangleIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import Papa from 'papaparse'
 import React, { useEffect, useState } from 'react'
-import { supabase } from '@/shared/api/supabaseClient'
+import { apiPost } from '@/shared/api/apiClient'
 import storageService from '@/shared/api/storageService'
+import { useAuthStore } from '@/shared/model/authStore'
+import { ssoClient } from '@/shared/api/ssoClient'
 import userApiService from '@/entities/user/api/userApiService'
-import { usePermission } from '@/entities/user/model/usePermissions'
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation'
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits'
 import { getLogger } from '@/shared/config/logging'
@@ -69,27 +70,6 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([])
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false)
 
-  // Permission check - allow school_admin and college_admin by default
-  const { allowed: canAddlearners, reason: addReason, loading: permissionLoading } = usePermission('Learners', 'create');
-
-  // Check if user is an admin (school_admin or college_admin should always be allowed)
-  const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => {
-    try {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const userData = JSON.parse(userStr);
-        const role = userData.role || '';
-        // School admins, college admins, and educators should always be able to add learners
-        if (role === 'school_admin' || role === 'college_admin' || role === 'university_admin' || role === 'educator' || role === 'school_educator' || role === 'college_educator') {
-          setIsAdmin(true);
-        }
-      }
-    } catch (e) {
-      logger.error('Failed to parse user data for admin check', e as Error);
-    }
-  }, []);
-
   const [formData, setFormData] = useState<LearnerFormData>({
     name: '',
     email: '',
@@ -151,15 +131,10 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     }
   }, [isOpen])
 
-  // Don't render modal if user doesn't have permission (unless they're an admin)
-  if (!permissionLoading && !canAddlearners && !isAdmin) {
-    return null;
-  }
-
   // Download sample CSV template
   const downloadSampleCSV = () => {
     // Determine context (college vs school) from localStorage
-    const userStr = localStorage.getItem('user')
+    const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
     let isCollegeContext = false
     let userRole = null
 
@@ -349,8 +324,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       // Get current user from localStorage (custom auth - same as teacher onboarding)
-      const userEmail = localStorage.getItem('userEmail')
-      const userStr = localStorage.getItem('user')
+      const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
+      const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
 
 
       if (!userEmail) {
@@ -358,7 +333,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       // Get authenticated user once for reuse
-      const { data: { user: authUser } } = await getCurrentUser()
+      const authUser = useAuthStore.getState().user;
 
       // Get schoolId or collegeId from localStorage
       let schoolId = null
@@ -375,72 +350,32 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
       // If schoolId not in localStorage but user is school_admin, fetch from organizations table
       if (!schoolId && userRole === 'school_admin' && userEmail) {
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'school')
-          .ilike('email', userEmail)
-          .maybeSingle()
+        const orgRes = await apiPost('/educator/actions', { action: 'fetch-organization-by-email', email: userEmail, organizationType: 'school' })
 
-        if (org?.id) {
-          schoolId = org.id
+        if (orgRes?.data?.id) {
+          schoolId = orgRes.data.id
         } else if (authUser?.id) {
-          // Also try school_educators table
-          const { data: educator } = await supabase
-            .from('school_educators')
-            .select('school_id')
-            .eq('user_id', authUser.id)
-            .maybeSingle()
-
-          if (educator?.school_id) {
-            schoolId = educator.school_id
+          const educatorRes = await apiPost('/educator/actions', { action: 'fetch-school-educator-by-user-id', userId: authUser.id })
+          if (educatorRes?.data?.school_id) {
+            schoolId = educatorRes.data.school_id
           }
         }
       }
 
       // If collegeId not in localStorage but user is college_admin, fetch from organizations table
       if (!collegeId && userRole === 'college_admin' && authUser?.id) {
-
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'college')
-          .eq('admin_id', authUser.id)
-          .maybeSingle()
-
-        if (org?.id) {
-          collegeId = org.id
+        const orgRes = await apiPost('/educator/actions', { action: 'fetch-organization-by-admin-id', adminId: authUser.id, organizationType: 'college' })
+        if (orgRes?.data?.id) {
+          collegeId = orgRes.data.id
         }
       }
 
 
       // Refresh session to ensure we have a valid token
-      const { data: refreshData, error: refreshError } = Promise.resolve({ data: null, error: null })
-
-      if (refreshError) {
-        logger.error('Session refresh failed', refreshError as Error)
-        // Try to get existing session
-        const { data: { session }, error: sessionError } = await getCurrentSession()
-
-        if (sessionError || !session) {
-          logger.error('No valid session available', new Error('Session unavailable'))
-          throw new Error('Authentication expired. Please login again.')
-        }
-
-      } else {
-      }
-
-      const finalSession = refreshData?.session || (await getCurrentSession()).data.session
-
-      if (!finalSession) {
-        throw new Error('No active session. Please login again.')
-      }
-
-      const token = finalSession.access_token
+      const token = ssoClient.getAccessToken()
 
       if (!token) {
-        logger.error('No access token in session', new Error('Token unavailable'))
-        throw new Error('No authentication token available')
+        throw new Error('No active session. Please login again.')
       }
 
       // Call Cloudflare Worker via userApiService
@@ -713,8 +648,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const updatelearnerDocuments = async (learnerId: string, documents: Array<{ name: string, url: string, size: number, type: string }>) => {
     try {
       // Get fresh token
-      const { data: { session } } = await getCurrentSession()
-      const token = session?.access_token
+      const token = ssoClient.getAccessToken()
 
       if (!token) {
         throw new Error('No authentication token available for document update')
@@ -772,8 +706,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           }
 
           // Get school ID for class validation
-          const userStr = localStorage.getItem('user')
-          const userEmail = localStorage.getItem('userEmail')
+          const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
+          const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
           let schoolId: string | null = null
           let collegeId: string | null = null
           let userRole: string | null = null
@@ -790,55 +724,29 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
           // If collegeId not in localStorage but user is college_admin, fetch from organizations table
           if (!collegeId && userRole === 'college_admin' && userEmail) {
-            const { data: org } = await supabase
-              .from('organizations')
-              .select('id')
-              .eq('organization_type', 'college')
-              .ilike('email', userEmail)
-              .maybeSingle()
-
-            if (org?.id) {
-              collegeId = org.id
+            const orgRes = await apiPost('/educator/actions', { action: 'fetch-organization-by-email', email: userEmail, organizationType: 'college' })
+            if (orgRes?.data?.id) {
+              collegeId = orgRes.data.id
             }
           }
 
           // If schoolId not in localStorage but user is school_admin, fetch from organizations table
           if (!schoolId && userRole === 'school_admin' && userEmail) {
-            const { data: org } = await supabase
-              .from('organizations')
-              .select('id')
-              .eq('organization_type', 'school')
-              .ilike('email', userEmail)
-              .maybeSingle()
-
-            if (org?.id) {
-              schoolId = org.id
+            const orgRes = await apiPost('/educator/actions', { action: 'fetch-organization-by-email', email: userEmail, organizationType: 'school' })
+            if (orgRes?.data?.id) {
+              schoolId = orgRes.data.id
             }
           }
 
           // If schoolId not in localStorage, fetch from database (for educators)
           if (!schoolId && !collegeId && userEmail) {
-
-            // Check school_educators table
-            const { data: educatorData, error: educatorError } = await supabase
-              .from('school_educators')
-              .select('school_id')
-              .eq('email', userEmail)
-              .maybeSingle()
-
-            if (!educatorError && educatorData) {
-              schoolId = educatorData.school_id
+            const educatorRes = await apiPost('/educator/actions', { action: 'fetch-school-educator-by-email', email: userEmail })
+            if (educatorRes?.data?.school_id) {
+              schoolId = educatorRes.data.school_id
             } else {
-
-              // Check users.organizationId
-              const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('organizationId')
-                .eq('email', userEmail)
-                .maybeSingle()
-
-              if (!userError && userData) {
-                schoolId = userData.organizationId
+              const userRes = await apiPost('/educator/actions', { action: 'fetch-user-by-email', email: userEmail })
+              if (userRes?.data?.organizationId) {
+                schoolId = userRes.data.organizationId
               }
             }
           }
@@ -859,27 +767,17 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
           // Check which classes exist in database and store their IDs (only for schools)
           const existingClasses = new Set<string>()
-          const classIdMap = new Map<string, string>() // Map of "grade-section" to class_id
+          const classIdMap = new Map<string, string>()
 
           if (schoolId && classesToCheck.size > 0) {
+            const classesRes = await apiPost('/educator/actions', { action: 'fetch-school-classes', schoolId })
+            const classes = classesRes?.data || []
 
-            const { data: classes, error: classError } = await supabase
-              .from('school_classes')
-              .select('id, grade, section, name, academic_year')
-              .eq('school_id', schoolId)
-              .eq('account_status', 'active')
-
-
-            if (!classError && classes) {
-              classes.forEach((cls: { id: string; grade: string; section: string; name: string; academic_year: string }) => {
-                const key = `${cls.grade}-${cls.section}`
-                existingClasses.add(key)
-                classIdMap.set(key, cls.id)
-              })
-            } else if (classError) {
-              logger.error('Failed to fetch classes from database', classError as Error)
-            }
-          } else {
+            classes.forEach((cls: { id: string; grade: string; section: string; name: string; academic_year: string }) => {
+              const key = `${cls.grade}-${cls.section}`
+              existingClasses.add(key)
+              classIdMap.set(key, cls.id)
+            })
           }
 
           // Validate ALL rows and create enhanced preview
@@ -969,10 +867,10 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setUploadProgress(null)
 
     try {
-      // Refresh session
-      const { data: { session } } = await getCurrentSession()
-      if (session) {
-        Promise.resolve({ data: null, error: null })
+      // Get session
+      const token = ssoClient.getAccessToken()
+      if (!token) {
+        throw new Error('Authentication expired. Please login again.')
       }
 
       // Parse CSV using PapaParse
@@ -991,8 +889,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             }
 
             // Get userEmail and schoolId FIRST (moved up)
-            const userEmail = localStorage.getItem('userEmail')
-            const userStr = localStorage.getItem('user')
+            const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
+            const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
 
             if (!userEmail) {
               setError('You are not logged in. Please login and try again.')
@@ -1014,42 +912,25 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
             // If collegeId not in localStorage but user is college_admin, fetch from organizations table
             if (!collegeId && userRole === 'college_admin' && userEmail) {
-              const { data: org } = await supabase
-                .from('organizations')
-                .select('id')
-                .eq('organization_type', 'college')
-                .ilike('email', userEmail)
-                .maybeSingle()
-
-              if (org?.id) {
-                collegeId = org.id
+              const orgRes = await apiPost('/educator/actions', { action: 'fetch-organization-by-email', email: userEmail, organizationType: 'college' })
+              if (orgRes?.data?.id) {
+                collegeId = orgRes.data.id
               }
             }
 
             // If schoolId not in localStorage but user is school_admin, fetch from organizations table
             if (!schoolId && userRole === 'school_admin' && userEmail) {
-              const { data: org } = await supabase
-                .from('organizations')
-                .select('id')
-                .eq('organization_type', 'school')
-                .ilike('email', userEmail)
-                .maybeSingle()
-
-              if (org?.id) {
-                schoolId = org.id
+              const orgRes = await apiPost('/educator/actions', { action: 'fetch-organization-by-email', email: userEmail, organizationType: 'school' })
+              if (orgRes?.data?.id) {
+                schoolId = orgRes.data.id
               }
             }
 
             // If schoolId not in localStorage, fetch from database (for educators)
             if (!schoolId && !collegeId && userEmail) {
-              const { data: educatorData } = await supabase
-                .from('school_educators')
-                .select('school_id')
-                .eq('email', userEmail)
-                .maybeSingle()
-
-              if (educatorData) {
-                schoolId = educatorData.school_id
+              const educatorRes = await apiPost('/educator/actions', { action: 'fetch-school-educator-by-email', email: userEmail })
+              if (educatorRes?.data?.school_id) {
+                schoolId = educatorRes.data.school_id
               }
             }
 
@@ -1060,11 +941,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             }
 
             // Fetch class IDs for mapping
-            const { data: classes } = await supabase
-              .from('school_classes')
-              .select('id, grade, section')
-              .eq('school_id', schoolId)
-              .eq('account_status', 'active')
+            const classesRes = await apiPost('/educator/actions', { action: 'fetch-school-classes', schoolId })
+            const classes = classesRes?.data || []
 
             const classIdMap = new Map<string, string>()
             if (classes) {
@@ -1178,8 +1056,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
               const batchPromises = batch.map(async ({ row, data }) => {
                 try {
-                  const { data: { session } } = await getCurrentSession()
-                  const token = session?.access_token
+                  const token = ssoClient.getAccessToken()
 
                   if (!token) {
                     throw new Error('No authentication token available')
@@ -1762,7 +1639,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 <p className="text-sm text-blue-800 mb-3">Your CSV file should include these columns:</p>
                 {(() => {
                   // Determine context (college vs school) from localStorage
-                  const userStr = localStorage.getItem('user')
+                  const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
                   let isCollegeContext = false
                   let userRole = null
 
@@ -1827,7 +1704,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 >
                   <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                   {(() => {
-                    const userStr = localStorage.getItem('user')
+                    const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"))
                     let isCollegeContext = false
                     try {
                       const userData = JSON.parse(userStr || '{}')

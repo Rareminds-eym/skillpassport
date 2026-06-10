@@ -1,3 +1,5 @@
+import { useAuthStore } from '@/shared/model/authStore';
+import { PASSWORD_MIN } from '@/shared/constants';
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -66,7 +68,7 @@ export const validatePassword = (password: string): ValidationResult => {
     return { valid: false, code: AUTH_ERROR_CODES.INVALID_INPUT_FORMAT };
   }
   
-  if (password.length < 8) {
+  if (password.length < PASSWORD_MIN) {
     return { valid: false, code: AUTH_ERROR_CODES.PASSWORD_TOO_WEAK };
   }
   
@@ -147,7 +149,7 @@ interface AuthErrorHandlerResult {
 export const handleAuthError = async (error: any, context: Record<string, any> = {}): Promise<AuthErrorHandlerResult> => {
   // Check if it's a JWT expiry error
   if (isJwtExpiryError(error)) {
-    console.warn('JWT expired detected, checking session validity...');
+    if (import.meta.env.DEV) console.warn('[AuthError] JWT expired detected, checking session validity...');
     
     // In SSO mode, auth-client handles token refresh automatically.
     // If we get here, the session is likely still valid (auth-client retried).
@@ -155,12 +157,12 @@ export const handleAuthError = async (error: any, context: Record<string, any> =
     const isAuthenticated = useAuthStore.getState().isAuthenticated;
     
     if (isAuthenticated) {
-      console.log('✅ Session is valid (SSO auth-client handles refresh)');
+      if (import.meta.env.DEV) console.log('[AuthError] ✅ Session is valid (SSO auth-client handles refresh)');
       return { success: true, session: null };
     }
     
     // Session is truly invalid - user needs to re-authenticate
-    console.warn('❌ Session invalid, user needs to re-authenticate');
+    if (import.meta.env.DEV) console.warn('[AuthError] ❌ Session invalid, user needs to re-authenticate');
     return { success: false, error: 'Session expired. Please log in again.' };
   }
 
@@ -236,7 +238,7 @@ const ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   [AUTH_ERROR_CODES.INVALID_CREDENTIALS]: 'Invalid email or password. Please check your credentials and try again.',
   [AUTH_ERROR_CODES.USER_NOT_FOUND]: 'No account found with this email. Please sign up first.',
   [AUTH_ERROR_CODES.EMAIL_NOT_CONFIRMED]: 'Please verify your email address before signing in.',
-  [AUTH_ERROR_CODES.PASSWORD_TOO_WEAK]: 'Password is too weak. Please use at least 8 characters with uppercase, lowercase, and numbers.',
+  [AUTH_ERROR_CODES.PASSWORD_TOO_WEAK]: `Password is too weak. Please use at least ${PASSWORD_MIN} characters with uppercase, lowercase, and numbers.`,
   [AUTH_ERROR_CODES.INVALID_INPUT_FORMAT]: 'Please check your input and try again.',
   [AUTH_ERROR_CODES.RATE_LIMITED]: 'Too many requests. Please wait a moment and try again.',
   [AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS]: 'Too many failed attempts. Please try again later.',

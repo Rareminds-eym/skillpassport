@@ -11,6 +11,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { ssoClient } from '@/shared/api/ssoClient';
+import { PASSWORD_MIN } from '@/shared/constants';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 
 interface TokenPasswordResetState {
@@ -126,8 +127,8 @@ const TokenPasswordReset = () => {
       return;
     }
 
-    if (state.newPassword.length < 8) {
-      setState(prev => ({ ...prev, error: 'Password must be at least 8 characters long' }));
+    if (state.newPassword.length < PASSWORD_MIN) {
+      setState(prev => ({ ...prev, error: `Password must be at least ${PASSWORD_MIN} characters long` }));
       return;
     }
 

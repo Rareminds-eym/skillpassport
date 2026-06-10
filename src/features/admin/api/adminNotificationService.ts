@@ -3,9 +3,9 @@
  * Creates notifications for admin users when activities require approval
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import type { AdminNotificationType } from '../model/types';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('admin-notification-service');
 
@@ -24,22 +24,7 @@ export class AdminNotificationService {
     message: string
   ) {
     try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .insert({
-          recipient_id: recipientId,
-          type,
-          title,
-          message,
-          read: false
-        })
-        .select()
-        .single();
-
-      if (error) {
-        logger.error('Create admin notification failed', new Error(error.message), { recipientId, type });
-        throw error;
-      }
+      const { data } = await apiPost('/admin-notifications', { action: 'create', recipient_id: recipientId, type, title, message });
 
       return data;
     } catch (error) {
@@ -58,24 +43,7 @@ export class AdminNotificationService {
     trainingId: string
   ) {
     try {
-      // Get school admin user ID
-      const { data: schoolAdmin } = await supabase
-        .from('school_educators')
-        .select('user_id')
-        .eq('school_id', schoolId)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (!schoolAdmin?.user_id) {
-        return;
-      }
-
-      await this.createNotification(
-        schoolAdmin.user_id,
-        'training_submitted',
-        'New Training Submitted',
-        `${learnerName} submitted "${trainingTitle}" for approval`
-      );
+      await apiPost('/admin-notifications', { action: 'notify-training-submission', school_id: schoolId, learner_name: learnerName, training_title: trainingTitle, training_id: trainingId });
     } catch (error) {
       logger.error('Notify training submission failed', error instanceof Error ? error : new Error(String(error)), { schoolId, trainingId });
     }
@@ -91,24 +59,7 @@ export class AdminNotificationService {
     experienceId: string
   ) {
     try {
-      // Get school admin user ID
-      const { data: schoolAdmin } = await supabase
-        .from('school_educators')
-        .select('user_id')
-        .eq('school_id', schoolId)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (!schoolAdmin?.user_id) {
-        return;
-      }
-
-      await this.createNotification(
-        schoolAdmin.user_id,
-        'experience_submitted',
-        'New Experience Submitted',
-        `${learnerName} submitted "${experienceTitle}" for approval`
-      );
+      await apiPost('/admin-notifications', { action: 'notify-experience-submission', school_id: schoolId, learner_name: learnerName, experience_title: experienceTitle, experience_id: experienceId });
     } catch (error) {
       logger.error('Notify experience submission failed', error instanceof Error ? error : new Error(String(error)), { schoolId, experienceId });
     }
@@ -124,24 +75,7 @@ export class AdminNotificationService {
     projectId: string
   ) {
     try {
-      // Get school admin user ID
-      const { data: schoolAdmin } = await supabase
-        .from('school_educators')
-        .select('user_id')
-        .eq('school_id', schoolId)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (!schoolAdmin?.user_id) {
-        return;
-      }
-
-      await this.createNotification(
-        schoolAdmin.user_id,
-        'project_submitted',
-        'New Project Submitted',
-        `${learnerName} submitted "${projectTitle}" for approval`
-      );
+      await apiPost('/admin-notifications', { action: 'notify-project-submission', school_id: schoolId, learner_name: learnerName, project_title: projectTitle, project_id: projectId });
     } catch (error) {
       logger.error('Notify project submission failed', error instanceof Error ? error : new Error(String(error)), { schoolId, projectId });
     }
@@ -158,24 +92,7 @@ export class AdminNotificationService {
     metadata?: Record<string, any>
   ) {
     try {
-      // Get college admin user ID
-      const { data: collegeAdmin } = await supabase
-        .from('users')
-        .select('id')
-        .eq('organizationId', collegeId)
-        .eq('role', 'college_admin')
-        .maybeSingle();
-
-      if (!collegeAdmin?.id) {
-        return;
-      }
-
-      await this.createNotification(
-        collegeAdmin.id,
-        type,
-        title,
-        message
-      );
+      await apiPost('/admin-notifications', { action: 'notify-college-admin', college_id: collegeId, type, title, message, metadata });
     } catch (error) {
       logger.error('Notify college admin failed', error instanceof Error ? error : new Error(String(error)), { collegeId, type });
     }
@@ -192,35 +109,7 @@ export class AdminNotificationService {
     notes?: string
   ) {
     try {
-      // Get learner user ID
-      const { data: learner } = await supabase
-        .from('learners')
-        .select('user_id, name')
-        .eq('id', learnerId)
-        .maybeSingle();
-
-      if (!learner?.user_id) {
-        return;
-      }
-
-      const isApproved = type.includes('approved');
-      const itemType = type.includes('training') ? 'training' : 
-                      type.includes('experience') ? 'experience' : 'project';
-
-      const title = isApproved 
-        ? `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} Approved`
-        : `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} Rejected`;
-
-      const message = isApproved
-        ? `Your ${itemType} "${itemTitle}" has been approved`
-        : `Your ${itemType} "${itemTitle}" was rejected${notes ? `: ${notes}` : ''}`;
-
-      await this.createNotification(
-        learner.user_id,
-        type,
-        title,
-        message
-      );
+      await apiPost('/admin-notifications', { action: 'notify-approval-status', learner_id: learnerId, type, item_title: itemTitle, item_id: itemId, notes });
     } catch (error) {
       logger.error('Notify approval status failed', error instanceof Error ? error : new Error(String(error)), { learnerId, type, itemId });
     }
@@ -235,51 +124,7 @@ export class AdminNotificationService {
     adminType?: 'school_admin' | 'college_admin' | 'university_admin'
   ) {
     try {
-      let adminUsers: any[] = [];
-
-      if (!adminType || adminType === 'school_admin') {
-        const { data: schoolAdmins } = await supabase
-          .from('school_educators')
-          .select('user_id')
-          .eq('role', 'admin');
-        if (schoolAdmins) adminUsers.push(...schoolAdmins);
-      }
-
-      if (!adminType || adminType === 'college_admin') {
-        const { data: collegeAdmins } = await supabase
-          .from('users')
-          .select('id as user_id')
-          .eq('role', 'college_admin');
-        if (collegeAdmins) adminUsers.push(...collegeAdmins);
-      }
-
-      if (!adminType || adminType === 'university_admin') {
-        const { data: universityAdmins } = await supabase
-          .from('users')
-          .select('id as user_id')
-          .eq('role', 'university_admin');
-        if (universityAdmins) adminUsers.push(...universityAdmins);
-      }
-
-      // Create notifications for all admin users
-      const notifications = adminUsers.map(admin => ({
-        recipient_id: admin.user_id,
-        type: 'system_alert' as AdminNotificationType,
-        title,
-        message,
-        read: false
-      }));
-
-      if (notifications.length > 0) {
-        const { error } = await supabase
-          .from('notifications')
-          .insert(notifications);
-
-        if (error) {
-          logger.error('Create system alerts failed', new Error(error.message), { adminType, count: notifications.length });
-          throw error;
-        }
-      }
+      await apiPost('/admin-notifications', { action: 'create-system-alert', title, message, admin_type: adminType });
     } catch (error) {
       logger.error('Create system alert exception', error instanceof Error ? error : new Error(String(error)), { adminType });
     }

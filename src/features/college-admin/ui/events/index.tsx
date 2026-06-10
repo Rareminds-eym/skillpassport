@@ -1,6 +1,7 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { CalendarIcon, ChartBarIcon, ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { AnalyticsTab } from "./components/AnalyticsTab";
 import { CalendarTab } from "./components/CalendarTab";
 import { ConfirmModal } from "@/shared/ui/ConfirmModal";
@@ -14,7 +15,7 @@ import { useEventAnalytics } from "./hooks/useEventAnalytics";
 import { useEvents } from "./hooks/useEvents";
 import { useRegistrations } from "./hooks/useRegistrations";
 import { CollegeEvent } from '@/features/learner-profile/model';
-import { authSessionService } from '@/features/auth';
+
 
 const tabs = [
   { id: "events", label: "Event Scheduling", icon: CalendarIcon },
@@ -50,18 +51,24 @@ const EventManagement: React.FC = () => {
   useEffect(() => {
     const fetchCollegeId = async () => {
       try {
-        const { data: { user } } = await authSessionService.getUser();
+        const user = useAuthStore.getState().user;
         if (user) {
-          // First check organizations table for college admin
-          const { data: org } = await supabase.from("organizations").select("id").eq("organization_type", "college").or(`admin_id.eq.${user.id},email.eq.${user.email}`).maybeSingle();
-          if (org?.id) { setCollegeId(org.id); return; }
-          // Check college_lecturers table
-          const { data: lecturer } = await supabase.from("college_lecturers").select("collegeId").or(`userId.eq.${user.id},user_id.eq.${user.id}`).single();
-          if (lecturer?.collegeId) { setCollegeId(lecturer.collegeId); return; }
-          // Check user metadata
-          if (user.user_metadata?.college_id) setCollegeId(user.user_metadata.college_id);
+          const result = await apiPost('/college-admin/faculty', {
+            action: 'resolve-user-college',
+            user_id: user.id,
+            email: user.email,
+          });
+
+          if (result.data?.college_id) {
+            setCollegeId(result.data.college_id);
+            return;
+          }
+
+          if (user.user_metadata?.college_id) {
+            setCollegeId(user.user_metadata.college_id);
+          }
         }
-      } catch (error) { 
+      } catch { 
         // Silently handle college ID fetch failure
       }
     };

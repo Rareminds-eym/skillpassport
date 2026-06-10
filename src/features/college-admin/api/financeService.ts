@@ -1,7 +1,4 @@
-import { supabase } from '@/shared/api';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('finance-service');
+import { apiPost } from '@/shared/api/apiClient';
 
 export interface FeeStructure {
   id: string;
@@ -112,229 +109,99 @@ export interface ProgramExpenditure {
 }
 
 export async function createFeeStructure(data: Partial<FeeStructure>): Promise<FeeStructure> {
-  const { data: structure, error } = await supabase
-    .from('fee_structures')
-    .insert([data])
-    .select()
-    .single();
-
-  if (error) {
-    if (error.code === '23505') {
-      throw new Error('DUPLICATE_ENTRY: Fee structure already exists for this program/semester/category/year');
-    }
-    throw error;
-  }
-  return structure;
+  const result: any = await apiPost('/college-admin/finance', { action: 'create-fee-structure', ...data });
+  return result.data;
 }
 
 export async function recordPayment(learnerId: string, feeHeadId: string, payment: Partial<Payment>): Promise<Payment> {
-  // Get ledger
-  const { data: ledger, error: ledgerError } = await supabase
-    .from('learner_ledgers')
-    .select('*')
-    .eq('learner_id', learnerId)
-    .eq('fee_head_id', feeHeadId)
-    .single();
-
-  if (ledgerError) throw ledgerError;
-
-  // Check overpayment
-  if (payment.amount! > ledger.balance && !payment.reference_number?.includes('OVERRIDE')) {
-    throw new Error('LIMIT_EXCEEDED: Payment exceeds due amount. Authorization required.');
-  }
-
-  // Generate receipt number
-  const receiptNumber = `RCP${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-
-  // Record payment
-  const { data: paymentRecord, error: paymentError } = await supabase
-    .from('payments')
-    .insert([{
-      ...payment,
-      ledger_id: ledger.id,
-      receipt_number: receiptNumber,
-      paid_at: new Date().toISOString()
-    }])
-    .select()
-    .single();
-
-  if (paymentError) throw paymentError;
-
-  // Update ledger
-  const { error: updateError } = await supabase
-    .from('learner_ledgers')
-    .update({ paid_amount: ledger.paid_amount + payment.amount! })
-    .eq('id', ledger.id);
-
-  if (updateError) throw updateError;
-
-  return paymentRecord;
+  const result: any = await apiPost('/college-admin/finance', { action: 'record-payment', learner_id: learnerId, fee_head_id: feeHeadId, ...payment });
+  return result.data;
 }
 
 export async function getlearnerLedger(learnerId: string): Promise<LearnerLedger[]> {
-  const { data, error } = await supabase
-    .from('learner_ledgers')
-    .select('*')
-    .eq('learner_id', learnerId);
-
-  if (error) throw error;
-  return data || [];
+  const result: any = await apiPost('/college-admin/finance', { action: 'get-learner-ledger', learner_id: learnerId });
+  return result.data || [];
 }
 
 export async function applyScholarship(learnerId: string, feeHeadId: string, amount: number, reason: string): Promise<void> {
-  const { data: ledger, error: ledgerError } = await supabase
-    .from('learner_ledgers')
-    .select('*')
-    .eq('learner_id', learnerId)
-    .eq('fee_head_id', feeHeadId)
-    .single();
-
-  if (ledgerError) throw ledgerError;
-
-  const { error } = await supabase
-    .from('learner_ledgers')
-    .update({ due_amount: ledger.due_amount - amount })
-    .eq('id', ledger.id);
-
-  if (error) throw error;
-
-  // Log scholarship (would need a scholarships table in real implementation)
+  await apiPost('/college-admin/finance', { action: 'apply-scholarship', learner_id: learnerId, fee_head_id: feeHeadId, amount, reason });
 }
 
 export async function getDefaulterReport(filters?: { program_id?: string; semester?: number }): Promise<any[]> {
-  let query = supabase
-    .from('learner_ledgers')
-    .select(`
-      *,
-      learner:learner_id (name, email),
-      fee_structure:fee_structure_id (program_id, semester)
-    `)
-    .gt('balance', 0);
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  return (data || [])
-    .filter(ledger => {
-      if (filters?.program_id && (ledger.fee_structure as any)?.program_id !== filters.program_id) return false;
-      if (filters?.semester && (ledger.fee_structure as any)?.semester !== filters.semester) return false;
-      return true;
-    })
-    .sort((a, b) => b.balance - a.balance);
+  const result: any = await apiPost('/college-admin/finance', { action: 'get-defaulter-report', ...filters });
+  return result.data?.learners || [];
 }
 
 export async function allocateBudget(data: Partial<DepartmentBudget>): Promise<DepartmentBudget> {
-  const { data: budget, error } = await supabase
-    .from('department_budgets')
-    .insert([data])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return budget;
+  const result: any = await apiPost('/college-admin/finance', { action: 'allocate-budget', ...data });
+  return result.data;
 }
 
 export async function recordExpenditure(data: Partial<Expenditure>): Promise<Expenditure> {
-  // Validate budget limit
-  const isValid = await validateBudgetLimit(data.department_id!, data.budget_head_id!, data.amount!);
-  
-  if (!isValid && !data.override_reason) {
-    throw new Error('LIMIT_EXCEEDED: Expenditure exceeds allocated budget. Override reason required.');
-  }
-
-  const { data: expenditure, error } = await supabase
-    .from('expenditures')
-    .insert([{ ...data, created_at: new Date().toISOString() }])
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  // Update budget spent amount
-  // This would need proper implementation with budget_heads JSONB update
-
-  return expenditure;
+  const result: any = await apiPost('/college-admin/finance', { action: 'record-expenditure', ...data });
+  return result.data;
 }
 
 export async function validateBudgetLimit(deptId: string, budgetHeadId: string, amount: number): Promise<boolean> {
-  // Get current budget
-  const { data: budget, error } = await supabase
-    .from('department_budgets')
-    .select('budget_heads')
-    .eq('department_id', deptId)
-    .eq('status', 'approved')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (error) return false;
-
-  const budgetHead = (budget.budget_heads as BudgetHead[]).find(bh => bh.id === budgetHeadId);
-  if (!budgetHead) return false;
-
-  return budgetHead.remaining >= amount;
+  try {
+    const result: any = await apiPost('/college-admin/finance', { action: 'validate-budget', department_id: deptId, budget_head_id: budgetHeadId, amount });
+    return result.data === true;
+  } catch {
+    return false;
+  }
 }
 
 export async function getBudgetReport(deptId: string, period?: { from: string; to: string }): Promise<any> {
-  let query = supabase
-    .from('department_budgets')
-    .select('*')
-    .eq('department_id', deptId);
-
-  if (period) {
-    query = query.gte('period_from', period.from).lte('period_to', period.to);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-
-  return data;
+  const result: any = await apiPost('/college-admin/finance', {
+    action: 'get-budget-report',
+    department_id: deptId,
+    period_from: period?.from,
+    period_to: period?.to,
+  });
+  return result.data;
 }
 
 export async function getExpenditureSummary(collegeId: string): Promise<ExpenditureSummary> {
-  const { data, error } = await supabase.rpc('get_expenditure_summary', {
-    p_college_id: collegeId
-  });
-
-  if (error) {
-    logger.error('Error getting expenditure summary', error as Error);
-    throw error;
+  try {
+    const result: any = await apiPost('/college-admin/finance', { action: 'get-expenditure-summary', college_id: collegeId });
+    return result.data || {
+      total_due_amount: 0,
+      total_paid_amount: 0,
+      total_balance: 0,
+      total_learners: 0,
+      overdue_learners: 0,
+      paid_learners: 0,
+      pending_learners: 0,
+      collection_percentage: 0
+    };
+  } catch {
+    return {
+      total_due_amount: 0,
+      total_paid_amount: 0,
+      total_balance: 0,
+      total_learners: 0,
+      overdue_learners: 0,
+      paid_learners: 0,
+      pending_learners: 0,
+      collection_percentage: 0
+    };
   }
-
-  return data && data.length > 0 ? data[0] : {
-    total_due_amount: 0,
-    total_paid_amount: 0,
-    total_balance: 0,
-    total_learners: 0,
-    overdue_learners: 0,
-    paid_learners: 0,
-    pending_learners: 0,
-    collection_percentage: 0
-  };
 }
 
 export async function getDepartmentExpenditure(collegeId: string): Promise<DepartmentExpenditure[]> {
-  const { data, error } = await supabase.rpc('get_department_expenditure', {
-    p_college_id: collegeId
-  });
-
-  if (error) {
-    logger.error('Error getting department expenditure', error as Error, { collegeId });
-    throw error;
+  try {
+    const result: any = await apiPost('/college-admin/finance', { action: 'get-department-expenditure', college_id: collegeId });
+    return result.data || [];
+  } catch {
+    return [];
   }
-
-  return data || [];
 }
 
 export async function getProgramExpenditure(collegeId: string): Promise<ProgramExpenditure[]> {
-  const { data, error } = await supabase.rpc('get_program_expenditure', {
-    p_college_id: collegeId
-  });
-
-  if (error) {
-    logger.error('Error getting program expenditure', error as Error, { collegeId });
-    throw error;
+  try {
+    const result: any = await apiPost('/college-admin/finance', { action: 'get-program-expenditure', college_id: collegeId });
+    return result.data || [];
+  } catch {
+    return [];
   }
-
-  return data || [];
 }

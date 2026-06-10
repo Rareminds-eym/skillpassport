@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 // @ts-ignore - JS file without type declarations
-import { loadCareerAssessmentQuestions } from '../api/careerAssessmentAIService';
+import { loadCareerAssessmentQuestions, getSavedQuestionsForLearner } from '../api/careerAssessmentAIService';
 import type { GradeLevel } from '../model/types';
 
 interface AIQuestion {
@@ -47,6 +47,7 @@ interface UseAIQuestionsOptions {
   learnerId: string | null;
   attemptId: string | null;
   learnerProgram: string | null;
+  isResuming?: boolean; // New flag to indicate if this is a resume operation
 }
 
 interface UseAIQuestionsResult {
@@ -84,7 +85,8 @@ export const useAIQuestions = ({
   learnerStream,
   learnerId,
   attemptId,
-  learnerProgram
+  learnerProgram,
+  isResuming = false
 }: UseAIQuestionsOptions): UseAIQuestionsResult => {
   const [aiQuestions, setAiQuestions] = useState<AIQuestionsState>({
     aptitude: null,
@@ -138,7 +140,10 @@ export const useAIQuestions = ({
       learnerStream,
       effectiveStream,
       usesAI,
-      willLoad: usesAI && !!effectiveStream
+      willLoad: usesAI && !!effectiveStream,
+      learnerId,
+      attemptId,
+      isResume: !!attemptId
     });
 
     if (!usesAI || !effectiveStream) {
@@ -149,6 +154,15 @@ export const useAIQuestions = ({
         learnerStream,
         reason: !usesAI ? 'Grade level does not use AI' : 'No stream selected yet'
       });
+      return;
+    }
+
+    // learnerId is required for both cache lookup and saving generated questions.
+    // It is a dep of this useCallback so the hook re-fires automatically once it
+    // becomes available. Returning here (without setting isLoadingRef) keeps the
+    // mutex free so the subsequent valid call is never blocked.
+    if (!learnerId) {
+      console.log('⏳ learnerId not yet available, deferring question load');
       return;
     }
 

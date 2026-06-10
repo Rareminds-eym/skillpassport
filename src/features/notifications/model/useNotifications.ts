@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 export type NotificationType =
-  // Opportunity notifications
   | "new_opportunity"
   | "opportunity_closed"
   | "offer_accepted"
@@ -11,33 +10,26 @@ export type NotificationType =
   | "offer_created"
   | "offer_withdrawn"
   | "offer_expiring"
-  // Interview notifications
   | "interview_scheduled"
   | "interview_rescheduled"
   | "interview_completed"
   | "interview_reminder"
-  // Pipeline notifications
   | "pipeline_stage_changed"
   | "candidate_shortlisted"
   | "candidate_rejected"
   | "new_application"
-  // Educator notifications
   | "learner_verification_required"
   | "assignment_submitted"
   | "class_activity_pending"
   | "learner_achievement"
   | "new_learner_enrolled"
   | "attendance_reminder"
-  // Course notifications
   | "course_added"
   | "course_updated"
-  // Message notifications
   | "new_message"
   | "message_reply"
-  // Admin notifications
   | "approval_required"
   | "system_alert"
-  // General
   | "system_maintenance"
   | string;
 
@@ -51,51 +43,16 @@ export type Notification = {
   created_at: string;
 };
 
-// ✅ Validate UUID format
-function isUUID(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
-
-// ✅ Resolve user ID from email or UUID
 async function resolveUserId(identifier: string): Promise<string | null> {
   if (!identifier) return null;
-  if (isUUID(identifier)) return identifier;
 
-  // Try learners first - need to get user_id (which references users table)
-  const { data: learnerData } = await supabase
-    .from("learners")
-    .select("user_id")
-    .ilike("email", identifier)
-    .maybeSingle();
+  const response: any = await apiPost('/notifications', {
+    action: 'resolve-users',
+    identifiers: [identifier],
+  });
 
-  if (learnerData?.user_id) return learnerData.user_id;
-
-  // Try educators
-  const { data: educatorData } = await supabase
-    .from("school_educators")
-    .select("user_id")
-    .ilike("email", identifier)
-    .maybeSingle();
-
-  if (educatorData?.user_id) return educatorData.user_id;
-
-  // Try recruiters
-  const { data: recruiterData } = await supabase
-    .from("recruiters")
-    .select("user_id")
-    .eq("email", identifier)
-    .maybeSingle();
-
-  if (recruiterData?.user_id) return recruiterData.user_id;
-
-  // Try users (admins)
-  const { data: userData } = await supabase
-    .from("users")
-    .select("id")
-    .ilike("email", identifier)
-    .maybeSingle();
-
-  return userData?.id ?? null;
+  const data = response?.data ?? response;
+  return data?.resolved?.[identifier] ?? null;
 }
 
 type UseNotificationsReturn = {
@@ -124,10 +81,8 @@ export function useNotifications(
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
 
   const lastCursorRef = useRef<string | null>(null);
-  const channelRef = useRef<any | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ Step 1: Resolve user ID from email
   useEffect(() => {
     const resolve = async () => {
       if (!userIdentifier) {
@@ -142,35 +97,25 @@ export function useNotifications(
     resolve();
   }, [userIdentifier]);
 
-  // ✅ Step 2: Fetch notifications
   const fetchNotifications = async (reset = true) => {
-    if (!userId) {
-      return;
-    }
+    if (!userId) return;
     try {
       setLoading(true);
       setError(null);
 
-      let query = supabase
-        .from("notifications")
-        .select("*")
-        .eq("recipient_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(PAGE_SIZE);
-
+      let path = `/notifications?limit=${PAGE_SIZE}`;
       if (!reset && lastCursorRef.current) {
-        query = query.lt("created_at", lastCursorRef.current);
+        path += `&before=${encodeURIComponent(lastCursorRef.current)}`;
       }
 
-      const { data, error } = await query;
+      const response: any = await apiGet(path);
+      const data: Notification[] = response?.data?.notifications ?? response?.notifications ?? [];
 
-      if (error) throw error;
+      if (reset) setItems(data);
+      else setItems((prev) => [...prev, ...data]);
 
-      if (reset) setItems(data || []);
-      else setItems((prev) => [...prev, ...(data || [])]);
-
-      setHasMore((data?.length ?? 0) === PAGE_SIZE);
-      if (data && data.length > 0) {
+      setHasMore(data.length === PAGE_SIZE);
+      if (data.length > 0) {
         lastCursorRef.current = data[data.length - 1].created_at;
       }
     } catch (err: any) {
@@ -180,69 +125,36 @@ export function useNotifications(
     }
   };
 
-  // ✅ Step 3: Setup realtime updates
   useEffect(() => {
     if (!userId) return;
     let isSubscribed = true;
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
 
-    const setupSubscription = () => {
-      if (!isSubscribed) return;
+    const wsClient = getWSClient();
+    const unsubscribers: Array<() => void> = [];
 
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
+    // Subscribe to notifications changes
+    const unsub = wsClient.subscribe(
+      'notifications',
+      { event: '*', filter: `recipient_id=eq.${userId}` },
+      (event) => {
+        if (event.type === 'change') {
+          const row = event.payload as Notification;
 
-      const channel = supabase
-        .channel(`notifications-${userId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "notifications",
-            filter: `recipient_id=eq.${userId}`,
-          },
-          (payload) => {
-            const row = payload.new as Notification;
-
-            if (payload.eventType === "INSERT") {
-              setItems((prev) => [row, ...prev]);
-            } else if (payload.eventType === "UPDATE") {
-              setItems((prev) =>
-                prev.map((n) => (n.id === row.id ? row : n))
-              );
-            } else if (payload.eventType === "DELETE") {
-              const oldRow = payload.old as Notification;
-              setItems((prev) => prev.filter((n) => n.id !== oldRow.id));
-            }
+          if (event.event === 'INSERT') {
+            setItems((prev) => [row, ...prev]);
+          } else if (event.event === 'UPDATE') {
+            setItems((prev) =>
+              prev.map((n) => (n.id === row.id ? row : n))
+            );
+          } else if (event.event === 'DELETE') {
+            setItems((prev) => prev.filter((n) => n.id !== row.id));
           }
-        )
-        .subscribe((status) => {
-          setConnectionStatus(status);
+        }
+      }
+    );
+    unsubscribers.push(unsub);
 
-          if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-            if (isSubscribed && retryCount < MAX_RETRIES) {
-              retryCount++;
-              reconnectTimeoutRef.current = setTimeout(() => {
-                setupSubscription();
-              }, 2000 * retryCount);
-            }
-          } else if (status === "SUBSCRIBED") {
-            retryCount = 0;
-          }
-        });
-
-      channelRef.current = channel;
-    };
-
-    setupSubscription();
+    setConnectionStatus('SUBSCRIBED');
 
     return () => {
       isSubscribed = false;
@@ -250,35 +162,27 @@ export function useNotifications(
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-      setConnectionStatus("disconnected");
+      unsubscribers.forEach(unsub => unsub());
+      setConnectionStatus('disconnected');
     };
   }, [userId]);
 
-  // ✅ Auto refresh when userId changes
   useEffect(() => {
     if (userId) fetchNotifications(true);
   }, [userId]);
 
-  // ✅ Actions
   const markRead = async (id: string) => {
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    await apiPost('/notifications', { action: 'mark-read', ids: [id] });
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const markAllRead = async () => {
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("recipient_id", userId);
+    await apiPost('/notifications', { action: 'mark-all-read' });
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   const remove = async (id: string) => {
-    await supabase.from("notifications").delete().eq("id", id);
+    await apiPost('/notifications', { action: 'delete', ids: [id] });
     setItems((prev) => prev.filter((n) => n.id !== id));
   };
 

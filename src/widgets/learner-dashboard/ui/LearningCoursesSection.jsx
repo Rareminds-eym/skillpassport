@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { BookOpen, Award, Clock, TrendingUp, Plus, ExternalLink } from 'lucide-react';
 import SelectCourseModal from './SelectCourseModal';
 
@@ -17,26 +17,11 @@ export default function LearningCoursesSection({ learnerId }) {
   const fetchLearning = async () => {
     try {
       setLoading(true);
-      
-      // Fetch learning records with associated certificates
-      const { data: learningData, error: learningError } = await supabase
-        .from('trainings')
-        .select(`
-          *,
-          certificates (
-            id,
-            title,
-            level,
-            link,
-            issued_on
-          )
-        `)
-        .eq('learner_id', learnerId)
-        .order('created_at', { ascending: false });
-
-      if (learningError) throw learningError;
-
-      setLearning(learningData || []);
+      const data = await apiPost('/learner-dashboard-widgets/actions', {
+        action: 'get-learning-courses',
+        learnerId,
+      });
+      setLearning(data || []);
     } catch (error) {
       console.error('Error fetching learning:', error);
     } finally {

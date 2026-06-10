@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { getCurrentSession } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 
 
@@ -20,9 +20,9 @@ function getManagePath(userRole) {
   if (!userRole) return null; // Return null instead of default to prevent wrong redirects
 
   const manageRoutes = {
-    super_admin: '/admin/subscription/manage',
-    rm_admin: '/admin/subscription/manage',
     admin: '/admin/subscription/manage',
+    company_admin: '/admin/subscription/manage',
+    owner: '/admin/subscription/manage',
     school_admin: '/school-admin/subscription/manage',
     college_admin: '/college-admin/subscription/manage',
     university_admin: '/university-admin/subscription/manage',
@@ -33,6 +33,28 @@ function getManagePath(userRole) {
     learner: '/learner/subscription/manage',
   };
   return manageRoutes[userRole] || null; // Return null instead of default to prevent wrong redirects
+}
+
+/**
+ * Get the dashboard path based on user role
+ */
+function getDashboardPath(userRole) {
+  if (!userRole) return '/learner/dashboard';
+
+  const dashboardRoutes = {
+    learner: '/learner/dashboard',
+    educator: '/educator/dashboard',
+    school_educator: '/educator/dashboard',
+    college_educator: '/educator/dashboard',
+    school_admin: '/school-admin/dashboard',
+    college_admin: '/college-admin/dashboard',
+    university_admin: '/university-admin/dashboard',
+    recruiter: '/recruitment/overview',
+    admin: '/admin/dashboard',
+    company_admin: '/admin/dashboard',
+    owner: '/admin/dashboard',
+  };
+  return dashboardRoutes[userRole] || '/learner/dashboard';
 }
 
 /**
@@ -59,10 +81,8 @@ function getManagePathFromType(type) {
     'university-admin': '/university-admin/subscription/manage',
     // Recruiter
     'recruiter': '/recruitment/subscription/manage',
-    // Generic admin (super_admin, rm_admin)
+    // Generic admin
     'admin': '/admin/subscription/manage',
-    'super_admin': '/admin/subscription/manage',
-    'rm_admin': '/admin/subscription/manage',
   };
 
   return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
@@ -346,8 +366,9 @@ FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 // Plan Card Component - Editorial luxury design
 const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
-  const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
-  const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
+  const currentPlanInList = allPlans.find(p => p.plan_code === subscriptionData?.plan || p.id === subscriptionData?.plan);
+  const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(currentPlanInList?.price ?? 0);
+  const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(currentPlanInList?.price ?? 0);
   const isContactSales = plan.contactSales;
 
   // Group features by category for better display
@@ -377,12 +398,16 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
   // Handle organization purchase click
   const handleClick = useCallback(() => {
+    if (isDowngrade) {
+      toast('To downgrade your plan, please contact our support team.', { duration: 5000, icon: '📧' });
+      return;
+    }
     if (isOrganizationMode && onOrganizationPurchase) {
       onOrganizationPurchase(plan);
     } else {
       onSelect(plan);
     }
-  }, [isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
+  }, [isDowngrade, isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
 
   // Render feature item
   const renderFeature = (feature, idx) => {
@@ -558,10 +583,6 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
         <div className="mt-auto space-y-3">
           {isCurrentPlan ? (
             <>
-              <div className="w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-50 border-2 border-emerald-200 text-emerald-700 text-center flex items-center justify-center gap-2">
-                <Check className="h-5 w-5" /> Your Current Plan
-              </div>
-
               {subscriptionData?.status === 'cancelled' && (
                 <button
                   onClick={() => onSelect(plan)}
@@ -596,7 +617,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
                 : isUpgrade || plan.recommended
                   ? 'bg-black text-white hover:bg-gray-900'
-                  : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
+                  : isDowngrade
+                    ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
+                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
             >
               {isOrganizationMode ? (
@@ -604,10 +627,15 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                   <Building2 className="h-5 w-5" />
                   Buy for Organization
                 </>
+              ) : isDowngrade ? (
+                <span className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  Contact Support
+                </span>
               ) : (
                 <>
                   {isUpgrade && <TrendingUp className="h-5 w-5" />}
-                  {subscriptionData ? (isUpgrade ? 'Upgrade' : isDowngrade ? 'Switch Plan' : 'Select') : 'Get Started'}
+                  {subscriptionData ? (isUpgrade ? 'Upgrade' : 'Select') : 'Get Started'}
                 </>
               )}
             </button>
@@ -626,56 +654,6 @@ function SubscriptionPlans() {
   const location = useLocation();
   const { type: pathType } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  // Navbar scroll behavior
-  const [lastScrollY, setLastScrollY] = useState(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const header = document.querySelector('header');
-
-      if (!header) return;
-
-      // Change from sticky to fixed positioning for scroll behavior to work
-      if (header.style.position !== 'fixed') {
-        header.style.position = 'fixed';
-        header.style.width = '100%';
-        header.style.zIndex = '50';
-      }
-
-      if (currentScrollY < 10) {
-        // At the top, show navbar
-        header.style.transform = 'translateY(0)';
-        header.style.transition = 'transform 0.3s ease-in-out';
-      } else if (currentScrollY < lastScrollY) {
-        // Scrolling up, show navbar
-        header.style.transform = 'translateY(0)';
-        header.style.transition = 'transform 0.3s ease-in-out';
-      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        // Scrolling down past 100px, hide navbar
-        header.style.transform = 'translateY(-100%)';
-        header.style.transition = 'transform 0.3s ease-in-out';
-      }
-
-      setLastScrollY(currentScrollY);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      // Reset header on unmount
-      const header = document.querySelector('header');
-      if (header) {
-        header.style.transform = '';
-        header.style.transition = '';
-        header.style.position = '';
-        header.style.width = '';
-        header.style.zIndex = '';
-      }
-    };
-  }, [lastScrollY]);
 
   // Get type from path params OR query params (for redirects from protected routes)
   const type = pathType || searchParams.get('type');
@@ -801,7 +779,7 @@ function SubscriptionPlans() {
   }, [subscriptionData]);
 
   const currentPlanData = useMemo(
-    () => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null,
+    () => subscriptionData ? plans.find(p => p.plan_code === subscriptionData.plan || p.id === subscriptionData.plan) : null,
     [subscriptionData, plans]
   );
 
@@ -868,7 +846,7 @@ function SubscriptionPlans() {
   const handlePlanSelection = useCallback(async (plan) => {
     // If user is currently on their ACTIVE plan (not cancelled), go to manage page
     // Cancelled subscriptions should allow re-purchase of the same plan
-    if (subscriptionData && subscriptionData.plan === plan.id && subscriptionData.status !== 'cancelled') {
+    if (subscriptionData && (subscriptionData.plan === plan.plan_code || subscriptionData.plan === plan.id) && subscriptionData.status !== 'cancelled') {
       const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${learnerType}`;
       navigate(targetPath);
       return;
@@ -876,7 +854,7 @@ function SubscriptionPlans() {
 
     // Check if auth is still loading
     if (authLoading) {
-      console.log('🔄 Auth still loading, please wait...');
+      if (DEBUG) console.log('[SubscriptionPlans] Auth still loading, please wait...');
       return;
     }
 
@@ -888,7 +866,7 @@ function SubscriptionPlans() {
 
     // If not authenticated, redirect to signup with plan context
     if (!isAuthenticated) {
-      console.log('🔐 User not authenticated, redirecting to signup');
+      if (DEBUG) console.log('[SubscriptionPlans] User not authenticated, redirecting to signup');
       navigate('/signup', {
         state: {
           plan,
@@ -899,41 +877,32 @@ function SubscriptionPlans() {
       return;
     }
 
-    // Check if this is a freemium plan (₹0 or plan_code = 'pay_as_you_go')
-    const isFreemiumPlan = plan.plan_code === 'pay_as_you_go' || plan.price === 0;
+    // Check if this is a freemium plan (₹0 or plan_code = 'freemium')
+    const isFreemiumPlan = plan.plan_code === 'freemium' || plan.price === 0;
 
     if (isFreemiumPlan) {
-      console.log('✅ Freemium plan selected, creating subscription directly');
+      if (DEBUG) console.log('[SubscriptionPlans] Freemium plan selected, creating subscription directly');
 
       // Show loading toast
       const loadingToast = toast.loading('Creating your free account...');
 
       try {
-        // Get auth token
-        const { data: { session } } = await getCurrentSession();
-        const token = session?.access_token;
-
-        if (!token) {
-          toast.error('Authentication required', { id: loadingToast });
-          return;
-        }
-
-        // Create freemium subscription directly
-        const response = await fetch('/api/payments/create-freemium-subscription', {
+        // Create freemium subscription — auth handled automatically by ssoClient.fetch()
+        const response = await ssoClient.fetch('/api/payments/create-order', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: user.id,
-            email: user.email
+            email: user.email,
+            amount: 0,
+            planId: 'freemium',
+            planName: 'freemium'
           })
         });
 
         const result = await response.json();
 
-        console.log('[Freemium] API Response:', { status: response.status, result });
+        if (DEBUG) console.log('[Freemium] API Response:', { status: response.status, result });
 
         if (!response.ok || !result.success) {
           const errorMessage = result.error?.message || result.message || 'Failed to create subscription';
@@ -948,8 +917,8 @@ function SubscriptionPlans() {
         // Refresh subscription access
         await refreshAccess();
 
-        // Navigate to appropriate dashboard based on user type
-        const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/learner/dashboard`;
+        // Navigate to appropriate dashboard based on user role
+        const targetPath = getDashboardPath(userRole) || `/learner/dashboard`;
         navigate(targetPath);
 
       } catch (error) {
@@ -963,7 +932,7 @@ function SubscriptionPlans() {
     // CRITICAL: Navigate to payment page SYNCHRONOUSLY
     // The old async DB validation was causing a race condition with auth state changes.
     // PaymentCompletion.jsx already validates the user in the database, so this is not needed here.
-    console.log('✅ Navigating to payment page', { planId: plan.id, isUpgrade: !!subscriptionData });
+    if (DEBUG) console.log('[SubscriptionPlans] Navigating to payment page', { planId: plan.id, isUpgrade: !!subscriptionData });
     navigate('/subscription/payment', {
       state: {
         plan,
@@ -1062,7 +1031,7 @@ function SubscriptionPlans() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-400 via-blue-100 to-white">
-      <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8">
         {/* Subscription status error banner */}
         {subscriptionError && isAuthenticated && (
           <div className="mb-8 bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 rounded-3xl p-6 flex items-center justify-between shadow-lg">
@@ -1122,7 +1091,7 @@ function SubscriptionPlans() {
                     </div>
 
                     <h2 className="text-5xl font-semibold text-white mb-3 tracking-tight leading-none" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
-                      {currentPlanData?.name || subscriptionData.planName || 'Professional'}
+                      {currentPlanData?.name ?? subscriptionData.planName ?? 'Your Plan'}
                     </h2>
                     <p className="text-xl text-white/60 font-normal tracking-wide mb-6" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                       {currentPlanData?.tagline || 'Your subscription is active'}
@@ -1259,7 +1228,7 @@ function SubscriptionPlans() {
                     <div className="group">
                       <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Billing Cycle</div>
                       <div className="text-lg text-slate-900 font-medium">
-                        {currentPlanData?.duration || 'Monthly'}
+                        {currentPlanData?.duration || subscriptionData?.billingCycle || ''}
                       </div>
                     </div>
 
@@ -1390,7 +1359,7 @@ function SubscriptionPlans() {
                   plan={plan}
                   index={index}
                   allPlans={plans}
-                  isCurrentPlan={isAuthenticated && hasCurrentSubscription && subscriptionData?.plan === plan.id}
+                  isCurrentPlan={isAuthenticated && hasCurrentSubscription && (subscriptionData?.plan === plan.plan_code || subscriptionData?.plan === plan.id)}
                   onSelect={handlePlanSelection}
                   onManage={() => navigate(managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${learnerType}`)}
                   subscriptionData={isAuthenticated && hasCurrentSubscription ? subscriptionData : null}

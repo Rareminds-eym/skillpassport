@@ -1,15 +1,17 @@
-import { getCurrentSession } from '@/shared/api/authUtils';
 /**
  * Razorpay Service
  * 
  * Handles Razorpay browser SDK integration for payment checkout.
  * This service MUST run in the browser (loads Razorpay script, opens checkout modal).
  * 
+ * Authentication is handled automatically by paymentsApiService which uses
+ * ssoClient.fetch() from @rareminds-eym/auth-client.
+ * 
  * BROWSER-ONLY FUNCTIONS:
  * - loadRazorpayScript()      - Load Razorpay checkout.js
  * - initiateRazorpayPayment() - Open Razorpay checkout modal
  * 
- * API CALLS (via paymentsApiService → Worker):
+ * API CALLS (via paymentsApiService → Pages Functions → Worker):
  * - createRazorpayOrder()     - Create order via Worker
  * - verifyPayment()           - Verify payment via Worker
  */
@@ -22,7 +24,6 @@ import paymentsApiService from './paymentsApiService';
  */
 export const loadRazorpayScript = () => {
   return new Promise((resolve) => {
-    // Check if script is already loaded
     if (window.Razorpay) {
       resolve(true);
       return;
@@ -38,20 +39,12 @@ export const loadRazorpayScript = () => {
 
 /**
  * Create Razorpay order via Cloudflare Worker
+ * Auth is handled automatically by paymentsApiService.
  * @param {Object} orderData - Order details
  * @returns {Promise<Object>} Order details from Razorpay
  */
 export const createRazorpayOrder = async (orderData) => {
   try {
-    // Get auth token
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token;
-
-    if (!token) {
-      throw new Error('No authentication token available');
-    }
-
-    // Call Worker via paymentsApiService
     const result = await paymentsApiService.createOrder({
       amount: orderData.amount,
       currency: orderData.currency,
@@ -60,13 +53,11 @@ export const createRazorpayOrder = async (orderData) => {
       userEmail: orderData.userEmail,
       userName: orderData.userName,
       isUpgrade: orderData.isUpgrade,
-    }, token);
+    });
 
     return result;
   } catch (error) {
-    // Check if this is a "subscription exists" error (409 Conflict)
     if (error.message?.includes('already have an active subscription')) {
-      // Create a custom error with additional info
       const subscriptionExistsError = new Error(error.message);
       subscriptionExistsError.code = 'SUBSCRIPTION_EXISTS';
       subscriptionExistsError.isSubscriptionExists = true;
@@ -79,44 +70,21 @@ export const createRazorpayOrder = async (orderData) => {
 
 /**
  * Verify payment via Cloudflare Worker
- * Worker handles: signature verification + subscription creation + transaction logging
+ * Auth is handled automatically by paymentsApiService.
  * @param {Object} paymentData - Payment verification data
  * @returns {Promise<Object>} Verification result with subscription
  */
 export const verifyPayment = async (paymentData) => {
-  try {
-    // Get auth token
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token;
-
-    if (!token) {
-      throw new Error('No authentication token available');
-    }
-
-    // Call Worker via paymentsApiService
-    return await paymentsApiService.verifyPayment({
-      razorpay_order_id: paymentData.razorpay_order_id,
-      razorpay_payment_id: paymentData.razorpay_payment_id,
-      razorpay_signature: paymentData.razorpay_signature,
-      plan: paymentData.plan,
-    }, token);
-  } catch (error) {
-    throw error;
-  }
+  return await paymentsApiService.verifyPayment({
+    razorpay_order_id: paymentData.razorpay_order_id,
+    razorpay_payment_id: paymentData.razorpay_payment_id,
+    razorpay_signature: paymentData.razorpay_signature,
+    plan: paymentData.plan,
+  });
 };
 
 /**
- * Initialize Razorpay payment checkout
- * Opens Razorpay modal and handles payment flow with redirect
- * 
- * @param {Object} params - Payment parameters
- * @param {Object} params.plan - Selected subscription plan
- * @param {Object} params.userDetails - User information
- */
-/**
  * Payment outcome types for callback-driven SPA navigation.
- * No window.location.href — all outcomes are communicated back
- * to the calling React component via callbacks.
  */
 export interface PaymentSuccessResult {
   razorpay_payment_id: string;
@@ -159,13 +127,13 @@ export const initiateRazorpayPayment = async ({
     }
 
     const parsedPrice = parseFloat(String(plan.price));
-    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
       throw new Error(`Invalid plan price: ${plan.price}`);
     }
 
     const amountInPaise = Math.round(parsedPrice * 100);
 
-    // Create order via Worker
+    // Create order via Worker (auth handled automatically)
     const orderData = await createRazorpayOrder({
       amount: amountInPaise,
       currency: 'INR',
@@ -176,17 +144,32 @@ export const initiateRazorpayPayment = async ({
       isUpgrade,
     });
 
-    // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
-    const razorpayKeyId = orderData.key;
+    // apiSuccess wraps the payload at { success, data: { ... } }, so read from orderData.data.*
+    const payload = orderData.data;
 
-    // Razorpay checkout options — all callbacks stay in-app (no window.location.href)
+    // Check if the backend auto-provisioned a freemium subscription
+    if (payload?.isFreemium && orderData.success) {
+      onSuccess({
+        razorpay_payment_id: 'freemium_direct',
+        razorpay_order_id: 'freemium_direct',
+        razorpay_signature: 'freemium_direct',
+        plan,
+        verificationResult: payload,
+      });
+      return;
+    }
+
+    // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
+    const razorpayKeyId = payload?.razorpay_key_id || payload?.key;
+
+    // Razorpay checkout options
     const options = {
       key: razorpayKeyId,
-      amount: orderData.amount,
-      currency: orderData.currency,
+      amount: payload?.amount,
+      currency: payload?.currency,
       name: 'RareMinds Skill Passport',
-      description: `${plan.name} Plan - ₹${plan.price}/${plan.duration || 'month'}`,
-      order_id: orderData.id,
+      description: `${plan.name} Plan - ₹${plan.price}/${plan.duration ?? 'month'}`,
+      order_id: payload?.id,
       prefill: {
         name: userDetails.name,
         email: userDetails.email,
@@ -199,10 +182,9 @@ export const initiateRazorpayPayment = async ({
       theme: {
         color: '#2563eb',
       },
-      // ── Success handler — verify payment inline, then callback ──
       handler: async function (response) {
         try {
-          // Verify payment signature via Worker before declaring success
+          // Verify payment signature via Worker (auth handled automatically)
           const verificationResult = await verifyPayment({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
@@ -218,8 +200,6 @@ export const initiateRazorpayPayment = async ({
             verificationResult,
           });
         } catch (verifyError) {
-          // Payment was captured by Razorpay but verification failed
-          // Still call onSuccess with the raw response so the UI can handle it
           console.error('[RazorpayService] Payment verification failed:', verifyError);
           onSuccess({
             razorpay_payment_id: response.razorpay_payment_id,
@@ -230,7 +210,6 @@ export const initiateRazorpayPayment = async ({
         }
       },
       modal: {
-        // ── User dismissed the modal ──
         ondismiss: function () {
           if (onCancel) {
             onCancel();
@@ -238,7 +217,7 @@ export const initiateRazorpayPayment = async ({
             onFailure({
               error_code: 'PAYMENT_CANCELLED',
               error_description: 'Payment was cancelled by user',
-              razorpay_order_id: orderData.id,
+              razorpay_order_id: payload?.id,
             });
           }
         },
@@ -248,20 +227,18 @@ export const initiateRazorpayPayment = async ({
     // Open Razorpay checkout
     const razorpay = new window.Razorpay(options);
 
-    // ── Payment failure event ──
     razorpay.on('payment.failed', function (response) {
       onFailure({
         error_code: response.error?.code || 'PAYMENT_FAILED',
         error_description: response.error?.description || 'Payment failed',
         error_reason: response.error?.reason || '',
-        razorpay_order_id: orderData.id,
+        razorpay_order_id: payload?.id,
         razorpay_payment_id: response.error?.metadata?.payment_id || '',
       });
     });
 
     razorpay.open();
   } catch (error) {
-    // Handle "subscription already exists" error specially
     if (error.code === 'SUBSCRIPTION_EXISTS' || error.isSubscriptionExists) {
       onFailure({
         error_code: 'SUBSCRIPTION_EXISTS',
@@ -270,7 +247,6 @@ export const initiateRazorpayPayment = async ({
       return;
     }
 
-    // All other initialization errors — callback instead of redirect
     onFailure({
       error_code: 'INITIALIZATION_ERROR',
       error_description: error.message || 'Failed to initialize payment',

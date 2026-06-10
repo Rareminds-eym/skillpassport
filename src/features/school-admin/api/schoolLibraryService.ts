@@ -1,5 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('schoolLibraryService');
@@ -42,7 +41,6 @@ export interface SchoolLibraryBookIssue {
   returned_by?: string;
   created_at: string;
   updated_at: string;
-  // Joined fields
   book?: SchoolLibraryBook;
 }
 
@@ -80,154 +78,61 @@ export interface SchoolOverdueBook extends SchoolLibraryBookIssue {
   days_overdue: number;
 }
 
-class SchoolLibraryService {
-  // Get current user's school ID
-  private async getCurrentSchoolId(): Promise<string> {
-    // First, check if user is logged in via AuthContext (for school admins)
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        if (userData.role === 'school_admin' && userData.schoolId) {
-          return userData.schoolId;
-        }
-      } catch (e) {
-        logger.error('Failed to parse stored user', e as Error);
-      }
-    }
-    
-    // If not found in localStorage, try Supabase Auth
-    const { data: { user } } = await getCurrentUser();
-    if (!user) throw new Error('User not authenticated');
-    
-    // Check school_educators table
-    const { data: educator } = await supabase
-      .from('school_educators')
-      .select('school_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    
-    if (educator?.school_id) {
-      return educator.school_id;
-    }
-    
-    // Check organizations table by email
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('organization_type', 'school')
-      .eq('email', user.email)
-      .maybeSingle();
-    
-    if (org?.id) {
-      return org.id;
-    }
-    
-    throw new Error('No school found for user');
-  }
+const API_PATH = '/college-admin/school-library';
 
-  // ============================================================================
-  // BOOKS MANAGEMENT
-  // ============================================================================
-  
-  async getBooks(filters?: {
+class SchoolLibraryService {
+  async getBooks(schoolId: string, filters?: {
     search?: string;
     category?: string;
     status?: string;
     page?: number;
     limit?: number;
   }) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    let query = supabase
-      .from('library_books_school')
-      .select('*', { count: 'exact' })
-      .eq('school_id', schoolId)
-      .order('title');
-
-    if (filters?.search) {
-      query = query.or(`title.ilike.%${filters.search}%,author.ilike.%${filters.search}%,isbn.ilike.%${filters.search}%`);
-    }
-
-    if (filters?.category) {
-      query = query.eq('category', filters.category);
-    }
-
-    if (filters?.status) {
-      query = query.eq('status', filters.status);
-    }
-
-    if (filters?.page && filters?.limit) {
-      const from = (filters.page - 1) * filters.limit;
-      const to = from + filters.limit - 1;
-      query = query.range(from, to);
-    }
-
-    const { data, error, count } = await query;
-    
-    if (error) throw error;
-    return { books: data as SchoolLibraryBook[], count };
+    const result = await apiPost(API_PATH, {
+      action: 'get-books',
+      school_id: schoolId,
+      ...filters,
+    });
+    return result as { books: SchoolLibraryBook[]; count: number };
   }
 
-  async getBookById(id: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_books_school')
-      .select('*')
-      .eq('id', id)
-      .eq('school_id', schoolId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data as SchoolLibraryBook;
+  async getBookById(schoolId: string, id: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'get-book-by-id',
+      school_id: schoolId,
+      id,
+    });
+    return result as SchoolLibraryBook;
   }
 
-  async addBook(book: Omit<SchoolLibraryBook, 'id' | 'school_id' | 'created_at' | 'updated_at'>) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_books_school')
-      .insert([{ ...book, school_id: schoolId }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as SchoolLibraryBook;
+  async addBook(schoolId: string, book: Omit<SchoolLibraryBook, 'id' | 'school_id' | 'created_at' | 'updated_at'>) {
+    const result = await apiPost(API_PATH, {
+      action: 'add-book',
+      school_id: schoolId,
+      ...book,
+    });
+    return result as SchoolLibraryBook;
   }
 
-  async updateBook(id: string, updates: Partial<SchoolLibraryBook>) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_books_school')
-      .update(updates)
-      .eq('id', id)
-      .eq('school_id', schoolId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as SchoolLibraryBook;
+  async updateBook(schoolId: string, id: string, updates: Partial<SchoolLibraryBook>) {
+    const result = await apiPost(API_PATH, {
+      action: 'update-book',
+      school_id: schoolId,
+      id,
+      ...updates,
+    });
+    return result as SchoolLibraryBook;
   }
 
-  async deleteBook(id: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { error } = await supabase
-      .from('library_books_school')
-      .delete()
-      .eq('id', id)
-      .eq('school_id', schoolId);
-
-    if (error) throw error;
+  async deleteBook(schoolId: string, id: string) {
+    await apiPost(API_PATH, {
+      action: 'delete-book',
+      school_id: schoolId,
+      id,
+    });
   }
 
-  // ============================================================================
-  // BOOK ISSUES MANAGEMENT
-  // ============================================================================
-
-  async issueBook(issue: {
+  async issueBook(schoolId: string, issue: {
     book_id: string;
     learner_id: string;
     learner_name: string;
@@ -236,109 +141,29 @@ class SchoolLibraryService {
     academic_year: string;
     issued_by?: string;
   }) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    // First check if learner has reached max book limit
-    const settings = await this.getSettings();
-    const maxBooks = parseInt(settings.find(s => s.setting_key === 'max_books_per_learner')?.setting_value || '3');
-    
-    const { count: currentIssues } = await supabase
-      .from('library_book_issues_school')
-      .select('*', { count: 'exact', head: true })
-      .eq('school_id', schoolId)
-      .eq('learner_id', issue.learner_id)
-      .eq('status', 'issued');
-
-    if (currentIssues && currentIssues >= maxBooks) {
-      throw new Error(`Learner has already issued ${maxBooks} books. Maximum limit reached.`);
-    }
-
-    // Check book availability
-    const book = await this.getBookById(issue.book_id);
-    if (book.available_copies <= 0) {
-      throw new Error('Book is not available for issue.');
-    }
-
-    // Calculate due date
-    const loanPeriod = parseInt(settings.find(s => s.setting_key === 'default_loan_period_days')?.setting_value || '14');
-    const issueDate = new Date();
-    const dueDate = new Date(issueDate);
-    dueDate.setDate(dueDate.getDate() + loanPeriod);
-
-    const issueData = {
-      ...issue,
+    const result = await apiPost(API_PATH, {
+      action: 'issue-book',
       school_id: schoolId,
-      issue_date: issueDate.toISOString().split('T')[0],
-      due_date: dueDate.toISOString().split('T')[0],
-      status: 'issued' as const,
-    };
-
-    const { data, error } = await supabase
-      .from('library_book_issues_school')
-      .insert([issueData])
-      .select(`
-        *,
-        book:library_books_school(*)
-      `)
-      .single();
-
-    if (error) throw error;
-    return data as SchoolLibraryBookIssue;
+      ...issue,
+    });
+    return result as SchoolLibraryBookIssue;
   }
 
-  async returnBook(issueId: string, returnData: {
+  async returnBook(schoolId: string, issueId: string, returnData: {
     return_date?: string;
     returned_by?: string;
     remarks?: string;
   }) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    // Get the issue record
-    const { data: issue, error: fetchError } = await supabase
-      .from('library_book_issues_school')
-      .select('*')
-      .eq('id', issueId)
-      .eq('school_id', schoolId)
-      .eq('status', 'issued')
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (!issue) throw new Error('Issue record not found or already returned.');
-
-    // Calculate fine
-    const returnDate = returnData.return_date || new Date().toISOString().split('T')[0];
-    const { data: fineData, error: fineError } = await supabase
-      .rpc('calculate_fine_school', {
-        p_school_id: schoolId,
-        issue_date: issue.issue_date,
-        return_date: returnDate
-      });
-
-    if (fineError) throw fineError;
-
-    const updateData = {
+    const result = await apiPost(API_PATH, {
+      action: 'return-book',
+      school_id: schoolId,
+      issue_id: issueId,
       ...returnData,
-      return_date: returnDate,
-      status: 'returned' as const,
-      fine_amount: fineData || 0,
-    };
-
-    const { data, error } = await supabase
-      .from('library_book_issues_school')
-      .update(updateData)
-      .eq('id', issueId)
-      .eq('school_id', schoolId)
-      .select(`
-        *,
-        book:library_books_school(*)
-      `)
-      .single();
-
-    if (error) throw error;
-    return data as SchoolLibraryBookIssue;
+    });
+    return result as SchoolLibraryBookIssue;
   }
 
-  async getBookIssues(filters?: {
+  async getBookIssues(schoolId: string, filters?: {
     learner_id?: string;
     book_id?: string;
     status?: string;
@@ -346,278 +171,138 @@ class SchoolLibraryService {
     page?: number;
     limit?: number;
   }) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    let query = supabase
-      .from('library_book_issues_school')
-      .select(`
-        *,
-        book:library_books_school(*)
-      `)
-      .eq('school_id', schoolId)
-      .order('issue_date', { ascending: false });
-
-    if (filters?.learner_id) {
-      query = query.eq('learner_id', filters.learner_id);
-    }
-
-    if (filters?.book_id) {
-      query = query.eq('book_id', filters.book_id);
-    }
-
-    if (filters?.status) {
-      query = query.eq('status', filters.status);
-    }
-
-    if (filters?.search) {
-      query = query.or(`learner_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%`);
-    }
-
-    if (filters?.page && filters?.limit) {
-      const from = (filters.page - 1) * filters.limit;
-      const to = from + filters.limit - 1;
-      query = query.range(from, to);
-    }
-
-    const { data, error, count } = await query;
-    
-    if (error) throw error;
-    return { issues: data as SchoolLibraryBookIssue[], count };
+    const result = await apiPost(API_PATH, {
+      action: 'get-book-issues',
+      school_id: schoolId,
+      ...filters,
+    });
+    return result as { issues: SchoolLibraryBookIssue[]; count: number };
   }
 
-  async searchIssuedBook(bookId?: string, learnerId?: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    let query = supabase
-      .from('library_book_issues_school')
-      .select(`
-        *,
-        book:library_books_school(*)
-      `)
-      .eq('school_id', schoolId)
-      .eq('status', 'issued');
-
-    if (bookId && learnerId) {
-      query = query.eq('book_id', bookId).eq('learner_id', learnerId);
-    } else if (bookId) {
-      query = query.eq('book_id', bookId);
-    } else if (learnerId) {
-      query = query.eq('learner_id', learnerId);
-    } else {
-      throw new Error('Either book_id or learner_id must be provided');
-    }
-
-    const { data, error } = await query.maybeSingle();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    return data as SchoolLibraryBookIssue | null;
+  async searchIssuedBook(schoolId: string, bookId?: string, learnerId?: string) {
+    if (!bookId && !learnerId) throw new Error('Either book_id or learner_id must be provided');
+    const result = await apiPost(API_PATH, {
+      action: 'search-issued-book',
+      school_id: schoolId,
+      book_id: bookId,
+      learner_id: learnerId,
+    });
+    return result as SchoolLibraryBookIssue | null;
   }
 
-  // ============================================================================
-  // OVERDUE BOOKS
-  // ============================================================================
-
-  async getOverdueBooks() {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('overdue_books_school')
-      .select('*')
-      .eq('school_id', schoolId)
-      .order('days_overdue', { ascending: false });
-
-    if (error) throw error;
-    return data as SchoolOverdueBook[];
+  async getOverdueBooks(schoolId: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'get-overdue-books',
+      school_id: schoolId,
+    });
+    return result as SchoolOverdueBook[];
   }
 
-  // ============================================================================
-  // LIBRARY STATISTICS
-  // ============================================================================
-
-  async getLibraryStats() {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_stats_school')
-      .select('*')
-      .eq('school_id', schoolId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data as SchoolLibraryStats;
+  async getLibraryStats(schoolId: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'get-library-stats',
+      school_id: schoolId,
+    });
+    return result as SchoolLibraryStats;
   }
 
-  // ============================================================================
-  // SETTINGS MANAGEMENT
-  // ============================================================================
-
-  async getSettings() {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_settings_school')
-      .select('*')
-      .eq('school_id', schoolId)
-      .order('setting_key');
-
-    if (error) throw error;
-    return data as SchoolLibrarySetting[];
+  async getSettings(schoolId: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'get-settings',
+      school_id: schoolId,
+    });
+    return result as SchoolLibrarySetting[];
   }
 
-  async updateSetting(key: string, value: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_settings_school')
-      .update({ setting_value: value })
-      .eq('school_id', schoolId)
-      .eq('setting_key', key)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as SchoolLibrarySetting;
+  async updateSetting(schoolId: string, key: string, value: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'update-setting',
+      school_id: schoolId,
+      key,
+      value,
+    });
+    return result as SchoolLibrarySetting;
   }
 
-  // ============================================================================
-  // CATEGORIES MANAGEMENT
-  // ============================================================================
-
-  async getCategories() {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_categories_school')
-      .select('*')
-      .eq('school_id', schoolId)
-      .order('name');
-
-    if (error) throw error;
-    return data as SchoolLibraryCategory[];
+  async getCategories(schoolId: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'get-categories',
+      school_id: schoolId,
+    });
+    return result as SchoolLibraryCategory[];
   }
 
-  async addCategory(category: Omit<SchoolLibraryCategory, 'id' | 'school_id' | 'created_at' | 'updated_at'>) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_categories_school')
-      .insert([{ ...category, school_id: schoolId }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as SchoolLibraryCategory;
+  async addCategory(schoolId: string, category: Omit<SchoolLibraryCategory, 'id' | 'school_id' | 'created_at' | 'updated_at'>) {
+    const result = await apiPost(API_PATH, {
+      action: 'add-category',
+      school_id: schoolId,
+      ...category,
+    });
+    return result as SchoolLibraryCategory;
   }
 
-  async updateCategory(id: string, updates: Partial<SchoolLibraryCategory>) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_categories_school')
-      .update(updates)
-      .eq('id', id)
-      .eq('school_id', schoolId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data as SchoolLibraryCategory;
+  async updateCategory(schoolId: string, id: string, updates: Partial<SchoolLibraryCategory>) {
+    const result = await apiPost(API_PATH, {
+      action: 'update-category',
+      school_id: schoolId,
+      id,
+      ...updates,
+    });
+    return result as SchoolLibraryCategory;
   }
 
-  async deleteCategory(id: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { error } = await supabase
-      .from('library_categories_school')
-      .delete()
-      .eq('id', id)
-      .eq('school_id', schoolId);
-
-    if (error) throw error;
+  async deleteCategory(schoolId: string, id: string) {
+    await apiPost(API_PATH, {
+      action: 'delete-category',
+      school_id: schoolId,
+      id,
+    });
   }
 
-  // ============================================================================
-  // UTILITY FUNCTIONS
-  // ============================================================================
-
-  async calculateFine(issueDate: string, returnDate?: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .rpc('calculate_fine_school', {
-        p_school_id: schoolId,
-        issue_date: issueDate,
-        return_date: returnDate || new Date().toISOString().split('T')[0]
-      });
-
-    if (error) throw error;
-    return data as number;
+  async calculateFine(schoolId: string, issueDate: string, returnDate?: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'calculate-fine',
+      school_id: schoolId,
+      issue_date: issueDate,
+      return_date: returnDate || new Date().toISOString().split('T')[0],
+    });
+    return result as number;
   }
 
-  // Get learner's current issued books count
-  async getlearnerIssuedBooksCount(learnerId: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { count, error } = await supabase
-      .from('library_book_issues_school')
-      .select('*', { count: 'exact', head: true })
-      .eq('school_id', schoolId)
-      .eq('learner_id', learnerId)
-      .eq('status', 'issued');
-
-    if (error) throw error;
-    return count || 0;
+  async getLearnerIssuedBooksCount(schoolId: string, learnerId: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'get-learner-issued-count',
+      school_id: schoolId,
+      learner_id: learnerId,
+    });
+    return result as number;
   }
 
-  // Get borrow history for a learner
-  async getlearnerBorrowHistory(learnerId: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('library_book_issues_school')
-      .select(`
-        *,
-        book:library_books_school(*)
-      `)
-      .eq('school_id', schoolId)
-      .eq('learner_id', learnerId)
-      .order('issue_date', { ascending: false });
-
-    if (error) throw error;
-    return data as SchoolLibraryBookIssue[];
+  async getLearnerBorrowHistory(schoolId: string, learnerId: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'get-learner-borrow-history',
+      school_id: schoolId,
+      learner_id: learnerId,
+    });
+    return result as SchoolLibraryBookIssue[];
   }
 
-  // Search learners for book issuing
-  async searchlearners(searchTerm: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('learners')
-      .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
-      .eq('school_id', schoolId)
-      .eq('is_deleted', false)
-      .or(`name.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%,enrollmentNumber.ilike.%${searchTerm}%,admission_number.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
-      .order('name')
-      .limit(10);
-
-    if (error) throw error;
-    return data;
+  async searchLearners(schoolId: string, searchTerm: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'search-learners-for-library',
+      school_id: schoolId,
+      search_term: searchTerm,
+    });
+    return result;
   }
 
-  // Get learner details by ID
-  async getlearnerById(learnerId: string) {
-    const schoolId = await this.getCurrentSchoolId();
-    
-    const { data, error } = await supabase
-      .from('learners')
-      .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
-      .eq('id', learnerId)
-      .eq('school_id', schoolId)
-      .eq('is_deleted', false)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async getLearnerById(schoolId: string, learnerId: string) {
+    const result = await apiPost(API_PATH, {
+      action: 'get-learner-by-id',
+      school_id: schoolId,
+      learner_id: learnerId,
+    });
+    return result;
   }
 }
 

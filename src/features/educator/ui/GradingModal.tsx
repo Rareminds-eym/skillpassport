@@ -1,7 +1,7 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+
+import { useAuthStore } from '@/shared/model/authStore';
 import { useEffect, useState, useMemo } from 'react'
 import { getAssignmentLearners, gradeAssignment } from '@/features/educator';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import {
@@ -157,7 +157,7 @@ const GradingModal = ({ isOpen, onClose, assignment, onGradeSubmitted }: Grading
         try {
             setSubmitting(true);
 
-            const { data: { user } } = await getCurrentUser();
+            const user = useAuthStore.getState().user;
             const educatorId = user?.id || localStorage.getItem('dev_educator_id');
 
             const gradePercentage = (gradeValue / assignment.totalPoints) * 100;

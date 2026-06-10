@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { getLogger } from '@/shared/config/logging';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 const logger = getLogger('ai-career-path');
 
@@ -387,7 +388,7 @@ export function getFallbackResponsibilities(roleName: string): string[] {
   return [
     `[AI UNAVAILABLE] Design and develop solutions in the ${roleName} domain`,
     `[AI UNAVAILABLE] Collaborate with cross-functional teams on projects`,
-    `[AI UNAVAILABLE] Continuously learn and apply new skills in your field`
+    `[AI UNAVAILABLE] Research and apply new skills in your field`
   ];
 }
 
@@ -1099,7 +1100,8 @@ export async function generateRoleOverview(
   if (attemptId) {
     try {
       const storageUrl = `${ROLE_OVERVIEW_API_URL}/storage?attemptId=${encodeURIComponent(attemptId)}&roleName=${encodeURIComponent(roleName)}`;
-      const dbResponse = await fetch(storageUrl, {
+      // ssoClient.fetch attaches the JWT — these endpoints are auth-protected (401 with plain fetch).
+      const dbResponse = await ssoClient.fetch(storageUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1107,9 +1109,15 @@ export async function generateRoleOverview(
       });
 
       if (dbResponse.ok) {
-        const dbResult = await dbResponse.json() as { exists: boolean; data: RoleOverviewData | null };
-        if (dbResult.exists && dbResult.data) {
-          return dbResult.data;
+        // Unwrap apiSuccess envelope: { success, data: { exists, data } }.
+        // Supports both the enveloped and a flat { exists, data } shape.
+        const dbRaw = await dbResponse.json() as {
+          exists?: boolean;
+          data?: { exists?: boolean; data?: RoleOverviewData } | RoleOverviewData;
+        } | null;
+        const payload = (dbRaw?.data ?? dbRaw) as { exists?: boolean; data?: RoleOverviewData } | null;
+        if (payload?.exists && payload?.data) {
+          return payload.data as RoleOverviewData;
         }
       } else {
         logger.warn('Role overview DB check returned non-OK status', { roleName, status: dbResponse.status });
@@ -1122,7 +1130,7 @@ export async function generateRoleOverview(
   // Step 2: Generate via AI
 
   try {
-    const response = await fetch(`${ROLE_OVERVIEW_API_URL}/role-overview`, {
+    const response = await ssoClient.fetch(`${ROLE_OVERVIEW_API_URL}/role-overview`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1141,20 +1149,26 @@ export async function generateRoleOverview(
 
     const result = await response.json() as {
       success: boolean;
-      data?: RoleOverviewData;
+      data?: { data?: RoleOverviewData } & Partial<RoleOverviewData>;
       source?: string;
       error?: string;
     };
 
-    if (!result.success || !result.data) {
+    // The worker returns apiSuccess({ data, source }), which wraps everything
+    // under an envelope `data`. So the actual RoleOverviewData lives at
+    // result.data.data. Unwrap defensively to also support a flat shape.
+    const overview: RoleOverviewData | undefined =
+      (result?.data?.data ?? result?.data) as RoleOverviewData | undefined;
+
+    if (!result.success || !overview || !Array.isArray(overview.responsibilities)) {
       logger.error('Role overview worker returned error', new Error(result.error || 'Worker returned no data'), { roleName });
       throw new Error(result.error || 'Worker returned no data');
     }
 
     // Step 3: Store in DB if attemptId provided
-    if (attemptId && result.data) {
+    if (attemptId) {
       try {
-        const storeResponse = await fetch(`${ROLE_OVERVIEW_API_URL}/storage`, {
+        const storeResponse = await ssoClient.fetch(`${ROLE_OVERVIEW_API_URL}/storage`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1162,7 +1176,7 @@ export async function generateRoleOverview(
           body: JSON.stringify({
             attemptId,
             roleName: roleName.trim(),
-            roleOverview: result.data,
+            roleOverview: overview,
           }),
         });
 
@@ -1174,7 +1188,7 @@ export async function generateRoleOverview(
       }
     }
 
-    return result.data;
+    return overview;
   } catch (error: any) {
     logger.error('Role overview worker API call failed', error instanceof Error ? error : new Error(error.message), { roleName });
     return getFallbackRoleOverview(roleName);
@@ -1224,7 +1238,7 @@ export async function matchCoursesForRole(
   }
 
   try {
-    const response = await fetch(`${ROLE_OVERVIEW_API_URL}/match-courses`, {
+    const response = await ssoClient.fetch(`${ROLE_OVERVIEW_API_URL}/match-courses`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

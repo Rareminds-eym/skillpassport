@@ -1,7 +1,4 @@
 export const USER_ROLES = {
-  SUPER_ADMIN: 'super_admin',
-  RM_ADMIN: 'rm_admin',
-  RM_MANAGER: 'rm_manager',
   SCHOOL_ADMIN: 'school_admin',
   COLLEGE_ADMIN: 'college_admin',
   UNIVERSITY_ADMIN: 'university_admin',

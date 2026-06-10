@@ -10,7 +10,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import ReactApexChart from 'react-apexcharts';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import TopSkillsInDemand from './TopSkillsInDemand';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 import { getLogger } from '@/shared/config/logging';
@@ -45,32 +45,12 @@ const AnalyticsView = ({ learnerId }) => {
     queryKey: ['learner', 'applications', learnerId],
     queryFn: async () => {
       debugLog('Fetching application data...');
-      const { data: appliedJobs, error: jobsError } = await supabase
-        .from('applied_jobs')
-        .select(`
-          *,
-          opportunities!fk_applied_jobs_opportunity (
-            id,
-            job_title,
-            title,
-            company_name,
-            employment_type,
-            location,
-            salary_range_min,
-            salary_range_max,
-            mode
-          )
-        `)
-        .eq('learner_id', learnerId)
-        .order('applied_at', { ascending: false });
-
-      if (jobsError) {
-        debugLog('Error fetching applications:', jobsError);
-        throw jobsError;
-      }
-
-      debugLog(`Fetched ${appliedJobs?.length || 0} applications`);
-      return appliedJobs || [];
+      const data = await apiPost('/learner-dashboard-widgets/actions', {
+        action: 'get-analytics-data',
+        learnerId,
+      });
+      debugLog(`Fetched ${data?.length || 0} applications`);
+      return data || [];
     },
     enabled: !!learnerId,
     staleTime: 30000, // 30 seconds

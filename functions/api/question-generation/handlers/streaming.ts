@@ -5,17 +5,15 @@
  * Generates aptitude questions progressively and sends them to the client as they're created
  */
 
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
-import { PagesEnv } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { createSupabaseClient } from '../../../lib/supabase';
+import { PagesEnv } from '../../../lib/types';
+import { apiError } from '../../../lib/response';
 import { SCHOOL_SUBJECT_PROMPT, APTITUDE_PROMPT } from '../prompts';
 import {
     callOpenRouterWithRetry,
     repairAndParseJSON,
     generateUUID,
-    getAPIKeys,
-    API_CONFIG,
-    MODEL_PROFILES
+    getAPIKeys
 } from '../../shared/ai-config';
 import { STREAM_CONTEXTS } from '../stream-contexts';
 
@@ -46,7 +44,7 @@ export async function handleStreamingAptitude(
     env: PagesEnv
 ): Promise<Response> {
     if (request.method !== 'POST') {
-        return jsonResponse({ error: 'Method not allowed' }, 405);
+        return apiError(405, 'ERROR', 'Method not allowed', request);
     }
 
     // Parse request body
@@ -54,18 +52,18 @@ export async function handleStreamingAptitude(
     try {
         body = await request.json();
     } catch {
-        return jsonResponse({ error: 'Invalid JSON' }, 400);
+        return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
     }
 
     const { streamId, learnerId, attemptId, gradeLevel } = body;
 
     if (!streamId) {
-        return jsonResponse({ error: 'Stream ID is required' }, 400);
+        return apiError(400, 'VALIDATION_ERROR', 'Stream ID is required', request);
     }
 
     const { openRouter: openRouterKey } = getAPIKeys(env);
     if (!openRouterKey) {
-        return jsonResponse({ error: 'OpenRouter API key not configured' }, 500);
+        return apiError(500, 'INTERNAL_ERROR', 'OpenRouter API key not configured', request);
     }
 
     const supabase = createSupabaseClient(env);

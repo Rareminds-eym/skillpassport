@@ -4,6 +4,7 @@ import SEOHead from '@/shared/ui/SEOHead';
 import { SkillVerified } from '@/shared/ui/SkillVerified';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { trackEvent, AnalyticsEvents } from '@/shared/lib/analytics';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -379,12 +380,41 @@ function AboutRareMinds() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Track form submission
+    trackEvent(AnalyticsEvents.CONTACT_FORM_SUBMIT, {
+      user_type: formData.user_type,
+      page_path: window.location.pathname,
+    });
+    
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    setSubmitSuccess(true);
-    setFormData({ name: '', email: '', organization: '', user_type: 'learner', message: '' });
-    setTimeout(() => setSubmitSuccess(false), 5000);
+    
+    try {
+      // Simulated async submission (replace with real API call in production)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Track success
+      trackEvent(AnalyticsEvents.CONTACT_FORM_SUCCESS, {
+        user_type: formData.user_type,
+        organization: formData.organization,
+        page_path: window.location.pathname,
+      });
+      
+      setIsSubmitting(false);
+      setSubmitSuccess(true);
+      setFormData({ name: '', email: '', organization: '', user_type: 'learner', message: '' });
+      setTimeout(() => setSubmitSuccess(false), 5000);
+    } catch (error) {
+      // Track failure
+      trackEvent(AnalyticsEvents.CONTACT_FORM_FAILED, {
+        error_message: error instanceof Error ? error.message : 'Form submission failed',
+        user_type: formData.user_type,
+        page_path: window.location.pathname,
+      });
+      
+      setIsSubmitting(false);
+      // TODO: Show error message to user
+    }
   };
 
   const handleImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {

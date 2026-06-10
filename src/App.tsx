@@ -105,14 +105,20 @@ function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
 /**
  * Analytics Wrapper Component
  * Tracks page views on route changes for SPA navigation
+ * 
+ * Sends complete page data to GA4:
+ * - page_path: The route path (e.g., /learner/dashboard)
+ * - page_title: Document title
+ * - page_location: Full URL including query params and hash
  */
 function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   useEffect(() => {
-    // Track page view on route change
-    trackPageView(location.pathname);
-  }, [location]);
+    // Track page view on route change with full path including search params
+    const fullPath = location.pathname + location.search + location.hash;
+    trackPageView(fullPath, document.title);
+  }, [location.pathname, location.search, location.hash]);
 
   return <>{children}</>;
 }

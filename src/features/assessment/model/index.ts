@@ -1,14 +1,17 @@
 /**
  * Assessment Hooks - Main Export
- * 
+ *
  * Centralized exports for all assessment-related hooks.
- * 
+ *
  * @module features/assessment/model
  */
 
+// Types
+export * from './types';
+
 // Core assessment flow
-export { useAssessmentFlow } from './useAssessmentFlow';
-export type { AssessmentFlowState, AssessmentAction } from './useAssessmentFlow';
+export { useAssessmentFlow } from './useCareerTestFlow';
+export type { AssessmentFlowState, AssessmentAction } from './useCareerTestFlow';
 
 // Timer management
 export { default as useAssessmentTimer } from './useAssessmentTimer';
@@ -49,8 +52,10 @@ export { useAssessmentRecommendations } from './useAssessmentRecommendations';
 // @ts-expect-error - TS file with potential type issues
 export { default as useAssessment } from './useAssessment';
 
-// Assessment context
-export { AssessmentProvider, useAssessmentContext } from './AssessmentContext';
+// Assessment store and service
+export * from './assessmentStore';
+export { useAssessmentService } from './useAssessmentService';
 
-// Promotional events
-export { useAssessmentPromotional } from './useAssessmentPromotional';
+// Adaptive Aptitude hook
+export { useAdaptiveAptitude } from '../lib/useAdaptiveAptitude';
+export type { UseAdaptiveAptitudeOptions } from '../lib/useAdaptiveAptitude';

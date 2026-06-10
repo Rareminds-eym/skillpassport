@@ -4,39 +4,41 @@
  * Generates a signed download URL for private files in Supabase Storage.
  * Requires SSO authentication. Validates path ownership.
  */
-import { withAuth } from '../../lib/auth';
-import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { apiError, apiSuccess } from '../../lib/response';
+import { ADMIN_ROLES } from '../../lib/roleCategories';
+import { getServiceClient } from '../../lib/supabase';
 
 interface DownloadUrlRequest {
   bucket: string;
   path: string;
-  /** Expiry in seconds. Default: 3600 (1 hour). Max: 86400 (24 hours). */
   expiresIn?: number;
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
 
   let body: DownloadUrlRequest;
   try {
     body = await context.request.json() as DownloadUrlRequest;
   } catch {
-    return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
 
   if (!body.bucket || !body.path) {
-    return Response.json({ error: 'bucket and path are required' }, { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'bucket and path are required', context.request);
   }
 
-  // Validate path ownership: users can only download their own files unless admin
-  const isAdmin = user.roles.some((r: string) =>
-    ['admin', 'owner', 'school_admin', 'college_admin', 'university_admin'].includes(r)
-  );
+  // Ownership-scoped: non-admins may only access their own path prefix. Admins
+  // (shared ADMIN_ROLES group) bypass the ownership constraint. Non-guard role
+  // check → uses ADMIN_ROLES (not requireAdmin), replacing the prior inline
+  // admin literal (bug §7.1).
+  const isAdmin = user.roles.some((r: string) => ADMIN_ROLES.includes(r));
 
-  if (!isAdmin && !body.path.startsWith(`${user.sub}/`)) {
-    return Response.json({ error: 'Forbidden: cannot access this path' }, { status: 403 });
+  if (!isAdmin && !body.path.startsWith(`${user.id}/`)) {
+    return apiError(403, 'FORBIDDEN', 'Forbidden: cannot access this path', context.request);
   }
 
   const expiresIn = Math.min(body.expiresIn || 3600, 86400);
@@ -47,11 +49,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     .createSignedUrl(body.path, expiresIn);
 
   if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
   }
 
-  return Response.json({
-    signedUrl: data.signedUrl,
-    expiresIn,
-  });
+  return apiSuccess({ signedUrl: data.signedUrl, expiresIn }, context.request);
 });

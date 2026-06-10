@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import {
     ArrowDownAZ,
+    Award,
     BookOpen,
     CheckCircle,
     ChevronLeft,
@@ -10,13 +11,14 @@ import {
     Eye,
     Grid3x3,
     List,
+    Lock,
     Play,
     TrendingUp,
     Users
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchBar } from '@/shared/ui';
+import { SearchBar, CertificateNameModal } from '@/shared/ui';
 import { CourseDetailModal } from '@/features/courses';
 import WeeklyLearningTracker from '@/entities/learner/ui/WeeklyLearningTracker';
 import { CourseAdvancedFilters } from '@/widgets/learner-dashboard';
@@ -31,14 +33,27 @@ import {
   PaginationPrevious,
 } from '@/shared/ui';
 
-import { supabase } from '@/shared/api/supabaseClient';
-import { downloadCertificate, getCertificateProxyUrl } from '@/features/digital-portfolio';
+import { apiPost, apiGet } from '@/shared/api/apiClient';
+import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
+import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
+import { getLogger } from '@/shared/config/logging';
+import toast from 'react-hot-toast';
+import { useCertificateModal } from '@/features/certificate-generation';
+import { viewCertificate } from '@/shared/lib/certificateUtils';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('courses-page');
+
 const Courses = () => {
   const navigate = useNavigate();
   const user = useUser();
+  const subscriptionContext = useSubscriptionContext();
+  const subscription = subscriptionContext?.subscription;
+  const userPlan = subscription?.plan ?? PLAN_IDS.FREEMIUM;
+  
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -66,7 +81,7 @@ const Courses = () => {
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
   const [enrollmentProgress, setEnrollmentProgress] = useState({}); // Track progress per course
   const [certificateUrls, setCertificateUrls] = useState({}); // Track certificate URLs per course
-  const [downloadingCertificate, setDownloadingCertificate] = useState(null); // Track which certificate is downloading
+  const [preparingCertificate, setPreparingCertificate] = useState(null); // Track which certificate is being prepared
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   
   // Refs to prevent duplicate fetches and track initialization
@@ -74,222 +89,25 @@ const Courses = () => {
   const hasFetchedCoursesRef = useRef(false);
   const hasFetchedEnrollmentsRef = useRef(false);
   const userEmailRef = useRef(user?.email);
-
-  // Handle window resize for responsive pagination
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Fetch courses and enrollments from Supabase
-  // Use user?.email as dependency instead of user object to prevent re-fetches on object reference changes
-  useEffect(() => {
-    // Fetch courses once on mount - don't wait for learner info if it's taking too long
-    // We'll show all courses if grade/branch is not available
-    if (!hasFetchedCoursesRef.current) {
-      hasFetchedCoursesRef.current = true;
-      fetchCourses();
-    }
-  }, []); // Empty dependency array - fetch once on mount
-
-  // Fetch courses when search, filter, sort, or page changes
-  useEffect(() => {
-    // Skip initial load (handled by the effect above)
-    if (hasFetchedCoursesRef.current) {
-      fetchCourses();
-    }
-  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch]);
-
-  // Fetch learner grade and branch for filtering
-  useEffect(() => {
-    const fetchlearnerInfo = async () => {
-      if (!user?.email) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('learners')
-          .select('grade, branch_field')
-          .eq('email', user.email)
-          .maybeSingle();
-        
-        if (!error && data) {
-          setlearnerGrade(data.grade);
-          setlearnerBranch(data.branch_field);
-          
-          // Re-fetch courses with proper filtering once learner info is available
-          // Only if courses have already been fetched once
-          if (hasFetchedCoursesRef.current) {
-            fetchCourses();
-          }
-        }
-      } catch (error) {
-        logger.error('Error fetching learner info', error);
-      }
-    };
+  const preparingCertificateRef = useRef(new Set()); // Track certificates currently being prepared
+  
+  // Helper function to check if user has access to a course
+  const canAccessCourse = useCallback((course) => {
+    const coursePlanType = course.plan_type?.toLowerCase() || 'freemium';
     
-    fetchlearnerInfo();
-  }, [user?.email]);
-
-  // Separate effect for enrollments - only when user email changes
-  useEffect(() => {
-    const currentEmail = user?.email;
-    
-    // Only fetch if email exists and either hasn't been fetched or email changed
-    if (currentEmail && (!hasFetchedEnrollmentsRef.current || userEmailRef.current !== currentEmail)) {
-      userEmailRef.current = currentEmail;
-      hasFetchedEnrollmentsRef.current = true;
-      fetchEnrollments();
-    }
-  }, [user?.email]);
-
-  const fetchCourses = useCallback(async () => {
-    // Prevent duplicate fetches
-    if (isFetchingRef.current) {
-      return;
+    // If course is freemium, everyone can access
+    if (coursePlanType === 'freemium') {
+      return true;
     }
     
-    isFetchingRef.current = true;
-    const isFirstLoad = initialLoad;
+    // For non-freemium courses, check user's plan level using shared constant
+    const userPlanLevel = PLAN_HIERARCHY_LEVELS[userPlan?.toLowerCase()] || 0;
+    const coursePlanLevel = PLAN_HIERARCHY_LEVELS[coursePlanType] || 0;
+    
+    return userPlanLevel >= coursePlanLevel;
+  }, [userPlan]);
 
-    try {
-      setLoading(true);
-
-      // Calculate pagination range
-      const from = (currentPage - 1) * coursesPerPage;
-      const to = from + coursesPerPage - 1;
-
-      // Build base query for courses with status Active or Upcoming
-      // Also exclude deleted courses
-      let query = supabase
-        .from('courses')
-        .select('*', { count: 'exact' }) // Get total count for pagination
-        .in('status', ['Active', 'Upcoming'])
-        .is('deleted_at', null);
-
-      // Apply classification filter based on learner grade (ALWAYS applied if grade exists)
-      // If no grade, show all courses (fallback)
-      if (learnerGrade) {
-        let classification = null;
-        
-        // Handle numeric grades (6-12)
-        if (/^(Grade\s*)?(\d+)$/i.test(learnerGrade)) {
-          const gradeNum = parseInt(learnerGrade.match(/\d+/)[0]);
-          
-          if (gradeNum >= 6 && gradeNum <= 8) {
-            classification = 'middle_school';
-          } else if (gradeNum >= 9 && gradeNum <= 10) {
-            classification = 'high_school';
-          } else if (gradeNum >= 11 && gradeNum <= 12) {
-            classification = 'higher_secondary';
-          }
-        }
-        // Handle college/university grades (UG, PG, Diploma)
-        else if (/^(UG|PG|Diploma)/i.test(learnerGrade)) {
-          classification = 'college';
-        }
-        
-        if (classification) {
-          // Show courses that match classification OR have no classification (universal courses)
-          query = query.or(`classification.eq.${classification},classification.is.null`);
-        }
-      }
-      // FALLBACK: If no grade is set, show all courses (no classification filter)
-
-      // Apply branch/category filter based on learner's branch_field
-      // Only filter if learner has a branch AND toggle is enabled AND no category filter is already applied
-      if (filterByBranch && learnerBranch && learnerBranch.trim() && advancedFilters.category.length === 0) {
-        // Show courses where category matches learner's branch OR category is null
-        // Use a more precise match to avoid showing unrelated courses
-        query = query.or(`category.eq.${learnerBranch},category.is.null`);
-      }
-
-      // Apply search filter at database level
-      if (debouncedSearch && debouncedSearch.trim()) {
-        query = query.or(`title.ilike.%${debouncedSearch}%,description.ilike.%${debouncedSearch}%,code.ilike.%${debouncedSearch}%`);
-      }
-
-      // Apply status filter
-      if (filterStatus !== 'all') {
-        query = query.eq('status', filterStatus);
-      }
-
-      // Apply advanced filters
-      if (advancedFilters.category.length > 0) {
-        query = query.in('category', advancedFilters.category);
-      }
-
-      if (advancedFilters.skillType.length > 0) {
-        query = query.in('skill_type', advancedFilters.skillType.map(type => type.toLowerCase()));
-      }
-
-      if (advancedFilters.duration.length > 0) {
-        query = query.in('duration', advancedFilters.duration);
-      }
-
-      // Apply enrollment range filter
-      if (advancedFilters.enrollmentRange) {
-        const range = advancedFilters.enrollmentRange;
-        if (range === '1-25') {
-          query = query.gte('enrollment_count', 1).lte('enrollment_count', 25);
-        } else if (range === '26-100') {
-          query = query.gte('enrollment_count', 26).lte('enrollment_count', 100);
-        } else if (range === '101-500') {
-          query = query.gte('enrollment_count', 101).lte('enrollment_count', 500);
-        } else if (range === '500+') {
-          query = query.gte('enrollment_count', 500);
-        }
-      }
-
-      // Apply posted within filter
-      if (advancedFilters.postedWithin) {
-        const daysAgo = parseInt(advancedFilters.postedWithin);
-        const dateThreshold = new Date();
-        dateThreshold.setDate(dateThreshold.getDate() - daysAgo);
-        query = query.gte('created_at', dateThreshold.toISOString());
-      }
-
-      // Apply sorting
-      switch (sortBy) {
-        case 'title':
-          query = query.order('title', { ascending: true });
-          break;
-        case 'enrollment_count':
-          query = query.order('enrollment_count', { ascending: false, nullsFirst: false });
-          break;
-        case 'created_at':
-        default:
-          query = query.order('created_at', { ascending: false });
-          break;
-      }
-
-      // Apply pagination range
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
-
-      if (error) throw error;
-
-      setCourses(data || []);
-      setTotalCount(count || 0);
-
-      if (isFirstLoad) {
-        setInitialLoad(false);
-      }
-    } catch (error) {
-      logger.error('Error fetching courses', error);
-      if (isFirstLoad) {
-        setInitialLoad(false);
-      }
-    } finally {
-      setLoading(false);
-      isFetchingRef.current = false;
-    }
-  }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters, currentPage, learnerGrade, learnerBranch, filterByBranch]);
-
+  // Memoized callback for fetching enrollments
   const fetchEnrollments = useCallback(async () => {
     const email = userEmailRef.current;
     if (!email) return;
@@ -324,6 +142,191 @@ const Courses = () => {
     }
   }, []);
 
+  /**
+   * Certificate success handler - memoized to prevent unnecessary re-renders
+   * 
+   * Flow:
+   * 1. Updates local state with new certificate URL for instant UI feedback
+   * 2. Refreshes enrollments to sync with database
+   * 
+   * @param {Object} result - Certificate generation result
+   * @param {string} result.certificateUrl - Generated certificate URL
+   * @param {string} result.courseId - Course ID
+   */
+  const handleCertificateSuccess = useCallback(async ({ certificateUrl, courseId }) => {
+    // Update local state with new certificate URL for immediate UI update
+    if (courseId) {
+      setCertificateUrls(prev => ({
+        ...prev,
+        [courseId]: certificateUrl
+      }));
+    }
+    
+    // Refresh enrollments to get updated certificate URL from database
+    try {
+      await fetchEnrollments();
+    } catch (error) {
+      logger.error('Error refreshing enrollments after certificate generation', 
+        error instanceof Error ? error : new Error(String(error)));
+    }
+  }, [fetchEnrollments]); // Fixed: Added fetchEnrollments to dependency array
+
+  /**
+   * Certificate modal hook for course certificate generation
+   * 
+   * Flow:
+   * 1. User clicks "Get Certificate" on completed course
+   * 2. handleGetCertificate fetches fresh learner data
+   * 3. Opens modal with pre-filled certificate information
+   * 4. User enters/confirms name and generates certificate
+   * 5. onSuccess callback updates local state and refreshes enrollments
+   * 
+   * State Updates:
+   * - certificateUrls: Updates with new certificate URL for instant UI feedback
+   * - Triggers fetchEnrollments to sync with database
+   */
+  const certificateModal = useCertificateModal({
+    userId: user?.id,
+    userEmail: user?.email,
+    onSuccess: handleCertificateSuccess
+  });
+
+  // Handle window resize for responsive pagination
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Fetch courses and enrollments from Supabase
+  // Use user?.email as dependency instead of user object to prevent re-fetches on object reference changes
+  useEffect(() => {
+    // Fetch courses once on mount - don't wait for learner info if it's taking too long
+    // We'll show all courses if grade/branch is not available
+    if (!hasFetchedCoursesRef.current) {
+      hasFetchedCoursesRef.current = true;
+      fetchCourses();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
+  // Fetch courses when search, filter, sort, or page changes
+  useEffect(() => {
+    // Skip initial load (handled by the effect above)
+    if (hasFetchedCoursesRef.current) {
+      fetchCourses();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch, learnerGrade, learnerBranch]);
+
+  // Fetch learner grade and branch for filtering
+  useEffect(() => {
+    const fetchlearnerInfo = async () => {
+      if (!user?.email) return;
+      
+      try {
+        const res = await apiPost('/learner-pages/actions', {
+          action: 'fetch-learner-info',
+          email: user.email,
+        });
+        
+        if (res?.data) {
+          setlearnerGrade(res.data.grade);
+          setlearnerBranch(res.data.branch_field);
+          
+          // Note: No need to manually call fetchCourses() here
+          // The filter-watching useEffect will automatically trigger when learnerGrade/learnerBranch change
+        }
+      } catch (error) {
+        logger.error('Error fetching learner info', error);
+      }
+    };
+    
+    fetchlearnerInfo();
+  }, [user?.email]);
+
+  // Separate effect for enrollments - only when user email changes
+  useEffect(() => {
+    const currentEmail = user?.email;
+    
+    // Only fetch if email exists and either hasn't been fetched or email changed
+    if (currentEmail && (!hasFetchedEnrollmentsRef.current || userEmailRef.current !== currentEmail)) {
+      userEmailRef.current = currentEmail;
+      hasFetchedEnrollmentsRef.current = true;
+      fetchEnrollments();
+    }
+    // fetchEnrollments is stable (empty deps), so not needed in dependency array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email]);
+
+  const fetchCourses = useCallback(async () => {
+    // Prevent duplicate fetches
+    if (isFetchingRef.current) {
+      return;
+    }
+    
+    isFetchingRef.current = true;
+    const isFirstLoad = initialLoad;
+
+    try {
+      setLoading(true);
+
+      // Calculate pagination range
+      const from = (currentPage - 1) * coursesPerPage;
+      const to = from + coursesPerPage - 1;
+
+      let classification = null;
+      if (learnerGrade) {
+        if (/^(Grade\s*)?(\d+)$/i.test(learnerGrade)) {
+          const gradeNum = parseInt(learnerGrade.match(/\d+/)[0]);
+          if (gradeNum >= 6 && gradeNum <= 8) classification = 'middle_school';
+          else if (gradeNum >= 9 && gradeNum <= 10) classification = 'high_school';
+          else if (gradeNum >= 11 && gradeNum <= 12) classification = 'higher_secondary';
+        } else if (/^(UG|PG|Diploma)/i.test(learnerGrade)) {
+          classification = 'college';
+        }
+      }
+
+      const filters = {
+        status: filterStatus !== 'all' ? filterStatus : ['Active', 'Upcoming'],
+        classification,
+        branchField: filterByBranch && learnerBranch?.trim() && advancedFilters.category.length === 0 ? learnerBranch : undefined,
+        search: debouncedSearch?.trim() || undefined,
+        categories: advancedFilters.category.length > 0 ? advancedFilters.category : undefined,
+        skillTypes: advancedFilters.skillType.length > 0 ? advancedFilters.skillType : undefined,
+        durations: advancedFilters.duration.length > 0 ? advancedFilters.duration : undefined,
+        page: currentPage,
+        limit: coursesPerPage,
+        sortBy: sortBy,
+        enrollmentRange: advancedFilters.enrollmentRange,
+        postedWithin: advancedFilters.postedWithin
+      };
+
+      const res = await apiPost('/learner-pages/actions', {
+        action: 'fetch-courses-query',
+        filters,
+      });
+
+      setCourses(res?.data?.courses || []);
+      setTotalCount(res?.data?.total || 0);
+
+      if (isFirstLoad) {
+        setInitialLoad(false);
+      }
+    } catch (error) {
+      logger.error('Error fetching courses', error);
+      if (isFirstLoad) {
+        setInitialLoad(false);
+      }
+    } finally {
+      setLoading(false);
+      isFetchingRef.current = false;
+    }
+  }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters, currentPage, learnerGrade, learnerBranch, filterByBranch]);
+
   // Check if course has resumable progress
   const hasResumableProgress = (courseId) => {
     const progress = enrollmentProgress[courseId];
@@ -342,36 +345,133 @@ const Courses = () => {
     return progress?.progress || 0;
   };
 
-  // Get certificate URL for a course
+  /**
+   * Get certificate URL for a course from local state
+   * 
+   * @param {string} courseId - Course ID to look up
+   * @returns {string|null} Certificate URL or null if not available
+   */
   const getCertificateUrl = (courseId) => {
     return certificateUrls[courseId] || null;
   };
 
-  // Handle view certificate
-  const handleViewCertificate = (courseId, courseName, e) => {
+  /**
+   * Handle "Get Certificate" button click
+   * 
+   * Race Condition Protection:
+   * - Uses ref-based guard to prevent duplicate simultaneous calls
+   * - Tracks loading state per certificate
+   * - Early returns if already processing
+   * 
+   * Two scenarios:
+   * 1. Certificate exists: View it directly using viewCertificate utility
+   * 2. Certificate doesn't exist: Open modal to generate new certificate
+   * 
+   * Generation Flow:
+   * - Check if already preparing this certificate (guard)
+   * - Set loading state
+   * - Fetch fresh learner data from database
+   * - Prepare certificate parameters (name, educator, course type, etc.)
+   * - Guard check ensures modal is initialized
+   * - Open modal with pre-filled data
+   * - User confirms name and generates certificate
+   * 
+   * @param {Object} course - Course object containing course_id, title, educator_name, course_type, issued_on
+   * @param {Event} e - Click event (for stopPropagation)
+   */
+  const handleGetCertificate = useCallback(async (course, e) => {
     e?.stopPropagation();
-    const certUrl = getCertificateUrl(courseId);
-    if (certUrl) {
-      const viewUrl = getCertificateProxyUrl(certUrl, 'inline');
-      window.open(viewUrl, '_blank');
-    }
-  };
-
-  // Handle download certificate
-  const handleDownloadCertificate = async (courseId, courseName, e) => {
-    e?.stopPropagation();
-    const certUrl = getCertificateUrl(courseId);
-    if (!certUrl) return;
     
-    setDownloadingCertificate(courseId);
-    try {
-      await downloadCertificate(certUrl, courseName);
-    } catch (error) {
-      logger.error('Error downloading certificate', error);
-    } finally {
-      setDownloadingCertificate(null);
+    const courseId = course.course_id;
+    const courseName = course.title;
+    
+    // Race condition guard: Prevent duplicate calls for the same certificate
+    if (preparingCertificateRef.current.has(courseId)) {
+      logger.warn('Certificate preparation already in progress for course', { courseId });
+      return;
     }
-  };
+    
+    try {
+      // Check if certificate already exists - read directly from state
+      const existingCertUrl = certificateUrls[courseId];
+      if (existingCertUrl) {
+        // Certificate already exists, show it directly
+        viewCertificate(existingCertUrl);
+        return;
+      }
+      
+      // Mark this certificate as being prepared
+      preparingCertificateRef.current.add(courseId);
+      setPreparingCertificate(courseId);
+      
+      // Get learner data - fetch fresh from database
+      if (!user?.email) {
+        toast.error('User email not found');
+        return;
+      }
+      
+      const learnerData = await apiGet(`/learners/by-email?email=${encodeURIComponent(user.email)}`);
+      const learnerError = !learnerData ? new Error('Not found') : null;
+      
+      if (learnerError) {
+        logger.error('Error fetching learner data', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
+        toast.error('Failed to fetch learner information');
+        return;
+      }
+      
+      if (!learnerData) {
+        toast.error('Learner profile not found. Please complete your profile first.');
+        return;
+      }
+      
+      /**
+       * Prepare certificate data for modal
+       * 
+       * Data includes:
+       * - educatorName: Instructor name or default
+       * - courseType: 'webinar' or 'course'
+       * - issuedOnDate: Only for webinars, null for courses
+       */
+      const educatorName = course.educator_name || 'Course Instructor';
+      const courseType = course.course_type === 'webinar' ? 'webinar' : 'course';
+      const issuedOnDate = courseType === 'webinar' ? course.issued_on : null;
+      
+      /**
+       * Guard check: Ensure certificate modal is properly initialized
+       * 
+       * Prevents runtime errors if:
+       * - Hook failed to initialize
+       * - Component unmounted during async operation
+       * - Hook returned undefined due to error
+       * 
+       * Logs detailed error context for debugging
+       */
+      if (!certificateModal?.openModal) {
+        logger.error('Certificate modal not initialized', { certificateModal });
+        toast.error('Certificate modal is not available. Please refresh the page.');
+        return;
+      }
+      
+      // Open certificate modal with all required data
+      await certificateModal.openModal({
+        learnerId: learnerData.id,
+        learnerIdText: learnerData.learner_id,
+        courseName,
+        educatorName,
+        courseType,
+        issuedOnDate,
+        courseId,
+        prefillName: learnerData.name || ''
+      });
+    } catch (error) {
+      logger.error('Error preparing certificate modal', error instanceof Error ? error : new Error(String(error)));
+      toast.error('Failed to prepare certificate generation');
+    } finally {
+      // Always clean up loading state
+      preparingCertificateRef.current.delete(courseId);
+      setPreparingCertificate(null);
+    }
+  }, [user?.email, certificateModal, certificateUrls]); // Fixed: Added certificateUrls to dependency array
 
   // Check if a course is new (posted within last 24 hours)
   const isNewCourse = (createdAt) => {
@@ -511,6 +611,25 @@ const Courses = () => {
         onStartCourse={handleStartCourse}
         enrollmentProgress={enrollmentProgress}
       />
+      
+      {/* Certificate Generation Modal */}
+      <CertificateNameModal
+        isOpen={certificateModal.showModal}
+        onClose={certificateModal.closeModal}
+        fullName={certificateModal.fullName}
+        onFullNameChange={certificateModal.setFullName}
+        onConfirm={certificateModal.showConfirmationDialog}
+        onGenerate={certificateModal.generateCertificate}
+        isGenerating={certificateModal.isGenerating}
+        showConfirmation={certificateModal.showConfirmation}
+        onCancelConfirmation={certificateModal.cancelConfirmation}
+        validationError={certificateModal.validationError}
+        generatedCertificateUrl={certificateModal.generatedUrl}
+        onView={() => viewCertificate(certificateModal.generatedUrl)}
+        onDownload={certificateModal.downloadGeneratedCertificate}
+        courseName={certificateModal.pendingData?.courseName}
+      />
+      
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
           {/* Initial Loading State - Full Page Loader */}
@@ -852,16 +971,29 @@ const Courses = () => {
                       <motion.img
                         src={course.thumbnail}
                         alt={course.title}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${!canAccessCourse(course) ? 'opacity-60' : ''}`}
                         whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.3 }}
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
-                        <BookOpen className="h-12 w-12 text-slate-400 mb-2" />
-                        <span className="text-slate-500 text-xs font-medium">No Image</span>
+                      <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 ${!canAccessCourse(course) ? 'opacity-60' : ''}`}>
+                        <img
+                          src="/assets/HomePage/RMLogo.webp"
+                          alt="RareMinds"
+                          className="w-20 h-20 object-contain opacity-40"
+                        />
                       </div>
                     )}
+                    
+                    {/* Lock Overlay for restricted courses */}
+                    {!canAccessCourse(course) && (
+                      <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+                        <div className="bg-white rounded-full p-3 shadow-lg">
+                          <Lock className="w-6 h-6 text-gray-700" />
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Badges */}
                     <div className="absolute top-2 left-2 flex gap-2">
                       {isCourseCompleted(course.course_id) ? (
@@ -894,16 +1026,6 @@ const Courses = () => {
                           </Badge>
                         </motion.div>
                       )}
-                      {/* {isNewCourse(course.created_at) && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                        >
-                          <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
-                            NEW
-                          </Badge>
-                        </motion.div>
-                      )} */}
                     </div>
                   </div>
 
@@ -915,6 +1037,14 @@ const Courses = () => {
                         </Badge>
                       </div> */}
                       <span className="text-xs font-medium text-gray-500">{course.code}</span>
+                      
+                      {/* Issued Date - Right Side */}
+                      {course.issued_on && (
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Clock className="w-3 h-3" />
+                          <span>{new Date(course.issued_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                      )}
                     </div>
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
                   </CardHeader>
@@ -979,32 +1109,23 @@ const Courses = () => {
                         >
                           View Course
                         </Button>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={(e) => handleViewCertificate(course.course_id, course.title, e)}
-                            disabled={!getCertificateUrl(course.course_id)}
-                            className={`flex-1 flex items-center justify-center gap-2 ${
-                              getCertificateUrl(course.course_id)
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            }`}
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Certificate
-                          </Button>
-                          <Button
-                            onClick={(e) => handleDownloadCertificate(course.course_id, course.title, e)}
-                            disabled={!getCertificateUrl(course.course_id) || downloadingCertificate === course.course_id}
-                            className={`flex-1 flex items-center justify-center gap-2 ${
-                              getCertificateUrl(course.course_id) && downloadingCertificate !== course.course_id
-                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            }`}
-                          >
-                            <Download className={`w-4 h-4 ${downloadingCertificate === course.course_id ? 'animate-bounce' : ''}`} />
-                            {downloadingCertificate === course.course_id ? '...' : 'Download'}
-                          </Button>
-                        </div>
+                        <Button
+                          onClick={(e) => handleGetCertificate(course, e)}
+                          disabled={preparingCertificate === course.course_id}
+                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {preparingCertificate === course.course_id ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Preparing...
+                            </>
+                          ) : (
+                            <>
+                              <Award className="w-4 h-4" />
+                              {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
+                            </>
+                          )}
+                        </Button>
                       </div>
                     ) : (
                       <Button
@@ -1077,9 +1198,12 @@ const Courses = () => {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
-                            <BookOpen className="h-10 w-10 text-slate-400 mb-1" />
-                            <span className="text-slate-500 text-xs font-medium">No Image</span>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+                            <img
+                              src="/assets/HomePage/RMLogo.webp"
+                              alt="RareMinds"
+                              className="w-16 h-16 object-contain opacity-40"
+                            />
                           </div>
                         )}
                         {/* Badges */}
@@ -1174,28 +1298,21 @@ const Courses = () => {
                               View Course
                             </Button>
                             <Button
-                              onClick={(e) => handleViewCertificate(course.course_id, course.title, e)}
-                              disabled={!getCertificateUrl(course.course_id)}
-                              className={`flex items-center gap-2 ${
-                                getCertificateUrl(course.course_id)
-                                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              }`}
+                              onClick={(e) => handleGetCertificate(course, e)}
+                              disabled={preparingCertificate === course.course_id}
+                              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <Eye className="w-4 h-4" />
-                              View Certificate
-                            </Button>
-                            <Button
-                              onClick={(e) => handleDownloadCertificate(course.course_id, course.title, e)}
-                              disabled={!getCertificateUrl(course.course_id) || downloadingCertificate === course.course_id}
-                              className={`flex items-center gap-2 ${
-                                getCertificateUrl(course.course_id) && downloadingCertificate !== course.course_id
-                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              }`}
-                            >
-                              <Download className={`w-4 h-4 ${downloadingCertificate === course.course_id ? 'animate-bounce' : ''}`} />
-                              {downloadingCertificate === course.course_id ? '...' : 'Download'}
+                              {preparingCertificate === course.course_id ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  Preparing...
+                                </>
+                              ) : (
+                                <>
+                                  <Award className="w-4 h-4" />
+                                  {getCertificateUrl(course.course_id) ? 'View Certificate' : 'Get Certificate'}
+                                </>
+                              )}
                             </Button>
                           </div>
                         ) : (

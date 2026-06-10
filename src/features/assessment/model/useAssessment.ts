@@ -7,7 +7,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-import { supabase } from '@/shared/api/supabaseClient';
 import * as assessmentService from '@/features/assessment';
 
 import { useUser } from '@/shared/model/authStore';

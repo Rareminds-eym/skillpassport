@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, UserIcon } from '@heroicons/react/24/outline';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('assign-educator-modal');
@@ -43,14 +43,8 @@ const AssignEducatorModal: React.FC<AssignEducatorModalProps> = ({
   const fetchEducators = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('school_educators')
-        .select('user_id, first_name, last_name, email')
-        .eq('school_id', schoolId)
-        .order('first_name', { ascending: true });
-
-      if (error) throw error;
-      setEducators(data || []);
+      const response = await apiGet(`/courses/school-educators?schoolId=${encodeURIComponent(schoolId)}`);
+      setEducators(response?.data || []);
     } catch (error) {
       logger.error('Error fetching educators', error instanceof Error ? error : new Error(String(error)));
     } finally {

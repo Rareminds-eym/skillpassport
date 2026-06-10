@@ -77,7 +77,6 @@ ${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No signifi
 export function buildHigherSecondaryPrompt(assessmentData: AssessmentData, answersHash: number, jobMarketSection?: string): string {
   // Extract learner context for stream-specific guidance
   const selectedStream = assessmentData.stream;
-  const gradeLevel = assessmentData.gradeLevel; // 'higher_secondary' for both 11th and 12th
   
   // Determine if learner is in 11th or 12th grade based on context
   // If we have more specific grade info, use it; otherwise default to Grade 11

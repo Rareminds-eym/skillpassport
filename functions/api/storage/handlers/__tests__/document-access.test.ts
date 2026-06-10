@@ -140,7 +140,7 @@ describe('Document Access Handler', () => {
       const request = new Request('http://localhost/document-access');
 
       const response = await handleDocumentAccess({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('File key or URL is required');
@@ -152,7 +152,7 @@ describe('Document Access Handler', () => {
       });
 
       const response = await handleDocumentAccess({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(405);
       expect(data.error).toBe('Method not allowed');
@@ -166,7 +166,7 @@ describe('Document Access Handler', () => {
       );
 
       const response = await handleDocumentAccess({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(404);
       expect(data.error).toBe('File not found or access denied');

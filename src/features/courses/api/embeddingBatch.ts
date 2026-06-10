@@ -1,11 +1,11 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { useAuthStore } from '@/shared/model/authStore';
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Embedding Batch Processing
  * Handles parallel generation of multiple embeddings
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const EMBEDDING_API_URL = getApiUrl('career');
@@ -31,8 +31,8 @@ export const generateEmbeddingsBatch = async (texts, maxConcurrent = 5) => {
   }
 
   // Get auth token once for all requests
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
+  const user = useAuthStore.getState().user;
+  const token = ssoClient.getAccessToken();
   
   if (!token) {
     throw new Error('Authentication required');
@@ -45,12 +45,11 @@ export const generateEmbeddingsBatch = async (texts, maxConcurrent = 5) => {
     
     const batchPromises = batch.map(async (text) => {
       try {
-        const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
+        const response = await ssoClient.fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
+            },
           body: JSON.stringify({ text, returnEmbedding: true })
         });
 

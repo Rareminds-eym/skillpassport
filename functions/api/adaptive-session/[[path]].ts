@@ -17,8 +17,9 @@
  * - POST /link-to-attempt - Link adaptive session to assessment attempt
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { jsonResponse } from '../../../src/functions-lib/response';
+import type { PagesFunction } from '../../lib/types';
+import { apiError } from '../../lib/response';
+import { withAuth } from '../../lib/auth';
 import { initializeHandler } from './handlers/initialize';
 import { nextQuestionHandler } from './handlers/next-question';
 import { submitAnswerHandler } from './handlers/submit-answer';
@@ -35,6 +36,11 @@ export const onRequest: PagesFunction = async (context) => {
   const method = request.method;
 
   try {
+    // All endpoints require authentication.
+    // withAuth passes the AUTHENTICATED context (with data.user) to this callback —
+    // we must forward THAT to handlers that read getContextUser (e.g. link-to-attempt),
+    // not the outer un-authenticated `context`.
+    return withAuth(async (authContext: typeof context) => {
     // POST /initialize - Start new test session
     if (method === 'POST' && path === '/initialize') {
       return initializeHandler(context);
@@ -81,20 +87,16 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     // POST /link-to-attempt - Link adaptive session to assessment attempt
+    // Uses getContextUser → needs the authenticated context.
     if (method === 'POST' && path === '/link-to-attempt') {
-      return linkToAttemptHandler(context);
+      return linkToAttemptHandler(authContext);
     }
 
     // 404 for unknown routes
-    return jsonResponse(
-      { error: 'Not found', path, method },
-      404
-    );
+    return apiError(404, 'NOT_FOUND', 'Not found', request);
+  })(context);
   } catch (error) {
     console.error('Adaptive Session API Error:', error);
-    return jsonResponse(
-      { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };

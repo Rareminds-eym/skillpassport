@@ -1,8 +1,6 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { useUser } from '@/shared/model/authStore';
-
 
 interface EducatorIdData {
   educatorId: string | null;
@@ -10,10 +8,6 @@ interface EducatorIdData {
   error: string | null;
 }
 
-/**
- * Hook to get the educator ID for the currently logged-in user
- * This ensures we get the correct educator ID for RLS and filtering
- */
 export function useEducatorId(): EducatorIdData {
   const user = useUser();
   const [educatorId, setEducatorId] = useState<string | null>(null);
@@ -31,84 +25,20 @@ export function useEducatorId(): EducatorIdData {
         setLoading(true);
         setError(null);
 
-        // First check if we have educator_id in the user object (from localStorage)
         if (user.educator_id) {
           setEducatorId(user.educator_id);
           setLoading(false);
           return;
         }
 
-        // Get current Supabase session to ensure we have the right user ID
-        const { data: { session }, error: sessionError } = await getCurrentSession();
-        
-        if (sessionError || !session?.user) {
-          throw new Error('No active session found');
-        }
+        const res = await apiPost('/educator/actions', {
+          action: 'fetch-educator-id',
+          userId: user.id,
+          email: user.email,
+        });
 
-        // Look up educator by user_id (from Supabase auth) - check both school and college
-        // First try school_educators
-        const { data: schoolEducatorData, error: schoolEducatorError } = await supabase
-          .from('school_educators')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (schoolEducatorError && schoolEducatorError.code !== 'PGRST116') {
-          throw schoolEducatorError;
-        }
-
-        if (schoolEducatorData) {
-          setEducatorId(schoolEducatorData.id);
-          setLoading(false);
-          return;
-        }
-
-        // If not found in school_educators, try college_lecturers
-        const { data: collegeEducatorData, error: collegeEducatorError } = await supabase
-          .from('college_lecturers')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (collegeEducatorError && collegeEducatorError.code !== 'PGRST116') {
-          throw collegeEducatorError;
-        }
-
-        if (collegeEducatorData) {
-          setEducatorId(collegeEducatorData.id);
-          setLoading(false);
-          return;
-        }
-
-        // Fallback: try to find by email in both tables
-        const { data: schoolEducatorByEmail, error: schoolEmailError } = await supabase
-          .from('school_educators')
-          .select('id')
-          .eq('email', user.email)
-          .maybeSingle();
-
-        if (schoolEmailError && schoolEmailError.code !== 'PGRST116') {
-          throw schoolEmailError;
-        }
-
-        if (schoolEducatorByEmail) {
-          setEducatorId(schoolEducatorByEmail.id);
-          setLoading(false);
-          return;
-        }
-
-        const { data: collegeEducatorByEmail, error: collegeEmailError } = await supabase
-          .from('college_lecturers')
-          .select('id')
-          .eq('email', user.email)
-          .maybeSingle();
-
-        if (collegeEmailError && collegeEmailError.code !== 'PGRST116') {
-          throw collegeEmailError;
-        }
-
-        if (collegeEducatorByEmail) {
-          setEducatorId(collegeEducatorByEmail.id);
+        if (res?.data) {
+          setEducatorId(res.data);
         } else {
           setError('Educator record not found');
         }

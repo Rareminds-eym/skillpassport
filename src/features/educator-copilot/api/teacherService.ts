@@ -1,4 +1,13 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => { const result = reader.result as string; resolve(result.split(',')[1] || result); };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export interface Teacher {
   id: string;
@@ -39,210 +48,76 @@ export interface TeacherPerformance {
   attendance_rate: number;
 }
 
-// Get all teachers for a school
 export const getTeachers = async (schoolId: string) => {
-  const { data, error } = await supabase
-    .from('school_educators')
-    .select('*')
-    .eq('school_id', schoolId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data as Teacher[];
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'getTeachers', schoolId });
+  return result?.data as Teacher[];
 };
 
-// Get teacher by ID
 export const getTeacherById = async (teacherId: string) => {
-  const { data, error } = await supabase
-    .from('school_educators')
-    .select('*')
-    .eq('id', teacherId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data as Teacher;
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'getTeacherById', teacherId });
+  return result?.data as Teacher;
 };
 
-// Create new teacher
 export const createTeacher = async (teacherData: Partial<Teacher>) => {
-  const { data, error } = await supabase
-    .from('school_educators')
-    .insert(teacherData)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as Teacher;
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'createTeacher', teacherData });
+  return result?.data as Teacher;
 };
 
-// Update teacher
 export const updateTeacher = async (teacherId: string, updates: Partial<Teacher>) => {
-  const { data, error } = await supabase
-    .from('school_educators')
-    .update(updates)
-    .eq('id', teacherId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as Teacher;
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'updateTeacher', teacherId, updates });
+  return result?.data as Teacher;
 };
 
-// Delete teacher
 export const deleteTeacher = async (teacherId: string) => {
-  const { error } = await supabase
-    .from('school_educators')
-    .delete()
-    .eq('id', teacherId);
-
-  if (error) throw error;
+  await apiPost('/educator-copilot/actions', { action: 'deleteTeacher', teacherId });
 };
 
-// Update teacher status
-export const updateTeacherStatus = async (
-  teacherId: string,
-  status: Teacher['onboarding_status']
-) => {
+export const updateTeacherStatus = async (teacherId: string, status: Teacher['onboarding_status']) => {
   return updateTeacher(teacherId, { onboarding_status: status });
 };
 
-// Bulk import teachers
 export const bulkImportTeachers = async (teachers: Partial<Teacher>[]) => {
-  const { data, error } = await supabase
-    .from('school_educators')
-    .insert(teachers)
-    .select();
-
-  if (error) throw error;
-  return data as Teacher[];
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'bulkImportTeachers', teachers });
+  return result?.data as Teacher[];
 };
 
-// Get teacher performance analytics
 export const getTeacherPerformance = async (teacherId: string): Promise<TeacherPerformance> => {
-  // Get classes taught
-  const { data: classes } = await supabase
-    .from('school_educator_class_assignments')
-    .select('class_id')
-    .eq('educator_id', teacherId);
-
-  // Get lesson plans
-  const { data: lessonPlans } = await supabase
-    .from('lesson_plans')
-    .select('id')
-    .eq('teacher_id', teacherId);
-
-  // Get assignments
-  const { data: assignments } = await supabase
-    .from('assignments')
-    .select('id')
-    .eq('teacher_id', teacherId);
-
-  // Get learners count from class assignments
-  const { data: learners } = await supabase
-    .from('school_educator_class_assignments')
-    .select('class_id')
-    .eq('educator_id', teacherId);
-
-  return {
-    teacher_id: teacherId,
-    classes_taught: classes?.length || 0,
-    learners_count: learners?.length || 0,
-    lesson_plans_created: lessonPlans?.length || 0,
-    assignments_created: assignments?.length || 0,
-    average_learner_performance: 0, // Calculate from learner grades
-    attendance_rate: 0, // Calculate from attendance records
-  };
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'getTeacherPerformance', teacherId });
+  return result?.data;
 };
 
-// Upload teacher document
-export const uploadTeacherDocument = async (
-  file: File,
-  path: string
-): Promise<string> => {
+export const uploadTeacherDocument = async (file: File, path: string): Promise<string> => {
   const fileExt = file.name.split('.').pop();
   const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
   const filePath = `${path}/${fileName}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from('teacher-documents')
-    .upload(filePath, file);
+  const base64 = await fileToBase64(file);
+  const result: any = await apiPost('/college-admin/storage', {
+    action: 'upload', bucket: 'teacher-documents', path: filePath, file_base64: base64, content_type: file.type || 'application/octet-stream',
+  });
 
-  if (uploadError) throw uploadError;
+  const publicUrl = result?.data?.publicUrl;
+  if (!publicUrl) throw new Error('Failed to upload teacher document');
 
-  const { data } = supabase.storage
-    .from('teacher-documents')
-    .getPublicUrl(filePath);
-
-  return data.publicUrl;
+  return publicUrl;
 };
 
-// Get teacher workload
 export const getTeacherWorkload = async (teacherId: string) => {
-  const { data, error } = await supabase
-    .from('teacher_workload')
-    .select('*')
-    .eq('teacher_id', teacherId)
-    .maybeSingle();
-
-  if (error && error.code !== 'PGRST116') throw error;
-  return data;
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'getTeacherWorkload', teacherId });
+  return result?.data;
 };
 
-// Get teacher timetable
 export const getTeacherTimetable = async (teacherId: string) => {
-  const { data, error } = await supabase
-    .from('timetable_slots')
-    .select(`
-      *,
-      timetables (
-        *,
-        school_classes (*)
-      )
-    `)
-    .eq('teacher_id', teacherId)
-    .order('day_of_week')
-    .order('start_time');
-
-  if (error) throw error;
-  return data;
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'getTeacherTimetable', teacherId });
+  return result?.data;
 };
 
-// Search teachers
 export const searchTeachers = async (schoolId: string, query: string) => {
-  const { data, error } = await supabase
-    .from('school_educators')
-    .select('*')
-    .eq('school_id', schoolId)
-    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,teacher_id.ilike.%${query}%`)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data as Teacher[];
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'searchTeachers', schoolId, query });
+  return result?.data as Teacher[];
 };
 
-// Get teacher statistics
 export const getTeacherStatistics = async (schoolId: string) => {
-  const { data: teachers } = await supabase
-    .from('school_educators')
-    .select('onboarding_status, role')
-    .eq('school_id', schoolId);
-
-  if (!teachers) return null;
-
-  const stats = {
-    total: teachers.length,
-    active: teachers.filter(t => t.onboarding_status === 'active').length,
-    pending: teachers.filter(t => t.onboarding_status === 'pending').length,
-    verified: teachers.filter(t => t.onboarding_status === 'verified').length,
-    inactive: teachers.filter(t => t.onboarding_status === 'inactive').length,
-    byRole: {
-      school_admin: teachers.filter(t => t.role === 'school_admin').length,
-      principal: teachers.filter(t => t.role === 'principal').length,
-      it_admin: teachers.filter(t => t.role === 'it_admin').length,
-      class_teacher: teachers.filter(t => t.role === 'class_teacher').length,
-      subject_teacher: teachers.filter(t => t.role === 'subject_teacher').length,
-    }
-  };
-
-  return stats;
+  const result: any = await apiPost('/educator-copilot/actions', { action: 'getTeacherStatistics', schoolId });
+  return result?.data;
 };

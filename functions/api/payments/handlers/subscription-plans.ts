@@ -5,16 +5,12 @@
  *
  * Queries Supabase directly for all active subscription plans.
  * Transforms the raw DB schema into the shape the frontend expects.
- * Requires SSO authentication.
+ * Does NOT require SSO authentication — this is public catalog data.
  */
 
-import { withAuth } from '../../../lib/auth';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getServiceClient } from '../../../lib/supabase';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleSubscriptionPlans(context);
-});
+import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 /**
  * Transform a raw subscription_plans row into the shape the frontend PlanCard expects.
@@ -57,16 +53,17 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
     plan_code: raw.plan_code,
     business_type: raw.business_type,
     // Flat pricing fields the frontend expects
-    price: pricing.monthly || 0,
-    yearlyPrice: pricing.yearly || 0,
+    // Note: paid plans are yearly-only. monthly = yearly for backward compat.
+    price: pricing.yearly ?? pricing.monthly ?? 0,
+    yearlyPrice: pricing.yearly ?? 0,
     currency: (pricing.currency as string) || 'INR',
-    duration: 'monthly',
+    duration: (config.duration as string) ?? 'yearly',
     // Config fields
     tagline: (config.tagline as string) || '',
     recommended: (config.is_recommended as boolean) || false,
     ideal_for: (config.ideal_for as string) || '',
     description: (config.description as string) || '',
-    max_users: (config.max_users as number) || 1,
+    max_users: (config.max_users as number) ?? 1,
     positioning: (config.positioning as string) || '',
     color: (config.color as string) || '',
     display_name: (config.display_name as string) || raw.name,
@@ -80,7 +77,7 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
   };
 }
 
-export async function handleSubscriptionPlans(context: AuthenticatedContext): Promise<Response> {
+export async function handleSubscriptionPlans(context: { request: Request; env: Record<string, unknown> }): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
@@ -91,7 +88,7 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
     const supabase = getServiceClient(env);
 
     let query = supabase
-      .from('subscription_plans')
+      .from('plans_cache')
       .select('*')
       .eq('is_active', true)
       .order('display_order', { ascending: true });
@@ -111,70 +108,60 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
 
     if (error) {
       console.error('[SubscriptionPlans] Supabase error:', error);
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'Failed to fetch subscription plans',
-          },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch subscription plans', context.request);
     }
 
     // Transform raw DB rows into the shape the frontend expects
     const plans = (data || []).map((row: Record<string, unknown>) => transformPlan(row, entityType));
 
-    // Also fetch detailed features from subscription_plan_features if available
+    // Enrich with detailed features from subscription_plan_features (legacy table).
+    // This is a graceful fallback — plans_cache.base_features is the primary source.
+    // After Phase 10 cleanup drops the legacy table, this block silently no-ops.
     const planIds = plans.map((p: Record<string, unknown>) => p.id);
     if (planIds.length > 0) {
-      const { data: featuresData } = await supabase
-        .from('subscription_plan_features')
-        .select('*')
-        .in('plan_id', planIds)
-        .order('display_order', { ascending: true });
+      try {
+        const { data: featuresData } = await supabase
+          .from('subscription_plan_features')
+          .select('*')
+          .in('plan_id', planIds)
+          .order('display_order', { ascending: true });
 
-      // Attach detailed features to each plan
-      if (featuresData && featuresData.length > 0) {
-        const featuresByPlan: Record<string, unknown[]> = {};
-        for (const f of featuresData) {
-          const planId = f.plan_id as string;
-          if (!featuresByPlan[planId]) featuresByPlan[planId] = [];
-          featuresByPlan[planId].push(f);
-        }
+        // Attach detailed features to each plan
+        if (featuresData && featuresData.length > 0) {
+          const featuresByPlan: Record<string, unknown[]> = {};
+          for (const f of featuresData) {
+            const planId = f.plan_id as string;
+            if (!featuresByPlan[planId]) featuresByPlan[planId] = [];
+            featuresByPlan[planId].push(f);
+          }
 
-        for (const plan of plans) {
-          const detailedFeatures = featuresByPlan[plan.id as string];
-          if (detailedFeatures) {
-            (plan as Record<string, unknown>).detailedFeatures = detailedFeatures;
-            // Override features with detailed ones if available
-            (plan as Record<string, unknown>).features = detailedFeatures.map((f: Record<string, unknown>) => ({
-              name: f.feature_name,
-              feature_key: f.feature_key,
-              value: f.feature_value,
-              category: f.category,
-              is_included: f.is_included,
-              is_addon: f.is_addon,
-            }));
+          for (const plan of plans) {
+            const detailedFeatures = featuresByPlan[plan.id as string];
+            if (detailedFeatures) {
+              (plan as Record<string, unknown>).detailedFeatures = detailedFeatures;
+              (plan as Record<string, unknown>).features = detailedFeatures.map((f: unknown) => {
+                const feat = f as Record<string, unknown>;
+                return {
+                  name: feat.feature_name,
+                  feature_key: feat.feature_key,
+                  value: feat.feature_value,
+                  category: feat.category,
+                  is_included: feat.is_included,
+                  is_addon: feat.is_addon,
+                };
+              });
+            }
           }
         }
+      } catch (featureErr) {
+        // Non-critical: subscription_plan_features may not exist after Phase 10 cleanup
+        console.warn('[SubscriptionPlans] subscription_plan_features query failed (non-critical):', featureErr);
       }
     }
 
-    return new Response(
-      JSON.stringify({ success: true, plans }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ plans }, context.request, 200);
   } catch (error) {
     console.error('[SubscriptionPlans] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to fetch subscription plans',
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to fetch subscription plans', context.request);
   }
 }

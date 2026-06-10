@@ -1,5 +1,4 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('educator-service');
@@ -10,56 +9,17 @@ const logger = getLogger('educator-service');
  */
 export const getCurrentEducator = async () => {
   try {
-    // Get current authenticated user
-    const { data: { user }, error: authError } = await getCurrentUser();
-    
-    if (authError) throw authError;
-    if (!user) {
-      return { data: null, error: 'No authenticated user found' };
+    const result: any = await apiPost('/educator-copilot/actions', {
+      action: 'getCurrentEducator',
+    });
+
+    if (result?.error) {
+      logger.error('Fetch educator failed', new Error(result.error.message));
+      return { data: null, error: result.error.message };
     }
 
-    // First check school_educators table
-    const { data: schoolEducatorData, error: schoolError } = await supabase
-      .from('school_educators')
-      .select('id, user_id, school_id, employee_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (schoolError && schoolError.code !== 'PGRST116') {
-      logger.error('Fetch school educator failed', new Error(schoolError.message), { userId: user.id });
-      return { data: null, error: schoolError.message };
-    }
-
-    if (schoolEducatorData) {
-      return { data: { ...schoolEducatorData, type: 'school' }, error: null };
-    }
-
-    // If not found in school_educators, check college_lecturers table
-    const { data: collegeLecturerData, error: collegeError } = await supabase
-      .from('college_lecturers')
-      .select('id, user_id, collegeId, department')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (collegeError && collegeError.code !== 'PGRST116') {
-      logger.error('Fetch college lecturer failed', new Error(collegeError.message), { userId: user.id });
-      return { data: null, error: collegeError.message };
-    }
-
-    if (collegeLecturerData) {
-      return { 
-        data: { 
-          ...collegeLecturerData, 
-          school_id: collegeLecturerData.collegeId, // Normalize field name
-          type: 'college' 
-        }, 
-        error: null 
-      };
-    }
-
-    // Not found in either table
-    return { data: null, error: 'Educator record not found' };
-  } catch (error) {
+    return { data: result?.data || null, error: null };
+  } catch (error: any) {
     logger.error('Get current educator exception', error instanceof Error ? error : new Error(String(error)));
     return {
       data: null,

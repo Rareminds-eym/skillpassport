@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { User, FileText, Briefcase, Shield, Globe, Upload, Save, CheckCircle, Award, FolderGit2 } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
-import { isLearner } from '@/entities/learner/lib/learnerType';
+import { isLearner, isSchoolStudent, isCollegeStudent } from '@/entities/learner/lib/learnerType';
 
 // Import sub-components
 import PersonalInfoTab from "./ProfileSubTabs/PersonalInfoTab";
@@ -157,8 +157,11 @@ const ProfileTab = ({
       { id: "social", label: "Social Links", icon: Globe },
     ];
 
-    // For learners, hide Institution Details tab
-    if (isLearner(learnerData)) {
+    // Only show Institution Details tab for school_student or college_student
+    // Hide it for independent learners and other types
+    const showInstitutionTab = isSchoolStudent(learnerData) || isCollegeStudent(learnerData);
+    
+    if (!showInstitutionTab) {
       return allTabs.filter(tab => tab.id !== "institution");
     }
 

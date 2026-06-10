@@ -1,11 +1,6 @@
-/**
- * Hook for course performance data.
- * Uses dependency injection - pass getCoursePerformance from the appropriate feature.
- */
-
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/shared/api/supabaseClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import type { FunnelRangePreset } from '@/shared/types';
 
 interface UseCoursePerformanceOptions {
@@ -37,26 +32,31 @@ export const useCoursePerformance = ({
   });
 
   useEffect(() => {
-    // Subscribe to pipeline changes for real-time updates via WebSocket
-    const channel = supabase.channel(`course-performance-${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
-        // Invalidate when candidates are added or updated
-        queryClient.invalidateQueries({ queryKey: ['course-performance'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'learners' }, () => {
-        // Invalidate when learner profiles (courses) are updated
-        queryClient.invalidateQueries({ queryKey: ['course-performance'] });
-      });
+    const wsClient = getWSClient();
+    const unsubscribers: Array<() => void> = [];
 
-    channel.subscribe();
-    channelRef.current = channel;
+    // Subscribe to pipeline_candidates changes
+    const unsubCandidates = wsClient.subscribe(
+      'pipeline_candidates',
+      { event: '*' },
+      () => {
+        queryClient.invalidateQueries({ queryKey: ['course-performance'] });
+      }
+    );
+    unsubscribers.push(unsubCandidates);
+
+    // Subscribe to learners changes
+    const unsubLearners = wsClient.subscribe(
+      'learners',
+      { event: '*' },
+      () => {
+        queryClient.invalidateQueries({ queryKey: ['course-performance'] });
+      }
+    );
+    unsubscribers.push(unsubLearners);
 
     return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      unsubscribers.forEach(unsub => unsub());
     };
   }, [queryClient]);
 

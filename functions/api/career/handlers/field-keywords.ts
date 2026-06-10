@@ -9,42 +9,32 @@
  * Source: cloudflare-workers/career-api/src/index.ts (handleGenerateFieldKeywords)
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { getOpenRouterKey } from '../[[path]]';
 import { getModelForUseCase, callOpenRouterWithRetry } from '../../shared/ai-config';
-import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 
-export async function handleGenerateFieldKeywords(request: Request, env: Record<string, string>): Promise<Response> {
+export async function handleGenerateFieldKeywords(request: Request, env: Record<string, string>, userId: string): Promise<Response> {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
-
-  // Security: Require authentication to prevent abuse
-  const auth = await authenticateUser(request, env);
-  if (!auth) {
-    return jsonResponse({ error: 'Authentication required' }, 401);
-  }
-
-  const { user } = auth;
-  const userId = user.id;
 
   // Security: Rate limiting to prevent API abuse
   if (!await checkRateLimit(userId, env)) {
-    return jsonResponse({ error: 'Rate limit exceeded. Please try again later.' }, 429);
+    return apiError(429, 'ERROR', 'Rate limit exceeded. Please try again later.', request);
   }
 
   let body: { field: string };
   try {
     body = await request.json() as { field: string };
   } catch {
-    return jsonResponse({ error: 'Invalid JSON' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
   }
 
   const { field } = body;
 
   if (!field || typeof field !== 'string' || field.trim().length === 0) {
-    return jsonResponse({ error: 'Field is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Field is required', request);
   }
 
   const fieldTrimmed = field.trim();
@@ -54,10 +44,7 @@ export async function handleGenerateFieldKeywords(request: Request, env: Record<
 
     const openRouterKey = getOpenRouterKey(env);
     if (!openRouterKey) {
-      return jsonResponse({
-        error: 'OpenRouter API key not configured',
-        useFallback: true
-      }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'OpenRouter API key not configured', request);
     }
 
     // Use centralized AI call with automatic retry and fallback
@@ -83,27 +70,20 @@ export async function handleGenerateFieldKeywords(request: Request, env: Record<
 
     if (!keywords) {
       console.warn(`[Field Keywords] No keywords generated for "${fieldTrimmed}"`);
-      return jsonResponse({
-        error: 'No keywords generated',
-        useFallback: true
-      }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'No keywords generated', request);
     }
 
     console.log(`[Field Keywords] ✓ Generated for "${fieldTrimmed}": ${keywords}`);
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       field: fieldTrimmed,
       keywords,
       source: 'ai',
       model: getModelForUseCase('keyword_generation')
-    });
+    }, request);
 
   } catch (error) {
     console.error(`[Field Keywords] Error for "${fieldTrimmed}":`, error);
-    return jsonResponse({
-      error: (error as Error).message,
-      useFallback: true
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message, request);
   }
 }

@@ -31,8 +31,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { downloadReceipt } from '@/features/subscription/lib';
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useSubscription, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useUserRole } from '@/shared/model/authStore';
+import { queryKeys } from '@/shared/lib/queryKeys';
 // ============================================================================
 // CONSTANTS & CONFIGURATION
 // ============================================================================
@@ -66,10 +68,6 @@ const ACTIVATION_STATES = {
 
 /** Configuration */
 const CONFIG = {
-  CACHE_REFRESH_MAX_RETRIES: 3,
-  CACHE_REFRESH_RETRY_DELAY_MS: 500,
-  CACHE_REFRESH_TIMEOUT_MS: 10000,
-  NAVIGATION_DELAY_MS: 100,
   CONFETTI_DURATION_MS: 4000,
   EMAIL_STATUS_DELAY_MS: 2000,
   NO_SESSION_REDIRECT_DELAY_MS: 2000,
@@ -78,9 +76,6 @@ const CONFIG = {
 /** Dashboard routes by role */
 const DASHBOARD_ROUTES = {
   // Admin roles
-  super_admin: '/admin/dashboard',
-  rm_admin: '/admin/dashboard',
-  rm_manager: '/admin/dashboard',
   admin: '/admin/dashboard',
   company_admin: '/admin/dashboard',
   // Institution admin roles
@@ -93,15 +88,17 @@ const DASHBOARD_ROUTES = {
   college_educator: '/educator/dashboard',
   // Recruiter role
   recruiter: '/recruitment/overview',
+  // Admin/owner roles
+  owner: '/admin/dashboard',
   // Learner roles
   learner: '/learner/dashboard',
 };
 
 /** Subscription manage routes by role */
 const MANAGE_ROUTES = {
-  super_admin: '/admin/subscription/manage',
-  rm_admin: '/admin/subscription/manage',
   admin: '/admin/subscription/manage',
+  company_admin: '/admin/subscription/manage',
+  owner: '/admin/subscription/manage',
   school_admin: '/school-admin/subscription/manage',
   college_admin: '/college-admin/subscription/manage',
   university_admin: '/university-admin/subscription/manage',
@@ -123,27 +120,6 @@ const log = {
   error: (...args) => console.error('[PaymentSuccess]', ...args),
 };
 
-/** Sleep utility */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-/** Retry with exponential backoff */
-async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
-  let lastError;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (attempt < maxRetries - 1) {
-        const delay = baseDelayMs * Math.pow(2, attempt);
-        onRetry?.(attempt + 1, delay, error);
-        await sleep(delay);
-      }
-    }
-  }
-  throw lastError;
-}
-
 /** Format date for display */
 const formatDate = (d) => {
   try {
@@ -164,7 +140,7 @@ const formatAmount = (a) => {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0
-    }).format(a || 0);
+    }).format(a ?? 0);
   } catch {
     return '₹0';
   }
@@ -185,17 +161,14 @@ const getUserRole = (user, role) => {
 // ============================================================================
 
 /**
- * Hook to manage cache refresh with retry logic
+ * Hook to manage cache refresh — a single one-shot refresh.
+ * The store-level manual override guard handles stale API responses,
+ * so retry/backoff logic is unnecessary here.
  */
 function useCacheRefresh(refreshAccess, refreshSubscription) {
-  const [state, setState] = useState({
-    status: 'idle', // 'idle' | 'refreshing' | 'success' | 'error'
-    attempts: 0,
-    error: null,
-  });
-
-  const mountedRef = useRef(true);
+  const [status, setStatus] = useState('idle');
   const refreshPromiseRef = useRef(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -203,42 +176,25 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
   }, []);
 
   const refresh = useCallback(async () => {
-    // Return existing promise if already refreshing
-    if (refreshPromiseRef.current) {
-      return refreshPromiseRef.current;
-    }
+    if (refreshPromiseRef.current) return refreshPromiseRef.current;
 
-    setState({ status: 'refreshing', attempts: 0, error: null });
+    setStatus('refreshing');
     log.info('Starting cache refresh');
 
-    refreshPromiseRef.current = retryWithBackoff(
-      async () => {
-        await Promise.all([
-          refreshAccess(),
-          refreshSubscription(),
-        ]);
-        // Small delay to ensure React Query cache is updated
-        await sleep(CONFIG.NAVIGATION_DELAY_MS);
-      },
-      CONFIG.CACHE_REFRESH_MAX_RETRIES,
-      CONFIG.CACHE_REFRESH_RETRY_DELAY_MS,
-      (attempt, delay, error) => {
-        log.warn(`Cache refresh retry ${attempt}/${CONFIG.CACHE_REFRESH_MAX_RETRIES}`, error);
-        if (mountedRef.current) {
-          setState(prev => ({ ...prev, attempts: attempt }));
-        }
-      }
-    )
+    refreshPromiseRef.current = Promise.all([
+      refreshAccess(),
+      refreshSubscription(),
+    ])
       .then(() => {
         if (mountedRef.current) {
           log.info('Cache refresh successful');
-          setState({ status: 'success', attempts: 0, error: null });
+          setStatus('success');
         }
       })
-      .catch((error) => {
+      .catch((err) => {
         if (mountedRef.current) {
-          log.error('Cache refresh failed', error);
-          setState({ status: 'error', attempts: CONFIG.CACHE_REFRESH_MAX_RETRIES, error });
+          log.error('Cache refresh failed', err);
+          setStatus('error');
         }
       })
       .finally(() => {
@@ -249,10 +205,10 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
   }, [refreshAccess, refreshSubscription]);
 
   return {
-    ...state,
+    status,
     refresh,
-    isRefreshed: state.status === 'success',
-    isRefreshing: state.status === 'refreshing',
+    isRefreshed: status === 'success',
+    isRefreshing: status === 'refreshing',
   };
 }
 
@@ -462,6 +418,7 @@ function PaymentSuccess() {
   const user = useUser();
   const { role } = useUserRole();
   const { refreshSubscription, refreshAccess } = useSubscription();
+  const queryClient = useQueryClient();
 
   // ── Read exclusively from location.state (set by initiateRazorpayPayment callbacks) ──
   const stateData = location.state || {};
@@ -513,7 +470,7 @@ function PaymentSuccess() {
   const displayAmount = useMemo(() => {
     if (transactionDetails?.amount) return transactionDetails.amount / 100;
     if (subscriptionData?.plan_amount) return subscriptionData.plan_amount;
-    return planDetails?.price || 0;
+    return planDetails?.price ?? 0;
   }, [transactionDetails, subscriptionData, planDetails]);
 
   const getDashboardUrl = useCallback(() => {
@@ -597,6 +554,12 @@ function PaymentSuccess() {
         log.error('Initial cache refresh failed (non-critical — store already updated):', err);
       });
 
+      // Invalidate React Query cache so useSubscriptionQuery() consumers
+      // (MySubscription, SubscriptionStatusWidget, dashboard, etc.) get fresh data
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.subscription.data.all,
+      });
+
       const isExistingOrAlreadyProcessed = transactionDetails.already_processed || transactionDetails.is_existing_subscription;
 
       if (!isExistingOrAlreadyProcessed) {
@@ -666,6 +629,9 @@ function PaymentSuccess() {
       } catch (e) {
         log.error('Failed to update store for subscription_created flag:', e);
       }
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.subscription.data.all,
+      });
       setEmailStatus(EMAIL_STATES.SENT);
     } else if (transactionDetails.subscription_error) {
       log.warn('Subscription creation issue:', transactionDetails.subscription_error);
@@ -689,9 +655,12 @@ function PaymentSuccess() {
       } catch (e) {
         log.error('Failed to update store:', e);
       }
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.subscription.data.all,
+      });
       setEmailStatus(EMAIL_STATES.SENT);
     }
-  }, [verificationStatus, transactionDetails, activationStatus, user]);
+  }, [verificationStatus, transactionDetails, activationStatus, user, queryClient]);
 
   // Redirect if no payment params — but check location.state first since
   // PaymentCompletion passes data via React Router state, not URL params
@@ -711,7 +680,7 @@ function PaymentSuccess() {
     if (verificationError?.code === 'NO_SESSION') {
       sessionTimeoutRef.current = setTimeout(() => {
         if (!user && mountedRef.current) {
-          navigate(`/auth/login?redirect=${encodeURIComponent(window.location.href)}`, { replace: true });
+          navigate(`/login?redirect=${encodeURIComponent(window.location.href)}`, { replace: true });
         }
       }, CONFIG.NO_SESSION_REDIRECT_DELAY_MS);
     }
@@ -802,11 +771,11 @@ function PaymentSuccess() {
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Plan</span>
-                  <span className="font-semibold text-[#2663EB]">{String(subscriptionData.plan_type || subscriptionData.plan_name || planDetails?.name || 'Premium')}</span>
+                  <span className="font-semibold text-[#2663EB]">{String(subscriptionData.plan_type ?? subscriptionData.plan_name ?? planDetails?.name ?? '')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Cycle</span>
-                  <span className="font-medium text-gray-900">{String(subscriptionData.billing_cycle || planDetails?.duration || 'Monthly')}</span>
+                  <span className="font-medium text-gray-900">{String(subscriptionData.billing_cycle || planDetails?.duration || '')}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Valid Until</span>

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 import {
   ArrowLeftIcon,
   ArrowDownTrayIcon,
@@ -33,134 +34,84 @@ const ResultsStep: React.FC<ResultsStepProps> = ({ exam, setActiveStep }) => {
   // Function to fetch class-wise statistics
   const fetchClasswiseData = React.useCallback(async () => {
     if (!isWholeGradeExam || !exam.targetClasses?.grade) return;
-    
+
+    const targetClassIds = exam.targetClasses.class_ids || [];
+    if (targetClassIds.length === 0) {
+      setClasswiseData([]);
+      return;
+    }
+
     setLoadingClasswise(true);
     try {
-      // Import supabase client
-      const { supabase } = await import('@/shared/api/supabaseClient');
-      
-      // Get only the classes that are part of this exam (from target_classes.class_ids)
-      const targetClassIds = exam.targetClasses.class_ids || [];
-      
-      if (targetClassIds.length === 0) {
-        setClasswiseData([]);
-        return;
-      }
+      const classwise = await apiPost('/exams/actions', {
+        action: 'classwise-stats', examId: exam.id, targetClassIds,
+      });
 
-      const { data: classes, error: classError } = await supabase
-        .from('school_classes')
-        .select('id, name, section, grade')
-        .in('id', targetClassIds)
-        .order('section');
+      if (!classwise?.data) throw new Error('No data returned');
 
-      if (classError) throw classError;
-
-      // For each class, get learner statistics
-      const classwiseStats = await Promise.all(
-        classes.map(async (classInfo) => {
-          // Get learners in this class
-          const { data: learners, error: learnersError } = await supabase
-            .from('learners')
-            .select('id')
-            .eq('school_class_id', classInfo.id)
-            .or('is_deleted.is.null,is_deleted.eq.false');
-
-          if (learnersError) throw learnersError;
-
-          const learnerIds = learners.map(s => s.id);
-          
-          if (learnerIds.length === 0) {
-            return {
-              class_id: classInfo.id,
-              section: classInfo.section,
-              class_name: classInfo.name,
-              total_learners: 0,
-              learners_with_marks: 0,
-              passed_learners: 0,
-              average_marks: null,
-              highest_marks: null,
-              lowest_marks: null,
-              pass_rate: 0,
-              attendance_rate: 0
-            };
-          }
-
-          // Get mark entries for these learners in this exam
-          const { data: markEntries, error: marksError } = await supabase
-            .from('mark_entries')
-            .select('learner_id, marks_obtained, is_absent, subject_id')
-            .eq('assessment_id', exam.id)
-            .in('learner_id', learnerIds);
-
-          if (marksError) throw marksError;
-
-          // Calculate statistics
-          const learnersWithMarks = new Set(
-            markEntries
-              .filter(me => me.marks_obtained !== null && !me.is_absent)
-              .map(me => me.learner_id)
-          ).size;
-
-          const allMarks = markEntries
-            .filter(me => me.marks_obtained !== null && !me.is_absent)
-            .map(me => me.marks_obtained);
-
-          // For pass calculation, check against actual subject passing marks
-          const passedLearnerIds = new Set();
-          
-          // Group marks by learner and check if they pass all subjects
-          const learnerMarksMap = new Map();
-          markEntries.forEach(me => {
-            if (!learnerMarksMap.has(me.learner_id)) {
-              learnerMarksMap.set(me.learner_id, []);
-            }
-            learnerMarksMap.get(me.learner_id).push(me);
-          });
-          
-          learnerMarksMap.forEach((learnerMarks, learnerId) => {
-            const appearedSubjects = learnerMarks.filter((sm: any) => !sm.is_absent);
-            const passedSubjects = appearedSubjects.filter((sm: any) => {
-              const subject = exam.subjects.find(s => s.id === sm.subject_id);
-              return sm.marks_obtained !== null && sm.marks_obtained >= (subject?.passingMarks || 0);
-            });
-            
-            // Learner passes ONLY if they appeared for ALL subjects AND passed all of them
-            if (appearedSubjects.length === exam.subjects.length && passedSubjects.length === exam.subjects.length) {
-              passedLearnerIds.add(learnerId);
-            }
-          });
-          
-          const passedlearners = passedLearnerIds.size;
-
-          const averageMarks = allMarks.length > 0 ? 
-            Math.round((allMarks.reduce((a, b) => a + b, 0) / allMarks.length) * 100) / 100 : null;
-          const highestMarks = allMarks.length > 0 ? Math.max(...allMarks) : null;
-          const lowestMarks = allMarks.length > 0 ? Math.min(...allMarks) : null;
-
+      const classwiseStats = (classwise.data).map((classInfo) => {
+        if (!classInfo.learner_ids?.length) {
           return {
-            class_id: classInfo.id,
-            section: classInfo.section,
-            class_name: classInfo.name,
-            total_learners: learnerIds.length,
-            learners_with_marks: learnersWithMarks,
-            passed_learners: passedlearners,
-            average_marks: averageMarks,
-            highest_marks: highestMarks,
-            lowest_marks: lowestMarks,
-            pass_rate: learnersWithMarks > 0 ? Math.round((passedlearners / learnersWithMarks) * 100) : 0,
-            attendance_rate: learnerIds.length > 0 ? Math.round((learnersWithMarks / learnerIds.length) * 100) : 0
+            class_id: classInfo.class_id, section: classInfo.section, class_name: classInfo.class_name,
+            total_learners: 0, learners_with_marks: 0, passed_learners: 0,
+            average_marks: null, highest_marks: null, lowest_marks: null, pass_rate: 0, attendance_rate: 0,
           };
-        })
-      );
+        }
 
-      // Filter out classes with no learners and sort by section
-      const filteredStats = classwiseStats
-        .filter(stat => stat.total_learners > 0)
+        const markEntries = classInfo.mark_entries || [];
+        const learnerIds = classInfo.learner_ids;
+
+        const learnersWithMarks = new Set(
+          markEntries.filter((me) => me.marks_obtained !== null && !me.is_absent).map((me) => me.learner_id)
+        ).size;
+
+        const allMarks = markEntries
+          .filter((me) => me.marks_obtained !== null && !me.is_absent)
+          .map((me) => me.marks_obtained);
+
+        const passedLearnerIds = new Set();
+        const learnerMarksMap = new Map();
+        markEntries.forEach((me) => {
+          if (!learnerMarksMap.has(me.learner_id)) learnerMarksMap.set(me.learner_id, []);
+          learnerMarksMap.get(me.learner_id).push(me);
+        });
+
+        learnerMarksMap.forEach((learnerMarks, learnerId) => {
+          const appearedSubjects = learnerMarks.filter((sm) => !sm.is_absent);
+          const passedSubjects = appearedSubjects.filter((sm) => {
+            const subject = exam.subjects.find((s) => s.id === sm.subject_id);
+            return sm.marks_obtained !== null && sm.marks_obtained >= (subject?.passingMarks || 0);
+          });
+          if (appearedSubjects.length === exam.subjects.length && passedSubjects.length === exam.subjects.length) {
+            passedLearnerIds.add(learnerId);
+          }
+        });
+
+        const passedlearners = passedLearnerIds.size;
+        const averageMarks = allMarks.length > 0 ? Math.round((allMarks.reduce((a, b) => a + b, 0) / allMarks.length) * 100) / 100 : null;
+        const highestMarks = allMarks.length > 0 ? Math.max(...allMarks) : null;
+        const lowestMarks = allMarks.length > 0 ? Math.min(...allMarks) : null;
+
+        return {
+          class_id: classInfo.class_id,
+          section: classInfo.section,
+          class_name: classInfo.class_name,
+          total_learners: learnerIds.length,
+          learners_with_marks: learnersWithMarks,
+          passed_learners: passedlearners,
+          average_marks: averageMarks,
+          highest_marks: highestMarks,
+          lowest_marks: lowestMarks,
+          pass_rate: learnerIds.length > 0 ? Math.round((passedlearners / learnerIds.length) * 10000) / 100 : 0,
+          attendance_rate: learnerIds.length > 0 ? Math.round((learnersWithMarks / learnerIds.length) * 10000) / 100 : 0,
+        };
+      })
+        .filter((stat) => stat.total_learners > 0)
         .sort((a, b) => a.section.localeCompare(b.section));
-      
-      setClasswiseData(filteredStats);
+
+      setClasswiseData(classwiseStats);
     } catch (error) {
-      logger.error('Failed to fetch class-wise data', error as Error);
+      logger.error('Failed to fetch class-wise data', error);
       setClasswiseData([]);
     } finally {
       setLoadingClasswise(false);

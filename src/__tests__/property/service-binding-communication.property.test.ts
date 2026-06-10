@@ -1,3 +1,4 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Property-Based Tests for Service Binding Communication
  * Feature: cloudflare-consolidation, Property 6: Service Binding Communication

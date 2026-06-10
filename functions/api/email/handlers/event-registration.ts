@@ -4,10 +4,9 @@
  * POST /api/email/event-otp - Send OTP verification email
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { Env } from '../../../lib/types';
 import type { EventConfirmationRequest, EventOTPRequest } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { apiLogger } from '../../../lib/logger';
 import { sendEmail } from '../../../lib/email-service';
 import {
@@ -26,30 +25,20 @@ import {
  */
 export async function handleEventConfirmation(
   body: EventConfirmationRequest,
-  env: Env,
-  supabase: SupabaseClient
+  env: Env
 ): Promise<Response> {
   const { name, email, phone, amount, orderId, campaign } = body;
 
   if (!name || !email || !phone || !amount) {
-    return jsonResponse({
-      success: false,
-      error: 'Missing required fields: name, email, phone, amount'
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: name, email, phone, amount');
   }
 
   // Validate required env vars first (fail-fast)
   if (!env.ADMIN_EMAIL) {
-    return jsonResponse({
-      success: false,
-      error: 'ADMIN_EMAIL environment variable is not configured'
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'ADMIN_EMAIL environment variable is not configured');
   }
   if (!env.APP_URL) {
-    return jsonResponse({
-      success: false,
-      error: 'APP_URL environment variable is not configured'
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'APP_URL environment variable is not configured');
   }
 
   try {
@@ -115,8 +104,7 @@ export async function handleEventConfirmation(
       adminMessageId: results[1].messageId,
     });
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: 'Confirmation emails sent successfully',
       data: {
         userEmail: email,
@@ -127,10 +115,7 @@ export async function handleEventConfirmation(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to send confirmation emails';
     apiLogger.error('Error sending event confirmation emails', error as Error);
-    return jsonResponse({
-      success: false,
-      error: errorMessage
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', errorMessage);
   }
 }
 
@@ -140,16 +125,12 @@ export async function handleEventConfirmation(
  */
 export async function handleEventOTP(
   body: EventOTPRequest,
-  env: Env,
-  supabase: SupabaseClient
+  env: Env
 ): Promise<Response> {
   const { email, otp, name } = body;
 
   if (!email || !otp) {
-    return jsonResponse({
-      success: false,
-      error: 'Missing required fields: email, otp'
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: email, otp');
   }
 
   try {
@@ -166,8 +147,7 @@ export async function handleEventOTP(
       throw new Error(result.error || 'Email sending failed');
     }
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: 'OTP email sent successfully',
       data: { email, messageId: result.messageId }
     });
@@ -175,9 +155,6 @@ export async function handleEventOTP(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to send OTP email';
     apiLogger.error('Error sending OTP email', error as Error);
-    return jsonResponse({
-      success: false,
-      error: errorMessage
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', errorMessage);
   }
 }

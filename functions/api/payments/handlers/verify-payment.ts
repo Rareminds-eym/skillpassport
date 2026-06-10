@@ -4,63 +4,50 @@
  * POST /api/payments/verify-payment
  *
  * Verifies a Razorpay payment signature via the payment-worker RPC binding,
- * then creates a subscription and payment transaction in Supabase.
- * Requires SSO authentication.
+ * then creates a subscription and payment transaction in the auth DB via
+ * the SSO worker, syncs the shadow table in the app DB, generates a receipt
+ * PDF, and sends a confirmation email.
  *
- * Flow:
- * 1. Worker verifies HMAC signature via RPC (cryptographic guarantee)
- * 2. Pages Function creates subscription in DB (worker has no DB access)
- * 3. Pages Function logs payment transaction
- * 4. Pages Function generates receipt PDF and uploads to R2
- * 5. Pages Function sends payment confirmation email
+ * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { R2Client } from '../../storage/utils/r2-client';
 import { generateReceiptPDF, fetchImageBytes, type ReceiptData } from '../../storage/utils/pdf-generator';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
 import type { EventConfirmationTemplateData } from '../../email/types';
 import { sendEmailSafe } from '../../../lib/email-service';
-// Cache invalidation removed - KV dependency eliminated
-
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleVerifyPayment(context);
-});
+import {
+  ssoCreateSubscription,
+  ssoUpdateSubscriptionField,
+  ssoRecordTransaction,
+  ssoSyncSubscription,
+} from '../../../lib/sso-client';
+import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
-  const env = context.env as unknown as PaymentWorkerEnv;
+  const user = getContextUser(context);
+  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
-    // Parse request body
     let body: Record<string, unknown>;
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
-    // Validate required fields for Razorpay verification
     if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required',
-          },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required', context.request);
     }
 
-    // Step 1: Call payment-worker via RPC to verify HMAC signature
+    // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
     const worker = getPaymentWorker(env);
     const verifyResult = await worker.verifyPaymentSignature(
       body.razorpay_order_id as string,
@@ -68,40 +55,35 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       body.razorpay_signature as string
     );
 
-    // Step 2: Signature is valid — create or update subscription in Supabase
-    // The worker only verifies the signature; it has no database access.
+    // Step 2: Signature valid — prepare subscription data
     const plan = body.plan as Record<string, unknown> | undefined;
     if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
-      // Signature verified but no plan data — return verification result without subscription
-      console.warn('[VerifyPayment] Signature verified but no plan data provided — subscription not created');
-      return new Response(JSON.stringify({ success: true, ...verifyResult }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      console.warn('[VerifyPayment] Signature verified but no plan data provided');
+      return apiSuccess(verifyResult, context.request);
     }
 
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
 
-    // Step 2.5: Validate plan exists and is active (server-side validation)
+    // Step 2.5: Validate plan exists via plans_cache (local shadow of auth DB)
     const { data: validPlan, error: planError } = await supabase
-      .from('subscription_plans')
-      .select('id, plan_code, name, is_active')
+      .from('plans_cache')
+      .select('id, plan_code, name, is_active, pricing_matrix, base_features')
       .eq('id', plan.id)
       .eq('is_active', true)
       .maybeSingle();
 
     if (planError || !validPlan) {
       console.error('[VerifyPayment] Invalid or inactive plan:', plan.id, planError);
-      return new Response(JSON.stringify({
-        error: {
-          code: 'INVALID_PLAN',
-          message: 'Selected plan is not valid or inactive',
-        },
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError(400, 'VALIDATION_ERROR', 'Selected plan is not valid or inactive', context.request);
     }
+
+    // Authoritative price from DB — never trust client-supplied price
+    const yearlyPrice = validPlan.pricing_matrix?.all?.yearly;
+    if (typeof yearlyPrice !== 'number') {
+      console.error('[VerifyPayment] Plan has no yearly price:', plan.id, validPlan.pricing_matrix);
+      return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing', context.request);
+    }
+    const planPrice = yearlyPrice;
 
     // Calculate subscription dates
     const now = new Date();
@@ -109,216 +91,158 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const durationMonths = parseDurationMonths(plan.duration as string);
     endDate.setMonth(endDate.getMonth() + durationMonths);
 
-    // Check if user has an existing active subscription (including Freemium)
-    const { data: existingSubscription, error: existingError } = await supabase
-      .from('subscriptions')
-      .select('id, status, plan_id, subscription_plans(plan_code)')
-      .eq('user_id', user.sub)
-      .eq('status', 'active')
+    // Check for existing active subscription via shadow table
+    const { data: existingCache } = await supabase
+      .from('subscription_cache')
+      .select('id, status, plan_id, plan_code')
+      .eq('user_id', user.id)
+      .in('status', ['active', 'pending', 'grace_period'])
       .maybeSingle();
 
-    if (existingError) {
-      console.error('[VerifyPayment] Error checking existing subscription:', existingError);
-    }
-
-    let subscription;
-    let subError;
+    let subscription: Record<string, unknown>;
     let isUpgrade = false;
-    let originalSubscriptionState: any = null;
 
-    // If user has an existing subscription, update it (upgrade flow)
-    if (existingSubscription) {
+    if (existingCache) {
+      // Upgrade flow — update existing subscription in auth DB
       isUpgrade = true;
-      console.log('[VerifyPayment] Upgrading existing subscription:', existingSubscription.id);
+      console.log('[VerifyPayment] Upgrading existing subscription:', existingCache.id);
 
-      // Store original subscription state for rollback
-      originalSubscriptionState = { ...existingSubscription };
-
-      // Validate upgrade direction - fetch current plan details
-      const { data: currentPlan, error: currentPlanError } = await supabase
-        .from('subscription_plans')
-        .select('plan_code, pricing_matrix, plan_amount')
-        .eq('id', existingSubscription.plan_id)
+      // Validate upgrade direction via plans_cache pricing
+      const { data: currentPlan } = await supabase
+        .from('plans_cache')
+        .select('plan_code, pricing_matrix')
+        .eq('id', existingCache.plan_id)
         .single();
 
-      if (!currentPlanError && currentPlan) {
-        // Get pricing from pricing_matrix or fallback to plan_amount
-        const currentPrice = currentPlan.pricing_matrix?.annual || currentPlan.plan_amount || 0;
-        const newPrice = parseFloat(String(plan.price));
+      if (currentPlan) {
+        const currentPrice = currentPlan.pricing_matrix?.all?.yearly;
+        if (typeof currentPrice !== 'number' || typeof planPrice !== 'number') {
+          console.warn('[VerifyPayment] Cannot compare plan pricing:', { currentPrice, planPrice });
+          return apiError(400, 'VALIDATION_ERROR', 'Cannot determine plan pricing. Please contact support.', context.request);
+        }
 
-        // Prevent downgrades or lateral moves (must be a genuine upgrade)
-        if (newPrice <= currentPrice) {
-          console.warn('[VerifyPayment] Invalid upgrade attempt - downgrade or lateral move blocked:', {
+        if (planPrice <= currentPrice) {
+          console.warn('[VerifyPayment] Downgrade blocked:', {
             currentPlan: currentPlan.plan_code,
             currentPrice,
-            newPrice,
-            userId: user.sub,
+            newPrice: planPrice,
           });
-          return new Response(JSON.stringify({
-            error: {
-              code: 'INVALID_UPGRADE',
-              message: 'Cannot downgrade or lateral move. Please contact support for plan changes.',
-            },
-          }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return apiError(400, 'VALIDATION_ERROR', 'Cannot downgrade or lateral move. Please contact support for plan changes.', context.request);
         }
       }
 
       try {
-        const { data: updatedSub, error: updateError } = await supabase
-          .from('subscriptions')
-          .update({
-            plan_type: plan.name,
-            plan_amount: parseFloat(String(plan.price)),
-            billing_cycle: plan.duration,
-            razorpay_order_id: body.razorpay_order_id,
-            razorpay_payment_id: body.razorpay_payment_id,
-            subscription_start_date: now.toISOString(),
-            subscription_end_date: endDate.toISOString(),
-            plan_id: plan.id,
-            auto_renew: true,
-            updated_at: now.toISOString(),
-          })
-          .eq('id', existingSubscription.id)
-          .select()
-          .single();
-
-        if (updateError) throw updateError;
-
-        subscription = updatedSub;
-        subError = null;
-      } catch (error) {
-        // Upgrade failed - log for manual intervention
-        subError = error;
-
-        // Log failed upgrade to database
-        const { data: failedUpgradeLog } = await supabase
-          .from('failed_upgrades')
-          .insert({
-            user_id: user.sub,
-            subscription_id: existingSubscription.id,
-            razorpay_order_id: body.razorpay_order_id as string,
-            razorpay_payment_id: body.razorpay_payment_id as string,
-            original_plan_id: existingSubscription.plan_id,
-            target_plan_id: plan.id as string,
-            amount_paid: parseFloat(String(plan.price)),
-            error_message: error instanceof Error ? error.message : String(error),
-            error_details: {
-              timestamp: new Date().toISOString(),
-              endpoint: '/api/payments/verify-payment',
-              originalState: originalSubscriptionState,
-              targetPlan: plan,
-            },
-            resolution_status: 'pending',
-          })
-          .select('id')
-          .single();
-
-        const supportTicketId = failedUpgradeLog?.id || 'MANUAL_REVIEW_REQUIRED';
-
-        console.error('[VerifyPayment] Upgrade failed - logged for manual intervention:', {
-          userId: user.sub,
-          subscriptionId: existingSubscription.id,
-          supportTicketId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    } else {
-      // No existing subscription, create new one
-      console.log('[VerifyPayment] Creating new subscription for user:', user.sub);
-
-      const { data: newSub, error: insertError } = await supabase
-        .from('subscriptions')
-        .insert({
-          user_id: user.sub,
-          full_name: (user as unknown as Record<string, unknown>).name as string || user.email || '',
-          email: user.email || '',
-          phone: (user as unknown as Record<string, unknown>).phone as string || null,
+        subscription = await ssoUpdateSubscriptionField(env, existingCache.id, {
+          plan_id: plan.id,
+          plan_code: validPlan.plan_code,
           plan_type: plan.name,
-          plan_amount: parseFloat(String(plan.price)),
+          plan_amount: planPrice,
           billing_cycle: plan.duration,
           razorpay_order_id: body.razorpay_order_id,
           razorpay_payment_id: body.razorpay_payment_id,
-          status: 'active',
-          auto_renew: true,
           subscription_start_date: now.toISOString(),
           subscription_end_date: endDate.toISOString(),
-          plan_id: plan.id,
-          is_organization_subscription: false,
-          seat_count: 1,
-        })
-        .select()
-        .single();
+          auto_renew: true,
+          status: 'active',
+        });
+      } catch (upgradeError: any) {
+        console.error('[VerifyPayment] Upgrade failed:', upgradeError.message);
 
-      subscription = newSub;
-      subError = insertError;
-    }
+        // Record failed upgrade as an event in auth DB
+        try {
+          await ssoRecordTransaction(env, {
+            user_id: user.id,
+            razorpay_order_id: body.razorpay_order_id as string,
+            razorpay_payment_id: body.razorpay_payment_id as string,
+            amount: planPrice,
+            status: 'failed',
+            transaction_type: 'upgrade',
+            metadata: {
+              original_subscription_id: existingCache.id,
+              original_plan_id: existingCache.plan_id,
+              target_plan_id: plan.id,
+              error: upgradeError.message,
+            },
+          });
+        } catch (logError) {
+          console.error('[VerifyPayment] Failed to log upgrade failure:', logError);
+        }
 
-    if (subError) {
-      console.error('[VerifyPayment] Failed to create/update subscription:', subError);
-
-      // For upgrades, we've already logged to failed_upgrades table
-      // For new subscriptions, log error with context
-      if (!isUpgrade) {
-        console.error(JSON.stringify({
-          timestamp: new Date().toISOString(),
-          userId: user.sub,
-          errorType: 'SUBSCRIPTION_CREATION_FAILED',
-          errorMessage: 'Payment verified but subscription creation failed',
-          context: {
-            planCode: plan.plan_code || plan.name,
-            endpoint: '/api/payments/verify-payment',
-            statusCode: 207,
-            razorpay_order_id: body.razorpay_order_id,
-            razorpay_payment_id: body.razorpay_payment_id,
-            dbError: subError.message,
+        return apiSuccess({
+          payment_verified: true,
+          subscription_upgraded: false,
+          ...verifyResult,
+          error: {
+            code: 'UPGRADE_FAILED',
+            message: 'Payment verified but upgrade failed. Support will contact you within 24 hours.',
           },
-        }));
+        }, context.request, 207);
       }
+    } else {
+      // New subscription — create in auth DB
+      console.log('[VerifyPayment] Creating new subscription for user:', user.id);
 
-      // Signature is verified but subscription operation failed — return partial success (207)
-      return new Response(JSON.stringify({
-        success: true,
-        payment_verified: true,
-        subscription_created: false,
-        subscription_upgraded: isUpgrade ? false : undefined,
-        ...verifyResult,
-        error: {
-          code: isUpgrade ? 'UPGRADE_FAILED' : 'SUBSCRIPTION_CREATE_FAILED',
-          message: isUpgrade
-            ? 'Payment verified but upgrade failed. Support will contact you within 24 hours.'
-            : 'Payment verified but subscription creation failed. Please contact support.',
-          support_ticket_id: isUpgrade && originalSubscriptionState
-            ? 'Check failed_upgrades table'
-            : undefined,
-          details: subError.message,
-        },
-      }), {
-        status: 207, // Multi-Status: partial success
-        headers: { 'Content-Type': 'application/json' },
-      });
+      try {
+        subscription = await ssoCreateSubscription(env, {
+          user_id: user.id,
+          plan_id: plan.id as string,
+          plan_code: validPlan.plan_code,
+          plan_type: plan.name as string,
+          plan_amount: planPrice,
+          billing_cycle: plan.duration as string,
+          features: validPlan.base_features || [],
+          full_name: (user as any).name || user.email || '',
+          email: user.email || '',
+          phone: (user as any).phone || undefined,
+          razorpay_order_id: body.razorpay_order_id as string,
+          razorpay_payment_id: body.razorpay_payment_id as string,
+        });
+      } catch (createError: any) {
+        console.error('[VerifyPayment] Subscription creation failed:', createError.message);
+
+        return apiSuccess({
+          payment_verified: true,
+          subscription_created: false,
+          ...verifyResult,
+          error: {
+            code: 'SUBSCRIPTION_CREATE_FAILED',
+            message: 'Payment verified but subscription creation failed. Please contact support.',
+            details: createError.message,
+          },
+        }, context.request, 207);
+      }
     }
 
-    // Step 3: Log payment transaction
-    await supabase
-      .from('payment_transactions')
-      .insert({
-        subscription_id: subscription.id,
-        user_id: user.sub,
-        razorpay_payment_id: body.razorpay_payment_id,
-        razorpay_order_id: body.razorpay_order_id,
-        amount: parseFloat(String(plan.price)),
+    // Step 3: Record payment transaction in auth DB
+    try {
+      await ssoRecordTransaction(env, {
+        subscription_id: subscription.id as string,
+        user_id: user.id,
+        razorpay_payment_id: body.razorpay_payment_id as string,
+        razorpay_order_id: body.razorpay_order_id as string,
+        amount: planPrice,
         currency: 'INR',
         status: 'completed',
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
-        is_bulk_purchase: false,
-        seat_count: 1,
       });
+    } catch (txError) {
+      console.error('[VerifyPayment] Transaction recording failed (non-critical):', txError);
+    }
 
-    // Step 4: Generate receipt PDF server-side and upload to R2
-    // Non-blocking — a receipt failure must never fail the payment response.
+    // Step 3.5: Sync shadow table in app DB
+    try {
+      // Ensure user exists in users_shadow (FK constraint for subscription_cache)
+      await syncUserShadow(supabase, user.id, body.email || (user as any).email);
+
+      const syncData = await ssoSyncSubscription(env, user.id);
+      if (syncData.subscription) {
+        await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+      }
+    } catch (syncError) {
+      console.error('[VerifyPayment] Shadow sync failed (non-critical):', syncError);
+    }
+
+    // Step 4: Generate receipt PDF and upload to R2 (unchanged)
     let receiptUrl: string | null = null;
     let receiptKey: string | null = null;
     try {
@@ -326,24 +250,19 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       const appUrl = pagesEnv.APP_URL;
 
       if (!appUrl) {
-        console.warn('[VerifyPayment] APP_URL not configured in environment — receipt will render without images');
+        console.warn('[VerifyPayment] APP_URL not configured — receipt will render without images');
       }
 
-      // Fetch the learner's real name from the learners table
       const { data: learner } = await supabase
         .from('learners')
         .select('name')
-        .eq('user_id', user.sub)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       let logoBytes: Uint8Array | undefined;
       if (appUrl) {
         const logoUrl = `${appUrl}/RareMinds ISO Logo-01.png`;
-        console.log('[VerifyPayment] Fetching logo from:', logoUrl);
         logoBytes = await fetchImageBytes(logoUrl);
-        if (!logoBytes) {
-          console.warn('[VerifyPayment] Failed to fetch logo image from:', logoUrl);
-        }
       }
       const watermarkBytes = logoBytes;
 
@@ -351,23 +270,23 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         transaction: {
           payment_id: body.razorpay_payment_id as string,
           order_id: body.razorpay_order_id as string,
-          amount: parseFloat(String(plan.price)),
+          amount: planPrice,
           currency: 'INR',
           payment_method: 'Card',
           payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
           status: 'Success',
         },
         subscription: {
-          plan_name: subscription.plan_type,
-          plan_type: subscription.plan_type,
-          billing_cycle: subscription.billing_cycle,
-          subscription_start_date: subscription.subscription_start_date,
-          subscription_end_date: subscription.subscription_end_date,
+          plan_name: subscription.plan_type as string,
+          plan_type: subscription.plan_type as string,
+          billing_cycle: subscription.billing_cycle as string,
+          subscription_start_date: subscription.subscription_start_date as string,
+          subscription_end_date: subscription.subscription_end_date as string,
         },
         user: {
-          name: learner?.name || subscription.full_name || '',
-          email: subscription.email || user.email || '',
-          phone: subscription.phone || undefined,
+          name: learner?.name || (subscription.full_name as string) || '',
+          email: (subscription.email as string) || user.email || '',
+          phone: (subscription.phone as string) || undefined,
         },
         company: {
           name: 'Rareminds',
@@ -383,8 +302,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
       const pdfBytes = await generateReceiptPDF(receiptData);
 
-      // Build R2 key: payment_pdf/user_{userId8}/{paymentId}_{timestamp}.pdf
-      const shortUserId = user.sub.substring(0, 8);
+      const shortUserId = user.id.substring(0, 8);
       const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
       const timestamp = Date.now();
       receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
@@ -395,39 +313,28 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         'Content-Disposition': `attachment; filename="${filename}"`,
       });
 
-      // Generate a presigned URL for secure access (valid for 7 days)
-      receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800); // 7 days = 604800 seconds
-
+      receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800);
       console.log('[VerifyPayment] Receipt uploaded:', receiptUrl);
     } catch (receiptErr) {
-      // Receipt generation is non-critical — log and continue
       console.error('[VerifyPayment] Receipt generation failed (non-critical):', receiptErr);
     }
 
-    // Step 5: Send payment confirmation email
-    // Non-blocking — email failure must never fail the payment response
+    // Step 5: Send payment confirmation email (unchanged)
     try {
       await sendPaymentSuccessEmail(env as unknown as PagesEnv, {
-        name: subscription.full_name,
-        email: subscription.email,
-        phone: subscription.phone || '',
-        amount: parseFloat(String(plan.price)),
+        name: subscription.full_name as string,
+        email: (subscription.email as string) || user.email || '',
+        phone: (subscription.phone as string) || '',
+        amount: planPrice,
         orderId: body.razorpay_order_id as string,
-        campaign: subscription.plan_type,
-        receiptUrl: receiptUrl || undefined, // Pass the R2 receipt URL
+        campaign: subscription.plan_type as string,
+        receiptUrl: receiptUrl || undefined,
       });
-      console.log('[VerifyPayment] Payment confirmation email sent successfully');
     } catch (emailErr) {
-      // Email sending is non-critical — log and continue
-      console.error('[VerifyPayment] Failed to send payment confirmation email (non-critical):', emailErr);
+      console.error('[VerifyPayment] Email failed (non-critical):', emailErr);
     }
 
-    // Cache invalidation removed - KV dependency eliminated
-    // Client-side queries will refetch data as needed
-
-    // Return combined result
-    return new Response(JSON.stringify({
-      success: true,
+    return apiSuccess({
       ...verifyResult,
       subscription_created: true,
       receipt_url: receiptUrl,
@@ -440,19 +347,13 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         start_date: subscription.subscription_start_date,
         end_date: subscription.subscription_end_date,
       },
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    }, context.request);
   } catch (error) {
     console.error('[VerifyPayment] Error:', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }
 
-/**
- * Parse a duration string like "monthly", "annual", "yearly" into months
- */
 function parseDurationMonths(duration: string): number {
   const lower = duration.toLowerCase();
   if (lower.includes('annual') || lower.includes('year')) return 12;
@@ -461,9 +362,6 @@ function parseDurationMonths(duration: string): number {
   return 1;
 }
 
-/**
- * Send payment success email via email worker
- */
 async function sendPaymentSuccessEmail(
   env: PagesEnv,
   data: EventConfirmationTemplateData
@@ -478,8 +376,8 @@ async function sendPaymentSuccessEmail(
   });
 
   if (success) {
-    console.log('[VerifyPayment] Payment confirmation email sent successfully');
+    console.log('[VerifyPayment] Payment confirmation email sent');
   } else {
-    console.error('[VerifyPayment] Failed to send payment confirmation email (non-critical)');
+    console.error('[VerifyPayment] Email send failed (non-critical)');
   }
 }

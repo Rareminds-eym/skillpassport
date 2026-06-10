@@ -31,8 +31,11 @@
  * - POST /reset-password - Reset password
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { getCorsHeaders } from '../../lib/cors';
+import { apiSuccess, apiError } from '../../lib/response';
+import { withAuth, withAuthAllowUnverified, getContextUser } from '../../lib/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import {
   handleGetSchools,
   handleGetColleges,
@@ -44,23 +47,6 @@ import {
   handleCheckCompanyCode,
   handleCheckEmail,
 } from './handlers/utility';
-import {
-  handleSchoolAdminSignup,
-  handleEducatorSignup,
-  handleLearnerSignup,
-} from './handlers/school';
-import {
-  handleCollegeAdminSignup,
-  handleCollegeEducatorSignup,
-} from './handlers/college';
-import {
-  handleUniversityAdminSignup,
-  handleUniversityEducatorSignup,
-} from './handlers/university';
-import {
-  handleRecruiterAdminSignup,
-  handleRecruiterSignup,
-} from './handlers/recruiter';
 import { handleUnifiedSignup } from './handlers/unified';
 import {
   handleCreateLearner,
@@ -68,11 +54,22 @@ import {
   handleCreateCollegeStaff,
   handleUpdateLearnerDocuments,
 } from './handlers/authenticated';
-import {
-  handleCreateEventUser,
-  handleSendInterviewReminder,
-} from './handlers/events';
 import { handleResetPassword } from './handlers/password';
+import { onRequestPost, onRequestPostUnverified } from './handlers/actions';
+import {
+  handleGetProfileExtended,
+  handleUpsertProfileExtended,
+  handleChangeRole,
+  handleLogActivity,
+  handleGetUser,
+  handleListUsers,
+  handleGetUserStats,
+  handleGetUserActivity,
+  handleGetUserDocuments,
+  handleUpdateUser,
+  handleDeleteUser,
+  handleGetRoleHistory,
+} from './handlers/management';
 
 const API_VERSION = '1.0.0';
 
@@ -81,7 +78,14 @@ export const onRequest: PagesFunction = async (context) => {
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    const origin = request.headers.get('Origin') || '';
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...getCorsHeaders(origin),
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
 
   const url = new URL(request.url);
@@ -90,18 +94,13 @@ export const onRequest: PagesFunction = async (context) => {
   try {
     // Health check
     if (!path || path === '/' || path === '/health') {
-      return jsonResponse({
+      return apiSuccess({
         status: 'ok',
         service: 'user-api',
         version: API_VERSION,
-
         endpoints: {
           signup: {
             unified: ['/signup'],
-            school: ['/signup/school-admin', '/signup/educator', '/signup/learner'],
-            college: ['/signup/college-admin', '/signup/college-educator'],
-            university: ['/signup/university-admin', '/signup/university-educator'],
-            recruiter: ['/signup/recruiter-admin', '/signup/recruiter'],
           },
           utility: [
             '/schools', '/colleges', '/universities', '/companies',
@@ -110,55 +109,24 @@ export const onRequest: PagesFunction = async (context) => {
           ],
           authenticated: [
             '/create-learner', '/create-teacher', '/create-college-staff',
-            '/create-event-user', '/send-interview-reminder', '/reset-password',
+            '/reset-password',
           ],
         },
         timestamp: new Date().toISOString(),
-      });
+      }, request);
     }
 
     // Route to handlers
 
-    // Unified signup endpoint
+    // Unified signup endpoint (authenticated - validates JWT sub against body.userId)
+    // NOTE: Uses withAuthAllowUnverified — the JWT is valid but is_email_verified
+    // is false at this point since the user just signed up. Email verification
+    // happens after the app profile is created.
     if (path === '/signup' && request.method === 'POST') {
-      return await handleUnifiedSignup(request, env);
-    }
-
-    // School signup endpoints
-    if (path === '/signup/school-admin' && request.method === 'POST') {
-      return await handleSchoolAdminSignup(request, env);
-    }
-    if (path === '/signup/educator' && request.method === 'POST') {
-      return await handleEducatorSignup(request, env);
-    }
-    if (path === '/signup/learner' && request.method === 'POST') {
-      return await handleLearnerSignup(request, env);
-    }
-
-    // College signup endpoints
-    if (path === '/signup/college-admin' && request.method === 'POST') {
-      return await handleCollegeAdminSignup(request, env);
-    }
-    if (path === '/signup/college-educator' && request.method === 'POST') {
-      return await handleCollegeEducatorSignup(request, env);
-    }
-
-
-    // University signup endpoints
-    if (path === '/signup/university-admin' && request.method === 'POST') {
-      return await handleUniversityAdminSignup(request, env);
-    }
-    if (path === '/signup/university-educator' && request.method === 'POST') {
-      return await handleUniversityEducatorSignup(request, env);
-    }
-
-
-    // Recruiter signup endpoints
-    if (path === '/signup/recruiter-admin' && request.method === 'POST') {
-      return await handleRecruiterAdminSignup(request, env);
-    }
-    if (path === '/signup/recruiter' && request.method === 'POST') {
-      return await handleRecruiterSignup(request, env);
+      return withAuthAllowUnverified(async (authContext: AuthenticatedContext) => {
+        const user = getContextUser(authContext);
+        return await handleUnifiedSignup(authContext.request, authContext.env, user.id);
+      })(context);
     }
 
     // Utility GET endpoints - Institution lists
@@ -194,36 +162,115 @@ export const onRequest: PagesFunction = async (context) => {
 
     // Authenticated endpoints
     if (path === '/create-learner' && request.method === 'POST') {
-      return await handleCreateLearner(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleCreateLearner(authContext.request, authContext.env);
+      })(context);
     }
     if (path === '/create-teacher' && request.method === 'POST') {
-      return await handleCreateTeacher(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        const user = getContextUser(authContext);
+        return await handleCreateTeacher(authContext.request, authContext.env, {
+          id: user.id,
+          email: user.email || '',
+          org_id: (user as any).org_id,
+        });
+      })(context);
     }
     if (path === '/create-college-staff' && request.method === 'POST') {
-      return await handleCreateCollegeStaff(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        const user = getContextUser(authContext);
+        return await handleCreateCollegeStaff(authContext.request, authContext.env, {
+          id: user.id,
+          email: user.email || '',
+          org_id: (user as any).org_id,
+        });
+      })(context);
     }
     if (path === '/update-learner-documents' && request.method === 'POST') {
-      return await handleUpdateLearnerDocuments(request, env);
-    }
-    if (path === '/create-event-user' && request.method === 'POST') {
-      return await handleCreateEventUser(request, env);
-    }
-    if (path === '/send-interview-reminder' && request.method === 'POST') {
-      return await handleSendInterviewReminder(request, env);
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleUpdateLearnerDocuments(authContext.request, authContext.env);
+      })(context);
     }
     if (path === '/reset-password' && request.method === 'POST') {
       return await handleResetPassword(request, env);
     }
 
-    return jsonResponse({
-      error: 'Not found',
-      path,
-      availableEndpoints: 'See /health for full endpoint list'
-    }, 404);
+    // Management endpoints
+    if (path === '/profile-extended' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetProfileExtended(request, env);
+      })(context);
+    }
+    if (path === '/profile-extended' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleUpsertProfileExtended(request, env);
+      })(context);
+    }
+    if (path === '/change-role' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        const user = getContextUser(authContext);
+        return await handleChangeRole(request, env, user.id);
+      })(context);
+    }
+    if (path === '/log-activity' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleLogActivity(request, env);
+      })(context);
+    }
+    if (path === '/by-id' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetUser(request, env);
+      })(context);
+    }
+    if (path === '/list' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleListUsers(request, env);
+      })(context);
+    }
+    if (path === '/stats' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetUserStats(request, env);
+      })(context);
+    }
+    if (path === '/activity' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetUserActivity(request, env);
+      })(context);
+    }
+    if (path === '/documents' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetUserDocuments(request, env);
+      })(context);
+    }
+    if (path === '/update' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleUpdateUser(request, env);
+      })(context);
+    }
+    if (path === '/delete' && request.method === 'POST') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleDeleteUser(request, env);
+      })(context);
+    }
+    if (path === '/role-history' && request.method === 'GET') {
+      return withAuth(async (authContext: AuthenticatedContext) => {
+        return await handleGetRoleHistory(request, env);
+      })(context);
+    }
+
+    // Actions dispatch endpoint (authenticated)
+    if (path === '/actions' && request.method === 'POST') {
+      return onRequestPost(context);
+    }
+
+    // Handler endpoint (allow-unverified - used during signup flow before email verification)
+    if (path === '/handler' && request.method === 'POST') {
+      return onRequestPostUnverified(context);
+    }
+
+    return apiError(404, 'NOT_FOUND', 'Not found', request);
   } catch (error) {
     console.error('User API Error:', error);
-    return jsonResponse({
-      error: (error as Error).message || 'Internal server error'
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Internal server error', request);
   }
 };

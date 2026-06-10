@@ -1,6 +1,5 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('university-college');
 
@@ -16,37 +15,11 @@ const logger = getLogger('university-college');
  */
 export const getCollegesByUniversity = async (universityId) => {
     try {
-        const { data, error } = await supabase
-            .from('university_colleges')
-            .select(`
-                *,
-                university:organizations!university_id(name, code),
-                college:organizations!college_id(name, code, city, state, email, phone, website, address, description, admin_id)
-            `)
-            .eq('university_id', universityId)
-            .order('name');
-
-        if (error) {
-            logger.error('Error fetching colleges by university', error, { universityId });
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        return {
-            success: true,
-            data: data || [],
-            error: null
-        };
+        const response = await apiPost('/university-ai', { action: 'get-colleges-by-university', universityId });
+        return { success: true, data: response.data || [], error: null };
     } catch (error) {
-        logger.error('Unexpected error fetching colleges by university', error, { universityId });
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
+        logger.error('Error fetching colleges by university', error, { universityId });
+        return { success: false, data: null, error: error.message };
     }
 };
 
@@ -59,86 +32,11 @@ export const getCollegesByUniversity = async (universityId) => {
  */
 export const addCollegeToUniversity = async (universityId, organizationId, additionalData = {}) => {
     try {
-        // First, get the college data from organizations table
-        const { data: orgData, error: orgError } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('id', organizationId)
-            .eq('organization_type', 'college')
-            .single();
-
-        if (orgError) {
-            logger.error('Error fetching organization', orgError, { organizationId });
-            return {
-                success: false,
-                data: null,
-                error: orgError.message
-            };
-        }
-
-        if (!orgData) {
-            return {
-                success: false,
-                data: null,
-                error: 'College organization not found'
-            };
-        }
-
-        // Get current user for created_by field
-        const { data: { user } } = await getCurrentUser();
-        const userId = user?.id;
-
-        // Prepare college data for university_colleges table
-        const collegeData = {
-            university_id: universityId,
-            college_id: organizationId, // Reference to the original organization
-            name: orgData.name,
-            code: additionalData.code || orgData.code || generateCollegeCode(orgData.name),
-            dean_name: additionalData.dean_name || null,
-            dean_email: additionalData.dean_email || orgData.email,
-            dean_phone: additionalData.dean_phone || orgData.phone,
-            established_year: additionalData.established_year || null,
-            account_status: additionalData.account_status || 'active',
-            created_by: userId,
-            metadata: {
-                city: orgData.city,
-                state: orgData.state,
-                address: orgData.address,
-                website: orgData.website,
-                description: orgData.description,
-                admin_id: orgData.admin_id,
-                approval_status: orgData.approval_status,
-                ...additionalData.metadata
-            }
-        };
-
-        const { data, error } = await supabase
-            .from('university_colleges')
-            .insert([collegeData])
-            .select()
-            .single();
-
-        if (error) {
-            logger.error('Error adding college to university', error, { universityId, organizationId });
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
+        const response = await apiPost('/university-ai', { action: 'add-college-to-university', universityId, organizationId, ...additionalData });
+        return { success: true, data: response.data || null, error: null };
     } catch (error) {
-        logger.error('Unexpected error adding college to university', error, { universityId, organizationId });
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
+        logger.error('Error adding college to university', error, { universityId, organizationId });
+        return { success: false, data: null, error: error.message };
     }
 };
 
@@ -150,60 +48,11 @@ export const addCollegeToUniversity = async (universityId, organizationId, addit
  */
 export const getAvailableColleges = async (universityId) => {
     try {
-        // Get all colleges from organizations table
-        const { data: allColleges, error: collegesError } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('organization_type', 'college')
-            .eq('approval_status', 'approved')
-            .order('name');
-
-        if (collegesError) {
-            logger.error('Error fetching all colleges', collegesError);
-            return {
-                success: false,
-                data: null,
-                error: collegesError.message
-            };
-        }
-
-        // Get colleges already linked to this university
-        const { data: linkedColleges, error: linkedError } = await supabase
-            .from('university_colleges')
-            .select('college_id')
-            .eq('university_id', universityId);
-
-        if (linkedError) {
-            logger.error('Error fetching linked colleges', linkedError, { universityId });
-            return {
-                success: false,
-                data: null,
-                error: linkedError.message
-            };
-        }
-
-        // Extract college IDs from linked colleges
-        const linkedCollegeIds = linkedColleges
-            .map(college => college.college_id)
-            .filter(Boolean);
-
-        // Filter out already linked colleges
-        const availableColleges = allColleges.filter(
-            college => !linkedCollegeIds.includes(college.id)
-        );
-
-        return {
-            success: true,
-            data: availableColleges || [],
-            error: null
-        };
+        const response = await apiPost('/university-ai', { action: 'get-available-colleges', universityId });
+        return { success: true, data: response.data || [], error: null };
     } catch (error) {
-        logger.error('Unexpected error fetching available colleges', error, { universityId });
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
+        logger.error('Error fetching available colleges', error, { universityId });
+        return { success: false, data: null, error: error.message };
     }
 };
 
@@ -215,34 +64,11 @@ export const getAvailableColleges = async (universityId) => {
  */
 export const updateUniversityCollege = async (collegeId, updateData) => {
     try {
-        const { data, error } = await supabase
-            .from('university_colleges')
-            .update(updateData)
-            .eq('id', collegeId)
-            .select()
-            .single();
-
-        if (error) {
-            logger.error('Error updating university college', error, { collegeId });
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
+        const response = await apiPost('/university-ai', { action: 'update-university-college', collegeId, ...updateData });
+        return { success: true, data: response.data || null, error: null };
     } catch (error) {
-        logger.error('Unexpected error updating university college', error, { collegeId });
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
+        logger.error('Error updating university college', error, { collegeId });
+        return { success: false, data: null, error: error.message };
     }
 };
 
@@ -253,34 +79,11 @@ export const updateUniversityCollege = async (collegeId, updateData) => {
  */
 export const removeCollegeFromUniversity = async (collegeId) => {
     try {
-        const { data, error } = await supabase
-            .from('university_colleges')
-            .update({ account_status: 'inactive' })
-            .eq('id', collegeId)
-            .select()
-            .single();
-
-        if (error) {
-            logger.error('Error removing college from university', error, { collegeId });
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
+        const response = await apiPost('/university-ai', { action: 'remove-college-from-university', collegeId });
+        return { success: true, data: response.data || null, error: null };
     } catch (error) {
-        logger.error('Unexpected error removing college from university', error, { collegeId });
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
+        logger.error('Error removing college from university', error, { collegeId });
+        return { success: false, data: null, error: error.message };
     }
 };
 
@@ -293,29 +96,10 @@ export const removeCollegeFromUniversity = async (collegeId) => {
  */
 export const checkCollegeCodeUnique = async (universityId, code, excludeId = null) => {
     try {
-        let query = supabase
-            .from('university_colleges')
-            .select('id')
-            .eq('university_id', universityId)
-            .ilike('code', code);
-
-        if (excludeId) {
-            query = query.neq('id', excludeId);
-        }
-
-        const { data, error } = await query.maybeSingle();
-
-        if (error) {
-            logger.error('Error checking college code uniqueness', error, { universityId, code });
-            return { isUnique: false, error: error.message };
-        }
-
-        return {
-            isUnique: !data,
-            error: null
-        };
+        const response = await apiPost('/university-ai', { action: 'check-college-code-unique', universityId, code, excludeId });
+        return { isUnique: response.data?.isUnique ?? true, error: null };
     } catch (error) {
-        logger.error('Unexpected error checking college code uniqueness', error, { universityId, code });
+        logger.error('Error checking college code uniqueness', error, { universityId, code });
         return { isUnique: false, error: error.message };
     }
 };
@@ -355,39 +139,11 @@ const generateCollegeCode = (name) => {
  */
 export const getUniversityCollegeStats = async (universityId) => {
     try {
-        const { data, error } = await supabase
-            .from('university_colleges')
-            .select('account_status')
-            .eq('university_id', universityId);
-
-        if (error) {
-            logger.error('Error fetching college stats', error, { universityId });
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        const stats = {
-            total: data.length,
-            active: data.filter(c => c.account_status === 'active').length,
-            pending: data.filter(c => c.account_status === 'pending').length,
-            inactive: data.filter(c => c.account_status === 'inactive').length
-        };
-
-        return {
-            success: true,
-            data: stats,
-            error: null
-        };
+        const response = await apiPost('/university-ai', { action: 'get-university-college-stats', universityId });
+        return { success: true, data: response.data || null, error: null };
     } catch (error) {
-        logger.error('Unexpected error fetching college stats', error, { universityId });
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
+        logger.error('Error fetching college stats', error, { universityId });
+        return { success: false, data: null, error: error.message };
     }
 };
 

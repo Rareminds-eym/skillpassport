@@ -1,9 +1,8 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { useAuthStore } from '@/shared/model/authStore';
 
 // Helper function to get current user ID
 const getCurrentUserId = async (): Promise<string> => {
-  const { data: { user } } = await getCurrentUser();
+  const user = useAuthStore.getState().user;
   return user?.id || 'system';
 };
 

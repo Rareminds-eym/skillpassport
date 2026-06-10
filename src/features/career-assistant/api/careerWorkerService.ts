@@ -1,11 +1,11 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * Career AI Worker Service
  * Calls the Cloudflare Worker for career AI processing
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { careerApiService } from '@/features/counselling';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('career-worker-service');
@@ -38,19 +38,26 @@ export async function streamCareerChat(
   abortSignal?: AbortSignal
 ): Promise<CareerChatResult> {
   try {
-    const { data: { session }, error: sessionError } = await getCurrentSession();
+    const user = useAuthStore.getState().user;
 
-    if (sessionError || !session) {
-      logger.error('Authentication failed for career AI service', sessionError as Error);
+    if (!user) {
+      logger.error('Authentication failed for career AI service');
       return { success: false, error: 'Please log in to use Career AI' };
     }
 
     let result: CareerChatResult = { success: true };
 
     await new Promise<void>((resolve) => {
+      const token = ssoClient.getAccessToken();
+      if (!token) {
+        logger.error('No access token available for career AI service');
+        result = { success: false, error: 'Authentication failed' };
+        resolve();
+        return;
+      }
       careerApiService.sendCareerChatMessage(
         { conversationId: conversationId || undefined, message, selectedChips },
-        session.access_token,
+        token,
         (content) => onChunk(content),
         (data) => {
           const response = data as any;

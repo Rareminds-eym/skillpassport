@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import type { SchoolInternalRole } from '@/shared/types/permissions';
+import { useEffect, useState } from 'react';
 
 const logger = getLogger('user-role-hook');
 
-export type UserRole = 'school_admin' | 'principal' | 'it_admin' | 'class_teacher' | 'subject_teacher';
+// School-internal role taxonomy (NOT the SSO `UserRole`). This module uses a
+// subset of the shared `SchoolInternalRole` union declared in
+// `@/shared/types/permissions`; the canonical SSO `UserRole` lives only in
+// `@/shared/types/generated/roles`.
 
 export type PermissionLevel = 'C' | 'A' | 'U' | 'V' | 'C/A' | 'N/A';
 
@@ -19,7 +23,9 @@ interface User {
   email?: string;
 }
 
-const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
+// Keyed by a subset of `SchoolInternalRole`; `Partial` because not every
+// school-internal role has timetable/teacher permissions defined here.
+const ROLE_PERMISSIONS: Partial<Record<SchoolInternalRole, RolePermissions>> = {
   school_admin: {
     add_teacher: 'C/A',
     assign_classes: 'A',
@@ -48,97 +54,129 @@ const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
 };
 
 /**
- * Hook to get user role and permissions
- * 
+ * Least-privilege permission set used when no school-internal role can be
+ * resolved for the current user. Grants NOTHING — an unknown/unauthenticated
+ * user must render the most restrictive UI, never a guessed (`subject_teacher`)
+ * or privileged (`school_admin`) default. Server-side guards remain the real
+ * authorization boundary; this only governs advisory UI affordances.
+ */
+const LEAST_PRIVILEGE_PERMISSIONS: RolePermissions = {
+  add_teacher: 'N/A',
+  assign_classes: 'N/A',
+  timetable_editing: 'N/A',
+};
+
+// Set of valid `SchoolInternalRole` literals this hook recognises, used to
+// validate the role code returned by the JWT-backed endpoint before trusting it.
+const SCHOOL_INTERNAL_ROLES: ReadonlySet<SchoolInternalRole> = new Set<SchoolInternalRole>([
+  'principal',
+  'vice_principal',
+  'it_admin',
+  'class_teacher',
+  'subject_teacher',
+  'accountant',
+  'librarian',
+  'parent',
+  'career_counselor',
+  'school_admin',
+]);
+
+function isSchoolInternalRole(value: unknown): value is SchoolInternalRole {
+  return typeof value === 'string' && SCHOOL_INTERNAL_ROLES.has(value as SchoolInternalRole);
+}
+
+function permissionsForRole(role: SchoolInternalRole | null): RolePermissions {
+  if (role && ROLE_PERMISSIONS[role]) {
+    return ROLE_PERMISSIONS[role]!;
+  }
+  return LEAST_PRIVILEGE_PERMISSIONS;
+}
+
+/**
+ * Hook to get the current user's SCHOOL-INTERNAL role and the advisory feature
+ * permissions that drive school-admin UI affordances.
+ *
+ * ⚠️ UX / ADVISORY ONLY — NOT A TRUST BOUNDARY.
+ * ------------------------------------------------------------------
+ * The role and `can*` helpers returned here decide only what the UI *shows*.
+ * Real authorization is enforced SERVER-SIDE by the Pages Functions guards
+ * (`withAuth` / `requireRole` / `requireAdmin`) and `resolveSchoolRole`. This
+ * hook MUST NOT be relied on to grant or deny access.
+ *
+ * HOW THE ROLE IS SOURCED (JWT-backed, current-user only):
+ *   - SSO roles that ARE school permission codes (e.g. `school_admin`) are read
+ *     directly from the auth store (the verified JWT `roles[]`) — no network call.
+ *   - Otherwise the genuinely school-internal sub-role (principal / it_admin /
+ *     class_teacher / …) is resolved by the JWT-backed `get-current-user-school-role`
+ *     Function action, which calls `resolveSchoolRole` for the AUTHENTICATED user.
+ *
+ * This hook NEVER:
+ *   - looks a role up by email (no `teachers` / `school_educators` email queries),
+ *   - infers a role from the URL / `window.location.pathname`,
+ *   - defaults to a guessed (`subject_teacher`) or privileged (`school_admin`) role.
+ * When no role can be determined the role is `null` and permissions are
+ * least-privilege (the security fix for bug §6.1 / §7.5).
+ *
  * @param authUser - The authenticated user object (pass from store/context)
- * @param authRole - The user's role from auth context (pass from store/context)
+ * @param authRole - The user's primary SSO role from the auth store (JWT-derived)
  */
 export const useUserRole = (authUser: User | null, authRole?: string) => {
-  const [role, setRole] = useState<UserRole>('subject_teacher');
+  const [role, setRole] = useState<SchoolInternalRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState<RolePermissions>(
-    ROLE_PERMISSIONS.subject_teacher
+    LEAST_PRIVILEGE_PERMISSIONS
   );
 
   useEffect(() => {
-    fetchUserRole();
-  }, [authUser, authRole]);
+    let active = true;
 
+    const applyRole = (resolved: SchoolInternalRole | null) => {
+      if (!active) return;
+      setRole(resolved);
+      setPermissions(permissionsForRole(resolved));
+      setLoading(false);
+    };
 
-  const fetchUserRole = async () => {
-    try {
-      // First check if user has role from AuthContext (localStorage)
-      if (authRole) {
-        // Map the auth role to our UserRole type
-        if (authRole === 'school_admin') {
-          setRole('school_admin');
-          setPermissions(ROLE_PERMISSIONS.school_admin);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // If user is logged in via AuthContext
-      if (authUser) {
-        const userEmail = authUser.email;
-
-        // Try to get role from teachers table
-        if (userEmail) {
-          const { data: teacherData } = await supabase
-            .from('teachers')
-            .select('role')
-            .eq('email', userEmail)
-            .maybeSingle();
-
-          if (teacherData?.role) {
-            setRole(teacherData.role as UserRole);
-            setPermissions(ROLE_PERMISSIONS[teacherData.role as UserRole]);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Try to get role from school_educators table using email
-        if (userEmail) {
-          const { data: educatorData } = await supabase
-            .from('school_educators')
-            .select('role')
-            .eq('email', userEmail)
-            .maybeSingle();
-
-          if (educatorData?.role) {
-            setRole(educatorData.role as UserRole);
-            setPermissions(ROLE_PERMISSIONS[educatorData.role as UserRole]);
-            setLoading(false);
-            return;
-          }
-        }
-      }
-
-      // Default to school_admin if user is accessing school admin routes
-      // This ensures backward compatibility with existing school admin users
-      const currentPath = window.location.pathname;
-      if (currentPath.includes('/school-admin') || currentPath.includes('/admin/schoolAdmin')) {
-        setRole('school_admin');
-        setPermissions(ROLE_PERMISSIONS.school_admin);
-        setLoading(false);
+    const resolveRole = async () => {
+      // Not authenticated → least privilege, no role.
+      if (!authUser) {
+        applyRole(null);
         return;
       }
 
-      // If no role found anywhere, default to subject_teacher
-      setRole('subject_teacher');
-      setPermissions(ROLE_PERMISSIONS.subject_teacher);
-      setLoading(false);
-    } catch (error) {
-      logger.error('Failed to fetch user role', error instanceof Error ? error : new Error(String(error)));
-      // On error, default to school_admin if on school admin routes
-      if (window.location.pathname.includes('/school-admin') || window.location.pathname.includes('/admin/schoolAdmin')) {
-        setRole('school_admin');
-        setPermissions(ROLE_PERMISSIONS.school_admin);
+      // Fast path: the SSO role from the verified JWT is itself a school
+      // permission code we recognise (e.g. `school_admin`). Map it directly
+      // from the store — no network call needed.
+      if (isSchoolInternalRole(authRole)) {
+        applyRole(authRole);
+        return;
       }
-      setLoading(false);
-    }
-  };
+
+      // Otherwise resolve the genuinely school-internal sub-role from the
+      // JWT-backed current-user endpoint (no email / userId / URL inference).
+      try {
+        const resp = await apiPost<{ data?: { role?: string | null } }>(
+          '/user/actions',
+          { action: 'get-current-user-school-role' }
+        );
+        const resolved = resp?.data?.role;
+        applyRole(isSchoolInternalRole(resolved) ? resolved : null);
+      } catch (error) {
+        logger.error(
+          'Failed to resolve current-user school role',
+          error instanceof Error ? error : new Error(String(error))
+        );
+        // Fail to least privilege — never default to a privileged role on error.
+        applyRole(null);
+      }
+    };
+
+    resolveRole();
+
+    return () => {
+      active = false;
+    };
+  }, [authUser, authRole]);
 
   const canPerformAction = (
     feature: keyof RolePermissions,
@@ -170,15 +208,16 @@ export const useUserRole = (authUser: User | null, authRole?: string) => {
   const canApproveTimetable = () => canPerformAction('timetable_editing', 'A');
   const canViewTimetable = () => canPerformAction('timetable_editing', 'V');
 
-  const getRoleLabel = (roleValue: UserRole): string => {
-    const labels: Record<UserRole, string> = {
+  const getRoleLabel = (roleValue: SchoolInternalRole | null): string => {
+    if (!roleValue) return 'Unknown';
+    const labels: Partial<Record<SchoolInternalRole, string>> = {
       school_admin: 'School Admin',
       principal: 'Principal',
       it_admin: 'IT Admin',
       class_teacher: 'Class Teacher',
       subject_teacher: 'Subject Teacher',
     };
-    return labels[roleValue];
+    return labels[roleValue] ?? roleValue;
   };
 
   return {

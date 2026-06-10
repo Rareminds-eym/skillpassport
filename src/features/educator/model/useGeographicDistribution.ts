@@ -1,8 +1,8 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/shared/api/supabaseClient';
 import { FunnelRangePreset, getGeographicDistribution } from '@/features/educator-copilot';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef } from 'react';
 
 interface UseGeographicDistributionOptions {
   preset: FunnelRangePreset;
@@ -52,36 +52,35 @@ export const useGeographicDistribution = ({
   useEffect(() => {
     if (!enabled) return;
 
-    // Use a stable channel name to avoid creating multiple channels
-    const channelName = 'geographic-distribution-realtime';
+    const wsClient = getWSClient();
+    const unsubscribers: Array<() => void> = [];
 
-    // Check if channel already exists
-    const existingChannel = supabase.getChannels().find(ch => ch.topic === channelName);
-    if (existingChannel) {
-      channelRef.current = existingChannel;
-      return;
-    }
+    // Subscribe to pipeline_candidates changes
+    const unsubPipeline = wsClient.subscribe(
+      'pipeline_candidates',
+      { event: '*' },
+      (event) => {
+        if (event.type === 'change') {
+          invalidateQuery();
+        }
+      }
+    );
+    unsubscribers.push(unsubPipeline);
 
-    // Subscribe to pipeline changes for real-time updates via WebSocket
-    const channel = supabase.channel(channelName)
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'pipeline_candidates' },
-        invalidateQuery
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'learners' },
-        invalidateQuery
-      );
-
-    channel.subscribe();
-    channelRef.current = channel;
+    // Subscribe to learners changes
+    const unsubLearners = wsClient.subscribe(
+      'learners',
+      { event: '*' },
+      (event) => {
+        if (event.type === 'change') {
+          invalidateQuery();
+        }
+      }
+    );
+    unsubscribers.push(unsubLearners);
 
     return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      unsubscribers.forEach(unsub => unsub());
     };
   }, [enabled, invalidateQuery]);
 

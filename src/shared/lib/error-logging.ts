@@ -1,3 +1,4 @@
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Error Logging Utility
  * 
@@ -87,7 +88,7 @@ function sendToMonitoringService(error: ErrorLog): void {
 function sendToBackend(error: ErrorLog): void {
   try {
     // Use keepalive to ensure log is sent even if page unloads
-    fetch('/api/log-error', {
+    ssoClient.fetch('/api/log-error', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(error),
@@ -133,7 +134,7 @@ export function retryPendingErrors(): void {
 
     // Try to send each pending error
     pendingErrors.forEach((error: ErrorLog) => {
-      fetch('/api/log-error', {
+      ssoClient.fetch('/api/log-error', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(error),

@@ -10,8 +10,8 @@ import {
   CalendarIcon,
   FunnelIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('college-admin-academic-coverage');
 
@@ -49,35 +49,12 @@ const AcademicCoverageTracker: React.FC = () => {
       setLoading(true);
       
       // Fetch curriculum data with completion tracking
-      const { data: curriculumData, error } = await supabase
-        .from("curriculum")
-        .select(`
-          id,
-          course_id,
-          units,
-          outcomes,
-          updated_at,
-          course_mappings (
-            course_code,
-            course_name,
-            semester,
-            program_id,
-            faculty_id,
-            programs (
-              name,
-              department_id,
-              departments (
-                name
-              )
-            ),
-            users (
-              name
-            )
-          )
-        `)
-        .eq("status", "published");
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-academic-coverage'
+      });
 
-      if (error) throw error;
+      if (!res.success) throw new Error(res.error || 'Failed to load coverage data');
+      const curriculumData = res.data;
 
       // Transform data to coverage format
       const coverage: CoverageData[] = (curriculumData || []).map((item: any) => {

@@ -1,4 +1,3 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 /**
  * DEPENDENCY INJECTION PATTERN APPLIED
  * 
@@ -15,9 +14,11 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { Learner } from '@/shared/types';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+import MessageService from '@/shared/api/messageService';
 
 const logger = getLogger('admission-note-modal');
 
@@ -70,7 +71,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
   const sendNoteAsCommunication = async () => {
     try {
       // Get current user
-      const { data: { user } } = await getCurrentUser();
+      const user = useAuthStore.getState().user;
       if (!user) {
         throw new Error('Not authenticated');
       }
@@ -81,25 +82,23 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
       let educatorId: string | null = null;
 
       // Check if user is a school educator
-      const { data: schoolEducatorData, error: schoolError } = await supabase
-        .from('school_educators')
-        .select('id, school_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const schoolResult = await apiPost('/learner-profile/actions', {
+        action: 'fetch-school-educators', userId: user.id,
+      });
+      const schoolEducatorData = schoolResult?.data || null;
 
-      if (schoolEducatorData) {
+      if (schoolEducatorData?.id) {
         userType = 'school_educator';
         educatorId = schoolEducatorData.id;
         organizationId = schoolEducatorData.school_id;
       } else {
         // Check if user is a college lecturer
-        const { data: lecturerData, error: lecturerError } = await supabase
-          .from('college_lecturers')
-          .select('id, collegeId, designation, user_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        const lecturerResult = await apiPost('/learner-profile/actions', {
+          action: 'fetch-college-lecturers', userId: user.id,
+        });
+        const lecturerData = lecturerResult?.data || null;
         
-        if (lecturerData) {
+        if (lecturerData?.id) {
           educatorId = lecturerData.id;
           organizationId = lecturerData.collegeId;
           
@@ -116,16 +115,13 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
           }
         } else {
           // Fallback: check if user is college owner in organizations table
-          const { data: orgData, error: orgError } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college')
-            .eq('admin_id', user.id)
-            .maybeSingle();
+          const orgResult = await apiPost('/learner-profile/actions', {
+            action: 'fetch-organization', adminId: user.id, type: 'college',
+          });
           
-          if (orgData?.id) {
+          if (orgResult?.data?.id) {
             userType = 'college_admin';
-            organizationId = orgData.id;
+            organizationId = orgResult.data.id;
           }
         }
       }
@@ -178,12 +174,17 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         subject: `${notePrefix} Note`
       };
 
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert(messageData);
+      const msgResult = await apiPost('/learner-profile/actions', {
+        action: 'create-message',
+        conversationId: conversation.id,
+        senderId: user.id,
+        senderRole: senderType,
+        messageContent: messageData.message_text,
+        messageType: 'text',
+      });
 
-      if (messageError) {
-        throw messageError;
+      if (!msgResult?.data) {
+        throw new Error('Failed to send message');
       }
 
       toast.success(`Note sent to learner via communication`);

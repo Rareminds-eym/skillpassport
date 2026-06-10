@@ -6,6 +6,7 @@
  * - POST /signed-urls - Batch generate signed URLs for multiple documents
  */
 
+import { apiSuccess, apiError } from '../../../lib/response';
 import { R2Client } from '../utils/r2-client';
 
 type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
@@ -25,59 +26,37 @@ interface SignedUrlsRequestBody {
  * Generate signed URL for single document
  * Returns a proxy URL through /document-access endpoint
  */
-export const handleSignedUrl: PagesFunction = async ({ request, env }) => {
+export const handleSignedUrl: PagesFunction = async ({ request }) => {
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
     const body = (await request.json()) as SignedUrlRequestBody;
     const { url: fileUrl, fileKey: providedKey, expiresIn = 3600 } = body;
 
-    let fileKey = providedKey;
+    let fileKey = providedKey ?? undefined;
 
     // Extract file key from URL if not provided directly
     if (!fileKey && fileUrl) {
-      fileKey = R2Client.extractKeyFromUrl(fileUrl);
+      fileKey = R2Client.extractKeyFromUrl(fileUrl) ?? undefined;
     }
 
     if (!fileKey) {
-      return new Response(JSON.stringify({ error: 'File key or URL is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
     }
 
     // Generate a signed URL that proxies through our document access endpoint
     const baseUrl = new URL(request.url).origin;
     const signedUrl = `${baseUrl}/api/storage/document-access?key=${encodeURIComponent(fileKey)}&mode=inline`;
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        signedUrl,
-        expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiSuccess({
+      signedUrl,
+      expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+    }, request);
   } catch (error) {
     console.error('[SignedUrl] Error generating signed URL:', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to generate signed URL',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };
 
@@ -85,12 +64,9 @@ export const handleSignedUrl: PagesFunction = async ({ request, env }) => {
  * Batch generate signed URLs for multiple documents
  * Returns proxy URLs through /document-access endpoint
  */
-export const handleSignedUrls: PagesFunction = async ({ request, env }) => {
+export const handleSignedUrls: PagesFunction = async ({ request }) => {
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   try {
@@ -99,17 +75,11 @@ export const handleSignedUrls: PagesFunction = async ({ request, env }) => {
 
     // Validate URLs array
     if (!urls || !Array.isArray(urls)) {
-      return new Response(JSON.stringify({ error: 'URLs array is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError(400, 'VALIDATION_ERROR', 'URLs array is required', request);
     }
 
     if (urls.length === 0) {
-      return new Response(JSON.stringify({ error: 'URLs array cannot be empty' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError(400, 'VALIDATION_ERROR', 'URLs array cannot be empty', request);
     }
 
     const signedUrls: Record<string, string> = {};
@@ -128,28 +98,12 @@ export const handleSignedUrls: PagesFunction = async ({ request, env }) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        signedUrls,
-        expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiSuccess({
+      signedUrls,
+      expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
+    }, request);
   } catch (error) {
     console.error('[SignedUrls] Error generating signed URLs:', error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to generate signed URLs',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
   }
 };

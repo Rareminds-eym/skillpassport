@@ -245,7 +245,7 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
             <div className="flex items-center justify-between mb-5">
               <div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-gray-900">Γé╣{monthlyPrice}</span>
+                  <span className="text-3xl font-bold text-gray-900">₹{monthlyPrice}</span>
                   <span className="text-gray-400 text-sm">/month</span>
                 </div>
                 {savings > 0 && (
@@ -336,11 +336,11 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
       }
       console.log('[PurchaseModal] Razorpay script loaded successfully');
       
-      const order = await onPurchase(addOn.feature_key, billing);
-      console.log('[PurchaseModal] Order received:', order);
+      const orderResult = await onPurchase(addOn.feature_key, billing);
+      console.log('[PurchaseModal] Order result:', orderResult);
       
-      if (!order) {
-        setError('Failed to create order - no response received');
+      if (!orderResult?.success) {
+        setError(orderResult?.error || 'Failed to create order - no response received');
         return;
       }
       
@@ -349,19 +349,20 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
         return;
       }
       
+      const data = orderResult.data;
       console.log('[PurchaseModal] Opening Razorpay with:', {
-        key: order.razorpayKeyId,
-        amount: order.amount,
-        order_id: order.orderId
+        key: data.razorpayKeyId,
+        amount: data.amount,
+        order_id: data.orderId
       });
       
       const razorpay = new window.Razorpay({
-        key: order.razorpayKeyId,
-        amount: order.amount,
-        currency: order.currency,
+        key: data.razorpayKeyId,
+        amount: data.amount,
+        currency: data.currency,
         name: 'SkillPassport',
-        description: `${addOn.feature_name || addOn.name} - ${billing === 'monthly' ? 'Monthly' : 'Annual'}`,
-        order_id: order.orderId,
+        description: `${addOn.feature_name ?? addOn.name} - ${billing === 'monthly' ? 'Monthly' : 'Annual'}`,
+        order_id: data.orderId,
         handler: async (response) => {
           // Payment successful - now verify and create entitlement
           console.log('[PurchaseModal] Payment successful, verifying...', response);
@@ -371,7 +372,10 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
             const verifyResult = await addOnPaymentService.verifyAddonPayment(
               response.razorpay_order_id,
               response.razorpay_payment_id,
-              response.razorpay_signature
+              response.razorpay_signature,
+              addOn.feature_key,
+              data.amount,
+              billing
             );
             
             console.log('[PurchaseModal] Verification result:', verifyResult);
@@ -396,7 +400,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
             setIsVerifying(false);
           }
         },
-        prefill: { email: order.userEmail, name: order.userName },
+        prefill: { email: data.userEmail, name: data.userName },
         theme: { color: '#4f46e5' },
         modal: {
           ondismiss: () => {
@@ -483,12 +487,12 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
               <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-3xl p-5 mb-5 border-2 border-slate-200">
                 <div className="flex items-baseline justify-between mb-1">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900">Γé╣{price}</span>
+                    <span className="text-4xl font-bold text-gray-900">₹{price}</span>
                     <span className="text-gray-400 text-sm">/{billing === 'monthly' ? 'mo' : 'yr'}</span>
                   </div>
                   {billing === 'annual' && (
                     <div className="text-right">
-                      <p className="text-xs text-gray-400">Γé╣{monthlyEquivalent}/mo</p>
+                      <p className="text-xs text-gray-400">₹{monthlyEquivalent}/mo</p>
                     </div>
                   )}
                 </div>
@@ -498,7 +502,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                     <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
                       <Check className="w-2.5 h-2.5 text-emerald-600" strokeWidth={3} />
                     </div>
-                    <span className="text-emerald-600 text-sm font-medium">Save Γé╣{savings} per year</span>
+                    <span className="text-emerald-600 text-sm font-medium">Save ₹{savings} per year</span>
                   </div>
                 )}
               </div>
@@ -552,7 +556,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                   <Shield className="w-3.5 h-3.5" />
                   Secure checkout
                 </span>
-                <span>ΓÇó</span>
+                <span>•</span>
                 <span>Powered by Razorpay</span>
               </div>
             </>

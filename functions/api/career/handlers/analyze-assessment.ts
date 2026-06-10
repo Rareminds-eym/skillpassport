@@ -17,38 +17,29 @@
  * Migrated: Now calls /api/analyze-assessment Pages Function
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser } from '../../shared/auth';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { checkRateLimit } from '../utils/rate-limit';
 
-export async function handleAnalyzeAssessment(request: Request, env: Record<string, string>): Promise<Response> {
+export async function handleAnalyzeAssessment(request: Request, env: Record<string, string>, learnerId: string): Promise<Response> {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
-
-  const auth = await authenticateUser(request, env);
-  if (!auth) {
-    return jsonResponse({ error: 'Authentication required' }, 401);
-  }
-
-  const { user } = auth;
-  const learnerId = user.id;
 
   if (!await checkRateLimit(learnerId, env)) {
-    return jsonResponse({ error: 'Rate limit exceeded' }, 429);
+    return apiError(429, 'ERROR', 'Rate limit exceeded', request);
   }
 
   let body;
   try {
     body = await request.json() as { assessmentData: any };
   } catch {
-    return jsonResponse({ error: 'Invalid JSON' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
   }
 
   const { assessmentData } = body;
 
   if (!assessmentData) {
-    return jsonResponse({ error: 'Assessment data is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Assessment data is required', request);
   }
 
   // Proxy to analyze-assessment Pages Function
@@ -73,17 +64,14 @@ export async function handleAnalyzeAssessment(request: Request, env: Record<stri
 
     if (!response.ok) {
       console.error('[CAREER API] Analyze-assessment API error:', data);
-      return jsonResponse(data, response.status);
+      return apiError(response.status, 'ERROR', (data as any)?.error || `Request failed with status ${response.status}`, request);
     }
 
     console.log(`[CAREER API] Successfully analyzed assessment for learner ${learnerId}`);
-    return jsonResponse(data);
+    return apiSuccess(data, request);
 
   } catch (error) {
     console.error('[CAREER API] Failed to proxy to analyze-assessment API:', error);
-    return jsonResponse({
-      error: 'Assessment analysis failed',
-      details: (error as Error).message
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', 'Assessment analysis failed', request);
   }
 }

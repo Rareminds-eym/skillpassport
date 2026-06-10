@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 import { lessonPlansService } from '../api';
 import { filterByStatus } from '../lib';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('use-lesson-plans');
 
@@ -41,28 +43,24 @@ export const useLessonPlans = (): UseLessonPlansReturn => {
   const loadLessonPlans = async () => {
     setLoading(true);
     try {
-      // Get current teacher from AuthContext
-      const userEmail = localStorage.getItem('userEmail');
+      const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
       
-      const { data: teacherData } = await supabase
-        .from('school_educators')
-        .select('id')
-        .eq('email', userEmail)
-        .maybeSingle();
+      const teacherResponse: any = await apiPost('/course/actions', {
+        action: 'get-educator-by-email',
+        email: userEmail,
+      });
+      const teacherData = teacherResponse?.data;
 
       if (!teacherData) {
         throw new Error('Teacher not found');
       }
 
-      const { data, error } = await supabase
-        .from('lesson_plans')
-        .select('*')
-        .eq('teacher_id', teacherData.id)
-        .order('date', { ascending: false });
+      const plansResponse: any = await apiPost('/course/actions', {
+        action: 'get-lesson-plans',
+        teacherId: teacherData.id,
+      });
 
-      if (error) throw error;
-
-      setLessonPlans(data || []);
+      setLessonPlans(plansResponse?.data ?? []);
     } catch (error: any) {
       logger.error('Error loading lesson plans', error instanceof Error ? error : new Error(String(error)));
     } finally {

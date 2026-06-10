@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/shared/api/supabaseClient'
+import { apiPost } from '@/shared/api/apiClient'
 // Skill from skills table
 interface Skill {
   id: string
@@ -463,181 +463,13 @@ export function useLearners(options?: UseLearnersOptions) {
         return;
       }
 
-      let query = supabase
-        .from('learners')
-        .select(`
-          id,
-          user_id,
-          learner_id,
-          name,
-          email,
-          contact_number,
-          alternate_number,
-          contact_dial_code,
-          date_of_birth,
-          age,
-          gender,
-          bloodGroup,
-          district_name,
-          university,
-          university_main,
-          branch_field,
-          college_school_name,
-          course_name,
-          registration_number,
-          enrollmentNumber,
-          github_link,
-          linkedin_link,
-          twitter_link,
-          facebook_link,
-          instagram_link,
-          portfolio_link,
-          youtube_link,
-          other_social_links,
-          approval_status,
-          trainer_name,
-          bio,
-          address,
-          city,
-          state,
-          country,
-          pincode,
-          resumeUrl,
-          profilePicture,
-          contactNumber,
-          dateOfBirth,
-          created_at,
-          createdAt,
-          updated_at,
-          updatedAt,
-          imported_at,
-          school_id,
-          college_id,
-          school_class_id,
-          grade,
-          section,
-          roll_number,
-          admission_number,
-          currentCgpa,
-          guardianName,
-          guardianPhone,
-          guardianEmail,
-          guardianRelation,
-          enrollmentDate,
-          expectedGraduationDate,
-          hobbies,
-          languages,
-          interests,
-          category,
-          quota,
-          metadata,
-          notification_settings,
-          school_classes:school_class_id(
-            id,
-            name,
-            grade,
-            section,
-            academic_year
-          ),
-          skills!skills_learner_id_fkey(
-            id,
-            name,
-            type,
-            level,
-            description,
-            verified,
-            enabled,
-            approval_status,
-            created_at,
-            updated_at
-          ),
-          projects!projects_learner_id_fkey(
-            id,
-            title,
-            description,
-            status,
-            start_date,
-            end_date,
-            duration,
-            tech_stack,
-            demo_link,
-            github_link,
-            approval_status,
-            certificate_url,
-            video_url,
-            ppt_url,
-            organization,
-            enabled,
-            created_at,
-            updated_at
-          ),
-          certificates!certificates_learner_id_fkey(
-            id,
-            title,
-            issuer,
-            level,
-            credential_id,
-            link,
-            issued_on,
-            description,
-            status,
-            approval_status,
-            document_url,
-            enabled,
-            created_at,
-            updated_at
-          ),
-          experience!experience_learner_id_fkey(
-            id,
-            organization,
-            role,
-            start_date,
-            end_date,
-            duration,
-            verified,
-            approval_status,
-            created_at,
-            updated_at
-          ),
-          trainings!trainings_learner_id_fkey(
-            id,
-            title,
-            organization,
-            start_date,
-            end_date,
-            duration,
-            description,
-            approval_status,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('is_deleted', false)
-
-      // Apply filtering logic based on educator type
-      if (classIds && classIds.length > 0) {
-        if (educatorType === 'school') {
-          // For school educators: filter by assigned school class IDs
-          query = query.in('school_class_id', classIds)
-        } else if (educatorType === 'college') {
-          // For college educators: filter by assigned college class IDs
-          query = query.in('college_class_id', classIds)
-        }
-      } else if (schoolId) {
-        // Fallback: filter by school ID (for admins or when no class assignments check)
-        query = query.eq('school_id', schoolId)
-      } else if (collegeId) {
-        // For college educators: filter by college ID
-        query = query.eq('college_id', collegeId)
-      }
-
-      const { data, error } = await query
-        .order(sortBy, { ascending: sortOrder === 'asc' })
-        .limit(500)
-
-      if (error) throw error
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'fetch-learners-rich',
+        schoolId, collegeId, classIds, educatorType, sortBy, sortOrder, limit: 500,
+      });
+      if (result?.error) throw new Error(result.error)
       
-      const mapped = (data as LearnerRow[]).map(mapToUICandidate)
+      const mapped = ((result?.data || []) as LearnerRow[]).map(mapToUICandidate)
       setData(mapped)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load learners')

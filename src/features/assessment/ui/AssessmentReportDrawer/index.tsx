@@ -1381,6 +1381,8 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                     // Type-safe attemptId: Provide empty string as fallback instead of null
                     // CareerTrackModal expects string type for attemptId prop
                     attemptId={assessmentData?.id || assessmentResult?.id || ''}
+                    assessmentResultId={assessmentData?.id || assessmentResult?.id || ''}
+                    learnerId={assessmentData?.learner_id || learner?.id || learner?.user_id || learnerId || ''}
                 />
             )}
         </>

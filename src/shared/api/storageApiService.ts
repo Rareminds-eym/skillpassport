@@ -1,10 +1,12 @@
+import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
 /**
  * Storage API Service
  * Connects to Cloudflare Pages Function for file storage API calls
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { getCurrentSession } from "./authUtils";
+
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('storage-api');
@@ -16,14 +18,15 @@ const API_URL = getApiUrl('storage');
  */
 async function getAuthToken(): Promise<string | null> {
   try {
-    const { data: { session }, error } = await getCurrentSession();
+    const user = useAuthStore.getState().user;
+    const error = null;
 
     if (error) {
       logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
 
-    return session?.access_token || null;
+    return ssoClient.getAccessToken() || null;
   } catch (error) {
     logger.error('Error retrieving auth token', error instanceof Error ? error : new Error(String(error)));
     return null;
@@ -33,8 +36,7 @@ async function getAuthToken(): Promise<string | null> {
 const getAuthHeaders = (token?: string, isFormData = false): Record<string, string> => {
   const headers: Record<string, string> = {};
   if (!isFormData) headers['Content-Type'] = 'application/json';
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  return headers;
+  if (token)   return headers;
 };
 
 interface UploadOptions {
@@ -65,7 +67,7 @@ export async function uploadFile(
   if (options.contentType) formData.append('contentType', options.contentType);
 
   try {
-    const response = await fetch(`${API_URL}/upload`, {
+    const response = await ssoClient.fetch(`${API_URL}/upload`, {
       method: 'POST',
       headers: getAuthHeaders(authToken, true),
       body: formData,
@@ -109,7 +111,7 @@ export async function deleteFile(fileUrl: string, token?: string): Promise<any> 
     throw new Error('Authentication required. Please log in.');
   }
 
-  const response = await fetch(`${API_URL}/delete`, {
+  const response = await ssoClient.fetch(`${API_URL}/delete`, {
     method: 'POST',
     headers: getAuthHeaders(authToken),
     body: JSON.stringify({ url: fileUrl }),
@@ -137,7 +139,7 @@ export async function extractContent(fileUrl: string, token?: string): Promise<a
   // Get token automatically if not provided (optional for this endpoint as it's public)
   const authToken = token || await getAuthToken();
 
-  const response = await fetch(`${API_URL}/extract-content`, {
+  const response = await ssoClient.fetch(`${API_URL}/extract-content`, {
     method: 'POST',
     headers: getAuthHeaders(authToken || undefined),
     body: JSON.stringify({ fileUrl }),
@@ -173,7 +175,7 @@ export async function getPresignedUrl(
     throw new Error('Authentication required. Please log in.');
   }
 
-  const response = await fetch(`${API_URL}/presigned`, {
+  const response = await ssoClient.fetch(`${API_URL}/presigned`, {
     method: 'POST',
     headers: getAuthHeaders(authToken),
     body: JSON.stringify(params),
@@ -215,7 +217,7 @@ export async function confirmUpload(
     throw new Error('Authentication required. Please log in.');
   }
 
-  const response = await fetch(`${API_URL}/confirm`, {
+  const response = await ssoClient.fetch(`${API_URL}/confirm`, {
     method: 'POST',
     headers: getAuthHeaders(authToken),
     body: JSON.stringify(params),
@@ -247,7 +249,7 @@ export async function getFileUrl(fileKey: string, token?: string): Promise<any> 
     throw new Error('Authentication required. Please log in.');
   }
 
-  const response = await fetch(`${API_URL}/get-url`, {
+  const response = await ssoClient.fetch(`${API_URL}/get-url`, {
     method: 'POST',
     headers: getAuthHeaders(authToken),
     body: JSON.stringify({ fileKey }),
@@ -283,7 +285,7 @@ export async function listFiles(
     throw new Error('Authentication required. Please log in.');
   }
 
-  const response = await fetch(`${API_URL}/files/${courseId}/${lessonId}`, {
+  const response = await ssoClient.fetch(`${API_URL}/files/${courseId}/${lessonId}`, {
     method: 'GET',
     headers: getAuthHeaders(authToken),
   });
@@ -320,7 +322,7 @@ export async function uploadPaymentReceipt(
     throw new Error('Authentication required. Please log in.');
   }
 
-  const response = await fetch(`${API_URL}/upload-payment-receipt`, {
+  const response = await ssoClient.fetch(`${API_URL}/upload-payment-receipt`, {
     method: 'POST',
     headers: getAuthHeaders(authToken),
     body: JSON.stringify({ pdfBase64, paymentId, userId, filename }),
@@ -389,7 +391,7 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
     }
   }
   
-  const response = await fetch(
+  const response = await ssoClient.fetch(
     `${API_URL}/payment-receipt/presigned?key=${encodeURIComponent(fileKey)}&expires=${expiresIn}`,
     {
       method: 'GET',

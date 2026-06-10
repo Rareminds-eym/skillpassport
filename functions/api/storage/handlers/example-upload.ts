@@ -6,8 +6,8 @@
  * Actual handlers will be implemented in subsequent tasks.
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';;
 import { R2Client } from '../utils/r2-client';
 
 /**
@@ -23,11 +23,11 @@ export const handleExampleUpload: PagesFunction = async (context) => {
 
     // Example: Parse multipart form data
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as unknown as File;
     const filename = formData.get('filename') as string;
 
     if (!file || !filename) {
-      return jsonResponse({ error: 'File and filename are required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'File and filename are required', request);
     }
 
     // Convert file to ArrayBuffer
@@ -43,16 +43,13 @@ export const handleExampleUpload: PagesFunction = async (context) => {
       }
     );
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       url: fileUrl,
       filename,
-    });
+    }, request);
   } catch (error) {
     console.error('Upload error:', error);
-    return jsonResponse({
-      error: (error as Error).message || 'Upload failed',
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Upload failed', request);
   }
 };
 
@@ -73,9 +70,7 @@ export const handleExamplePresigned: PagesFunction = async (context) => {
     const { filename, contentType } = body;
 
     if (!filename || !contentType) {
-      return jsonResponse({
-        error: 'filename and contentType are required',
-      }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'filename and contentType are required', request);
     }
 
     // Generate unique file key
@@ -87,21 +82,17 @@ export const handleExamplePresigned: PagesFunction = async (context) => {
     // Generate presigned URL
     const { url, headers } = await r2.generatePresignedUrl(
       fileKey,
-      contentType,
-      3600 // 1 hour expiration
+      contentType
     );
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       uploadUrl: url,
       fileKey,
       headers,
-    });
+    }, request);
   } catch (error) {
     console.error('Presigned URL error:', error);
-    return jsonResponse({
-      error: (error as Error).message || 'Failed to generate presigned URL',
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Failed to generate presigned URL', request);
   }
 };
 
@@ -125,24 +116,19 @@ export const handleExampleDelete: PagesFunction = async (context) => {
     }
 
     if (!fileKey) {
-      return jsonResponse({
-        error: 'File key or URL is required',
-      }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
     }
 
     // Delete from R2
     await r2.delete(fileKey);
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: 'File deleted successfully',
       key: fileKey,
-    });
+    }, request);
   } catch (error) {
     console.error('Delete error:', error);
-    return jsonResponse({
-      error: (error as Error).message || 'Delete failed',
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Delete failed', request);
   }
 };
 
@@ -150,7 +136,7 @@ export const handleExampleDelete: PagesFunction = async (context) => {
  * Example handler showing file listing
  */
 export const handleExampleList: PagesFunction = async (context) => {
-  const { env } = context;
+  const { request, env } = context;
 
   try {
     const r2 = new R2Client(env);
@@ -166,15 +152,12 @@ export const handleExampleList: PagesFunction = async (context) => {
       lastModified: file.lastModified.toISOString(),
     }));
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       files: filesWithUrls,
       count: filesWithUrls.length,
-    });
+    }, request);
   } catch (error) {
     console.error('List error:', error);
-    return jsonResponse({
-      error: (error as Error).message || 'List failed',
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'List failed', request);
   }
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Building2, MessageCircle } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 const NewAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationCreated }) => {
   const [school, setSchool] = useState(null);
@@ -33,23 +33,8 @@ const NewAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationC
   const fetchlearnerSchool = async () => {
     setLoading(true);
     try {
-      // Get learner's school information from organizations table
-      const { data: learnerData, error } = await supabase
-        .from('learners')
-        .select(`
-          school_id,
-          school:organizations!learners_school_id_fkey (
-            id,
-            name,
-            city,
-            state,
-            organization_type
-          )
-        `)
-        .eq('id', learnerId)
-        .single();
-
-      if (error) throw error;
+      // Get learner's school information
+      const { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-school', learnerId });
 
       if (learnerData?.school) {
         // Map the organization data to match expected school structure

@@ -108,8 +108,8 @@ export const getSubscriptionCTA = (subscriptionData, planId) => {
     };
   }
 
-  const currentPlanPrice = getPlanPrice(subscriptionData.plan);
-  const selectedPlanPrice = getPlanPrice(planId);
+  const currentRank = getPlanOrder(subscriptionData.plan);
+  const selectedRank = getPlanOrder(planId);
 
   if (subscriptionData.plan === planId) {
     return {
@@ -120,7 +120,7 @@ export const getSubscriptionCTA = (subscriptionData, planId) => {
   }
 
   if (isActiveOrPaused(subscriptionData.status)) {
-    if (selectedPlanPrice > currentPlanPrice) {
+    if (selectedRank > currentRank) {
       return {
         label: 'Upgrade Plan',
         action: 'upgrade',
@@ -143,16 +143,20 @@ export const getSubscriptionCTA = (subscriptionData, planId) => {
 };
 
 /**
- * Helper to get plan price for comparison
+ * Plan ordering for upgrade/downgrade determination
+ * Uses display order instead of prices to avoid hardcoded pricing
  */
-const getPlanPrice = (planId) => {
-  const prices = {
-    basic: 499,
-    pro: 999,
-    enterprise: 1999
-  };
-  return prices[planId] || 0;
+const PLAN_ORDER = {
+  freemium: -1,
+  basic: 0,
+  professional: 1,
+  pro: 1, // Legacy alias
+  starter: 1,
+  premium: 2,
+  enterprise: 2,
 };
+
+const getPlanOrder = (planId) => PLAN_ORDER[planId] ?? 0;
 
 /**
  * Validates subscription status transitions

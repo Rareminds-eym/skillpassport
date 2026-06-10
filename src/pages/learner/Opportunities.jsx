@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -269,7 +270,7 @@ const Opportunities = () => {
   const location = useLocation();
   const queryClient = useQueryClient();
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id; // Use learners.id (database ID)
 
@@ -277,7 +278,7 @@ const Opportunities = () => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const subscriptionContext = useSubscriptionContext();
   const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
+  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
 
   // Check feature access for job applications
   const accessResult = checkFeatureAccess(userPlan, 'opportunities_access', [], {}, user?.id);
@@ -459,7 +460,9 @@ const Opportunities = () => {
     // NOTE: Database stores employment_type with capital first letter (e.g., "Internship", "Full-time")
     if (learnerType.isMiddleSchool) {
       // Middle school: No regular opportunities, only industrial visits
-      filters.employmentType = []; // Will show no opportunities
+      // Don't set employmentType filter - let it show no results naturally
+      // or set to a non-existent type to explicitly exclude all
+      filters.employmentType = ['__NONE__']; // Invalid type to exclude all opportunities
     } else if (learnerType.isHighSchool) {
       // High school (9-12): Only internships
       filters.employmentType = ['Internship'];
@@ -475,7 +478,8 @@ const Opportunities = () => {
       if (advancedFilters.employmentType.length > 0) {
         filters.employmentType = advancedFilters.employmentType;
       }
-      // No filter means show all (internships and jobs)
+      // If no advanced filter, don't set employmentType to show all (internships and full-time jobs)
+      // But we need to exclude factory_visit which is already handled by the API
     } else if (advancedFilters.employmentType.length > 0) {
       filters.employmentType = advancedFilters.employmentType;
     }
@@ -508,10 +512,8 @@ const Opportunities = () => {
 
   // Determine if we should fetch opportunities based on learner type and active tab
   const shouldFetchOpportunities = React.useMemo(() => {
-    if (!learnerData) return false;
-    // Fetch opportunities for high school, college learners, and learners when on my-jobs tab
-    return (learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && activeTab === 'my-jobs';
-  }, [learnerData, learnerType.isHighSchool, learnerType.isUniversityLearner, learnerType.isLearner, activeTab]);
+    return activeTab === 'my-jobs';
+  }, [activeTab]);
 
   const {
     opportunities,
@@ -648,6 +650,14 @@ const Opportunities = () => {
         userEmail
       );
 
+      // Ensure applicationsData is an array
+      if (!Array.isArray(applicationsData)) {
+        logger.error('applicationsData is not an array:', applicationsData);
+        setApplications([]);
+        setFilteredApplications([]);
+        return;
+      }
+
       const transformedApplications = applicationsData.map(app => ({
         id: app.id,
         learnerId: app.learner_id,
@@ -679,6 +689,11 @@ const Opportunities = () => {
       setFilteredApplications(transformedApplications);
     } catch (err) {
       logger.error('Error fetching applications:', err);
+      // Show user-friendly error message
+      toast.error('Failed to load applications. Please try again.');
+      // Set empty arrays to prevent UI crashes
+      setApplications([]);
+      setFilteredApplications([]);
     }
   }, [learnerId, userEmail]);
 

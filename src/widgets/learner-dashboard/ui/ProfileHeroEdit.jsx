@@ -30,7 +30,7 @@ import { QRCodeSVG } from "qrcode.react";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { supabase } from "@/shared/api/supabaseClient";
+import { apiPost } from '@/shared/api/apiClient';
 import { generateBadges } from "@/features/digital-portfolio";
 import {
   calculateEmployabilityScore,
@@ -384,18 +384,15 @@ const ProfileHeroEdit = ({ onEditClick, learnerData: propLearnerData, loading: p
       // If school learner and no school relationship data
       if (reallearnerData.school_id && !reallearnerData.schools?.name) {
         try {
-          const { data, error } = await supabase
-            .from('organizations')
-            .select('name, city, state')
-            .eq('id', reallearnerData.school_id)
-            .single();
+          const data = await apiPost('/learner-dashboard-widgets/actions', {
+            action: 'get-institution-info',
+            organizationId: reallearnerData.school_id,
+          });
 
-          if (data && !error) {
+          if (data) {
             setFetchedInstitutionName(data.name);
-            // Set location if city or state exists
             if (data.city || data.state) {
-              const locationParts = [data.city, data.state].filter(Boolean);
-              setFetchedInstitutionLocation(locationParts.join(', '));
+              setFetchedInstitutionLocation([data.city, data.state].filter(Boolean).join(', '));
             }
           }
         } catch (err) {
@@ -406,32 +403,21 @@ const ProfileHeroEdit = ({ onEditClick, learnerData: propLearnerData, loading: p
       // If college learner and no college relationship data
       if (reallearnerData.university_college_id && !reallearnerData.university_colleges) {
         try {
-          const { data, error } = await supabase
-            .from('university_colleges')
-            .select(`
-              name,
-              university:organizations!university_colleges_university_id_fkey (
-                name,
-                city,
-                state,
-                organization_type
-              )
-            `)
-            .eq('id', reallearnerData.university_college_id)
-            .single();
+          const data = await apiPost('/learner-dashboard-widgets/actions', {
+            action: 'get-institution-info',
+            collegeId: reallearnerData.university_college_id,
+          });
 
-          if (data && !error) {
+          if (data) {
             const collegeName = data.name;
             const universityName = data.university?.name;
             setFetchedInstitutionName(
               universityName ? `${collegeName} - ${universityName}` : collegeName
             );
-            // Set location if city or state exists
             const city = data.university?.city;
             const state = data.university?.state;
             if (city || state) {
-              const locationParts = [city, state].filter(Boolean);
-              setFetchedInstitutionLocation(locationParts.join(', '));
+              setFetchedInstitutionLocation([city, state].filter(Boolean).join(', '));
             }
           }
         } catch (err) {
@@ -953,8 +939,11 @@ const ProfileHeroEdit = ({ onEditClick, learnerData: propLearnerData, loading: p
                   </div> */}
                 </div>
 
-                {/* School-specific fields - Display for learner role */}
-                {userRole === 'learner' && (reallearnerData?.grade || reallearnerData?.section || reallearnerData?.roll_number || reallearnerData?.admission_number) && (
+                {/* School-specific fields - Display for learner role AND school grades only */}
+                {userRole === 'learner' && 
+                 reallearnerData?.grade && 
+                 !/^(UG|PG|Diploma)/i.test(reallearnerData.grade) && 
+                 (reallearnerData?.grade || reallearnerData?.section || reallearnerData?.roll_number || reallearnerData?.admission_number) && (
                   <div className="bg-blue-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-indigo-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
                       <AcademicCapIcon className="w-3 sm:w-4 h-3 sm:h-4 text-blue-700" />
@@ -985,14 +974,22 @@ const ProfileHeroEdit = ({ onEditClick, learnerData: propLearnerData, loading: p
                   </div>
                 )}
 
-                {/* College-specific fields - Display for learner role */}
-                {userRole === 'learner' && (reallearnerData?.registration_number || reallearnerData?.admission_number || reallearnerData?.branch_field) && (
+                {/* College-specific fields - Display for learner role AND college grades only (UG/PG/Diploma) */}
+                {userRole === 'learner' && 
+                 reallearnerData?.grade && 
+                 /^(UG|PG|Diploma)/i.test(reallearnerData.grade) && 
+                 (reallearnerData?.registration_number || reallearnerData?.admission_number || reallearnerData?.branch_field || reallearnerData?.learner_id || reallearnerData?.roll_number || reallearnerData?.section) && (
                   <div className="bg-indigo-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-indigo-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
                       <TrophyIcon className="w-3 sm:w-4 h-3 sm:h-4 text-indigo-700" />
                       <h3 className="text-gray-900 font-semibold text-xs sm:text-sm">College Info</h3>
                     </div>
                     <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                      {reallearnerData.grade && (
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                          <span className="text-gray-500">Grade:</span> {reallearnerData.grade}
+                        </span>
+                      )}
                       {reallearnerData.registration_number && (
                         <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
                           <span className="text-gray-500">Reg:</span> {reallearnerData.registration_number}

@@ -10,6 +10,8 @@ import toast from 'react-hot-toast';
 import { addCandidateToPipeline } from '@/features/recruiter-pipeline';
 import { createNotification } from '@/features/notifications';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('AddFromTalentPoolModal');
 
@@ -84,7 +86,7 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
 
       let currentRecruiterId = null;
       try {
-        const userStr = localStorage.getItem('user');
+        const userStr = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (userStr) {
           const user = JSON.parse(userStr);
           currentRecruiterId = user.id || user.recruiter_id;

@@ -14,22 +14,6 @@
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
-};
-
-// Get minimum log level from environment
-const MIN_LOG_LEVEL: LogLevel = (() => {
-  const envLevel = import.meta.env.VITE_LOG_LEVEL as LogLevel | undefined;
-  if (envLevel && ['debug', 'info', 'warn', 'error'].includes(envLevel)) {
-    return envLevel;
-  }
-  return import.meta.env.PROD ? 'info' : 'debug';
-})();
-
 // ============================================================================
 // LOG ENTRY STRUCTURE
 // ============================================================================
@@ -57,31 +41,22 @@ export interface LogEntry {
 
 class Logger {
   private category: string;
-  private context: Record<string, unknown> = {};
 
   constructor(category: string) {
     this.category = category;
   }
 
   /**
-   * Set context that will be included in all logs
-   */
-  setContext(context: Record<string, unknown>): void {
-    this.context = { ...this.context, ...context };
-  }
-
-  /**
-   * Clear context
-   */
-  clearContext(): void {
-    this.context = {};
-  }
-
-  /**
    * Check if log level should be output
+   * In production, hide debug logs. In development, show all logs.
    */
   private shouldLog(level: LogLevel): boolean {
-    return LOG_LEVEL_PRIORITY[level] >= LOG_LEVEL_PRIORITY[MIN_LOG_LEVEL];
+    // In production, hide debug logs
+    if (typeof import.meta !== 'undefined' && (import.meta as unknown as Record<string, unknown>).env && (import.meta as any).env.PROD) {
+      return level !== 'debug';
+    }
+    // In development, show all logs
+    return true;
   }
 
   /**
@@ -97,10 +72,7 @@ class Logger {
       level,
       message,
       category: this.category,
-      metadata: { ...this.context, ...metadata },
-      userId: this.context.userId as string | undefined,
-      organizationId: this.context.organizationId as string | undefined,
-      requestId: this.context.requestId as string | undefined,
+      metadata: metadata || {},
     };
   }
 
@@ -112,7 +84,9 @@ class Logger {
 
     // Format for console
     const prefix = `[${entry.timestamp}] [${entry.level.toUpperCase()}] [${entry.category}]`;
-    const metaStr = entry.metadata ? ` ${JSON.stringify(entry.metadata)}` : '';
+    const metaStr = entry.metadata && Object.keys(entry.metadata).length > 0 
+      ? ` ${JSON.stringify(entry.metadata)}` 
+      : '';
 
     switch (entry.level) {
       case 'debug':
@@ -133,7 +107,7 @@ class Logger {
     }
 
     // Send to log aggregation service in production
-    if (import.meta.env.PROD) {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env?.PROD) {
       this.sendToAggregator(entry);
     }
   }
@@ -144,7 +118,7 @@ class Logger {
   private sendToAggregator(_entry: LogEntry): void {
     // TODO: Integrate with log aggregation service (e.g., Datadog, Logtail)
     // Example:
-    // fetch(LOG_AGGREGATOR_URL, {
+    // ssoClient.fetch(LOG_AGGREGATOR_URL, {
     //   method: 'POST',
     //   headers: { 'Content-Type': 'application/json' },
     //   body: JSON.stringify(_entry),
@@ -339,30 +313,8 @@ export function logApiRequest(data: {
 // ============================================================================
 
 /**
- * Generate unique request ID
+ * DEPRECATED: Kept for backward compatibility only
  */
 export function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
-/**
- * Set request context for all loggers
- */
-export function setRequestContext(context: {
-  requestId: string;
-  userId?: string;
-  organizationId?: string;
-}): void {
-  loggers.forEach(logger => {
-    logger.setContext(context);
-  });
-}
-
-/**
- * Clear request context
- */
-export function clearRequestContext(): void {
-  loggers.forEach(logger => {
-    logger.clearContext();
-  });
+  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }

@@ -5,8 +5,8 @@
  * It intercepts all requests and adds appropriate CORS headers with origin validation.
  */
 
-import type { PagesFunction } from '../src/functions-lib/types';
-import { getCorsHeaders, handleCorsPreflightRequest } from '../src/functions-lib/cors';
+import type { PagesFunction } from './lib/types';
+import { getCorsHeaders } from './lib/cors';
 import { validateFileSizeConfig } from './api/storage/config/fileSizeLimits';
 
 // Validate file size configuration at worker initialization

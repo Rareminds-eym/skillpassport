@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import {
   AcademicCapIcon,
   ArrowRightOnRectangleIcon,
@@ -37,7 +38,7 @@ const ICON_MAP = {
   ArrowRightOnRectangleIcon
 };
 
-const Header = ({ activeTab, setActiveTab }) => {
+const Header = ({ activeTab }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
@@ -54,7 +55,7 @@ const Header = ({ activeTab, setActiveTab }) => {
   const isPortfolioPage = location.pathname === '/learner/digital-portfolio/portfolio';
   const isDigitalPortfolioRoute = location.pathname.startsWith('/learner/digital-portfolio');
 
-  const userEmail = user?.email || localStorage.getItem("userEmail");
+  const userEmail = user?.email || (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
   const { unreadCount } = useNotifications(userEmail);
 
   const { learnerData, loading: learnerDataLoading } = useLearnerDataByEmail(userEmail);
@@ -63,8 +64,8 @@ const Header = ({ activeTab, setActiveTab }) => {
   // Get subscription data for feature gating
   const subscriptionContext = useSubscriptionContext();
   const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
-  const isFreemium = userPlan === PLAN_IDS.PAY_AS_YOU_GO;
+  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
+  const isFreemium = userPlan === PLAN_IDS.FREEMIUM;
 
   // Map navigation items to feature keys
   const featureKeyMap = {
@@ -129,17 +130,15 @@ const Header = ({ activeTab, setActiveTab }) => {
       return;
     }
 
-    setActiveTab(item.id);
     navigate(item.path);
     setMobileMenuOpen(false);
-  }, [setActiveTab, navigate]);
+  }, [navigate]);
 
   const handleDashboard = useCallback(() => {
-    setActiveTab("dashboard");
     localStorage.removeItem("dashboardActiveNav");
     navigate("/learner/dashboard");
     setMobileMenuOpen(false);
-  }, [setActiveTab, navigate]);
+  }, [navigate]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -181,7 +180,7 @@ const Header = ({ activeTab, setActiveTab }) => {
         </div>
       )}
 
-      <header className={`bg-white border-b border-gray-200 shadow-sm sticky z-50 ${isFreemium && showFreemiumBanner ? 'top-[40px]' : 'top-0'}`}>
+      <header className={`bg-white border-b border-gray-200 shadow-sm sticky z-50 ${isFreemium && showFreemiumBanner ? 'top-[30px]' : 'top-0'}`}>
         <div className="w-full">
           <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 lg:px-8">
 
@@ -264,7 +263,6 @@ const Header = ({ activeTab, setActiveTab }) => {
                                 if (item.id === 'logout') {
                                   handleLogout();
                                 } else {
-                                  setActiveTab(item.id);
                                   navigate(item.path);
                                   setActiveModal(null);
                                 }

@@ -25,7 +25,7 @@ import { ManageLearnersModal } from '@/features/educator'
 import { Pagination } from '@/shared/ui'
 import { useAuth } from "@/features/auth"
 
-import { supabase } from '@/shared/api/supabaseClient'
+import { apiPost } from '@/shared/api/apiClient'
 import { createClass, EducatorClass, updateClass } from "@/features/college-admin"
 import ProgramSectionsPage from "./ProgramSectionsPage"
 import { getLogger } from '@/shared/config/logging'
@@ -822,12 +822,13 @@ const ClassesPage = () => {
       try {
         // Check if school or college educator
         if (educatorType === 'school') {
-          const { data: educatorData } = await supabase
-            .from('school_educators')
-            .select('id, first_name, last_name, email')
-            .eq('id', educatorId)
-            .single()
+          const result = await apiPost<any>('/educator/actions', {
+            action: 'get-school-educator-by-id',
+            id: educatorId,
+            select: 'id, first_name, last_name, email'
+          })
 
+          const educatorData = result?.data;
           if (educatorData) {
             const info = {
               id: educatorData.id,
@@ -838,12 +839,13 @@ const ClassesPage = () => {
             setEducatorInfo(info)
           }
         } else if (educatorType === 'college') {
-          const { data: educatorData } = await supabase
-            .from('college_lecturers')
-            .select('id, first_name, last_name, email')
-            .eq('id', educatorId)
-            .single()
+          const result = await apiPost<any>('/educator/actions', {
+            action: 'get-college-lecturer-by-user-id',
+            userId: educatorId,
+            select: 'id, first_name, last_name, email'
+          })
 
+          const educatorData = result?.data;
           if (educatorData) {
             const info = {
               id: educatorData.id,
@@ -865,13 +867,13 @@ const ClassesPage = () => {
   // Security check: Ensure user is authenticated and has educator role
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
     
     if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
       logger.error('Unauthorized access attempt to educator classes page')
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
   }, [isAuthenticated, user, navigate])

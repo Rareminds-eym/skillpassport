@@ -200,79 +200,328 @@ export function getCountdownSubject(countdownDay: number): string {
 // ==================== EVENT REGISTRATION TEMPLATES ====================
 
 export function generateUserConfirmationHtml(data: EventConfirmationTemplateData): string {
-  const { name, email, phone, amount, orderId, campaign, baseUrl = 'https://skillpassport.rareminds.in', receiptUrl } = data;
+  const { email, amount, orderId, baseUrl = APP_URL, receiptUrl } = data;
+  const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return `
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Registration Confirmed</title></head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
-  <table style="width:100%;border-collapse:collapse;">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <title>Payment Confirmation — RareMinds</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap');
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    
+    img {
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+      -ms-interpolation-mode: bicubic;
+    }
+    
+    a {
+      text-decoration: none;
+    }
+    
+    @media only screen and (max-width: 600px) {
+      .email-wrapper {
+        padding: 16px !important;
+      }
+      .email-card {
+        padding: 32px 24px !important;
+      }
+      .amount-block {
+        padding: 20px !important;
+      }
+      .meta-row {
+        display: block !important;
+        width: 100% !important;
+      }
+      .meta-cell {
+        display: block !important;
+        width: 100% !important;
+        padding: 6px 0 !important;
+      }
+      .support-cell {
+        display: block !important;
+        width: 100% !important;
+        text-align: center !important;
+        padding: 8px 0 !important;
+      }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#F4F4F0;font-family:'DM Sans',Arial,sans-serif;">
+  <!-- Preheader (hidden preview text) -->
+  <div style="display:none;font-size:1px;color:#F4F4F0;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Your RareMinds subscription is now active — ₹${amount} received. Order ID: ${orderId}
+  </div>
+  
+  <!-- Outer wrapper table -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4F4F0;min-width:100%;">
     <tr>
-      <td align="center" style="padding:48px 24px;">
-        <table style="width:100%;max-width:480px;background:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden;">
+      <td align="center" class="email-wrapper" style="padding:48px 16px;">
+        <!-- Main card table -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
+          <!-- ── LOGO HEADER ── -->
           <tr>
-            <td style="padding:48px 40px;text-align:center;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);">
-              <div style="width:80px;height:80px;background:rgba(255,255,255,0.2);border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
-                <img src="https://www.pngall.com/wp-content/uploads/13/Check-PNG-File.png" alt="Success" style="width:48px;height:48px;display:block;margin:0 auto;" />
-              </div>
-              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Registration Confirmed</h1>
-              <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Welcome to Skill Passport</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:40px;">
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hi ${name},</p>
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Subscription successful! Thank you for your payment. Your subscription is successfully activated.</p>
-              
-              <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:12px;overflow:hidden;">
+            <td align="center" style="padding-bottom:28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-table;">
                 <tr>
-                  <td style="padding:16px 20px;color:#6b7280;font-size:14px;border-bottom:1px solid #e5e7eb;">Order ID</td>
-                  <td style="padding:16px 20px;color:#111827;font-size:14px;text-align:right;border-bottom:1px solid #e5e7eb;font-family:monospace;">${orderId || 'N/A'}</td>
-                </tr>
-                <tr>
-                  <td style="padding:16px 20px;color:#6b7280;font-size:14px;">Amount Paid</td>
-                  <td style="padding:16px 20px;color:#1e40af;font-size:16px;text-align:right;font-weight:600;">₹${amount.toLocaleString()}</td>
+                  <td style="text-align:center;">
+                    <img src="${baseUrl}/RMLogo.webp" alt="RareMinds Logo" width="140" style="display:block;height:auto;">
+                  </td>
                 </tr>
               </table>
-              
-              ${receiptUrl ? `
-              <div style="margin-top:24px;padding:20px;background:#eff6ff;border-radius:12px;text-align:center;border:2px solid #3b82f6;">
-                <a href="${receiptUrl}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;margin-bottom:8px;">Download PDF Receipt</a>
-                <p style="margin:8px 0 0;color:#6b7280;font-size:12px;">Click the button above to download your payment receipt</p>
-              </div>
-              ` : ''}
-              
-              <div style="margin-top:32px;padding:28px;background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-radius:12px;text-align:center;border:1px solid #e2e8f0;">
-                <p style="margin:0 0 20px;color:#334155;font-size:15px;font-weight:600;">Need assistance? We're here to help!</p>
-                <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
-                  <tr>
-                    <td style="width:50%;padding-right:6px;">
-                      <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
-                        <tr>
-                          <td style="background:#1e40af;border-radius:8px;text-align:center;">
-                            <a href="mailto:marketing@rareminds.in" style="display:block;padding:14px 20px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:500;">✉️ Email Us</a>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                    <td style="width:50%;padding-left:6px;">
-                      <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
-                        <tr>
-                          <td style="background:#ffffff;border:2px solid #1e40af;border-radius:8px;text-align:center;">
-                            <a href="tel:+919562481100" style="display:block;padding:12px 20px;color:#1e40af;text-decoration:none;font-size:14px;font-weight:500;">📞 Call Us</a>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-              </div>
             </td>
           </tr>
+          
+          <!-- ── CARD ── -->
           <tr>
-            <td style="padding:24px 40px 40px;text-align:center;">
-              <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} Skill Passport by Rareminds</p>
+            <td class="email-card" style="background-color:#FFFFFF;border-radius:16px;padding:48px 44px;box-shadow:0 2px 24px rgba(0,0,0,0.07);">
+              <!-- Success badge -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom:28px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-table;">
+                      <tr>
+                        <td style="background-color:#EDFAF4;border-radius:100px;padding:8px 18px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                              <td style="padding-right:7px;vertical-align:middle;">
+                                <!-- Checkmark icon -->
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <circle cx="7" cy="7" r="7" fill="#1DB96A"/>
+                                  <path d="M4 7L6.2 9.5L10 5" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                              </td>
+                              <td style="font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:600;color:#1DB96A;letter-spacing:0.06em;text-transform:uppercase;vertical-align:middle;">
+                                Subscription Successful
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Heading -->
+                <tr>
+                  <td align="center" style="padding-bottom:12px;">
+                    <h1 style="margin:0;font-family:'DM Serif Display',Georgia,serif;font-size:30px;font-weight:400;color:#111111;line-height:1.25;letter-spacing:-0.01em;">
+                      Payment Confirmed
+                    </h1>
+                  </td>
+                </tr>
+                
+                <!-- Sub-message -->
+                <tr>
+                  <td align="center" style="padding-bottom:36px;">
+                    <p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:400;color:#666666;line-height:1.6;max-width:380px;">
+                      Thank you for your payment. Your subscription is successfully activated and ready to use.
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- ── AMOUNT BLOCK ── -->
+                <tr>
+                  <td class="amount-block" style="background-color:#F9F9F7;border-radius:12px;padding:28px;margin-bottom:28px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" style="padding-bottom:6px;">
+                          <span style="font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:500;color:#999999;letter-spacing:0.08em;text-transform:uppercase;">
+                            Amount Paid
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center">
+                          <span style="font-family:'DM Serif Display',Georgia,serif;font-size:52px;font-weight:400;color:#111111;line-height:1.1;letter-spacing:-0.02em;">
+                            ₹${amount.toLocaleString()}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td style="height:28px;"></td>
+                </tr>
+                
+                <!-- ── ORDER DETAILS ── -->
+                <tr>
+                  <td>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #EBEBEB;border-radius:10px;overflow:hidden;">
+                      <!-- Row: Recipient -->
+                      <tr style="border-bottom:1px solid #EBEBEB;">
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#999999;font-weight:500;width:40%;border-bottom:1px solid #EBEBEB;">
+                          Recipient
+                        </td>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#111111;font-weight:500;border-bottom:1px solid #EBEBEB;">
+                          ${email}
+                        </td>
+                      </tr>
+                      
+                      <!-- Row: Order ID -->
+                      <tr style="border-bottom:1px solid #EBEBEB;">
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#999999;font-weight:500;border-bottom:1px solid #EBEBEB;">
+                          Order ID
+                        </td>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#111111;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0.01em;border-bottom:1px solid #EBEBEB;">
+                          ${orderId || 'N/A'}
+                        </td>
+                      </tr>
+                      
+                      <!-- Row: Plan -->
+                      <tr style="border-bottom:1px solid #EBEBEB;">
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#999999;font-weight:500;border-bottom:1px solid #EBEBEB;">
+                          Plan
+                        </td>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#111111;font-weight:500;border-bottom:1px solid #EBEBEB;">
+                          Skill Passport Subscription
+                        </td>
+                      </tr>
+                      
+                      <!-- Row: Date -->
+                      <tr>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#999999;font-weight:500;">
+                          Date
+                        </td>
+                        <td style="padding:14px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;color:#111111;font-weight:500;">
+                          ${currentDate}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td style="height:28px;"></td>
+                </tr>
+                
+                ${receiptUrl ? `
+                <!-- ── CTA BUTTON ── -->
+                <tr>
+                  <td align="center">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="display:inline-table;">
+                      <tr>
+                        <td style="border-radius:10px;background-color:#111111;">
+                          <a href="${receiptUrl}" style="display:inline-block;padding:15px 36px;font-family:'DM Sans',Arial,sans-serif;font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;letter-spacing:0.02em;border-radius:10px;">
+                            ↓&nbsp;&nbsp;Download PDF Receipt
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td style="height:8px;"></td>
+                </tr>
+                
+                <!-- Helper text under CTA -->
+                <tr>
+                  <td align="center" style="padding-bottom:4px;">
+                    <p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:12px;color:#BBBBBB;">
+                      Keep this receipt for your records
+                    </p>
+                  </td>
+                </tr>
+                ` : ''}
+              </table>
+            </td>
+          </tr>
+          
+          <!-- ── SUPPORT SECTION ── -->
+          <tr>
+            <td style="padding:32px 12px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <!-- Divider line -->
+                <tr>
+                  <td style="padding-bottom:24px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="height:1px;background-color:#E5E5E0;font-size:0;line-height:0;">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td align="center" style="padding-bottom:16px;">
+                    <p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:14px;color:#888888;font-weight:400;">
+                      Need assistance? We're here to help!
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Support buttons row -->
+                <tr>
+                  <td align="center">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <!-- Email Us -->
+                        <td class="support-cell" style="padding:0 6px;">
+                          <a href="mailto:marketing@rareminds.in" style="display:inline-block;padding:10px 22px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:500;color:#111111;text-decoration:none;border:1.5px solid #DDDDD8;border-radius:8px;background-color:#FFFFFF;letter-spacing:0.01em;">
+                            ✉&nbsp; Email Us
+                          </a>
+                        </td>
+                        
+                        <!-- Call Us -->
+                        <td class="support-cell" style="padding:0 6px;">
+                          <a href="tel:+919562481100" style="display:inline-block;padding:10px 22px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:500;color:#111111;text-decoration:none;border:1.5px solid #DDDDD8;border-radius:8px;background-color:#FFFFFF;letter-spacing:0.01em;">
+                            ☎&nbsp; Call Us
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Footer note -->
+                <tr>
+                  <td align="center" style="padding-top:28px;padding-bottom:8px;">
+                    <p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:12px;color:#BBBBBB;line-height:1.7;">
+                      © ${new Date().getFullYear()} RareMinds. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
         </table>
@@ -280,9 +529,9 @@ export function generateUserConfirmationHtml(data: EventConfirmationTemplateData
     </tr>
   </table>
 </body>
-</html>`;
+</html>
+`;
 }
-
 export function generateAdminNotificationHtml(data: EventConfirmationTemplateData): string {
   const { name, email, phone, amount, orderId, campaign } = data;
 
@@ -378,7 +627,7 @@ export function generateOTPEmailHtml(data: OTPTemplateData): string {
 </html>`;
 }
 
-export function getUserConfirmationSubject(name: string): string {
+export function getUserConfirmationSubject(_name: string): string {
   return `Registration Confirmed - Skill Passport`;
 }
 
@@ -405,59 +654,269 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
   
   return `
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Welcome to SkillPassport</title></head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
-  <table style="width:100%;border-collapse:collapse;">
-    <tr>
-      <td align="center" style="padding:48px 24px;">
-        <table style="width:100%;max-width:480px;background:#ffffff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.1);overflow:hidden;">
-          <tr>
-            <td style="padding:48px 40px;text-align:center;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);">
-              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Welcome to SkillPassport!</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:40px;">
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hello ${name},</p>
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Your account has been created successfully and is ready to use!</p>
-              
-              <div style="background:#f9fafb;border-radius:12px;padding:20px;margin:24px 0;border-left:4px solid #1e40af;">
-                <table style="width:100%;border-collapse:collapse;">
-                  <tr>
-                    <td style="padding:8px 0;color:#6b7280;font-size:14px;">Email</td>
-                    <td style="padding:8px 0;color:#111827;font-size:14px;text-align:right;font-weight:500;">${email}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding:8px 0;color:#6b7280;font-size:14px;">Role</td>
-                    <td style="padding:8px 0;color:#1e40af;font-size:14px;text-align:right;font-weight:600;">${role}</td>
-                  </tr>
-                  ${additionalInfo ? `<tr><td colspan="2" style="padding:12px 0;color:#6b7280;font-size:13px;border-top:1px solid #e5e7eb;margin-top:8px;">${additionalInfo}</td></tr>` : ''}
-                </table>
-              </div>
-              
-              <div style="text-align:center;margin:32px 0;">
-                <a href="${baseUrl}/login" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:600;">Login Now →</a>
-              </div>
-              
-              <p style="color:#6b7280;font-size:14px;margin-top:32px;text-align:center;">If you have any questions, please don't hesitate to contact our support team.</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:24px 40px;text-align:center;border-top:1px solid #e5e7eb;">
-              <p style="margin:0;color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} SkillPassport. All rights reserved.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to SkillPassport</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+    .email-wrapper {
+      padding: 40px 20px;
+    }
+    .email-card {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .header-banner {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      height: 200px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-icon {
+      width: 120px;
+      height: 120px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+    }
+    .content {
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1f2937;
+      margin: 0 0 8px 0;
+    }
+    .brand {
+      color: #2563eb;
+      font-weight: 600;
+    }
+    .description {
+      font-size: 16px;
+      color: #666666;
+      margin: 20px 0 30px 0;
+      line-height: 1.6;
+    }
+    .info-box {
+      background-color: #f9fafb;
+      border-left: 4px solid #2563eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+      text-align: left;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .info-label {
+      font-size: 14px;
+      color: #6b7280;
+    }
+    .info-value {
+      font-size: 14px;
+      color: #111827;
+      font-weight: 500;
+    }
+    .info-value-highlight {
+      color: #2563eb;
+      font-weight: 600;
+    }
+    .login-button {
+      display: inline-block;
+      padding: 16px 48px;
+      background-color: #2563eb;
+      color: #ffffff !important;
+      text-decoration: none;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 20px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .login-button:hover {
+      background-color: #1d4ed8;
+    }
+    .footer {
+      background-color: #f9fafb;
+      padding: 30px;
+      text-align: center;
+    }
+    .footer-text {
+      font-size: 13px;
+      color: #999999;
+      margin: 0 0 20px 0;
+      line-height: 1.6;
+    }
+    .social-icons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .social-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background-color: #2563eb;
+      border-radius: 50%;
+      text-decoration: none;
+    }
+    .social-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: #ffffff;
+    }
+    .copyright {
+      font-size: 12px;
+      color: #999999;
+      margin: 0;
+    }
+    .copyright-link {
+      color: #2563eb;
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .email-wrapper {
+        padding: 20px 10px;
+      }
+      .content {
+        padding: 30px 20px;
+      }
+      .header-banner {
+        height: 150px;
+      }
+      .header-icon {
+        width: 80px;
+        height: 80px;
+        font-size: 40px;
+      }
+      .title {
+        font-size: 20px;
+      }
+      .description {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-card">
+      <!-- Header Banner -->
+      <div class="header-banner">
+        <div class="header-icon">🎉</div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <h1 class="title">Welcome to <span class="brand">SkillPassport</span>!</h1>
+        
+        <p class="description">
+          Hello ${name}, your account has been created successfully and is ready to use!
+        </p>
+
+        <!-- Account Info Box -->
+        <div class="info-box">
+          <div class="info-row">
+            <span class="info-label">Email</span>
+            <span class="info-value">${email}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Role</span>
+            <span class="info-value info-value-highlight">${role}</span>
+          </div>
+          ${additionalInfo ? `
+          <div class="info-row">
+            <span class="info-label" style="color:#6b7280;font-size:13px;padding-top:12px;">${additionalInfo}</span>
+          </div>
+          ` : ''}
+        </div>
+
+        <!-- Login Button -->
+        <a href="${baseUrl}/login" class="login-button">LOGIN NOW</a>
+        
+        <p class="description" style="margin-top: 30px; font-size: 14px;">
+          If you have any questions, please don't hesitate to contact our support team.
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p class="footer-text">
+          Start your journey with SkillPassport today!<br>
+          We're here to help you succeed.
+        </p>
+
+        <!-- Copyright -->
+        <p class="copyright">
+          © ${new Date().getFullYear()} <a href="https://skillpassport.rareminds.in" class="copyright-link">skillpassport.rareminds.in</a>
+        </p>
+      </div>
+    </div>
+  </div>
 </body>
-</html>`;
+</html>
+  `.trim();
 }
 
 export function getWelcomeSubject(): string {
   return 'Welcome to SkillPassport!';
+}
+
+export function generateWelcomeEmailText(data: WelcomeEmailData): string {
+  const { name, email, role, baseUrl, additionalInfo } = data;
+  
+  return `
+Welcome to SkillPassport!
+
+Hello ${name},
+
+Your account has been created successfully and is ready to use!
+
+Account Details:
+• Email: ${email}
+• Role: ${role}
+
+${additionalInfo ? `\nAdditional Information:\n${additionalInfo}\n` : ''}
+
+Get started by logging into your account:
+${baseUrl}/login
+
+If you have any questions, please don't hesitate to contact our support team.
+
+Best regards,
+The SkillPassport Team
+
+---
+© ${new Date().getFullYear()} skillpassport.rareminds.in
+  `.trim();
 }
 
 // ==================== PASSWORD RESET TEMPLATE ====================
@@ -517,6 +976,244 @@ export function generatePasswordResetEmailHtml(data: PasswordResetData): string 
 
 export function getPasswordResetSubject(): string {
   return 'Password Reset - SkillPassport';
+}
+
+// ==================== PASSWORD RESET WITH LINK TEMPLATE (for SSO) ====================
+
+export interface PasswordResetLinkData {
+  resetUrl: string;
+}
+
+export function generatePasswordResetLinkHtml(data: PasswordResetLinkData): string {
+  const { resetUrl } = data;
+  
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset your password</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+    .email-wrapper {
+      padding: 40px 20px;
+    }
+    .email-card {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .header-banner {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      height: 200px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-icon {
+      width: 120px;
+      height: 120px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+    }
+    .content {
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1f2937;
+      margin: 0 0 8px 0;
+    }
+    .description {
+      font-size: 16px;
+      color: #666666;
+      margin: 20px 0 30px 0;
+      line-height: 1.6;
+    }
+    .reset-button {
+      display: inline-block;
+      padding: 16px 48px;
+      background-color: #2563eb;
+      color: #ffffff !important;
+      text-decoration: none;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 20px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .reset-button:hover {
+      background-color: #1d4ed8;
+    }
+    .warning-box {
+      background-color: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      border-radius: 4px;
+      padding: 16px;
+      margin: 24px 0;
+      text-align: left;
+    }
+    .warning-text {
+      font-size: 14px;
+      color: #92400e;
+      margin: 0;
+      line-height: 1.5;
+    }
+    .footer {
+      background-color: #f9fafb;
+      padding: 30px;
+      text-align: center;
+    }
+    .footer-text {
+      font-size: 13px;
+      color: #999999;
+      margin: 0 0 20px 0;
+      line-height: 1.6;
+    }
+    .social-icons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .social-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background-color: #2563eb;
+      border-radius: 50%;
+      text-decoration: none;
+    }
+    .social-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: #ffffff;
+    }
+    .copyright {
+      font-size: 12px;
+      color: #999999;
+      margin: 0;
+    }
+    .copyright-link {
+      color: #2563eb;
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .email-wrapper {
+        padding: 20px 10px;
+      }
+      .content {
+        padding: 30px 20px;
+      }
+      .header-banner {
+        height: 150px;
+      }
+      .header-icon {
+        width: 80px;
+        height: 80px;
+        font-size: 40px;
+      }
+      .title {
+        font-size: 20px;
+      }
+      .description {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-card">
+      <!-- Header Banner -->
+      <div class="header-banner">
+        <div class="header-icon">
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="5" y="11" width="14" height="10" rx="2" ry="2" stroke="white" stroke-width="2"/>
+            <circle cx="12" cy="16" r="1" fill="white"/>
+            <path d="M8 11V7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7V11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <h1 class="title">Password Reset Request</h1>
+        
+        <p class="description">
+          We received a request to reset your password. Click the button below to set a new password.
+        </p>
+
+        <!-- Reset Button -->
+        <a href="${resetUrl}" class="reset-button">RESET PASSWORD</a>
+        
+        <!-- Warning Box -->
+        <div class="warning-box">
+          <p class="warning-text">
+            <strong>⚠️ Security Notice:</strong> If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p class="footer-text">
+          This reset link expires in 1 hour.<br>
+          If you didn't request this, you can safely ignore this email.
+        </p>
+
+        <!-- Copyright -->
+        <p class="copyright">
+          © ${new Date().getFullYear()} <a href="https://skillpassport.rareminds.in" class="copyright-link">skillpassport.rareminds.in</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+}
+
+export function generatePasswordResetLinkText(data: PasswordResetLinkData): string {
+  const { resetUrl } = data;
+  
+  return `
+Password Reset Request
+
+We received a request to reset your password. Click the link below to set a new password:
+
+${resetUrl}
+
+This reset link expires in 1 hour.
+
+⚠️ Security Notice: If you didn't request this password reset, please ignore this email. Your password will remain unchanged.
+
+---
+© ${new Date().getFullYear()} skillpassport.rareminds.in
+  `.trim();
+}
+
+export function getPasswordResetLinkSubject(): string {
+  return 'Reset Your Password - SkillPassport';
 }
 
 // ==================== INTERVIEW REMINDER TEMPLATE ====================
@@ -596,4 +1293,224 @@ export function generateInterviewReminderHtml(data: InterviewReminderData): stri
 
 export function getInterviewReminderSubject(): string {
   return 'Interview Reminder - SkillPassport';
+}
+
+// ==================== EMAIL VERIFICATION TEMPLATE ====================
+
+export interface EmailVerificationData {
+  verifyUrl: string;
+}
+
+export function generateEmailVerificationHtml(data: EmailVerificationData): string {
+  const { verifyUrl } = data;
+  
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify your email address</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
+    .email-wrapper {
+      padding: 40px 20px;
+    }
+    .email-card {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .header-banner {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      height: 200px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-icon {
+      width: 120px;
+      height: 120px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .content {
+      padding: 40px 30px;
+      text-align: center;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1f2937;
+      margin: 0 0 8px 0;
+    }
+    .brand {
+      color: #2563eb;
+      font-weight: 600;
+    }
+    .description {
+      font-size: 16px;
+      color: #666666;
+      margin: 20px 0 30px 0;
+      line-height: 1.6;
+    }
+    .verify-button {
+      display: inline-block;
+      padding: 16px 48px;
+      background-color: #2563eb;
+      color: #ffffff !important;
+      text-decoration: none;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 20px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .verify-button:hover {
+      background-color: #1d4ed8;
+    }
+    .footer {
+      background-color: #f9fafb;
+      padding: 30px;
+      text-align: center;
+    }
+    .footer-text {
+      font-size: 13px;
+      color: #999999;
+      margin: 0 0 20px 0;
+      line-height: 1.6;
+    }
+    .social-icons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .social-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      background-color: #2563eb;
+      border-radius: 50%;
+      text-decoration: none;
+    }
+    .social-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: #ffffff;
+    }
+    .copyright {
+      font-size: 12px;
+      color: #999999;
+      margin: 0;
+    }
+    .copyright-link {
+      color: #2563eb;
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .email-wrapper {
+        padding: 20px 10px;
+      }
+      .content {
+        padding: 30px 20px;
+      }
+      .header-banner {
+        height: 150px;
+      }
+      .header-icon {
+        width: 80px;
+        height: 80px;
+      }
+      .title {
+        font-size: 20px;
+      }
+      .description {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-wrapper">
+    <div class="email-card">
+      <!-- Header Banner -->
+      <div class="header-banner">
+        <div class="header-icon">
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 4V9C4 10.1046 4.89543 11 6 11H8M4 4L8 8M4 4H9C10.1046 4 11 4.89543 11 6V8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 4V9C20 10.1046 19.1046 11 18 11H16M20 4L16 8M20 4H15C13.8954 4 13 4.89543 13 6V8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 20V15C4 13.8954 4.89543 13 6 13H8M4 20L8 16M4 20H9C10.1046 20 11 19.1046 11 18V16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 20V15C20 13.8954 19.1046 13 18 13H16M20 20L16 16M20 20H15C13.8954 20 13 19.1046 13 18V16" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+        <h1 class="title">Welcome to <span class="brand">SkillPassport</span></h1>
+        
+        <p class="description">
+          Please click the button below to confirm your email address and activate your account.
+        </p>
+
+        <!-- Verify Button -->
+        <a href="${verifyUrl}" class="verify-button">CONFIRM EMAIL</a>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p class="footer-text">
+          This verification link expires in 24 hours.<br>
+          If you didn't create an account with SkillPassport, please ignore this email.
+        </p>
+
+        <!-- Copyright -->
+        <p class="copyright">
+          © ${new Date().getFullYear()} <a href="https://skillpassport.rareminds.in" class="copyright-link">skillpassport.rareminds.in</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+}
+
+export function generateEmailVerificationText(data: EmailVerificationData): string {
+  const { verifyUrl } = data;
+  
+  return `
+Welcome to SkillPassport
+
+Please click the link below to confirm your email address and activate your account:
+
+${verifyUrl}
+
+This verification link expires in 24 hours.
+If you didn't create an account with SkillPassport, please ignore this email.
+
+---
+© ${new Date().getFullYear()} skillpassport.rareminds.in
+  `.trim();
+}
+
+export function getEmailVerificationSubject(): string {
+  return 'Welcome to SkillPassport - Confirm your email';
 }

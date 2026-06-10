@@ -1,4 +1,5 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   DocumentArrowUpIcon,
@@ -10,7 +11,6 @@ import {
 import { uploadInstructionFile, deleteInstructionFile } from '@/features/college-admin';
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabaseClient';
 import ConfirmationModal from '@/shared/ui/ConfirmationModal';
 import NotificationModal from '@/shared/ui/NotificationModal';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/file-validation';
@@ -156,8 +156,8 @@ const AssignmentFileUpload = React.forwardRef<
     if (!fileToDelete) return;
 
     // Get token from Supabase session
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token || user?.access_token;
+    const user = useAuthStore.getState().user;
+    const token = ssoClient.getAccessToken() || user?.access_token;
 
     if (!token) {
       showNotificationModal('error', 'Authentication Error', 'Authentication required to delete files');
@@ -199,8 +199,8 @@ const AssignmentFileUpload = React.forwardRef<
     }
 
     // Get token from Supabase session
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token || user?.access_token;
+    const user = useAuthStore.getState().user;
+    const token = ssoClient.getAccessToken() || user?.access_token;
 
     if (!token) {
       showNotificationModal('error', 'Authentication Error', 'Authentication required. Please log in again.');
@@ -265,8 +265,8 @@ const AssignmentFileUpload = React.forwardRef<
     if (stagedFiles.length === 0) return [];
 
     // Get token from Supabase session
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token || user?.access_token;
+    const user = useAuthStore.getState().user;
+    const token = ssoClient.getAccessToken() || user?.access_token;
 
     if (!token) {
       throw new Error('Authentication required. Please log in again.');

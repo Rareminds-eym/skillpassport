@@ -1,260 +1,110 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { useAuthStore } from '@/shared/model/authStore';
+import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-service');
 
-/**
- * School Service
- * Handles school-related database operations using the unified organizations table
- */
+const API_PATH = '/college-admin/school-admin';
 
-/**
- * Create a new school record in the organizations table
- * @param {Object} schoolData - School data to insert
- * @param {string} userId - User ID of the school admin
- * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
- */
-export const createSchool = async (schoolData, userId = null) => {
-    try {
-        let uid = userId;
-
-        // If userId not provided, try to get from current session
-        if (!uid) {
-            const { data: { user } } = await getCurrentUser();
-            if (user) {
-                uid = user.id;
-            }
-        }
-
-        if (!uid) {
-            throw new Error('User not authenticated');
-        }
-
-        // Map school data to organizations table structure
-        const orgData = {
-            name: schoolData.name,
-            organization_type: 'school',
-            admin_id: uid,
-            email: schoolData.email,
-            phone: schoolData.phone,
-            address: schoolData.address,
-            city: schoolData.city,
-            state: schoolData.state,
-            country: schoolData.country || 'India',
-            website: schoolData.website,
-            description: schoolData.description,
-            approval_status: 'approved',
-            account_status: 'active',
-            is_active: true,
-        };
-
-        const { data, error } = await supabase
-            .from('organizations')
-            .insert([orgData])
-            .select()
-            .single();
-
-        if (error) {
-            logger.error('Error creating school', error, { schoolName: schoolData.name });
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
-    } catch (error) {
-        logger.error('Unexpected error creating school', error);
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
+export const createSchool = async (schoolData: any, userId: string | null = null) => {
+  try {
+    let uid = userId;
+    if (!uid) {
+      const { useAuthStore } = await import('@/shared/model/authStore');
+      const user = useAuthStore.getState().user;
+      if (user) uid = user.id;
     }
+    if (!uid) throw new Error('User not authenticated');
+
+    const orgData = {
+      name: schoolData.name,
+      organization_type: 'school',
+      admin_id: uid,
+      email: schoolData.email,
+      phone: schoolData.phone,
+      address: schoolData.address,
+      city: schoolData.city,
+      state: schoolData.state,
+      country: schoolData.country || 'India',
+      website: schoolData.website,
+      description: schoolData.description,
+      approval_status: 'approved',
+      account_status: 'active',
+      is_active: true,
+    };
+
+    const result = await apiPost(API_PATH, {
+      action: 'create-school',
+      ...orgData,
+    });
+
+    return { success: true, data: result as any, error: null };
+  } catch (error: any) {
+    logger.error('Error creating school', error, { schoolName: schoolData?.name });
+    return { success: false, data: null, error: (error as Error).message };
+  }
 };
 
-/**
- * Check if a school name is unique (within school organization type)
- * @param {string} name - School name to check
- * @returns {Promise<{ isUnique: boolean, error: string | null }>}
- */
-export const checkSchoolCode = async (name) => {
-    try {
-        const { data, error } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'school')
-            .ilike('name', name)
-            .maybeSingle();
-
-        if (error) {
-            logger.error('Error checking school name', error, { name });
-            return { isUnique: false, error: error.message };
-        }
-
-        return {
-            isUnique: !data,
-            error: null
-        };
-    } catch (error) {
-        logger.error('Unexpected error checking school name', error);
-        return { isUnique: false, error: error.message };
-    }
+export const checkSchoolCode = async (name: string) => {
+  try {
+    const result = await apiPost(API_PATH, {
+      action: 'check-school-code',
+      name,
+    });
+    return { isUnique: (result as any).isUnique, error: null };
+  } catch (error: any) {
+    logger.error('Error checking school name', error, { name });
+    return { isUnique: false, error: (error as Error).message };
+  }
 };
 
-/**
- * Get school details by owner (admin_id) from organizations table
- * @param {string} userId - User ID of the owner
- * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
- */
-export const getSchoolByOwner = async (userId) => {
-    try {
-        const { data, error } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('organization_type', 'school')
-            .eq('admin_id', userId)
-            .maybeSingle();
-
-        if (error) {
-            logger.error('Error fetching school by owner', error, { userId });
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
-    } catch (error) {
-        logger.error('Unexpected error fetching school by owner', error, { userId });
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
-    }
+export const getSchoolByOwner = async (userId: string) => {
+  try {
+    const data = await apiPost(API_PATH, {
+      action: 'get-school-by-owner',
+      user_id: userId,
+    });
+    return { success: true, data: data as any, error: null };
+  } catch (error: any) {
+    logger.error('Error fetching school by owner', error, { userId });
+    return { success: false, data: null, error: (error as Error).message };
+  }
 };
 
-/**
- * Get school by ID from organizations table
- * @param {string} schoolId - School ID
- * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
- */
-export const getSchoolById = async (schoolId) => {
-    try {
-        const { data, error } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('id', schoolId)
-            .eq('organization_type', 'school')
-            .single();
-
-        if (error) {
-            logger.error('Error fetching school by ID', error, { schoolId });
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
-    } catch (error) {
-        logger.error('Unexpected error fetching school by ID', error, { schoolId });
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
-    }
+export const getSchoolById = async (schoolId: string) => {
+  try {
+    const data = await apiPost(API_PATH, {
+      action: 'get-school-by-id',
+      school_id: schoolId,
+    });
+    return { success: true, data: data as any, error: null };
+  } catch (error: any) {
+    logger.error('Error fetching school by ID', error, { schoolId });
+    return { success: false, data: null, error: (error as Error).message };
+  }
 };
 
-/**
- * Get all schools from organizations table
- * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
- */
 export const getAllSchools = async () => {
-    try {
-        const { data, error } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('organization_type', 'school')
-            .order('name');
-
-        if (error) {
-            logger.error('Error fetching schools', error);
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        return {
-            success: true,
-            data: data || [],
-            error: null
-        };
-    } catch (error) {
-        logger.error('Unexpected error fetching schools', error);
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
-    }
+  try {
+    const data = await apiPost(API_PATH, {
+      action: 'get-all-schools',
+    });
+    return { success: true, data: (data as any[]) || [], error: null };
+  } catch (error: any) {
+    logger.error('Error fetching schools', error);
+    return { success: false, data: null, error: (error as Error).message };
+  }
 };
 
-/**
- * Get school by email from organizations table
- * @param {string} email - School email
- * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
- */
-export const getSchoolByEmail = async (email) => {
-    try {
-        const { data, error } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('organization_type', 'school')
-            .eq('email', email)
-            .maybeSingle();
-
-        if (error) {
-            logger.error('Error fetching school by email', error, { email });
-            return {
-                success: false,
-                data: null,
-                error: error.message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
-    } catch (error) {
-        logger.error('Unexpected error fetching school by email', error, { email });
-        return {
-            success: false,
-            data: null,
-            error: error.message
-        };
-    }
+export const getSchoolByEmail = async (email: string) => {
+  try {
+    const data = await apiPost(API_PATH, {
+      action: 'get-school-by-email',
+      email,
+    });
+    return { success: true, data: data as any, error: null };
+  } catch (error: any) {
+    logger.error('Error fetching school by email', error, { email });
+    return { success: false, data: null, error: (error as Error).message };
+  }
 };
-

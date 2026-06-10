@@ -37,9 +37,9 @@ interface Question {
 
 interface QuestionRendererProps {
   question: Question;
-  questionId: string;
-  sectionId: string;
-  answer: any;
+  questionId?: string;
+  sectionId?: string;
+  answer?: any;
   onAnswer: (value: any) => void;
   responseScale?: ResponseScaleItem[];
   isAdaptive?: boolean;
@@ -48,6 +48,10 @@ interface QuestionRendererProps {
   adaptiveLoading?: boolean;
   adaptiveDisabled?: boolean;
   color?: string;
+  onNext?: () => void;
+  onPrevious?: () => void;
+  canGoPrevious?: boolean;
+  canGoNext?: boolean;
 }
 
 /**

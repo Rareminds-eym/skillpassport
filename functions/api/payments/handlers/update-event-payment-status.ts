@@ -8,9 +8,10 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 /**
  * Map plan names to their corresponding registration tables.
@@ -22,10 +23,6 @@ const PLAN_TABLE_MAP: Record<string, string> = {
   bootcamp: 'bootcamp_registrations',
 };
 
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleUpdateEventPaymentStatus(context);
-});
-
 export async function handleUpdateEventPaymentStatus(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
@@ -35,12 +32,7 @@ export async function handleUpdateEventPaymentStatus(context: AuthenticatedConte
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     const registrationId = body.registrationId as string;
@@ -51,12 +43,7 @@ export async function handleUpdateEventPaymentStatus(context: AuthenticatedConte
     const planName = body.planName as string | undefined;
 
     if (!registrationId || !status) {
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INVALID_INPUT', message: 'registrationId and status are required' },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'registrationId and status are required', context.request);
     }
 
     // Determine target table from planName
@@ -88,28 +75,12 @@ export async function handleUpdateEventPaymentStatus(context: AuthenticatedConte
 
     if (updateError) {
       console.error('[UpdateEventPaymentStatus] Update error:', updateError);
-      return new Response(
-        JSON.stringify({
-          error: { code: 'INTERNAL_ERROR', message: 'Failed to update event payment status' },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to update event payment status', context.request);
     }
 
-    return new Response(
-      JSON.stringify({ success: true, updated: true }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ updated: true }, context.request, 200);
   } catch (error) {
     console.error('[UpdateEventPaymentStatus] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to update event payment status',
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to update event payment status', context.request);
   }
 }

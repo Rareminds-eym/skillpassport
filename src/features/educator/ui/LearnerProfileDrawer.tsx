@@ -18,7 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { QRCodeSVG } from 'qrcode.react';
 import jsPDF from 'jspdf';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { File } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getLogger } from '@/shared/config/logging';
@@ -942,16 +942,8 @@ const LearnerProfileDrawer = ({ learner, isOpen, onClose }) => {
     const fetchProjects = async () => {
       setLoadingProjects(true);
       try {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('learner_id', learnerId)
-          .eq('enabled', true)
-          .in('approval_status', ['approved', 'verified'])
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setProjects(data || []);
+        const res = await apiPost('/educator/actions', { action: 'fetch-learner-projects', learnerId });
+        setProjects(res?.data?.filter(p => p.enabled && ['approved', 'verified'].includes(p.approval_status)) || []);
       } catch (error) {
         logger.error('Failed to fetch projects', error as Error);
         setProjects([]);
@@ -963,16 +955,8 @@ const LearnerProfileDrawer = ({ learner, isOpen, onClose }) => {
     const fetchCertificates = async () => {
       setLoadingCertificates(true);
       try {
-        const { data, error } = await supabase
-          .from('certificates')
-          .select('*')
-          .eq('learner_id', learnerId)
-          .eq('enabled', true)
-          .in('approval_status', ['approved', 'verified'])
-          .order('issued_on', { ascending: false });
-
-        if (error) throw error;
-        setCertificates(data || []);
+        const res = await apiPost('/educator/actions', { action: 'fetch-learner-certificates', learnerId });
+        setCertificates(res?.data?.filter(c => c.enabled && ['approved', 'verified'].includes(c.approval_status)) || []);
       } catch (error) {
         logger.error('Failed to fetch certificates', error as Error);
         setCertificates([]);
@@ -984,27 +968,8 @@ const LearnerProfileDrawer = ({ learner, isOpen, onClose }) => {
     const fetchAssignemts = async () => {
       setLoadingAssessments(true);
       try {
-        const { data, error } = await supabase
-          .from('learner_assignments')
-          .select(`
-            *,
-            assignments (
-              title,
-              description,
-              course_name,
-              course_code,
-              assignment_type,
-              due_date,
-              total_points,
-              skill_outcomes,
-              educator_name
-            )
-          `)
-          .eq('learner_id', learnerId)
-          .eq('is_deleted', false)
-          .order('updated_date', { ascending: false });
-
-        if (error) throw error;
+        const res = await apiPost('/educator/actions', { action: 'fetch-learner-assignment-submissions', learnerId });
+        const data = res?.data;
         setAssessments(data || []);
       } catch (error) {
         logger.error('Failed to fetch assignments', error as Error);

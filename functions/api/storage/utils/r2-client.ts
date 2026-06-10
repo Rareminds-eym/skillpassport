@@ -11,7 +11,7 @@
  */
 
 import { AwsClient } from 'aws4fetch';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 /**
  * R2 object metadata returned from list operations
@@ -28,28 +28,121 @@ export interface R2Object {
  * Uses AWS Signature V4 authentication via aws4fetch
  */
 export class R2Client {
-  private client: AwsClient;
-  private endpoint: string;
+  private client!: AwsClient;
+  private endpoint!: string;
   private bucketName: string;
   private publicUrl?: string;
+  private r2Bucket?: PagesEnv['R2_BUCKET']; // R2 binding if available
 
   /**
    * Create a new R2 client instance
    * @param env - Pages environment variables containing R2 credentials
+   * @throws {Error} If neither R2 binding nor valid credentials are configured
    */
   constructor(env: PagesEnv) {
-    if (!env.CLOUDFLARE_ACCOUNT_ID || !env.CLOUDFLARE_R2_ACCESS_KEY_ID || !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
-      throw new Error('R2 credentials not configured. Required: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_R2_ACCESS_KEY_ID, CLOUDFLARE_R2_SECRET_ACCESS_KEY');
+    try {
+      // Check if R2 binding is available (preferred method)
+      this.r2Bucket = env.R2_BUCKET;
+      
+      // Try to initialize with S3 API credentials
+      this.initializeS3Client(env);
+      
+      // Set bucket configuration
+      this.bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
+      this.publicUrl = env.CLOUDFLARE_R2_PUBLIC_URL;
+      
+    } catch (error) {
+      // Re-throw with additional context
+      throw new Error(
+        `Failed to initialize R2 client: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
+  }
 
+  /**
+   * Initialize S3 API client with proper credential validation
+   * @private
+   */
+  private initializeS3Client(env: PagesEnv): void {
+    // If R2 binding is not available, we MUST have valid credentials
+    if (!this.r2Bucket) {
+      this.validateAndSetCredentials(env, true);
+      return;
+    }
+    
+    // R2 binding is available - S3 credentials are optional (for fallback)
+    try {
+      this.validateAndSetCredentials(env, false);
+    } catch (error) {
+      // R2 binding available but no valid S3 API credentials
+      // Set placeholder values - operations will use binding only
+      console.warn(
+        '[R2Client] R2 binding available but S3 API credentials not configured. ' +
+        'Fallback to S3 API will not be available.'
+      );
+      this.client = new AwsClient({
+        accessKeyId: 'R2_BINDING_ONLY',
+        secretAccessKey: 'R2_BINDING_ONLY',
+      });
+      this.endpoint = 'https://r2-binding-only.r2.cloudflarestorage.com';
+    }
+  }
+
+  /**
+   * Validate and set S3 API credentials
+   * @private
+   * @param env - Environment variables
+   * @param required - Whether credentials are required (true if no R2 binding)
+   * @throws {Error} If required credentials are missing or invalid
+   */
+  private validateAndSetCredentials(env: PagesEnv, required: boolean): void {
+    // Check for missing credentials
+    const missingVars: string[] = [];
+    
+    if (!env.CLOUDFLARE_ACCOUNT_ID) {
+      missingVars.push('CLOUDFLARE_ACCOUNT_ID');
+    }
+    if (!env.CLOUDFLARE_R2_ACCESS_KEY_ID) {
+      missingVars.push('CLOUDFLARE_R2_ACCESS_KEY_ID');
+    }
+    if (!env.CLOUDFLARE_R2_SECRET_ACCESS_KEY) {
+      missingVars.push('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
+    }
+    
+    if (missingVars.length > 0) {
+      const errorMessage = `Missing R2 credentials: ${missingVars.join(', ')}`;
+      
+      if (required) {
+        throw new Error(
+          `${errorMessage}. ` +
+          `Either provide these credentials or configure R2_BUCKET binding in wrangler.toml. ` +
+          `See: https://developers.cloudflare.com/r2/api/workers/workers-api-reference/`
+        );
+      }
+      
+      // Optional credentials are missing - throw to trigger fallback to binding-only mode
+      throw new Error(errorMessage);
+    }
+    
+    // Validate credentials are not empty or whitespace-only
+    const accessKeyId = env.CLOUDFLARE_R2_ACCESS_KEY_ID!.trim();
+    const secretAccessKey = env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!.trim();
+    
+    if (accessKeyId === '') {
+      throw new Error('CLOUDFLARE_R2_ACCESS_KEY_ID cannot be empty or whitespace');
+    }
+    
+    if (secretAccessKey === '') {
+      throw new Error('CLOUDFLARE_R2_SECRET_ACCESS_KEY cannot be empty or whitespace');
+    }
+    
+    // Credentials are valid - initialize AWS client
     this.client = new AwsClient({
-      accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
-      secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+      accessKeyId,
+      secretAccessKey,
     });
-
+    
     this.endpoint = `https://${env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-    this.bucketName = env.CLOUDFLARE_R2_BUCKET_NAME || 'skill-echosystem';
-    this.publicUrl = env.CLOUDFLARE_R2_PUBLIC_URL;
   }
 
   /**
@@ -66,6 +159,34 @@ export class R2Client {
     contentType: string,
     additionalHeaders?: Record<string, string>
   ): Promise<string> {
+    // Use R2 binding if available (preferred for large files in dev)
+    if (this.r2Bucket) {
+      try {
+        await this.r2Bucket.put(key, body, {
+          httpMetadata: {
+            contentType: contentType,
+            contentDisposition: additionalHeaders?.['Content-Disposition']
+          }
+        });
+        return this.getPublicUrl(key);
+      } catch (bindingError) {
+        console.error('[R2Client] R2 binding upload failed, falling back to S3 API:', bindingError);
+        // Check if S3 API credentials are available for fallback
+        if (this.endpoint === 'https://r2-binding-only.r2.cloudflarestorage.com') {
+          throw new Error(
+            'R2 binding upload failed and no S3 API credentials configured for fallback. ' +
+            'Original error: ' + (bindingError instanceof Error ? bindingError.message : String(bindingError))
+          );
+        }
+        // Fall through to S3 API method
+      }
+    }
+
+    // Fallback to S3 API
+    if (this.endpoint === 'https://r2-binding-only.r2.cloudflarestorage.com') {
+      throw new Error('S3 API credentials not configured. Cannot perform upload without R2 binding or valid credentials.');
+    }
+    
     const uploadUrl = `${this.endpoint}/${this.bucketName}/${key}`;
 
     const headers: Record<string, string> = {
@@ -89,7 +210,6 @@ export class R2Client {
       throw new Error(`R2 upload failed: ${response.status} - ${errorText}`);
     }
 
-    // Return the public URL
     return this.getPublicUrl(key);
   }
 
@@ -98,6 +218,11 @@ export class R2Client {
    * @param key - The file key (path) in R2
    */
   async delete(key: string): Promise<void> {
+    // Check if S3 API is configured before attempting delete
+    if (this.endpoint === 'https://r2-binding-only.r2.cloudflarestorage.com') {
+      throw new Error('S3 API credentials not configured. Cannot perform delete without valid credentials.');
+    }
+    
     const deleteUrl = `${this.endpoint}/${this.bucketName}/${key}`;
 
     const deleteRequest = new Request(deleteUrl, {
@@ -120,6 +245,11 @@ export class R2Client {
    * @returns Array of R2 objects matching the prefix
    */
   async list(prefix: string, maxKeys: number = 1000): Promise<R2Object[]> {
+    // Check if S3 API is configured before attempting list
+    if (this.endpoint === 'https://r2-binding-only.r2.cloudflarestorage.com') {
+      throw new Error('S3 API credentials not configured. Cannot perform list operation without valid credentials.');
+    }
+    
     const listUrl = `${this.endpoint}/${this.bucketName}?list-type=2&prefix=${encodeURIComponent(prefix)}&max-keys=${maxKeys}`;
 
     const listRequest = new Request(listUrl, {
@@ -138,22 +268,15 @@ export class R2Client {
 
     // Parse XML response (simple parsing for S3-compatible list response)
     const objects: R2Object[] = [];
-    const keyMatches = xmlText.matchAll(/<Key>([^<]+)<\/Key>/g);
-    const sizeMatches = xmlText.matchAll(/<Size>([^<]+)<\/Size>/g);
-    const lastModMatches = xmlText.matchAll(/<LastModified>([^<]+)<\/LastModified>/g);
-    const etagMatches = xmlText.matchAll(/<ETag>"?([^<"]+)"?<\/ETag>/g);
-
-    const keys = Array.from(keyMatches, m => m[1]);
-    const sizes = Array.from(sizeMatches, m => parseInt(m[1], 10));
-    const lastMods = Array.from(lastModMatches, m => new Date(m[1]));
-    const etags = Array.from(etagMatches, m => m[1]);
-
-    for (let i = 0; i < keys.length; i++) {
+    const contentsBlocks = xmlText.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g);
+    
+    for (const block of contentsBlocks) {
+      const inner = block[1];
       objects.push({
-        key: keys[i],
-        size: sizes[i] || 0,
-        lastModified: lastMods[i] || new Date(),
-        etag: etags[i] || '',
+        key: inner.match(/<Key>([^<]+)<\/Key>/)?.[1] ?? '',
+        size: parseInt(inner.match(/<Size>([^<]+)<\/Size>/)?.[1] ?? '0', 10),
+        lastModified: new Date(inner.match(/<LastModified>([^<]+)<\/LastModified>/)?.[1] ?? ''),
+        etag: inner.match(/<ETag>"?([^<"]+)"?<\/ETag>/)?.[1] ?? '',
       });
     }
 
@@ -169,35 +292,34 @@ export class R2Client {
    */
   async generatePresignedUrl(
     key: string,
-    contentType: string,
-    expiresIn: number = 3600
+    contentType: string
   ): Promise<{ url: string; headers: Record<string, string> }> {
-    const uploadUrl = `${this.endpoint}/${this.bucketName}/${key}`;
+    // Check if S3 API is configured before attempting to generate presigned URL
+    if (this.endpoint === 'https://r2-binding-only.r2.cloudflarestorage.com') {
+      throw new Error('S3 API credentials not configured. Cannot generate presigned URLs without valid credentials.');
+    }
+    
+    // Add X-Amz-Expires to the URL BEFORE signing
+    const uploadUrl = new URL(`${this.endpoint}/${this.bucketName}/${key}`);
+    uploadUrl.searchParams.set('X-Amz-Expires', expiresIn.toString());
 
-    const uploadRequest = new Request(uploadUrl, {
+    const uploadRequest = new Request(uploadUrl.toString(), {
       method: 'PUT',
       headers: {
         'Content-Type': contentType,
       },
     });
 
-    const signedRequest = await this.client.sign(uploadRequest);
-
-    // Extract the signed URL and headers
-    const headers: Record<string, string> = {
-      'Content-Type': contentType,
-    };
-
-    // Copy authentication headers from signed request
-    const authHeader = signedRequest.headers.get('Authorization');
-    const dateHeader = signedRequest.headers.get('x-amz-date');
-
-    if (authHeader) headers['Authorization'] = authHeader;
-    if (dateHeader) headers['x-amz-date'] = dateHeader;
+    // Sign with query parameters instead of Authorization header
+    const signedRequest = await this.client.sign(uploadRequest, {
+      aws: {
+        signQuery: true,
+      },
+    });
 
     return {
       url: signedRequest.url,
-      headers,
+      headers: { 'Content-Type': contentType },
     };
   }
 
@@ -208,6 +330,11 @@ export class R2Client {
    * @returns The presigned URL for accessing the file
    */
   async generatePresignedGetUrl(key: string, expiresIn: number = 3600): Promise<string> {
+    // Check if S3 API is configured before attempting to generate presigned URL
+    if (this.endpoint === 'https://r2-binding-only.r2.cloudflarestorage.com') {
+      throw new Error('S3 API credentials not configured. Cannot generate presigned URLs without valid credentials.');
+    }
+    
     // Ensure expiresIn doesn't exceed 7 days (604800 seconds)
     const validExpiresIn = Math.min(expiresIn, 604800);
     
@@ -236,6 +363,55 @@ export class R2Client {
    * @returns Response object containing the file content
    */
   async getObject(key: string, range?: string): Promise<Response> {
+    // Validate range BEFORE try/catch so bad input throws to the caller
+    let r2Range: { offset: number; length: number } | undefined;
+    if (range) {
+      const match = range.match(/^bytes=(\d+)-(\d+)$/);
+      if (!match) {
+        throw new Error(`Invalid Range header format: "${range}". Expected "bytes=start-end"`);
+      }
+      const start = parseInt(match[1], 10);
+      const end   = parseInt(match[2], 10);
+      if (start > end) {
+        throw new Error(`Invalid range: start (${start}) must be <= end (${end})`);
+      }
+      r2Range = { offset: start, length: end - start + 1 };
+    }
+
+    // Use R2 binding if available
+    if (this.r2Bucket) {
+      try {
+        const object = await this.r2Bucket.get(key, r2Range ? { range: r2Range } : undefined);
+        
+        if (!object) {
+          throw new Error(`R2 get object failed: 404 - Not Found`);
+        }
+
+        return new Response(object.body, {
+          headers: {
+            'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
+            'Content-Length': object.size.toString(),
+            'ETag': object.httpEtag,
+          }
+        });
+      } catch (bindingError) {
+        console.error('[R2Client] R2 binding get failed, falling back to S3 API:', bindingError);
+        // Check if S3 API credentials are available for fallback
+        if (this.endpoint === 'https://r2-binding-only.r2.cloudflarestorage.com') {
+          throw new Error(
+            'R2 binding get failed and no S3 API credentials configured for fallback. ' +
+            'Original error: ' + (bindingError instanceof Error ? bindingError.message : String(bindingError))
+          );
+        }
+        // Fall through to S3 API method
+      }
+    }
+
+    // Fallback to S3 API
+    if (this.endpoint === 'https://r2-binding-only.r2.cloudflarestorage.com') {
+      throw new Error('S3 API credentials not configured. Cannot perform get operation without valid credentials.');
+    }
+    
     const downloadUrl = `${this.endpoint}/${this.bucketName}/${key}`;
 
     const headers: Record<string, string> = {};
@@ -287,7 +463,8 @@ export class R2Client {
       // Handle direct key parameter
       if (url.includes('?key=')) {
         const urlObj = new URL(url);
-        return decodeURIComponent(urlObj.searchParams.get('key') || '');
+        const key = urlObj.searchParams.get('key');
+        return key ? decodeURIComponent(key) : null;
       }
 
       // Handle proxy URL with url parameter

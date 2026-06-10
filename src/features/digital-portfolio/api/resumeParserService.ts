@@ -1,4 +1,5 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { useAuthStore } from '@/shared/model/authStore';
+import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Resume Parser Service
  * Handles parsing resumes using Claude AI
@@ -49,21 +50,18 @@ const parseWithClaude = async (resumeText) => {
     const { getApiUrl } = await import('@/shared/api/apiUtils');
     const API_URL = getApiUrl('career');
 
-    // Get current session for auth token
-    const { supabase } = await import('@/shared/api/supabaseClient');
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token;
+    const user = useAuthStore.getState().user;
+    const token = ssoClient.getAccessToken();
 
     if (!token) {
       throw new Error('Authentication required for resume parsing');
     }
 
-    const response = await fetch(`${API_URL}/parse-resume`, {
+    const response = await ssoClient.fetch(`${API_URL}/parse-resume`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
+        },
       body: JSON.stringify({ resumeText })
     });
 

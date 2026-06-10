@@ -8,12 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-// TODO: Uncomment when functions are added to learnerProfileService
-// import { 
-//   getlearnerSettingsByEmail, 
-//   updatelearnerSettings, 
-//   updatelearnerPassword 
-// } from '@/features/learner-profile/api';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('learner-settings');
@@ -51,70 +46,41 @@ export const useLearnerSettings = ({ email, enabled = true }: UselearnerSettings
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch learner settings
+  // Fetch learner settings (placeholder for future use)
   const fetchSettings = useCallback(async () => {
     if (!email || !enabled) {
       setLoading(false);
       return;
     }
-
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const result = await getlearnerSettingsByEmail(email);
-      
-      if (result.success) {
-        setSettings(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch settings');
-      }
-    } catch (err: any) {
-      logger.error('Error fetching learner settings', err);
-      setError(err.message || 'Failed to fetch settings');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   }, [email, enabled]);
 
-  // Update profile data
-  const updateProfile = async (updates: Partial<LearnerSettings>) => {
-    if (!email) {
-      return { success: false, error: 'Email is required' };
-    }
+  // Update profile data via backend API
+  const updateProfile = async (updates: Record<string, any>) => {
+    try {
+      const response = await ssoClient.fetch('/api/learners/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
 
-    const result = await updatelearnerSettings(email, updates);
-    
-    if (result.success) {
-      // Only update settings if we're NOT updating notification or privacy settings
-      // This prevents the state from being overwritten while user is toggling settings
-      if (!updates.notificationSettings && !updates.privacySettings) {
-        setSettings(result.data);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logger.error('Failed to update profile', errorData);
+        return { success: false, error: errorData.error || 'Failed to update profile' };
       }
-      return result;
-    } else {
-      return result;
+
+      const { learner } = await response.json();
+      return { success: true, data: learner };
+    } catch (err) {
+      logger.error('Error updating profile', err instanceof Error ? err : new Error(String(err)));
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to update profile' };
     }
   };
 
-  // Update password
+  // Update password (placeholder for future use)
   const updatePassword = async (currentPassword: string, newPassword: string) => {
-    if (!email) {
-      throw new Error('Email is required');
-    }
-
-    try {
-      const result = await updatelearnerPassword(email, currentPassword, newPassword);
-      
-      if (result.success) {
-        return { success: true, message: result.message };
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (err: any) {
-      logger.error('Error updating password', err);
-      throw err;
-    }
+    throw new Error('Password update not yet implemented');
   };
 
   // Refresh settings

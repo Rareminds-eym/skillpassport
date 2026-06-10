@@ -1,4 +1,5 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +23,6 @@ import {
   FileCheck,
   MessageSquare
 } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('career-ai-tools-grid');
@@ -80,23 +80,19 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
 
   const fetchGradeAppropriateActions = async () => {
     try {
-      const { data: { session } } = await getCurrentSession();
-      if (!session) {
+      const isAuthenticated = useAuthStore.getState().isAuthenticated;
+      if (!isAuthenticated) {
         setLoading(false);
         return;
       }
 
-      const response = await fetch('/api/career/get-actions', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
+      const response = await ssoClient.fetch('/api/career/get-actions');
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.actions) {
+        if (data.success && data.data?.actions) {
           // Map icon strings to actual icon components
-          const mappedActions = data.actions.map((action: any) => ({
+          const mappedActions = data.data.actions.map((action: any) => ({
             ...action,
             icon: iconMap[action.icon] || Lightbulb,
           }));

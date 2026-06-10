@@ -3,29 +3,19 @@
  * Run this in browser console or as a separate component
  */
 
-import { supabase } from "@/shared/api/supabaseClient";
+import { apiPost } from "@/shared/api/apiClient";
 
 export async function debugSupabaseData() {
   try {
-    
-    // Get first few learners to see structure
-    const { data, error } = await supabase
-      .from('learners')
-      .select('*')
-      .limit(3);
-
-    if (error) {
-      console.error('❌ Error fetching data:', error);
-      return;
-    }
-
+    const data = await apiPost('/shared-widgets/actions', {
+      action: 'debug-supabase',
+    });
     
     if (data && data.length > 0) {
       const firstLearner = data[0];
-      
-      // Check for skills in profile
       const profile = firstLearner.profile;
       if (profile) {
+        console.log({
           technicalSkills: profile.technicalSkills || 'Not found',
           softSkills: profile.softSkills || 'Not found',
           training: profile.training || 'Not found',

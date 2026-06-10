@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight, Code, Coffee, Dumbbell, Gamepad2, Globe, Mountain, Music, Palette, Plane, Shield, Star, Target, Users, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
@@ -26,7 +27,7 @@ const PassportPage: React.FC = () => {
   // Auto-load current user's data if not already loaded
   React.useEffect(() => {
     if (!learner && !isLoading) {
-      const email = localStorage.getItem('userEmail');
+      const email = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
       if (email) {
         loadlearnerByEmail(email);
       }

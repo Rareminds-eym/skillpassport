@@ -1,11 +1,11 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
 /**
  * Upload Utility
  * Handles image uploads to Cloudflare R2 via storage-api worker
  */
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabaseClient';
 import { validateFileSize } from './utils/file-validation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
 
@@ -30,9 +30,9 @@ export async function uploadToCloudflareR2(
 ): Promise<R2UploadResponse> {
   try {
     // Get authentication token
-    const { data: { session }, error: sessionError } = await getCurrentSession();
+    const isAuthenticated = useAuthStore.getState().isAuthenticated;
 
-    if (sessionError || !session) {
+    if (!isAuthenticated) {
       return {
         success: false,
         error: 'Authentication required. Please log in.'
@@ -79,11 +79,8 @@ export async function uploadToCloudflareR2(
     formData.append('file', file);
     formData.append('filename', filename);
 
-    const response = await fetch(`${STORAGE_API_URL}/upload`, {
+    const response = await ssoClient.fetch(`${STORAGE_API_URL}/upload`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`
-      },
       body: formData
     });
 
@@ -125,17 +122,16 @@ export async function uploadToCloudflareR2(
 export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
   try {
     // Get authentication token
-    const { data: { session }, error: sessionError } = await getCurrentSession();
+    const isAuthenticated = useAuthStore.getState().isAuthenticated;
 
-    if (sessionError || !session) {
+    if (!isAuthenticated) {
       return false;
     }
 
-    const response = await fetch(`${STORAGE_API_URL}/delete`, {
+    const response = await ssoClient.fetch(`${STORAGE_API_URL}/delete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ url })
     });

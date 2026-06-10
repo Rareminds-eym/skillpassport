@@ -17,13 +17,19 @@ import {
     Users,
     Zap
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from '@/shared/model/authStore';
-import { useLearnerDataByEmail } from '@/entities/learner';
-import { supabase } from "@/shared/api/supabaseClient";
-import { downloadCertificate, getCertificateProxyUrl } from "@/features/digital-portfolio";
+import { useLearnerDataById } from '@/entities/learner';
+import { apiPost, apiGet } from '@/shared/api/apiClient';
+import { downloadCertificate, viewCertificate } from "@/shared/lib/certificateUtils";
 import { checkAssessmentStatus } from "@/features/assessment/api/externalAssessmentService";
+import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
+import { useCertificateModal } from '@/features/certificate-generation';
+import { CertificateNameModal } from '@/shared/ui';
+
+const logger = getLogger('modern-learning-card');
 
 /**
  * Modern Learning Card Component - Completely Redesigned
@@ -43,17 +49,33 @@ const ModernLearningCard = ({
   const [assessmentScore, setAssessmentScore] = useState(null);
   const [checkingAssessment, setCheckingAssessment] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [certificateUrl, setCertificateUrl] = useState(item.certificateUrl || '');
+  const [certificateUrl, setCertificateUrl] = useState(item.certificateUrl || null);
   
   // Update certificate URL when item.certificateUrl changes
   useEffect(() => {
-    setCertificateUrl(item.certificateUrl || '');
+    // Only update if item.certificateUrl is a non-empty string
+    if (item.certificateUrl && item.certificateUrl.trim() !== '') {
+      setCertificateUrl(item.certificateUrl);
+    }
   }, [item.certificateUrl]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   
-  const userEmail = user?.email;
-  const { learnerData } = useLearnerDataByEmail(userEmail, false);
+  // Use useLearnerDataById with user.id (SSO ID)
+  const { learnerData } = useLearnerDataById(user?.id, false);
+  
+  // ✅ Consistent with the rest of the file
+  const handleCertificateSuccess = useCallback(({ certificateUrl: newCertUrl }) => {
+    if (newCertUrl && newCertUrl.trim() !== '') {
+      setCertificateUrl(newCertUrl);
+    }
+  }, []);
+
+  const certificateModal = useCertificateModal({
+    userId: user?.id,
+    userEmail: user?.email,
+    onSuccess: handleCertificateSuccess
+  });
 
   // Check if this is a course enrollment (started from course player)
   const isCourseEnrollment = item.type === 'course_enrollment' || item.source === 'course_enrollment';
@@ -153,21 +175,30 @@ const ModernLearningCard = ({
   // Fetch certificate URL for completed internal courses if not already provided
   useEffect(() => {
     const fetchCertificateUrl = async () => {
-      // Only fetch if it's a completed internal course without a certificate URL
-      if (!isInternalCourse || !isCompleted || certificateUrl || !item.course_id || !learnerData?.id) {
+      // Skip if not an internal course or not completed
+      if (!isInternalCourse || !isCompleted) {
+        return;
+      }
+
+      // Skip if we already have a valid certificate URL
+      if (certificateUrl && certificateUrl.trim() !== '') {
+        return;
+      }
+
+      // Skip if missing required IDs
+      if (!item.course_id || !learnerData?.id) {
         return;
       }
       
       try {
-        const { data: enrollment } = await supabase
-          .from('course_enrollments')
-          .select('certificate_url')
-          .eq('learner_id', learnerData.id)
-          .eq('course_id', item.course_id)
-          .single();
+        const data = await apiPost('/learner-dashboard-widgets/actions', {
+          action: 'get-certificate-url',
+          learnerId: learnerData.id,
+          courseId: item.course_id,
+        });
 
-        if (enrollment?.certificate_url) {
-          setCertificateUrl(enrollment.certificate_url);
+        if (data?.certificate_url && data.certificate_url.trim() !== '') {
+          setCertificateUrl(data.certificate_url);
         }
       } catch (error) {
         console.error('Error fetching certificate URL:', error);
@@ -182,6 +213,153 @@ const ModernLearningCard = ({
     if (isCourseEnrollment && item.course_id) {
       // Navigate to course player for enrolled courses
       navigate(`/learner/courses/${item.course_id}/learn`);
+    }
+  };
+
+  /**
+   * Handle "Get Certificate" button click
+   * 
+   * Two scenarios:
+   * 1. Certificate exists: View it directly using viewCertificate utility
+   * 2. Certificate doesn't exist: Open modal to generate new certificate
+   * 
+   * Generation Flow:
+   * - Prepare certificate data from item props
+   * - Fetch fresh learner data using user email (not SSO ID)
+   * - Validate required data (learnerData.id and course_id)
+   * - Guard check ensures modal is initialized
+   * - Open modal with pre-filled certificate information
+   * - User confirms name and generates certificate
+   * 
+   * Error Handling:
+   * - Guard check prevents crashes if hook initialization failed
+   * - Try-catch handles errors during modal opening
+   * - Enhanced logging provides debugging context
+   * 
+   * @param {Event} e - Click event (for stopPropagation)
+   */
+  const handleGetCertificate = async (e) => {
+    e?.stopPropagation();
+    
+    // If certificate already exists, view it directly
+    if (certificateUrl) {
+      viewCertificate(certificateUrl);
+      return;
+    }
+    
+    // Prepare certificate data from item
+    const courseName = item.course || item.title;
+    const educatorName = item.educator_name || 'Course Instructor';
+    const courseType = item.course_type === 'webinar' ? 'webinar' : 'course';
+    const issuedOnDate = courseType === 'webinar' ? item.issued_on : null;
+    
+    // Validate user email is available
+    if (!user?.email) {
+      toast.error('User email not found');
+      return;
+    }
+
+    // Validate course ID is available
+    if (!item.course_id) {
+      toast.error('Course ID not found');
+      return;
+    }
+    
+    try {
+      // Fetch fresh learner data from database using email (not SSO ID)
+      const freshLearnerData = await apiGet(`/learners/by-email?email=${encodeURIComponent(user.email)}`);
+      const learnerError = !freshLearnerData ? new Error('Not found') : null;
+      
+      if (learnerError) {
+        logger.error('Error fetching learner data', learnerError instanceof Error ? learnerError : new Error(String(learnerError)));
+        toast.error('Failed to fetch learner information');
+        return;
+      }
+      
+      if (!freshLearnerData) {
+        toast.error('Learner profile not found. Please complete your profile first.');
+        return;
+      }
+    
+      /**
+       * Guard check: Ensure certificate modal is properly initialized
+       * 
+       * Prevents runtime errors if:
+       * - The useCertificateModal hook failed to initialize
+       * - Component unmounted during async operation
+       * - Hook returned undefined/null due to error
+       * 
+       * Logs error with context for debugging
+       */
+      if (!certificateModal?.openModal) {
+        logger.error('Certificate modal not initialized', { certificateModal });
+        toast.error('Certificate modal is not available. Please refresh the page.');
+        return;
+      }
+      
+      // Open certificate modal with all required data using fresh learner data
+      await certificateModal.openModal({
+        learnerId: freshLearnerData.id,
+        learnerIdText: freshLearnerData.learner_id || null,
+        courseName,
+        educatorName,
+        courseType,
+        issuedOnDate,
+        courseId: item.course_id,
+        prefillName: freshLearnerData.name || ''
+      });
+    } catch (error) {
+      /**
+       * Enhanced error logging for modal opening failures
+       * 
+       * Logs:
+       * - Original error object with full stack trace
+       * - Modal state (hasOpenModal flag)
+       * - Course data context for debugging
+       * 
+       * This helps identify whether the issue is:
+       * - Modal hook initialization failure
+       * - Invalid certificate data
+       * - Network/database errors
+       */
+      logger.error('Failed to open certificate modal', { 
+        error: error instanceof Error ? error : new Error(String(error)),
+        modalState: {
+          hasOpenModal: !!certificateModal?.openModal,
+          courseData: { courseName, educatorName, courseType }
+        }
+      });
+      toast.error('Failed to open certificate modal. Please try again.');
+    }
+  };
+
+  /**
+   * Handle certificate download
+   * 
+   * Downloads the certificate PDF file and shows appropriate toast notifications.
+   * Manages loading state to prevent duplicate downloads.
+   * 
+   * @param {Event} e - Click event (for stopPropagation)
+   */
+  const handleDownloadCertificate = async (e) => {
+    e?.stopPropagation();
+    
+    if (!certificateUrl) {
+      toast.error('No certificate available to download');
+      return;
+    }
+    
+    setIsDownloading(true);
+    setShowDropdown(false);
+    
+    try {
+      await downloadCertificate(certificateUrl, item.course || item.title);
+      toast.success('Certificate downloaded successfully!');
+    } catch (error) {
+      logger.error('Failed to download certificate', { error, certificateUrl });
+      toast.error('Failed to download certificate');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -238,33 +416,8 @@ const ModernLearningCard = ({
   const StatusIcon = statusBadge.icon;
 
   // Helper functions for list view (different styling)
-  const handleDownloadCertificate = async (e) => {
-    e?.stopPropagation();
-    if (!certificateUrl) return;
-    
-    setIsDownloading(true);
-    try {
-      await downloadCertificate(certificateUrl, item.course || item.title);
-    } catch (error) {
-      console.error('Error downloading certificate:', error);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  const handleViewCertificate = (e) => {
-    e?.stopPropagation();
-    if (certificateUrl) {
-      if (isExternalCourse) {
-        // For external courses, open the certificate URL directly
-        window.open(certificateUrl, '_blank');
-      } else {
-        // For internal courses, use the proxy URL
-        const viewUrl = getCertificateProxyUrl(certificateUrl, 'inline');
-        window.open(viewUrl, '_blank');
-      }
-    }
-  };
+  // Removed old handleDownloadCertificate and handleViewCertificate
+  // Now using handleGetCertificate instead
 
   const renderListCertificateButtons = () => (
     <div className="flex items-center gap-2 flex-wrap">
@@ -288,12 +441,28 @@ const ModernLearningCard = ({
     </button>
   );
 
-  const renderListCompletedStatus = (label = "Completed") => (
-    <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
-      <CheckCircle className="w-4 h-4" />
-      <span>{label}</span>
-    </div>
-  );
+  const renderListCompletedStatus = (label = "Completed") => {
+    // For internal courses without certificate, show "Get Certificate" button
+    if (isInternalCourse && !certificateUrl) {
+      return (
+        <button
+          onClick={handleGetCertificate}
+          className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
+        >
+          <Award className="w-4 h-4" />
+          <span>Get Certificate</span>
+        </button>
+      );
+    }
+    
+    // Default completed status badge
+    return (
+      <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
+        <CheckCircle className="w-4 h-4" />
+        <span>{label}</span>
+      </div>
+    );
+  };
 
   const renderListOngoingStatus = () => (
     <div className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600">
@@ -385,14 +554,31 @@ const ModernLearningCard = ({
     </button>
   );
 
-  // Helper function to render completed status
-  const renderCompletedStatus = (label = "Completed") => (
-    <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
-      <CheckCircle className="w-4 sm:w-5 h-4 sm:h-5" />
-      <span className="hidden xs:inline">{label}</span>
-      <span className="xs:hidden">Completed</span>
-    </div>
-  );
+  // Helper function to render completed status or Get Certificate button
+  const renderCompletedStatus = (label = "Completed") => {
+    // For internal courses without certificate, show "Get Certificate" button
+    if (isInternalCourse && !certificateUrl) {
+      return (
+        <button
+          onClick={handleGetCertificate}
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-green-500/25"
+        >
+          <Award className="w-4 sm:w-5 h-4 sm:h-5" />
+          <span className="hidden xs:inline">Get Certificate</span>
+          <span className="xs:hidden">Get Cert</span>
+        </button>
+      );
+    }
+    
+    // Default completed status badge
+    return (
+      <div className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-green-100 to-green-200 text-green-800">
+        <CheckCircle className="w-4 sm:w-5 h-4 sm:h-5" />
+        <span className="hidden xs:inline">{label}</span>
+        <span className="xs:hidden">Completed</span>
+      </div>
+    );
+  };
 
   // Helper function to render ongoing status
   const renderOngoingStatus = () => (
@@ -469,7 +655,26 @@ const ModernLearningCard = ({
 
   if (viewMode === 'list') {
     return (
-      <div
+      <>
+        {/* Certificate Modal */}
+        <CertificateNameModal
+          isOpen={certificateModal.showModal}
+          onClose={certificateModal.closeModal}
+          fullName={certificateModal.fullName}
+          onFullNameChange={certificateModal.setFullName}
+          onConfirm={certificateModal.showConfirmationDialog}
+          onGenerate={certificateModal.generateCertificate}
+          isGenerating={certificateModal.isGenerating}
+          showConfirmation={certificateModal.showConfirmation}
+          onCancelConfirmation={certificateModal.cancelConfirmation}
+          validationError={certificateModal.validationError}
+          generatedCertificateUrl={certificateModal.generatedUrl}
+          onView={() => viewCertificate(certificateModal.generatedUrl)}
+          onDownload={certificateModal.downloadGeneratedCertificate}
+          courseName={certificateModal.pendingData?.courseName}
+        />
+        
+        <div
         className={`
           group relative bg-white rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-sm
           transition-all duration-500 ease-out hover:shadow-xl hover:shadow-blue-500/10 hover:-translate-y-1
@@ -761,10 +966,13 @@ const ModernLearningCard = ({
                   {/* Dropdown Menu */}
                   {showDropdown && (
                     <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
+                      {/* View Certificate button */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleViewCertificate(e);
+                          if (certificateUrl) {
+                            viewCertificate(certificateUrl);
+                          }
                           setShowDropdown(false);
                         }}
                         className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -814,12 +1022,32 @@ const ModernLearningCard = ({
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   // Grid View (Default) - Completely Redesigned
   return (
-    <div
+    <>
+      {/* Certificate Modal */}
+      <CertificateNameModal
+        isOpen={certificateModal.showModal}
+        onClose={certificateModal.closeModal}
+        fullName={certificateModal.fullName}
+        onFullNameChange={certificateModal.setFullName}
+        onConfirm={certificateModal.showConfirmationDialog}
+        onGenerate={certificateModal.generateCertificate}
+        isGenerating={certificateModal.isGenerating}
+        showConfirmation={certificateModal.showConfirmation}
+        onCancelConfirmation={certificateModal.cancelConfirmation}
+        validationError={certificateModal.validationError}
+        generatedCertificateUrl={certificateModal.generatedUrl}
+        onView={() => viewCertificate(certificateModal.generatedUrl)}
+        onDownload={certificateModal.downloadGeneratedCertificate}
+        courseName={certificateModal.pendingData?.courseName}
+      />
+      
+      <div
       className={`
         group relative bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/60 shadow-sm
         transition-all duration-500 ease-out hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-2
@@ -896,10 +1124,13 @@ const ModernLearningCard = ({
                 {/* Dropdown Menu */}
                 {showDropdown && (
                   <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-10">
+                    {/* View Certificate button */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleViewCertificate(e);
+                        if (certificateUrl) {
+                          viewCertificate(certificateUrl);
+                        }
                         setShowDropdown(false);
                       }}
                       className="flex items-center gap-3 w-full px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -950,9 +1181,18 @@ const ModernLearningCard = ({
 
         {/* Course Title & Provider */}
         <div className="mb-4 sm:mb-5">
-          <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-            {item.course || item.title}
-          </h3>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors flex-1">
+              {item.course || item.title}
+            </h3>
+            {/* Issued Date Badge - Only show if issued_on is available */}
+            {item.issued_on && (
+              <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-200">
+                <Calendar className="w-3 h-3" />
+                <span>{new Date(item.issued_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              </div>
+            )}
+          </div>
           <p className="text-slate-600 text-sm line-clamp-1 flex items-center gap-1.5">
             <Users className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-slate-400" />
             {item.provider || item.organization}
@@ -1221,6 +1461,7 @@ const ModernLearningCard = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
 

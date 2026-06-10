@@ -1,7 +1,7 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { AlertCircle, CheckCircle, Plus, Save, Send, X } from "lucide-react";
 import React, { useState } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface Activity {
   description: string;
@@ -83,13 +83,9 @@ const LessonPlanCreate: React.FC = () => {
         throw new Error("Please add at least one resource");
       }
 
-      // Get current teacher
-      const { data: userData } = await authSessionService.getUser();
-      const { data: teacherData } = await supabase
-        .from("school_educators")
-        .select("id")
-        .eq("email", userData?.user?.email)
-        .maybeSingle();
+      const userData = useAuthStore.getState().user;
+      const tResult = await apiPost<any>('/teacher/actions', { action: 'get-educator-by-email', email: userData?.email });
+      const teacherData = tResult.data;
 
       if (!teacherData) {
         throw new Error("Teacher not found");
@@ -98,20 +94,17 @@ const LessonPlanCreate: React.FC = () => {
       const status = action === "draft" ? "draft" : "submitted";
       const submitted_at = action === "submit" ? new Date().toISOString() : null;
 
-      const { data, error } = await supabase
-        .from("lesson_plans")
-        .insert({
-          teacher_id: teacherData.id,
-          ...formData,
-          activities,
-          resources,
-          status,
-          submitted_at,
-        })
-        .select()
-        .single();
+      const result = await apiPost<any>('/teacher/actions', {
+        action: 'create-lesson-plan',
+        teacherId: teacherData.id,
+        formData,
+        activities,
+        resources,
+        status,
+        submitted_at,
+      });
 
-      if (error) throw error;
+      if (!result.data) throw new Error('Failed to create lesson plan');
 
       setMessage({
         type: "success",

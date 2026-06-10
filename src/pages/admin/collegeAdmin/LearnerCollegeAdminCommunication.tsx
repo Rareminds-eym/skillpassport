@@ -27,13 +27,13 @@ import { useCollegeEducatorAdminConversationsForAdmin } from '@/features/educato
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/shared/lib/hooks';
-import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService, Conversation } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
 
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useUser } from '@/shared/model/authStore';
 import { useGlobalPresence } from '@/shared/model/globalPresenceStore';
+import { apiPost } from '@/shared/api/apiClient';
 const LearnerCollegeAdminCommunication = () => {
   const logger = getLogger('college-admin-communication');
   const location = useLocation();
@@ -76,41 +76,17 @@ const LearnerCollegeAdminCommunication = () => {
     queryFn: async () => {
       if (!collegeAdminId) return null;
 
-      // Try college_lecturers table first
-      // Note: colleges table doesn't exist - fetch college name from organizations separately
-      const { data: lecturerData, error: lecturerError } = await supabase
-        .from('college_lecturers')
-        .select('collegeId')
-        .or(`user_id.eq.${collegeAdminId},email.eq.${user?.email}`)
-        .maybeSingle();
+      const orgRes: any = await apiPost('/college-admin/actions', {
+        action: 'get-org-by-admin-or-email',
+        userId: collegeAdminId,
+        email: user?.email
+      });
 
-      if (!lecturerError && lecturerData?.collegeId) {
-        // Fetch college name from organizations table
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .eq('id', lecturerData.collegeId)
-          .maybeSingle();
-
-        return {
-          college_id: lecturerData.collegeId,
-          colleges: orgData
-        };
-      }
-
-      // Fallback: check organizations table for college owner
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('organization_type', 'college')
-        .eq('admin_id', collegeAdminId)
-        .maybeSingle();
-
-      if (orgError) throw orgError;
-
+      if (!orgRes.success) throw new Error(orgRes.error || 'Failed to fetch college');
+      
       return {
-        college_id: orgData?.id,
-        colleges: orgData
+        college_id: orgRes.data?.id,
+        colleges: orgRes.data
       };
     },
     enabled: !!collegeAdminId,
@@ -123,19 +99,15 @@ const LearnerCollegeAdminCommunication = () => {
     queryKey: queryKeys.college.admin.conversations(collegeId, 'active'),
     queryFn: async () => {
       if (!collegeId) return [];
-      // Note: colleges table doesn't exist - college info already available from collegeData
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          learner:learners(id, name, email, university, branch_field)
-        `)
-        .eq('college_id', collegeId)
-        .eq('conversation_type', 'learner_college_admin')
-        .eq('deleted_by_college_admin', false)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-conversations',
+        college_id: collegeId,
+        conversation_type: 'learner_college_admin',
+        status: 'active'
+      });
 
-      if (error) throw error;
+      if (!res.success) throw new Error(res.error || 'Failed to fetch active conversations');
+      const data = res.data;
 
       // Add college info from collegeData
       return (data || []).map(conv => ({
@@ -159,19 +131,15 @@ const LearnerCollegeAdminCommunication = () => {
     queryKey: queryKeys.college.admin.conversations(collegeId, 'archived'),
     queryFn: async () => {
       if (!collegeId) return [];
-      // Note: colleges table doesn't exist - college info already available from collegeData
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          learner:learners(id, name, email, university, branch_field)
-        `)
-        .eq('college_id', collegeId)
-        .eq('conversation_type', 'learner_college_admin')
-        .eq('status', 'archived')
-        .order('last_message_at', { ascending: false, nullsFirst: false });
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-conversations',
+        college_id: collegeId,
+        conversation_type: 'learner_college_admin',
+        status: 'archived'
+      });
 
-      if (error) throw error;
+      if (!res.success) throw new Error(res.error || 'Failed to fetch archived conversations');
+      const data = res.data;
 
       // Add college info from collegeData
       return (data || []).map(conv => ({
@@ -332,7 +300,7 @@ const LearnerCollegeAdminCommunication = () => {
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [collegeId, queryClient, collegeAdminId]);
 

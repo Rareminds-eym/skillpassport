@@ -1,5 +1,7 @@
 import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { z } from 'zod';
+import { PASSWORD_MIN } from '@/shared/constants';
 import { 
   Mail, 
   AlertCircle, 
@@ -12,7 +14,35 @@ import {
   Clock,
   RefreshCw
 } from 'lucide-react';
-import { sendPasswordResetOTP, verifyOTPAndResetPassword } from '@/features/auth/api';
+
+// Zod schema for API response validation
+const apiResponseSchema = z.object({
+  success: z.boolean(),
+  error: z.string().optional(),
+  message: z.string().optional()
+});
+
+// Helper function for safe API calls with validation
+const makeApiCall = async (url: string, body: object): Promise<{
+  response: Response;
+  data: z.infer<typeof apiResponseSchema>;
+}> => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  const result = await response.json();
+  
+  // Validate response using Zod
+  try {
+    const data = apiResponseSchema.parse(result);
+    return { response, data };
+  } catch (validationError) {
+    throw new Error('Invalid response format from server');
+  }
+};
 
 interface PasswordResetState {
   step: 'email' | 'otp' | 'success';
@@ -26,6 +56,12 @@ interface PasswordResetState {
   showConfirmPassword: boolean;
   timeLeft: number;
   canResend: boolean;
+}
+
+interface ApiResponse {
+  success: boolean;
+  error?: string;
+  message?: string;
 }
 
 const PasswordReset = () => {
@@ -88,13 +124,42 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const result = await sendPasswordResetOTP(state.email);
-
-      if (!result.success) {
+      let apiResult: z.infer<typeof apiResponseSchema>;
+      
+      try {
+        const { response, data } = await makeApiCall('/api/user/reset-password', { 
+          action: 'send', 
+          email: state.email 
+        });
+        apiResult = data;
+        
+        if (!response.ok || !apiResult.success) {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: apiResult.error || 'Failed to send reset code'
+          }));
+          return;
+        }
+      } catch (fetchError) {
+        // Handle network errors, JSON parsing errors, etc.
+        const errorMessage = fetchError instanceof Error 
+          ? `Network error: ${fetchError.message}` 
+          : 'Network error. Please check your connection and try again.';
+        
         setState(prev => ({
           ...prev,
           loading: false,
-          error: result.error || 'Failed to send reset code'
+          error: errorMessage
+        }));
+        return;
+      }
+
+      if (!response.ok || !apiResult.success) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: apiResult.error || 'Failed to send reset code'
         }));
         return;
       }
@@ -135,8 +200,8 @@ const PasswordReset = () => {
       return;
     }
 
-    if (state.newPassword.length < 6) {
-      setState(prev => ({ ...prev, error: 'Password must be at least 6 characters long' }));
+    if (state.newPassword.length < PASSWORD_MIN) {
+      setState(prev => ({ ...prev, error: `Password must be at least ${PASSWORD_MIN} characters long` }));
       return;
     }
 
@@ -148,13 +213,44 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const result = await verifyOTPAndResetPassword(state.email, state.otp, state.newPassword);
-
-      if (!result.success) {
+      let apiResult: z.infer<typeof apiResponseSchema>;
+      
+      try {
+        const { response, data } = await makeApiCall('/api/user/reset-password', { 
+          action: 'reset-password', 
+          email: state.email, 
+          otp: state.otp, 
+          newPassword: state.newPassword 
+        });
+        apiResult = data;
+        
+        if (!response.ok || !apiResult.success) {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: apiResult.error || 'Failed to reset password'
+          }));
+          return;
+        }
+      } catch (fetchError) {
+        // Handle network errors, JSON parsing errors, etc.
+        const errorMessage = fetchError instanceof Error 
+          ? `Network error: ${fetchError.message}` 
+          : 'Network error. Please check your connection and try again.';
+        
         setState(prev => ({
           ...prev,
           loading: false,
-          error: result.error || 'Invalid or expired verification code'
+          error: errorMessage
+        }));
+        return;
+      }
+
+      if (!response.ok || !apiResult.success) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: apiResult.error || 'Invalid or expired verification code'
         }));
         return;
       }
@@ -181,13 +277,43 @@ const PasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const result = await sendPasswordResetOTP(state.email);
-
-      if (!result.success) {
+      let apiResult: z.infer<typeof apiResponseSchema>;
+      
+      try {
+        const { response, data } = await makeApiCall('/api/user/reset-password', { 
+          action: 'send', 
+          email: state.email 
+        });
+        apiResult = data;
+        
+        if (!response.ok || !apiResult.success) {
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: apiResult.error || 'Failed to resend code'
+          }));
+          return;
+        }
+      } catch (fetchError) {
+        // Handle network errors, JSON parsing errors, etc.
+        const errorMessage = fetchError instanceof Error 
+          ? `Network error: ${fetchError.message}` 
+          : 'Network error. Please check your connection and try again.';
+        
         setState(prev => ({
           ...prev,
           loading: false,
-          error: result.error || 'Failed to resend code'
+          error: errorMessage
+        }));
+        return;
+      }
+
+
+      if (!response.ok || !apiResult.success) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: apiResult.error || 'Failed to resend code'
         }));
         return;
       }

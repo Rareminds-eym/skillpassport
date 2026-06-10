@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api';
-import { authSessionService } from '@/features/auth';
+import { apiPost } from '@/shared/api/apiClient';
+
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 import {
   getSwapRequests,
   getSwapRequestDetails,
@@ -16,7 +17,6 @@ const logger = getLogger('college-admin:useSwapRequests');
 type TabType = 'received' | 'sent' | 'history';
 
 interface UseSwapRequestsReturn {
-  // State
   activeTab: TabType;
   requests: ClassSwapRequestWithDetails[];
   loading: boolean;
@@ -26,7 +26,6 @@ interface UseSwapRequestsReturn {
   statistics: SwapStatistics | null;
   filteredRequests: ClassSwapRequestWithDetails[];
 
-  // Actions
   setActiveTab: (tab: TabType) => void;
   setSearchQuery: (query: string) => void;
   loadRequests: () => Promise<void>;
@@ -58,35 +57,17 @@ export const useSwapRequests = (): UseSwapRequestsReturn => {
 
   const loadEducatorData = async () => {
     try {
-      const userData = await authSessionService.getUser();
-      if (!userData?.user?.id) return;
+      const user = useAuthStore.getState().user;
+      if (!user?.id) return;
 
-      const userId = userData.user.id;
-      const userRole = userData.user.user_metadata?.user_role || userData.user.user_metadata?.role;
+      const response = await apiPost('/college-admin/faculty', {
+        action: 'get-educator-id-by-user',
+        user_id: user.id,
+      });
 
-      if (userRole === 'college_educator') {
-        const { data: collegeLecturerData } = await supabase
-          .from('college_lecturers')
-          .select('id')
-          .eq('user_id', userId)
-          .single();
-
-        if (collegeLecturerData) {
-          setEducatorId(collegeLecturerData.id);
-          setIsCollegeEducator(true);
-          return;
-        }
-      }
-
-      const { data: educatorData } = await supabase
-        .from('school_educators')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (educatorData) {
-        setEducatorId(educatorData.id);
-        setIsCollegeEducator(false);
+      if (response.data) {
+        setEducatorId(response.data.educatorId || '');
+        setIsCollegeEducator(response.data.isCollegeEducator || false);
       }
     } catch (error) {
       logger.error('Error loading educator data', error as Error);
@@ -99,7 +80,6 @@ export const useSwapRequests = (): UseSwapRequestsReturn => {
       const { data } = await getSwapRequests(educatorId);
 
       if (data) {
-        // Load detailed information for each request
         const detailedRequests = await Promise.all(
           data.map(async (req) => {
             const { data: detailed } = await getSwapRequestDetails(req.id, isCollegeEducator);
@@ -107,7 +87,6 @@ export const useSwapRequests = (): UseSwapRequestsReturn => {
           })
         );
 
-        // Filter based on active tab
         let filtered = detailedRequests;
         if (activeTab === 'received') {
           filtered = detailedRequests.filter((r: any) => r.target_faculty_id === educatorId && r.status === 'pending');

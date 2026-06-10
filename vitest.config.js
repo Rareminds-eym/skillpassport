@@ -9,6 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
     testTimeout: 120000, // 120 seconds for E2E tests
+    pool: 'forks', // Use forks instead of threads to avoid tinypool ESM resolution bug
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

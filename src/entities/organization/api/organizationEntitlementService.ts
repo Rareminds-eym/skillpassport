@@ -1,19 +1,8 @@
-/**
- * Organization Entitlement Service
- * 
- * Manages entitlement granting and revoking based on license assignments.
- * Handles both organization-provided and self-purchased entitlements.
- */
-
-import { supabase } from '@/shared/api';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import type { LicenseAssignment } from './licenseManagementService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('organizationEntitlement');
-
-// ============================================================================
-// Types & Interfaces
-// ============================================================================
 
 export interface UserEntitlement {
   id: string;
@@ -39,67 +28,36 @@ export interface FeatureAccessResult {
   expiresAt?: string;
 }
 
-// ============================================================================
-// Service Class
-// ============================================================================
-
 export class OrganizationEntitlementService {
-  /**
-   * Grant entitlements to a user based on their license assignment
-   */
-  async grantEntitlementsFromAssignment(
-    assignment: LicenseAssignment
-  ): Promise<UserEntitlement[]> {
+  async grantEntitlementsFromAssignment(assignment: LicenseAssignment): Promise<UserEntitlement[]> {
     try {
-      // Get subscription plan features
-      const { data: subscription } = await supabase
-        .from('organization_subscriptions')
-        .select('subscription_plan_id')
-        .eq('id', assignment.organizationSubscriptionId)
-        .single();
+      const plans = await apiGet<any>(`/organization?action=getPlansCache&planId=${encodeURIComponent(assignment.organizationSubscriptionId)}`);
+      const d = plans.data;
+      let plan: any = null;
+      if (Array.isArray(d)) plan = d[0];
+      else plan = d;
 
-      if (!subscription) {
-        throw new Error('Subscription not found');
-      }
+      const featureSource = plan?.features || plan?.base_features;
+      if (!featureSource) throw new Error('Plan features not found');
 
-      // Get plan features - need to get base_features from the plan
-      const { data: plan } = await supabase
-        .from('subscription_plans')
-        .select('base_features')
-        .eq('id', subscription.subscription_plan_id)
-        .single();
-
-      if (!plan || !plan.base_features) {
-        throw new Error('Plan features not found');
-      }
-
-      // Grant entitlements for each feature
       const entitlements: UserEntitlement[] = [];
-      const features = Array.isArray(plan.base_features) ? plan.base_features : [];
+      const features = Array.isArray(featureSource) ? featureSource : [];
 
       for (const featureKey of features) {
-        const { data, error } = await supabase
-          .from('user_entitlements')
-          .insert({
-            user_id: assignment.userId,
-            feature_key: featureKey,
-            is_active: true,
-            granted_by_organization: true,
-            organization_subscription_id: assignment.organizationSubscriptionId,
-            granted_by: assignment.assignedBy,
-            expires_at: assignment.expiresAt
-          })
-          .select()
-          .single();
-
-        if (error) {
-          logger.error(`Error granting entitlement for ${featureKey}`, error as Error);
-          continue;
+        try {
+          const data = await apiPost<any>('/organization', {
+            action: 'grantEntitlement',
+            userId: assignment.userId,
+            featureKey,
+            organizationSubscriptionId: assignment.organizationSubscriptionId,
+            grantedBy: assignment.assignedBy,
+            expiresAt: assignment.expiresAt,
+          });
+          entitlements.push(this.mapToUserEntitlement(data.data));
+        } catch (err) {
+          logger.error(`Error granting entitlement for ${featureKey}`, err as Error);
         }
-
-        entitlements.push(this.mapToUserEntitlement(data));
       }
-
       return entitlements;
     } catch (error) {
       logger.error('Error granting entitlements from assignment', error as Error);
@@ -107,90 +65,38 @@ export class OrganizationEntitlementService {
     }
   }
 
-  /**
-   * Revoke entitlements when a license is unassigned
-   */
   async revokeEntitlementsFromAssignment(assignmentId: string): Promise<void> {
     try {
-      // Get assignment details
-      const { data: assignment } = await supabase
-        .from('license_assignments')
-        .select('user_id, organization_subscription_id')
-        .eq('id', assignmentId)
-        .single();
+      const result = await apiGet<any[]>(`/organization?action=getPoolAssignments&poolId=${encodeURIComponent(assignmentId)}`);
+      const d = result.data;
+      const assignment = Array.isArray(d) ? d.find((a: any) => a.id === assignmentId) : d;
+      if (!assignment) throw new Error('Assignment not found');
 
-      if (!assignment) {
-        throw new Error('Assignment not found');
-      }
-
-      // Deactivate all organization-provided entitlements for this user
-      const { error } = await supabase
-        .from('user_entitlements')
-        .update({
-          is_active: false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', assignment.user_id)
-        .eq('organization_subscription_id', assignment.organization_subscription_id)
-        .eq('granted_by_organization', true);
-
-      if (error) throw error;
+      await apiPost('/organization', {
+        action: 'revokeEntitlements',
+        userId: assignment.user_id,
+        organizationSubscriptionId: assignment.organization_subscription_id,
+      });
     } catch (error) {
       logger.error('Error revoking entitlements from assignment', error as Error);
       throw error;
     }
   }
 
-  /**
-   * Check if a user has access to a feature through organization
-   */
-  async hasOrganizationAccess(
-    userId: string,
-    featureKey: string
-  ): Promise<FeatureAccessResult> {
+  async hasOrganizationAccess(userId: string, featureKey: string): Promise<FeatureAccessResult> {
     try {
-      // Check organization-provided access
-      const { data: orgEntitlement } = await supabase
-        .from('user_entitlements')
-        .select(`
-          *,
-          license_assignments!inner(
-            status,
-            expires_at
-          )
-        `)
-        .eq('user_id', userId)
-        .eq('feature_key', featureKey)
-        .eq('granted_by_organization', true)
-        .eq('is_active', true)
-        .single();
+      const result = await apiGet<any[]>(`/organization?action=getUserEntitlements&userId=${encodeURIComponent(userId)}`);
+      const entitlements = result.data;
+      const orgEntitlement = entitlements?.find(
+        (e: any) => e.feature_key === featureKey && e.granted_by_organization && e.is_active
+      );
+      if (orgEntitlement) return { hasAccess: true, source: 'organization', expiresAt: orgEntitlement.expires_at };
 
-      if (orgEntitlement) {
-        return {
-          hasAccess: true,
-          source: 'organization',
-          expiresAt: orgEntitlement.expires_at
-        };
-      }
-
-      // Check personal subscription
-      const { data: personalEntitlement } = await supabase
-        .from('user_entitlements')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('feature_key', featureKey)
-        .eq('granted_by_organization', false)
-        .eq('is_active', true)
-        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-        .single();
-
-      if (personalEntitlement) {
-        return {
-          hasAccess: true,
-          source: 'personal',
-          expiresAt: personalEntitlement.expires_at
-        };
-      }
+      const personalEntitlement = entitlements?.find(
+        (e: any) => e.feature_key === featureKey && !e.granted_by_organization && e.is_active &&
+          (!e.expires_at || new Date(e.expires_at) > new Date())
+      );
+      if (personalEntitlement) return { hasAccess: true, source: 'personal', expiresAt: personalEntitlement.expires_at };
 
       return { hasAccess: false, source: 'none' };
     } catch (error) {
@@ -199,24 +105,13 @@ export class OrganizationEntitlementService {
     }
   }
 
-  /**
-   * Get all entitlements for a user, separated by source
-   */
   async getUserEntitlements(userId: string): Promise<EntitlementSummary> {
     try {
-      const { data, error } = await supabase
-        .from('user_entitlements')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_active', true);
-
-      if (error) throw error;
-
-      const entitlements = (data || []).map(this.mapToUserEntitlement);
-
+      const result = await apiGet<any[]>(`/organization?action=getUserEntitlements&userId=${encodeURIComponent(userId)}`);
+      const entitlements = (result.data || []).map(this.mapToUserEntitlement);
       return {
         organizationProvided: entitlements.filter(e => e.grantedByOrganization),
-        selfPurchased: entitlements.filter(e => !e.grantedByOrganization)
+        selfPurchased: entitlements.filter(e => !e.grantedByOrganization),
       };
     } catch (error) {
       logger.error('Error fetching user entitlements', error as Error);
@@ -224,28 +119,15 @@ export class OrganizationEntitlementService {
     }
   }
 
-  /**
-   * Sync entitlements when a subscription changes
-   */
   async syncOrganizationEntitlements(subscriptionId: string): Promise<void> {
     try {
-      // Get all active assignments for this subscription
-      const { data: assignments } = await supabase
-        .from('license_assignments')
-        .select('*')
-        .eq('organization_subscription_id', subscriptionId)
-        .eq('status', 'active');
+      const result = await apiGet<any[]>(`/organization?action=getSubscriptions&subId=${encodeURIComponent(subscriptionId)}`);
+      const assignments = result.data;
+      if (!assignments || assignments.length === 0) return;
 
-      if (!assignments || assignments.length === 0) {
-        return;
-      }
-
-      // Revoke existing entitlements
       for (const assignment of assignments) {
         await this.revokeEntitlementsFromAssignment(assignment.id);
       }
-
-      // Re-grant entitlements with updated features
       for (const assignment of assignments) {
         await this.grantEntitlementsFromAssignment(assignment);
       }
@@ -255,118 +137,41 @@ export class OrganizationEntitlementService {
     }
   }
 
-  /**
-   * Bulk grant entitlements to multiple users
-   */
   async bulkGrantEntitlements(
-    userIds: string[],
-    featureKeys: string[],
-    organizationSubscriptionId: string,
-    grantedBy: string
+    userIds: string[], featureKeys: string[], organizationSubscriptionId: string, grantedBy: string
   ): Promise<UserEntitlement[]> {
-    const entitlements: UserEntitlement[] = [];
-
-    for (const userId of userIds) {
-      for (const featureKey of featureKeys) {
-        try {
-          const { data, error } = await supabase
-            .from('user_entitlements')
-            .insert({
-              user_id: userId,
-              feature_key: featureKey,
-              is_active: true,
-              granted_by_organization: true,
-              organization_subscription_id: organizationSubscriptionId,
-              granted_by: grantedBy
-            })
-            .select()
-            .single();
-
-          if (error) {
-            logger.error(`Error granting ${featureKey} to ${userId}`, error as Error);
-            continue;
-          }
-
-          entitlements.push(this.mapToUserEntitlement(data));
-        } catch (error) {
-          logger.error(`Error in bulk grant for ${userId}`, error as Error);
-        }
-      }
+    try {
+      const result = await apiPost<UserEntitlement[]>('/organization', {
+        action: 'bulkGrantEntitlements', userIds, featureKeys, organizationSubscriptionId, grantedBy,
+      });
+      return result.data;
+    } catch (error) {
+      logger.error('Error in bulk grant', error as Error);
+      throw error;
     }
-
-    return entitlements;
   }
 
-  /**
-   * Bulk revoke entitlements from multiple users
-   */
-  async bulkRevokeEntitlements(
-    userIds: string[],
-    organizationSubscriptionId: string
-  ): Promise<void> {
+  async bulkRevokeEntitlements(userIds: string[], organizationSubscriptionId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('user_entitlements')
-        .update({
-          is_active: false,
-          updated_at: new Date().toISOString()
-        })
-        .in('user_id', userIds)
-        .eq('organization_subscription_id', organizationSubscriptionId)
-        .eq('granted_by_organization', true);
-
-      if (error) throw error;
+      await apiPost('/organization', { action: 'bulkRevokeEntitlements', userIds, organizationSubscriptionId });
     } catch (error) {
       logger.error('Error bulk revoking entitlements', error as Error);
       throw error;
     }
   }
 
-  /**
-   * Get organization entitlement statistics
-   */
   async getOrganizationEntitlementStats(organizationSubscriptionId: string): Promise<{
-    totalMembers: number;
-    activeEntitlements: number;
-    featureBreakdown: Record<string, number>;
+    totalMembers: number; activeEntitlements: number; featureBreakdown: Record<string, number>;
   }> {
     try {
-      const { data: entitlements } = await supabase
-        .from('user_entitlements')
-        .select('user_id, feature_key')
-        .eq('organization_subscription_id', organizationSubscriptionId)
-        .eq('granted_by_organization', true)
-        .eq('is_active', true);
-
-      if (!entitlements) {
-        return {
-          totalMembers: 0,
-          activeEntitlements: 0,
-          featureBreakdown: {}
-        };
-      }
-
-      const uniqueMembers = new Set(entitlements.map(e => e.user_id));
-      const featureBreakdown: Record<string, number> = {};
-
-      entitlements.forEach(e => {
-        featureBreakdown[e.feature_key] = (featureBreakdown[e.feature_key] || 0) + 1;
-      });
-
-      return {
-        totalMembers: uniqueMembers.size,
-        activeEntitlements: entitlements.length,
-        featureBreakdown
-      };
+      const result = await apiGet(`/organization?action=getOrganizationEntitlementStats&subscriptionId=${encodeURIComponent(organizationSubscriptionId)}`);
+      return result.data;
     } catch (error) {
       logger.error('Error fetching entitlement stats', error as Error);
       throw error;
     }
   }
 
-  /**
-   * Map database record to UserEntitlement interface
-   */
   private mapToUserEntitlement(data: any): UserEntitlement {
     return {
       id: data.id,
@@ -378,10 +183,9 @@ export class OrganizationEntitlementService {
       grantedBy: data.granted_by,
       expiresAt: data.expires_at,
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
     };
   }
 }
 
-// Export singleton instance
 export const organizationEntitlementService = new OrganizationEntitlementService();

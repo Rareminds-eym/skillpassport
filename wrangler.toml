@@ -2,8 +2,15 @@
 # This is used for local development with `wrangler pages dev`
 
 name = "skill-passport-portal"
-compatibility_date = "2025-05-09"
+compatibility_date = "2026-05-25"
 compatibility_flags = ["nodejs_compat"]
+
+# ============================================================================
+# R2 BUCKET BINDING
+# ============================================================================
+# [[r2_buckets]]
+# binding = "R2_BUCKET"
+# bucket_name = "skill-echosystem"
 
 # ============================================================================
 # KV NAMESPACES - REMOVED
@@ -23,11 +30,134 @@ service = "razorpay-api"
 entrypoint = "PaymentService"
 
 # SSO worker — authentication service, zero-latency internal routing
-# HTTP-style binding (no entrypoint) for JWKS fetching and token refresh
+# RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]
 binding = "SSO_SERVICE"
 service = "sso-api"
-# No entrypoint needed - sso-api uses default fetch handler
+entrypoint = "SsoWorker"
 
-# Environment variables for local development
-# These will be loaded from .dev.vars file
+# Realtime worker — WebSocket hub, zero-latency internal routing
+# RPC-style binding (WorkerEntrypoint) for WebSocket upgrade delegation
+[[services]]
+binding = "REALTIME_WORKER"
+service = "realtime-worker"
+
+# ============================================================================
+# QUEUE PRODUCER — Realtime Events
+# ============================================================================
+# Sends DB mutation events to the realtime-events-queue for fan-out
+# to all Durable Object partitions in the realtime-worker.
+[[queues.producers]]
+binding = "REALTIME_EVENTS_QUEUE"
+queue = "realtime-events-queue"
+
+# Email worker — centralized email service, zero-latency internal routing
+# RPC-style binding (WorkerEntrypoint) for typed method calls
+[[services]]
+binding = "EMAIL_SERVICE"
+service = "shared-email-api"
+entrypoint = "EmailService"
+
+# ============================================================================
+# ENVIRONMENT VARIABLES
+# ============================================================================
+# Variables are categorized into:
+# 1. Client Variables (VITE_*) - Exposed to frontend via Vite build
+# 2. Pages Function Variables - Used by backend (functions/api/**)
+# 3. Secrets - Sensitive values (use .dev.vars locally, wrangler secret in production)
+
+[vars]
+# ──────────────────────────────────────────────────────────────────────────
+# NON-SECRET CONFIGURATION 
+# ──────────────────────────────────────────────────────────────────────────
+
+# SSO / Auth Configuration (Pages Functions)
+SSO_DOMAIN = "https://sso-api.dark-mode-d021.workers.dev/"
+
+# Supabase Configuration (Pages Functions)
+SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+
+# API URLs (Pages Functions)
+EMAIL_WORKER_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
+EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
+
+# Cloudflare R2 Configuration (Pages Functions)
+CLOUDFLARE_R2_BUCKET_NAME = "skill-echosystem"
+
+# ──────────────────────────────────────────────────────────────────────────
+# CLIENT VARIABLES (VITE_*) - Exposed to Frontend
+# ──────────────────────────────────────────────────────────────────────────
+# Note: These are injected into the Vite build and visible in browser.
+# Only include non-sensitive configuration here.
+
+# SSO / Auth (Frontend)
+VITE_SSO_URL = "https://sso-api.dark-mode-d021.workers.dev/"
+
+# Supabase (Frontend)
+VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+
+# API URLs (Frontend)
+VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
+VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
+VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
+
+# Analytics 
+VITE_GTM_ID = "GTM-M2N3952J"
+
+# Note: Razorpay keys are managed by the payment worker and returned in API responses
+
+# ──────────────────────────────────────────────────────────────────────────
+# SECRETS (DO NOT COMMIT VALUES)
+# ──────────────────────────────────────────────────────────────────────────
+# For local development: Add these to .dev.vars file (gitignored)
+# For production: Set using `wrangler secret put <KEY_NAME>`
+#
+# Required secrets:
+# - SUPABASE_ANON_KEY
+# - SUPABASE_SERVICE_ROLE_KEY
+# - VITE_SUPABASE_ANON_KEY
+# - SERVICE_AUTH_SECRET (shared secret for authenticating with SSO worker)
+# - CLOUDFLARE_R2_ACCESS_KEY_ID
+# - CLOUDFLARE_R2_SECRET_ACCESS_KEY
+# - CLOUDFLARE_ACCOUNT_ID
+# - EMAIL_API_KEY
+# - EMBEDDING_API_KEY
+# - OPENROUTER_API_KEY (optional, for AI features)
+# - CLAUDE_API_KEY (optional, for AI features)
+# - GEMINI_API_KEY (optional, for AI features)
+# - SIGNING_SECRET (optional, for media access tokens)
+# - CRON_SECRET (for authenticating cron job requests)
+# - DEEPGRAM_API_KEY (optional, for audio transcription)
+# - GROQ_API_KEY (optional, for audio transcription)
+# - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (for direct SMTP email sending)
+# - FROM_EMAIL, FROM_NAME (default sender identity)
+# - ADMIN_EMAIL (admin notification recipient)
+# - APP_URL (public app base URL for email links)
+# - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (for AWS SDK usage)
+#
+# Note: Razorpay keys are NOT needed here - they are managed by the payment worker
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# VARIABLE USAGE GUIDE
+# ──────────────────────────────────────────────────────────────────────────
+#
+# CLIENT VARIABLES (VITE_*):
+# - Injected into frontend bundle during Vite build
+# - Accessible via import.meta.env.VITE_* in React components
+# - Visible in browser DevTools (never put secrets here!)
+# - Examples: API endpoints, public keys, feature flags
+#
+# PAGES FUNCTION VARIABLES (no prefix):
+# - Available to backend code in functions/api/**
+# - Accessed via context.env.VARIABLE_NAME
+# - NOT exposed to frontend
+# - Examples: Database credentials, API keys, service URLs
+#
+# SECRETS (.dev.vars or wrangler secret):
+# - Sensitive values that should never be committed
+# - Local dev: Add to .dev.vars (gitignored)
+# - Production: Use `wrangler secret put KEY_NAME`
+# - Examples: API keys, passwords, tokens
+#
+# ──────────────────────────────────────────────────────────────────────────

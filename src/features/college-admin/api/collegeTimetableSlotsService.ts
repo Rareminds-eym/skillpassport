@@ -1,29 +1,18 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export const collegeTimetableSlotsService = {
   async createSlot(slotData: any) {
-    const { error } = await supabase
-      .from('college_timetable_slots')
-      .insert(slotData);
-    
-    if (error) throw error;
+    const result = await apiPost('/college-admin/classes', { action: 'create-timetable-slot', ...slotData });
+    if (!result.success) throw new Error(result.error || 'Failed to create timetable slot');
   },
 
   async updateSlot(id: string, slotData: any) {
-    const { error } = await supabase
-      .from('college_timetable_slots')
-      .update(slotData)
-      .eq('id', id);
-    
-    if (error) throw error;
+    const result = await apiPost('/college-admin/classes', { action: 'update-timetable-slot', id, ...slotData });
+    if (!result.success) throw new Error(result.error || 'Failed to update timetable slot');
   },
 
   async deleteSlot(id: string) {
-    const { error } = await supabase
-      .from('college_timetable_slots')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    const result = await apiPost('/college-admin/classes', { action: 'delete-timetable-slot', id });
+    if (!result.success) throw new Error(result.error || 'Failed to delete timetable slot');
   }
 };

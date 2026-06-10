@@ -10,6 +10,15 @@
 import { getGradeLevelFromGrade } from '@/shared/lib/utils/grade-utils';
 
 /**
+ * Learner category - top-level classification
+ */
+export enum LearnerCategory {
+    SCHOOL_STUDENT = 'school_student',      // School learners
+    COLLEGE_STUDENT = 'college_student',    // College learners
+    PROFESSIONAL = 'professional'           // Working professionals (default if not school or college)
+}
+
+/**
  * Education levels in the system
  */
 export enum EducationLevel {
@@ -27,13 +36,19 @@ export enum EducationLevel {
  */
 export interface LearnerData {
     university_college_id?: string | null;
+    universityCollegeId?: string | null;
     college_id?: string | null;  // Alias used in some files
+    collegeId?: string | null;
     school_id?: string | null;
+    schoolId?: string | null;
     grade?: string | null;
     role?: string | null;
     program_id?: string | null;
     users?: { role?: string } | Array<{ role?: string }> | null; // Role from joined users table
     userRole?: string | null; // Direct userRole property from learnerSettingsService
+    learner_type?: string | null; // Direct learner type from database
+    university?: string | null; // Custom university name
+    college_school_name?: string | null; // Custom college/school name
 }
 
 /**
@@ -45,29 +60,34 @@ export interface LearnerTypeInfo {
     isLearner: boolean;
     educationLevel: EducationLevel | null;
     institutionId: string | null;
+    category: LearnerCategory;  // school_student, college_student, or professional
 }
 
 /**
  * Determines learner type using a priority-based detection chain.
- * 
+ *
  * Priority:
- * 1. User role (most authoritative - from users table)
- * 2. Institution IDs (university_college_id / school_id)
+ * 0. Explicit learner_type field ('college_student' or 'school_student')
+ * 1. User role (from users table)
+ * 2. Institution IDs (university_college_id for college, school_id for school)
  * 3. Grade level (fallback based on grade string)
- * 
+ *
+ * NOTE: Custom names (university, college_school_name) are display values only,
+ * NOT used for type detection as they're unreliable indicators.
+ *
  * @param learner - Learner data object with relevant fields
  * @returns LearnerTypeInfo with detection results
- * 
+ *
  * @example
- * // By role
- * determinelearnerType({ role: 'learner' })
- * // => { isCollegeLearner: false, isSchoolLearner: false, isLearner: true, ... }
- * 
+ * // By learner_type field
+ * determinelearnerType({ learner_type: 'college_student' })
+ * // => { isCollegeLearner: true, ... }
+ *
  * @example
  * // By institution ID
  * determinelearnerType({ university_college_id: 'uuid', school_id: null })
  * // => { isCollegeLearner: true, ... }
- * 
+ *
  * @example
  * // By grade
  * determinelearnerType({ grade: 'Grade 10' })
@@ -80,14 +100,45 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
             isSchoolLearner: false,
             isLearner: false,
             educationLevel: null,
-            institutionId: null
+            institutionId: null,
+            category: LearnerCategory.PROFESSIONAL
         };
     }
 
+    // Priority 0: Check explicit learner_type field (most authoritative)
+    // Only check for 'school_student' or 'college_student'
+    if (learner.learner_type) {
+        const typeStr = String(learner.learner_type).toLowerCase().trim();
+        
+        if (typeStr === 'school_student' || typeStr === 'school') {
+            const level = getGradeLevelFromGrade(learner.grade) as EducationLevel | null;
+            return {
+                isCollegeLearner: false,
+                isSchoolLearner: true,
+                isLearner: false,
+                educationLevel: level,
+                institutionId: learner.school_id || learner.schoolId || null,
+                category: LearnerCategory.SCHOOL_STUDENT
+            };
+        }
+        
+        if (typeStr === 'college_student' || typeStr === 'college') {
+            return {
+                isCollegeLearner: true,
+                isSchoolLearner: false,
+                isLearner: false,
+                educationLevel: EducationLevel.COLLEGE,
+                institutionId: learner.university_college_id || learner.universityCollegeId || learner.college_id || learner.collegeId || null,
+                category: LearnerCategory.COLLEGE_STUDENT
+            };
+        }
+    }
+
     // Normalize college_id alias (some files use college_id, others use university_college_id)
-    const collegeId = learner.university_college_id || learner.college_id;
+    const collegeId = learner.university_college_id || learner.universityCollegeId || learner.college_id || learner.collegeId;
     const hasCollegeId = Boolean(collegeId);
-    const hasSchoolId = Boolean(learner.school_id);
+    const schoolId = learner.school_id || learner.schoolId;
+    const hasSchoolId = Boolean(schoolId);
 
     // Extract role from multiple possible sources (priority order):
     // 1. userRole (direct property from learnerSettingsService)
@@ -121,7 +172,8 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
                 isSchoolLearner: false,
                 isLearner: false,
                 educationLevel: EducationLevel.COLLEGE,
-                institutionId: collegeId || null
+                institutionId: collegeId || null,
+                category: LearnerCategory.COLLEGE_STUDENT
             };
         }
         if (hasSchoolId) {
@@ -131,7 +183,8 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
                 isSchoolLearner: true,
                 isLearner: false,
                 educationLevel: level,
-                institutionId: learner.school_id || null
+                institutionId: schoolId || null,
+                category: LearnerCategory.SCHOOL_STUDENT
             };
         }
         return {
@@ -139,18 +192,20 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
             isSchoolLearner: false,
             isLearner: true,
             educationLevel: null,
-            institutionId: null
+            institutionId: null,
+            category: LearnerCategory.PROFESSIONAL
         };
     }
 
-    // Priority 2: Institution IDs
+    // Priority 2: Institution IDs only (most reliable)
     if (hasCollegeId && !hasSchoolId) {
         return {
             isCollegeLearner: true,
             isSchoolLearner: false,
             isLearner: false,
             educationLevel: EducationLevel.COLLEGE,
-            institutionId: collegeId || null
+            institutionId: collegeId || null,
+            category: LearnerCategory.COLLEGE_STUDENT
         };
     }
 
@@ -161,19 +216,20 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
             isSchoolLearner: true,
             isLearner: false,
             educationLevel: level,
-            institutionId: learner.school_id || null
+            institutionId: schoolId || null,
+            category: LearnerCategory.SCHOOL_STUDENT
         };
     }
 
-    // Edge case: Both IDs present - college takes precedence
-    // This handles learners who may have transferred from school to college
+    // Edge case: Both institution IDs present - college takes precedence
     if (hasCollegeId && hasSchoolId) {
         return {
             isCollegeLearner: true,
             isSchoolLearner: false,
             isLearner: false,
             educationLevel: EducationLevel.COLLEGE,
-            institutionId: collegeId || null
+            institutionId: collegeId || null,
+            category: LearnerCategory.COLLEGE_STUDENT
         };
     }
 
@@ -184,7 +240,8 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
             isSchoolLearner: false,
             isLearner: true,
             educationLevel: null,
-            institutionId: null
+            institutionId: null,
+            category: LearnerCategory.PROFESSIONAL
         };
     }
 
@@ -197,7 +254,8 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
         isSchoolLearner: !isCollegeLevel && level !== null,
         isLearner: false,
         educationLevel: level,
-        institutionId: null
+        institutionId: null,
+        category: isCollegeLevel ? LearnerCategory.COLLEGE_STUDENT : LearnerCategory.PROFESSIONAL
     };
 }
 
@@ -240,3 +298,39 @@ export const getlearnerEducationLevel = (learner: LearnerData | null | undefined
  */
 export const isLearner = (learner: LearnerData | null | undefined): boolean =>
     determinelearnerType(learner).isLearner;
+
+/**
+ * Get learner category (school_student, college_student, or professional)
+ * 
+ * @param learner - Learner data object
+ * @returns Learner category
+ */
+export const getLearnerCategory = (learner: LearnerData | null | undefined): LearnerCategory =>
+    determinelearnerType(learner).category;
+
+/**
+ * Check if learner is a school student
+ * 
+ * @param learner - Learner data object
+ * @returns true if learner is school_student
+ */
+export const isSchoolStudent = (learner: LearnerData | null | undefined): boolean =>
+    determinelearnerType(learner).category === LearnerCategory.SCHOOL_STUDENT;
+
+/**
+ * Check if learner is a college student
+ * 
+ * @param learner - Learner data object
+ * @returns true if learner is college_student
+ */
+export const isCollegeStudent = (learner: LearnerData | null | undefined): boolean =>
+    determinelearnerType(learner).category === LearnerCategory.COLLEGE_STUDENT;
+
+/**
+ * Check if learner is a professional
+ * 
+ * @param learner - Learner data object
+ * @returns true if learner is professional
+ */
+export const isProfessional = (learner: LearnerData | null | undefined): boolean =>
+    determinelearnerType(learner).category === LearnerCategory.PROFESSIONAL;

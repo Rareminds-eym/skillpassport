@@ -2,7 +2,7 @@ import React from 'react';
 
 export { default as AdmissionNoteModal } from '../LearnerProfileDrawer/modals/AdmissionNoteModal';
 export { default as SchoolAdmissionNoteModal } from '../LearnerProfileDrawer/modals/SchoolAdmissionNoteModal';
-export { default as MessageModal } from '../LearnerProfileDrawer/modals/MessageModal';
+export { default as MessageModal } from '@/features/messaging/ui/modals/MessageModal';
 export { default as ExportModal } from '@/entities/learner/ui/modals/ExportModal';
 export { default as ApprovalModal } from '../LearnerProfileDrawer/modals/ApprovalModal';
 export { default as PromotionModal } from '../LearnerProfileDrawer/modals/PromotionModal';

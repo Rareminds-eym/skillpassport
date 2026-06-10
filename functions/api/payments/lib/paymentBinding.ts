@@ -43,6 +43,7 @@ export interface RazorpayOrder {
   attempts: number;
   notes: Record<string, string>;
   created_at: number;
+  key_id?: string; // Injected by payment worker for frontend checkout
 }
 
 export interface RazorpayPayment {
@@ -91,10 +92,7 @@ export interface PaymentWorkerBinding {
 export interface PaymentWorkerEnv {
   /** Service binding to the payment-worker (razorpay-api) */
   PAYMENT_WORKER: PaymentWorkerBinding;
-
-  /** Razorpay publishable key — injected into order responses for frontend checkout */
-  RAZORPAY_KEY_ID: string;
-
+  
   /** Supabase connection */
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -102,6 +100,8 @@ export interface PaymentWorkerEnv {
   /** Allow additional env vars */
   [key: string]: unknown;
 }
+
+import { apiError } from '../../../lib/response';
 
 // ─── Helper Functions ───────────────────────────────────────────────────────────
 
@@ -154,9 +154,10 @@ export function rpcErrorToHttpStatus(error: unknown): number {
  * Build a JSON error response from an RPC error.
  *
  * @param error - Error thrown by a PaymentService RPC method or binding helper
+ * @param request - Original request for CORS header resolution
  * @returns Response with appropriate status code and structured error body
  */
-export function rpcErrorResponse(error: unknown): Response {
+export function rpcErrorResponse(error: unknown, request?: Request): Response {
   const message = error instanceof Error ? error.message : String(error);
   const status = rpcErrorToHttpStatus(error);
 
@@ -165,10 +166,5 @@ export function rpcErrorResponse(error: unknown): Response {
   const code = colonIndex > 0 ? message.slice(0, colonIndex).trim() : 'INTERNAL_ERROR';
   const detail = colonIndex > 0 ? message.slice(colonIndex + 1).trim() : message;
 
-  return new Response(
-    JSON.stringify({
-      error: { code, message: detail },
-    }),
-    { status, headers: { 'Content-Type': 'application/json' } }
-  );
+  return apiError(status, code, detail, request);
 }

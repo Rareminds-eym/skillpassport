@@ -21,7 +21,7 @@ import toast from 'react-hot-toast'
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('university-admin-courses');
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { courseDetailsService } from '@/features/courses';
 
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
@@ -58,14 +58,16 @@ const UniversityAdminCourses: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch all courses (university admin sees all)
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+      const coursesResp = await apiPost('/university-admin/actions', {
+        action: 'list-courses',
+        select: '*',
+        filters: { deleted_at: { is: null } },
+        orderBy: 'created_at',
+        orderDir: 'desc',
+      });
 
-      if (coursesError) throw coursesError;
+      if (!coursesResp.success) throw new Error(coursesResp.error?.message || 'Failed to fetch courses');
+      const coursesData = coursesResp.data;
 
       if (!coursesData || coursesData.length === 0) {
         setCourses([]);
@@ -165,17 +167,15 @@ const UniversityAdminCourses: React.FC = () => {
     }
   };
 
-  // Fetch colleges for filter from organizations table
   const fetchColleges = async () => {
     try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('organization_type', 'college')
-        .order('name');
-      
-      if (!error && data) {
-        setColleges(data);
+      const resp = await apiPost('/university-admin/actions', {
+        action: 'list-organizations-by-type',
+        orgType: 'college',
+        select: 'id, name',
+      });
+      if (resp.success && resp.data) {
+        setColleges(resp.data);
       }
     } catch (err) {
       logger.error('Error fetching colleges:', err as Error);
@@ -454,40 +454,22 @@ const UniversityAdminCourses: React.FC = () => {
         }}
         onSubmit={async (courseData) => {
           try {
-            if (editingCourse) {
-              // Update existing course
-              const { error } = await supabase
-                .from('courses')
-                .update({
-                  title: courseData.title,
-                  code: courseData.code,
-                  description: courseData.description,
-                  status: courseData.status,
-                  duration: courseData.duration,
-                  target_outcomes: courseData.targetOutcomes
-                })
-                .eq('course_id', editingCourse.id);
+            const upsertResp = await apiPost('/university-admin/actions', {
+              action: 'upsert-course',
+              courseId: editingCourse?.id || null,
+              values: {
+                title: courseData.title,
+                code: courseData.code,
+                description: courseData.description,
+                status: editingCourse ? courseData.status : (courseData.status || 'Draft'),
+                duration: courseData.duration,
+                target_outcomes: courseData.targetOutcomes,
+                ...(!editingCourse ? { educator_id: user?.id, educator_name: user?.full_name || 'University Admin' } : {}),
+              },
+            });
 
-              if (error) throw error;
-              toast.success('Course updated successfully!');
-            } else {
-              // Create new course
-              const { error } = await supabase
-                .from('courses')
-                .insert({
-                  title: courseData.title,
-                  code: courseData.code,
-                  description: courseData.description,
-                  status: courseData.status || 'Draft',
-                  duration: courseData.duration,
-                  target_outcomes: courseData.targetOutcomes,
-                  educator_id: user?.id,
-                  educator_name: user?.full_name || 'University Admin'
-                });
-
-              if (error) throw error;
-              toast.success('Course created successfully!');
-            }
+            if (!upsertResp.success) throw new Error(upsertResp.error?.message);
+            toast.success(editingCourse ? 'Course updated successfully!' : 'Course created successfully!');
             
             setShowCreateModal(false);
             setEditingCourse(null);
@@ -513,18 +495,19 @@ const UniversityAdminCourses: React.FC = () => {
         onEdit={handleEditCourse}
         onUpdateCourse={async (updatedCourse) => {
           try {
-            const { error } = await supabase
-              .from('courses')
-              .update({
+            const upsertResp = await apiPost('/university-admin/actions', {
+              action: 'upsert-course',
+              courseId: updatedCourse.id,
+              values: {
                 title: updatedCourse.title,
                 code: updatedCourse.code,
                 description: updatedCourse.description,
                 status: updatedCourse.status,
-                duration: updatedCourse.duration
-              })
-              .eq('course_id', updatedCourse.id);
+                duration: updatedCourse.duration,
+              },
+            });
 
-            if (error) throw error;
+            if (!upsertResp.success) throw new Error(upsertResp.error?.message);
             
             setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
             setSelectedCourse(updatedCourse);

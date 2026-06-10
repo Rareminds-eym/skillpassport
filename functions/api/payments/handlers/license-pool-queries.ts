@@ -1,10 +1,7 @@
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
-
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleLicensePoolQueries(context);
-});
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleLicensePoolQueries(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -24,7 +21,7 @@ export async function handleLicensePoolQueries(context: AuthenticatedContext): P
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return new Response(JSON.stringify({ success: true, data: data || [], error: null }), { status: 200 });
+      return apiSuccess(data || [], context.request);
     }
 
     if (action === 'getLicensePoolById' && poolId) {
@@ -35,7 +32,7 @@ export async function handleLicensePoolQueries(context: AuthenticatedContext): P
         .single();
 
       if (error) throw error;
-      return new Response(JSON.stringify({ success: true, data, error: null }), { status: 200 });
+      return apiSuccess(data, context.request);
     }
 
     if (action === 'getPoolAssignments' && poolId) {
@@ -46,15 +43,12 @@ export async function handleLicensePoolQueries(context: AuthenticatedContext): P
         .order('assigned_at', { ascending: false });
 
       if (error) throw error;
-      return new Response(JSON.stringify({ success: true, data: data || [], error: null }), { status: 200 });
+      return apiSuccess(data || [], context.request);
     }
 
-    return new Response(JSON.stringify({ success: false, error: 'Invalid action or missing params' }), { status: 400 });
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid action or missing params', context.request);
   } catch (error) {
     console.error('[LicensePoolQueries] Error:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 200 }
-    );
+    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

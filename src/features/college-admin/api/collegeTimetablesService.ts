@@ -1,12 +1,8 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export const collegeTimetablesService = {
   async publishTimetable(timetableId: string) {
-    const { error } = await supabase
-      .from('college_timetables')
-      .update({ status: 'published' })
-      .eq('id', timetableId);
-    
-    if (error) throw error;
+    const result = await apiPost('/college-admin/classes', { action: 'publish-timetable', timetableId });
+    if (!result.success) throw new Error(result.error || 'Failed to publish timetable');
   }
 };

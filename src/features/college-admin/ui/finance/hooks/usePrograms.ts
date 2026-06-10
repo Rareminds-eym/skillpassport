@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { Program, Department } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
@@ -13,50 +13,26 @@ export const usePrograms = (collegeId: string | null) => {
   const loadDepartmentsAndPrograms = useCallback(async () => {
     try {
       setLoading(true);
-      
-      if (collegeId) {
-        // Fetch departments for this college
-        const { data: depts, error: deptError } = await supabase
-          .from("departments")
-          .select("id, name, code, college_id")
-          .eq("college_id", collegeId)
-          .eq("status", "active")
-          .order("name", { ascending: true });
-        
-        if (deptError) throw deptError;
-        setDepartments(depts || []);
-        
-        if (depts && depts.length > 0) {
-          const deptIds = depts.map(d => d.id);
-          const { data: progs, error: progError } = await supabase
-            .from("programs")
-            .select("id, name, code, department_id")
-            .in("department_id", deptIds)
-            .eq("status", "active")
-            .order("name", { ascending: true });
-          
-          if (progError) throw progError;
-          setPrograms(progs || []);
-        } else {
-          setPrograms([]);
-        }
+
+      const deptResponse = await apiPost('/college-admin/academic', {
+        action: 'get-mapping-departments',
+        ...(collegeId ? { college_id: collegeId } : {}),
+      });
+      const depts: Department[] = deptResponse.data || [];
+      setDepartments(depts);
+
+      const progResponse = await apiPost('/college-admin/academic', {
+        action: 'get-mapping-programs',
+      });
+      const allProgs: Program[] = progResponse.data || [];
+
+      if (depts.length > 0) {
+        const deptIds = new Set(depts.map((d: any) => d.id));
+        setPrograms(allProgs.filter((p: any) => deptIds.has(p.department_id)));
+      } else if (!collegeId) {
+        setPrograms(allProgs);
       } else {
-        // No college ID, fetch all
-        const { data: depts } = await supabase
-          .from("departments")
-          .select("id, name, code, college_id")
-          .eq("status", "active")
-          .order("name", { ascending: true });
-        
-        setDepartments(depts || []);
-        
-        const { data: progs } = await supabase
-          .from("programs")
-          .select("id, name, code, department_id")
-          .eq("status", "active")
-          .order("name", { ascending: true });
-        
-        setPrograms(progs || []);
+        setPrograms([]);
       }
     } catch (err) {
       logger.error("Failed to load departments and programs", err instanceof Error ? err : new Error(String(err)));
@@ -71,7 +47,6 @@ export const usePrograms = (collegeId: string | null) => {
     loadDepartmentsAndPrograms();
   }, [collegeId, loadDepartmentsAndPrograms]);
 
-  // Helper to filter programs by department
   const getProgramsByDepartment = useCallback((departmentId: string) => {
     return programs.filter(p => p.department_id === departmentId);
   }, [programs]);

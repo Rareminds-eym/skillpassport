@@ -4,7 +4,7 @@
  */
 
 import { isSameEntity } from '@/shared/lib/comparison';
-import type { User, UserRole } from '@/shared/types';
+import type { User, UserRole } from './types';
 
 // ============================================================================
 // User Display Utilities
@@ -12,26 +12,26 @@ import type { User, UserRole } from '@/shared/types';
 
 export const getUserDisplayName = (user: User | null | undefined): string => {
   if (!user) return 'Unknown User';
-  
+
   if (user.name) return user.name;
-  
+
   if (user.firstName && user.lastName) {
     return `${user.firstName} ${user.lastName}`;
   }
-  
+
   if (user.firstName) return user.firstName;
   if (user.lastName) return user.lastName;
-  
+
   return user.email || 'Unknown User';
 };
 
 export const getUserInitials = (user: User | null | undefined): string => {
   if (!user) return 'U';
-  
+
   if (user.firstName && user.lastName) {
     return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
   }
-  
+
   if (user.name) {
     const parts = user.name.split(' ');
     if (parts.length >= 2) {
@@ -39,11 +39,11 @@ export const getUserInitials = (user: User | null | undefined): string => {
     }
     return user.name[0].toUpperCase();
   }
-  
+
   if (user.email) {
     return user.email[0].toUpperCase();
   }
-  
+
   return 'U';
 };
 
@@ -69,7 +69,7 @@ export const mapRoleToWorkerAPI = (role: UserRole): string => {
 
 export const getRoleDisplayName = (role: UserRole | string | null | undefined): string => {
   if (!role) return 'User';
-  
+
   const displayNames: Record<string, string> = {
     'learner': 'Learner',
     'educator': 'Educator',
@@ -87,7 +87,7 @@ export const getRoleDisplayName = (role: UserRole | string | null | undefined): 
     'class_teacher': 'Class Teacher',
     'subject_teacher': 'Subject Teacher',
   };
-  
+
   return displayNames[role] || role;
 };
 

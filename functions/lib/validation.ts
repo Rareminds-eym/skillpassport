@@ -1,11 +1,9 @@
 /**
- * Zod Validation Schemas — All Payment API Endpoints
- *
- * Every POST endpoint has a strict schema. Query params for GET endpoints
- * are validated inline (simpler, fewer fields).
+ * Shared validation utilities for API endpoints
  */
 
 import { z } from 'zod';
+import { apiValidationError } from './response';
 
 // ---------------------------------------------------------------------------
 // Shared primitives
@@ -112,9 +110,8 @@ export const AnalyticsActionSchema = z.object({
 // ---------------------------------------------------------------------------
 // Helper: validate & return parsed data or error response
 // ---------------------------------------------------------------------------
-import { apiValidationError } from './response';
 
-export function validateBody<T>(schema: z.ZodSchema<T>, body: unknown, request?: Request): 
+export function validateBody<T>(schema: z.ZodSchema<T>, body: unknown, request?: Request):
   { success: true; data: T } | { success: false; response: Response } {
   const result = schema.safeParse(body);
   if (!result.success) {
@@ -125,4 +122,106 @@ export function validateBody<T>(schema: z.ZodSchema<T>, body: unknown, request?:
     return { success: false, response: apiValidationError(issues, request) };
   }
   return { success: true, data: result.data };
+}
+
+// ══════════════════════════════════════════════════════════════
+// Sanitization and general validation utilities
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Validate email format using a permissive regex that balances
+ * security with usability. Avoids rejecting valid but uncommon email formats.
+ * 
+ * @param email - Email address to validate
+ * @returns true if email format is valid, false otherwise
+ */
+export function isValidEmail(email: string): boolean {
+  if (!email || typeof email !== 'string') {
+    return false;
+  }
+  
+  // Permissive regex that focuses on basic structure
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+}
+
+/**
+ * Validate that a string field is present and not empty/whitespace
+ * 
+ * @param value - Value to validate
+ * @returns true if valid, false if missing or empty/whitespace
+ */
+export function isValidStringField(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/**
+ * Validate required fields in an object before type assertion
+ * 
+ * @param obj - Object to validate
+ * @param fields - Array of required field names
+ * @returns true if all fields are present and valid strings
+ */
+export function validateRequiredStringFields(obj: unknown, fields: string[]): boolean {
+  if (!obj || typeof obj !== 'object') {
+    return false;
+  }
+  
+  const typedObj = obj as Record<string, unknown>;
+  return fields.every(field => isValidStringField(typedObj[field]));
+}
+
+/**
+ * Sanitize user input to prevent XSS, injection attacks, and limit length
+ */
+export function sanitizeInput(input: string, maxLength: number = 2000): string {
+  if (typeof input !== 'string') return '';
+
+  return input
+    .replace(/<[^>]*>/g, '')
+    .replace(/[<>]/g, '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .normalize('NFKC')
+    .replace(/\0/g, '')
+    .trim()
+    .slice(0, maxLength);
+}
+
+/**
+ * Generate a conversation title from the first message
+ */
+export function generateConversationTitle(message: string): string {
+  const cleaned = message.replace(/[^\w\s]/g, '').trim();
+  return cleaned.length > 50 ? cleaned.slice(0, 47) + '...' : cleaned;
+}
+
+/**
+ * Validate UUID format (v4)
+ */
+export function isValidUUID(uuid: string): boolean {
+  if (typeof uuid !== 'string') return false;
+  if (uuid.length !== 36) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
+}
+
+/**
+ * Validate request body size to prevent memory exhaustion
+ */
+export async function validateRequestSize(
+  request: Request,
+  maxSizeBytes: number = 1048576
+): Promise<{ valid: boolean; error?: string }> {
+  const contentLength = request.headers.get('content-length');
+
+  if (contentLength) {
+    const size = parseInt(contentLength, 10);
+    if (size > maxSizeBytes) {
+      return {
+        valid: false,
+        error: `Request body too large. Maximum size: ${maxSizeBytes} bytes`
+      };
+    }
+  }
+
+  return { valid: true };
 }

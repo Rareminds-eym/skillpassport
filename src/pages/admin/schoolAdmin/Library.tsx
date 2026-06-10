@@ -9,9 +9,9 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLearners } from '@/entities/learner/model/useAdminLearners';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('school-admin-library');
 
@@ -132,7 +132,7 @@ export default function LibraryModule() {
     const getCurrentSchoolId = async () => {
       try {
         // First try localStorage
-        const storedUser = localStorage.getItem('user');
+        const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           if (userData.schoolId) {
@@ -142,7 +142,7 @@ export default function LibraryModule() {
         }
 
         // Then try Supabase auth
-        const { data: { user } } = await authSessionService.getUser();
+        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
         if (user) {
           // Check school_educators table first - use maybeSingle() to avoid 406 error
           const { data: educator } = await supabase

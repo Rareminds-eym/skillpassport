@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactApexChart from 'react-apexcharts';
@@ -30,8 +31,8 @@ import {
   SkillAnalytics,
   Announcement
 } from '@/features/educator-copilot';
-import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
+import { ssoClient } from '@/shared/api/ssoClient';
+
 // import './Dashboard.css';
 
 const Dashboard = () => {
@@ -51,55 +52,38 @@ const Dashboard = () => {
 
   useEffect(() => {
     let mounted = true;
-    let authSubscription: { unsubscribe: () => void } | null = null;
+    let authUnsubscribe: (() => void) | null = null;
 
-    // Listen for auth changes first
-    const setupAuthListener = async () => {
-      const subscription = authSessionService.onAuthStateChange(async (event, session) => {
-        if (!mounted) return;
+    // Listen for auth changes
+    authUnsubscribe = ssoClient.onAuthStateChange((event) => {
+      if (!mounted) return;
 
-        if (event === 'TOKEN_REFRESHED') {
-          logger.info('Token auto-refreshed by Supabase');
-        }
+      if (event === 'REFRESH') {
+        logger.info('Token auto-refreshed');
+        return;
+      }
 
-        if (session?.user) {
-          logger.info('Auth state change - user authenticated');
-          setIsAuthenticated(true);
-          setError(null);
-          loadDashboardData();
-        } else {
-          logger.warn('Auth state change - no user');
-          setIsAuthenticated(false);
-          setLoading(false);
-          setError('Please log in to view the dashboard');
-        }
-      });
-      
-      authSubscription = subscription || null;
-    };
-
-    setupAuthListener();
+      if (event === 'LOGIN') {
+        logger.info('Auth state change - user authenticated');
+        setIsAuthenticated(true);
+        setError(null);
+        loadDashboardData();
+      } else if (event === 'LOGOUT') {
+        logger.warn('Auth state change - no user');
+        setIsAuthenticated(false);
+        setLoading(false);
+        setError('Please log in to view the dashboard');
+      }
+    });
 
     // Check current session immediately
     const checkCurrentSession = async () => {
       try {
-        const { session, error } = await authSessionService.getSession();
-
         if (!mounted) return;
 
-        if (error) {
-          logger.error('Session error:', error);
-          // Don't manually refresh - Supabase handles this automatically
-          // Just check if we have a valid session
-          if (!session?.user) {
-            setIsAuthenticated(false);
-            setLoading(false);
-            setError('Session expired. Please log in again.');
-          }
-          return;
-        }
+        const user = useAuthStore.getState().user;
 
-        if (session?.user) {
+        if (user) {
           logger.info('Session check - user found, loading data');
           setIsAuthenticated(true);
           setError(null);
@@ -125,8 +109,8 @@ const Dashboard = () => {
 
     return () => {
       mounted = false;
-      if (authSubscription) {
-        authSubscription.unsubscribe();
+      if (authUnsubscribe) {
+        authUnsubscribe();
       }
     };
   }, []); // Empty dependency array to run only once
@@ -136,8 +120,8 @@ const Dashboard = () => {
     if (loadingRef.current) return;
 
     // Check session state again before loading data
-    const { session } = await authSessionService.getSession();
-    if (!session?.user) {
+    const user = useAuthStore.getState().user;
+    if (!user) {
       setError('Please log in to view the dashboard');
       setLoading(false);
       return;

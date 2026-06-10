@@ -523,7 +523,7 @@ export interface CertificateUpdateData {
 }
 
 export interface SkillUpdateData {
-  
+
   name?: string;
   type?: 'technical' | 'soft';
   level?: string | number;
@@ -532,4 +532,12 @@ export interface SkillUpdateData {
   yearsOfExperience?: number;
   certifications?: string;
   examples?: string;
+}
+
+// API Response types
+export interface LearnerApiResponse {
+  learner?: Learner;
+  success?: boolean;
+  error?: string | null;
+  [key: string]: unknown;
 }

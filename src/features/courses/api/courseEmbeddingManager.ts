@@ -1,4 +1,6 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { useAuthStore } from '@/shared/model/authStore';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 /**
  * Course Embedding Manager
  * Manages the generation and storage of vector embeddings for courses
@@ -8,7 +10,6 @@ import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
  * Requirements: 1.1, 1.4, 1.5
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 
@@ -28,19 +29,18 @@ async function generateEmbedding(text) {
   }
 
   // Get auth token
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
+  const user = useAuthStore.getState().user;
+  const token = ssoClient.getAccessToken();
   
   if (!token) {
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
+  const response = await ssoClient.fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
+      },
     body: JSON.stringify({ text, returnEmbedding: true })
   });
 
@@ -125,30 +125,17 @@ export const buildCourseText = (course) => {
  * @returns {Promise<Object|null>} - Course object with skills or null if not found
  */
 const fetchCourseWithSkills = async (courseId) => {
-  const { data: course, error: courseError } = await supabase
-    .from('courses')
-    .select('course_id, title, description, target_outcomes, status')
-    .eq('course_id', courseId)
-    .maybeSingle();
-
-  if (courseError || !course) {
-    logger.error(`Failed to fetch course ${courseId}`, courseError ? new Error(courseError.message) : new Error('Course not found'));
+  try {
+    const response = await apiGet(`/courses/embed/course?courseId=${encodeURIComponent(courseId)}`);
+    if (!response?.data) {
+      logger.error(`Failed to fetch course ${courseId}`, new Error('Course not found'));
+      return null;
+    }
+    return response.data;
+  } catch (err) {
+    logger.error(`Failed to fetch course ${courseId}`, err instanceof Error ? err : new Error(String(err)));
     return null;
   }
-
-  const { data: skillsData, error: skillsError } = await supabase
-    .from('course_skills')
-    .select('skill_name')
-    .eq('course_id', courseId);
-
-  if (skillsError) {
-    logger.warn(`Failed to fetch skills for course ${courseId}`, { error: skillsError.message });
-  }
-
-  return {
-    ...course,
-    skills: (skillsData || []).map(s => s.skill_name)
-  };
 };
 
 /**
@@ -162,8 +149,8 @@ const fetchCourseWithSkills = async (courseId) => {
  */
 export const embedCourse = async (courseId) => {
   try {
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token;
+    const user = useAuthStore.getState().user;
+    const token = ssoClient.getAccessToken();
 
     if (!token) {
       return {
@@ -173,12 +160,11 @@ export const embedCourse = async (courseId) => {
       };
     }
 
-    const response = await fetch(`${EMBEDDING_API_URL}/regenerate?table=courses&id=${courseId}`, {
+    const response = await ssoClient.fetch(`${EMBEDDING_API_URL}/regenerate?table=courses&id=${courseId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
+        }
     });
 
     if (response.ok) {
@@ -199,19 +185,7 @@ export const embedCourse = async (courseId) => {
     const embedding = await generateEmbedding(courseText);
     const embeddingString = `[${embedding.join(',')}]`;
 
-    const { error: updateError } = await supabase
-      .from('courses')
-      .update({ embedding: embeddingString })
-      .eq('course_id', courseId);
-
-    if (updateError) {
-      logger.error(`Failed to store embedding for course ${courseId}`, new Error(updateError.message));
-      return {
-        success: false,
-        courseId,
-        error: `Database update failed: ${updateError.message}`
-      };
-    }
+    await apiPost('/courses/embedding/generate', { courseId, embeddingString });
 
     return {
       success: true,
@@ -245,17 +219,8 @@ export const embedAllCourses = async () => {
   };
 
   try {
-    const { data: courses, error: fetchError } = await supabase
-      .from('courses')
-      .select('course_id, title')
-      .eq('status', 'Active')
-      .is('embedding', null)
-      .is('deleted_at', null);
-
-    if (fetchError) {
-      logger.error('Failed to fetch courses', new Error(fetchError.message));
-      throw new Error(`Failed to fetch courses: ${fetchError.message}`);
-    }
+    const response = await apiGet('/courses/embed/pending');
+    const courses = response?.data || [];
 
     if (!courses || courses.length === 0) {
       return results;
@@ -296,17 +261,12 @@ export const embedAllCourses = async () => {
  * @returns {Promise<boolean>} - True if course has embedding
  */
 export const hasEmbedding = async (courseId) => {
-  const { data, error } = await supabase
-    .from('courses')
-    .select('embedding')
-    .eq('course_id', courseId)
-    .maybeSingle();
-
-  if (error || !data) {
+  try {
+    const response = await apiGet(`/courses/embedding/check?courseId=${encodeURIComponent(courseId)}`);
+    return response?.data?.hasEmbedding ?? false;
+  } catch {
     return false;
   }
-
-  return data.embedding !== null;
 };
 
 /**
@@ -314,34 +274,8 @@ export const hasEmbedding = async (courseId) => {
  * @returns {Promise<{ total: number, withEmbedding: number, withoutEmbedding: number }>}
  */
 export const getEmbeddingStats = async () => {
-  // Get total active courses
-  const { count: total, error: totalError } = await supabase
-    .from('courses')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'Active')
-    .is('deleted_at', null);
-
-  if (totalError) {
-    throw new Error(`Failed to get total count: ${totalError.message}`);
-  }
-
-  // Get courses with embeddings
-  const { count: withEmbedding, error: embeddedError } = await supabase
-    .from('courses')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'Active')
-    .is('deleted_at', null)
-    .not('embedding', 'is', null);
-
-  if (embeddedError) {
-    throw new Error(`Failed to get embedded count: ${embeddedError.message}`);
-  }
-
-  return {
-    total: total || 0,
-    withEmbedding: withEmbedding || 0,
-    withoutEmbedding: (total || 0) - (withEmbedding || 0)
-  };
+  const response = await apiGet('/courses/embedding/stats');
+  return response?.data ?? { total: 0, withEmbedding: 0, withoutEmbedding: 0 };
 };
 
 // Default export for convenience

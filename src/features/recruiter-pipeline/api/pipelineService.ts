@@ -1,194 +1,87 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('pipelineService');
 
 // ==================== REQUISITION OPERATIONS ====================
 
-/**
- * Get all requisitions
- */
 export const getRequisitions = async () => {
   try {
-    const { data, error } = await supabase
-      .from('requisitions')
-      .select('*')
-      .order('created_date', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', { action: 'get-requisitions' });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.requisitions ?? null, error: null };
   } catch (error: unknown) {
     logger.error('Failed to fetch requisitions', error as Error);
     return { data: null, error };
   }
 };
 
-/**
- * Get a single requisition by ID (DEPRECATED - use getOpportunityById instead)
- */
 export const getRequisitionById = async (requisitionId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('requisitions')
-      .select('*')
-      .eq('id', requisitionId)
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', { action: 'get-requisition-by-id', id: requisitionId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.requisition ?? null, error: null };
   } catch (error: unknown) {
     logger.error('Failed to fetch requisition', error as Error);
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Get a single opportunity by ID
- */
 export const getOpportunityById = async (opportunityId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('opportunities')
-      .select('*')
-      .eq('id', opportunityId)
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', { action: 'get-opportunity-by-id', id: opportunityId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.opportunity ?? null, error: null };
   } catch (error: unknown) {
     logger.error('Failed to fetch opportunity', error as Error);
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Get requisitions with pipeline stats
- */
 export const getRequisitionsWithStats = async () => {
   try {
-    const { data, error } = await supabase
-      .from('requisitions_with_pipeline_stats')
-      .select('*')
-      .order('created_date', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', { action: 'get-requisitions-with-stats' });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.requisitions ?? null, error: null };
   } catch (error: unknown) {
     logger.error('Failed to fetch requisitions with stats', error as Error);
-    // Error handled
     return { data: null, error };
   }
 };
 
 // ==================== PIPELINE CANDIDATE OPERATIONS ====================
 
-/**
- * Get all pipeline candidates for an opportunity
- * If opportunityId is empty, fetch all candidates from all opportunities
- */
 export const getPipelineCandidates = async (opportunityId?: string) => {
   try {
-    let query = supabase
-      .from('pipeline_candidates_detailed')
-      .select('*');
-    
-    // Only filter by opportunity_id if provided
-    if (opportunityId) {
-      query = query.eq('opportunity_id', opportunityId);
-    }
-    
-    const { data, error } = await query.order('added_at', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'get-pipeline-candidates',
+      ...(opportunityId ? { opportunity_id: opportunityId } : {}),
+    });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.candidates ?? null, error: null };
   } catch (error: unknown) {
     logger.error('Failed to fetch pipeline candidates', error as Error);
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Get pipeline candidates for a specific stage
- */
 export const getPipelineCandidatesByStage = async (opportunityId: string, stage: string) => {
   try {
-    // First, fetch pipeline candidates
-    const { data: pipelineCandidates, error: pcError } = await supabase
-      .from('pipeline_candidates')
-      .select('*')
-      .eq('opportunity_id', opportunityId)
-      .eq('stage', stage)
-      .eq('status', 'active')
-      .order('updated_at', { ascending: false });
-
-    if (pcError) {
-      logger.error(`Failed to fetch pipeline candidates for stage ${stage}`, pcError);
-      throw pcError;
-    }
-
-    if (!pipelineCandidates || pipelineCandidates.length === 0) {
-      return { data: [], error: null };
-    }
-
-    // Get unique learner IDs
-    const learnerIds = [...new Set(pipelineCandidates.map(pc => pc.learner_id))];
-
-    // Fetch learner data with relational tables
-    // Note: pipeline_candidates.learner_id references learners.id (not user_id)
-    const { data: learners, error: learnersError } = await supabase
-      .from('learners')
-      .select(`
-        user_id, id, name, email, contact_number, 
-        college_school_name, university, branch_field, course_name, district_name,
-        skills!skills_learner_id_fkey(id, name, enabled, approval_status)
-      `)
-      .in('id', learnerIds);
-
-    if (learnersError) {
-      logger.error('Failed to fetch learner data', learnersError);       
-      // Continue without learner data rather than failing completely
-    }
-
-    // Create a map of learners by id for quick lookup
-    const learnersMap = new Map();
-    learners?.forEach(learner => {
-      // Filter skills to only enabled ones (include all approval statuses)
-      const enabledSkills = Array.isArray(learner.skills) 
-        ? learner.skills
-            .filter((s: any) => s.enabled)
-            .map((s: any) => s.name)
-        : [];
-      
-      learnersMap.set(learner.id, {
-        ...learner,
-        // Map actual DB columns to UI-friendly names
-        dept: learner.branch_field || learner.course_name,
-        college: learner.college_school_name || learner.university,
-        location: learner.district_name,
-        ai_score_overall: 0, // AI score not stored in learners table directly
-        skills: enabledSkills
-      });
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'get-pipeline-candidates-by-stage',
+      opportunity_id: opportunityId,
+      stage,
     });
-
-    // Combine pipeline candidates with learner data
-    const data = pipelineCandidates.map(candidate => ({
-      ...candidate,
-      learners: learnersMap.get(candidate.learner_id) || null
-    }));
-
-    return { data, error: null };
+    if (response?.error) {
+      logger.error(`Failed to fetch pipeline candidates for stage ${stage}`, response.error);
+      return { data: null, error: response.error };
+    }
+    return { data: response?.data?.candidates ?? [], error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Get pipeline candidates with advanced filters and sorting (SQL-optimized)
- */
 export const getPipelineCandidatesWithFilters = async (
   opportunityId: string,
   filters: {
@@ -210,230 +103,39 @@ export const getPipelineCandidatesWithFilters = async (
   }
 ) => {
   try {
-    // Start with base query
-    let query = supabase
-      .from('pipeline_candidates')
-      .select('*')
-      .eq('opportunity_id', opportunityId)
-      .eq('status', 'active');
-
-    // Apply stage filters
-    if (filters.stages && filters.stages.length > 0) {
-      query = query.in('stage', filters.stages);
-    }
-
-    // Apply source filters
-    if (filters.sources && filters.sources.length > 0) {
-      query = query.in('source', filters.sources);
-    }
-
-    // Apply next action filters
-    if (filters.nextActionTypes && filters.nextActionTypes.length > 0) {
-      query = query.in('next_action', filters.nextActionTypes);
-    }
-
-    // Filter by has next action
-    if (filters.hasNextAction === true) {
-      query = query.not('next_action', 'is', null);
-    } else if (filters.hasNextAction === false) {
-      query = query.is('next_action', null);
-    }
-
-    // Apply assigned to filters
-    if (filters.assignedTo && filters.assignedTo.length > 0) {
-      query = query.in('assigned_to', filters.assignedTo);
-    }
-
-    // Apply date added filters
-    if (filters.dateAdded?.startDate) {
-      query = query.gte('added_at', filters.dateAdded.startDate);
-    }
-    if (filters.dateAdded?.endDate) {
-      query = query.lte('added_at', filters.dateAdded.endDate);
-    }
-
-    // Apply last updated filters
-    if (filters.lastUpdated?.startDate) {
-      query = query.gte('updated_at', filters.lastUpdated.startDate);
-    }
-    if (filters.lastUpdated?.endDate) {
-      query = query.lte('updated_at', filters.lastUpdated.endDate);
-    }
-
-    // Apply sorting (default to updated_at desc)
-    if (sortOptions) {
-      const { field, direction } = sortOptions;
-      const ascending = direction === 'asc';
-
-      // Map sort fields to database columns
-      switch (field) {
-        case 'candidate_name':
-          query = query.order('candidate_name', { ascending });
-          break;
-        case 'added_at':
-          query = query.order('added_at', { ascending });
-          break;
-        case 'updated_at':
-          query = query.order('updated_at', { ascending });
-          break;
-        case 'next_action_date':
-          query = query.order('next_action_date', { ascending, nullsFirst: !ascending });
-          break;
-        case 'stage_changed_at':
-          query = query.order('stage_changed_at', { ascending });
-          break;
-        case 'source':
-          query = query.order('source', { ascending });
-          break;
-        default:
-          query = query.order('updated_at', { ascending: false });
-      }
-    } else {
-      query = query.order('updated_at', { ascending: false });
-    }
-
-    const { data: pipelineCandidates, error } = await query;
-
-    if (error) throw error;
-
-    if (!pipelineCandidates || pipelineCandidates.length === 0) {
-      return { data: [], error: null };
-    }
-
-    // Get unique learner IDs
-    const learnerIds = [...new Set(pipelineCandidates.map((pc: any) => pc.learner_id))];
-
-    // Fetch learner data with relational tables
-    // Note: pipeline_candidates.learner_id references learners.id (not user_id)
-    const { data: learners, error: learnersError } = await supabase
-      .from('learners')
-      .select(`
-        user_id, id, name, email, contact_number, 
-        college_school_name, university, branch_field, course_name, district_name,
-        skills!skills_learner_id_fkey(id, name, enabled, approval_status)
-      `)
-      .in('id', learnerIds);
-
-    if (learnersError) {
-      logger.error('Failed to fetch learner data', learnersError);
-    }
-
-    // Create a map of learners by id for quick lookup
-    const learnersMap = new Map();
-    learners?.forEach(learner => {
-      // Filter skills to only enabled ones (include all approval statuses)
-      const enabledSkills = Array.isArray(learner.skills) 
-        ? learner.skills
-            .filter((s: any) => s.enabled)
-            .map((s: any) => s.name)
-        : [];
-      
-      learnersMap.set(learner.id, {
-        ...learner,
-        // Map actual DB columns to UI-friendly names
-        dept: learner.branch_field || learner.course_name,
-        college: learner.college_school_name || learner.university,
-        location: learner.district_name,
-        ai_score_overall: 0, // AI score not stored in learners table directly
-        skills: enabledSkills
-      });
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'get-pipeline-candidates-with-filters',
+      opportunity_id: opportunityId,
+      stages: filters.stages?.join(','),
+      skills: filters.skills?.join(','),
+      departments: filters.departments?.join(','),
+      locations: filters.locations?.join(','),
+      sources: filters.sources?.join(','),
+      ai_score_min: filters.aiScoreRange?.min,
+      ai_score_max: filters.aiScoreRange?.max,
+      next_action_types: filters.nextActionTypes?.join(','),
+      has_next_action: filters.hasNextAction,
+      assigned_to: filters.assignedTo?.join(','),
+      date_added_start: filters.dateAdded?.startDate,
+      date_added_end: filters.dateAdded?.endDate,
+      last_updated_start: filters.lastUpdated?.startDate,
+      last_updated_end: filters.lastUpdated?.endDate,
+      sort_field: sortOptions?.field,
+      sort_direction: sortOptions?.direction,
     });
-
-    // Combine pipeline candidates with learner data
-    let filteredData = pipelineCandidates.map((candidate: any) => {
-      const learner = learnersMap.get(candidate.learner_id);
-      
-      return {
-        ...candidate,
-        learners: learner || null
-      };
-    }) || [];
-
-    // Apply client-side filters for learner data (skills, department, location, AI score)
-    // Filter by skills (check if learner has any of the selected skills)
-    if (filters.skills && filters.skills.length > 0) {
-      filteredData = filteredData.filter(candidate => {
-        const learnerSkills = candidate.learners?.skills || [];
-        return filters.skills!.some(skill => 
-          learnerSkills.some((s: string) => s.toLowerCase().includes(skill.toLowerCase()))
-        );
-      });
-    }
-
-    // Filter by department
-    if (filters.departments && filters.departments.length > 0) {
-      filteredData = filteredData.filter(candidate => {
-        const dept = candidate.learners?.dept || '';
-        return filters.departments!.includes(dept);
-      });
-    }
-
-    // Filter by location
-    if (filters.locations && filters.locations.length > 0) {
-      filteredData = filteredData.filter(candidate => {
-        const location = candidate.learners?.location || '';
-        return filters.locations!.includes(location);
-      });
-    }
-
-    // Filter by AI score range
-    if (filters.aiScoreRange && (filters.aiScoreRange.min !== undefined || filters.aiScoreRange.max !== undefined)) {
-      filteredData = filteredData.filter(candidate => {
-        const score = candidate.learners?.ai_score_overall || 0;
-        const meetsMin = filters.aiScoreRange!.min !== undefined ? score >= filters.aiScoreRange!.min : true;
-        const meetsMax = filters.aiScoreRange!.max !== undefined ? score <= filters.aiScoreRange!.max : true;
-        return meetsMin && meetsMax;
-      });
-    }
-
-    // Apply client-side sorting for learner-related fields
-    if (sortOptions && ['ai_score', 'department', 'location'].includes(sortOptions.field)) {
-      const { field, direction } = sortOptions;
-      const multiplier = direction === 'asc' ? 1 : -1;
-
-      filteredData.sort((a, b) => {
-        let aValue: any;
-        let bValue: any;
-
-        switch (field) {
-          case 'ai_score':
-            aValue = a.learners?.ai_score_overall || 0;
-            bValue = b.learners?.ai_score_overall || 0;
-            return (aValue - bValue) * multiplier;
-          
-          case 'department':
-            aValue = (a.learners?.dept || '').toLowerCase();
-            bValue = (b.learners?.dept || '').toLowerCase();
-            return aValue.localeCompare(bValue) * multiplier;
-          
-          case 'location':
-            aValue = (a.learners?.location || '').toLowerCase();
-            bValue = (b.learners?.location || '').toLowerCase();
-            return aValue.localeCompare(bValue) * multiplier;
-          
-          default:
-            return 0;
-        }
-      });
-    }
-
-    return { data: filteredData, error: null };
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.candidates ?? null, error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Get all pipeline candidates grouped by stage
- */
 export const getAllPipelineCandidatesByStage = async (opportunityId: string) => {
   try {
     const { data, error } = await getPipelineCandidates(opportunityId);
-    
+
     if (error) throw error;
 
-    // Group candidates by stage
     const grouped: Record<string, any[]> = {
       sourced: [],
       screened: [],
@@ -451,14 +153,10 @@ export const getAllPipelineCandidatesByStage = async (opportunityId: string) => 
 
     return { data: grouped, error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Add candidate to pipeline
- */
 export const addCandidateToPipeline = async (pipelineData: {
   opportunity_id: string | number;
   learner_id: string;
@@ -472,299 +170,40 @@ export const addCandidateToPipeline = async (pipelineData: {
   next_action_notes?: string;
 }) => {
   try {
-    // Convert IDs to strings (for backward compatibility)
-    const opportunityIdStr = String(pipelineData.opportunity_id);
-    
-    // Check if candidate already exists in this pipeline
-    const { data: existingCandidate, error: checkError } = await supabase
-      .from('pipeline_candidates')
-      .select('id, stage, status')
-      .eq('opportunity_id', opportunityIdStr)
-      .eq('learner_id', pipelineData.learner_id)
-      .maybeSingle();
-
-    if (checkError) {
-      logger.error('Failed to check existing candidate in pipeline', checkError);
-    }
-
-    if (existingCandidate) {
-      // Candidate already exists
-      if (existingCandidate.status === 'active') {
-        return {
-          data: null,
-          error: {
-            code: 'DUPLICATE_CANDIDATE',
-            message: `Candidate is already in this pipeline (${existingCandidate.stage} stage)`,
-            details: existingCandidate
-          }
-        };
-      } else {
-        // Reactivate rejected candidate
-        const { data: reactivated, error: reactivateError } = await supabase
-          .from('pipeline_candidates')
-          .update({
-            status: 'active',
-            stage: pipelineData.stage || 'sourced',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingCandidate.id)
-          .select()
-          .single();
-
-        if (reactivateError) throw reactivateError;
-
-        return { 
-          data: reactivated, 
-          error: null,
-          message: 'Candidate reactivated in pipeline'
-        };
-      }
-    }
-    
-    // Fetch learner's AI score and employability data from relational tables
-    let aiScore = null;
-    let employabilityScore = null;
-    
-    try {
-      const { data: learnerData, error: learnerError } = await supabase
-        .from('learners')
-        .select('ai_score_overall, employability_score')
-        .eq('id', pipelineData.learner_id)
-        .single();
-      
-      if (!learnerError && learnerData) {
-        aiScore = learnerData.ai_score_overall || null;
-        employabilityScore = learnerData.employability_score || null;
-      }
-    } catch (e) {
-    }
-
-    // Add AI score to recruiter notes for visibility
-    let recruiterNotes = '';
-    if (aiScore !== null) {
-      recruiterNotes += `AI Match Score: ${aiScore}/100`;
-    }
-    if (employabilityScore !== null) {
-      recruiterNotes += recruiterNotes ? ` | Employability Score: ${employabilityScore}/100` : `Employability Score: ${employabilityScore}/100`;
-    }
-
-    const stage = pipelineData.stage || 'sourced';
-    
-    const { data, error } = await supabase
-      .from('pipeline_candidates')
-      .insert([{
-        opportunity_id: opportunityIdStr,
-        learner_id: pipelineData.learner_id,
-        candidate_name: pipelineData.candidate_name,
-        candidate_email: pipelineData.candidate_email,
-        candidate_phone: pipelineData.candidate_phone,
-        stage: stage,
-        source: pipelineData.source || 'talent_pool',
-        status: 'active',
-        added_by: pipelineData.added_by,
-        next_action: pipelineData.next_action,
-        recruiter_notes: recruiterNotes || pipelineData.next_action_notes || null
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      // Check for duplicate entry (fallback)
-      if (error.code === '23505') {
-        return {
-          data: null,
-          error: {
-            code: 'DUPLICATE_CANDIDATE',
-            message: 'Candidate is already in this pipeline',
-            details: error.details
-          }
-        };
-      }
-      throw error;
-    }
-
-    // Sync with applied_jobs table - map pipeline stage to application status
-    const stageToStatusMap: { [key: string]: string } = {
-      sourced: 'applied',
-      screened: 'under_review',
-      interview_1: 'interview_scheduled',
-      interview_2: 'interviewed',
-      offer: 'offer_received',
-      hired: 'accepted',
-      rejected: 'rejected'
-    };
-
-    const applicationStatus = stageToStatusMap[stage];
-    if (applicationStatus && pipelineData.learner_id && opportunityIdStr) {
-      try {
-        // Check if applied_jobs record exists
-        const { data: existingApplication } = await supabase
-          .from('applied_jobs')
-          .select('id')
-          .eq('learner_id', pipelineData.learner_id)
-          .eq('opportunity_id', opportunityIdStr)
-          .maybeSingle();
-
-        if (existingApplication) {
-          // Update existing application status
-          await supabase
-            .from('applied_jobs')
-            .update({
-              application_status: applicationStatus,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingApplication.id);
-        }
-        // If no existing application, the candidate was added from talent pool
-        // and doesn't have an applied_jobs record yet - that's okay
-      } catch (syncError: any) {
-        logger.error('Failed to sync candidate with applied_jobs table', syncError);
-      }
-    }
-
-    // Log activity
-    if (data) {
-      await logPipelineActivity({
-        pipeline_candidate_id: data.id,
-        activity_type: 'stage_change',
-        from_stage: null,
-        to_stage: data.stage,
-        performed_by: pipelineData.added_by,
-        learner_id: pipelineData.learner_id,
-        activity_details: {
-          ai_score: aiScore,
-          employability_score: employabilityScore
-        }
-      });
-    }
-
-    return { data, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'add-candidate-to-pipeline',
+      ...pipelineData,
+    });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.candidate ?? null, error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Move candidate to a different stage
- */
 export const moveCandidateToStage = async (
   candidateId: string | number,
   newStage: string,
   performedBy?: string,
   notes?: string
 ) => {
-  // Convert to string if number (for backward compatibility)
   const candidateIdStr = String(candidateId);
-  
-  
+
   try {
-    // Get current candidate data with learner info
-    const { data: currentData, error: fetchError } = await supabase
-      .from('pipeline_candidates')
-      .select('stage, learner_id, candidate_name, candidate_email, opportunity_id')
-      .eq('id', candidateIdStr)
-      .single();
-
-    
-
-    if (fetchError) throw fetchError;
-
-    // Check if opportunity still has openings before allowing stage progression
-    if (currentData.opportunity_id) {
-      const { data: opportunityData, error: oppError } = await supabase
-        .from('opportunities')
-        .select('applications_count, status, job_title, company_name')
-        .eq('id', currentData.opportunity_id)
-        .single();
-
-      if (!oppError && opportunityData) {
-        if (opportunityData.applications_count === 0 || opportunityData.status === 'filled') {
-          return {
-            error: `Cannot move candidate: All openings for ${opportunityData.job_title} at ${opportunityData.company_name} have been filled.`,
-            data: null
-          };
-        }
-      }
-    }
-
-    const previousStage = currentData.stage;
-
-    
-
-    // Update the candidate
-    const { data, error } = await supabase
-      .from('pipeline_candidates')
-      .update({
-        stage: newStage,
-        previous_stage: previousStage,
-        stage_changed_at: new Date().toISOString(),
-        stage_changed_by: performedBy
-      })
-      .eq('id', candidateIdStr)
-      .select()
-      .single();
-
-
-    if (error) throw error;
-
-    // Sync with applied_jobs table - map pipeline stage to application status
-    const stageToStatusMap: { [key: string]: string } = {
-      sourced: 'applied',
-      screened: 'under_review',
-      interview_1: 'interview_scheduled',
-      interview_2: 'interviewed',
-      offer: 'offer_received',
-      hired: 'accepted',
-      rejected: 'rejected'
-    };
-
-    const applicationStatus = stageToStatusMap[newStage];
-    if (applicationStatus && currentData.learner_id && currentData.opportunity_id) {
-      try {
-        const updateData: any = {
-          application_status: applicationStatus,
-          updated_at: new Date().toISOString()
-        };
-
-        // Add specific timestamp fields based on status
-        if (applicationStatus === 'interview_scheduled') {
-          updateData.interview_scheduled_at = new Date().toISOString();
-        }
-
-        await supabase
-          .from('applied_jobs')
-          .update(updateData)
-          .eq('learner_id', currentData.learner_id)
-          .eq('opportunity_id', currentData.opportunity_id);
-      } catch (syncError) {
-        logger.error('Failed to sync candidate stage change with applied_jobs table', syncError);
-        // Sync error silently handled
-        // Don't fail the main operation if sync fails
-      }
-    }
-
-    // Log the stage change
-    await logPipelineActivity({
-      pipeline_candidate_id: candidateIdStr,
-      activity_type: 'stage_change',
-      from_stage: previousStage,
-      to_stage: newStage,
-      activity_details: notes ? { notes } : null,
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'move-candidate-to-stage',
+      candidate_id: candidateIdStr,
+      stage: newStage,
       performed_by: performedBy,
-      learner_id: currentData.learner_id
+      notes,
     });
-
-    return { data, error: null };
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.candidate ?? null, error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Update next action for candidate
- */
 export const updateNextAction = async (
   candidateId: string | number,
   nextAction: string,
@@ -773,29 +212,21 @@ export const updateNextAction = async (
 ) => {
   try {
     const candidateIdStr = String(candidateId);
-    
-    const { data, error } = await supabase
-      .from('pipeline_candidates')
-      .update({
-        next_action: nextAction,
-        next_action_date: nextActionDate,
-        next_action_notes: notes
-      })
-      .eq('id', candidateIdStr)
-      .select()
-      .single();
 
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'update-next-action',
+      candidate_id: candidateIdStr,
+      next_action: nextAction,
+      next_action_date: nextActionDate,
+      notes,
+    });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.candidate ?? null, error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Reject candidate
- */
 export const rejectCandidate = async (
   candidateId: string | number,
   rejectionReason?: string,
@@ -803,42 +234,20 @@ export const rejectCandidate = async (
 ) => {
   try {
     const candidateIdStr = String(candidateId);
-    
-    const { data, error } = await supabase
-      .from('pipeline_candidates')
-      .update({
-        status: 'rejected',
-        stage: 'rejected',
-        rejection_reason: rejectionReason,
-        rejection_date: new Date().toISOString()
-      })
-      .eq('id', candidateIdStr)
-      .select()
-      .single();
 
-    if (error) throw error;
-
-    // Log rejection
-    await logPipelineActivity({
-      pipeline_candidate_id: candidateIdStr,
-      activity_type: 'stage_change',
-      from_stage: data.previous_stage || undefined,
-      to_stage: 'rejected',
-      activity_details: { reason: rejectionReason },
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'reject-candidate',
+      candidate_id: candidateIdStr,
+      rejection_reason: rejectionReason,
       performed_by: performedBy,
-      learner_id: data.learner_id
     });
-
-    return { data, error: null };
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.candidate ?? null, error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Update candidate rating and notes
- */
 export const updateCandidateRating = async (
   candidateId: string | number,
   rating: number,
@@ -846,28 +255,20 @@ export const updateCandidateRating = async (
 ) => {
   try {
     const candidateIdStr = String(candidateId);
-    
-    const { data, error } = await supabase
-      .from('pipeline_candidates')
-      .update({
-        recruiter_rating: rating,
-        recruiter_notes: notes
-      })
-      .eq('id', candidateIdStr)
-      .select()
-      .single();
 
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'update-candidate-rating',
+      candidate_id: candidateIdStr,
+      rating,
+      notes,
+    });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.candidate ?? null, error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Assign candidate to interviewer/recruiter
- */
 export const assignCandidate = async (
   candidateId: string | number,
   assignedTo: string,
@@ -875,58 +276,34 @@ export const assignCandidate = async (
 ) => {
   try {
     const candidateIdStr = String(candidateId);
-    
-    const { data, error } = await supabase
-      .from('pipeline_candidates')
-      .update({ assigned_to: assignedTo })
-      .eq('id', candidateIdStr)
-      .select()
-      .single();
 
-    if (error) throw error;
-
-    // Log assignment
-    await logPipelineActivity({
-      pipeline_candidate_id: candidateIdStr,
-      activity_type: 'note_added',
-      activity_details: { assigned_to: assignedTo },
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'assign-candidate',
+      candidate_id: candidateIdStr,
+      assigned_to: assignedTo,
       performed_by: performedBy,
-      learner_id: data.learner_id
     });
-
-    return { data, error: null };
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.candidate ?? null, error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Remove candidate from pipeline
- */
 export const removeCandidateFromPipeline = async (candidateId: string | number) => {
   try {
     const candidateIdStr = String(candidateId);
-    
-    const { error } = await supabase
-      .from('pipeline_candidates')
-      .delete()
-      .eq('id', candidateIdStr);
 
-    if (error) throw error;
+    const response: any = await apiPost('/recruiter-pipeline', { action: 'remove-candidate-from-pipeline', candidate_id: candidateIdStr });
+    if (response?.error) return { error: response.error };
     return { error: null };
   } catch (error) {
-    // Error handled
     return { error };
   }
 };
 
 // ==================== PIPELINE ACTIVITY OPERATIONS ====================
 
-/**
- * Log pipeline activity - Creates notification directly for learner
- * Maps learner_id to user_id since notifications table requires user_id (foreign key to users.id)
- */
 export const logPipelineActivity = async (activityData: {
   pipeline_candidate_id: string | number;
   activity_type: string;
@@ -937,70 +314,21 @@ export const logPipelineActivity = async (activityData: {
   learner_id?: string;
 }) => {
   try {
-    // If learner_id is provided, create notification directly
-    if (activityData.learner_id) {
-      // Fetch learner's user_id (notifications.recipient_id requires user_id, not learner_id)
-      const { data: learnerData, error: learnerError } = await supabase
-        .from('learners')
-        .select('user_id')
-        .eq('id', activityData.learner_id)
-        .single();
-
-      if (learnerError || !learnerData?.user_id) {
-        logger.warn('Learner not found or has no user_id', {
-          learnerId: activityData.learner_id,
-          error: learnerError?.message
-        });
-        return { data: null, error: null };
-      }
-
-      const notificationTitle = getNotificationTitle(activityData.activity_type, activityData.to_stage);
-      const notificationMessage = getNotificationMessage(activityData.activity_type, activityData.to_stage);
-      const notificationType = getNotificationType(activityData.activity_type, activityData.to_stage);
-
-      const { data: notificationData, error: notificationError } = await supabase
-        .from('notifications')
-        .insert([{
-          recipient_id: learnerData.user_id,
-          type: notificationType,
-          title: notificationTitle,
-          message: notificationMessage,
-          read: false,
-          created_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (notificationError) {
-        logger.error('Failed to create notification', {
-          error: notificationError.message,
-          learnerId: activityData.learner_id,
-          userId: learnerData.user_id
-        });
-        throw notificationError;
-      }
-
-      logger.info('Pipeline activity notification created successfully', {
-        activityType: activityData.activity_type,
-        learnerId: activityData.learner_id,
-        userId: learnerData.user_id,
-        toStage: activityData.to_stage
-      });
-
-      return { data: notificationData, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', {
+      action: 'log-pipeline-activity',
+      ...activityData,
+    });
+    if (response?.error) {
+      logger.error('Exception in logPipelineActivity', response.error);
+      return { data: null, error: response.error };
     }
-
-    logger.warn('No learner_id provided for pipeline activity notification', activityData);
-    return { data: null, error: null };
+    return { data: response?.data ?? null, error: null };
   } catch (error: unknown) {
     logger.error('Exception in logPipelineActivity', error as Error);
     return { data: null, error };
   }
 };
 
-/**
- * Get notification type based on activity
- */
 function getNotificationType(activityType: string, toStage?: string): string {
   if (activityType === 'stage_change') {
     if (toStage === 'rejected') {
@@ -1014,9 +342,6 @@ function getNotificationType(activityType: string, toStage?: string): string {
   return 'pipeline_stage_changed';
 }
 
-/**
- * Get notification title based on activity and stage
- */
 function getNotificationTitle(activityType: string, toStage?: string): string {
   if (activityType === 'stage_change') {
     switch (toStage) {
@@ -1045,9 +370,6 @@ function getNotificationTitle(activityType: string, toStage?: string): string {
   return 'Application Update';
 }
 
-/**
- * Get notification message based on activity and stage
- */
 function getNotificationMessage(activityType: string, toStage?: string): string {
   if (activityType === 'stage_change') {
     switch (toStage) {
@@ -1076,30 +398,18 @@ function getNotificationMessage(activityType: string, toStage?: string): string 
   return 'Your application has been updated.';
 }
 
-/**
- * Get activity history for a candidate
- */
 export const getCandidateActivities = async (candidateId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('pipeline_activities')
-      .select('*')
-      .eq('pipeline_candidate_id', candidateId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/recruiter-pipeline', { action: 'get-candidate-activities', candidate_id: candidateId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.activities ?? null, error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
 // ==================== BULK OPERATIONS ====================
 
-/**
- * Bulk move candidates to stage
- */
 export const bulkMoveCandidates = async (
   candidateIds: (string | number)[],
   newStage: string,
@@ -1117,14 +427,10 @@ export const bulkMoveCandidates = async (
 
     return { data: results.map(r => r.data), error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
-/**
- * Bulk reject candidates
- */
 export const bulkRejectCandidates = async (
   candidateIds: (string | number)[],
   rejectionReason?: string,
@@ -1142,20 +448,16 @@ export const bulkRejectCandidates = async (
 
     return { data: results.map(r => r.data), error: null };
   } catch (error) {
-    // Error handled
     return { data: null, error };
   }
 };
 
 // ==================== ANALYTICS ====================
 
-/**
- * Get pipeline statistics for an opportunity
- */
 export const getPipelineStatistics = async (opportunityId: string) => {
   try {
     const { data, error } = await getPipelineCandidates(opportunityId);
-    
+
     if (error) throw error;
 
     const stats = {

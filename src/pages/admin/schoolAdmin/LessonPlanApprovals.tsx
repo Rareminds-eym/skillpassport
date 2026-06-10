@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BookOpen, CheckCircle, XCircle, Eye, MessageSquare, Clock } from "lucide-react";
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
-import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface LessonPlan {
   id: string;
@@ -41,16 +40,8 @@ const LessonPlanApprovals: React.FC = () => {
   const loadPendingLessonPlans = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("lesson_plans")
-        .select(`
-          *,
-          teachers!inner(first_name, last_name)
-        `)
-        .in("status", ["submitted", "revision_required"])
-        .order("submitted_at", { ascending: true });
-
-      if (error) throw error;
+      const resp: any = await apiPost('/school-admin/actions', { action: 'fetchPendingLessonPlans' });
+      const data = resp.data;
 
       const formattedData = data?.map((lp: any) => ({
         ...lp,
@@ -68,19 +59,7 @@ const LessonPlanApprovals: React.FC = () => {
   const handleApprove = async (planId: string) => {
     setActionLoading(true);
     try {
-      const { data: userData } = await authSessionService.getUser();
-
-      const { error } = await supabase
-        .from("lesson_plans")
-        .update({
-          status: "approved",
-          reviewed_by: userData?.user?.id,
-          reviewed_at: new Date().toISOString(),
-          review_comments: reviewComments || "Approved",
-        })
-        .eq("id", planId);
-
-      if (error) throw error;
+      await apiPost('/school-admin/actions', { action: 'approveLessonPlan', planId, reviewComments });
 
       setSelectedPlan(null);
       setReviewComments("");
@@ -101,19 +80,7 @@ const LessonPlanApprovals: React.FC = () => {
 
     setActionLoading(true);
     try {
-      const { data: userData } = await authSessionService.getUser();
-
-      const { error } = await supabase
-        .from("lesson_plans")
-        .update({
-          status: "rejected",
-          reviewed_by: userData?.user?.id,
-          reviewed_at: new Date().toISOString(),
-          review_comments: reviewComments,
-        })
-        .eq("id", planId);
-
-      if (error) throw error;
+      await apiPost('/school-admin/actions', { action: 'rejectLessonPlan', planId, reviewComments });
 
       setSelectedPlan(null);
       setReviewComments("");
@@ -134,19 +101,7 @@ const LessonPlanApprovals: React.FC = () => {
 
     setActionLoading(true);
     try {
-      const { data: userData } = await authSessionService.getUser();
-
-      const { error } = await supabase
-        .from("lesson_plans")
-        .update({
-          status: "revision_required",
-          reviewed_by: userData?.user?.id,
-          reviewed_at: new Date().toISOString(),
-          review_comments: reviewComments,
-        })
-        .eq("id", planId);
-
-      if (error) throw error;
+      await apiPost('/school-admin/actions', { action: 'requestLessonPlanRevision', planId, reviewComments });
 
       setSelectedPlan(null);
       setReviewComments("");

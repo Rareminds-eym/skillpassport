@@ -67,24 +67,37 @@ export * from './collegeLecturersService';
 export * from './organizationsService';
 
 // ============================================
-// STUB FUNCTIONS FOR BACKWARD COMPATIBILITY
+// BACKWARD COMPATIBILITY FUNCTIONS
 // ============================================
 
-// These functions are placeholders for missing functionality
-// They should be implemented properly in their respective services
+import { apiPost } from '@/shared/api/apiClient';
 
 export async function getSubjects(): Promise<string[]> {
-  // TODO: Implement proper subject fetching
-  return ['Mathematics', 'Science', 'English', 'History', 'Geography'];
+  try {
+    const result: any = await apiPost('/college-admin/academic', { action: 'get-subjects' });
+    return (result?.data || []).map((s: any) => s.course_name || s.course_code || s.id);
+  } catch {
+    return [];
+  }
 }
 
 export async function getClasses(): Promise<string[]> {
-  // TODO: Implement proper class fetching
-  return ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5'];
+  try {
+    const result: any = await apiPost('/college-admin/academic', { action: 'get-classes' });
+    return (result?.data || []).map((c: any) => c.name || c.code || c.id);
+  } catch {
+    return [];
+  }
 }
 
 export async function getAcademicYears(): Promise<string[]> {
-  // TODO: Implement proper academic year fetching
+  try {
+    const result: any = await apiPost('/college-admin/academic', { action: 'get-academic-years' });
+    const years = result?.data || [];
+    if (years.length > 0) return years.map((y: any) => y.name);
+  } catch {
+    // fall through to fallback
+  }
   const currentYear = new Date().getFullYear();
   return [
     `${currentYear - 1}-${currentYear}`,
@@ -94,11 +107,14 @@ export async function getAcademicYears(): Promise<string[]> {
 }
 
 export async function getCurrentAcademicYear(): Promise<string> {
-  // TODO: Implement proper current academic year fetching
+  try {
+    const result: any = await apiPost('/college-admin/academic', { action: 'get-current-academic-year' });
+    if (result?.data?.name) return result.data.name;
+  } catch {
+    // fall through to fallback
+  }
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
-
-  // Academic year typically starts in July (month 6)
   if (currentMonth >= 6) {
     return `${currentYear}-${currentYear + 1}`;
   } else {
@@ -106,5 +122,4 @@ export async function getCurrentAcademicYear(): Promise<string> {
   }
 }
 
-// Re-export supabase for backward compatibility
-export { supabase } from '@/shared/api';
+

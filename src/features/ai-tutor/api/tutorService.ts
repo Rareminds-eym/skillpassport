@@ -1,5 +1,6 @@
-import { getCurrentSession } from '@/shared/api/authUtils';
-import { supabase } from '@/shared/api/supabaseClient';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import type { WorksheetConfig, LessonPlanConfig } from '../types';
@@ -7,7 +8,7 @@ import type { WorksheetConfig, LessonPlanConfig } from '../types';
 const logger = getLogger('tutor-service');
 
 // ==================== API URL CONFIGURATION ====================
-const API_URL = getApiUrl('course');
+const API_URL = getApiUrl('ai-tutor');
 
 // ==================== TYPES ====================
 
@@ -64,12 +65,20 @@ export interface CourseProgress {
 
 // ==================== CHAT FUNCTIONS ====================
 
+// Module-level state for tracking the last conversation ID
+let lastConversationId: string | null = null;
+
 export interface StreamChunk {
   type: 'content' | 'reasoning' | 'done';
   content?: string;
   reasoning?: string;
   conversationId?: string;
   messageId?: string;
+  generationUsage?: {
+    limit: number;
+    used: number;
+    remaining: number;
+  };
 }
 
 /**
@@ -77,24 +86,20 @@ export interface StreamChunk {
  * Returns an async generator that yields content and reasoning chunks
  */
 export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
-  const { data: { session }, error: sessionError } = await getCurrentSession();
+  const user = useAuthStore.getState().user;
+    const sessionError = null;
 
   if (sessionError) {
     logger.error('Session error in sendMessage', sessionError instanceof Error ? sessionError : new Error(String(sessionError)));
     throw new Error('Authentication error. Please try logging in again.');
   }
 
-  if (!session?.access_token) {
-    logger.error('No session or access token found', new Error('Authentication failed'));
-    throw new Error('Please log in to use the AI Tutor');
-  }
-
-  const response = await fetch(
-    `${API_URL}/ai-tutor-chat`,
+  
+  const response = await ssoClient.fetch(
+    `${API_URL}/chat`,
     {
       method: 'POST',
-      headers: getAuthHeaders(session.access_token),
-      body: JSON.stringify(request),
+            body: JSON.stringify(request),
     }
   );
 
@@ -142,11 +147,12 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
           }
           // Handle done event with conversation info
           else if (parsed.conversationId) {
-            (sendMessage as any).lastConversationId = parsed.conversationId;
+            lastConversationId = parsed.conversationId;
             yield {
               type: 'done',
               conversationId: parsed.conversationId,
-              messageId: parsed.messageId
+              messageId: parsed.messageId,
+              generationUsage: parsed.generationUsage
             };
           }
         } catch {
@@ -172,7 +178,7 @@ export async function* sendMessageLegacy(request: ChatRequest): AsyncGenerator<s
  * Get the last conversation ID from the most recent sendMessage call
  */
 export function getLastConversationId(): string | null {
-  return (sendMessage as any).lastConversationId || null;
+  return lastConversationId;
 }
 
 
@@ -182,65 +188,56 @@ export function getLastConversationId(): string | null {
  * Get all conversations for a course
  */
 export async function getConversations(courseId: string): Promise<Conversation[]> {
-  const { data, error } = await supabase
-    .from('tutor_conversations')
-    .select('id, title, course_id, lesson_id, created_at, updated_at, messages')
-    .eq('course_id', courseId)
-    .order('updated_at', { ascending: false });
-
-  if (error) {
+  try {
+    const response = await apiPost('/ai-tutor/actions', { action: 'get-conversations', course_id: courseId });
+    const data = response?.data || [];
+    return data.map((conv: any) => ({
+      id: conv.id,
+      title: conv.title || 'Untitled Conversation',
+      courseId: conv.course_id,
+      lessonId: conv.lesson_id,
+      createdAt: new Date(conv.created_at),
+      updatedAt: new Date(conv.updated_at),
+      messages: (conv.messages || []).map((m: MessageData) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.timestamp)
+      }))
+    }));
+  } catch (error) {
     logger.error('Error fetching conversations', error instanceof Error ? error : new Error(String(error)), { courseId });
     throw error;
   }
-
-  return (data || []).map(conv => ({
-    id: conv.id,
-    title: conv.title || 'Untitled Conversation',
-    courseId: conv.course_id,
-    lessonId: conv.lesson_id,
-    createdAt: new Date(conv.created_at),
-    updatedAt: new Date(conv.updated_at),
-    messages: (conv.messages || []).map((m: MessageData) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      timestamp: new Date(m.timestamp)
-    }))
-  }));
 }
 
 /**
  * Get a specific conversation by ID
  */
 export async function getConversation(conversationId: string): Promise<Conversation | null> {
-  const { data, error } = await supabase
-    .from('tutor_conversations')
-    .select('id, title, course_id, lesson_id, created_at, updated_at, messages')
-    .eq('id', conversationId)
-    .maybeSingle();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
+  try {
+    const response = await apiPost('/ai-tutor/actions', { action: 'get-conversation', id: conversationId });
+    const data = response?.data;
+    if (!data) return null;
+    return {
+      id: data.id,
+      title: data.title || 'Untitled Conversation',
+      courseId: data.course_id,
+      lessonId: data.lesson_id,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+      messages: (data.messages || []).map((m: MessageData) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: new Date(m.timestamp)
+      }))
+    };
+  } catch (error) {
+    if ((error as any)?.status === 404) return null;
     logger.error('Error fetching conversation', error instanceof Error ? error : new Error(String(error)), { conversationId });
     throw error;
   }
-
-  if (!data) return null;
-
-  return {
-    id: data.id,
-    title: data.title || 'Untitled Conversation',
-    courseId: data.course_id,
-    lessonId: data.lesson_id,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at),
-    messages: (data.messages || []).map((m: MessageData) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      timestamp: new Date(m.timestamp)
-    }))
-  };
 }
 
 // ==================== SUGGESTED QUESTIONS ====================
@@ -251,19 +248,19 @@ export async function getConversation(conversationId: string): Promise<Conversat
  */
 export async function getSuggestedQuestions(lessonId: string): Promise<string[]> {
   try {
-    const { data: { session }, error: sessionError } = await getCurrentSession();
+    const user = useAuthStore.getState().user;
+    const sessionError = null;
 
     if (sessionError) {
       logger.error('Session error in getSuggestedQuestions', sessionError instanceof Error ? sessionError : new Error(String(sessionError)), { lessonId });
       return getDefaultSuggestions();
     }
 
-    const response = await fetch(
-      `${API_URL}/ai-tutor-suggestions`,
+    const response = await ssoClient.fetch(
+      `${API_URL}/suggestions`,
       {
         method: 'POST',
-        headers: getAuthHeaders(session?.access_token),
-        body: JSON.stringify({ lessonId }),
+                body: JSON.stringify({ lessonId }),
       }
     );
 
@@ -304,17 +301,13 @@ function getDefaultSuggestions(): string[] {
  * Get learner progress for a course
  */
 export async function getCourseProgress(courseId: string): Promise<CourseProgress> {
-  const { data: { session } } = await getCurrentSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
-
-  const response = await fetch(
-    `${API_URL}/ai-tutor-progress?courseId=${courseId}`,
+  const user = useAuthStore.getState().user;
+  
+  const response = await ssoClient.fetch(
+    `${API_URL}/progress?courseId=${courseId}`,
     {
       method: 'GET',
-      headers: getAuthHeaders(session.access_token),
-    }
+          }
   );
 
   if (!response.ok) {
@@ -333,17 +326,13 @@ export async function updateLessonProgress(
   lessonId: string,
   status: 'not_started' | 'in_progress' | 'completed'
 ): Promise<void> {
-  const { data: { session } } = await getCurrentSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
-
-  const response = await fetch(
-    `${API_URL}/ai-tutor-progress`,
+  const user = useAuthStore.getState().user;
+  
+  const response = await ssoClient.fetch(
+    `${API_URL}/progress`,
     {
       method: 'POST',
-      headers: getAuthHeaders(session.access_token),
-      body: JSON.stringify({ courseId, lessonId, status }),
+            body: JSON.stringify({ courseId, lessonId, status }),
     }
   );
 
@@ -359,30 +348,10 @@ export async function updateLessonProgress(
  * Delete a conversation and all related data permanently
  */
 export async function deleteConversation(conversationId: string): Promise<void> {
-  const { data: { session } } = await getCurrentSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
-
-  // First, delete related feedback records
-  const { error: feedbackError } = await supabase
-    .from('tutor_feedback')
-    .delete()
-    .eq('conversation_id', conversationId);
-
-  if (feedbackError) {
-    logger.warn('Error deleting feedback', { conversationId });
-    // Continue even if feedback deletion fails (might not have any feedback)
-  }
-
-  // Then delete the conversation
-  const { error: conversationError } = await supabase
-    .from('tutor_conversations')
-    .delete()
-    .eq('id', conversationId);
-
-  if (conversationError) {
-    logger.error('Error deleting conversation', conversationError instanceof Error ? conversationError : new Error(String(conversationError)), { conversationId });
+  try {
+    await apiPost('/ai-tutor/actions', { action: 'delete-conversation', id: conversationId });
+  } catch (error) {
+    logger.error('Error deleting conversation', error instanceof Error ? error : new Error(String(error)), { conversationId });
     throw new Error('Failed to delete conversation');
   }
 }
@@ -396,17 +365,13 @@ export async function submitFeedback(
   rating: 1 | -1,
   feedbackText?: string
 ): Promise<void> {
-  const { data: { session } } = await getCurrentSession();
-  if (!session?.access_token) {
-    throw new Error('Not authenticated');
-  }
-
-  const response = await fetch(
-    `${API_URL}/ai-tutor-feedback`,
+  const user = useAuthStore.getState().user;
+  
+  const response = await ssoClient.fetch(
+    `${API_URL}/feedback`,
     {
       method: 'POST',
-      headers: getAuthHeaders(session.access_token),
-      body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
+            body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
     }
   );
 

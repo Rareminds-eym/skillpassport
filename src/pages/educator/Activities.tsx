@@ -19,7 +19,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { getLogger } from '@/shared/config/logging';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('EducatorActivities');
 
@@ -594,31 +594,19 @@ const Activities = () => {
       let learners;
 
       if (educatorType === 'school' && educatorSchool) {
-        if (educatorRole === 'admin' || educatorRole === 'school_admin') {
-          const { data } = await supabase
-            .from('learners')
-            .select('id, name, user_id')
-            .eq('school_id', educatorSchool.id)
-            .eq('is_deleted', false);
-          learners = data;
-        } else if (assignedClassIds.length > 0) {
-          const { data } = await supabase
-            .from('learners')
-            .select('id, name, user_id')
-            .eq('school_id', educatorSchool.id)
-            .in('school_class_id', assignedClassIds)
-            .eq('is_deleted', false);
-          learners = data;
+        const filters: any = { school_id: { eq: educatorSchool.id }, is_deleted: { eq: false } };
+        if (educatorRole !== 'admin' && educatorRole !== 'school_admin' && assignedClassIds.length > 0) {
+          filters.school_class_id = { in: assignedClassIds };
+        }
+        if (educatorRole === 'admin' || educatorRole === 'school_admin' || assignedClassIds.length > 0) {
+          const resp = await apiPost('/educator/actions', { action: 'db-select', table: 'learners', select: 'id, name, user_id', filters });
+          learners = resp.success ? resp.data : [];
         } else {
           learners = [];
         }
       } else if (educatorType === 'college' && educatorCollege) {
-        const { data } = await supabase
-          .from('learners')
-          .select('id, name, user_id')
-          .eq('college_id', educatorCollege.id)
-          .eq('is_deleted', false);
-        learners = data;
+        const resp = await apiPost('/educator/actions', { action: 'db-select', table: 'learners', select: 'id, name, user_id', filters: { college_id: { eq: educatorCollege.id }, is_deleted: { eq: false } } });
+        learners = resp.success ? resp.data : [];
       } else {
         learners = [];
       }
@@ -630,20 +618,15 @@ const Activities = () => {
         learnerIds.add(learner.user_id);
       });
 
-      const { data: projects } = await supabase
-        .from('projects')
-        .select('*')
-        .in('learner_id', Array.from(learnerIds));
-
-      const { data: trainings } = await supabase
-        .from('trainings')
-        .select('*')
-        .in('learner_id', Array.from(learnerIds));
-
-      const { data: certificates } = await supabase
-        .from('certificates')
-        .select('*')
-        .in('learner_id', Array.from(learnerIds));
+      const learnerIdsArr = Array.from(learnerIds);
+      const [projectsResp, trainingsResp, certificatesResp] = await Promise.all([
+        apiPost('/educator/actions', { action: 'db-select', table: 'projects', select: '*', filters: { learner_id: { in: learnerIdsArr } } }),
+        apiPost('/educator/actions', { action: 'db-select', table: 'trainings', select: '*', filters: { learner_id: { in: learnerIdsArr } } }),
+        apiPost('/educator/actions', { action: 'db-select', table: 'certificates', select: '*', filters: { learner_id: { in: learnerIdsArr } } }),
+      ]);
+      const projects = projectsResp.success ? projectsResp.data : [];
+      const trainings = trainingsResp.success ? trainingsResp.data : [];
+      const certificates = certificatesResp.success ? certificatesResp.data : [];
 
       const allActivities: Activity[] = [
         ...(projects || []).map((p: any) => ({
@@ -715,36 +698,19 @@ const Activities = () => {
       let learners;
 
       if (educatorType === 'school' && educatorSchool) {
-        // For school educators, check role and class assignments
-        if (educatorRole === 'admin' || educatorRole === 'school_admin') {
-          // School admins can see all learners in their school
-          const { data } = await supabase
-            .from('learners')
-            .select('id, name, user_id')
-            .eq('school_id', educatorSchool.id)
-            .eq('is_deleted', false);
-          learners = data;
-        } else if (assignedClassIds.length > 0) {
-          // Regular educators can only see learners in their assigned classes
-          const { data } = await supabase
-            .from('learners')
-            .select('id, name, user_id')
-            .eq('school_id', educatorSchool.id)
-            .in('school_class_id', assignedClassIds)
-            .eq('is_deleted', false);
-          learners = data;
+        const filters: any = { school_id: { eq: educatorSchool.id }, is_deleted: { eq: false } };
+        if (educatorRole !== 'admin' && educatorRole !== 'school_admin' && assignedClassIds.length > 0) {
+          filters.school_class_id = { in: assignedClassIds };
+        }
+        if (educatorRole === 'admin' || educatorRole === 'school_admin' || assignedClassIds.length > 0) {
+          const resp = await apiPost('/educator/actions', { action: 'db-select', table: 'learners', select: 'id, name, user_id', filters });
+          learners = resp.success ? resp.data : [];
         } else {
-          // Educators with no class assignments should see no learners
           learners = [];
         }
       } else if (educatorType === 'college' && educatorCollege) {
-        // For college educators, filter by college
-        const { data } = await supabase
-          .from('learners')
-          .select('id, name, user_id')
-          .eq('college_id', educatorCollege.id)
-          .eq('is_deleted', false);
-        learners = data;
+        const resp = await apiPost('/educator/actions', { action: 'db-select', table: 'learners', select: 'id, name, user_id', filters: { college_id: { eq: educatorCollege.id }, is_deleted: { eq: false } } });
+        learners = resp.success ? resp.data : [];
       } else {
         learners = [];
       }
@@ -758,20 +724,15 @@ const Activities = () => {
       });
 
       // Fetch activities only for learners in this school
-      const { data: projects } = await supabase
-        .from('projects')
-        .select('*')
-        .in('learner_id', Array.from(learnerIds));
-
-      const { data: trainings } = await supabase
-        .from('trainings')
-        .select('*')
-        .in('learner_id', Array.from(learnerIds));
-
-      const { data: certificates } = await supabase
-        .from('certificates')
-        .select('*')
-        .in('learner_id', Array.from(learnerIds));
+      const fetchLearnerIds = Array.from(learnerIds);
+      const [projectsResp2, trainingsResp2, certificatesResp2] = await Promise.all([
+        apiPost('/educator/actions', { action: 'db-select', table: 'projects', select: '*', filters: { learner_id: { in: fetchLearnerIds } } }),
+        apiPost('/educator/actions', { action: 'db-select', table: 'trainings', select: '*', filters: { learner_id: { in: fetchLearnerIds } } }),
+        apiPost('/educator/actions', { action: 'db-select', table: 'certificates', select: '*', filters: { learner_id: { in: fetchLearnerIds } } }),
+      ]);
+      const projects = projectsResp2.success ? projectsResp2.data : [];
+      const trainings = trainingsResp2.success ? trainingsResp2.data : [];
+      const certificates = certificatesResp2.success ? certificatesResp2.data : [];
 
       const allActivities: Activity[] = [
         ...(projects || []).map((p: any) => ({
@@ -946,18 +907,10 @@ const Activities = () => {
 
         logger.info('Updating table for bulk verify', { table, id });
 
-        const { data, error } = await supabase
-          .from(table)
-          .update({
-            approval_status: 'sent_to_admin',
-            approval_notes: bulkRemark,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id);
-
-        if (error) {
-          logger.error('Error updating activity', error, { id });
-          throw error;
+        const updateResp = await apiPost('/educator/actions', { action: 'db-update', table, values: { approval_status: 'sent_to_admin', approval_notes: bulkRemark, updated_at: new Date().toISOString() }, filters: { id: { eq: id } } });
+        if (!updateResp.success) {
+          logger.error('Error updating activity', updateResp.error, { id });
+          throw new Error(updateResp.error?.message || 'Failed to update activity');
         }
 
         logger.info('Successfully updated activity', { id });
@@ -1009,18 +962,10 @@ const Activities = () => {
 
         logger.info('Updating table for bulk reject', { table, id });
 
-        const { data, error } = await supabase
-          .from(table)
-          .update({
-            approval_status: 'rejected',
-            approval_notes: bulkRemark,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id);
-
-        if (error) {
-          logger.error('Error updating activity', error, { id });
-          throw error;
+        const updateResp = await apiPost('/educator/actions', { action: 'db-update', table, values: { approval_status: 'rejected', approval_notes: bulkRemark, updated_at: new Date().toISOString() }, filters: { id: { eq: id } } });
+        if (!updateResp.success) {
+          logger.error('Error updating activity', updateResp.error, { id });
+          throw new Error(updateResp.error?.message || 'Failed to update activity');
         }
 
         logger.info('Successfully updated activity', { id });
@@ -1065,26 +1010,13 @@ const Activities = () => {
         }
       });
 
-      const { data, error } = await supabase
-        .from(table)
-        .update({
-          approval_status: 'sent_to_admin',
-          approval_notes: remark || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id);
-
-      if (error) {
-        logger.error('Supabase error during verify', error, {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        throw error;
+      const verifyResp = await apiPost('/educator/actions', { action: 'db-update', table, values: { approval_status: 'sent_to_admin', approval_notes: remark || null, updated_at: new Date().toISOString() }, filters: { id: { eq: id } } });
+      if (!verifyResp.success) {
+        logger.error('Supabase error during verify', verifyResp.error);
+        throw new Error(verifyResp.error?.message || 'Failed to update activity');
       }
 
-      logger.info('Update successful', { data });
+      logger.info('Update successful', { data: verifyResp.data });
 
       await fetchActivities();
       setDetailModal(null);
@@ -1122,26 +1054,13 @@ const Activities = () => {
         }
       });
 
-      const { data, error } = await supabase
-        .from(table)
-        .update({
-          approval_status: 'rejected',
-          approval_notes: remark || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id);
-
-      if (error) {
-        logger.error('Supabase error during reject', error, {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        throw error;
+      const rejectResp = await apiPost('/educator/actions', { action: 'db-update', table, values: { approval_status: 'rejected', approval_notes: remark || null, updated_at: new Date().toISOString() }, filters: { id: { eq: id } } });
+      if (!rejectResp.success) {
+        logger.error('Supabase error during reject', rejectResp.error);
+        throw new Error(rejectResp.error?.message || 'Failed to update activity');
       }
 
-      logger.info('Update successful', { data });
+      logger.info('Update successful', { data: rejectResp.data });
 
       await fetchActivities();
       setDetailModal(null);

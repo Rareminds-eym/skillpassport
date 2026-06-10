@@ -5,12 +5,12 @@
  * Creates a new adaptive aptitude test session
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse, apiSuccess } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import type { GradeLevel, InitializeTestResult } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
-import { authenticateUser } from '../../shared/auth';
+import { getContextUser } from '../../../lib/auth';
 import { fetchDiagnosticQuestions, extractGradeNumber, learnerGradeToGradeLevel } from '../utils/question-bank';
 
 /**
@@ -28,12 +28,10 @@ export const initializeHandler: PagesFunction = async (context) => {
   const { request, env } = context;
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [InitializeHandler] Authentication required');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
+    const user = getContextUser(context);
+    
+    // Create an auth object to preserve compatibility with existing code
+    const auth = { user };
 
     console.log('✅ [InitializeHandler] User authenticated:', auth.user.id);
 
@@ -99,15 +97,53 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     console.log('🚀 [InitializeHandler] initializeTest called:', { learnerId, gradeLevel: actualGradeLevel });
 
+    // Check for existing in-progress session FIRST
+    const { data: existingSession, error: existingError } = await supabase
+      .from('adaptive_aptitude_sessions')
+      .select('*')
+      .eq('learner_id', learnerId)
+      .eq('status', 'in_progress')
+      .order('started_at', { ascending: false })
+      .limit(1);
+
+    if (existingSession && existingSession.length > 0) {
+      const session = existingSession[0];
+      const sameGrade = session.grade_level === actualGradeLevel;
+
+      if (sameGrade) {
+        const currentPhaseQuestions = session.current_phase_questions as any[];
+        const sessionObj = dbSessionToTestSession(session, [], currentPhaseQuestions);
+
+        const result: InitializeTestResult = {
+          session: sessionObj,
+          firstQuestion: currentPhaseQuestions[0] || null,
+        };
+
+        // Use the standard apiSuccess envelope so the whole adaptive-session
+        // module is consistent (every other handler envelopes its response).
+        return apiSuccess(result, request, 200);
+      } else {
+        return jsonResponse(
+          {
+            error: 'You have an in-progress adaptive test for a different grade level. Please abandon it first or resume it.',
+            existingSessionId: session.id,
+            existingGradeLevel: session.grade_level,
+            requestedGradeLevel: actualGradeLevel,
+          },
+          409
+        );
+      }
+    }
+
     // Fetch diagnostic screener questions from question bank (no AI)
     console.log('📝 [InitializeHandler] Fetching diagnostic screener questions from database...');
-    
+
     // Extract specific grade number from learner record
     const specificGrade = extractGradeNumber(learnerGradeString);
     console.log('🎯 [InitializeHandler] Using specific grade:', specificGrade || 'fallback to range');
-    
+
     const diagnosticQuestions = await fetchDiagnosticQuestions(supabase, actualGradeLevel, [], specificGrade || undefined);
-    
+
     console.log('📋 [InitializeHandler] Questions fetched from database:', {
       questionsCount: diagnosticQuestions.length,
       source: 'personal_assessment_questions',
@@ -125,10 +161,10 @@ export const initializeHandler: PagesFunction = async (context) => {
       .from('adaptive_aptitude_sessions')
       .insert({
         learner_id: learnerId,
-        grade_level: gradeLevel,
+        grade_level: actualGradeLevel,
         learner_course: specificGrade ? `Grade ${specificGrade}` : (learnerCourse || null),
         current_phase: 'diagnostic_screener',
-        current_difficulty: 3, // Default starting difficulty
+        current_difficulty: 3,
         difficulty_path: [],
         questions_answered: 0,
         correct_answers: 0,
@@ -143,7 +179,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       console.error('❌ [InitializeHandler] Failed to create session:', sessionError);
       throw new Error(`Failed to create test session: ${sessionError?.message || 'Unknown error'}`);
     }
-    
+
     console.log('✅ [InitializeHandler] Session created:', sessionData.id);
 
     // Convert to typed session
@@ -158,7 +194,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       firstQuestion: diagnosticQuestions[0],
     };
 
-    return jsonResponse(result, 201);
+    return apiSuccess(result, request, 201);
 
   } catch (error) {
     console.error('❌ [InitializeHandler] Error:', error);

@@ -4,15 +4,11 @@
  * POST /api/payments/toggle-addon-autorenew
  */
 
-import { withAuth } from '../../../lib/auth';
+import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError, apiDbError } from '../../../lib/response';
 import { ToggleAutoRenewSchema, validateBody } from '../../../lib/validation';
-
-export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  return handleToggleAddonAutoRenew(context);
-});
 
 export async function handleToggleAddonAutoRenew(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
@@ -29,12 +25,14 @@ export async function handleToggleAddonAutoRenew(context: AuthenticatedContext):
 
     const { entitlementId, autoRenew } = validation.data;
     const supabase = getServiceClient(env);
+    const user = getContextUser(context);
+    const userId = user.id;
 
     const { data, error } = await supabase
       .from('user_entitlements')
       .update({ auto_renew: autoRenew, updated_at: new Date().toISOString() })
       .eq('id', entitlementId)
-      .eq('user_id', context.data.user.sub)
+      .eq('user_id', userId)
       .select()
       .single();
 

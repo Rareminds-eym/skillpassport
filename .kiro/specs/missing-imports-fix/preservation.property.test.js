@@ -45,7 +45,6 @@ describe('Preservation Property Tests: Unchanged Component Functionality', () =>
       { name: 'useEffect', pattern: /useEffect/ },
       { name: 'useNavigate', pattern: /useNavigate/ },
       { name: 'useSearchParams', pattern: /useSearchParams/ },
-      { name: 'supabase', pattern: /import.*supabase.*from.*supabaseClient/ },
       { name: 'motion', pattern: /import.*motion.*from.*framer-motion/ },
       { name: 'CourseDetailModal', pattern: /import.*CourseDetailModal/ },
       { name: 'Card components', pattern: /import.*Card.*from.*@\/shared\/ui/ },
@@ -118,7 +117,7 @@ describe('Preservation Property Tests: Unchanged Component Functionality', () =>
       { name: 'Course click handler', pattern: /handleCourseClick/ },
       { name: 'Start course handler', pattern: /handleStartCourse/ },
       { name: 'Modal state', pattern: /setShowDetailModal/ },
-      { name: 'Supabase query', pattern: /supabase\s*\.from\(['"]courses['"]\)/ },
+      { name: 'ApiClient call', pattern: /apiPost\s*\(/ },
       { name: 'Course filtering', pattern: /filter\(course\s*=>/ },
       { name: 'Course sorting', pattern: /sort\(\(a,\s*b\)\s*=>/ }
     ];
@@ -159,7 +158,6 @@ describe('Preservation Property Tests: Unchanged Component Functionality', () =>
       { name: 'NotificationModal', pattern: /import.*NotificationModal/ },
       { name: 'useAuth', pattern: /import.*useAuth/ },
       { name: 'useEducatorSchool', pattern: /import.*useEducatorSchool/ },
-      { name: 'supabase', pattern: /import.*supabase.*from.*supabaseClient/ },
       { name: 'getLogger', pattern: /import.*getLogger/ },
       { name: 'useUser', pattern: /import.*useUser.*from.*@\/stores/ },
       { name: 'authSessionService', pattern: /import.*authSessionService/ },
@@ -239,7 +237,7 @@ describe('Preservation Property Tests: Unchanged Component Functionality', () =>
       { name: 'Task deletion', pattern: /setTaskToDelete/ },
       { name: 'Notification system', pattern: /showNotificationModal/ },
       { name: 'File upload', pattern: /setSelectedFiles/ },
-      { name: 'Supabase queries', pattern: /supabase\s*\.from/ },
+      { name: 'ApiClient call', pattern: /apiPost\s*\(/ },
       { name: 'Assignment functions', pattern: /getAssignmentsByEducator/ },
       { name: 'Statistics fetching', pattern: /getAssignmentStatistics/ }
     ];
@@ -280,7 +278,7 @@ describe('Preservation Property Tests: Unchanged Component Functionality', () =>
               { name: 'useState hooks', pattern: /useState/ },
               { name: 'useEffect hooks', pattern: /useEffect/ },
               { name: 'fetchCourses function', pattern: /const\s+fetchCourses\s*=\s*async/ },
-              { name: 'Supabase query', pattern: /supabase\s*\.from\(['"]courses['"]\)/ },
+              { name: 'ApiClient call', pattern: /apiPost\s*\(/ },
               { name: 'Search functionality', pattern: /setSearchTerm/ },
               { name: 'Filter functionality', pattern: /setFilterStatus/ },
               { name: 'Pagination', pattern: /setCurrentPage/ },
@@ -298,7 +296,7 @@ describe('Preservation Property Tests: Unchanged Component Functionality', () =>
               { name: 'useEffect hooks', pattern: /useEffect/ },
               { name: 'Task management', pattern: /setTasks/ },
               { name: 'Modal management', pattern: /setShowTaskModal/ },
-              { name: 'Supabase queries', pattern: /supabase\s*\.from/ },
+              { name: 'ApiClient call', pattern: /apiPost\s*\(/ },
               { name: 'Export statement', pattern: /export\s+default\s+Assessments/ }
             ]
           }

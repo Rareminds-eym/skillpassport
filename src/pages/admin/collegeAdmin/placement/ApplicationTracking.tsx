@@ -20,12 +20,11 @@ import {
   Video,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 import { opportunitiesService } from '@/features/opportunities';
 import type { Opportunity } from '@/features/opportunities';
 import { applicationTrackingService } from '@/features/opportunities';
 import type { ApplicationTrackingData, ApplicationStats } from '@/features/opportunities';
-import { authSessionService } from '@/features/auth';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('application-tracking');
@@ -115,32 +114,11 @@ const ApplicationTracking: React.FC = () => {
       setIsLoadingApplications(true);
       setApplicationError(null);
 
-      // Get current user's college ID
-      const { data: { user } } = await authSessionService.getUser();
-      if (!user) {
-        throw new Error('Not authenticated');
-      }
+      const response: any = await apiPost('/college-admin/placement/handlers/actions', {
+        action: 'resolve-college-id',
+      });
 
-      // Check college_lecturers table first
-      const { data: lecturerData } = await supabase
-        .from('college_lecturers')
-        .select('collegeId')
-        .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-        .maybeSingle();
-
-      let collegeId = lecturerData?.collegeId;
-
-      // If not found, check organizations table
-      if (!collegeId) {
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('admin_id', user.id)
-          .eq('organization_type', 'college')
-          .maybeSingle();
-
-        collegeId = orgData?.id;
-      }
+      const collegeId = response.data?.collegeId;
 
       if (!collegeId) {
         logger.error('No college ID found for current user');

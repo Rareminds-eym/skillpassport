@@ -1,239 +1,96 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-import { supabase } from '@/shared/api/supabaseClient';
-import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 
-const logger = getLogger('college-service');
-
-/**
- * College Service
- * Handles college-related database operations using the unified organizations table
- */
-
-/**
- * Create a new college record in the organizations table
- * @param {Object} collegeData - College data to insert
- * @param {string} userId - User ID of the college admin
- * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
- */
 export const createCollege = async (collegeData, userId = null) => {
-    try {
-        let uid = userId;
-
-        // If userId not provided, try to get from current session
-        if (!uid) {
-            const { data: { user } } = await getCurrentUser();
-            if (user) {
-                uid = user.id;
-            }
-        }
-
-        if (!uid) {
-            throw new Error('User not authenticated');
-        }
-
-        // Map college data to organizations table structure
-        const orgData = {
-            name: collegeData.name,
-            organization_type: 'college',
-            admin_id: uid,
-            email: collegeData.email,
-            phone: collegeData.phone,
-            address: collegeData.address,
-            city: collegeData.city,
-            state: collegeData.state,
-            country: collegeData.country || 'India',
-            website: collegeData.website,
-            description: collegeData.description,
-            approval_status: 'approved',
-            account_status: 'active',
-            is_active: true,
-        };
-
-        const { data, error } = await supabase
-            .from('organizations')
-            .insert([orgData])
-            .select()
-            .single();
-
-        if (error) {
-            logger.error('Failed to create college', error instanceof Error ? error : new Error(String(error)), {
-                collegeName: collegeData.name,
-                userId: uid
-            });
-            return {
-                success: false,
-                data: null,
-                error: (error as any).message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
-    } catch (error) {
-        logger.error('Failed to create college', error instanceof Error ? error : new Error(String(error)), {
-            collegeName: collegeData.name
-        });
-        return {
-            success: false,
-            data: null,
-            error: (error as any).message
-        };
+  try {
+    let uid = userId;
+    if (!uid) {
+      const user = useAuthStore.getState().user;
+      if (user) uid = user.id;
     }
+    if (!uid) throw new Error('User not authenticated');
+
+    const result = await apiPost('/college-admin/faculty', {
+      action: 'create-organization',
+      organization_type: 'college',
+      collegeData,
+      userId: uid,
+    });
+
+    if (!result.success) {
+      return { success: false, data: null, error: result.error || 'Failed to create college' };
+    }
+
+    return { success: true, data: result.data, error: null };
+  } catch (error: any) {
+    return { success: false, data: null, error: error.message };
+  }
 };
 
-/**
- * Check if a college name is unique (within college organization type)
- * @param {string} name - College name to check
- * @returns {Promise<{ isUnique: boolean, error: string | null }>}
- */
 export const checkCollegeCode = async (name) => {
-    try {
-        const { data, error } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college')
-            .ilike('name', name)
-            .maybeSingle();
+  try {
+    const result = await apiPost('/college-admin/faculty', {
+      action: 'check-org-code',
+      name,
+    });
 
-        if (error) {
-            logger.error('Failed to check college name', error instanceof Error ? error : new Error(String(error)), {
-                collegeName: name
-            });
-            return { isUnique: false, error: (error as any).message };
-        }
-
-        return {
-            isUnique: !data,
-            error: null
-        };
-    } catch (error) {
-        logger.error('Failed to check college name', error instanceof Error ? error : new Error(String(error)), {
-            collegeName: name
-        });
-        return { isUnique: false, error: (error as any).message };
+    if (!result.success) {
+      return { isUnique: false, error: result.error || 'Failed to check college name' };
     }
+
+    return { isUnique: result.data?.isUnique ?? result.data?.available ?? !result.data?.exists, error: null };
+  } catch (error: any) {
+    return { isUnique: false, error: error.message };
+  }
 };
 
-/**
- * Get college details by owner (admin_id) from organizations table
- * @param {string} userId - User ID of the owner
- * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
- */
 export const getCollegeByOwner = async (userId) => {
-    try {
-        const { data, error } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('organization_type', 'college')
-            .eq('admin_id', userId)
-            .maybeSingle();
+  try {
+    const result = await apiPost('/college-admin/faculty', {
+      action: 'get-organization-by-admin',
+      userId,
+    });
 
-        if (error) {
-            logger.error('Failed to fetch college by owner', error instanceof Error ? error : new Error(String(error)), {
-                userId
-            });
-            return {
-                success: false,
-                data: null,
-                error: (error as any).message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
-    } catch (error) {
-        logger.error('Failed to fetch college by owner', error instanceof Error ? error : new Error(String(error)), {
-            userId
-        });
-        return {
-            success: false,
-            data: null,
-            error: (error as any).message
-        };
+    if (!result.success) {
+      return { success: false, data: null, error: result.error || 'Failed to fetch college' };
     }
+
+    return { success: true, data: result.data || null, error: null };
+  } catch (error: any) {
+    return { success: false, data: null, error: error.message };
+  }
 };
 
-/**
- * Get college by ID from organizations table
- * @param {string} collegeId - College ID
- * @returns {Promise<{ success: boolean, data: Object | null, error: string | null }>}
- */
 export const getCollegeById = async (collegeId) => {
-    try {
-        const { data, error } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('id', collegeId)
-            .eq('organization_type', 'college')
-            .single();
+  try {
+    const result = await apiPost('/college-admin/faculty', {
+      action: 'get-organization',
+      id: collegeId,
+    });
 
-        if (error) {
-            logger.error('Failed to fetch college by ID', error instanceof Error ? error : new Error(String(error)), {
-                collegeId
-            });
-            return {
-                success: false,
-                data: null,
-                error: (error as any).message
-            };
-        }
-
-        return {
-            success: true,
-            data: data,
-            error: null
-        };
-    } catch (error) {
-        logger.error('Failed to fetch college by ID', error instanceof Error ? error : new Error(String(error)), {
-            collegeId
-        });
-        return {
-            success: false,
-            data: null,
-            error: (error as any).message
-        };
+    if (!result.success) {
+      return { success: false, data: null, error: result.error || 'Failed to fetch college' };
     }
+
+    return { success: true, data: result.data || null, error: null };
+  } catch (error: any) {
+    return { success: false, data: null, error: error.message };
+  }
 };
 
-/**
- * Get all colleges from organizations table
- * @returns {Promise<{ success: boolean, data: Array | null, error: string | null }>}
- */
 export const getAllColleges = async () => {
-    try {
-        const { data, error } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('organization_type', 'college')
-            .order('name');
+  try {
+    const result = await apiPost('/college-admin/faculty', {
+      action: 'get-organizations',
+      organization_type: 'college',
+    });
 
-        if (error) {
-            logger.error('Failed to fetch colleges', error instanceof Error ? error : new Error(String(error)));
-            return {
-                success: false,
-                data: null,
-                error: (error as any).message
-            };
-        }
-
-        return {
-            success: true,
-            data: data || [],
-            error: null
-        };
-    } catch (error) {
-        logger.error('Failed to fetch colleges', error instanceof Error ? error : new Error(String(error)));
-        return {
-            success: false,
-            data: null,
-            error: (error as any).message
-        };
+    if (!result.success) {
+      return { success: false, data: null, error: result.error || 'Failed to fetch colleges' };
     }
-};
 
+    return { success: true, data: result.data || [], error: null };
+  } catch (error: any) {
+    return { success: false, data: null, error: error.message };
+  }
+};

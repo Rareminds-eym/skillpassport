@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 import { buildDateRange, type FunnelRangePreset } from '@/features/analytics';
 import { getLogger } from '@/shared/config/logging';
 
@@ -20,18 +20,13 @@ export const getCoursePerformance = async (
     try {
         const { startDate, endDate } = buildDateRange(preset, start, end);
 
-        const { data: results, error: queryErr } = await supabase
-            .from('pipeline_candidates')
-            .select(`id, learner_id, stage, status, learners!inner(profile)`)
-            .gte('added_at', startDate)
-            .lte('added_at', endDate);
+        const results = await apiGet<any[]>(`/courses/performance?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
 
-        if (queryErr) throw queryErr;
         if (!results || results.length === 0) return { data: [], error: null };
 
         const courseStats: Record<string, { total: number; hired: number }> = {};
 
-        results.forEach((row: any) => {
+        (results as any[]).forEach((row: any) => {
             const course = row.learners?.profile?.course || row.learners?.profile?.program || 'Unknown';
             if (course && course !== 'Unknown') {
                 if (!courseStats[course]) courseStats[course] = { total: 0, hired: 0 };

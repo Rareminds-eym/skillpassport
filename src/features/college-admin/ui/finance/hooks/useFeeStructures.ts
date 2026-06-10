@@ -1,7 +1,7 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 import { FeeStructure } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 
@@ -14,17 +14,16 @@ export const useFeeStructures = (collegeId: string | null) => {
   const loadFeeStructures = useCallback(async () => {
     try {
       setLoading(true);
-      let query = supabase
-        .from("fee_structures")
-        .select("*")
-        .order("program_name", { ascending: true })
-        .order("semester", { ascending: true });
-      
-      if (collegeId) query = query.eq("college_id", collegeId);
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      setFeeStructures(data || []);
+      const response = await apiPost('/college-admin/finance', {
+        action: 'get-fee-structures',
+        college_id: collegeId,
+      });
+      const data = (response.data || []) as FeeStructure[];
+      if (collegeId) {
+        setFeeStructures(data.filter((f: any) => f.college_id === collegeId));
+      } else {
+        setFeeStructures(data);
+      }
     } catch (err) {
       logger.error("Failed to load fee structures", err instanceof Error ? err : new Error(String(err)));
       toast.error("Failed to load fee structures");
@@ -42,21 +41,17 @@ export const useFeeStructures = (collegeId: string | null) => {
     existingStructure?: FeeStructure | null
   ): Promise<boolean> => {
     try {
-      const { data: { user } } = await getCurrentUser();
-      
-      // Get college_id if not set
+      const user = useAuthStore.getState().user;
+
       let feeCollegeId = collegeId;
       if (!feeCollegeId && user) {
-        const { data: org } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("organization_type", "college")
-          .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
-        if (org?.id) feeCollegeId = org.id;
+        const orgResponse = await apiPost('/college-admin/finance', {
+          action: 'get-user-org-by-email',
+          email: user.email,
+        });
+        if (orgResponse.data?.id) feeCollegeId = orgResponse.data.id;
       }
 
-      // Calculate total from fee_heads
       const totalAmount = (data.fee_heads || []).reduce(
         (sum, head) => sum + (head.amount || 0),
         0
@@ -70,24 +65,25 @@ export const useFeeStructures = (collegeId: string | null) => {
       };
 
       if (existingStructure) {
-        const { error } = await supabase
-          .from("fee_structures")
-          .update(payload)
-          .eq("id", existingStructure.id);
-        if (error) throw error;
+        await apiPost('/college-admin/finance', {
+          action: 'update-fee-structure',
+          id: existingStructure.id,
+          ...payload,
+        });
         toast.success("Fee structure updated");
       } else {
         if (!feeCollegeId) {
           toast.error("College not found");
           return false;
         }
-        const { error } = await supabase
-          .from("fee_structures")
-          .insert({ ...payload, created_by: user?.id });
-        if (error) throw error;
+        await apiPost('/college-admin/finance', {
+          action: 'create-fee-structure',
+          ...payload,
+          created_by: user?.id,
+        });
         toast.success("Fee structure created");
       }
-      
+
       loadFeeStructures();
       return true;
     } catch (err) {
@@ -101,11 +97,10 @@ export const useFeeStructures = (collegeId: string | null) => {
   const deleteFeeStructure = async (id: string): Promise<boolean> => {
     if (!confirm("Delete this fee structure?")) return false;
     try {
-      const { error } = await supabase
-        .from("fee_structures")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+      await apiPost('/college-admin/finance', {
+        action: 'delete-fee-structure',
+        id,
+      });
       setFeeStructures((prev) => prev.filter((f) => f.id !== id));
       toast.success("Fee structure deleted");
       return true;
@@ -118,11 +113,11 @@ export const useFeeStructures = (collegeId: string | null) => {
 
   const toggleActive = async (id: string, currentStatus: boolean): Promise<boolean> => {
     try {
-      const { error } = await supabase
-        .from("fee_structures")
-        .update({ is_active: !currentStatus, updated_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
+      await apiPost('/college-admin/finance', {
+        action: 'toggle-fee-structure-active',
+        id,
+        is_active: !currentStatus,
+      });
       setFeeStructures((prev) =>
         prev.map((f) => (f.id === id ? { ...f, is_active: !currentStatus } : f))
       );
@@ -137,17 +132,10 @@ export const useFeeStructures = (collegeId: string | null) => {
 
   const duplicateFeeStructure = async (structure: FeeStructure): Promise<boolean> => {
     try {
-      const { data: { user } } = await getCurrentUser();
-      const { id, created_at, updated_at, ...rest } = structure;
-      const { error } = await supabase
-        .from("fee_structures")
-        .insert({
-          ...rest,
-          academic_year: `${structure.academic_year} (Copy)`,
-          is_active: false,
-          created_by: user?.id,
-        });
-      if (error) throw error;
+      await apiPost('/college-admin/finance', {
+        action: 'duplicate-fee-structure',
+        id: structure.id,
+      });
       toast.success("Fee structure duplicated");
       loadFeeStructures();
       return true;
@@ -158,7 +146,6 @@ export const useFeeStructures = (collegeId: string | null) => {
     }
   };
 
-  // Computed stats
   const stats = useMemo(() => ({
     total: feeStructures.length,
     active: feeStructures.filter((f) => f.is_active).length,

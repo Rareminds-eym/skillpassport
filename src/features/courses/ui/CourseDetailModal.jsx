@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/shared/model/authStore';
 import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
-import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
-import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 
 const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress }) => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -13,13 +12,18 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
   const user = useUser();
   const subscriptionContext = useSubscriptionContext();
   const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.PAY_AS_YOU_GO;
-
-  // Check feature access for course enrollment
-  const accessResult = checkFeatureAccess(userPlan, 'course_enrollment', [], {}, user?.id);
-  const canEnroll = accessResult.hasAccess;
+  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
 
   if (!isOpen || !course) return null;
+
+  // Check if user has access to this course based on course's plan_type
+  const coursePlanType = course.plan_type?.toLowerCase() || 'freemium';
+  
+  // Calculate access and required plan using const with ternary and shared constant
+  const userPlanLevel = PLAN_HIERARCHY_LEVELS[userPlan?.toLowerCase()] || 0;
+  const coursePlanLevel = PLAN_HIERARCHY_LEVELS[coursePlanType] || 0;
+  const hasAccess = coursePlanType === 'freemium' ? true : userPlanLevel >= coursePlanLevel;
+  const requiredPlan = coursePlanType === 'freemium' ? null : coursePlanType;
 
   // Get progress for this course
   const progress = enrollmentProgress?.[course.course_id];
@@ -44,9 +48,9 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
   const buttonContent = getButtonContent();
   const ButtonIcon = buttonContent.icon;
 
-  // Handle start course with feature gating
+  // Handle start course with plan-based access control
   const handleStartCourse = () => {
-    if (!canEnroll) {
+    if (!hasAccess) {
       setShowUpgradePrompt(true);
       return;
     }
@@ -68,7 +72,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
             </div>
             <h3 className="text-xl font-semibold text-center mb-2">Upgrade Required</h3>
             <p className="text-gray-600 text-center mb-6">
-              Course enrollment is not available on the Freemium plan. Upgrade to a paid plan to start learning.
+              {requiredPlan 
+                ? `This course requires a ${requiredPlan.charAt(0).toUpperCase() + requiredPlan.slice(1)} plan or higher. Upgrade to access this course.`
+                : 'Course enrollment is not available on your current plan. Upgrade to start learning.'
+              }
             </p>
             <div className="flex gap-3">
               <button
@@ -326,7 +333,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                 >
                   <ButtonIcon className="w-5 h-5" />
                   {buttonContent.text}
-                  {!canEnroll && !isInProgress && !isCompleted && (
+                  {!hasAccess && !isInProgress && !isCompleted && (
                     <Lock className="w-4 h-4 ml-1" />
                   )}
                 </button>

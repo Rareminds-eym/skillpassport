@@ -16,6 +16,8 @@ import {
   MANDATORY_FIELDS
 } from '@/features/college-admin'
 import CSVImportPreview from '../CSVImportPreview'
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('CSVImportModal')
 
@@ -157,7 +159,7 @@ const CSVImportModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setStep('importing')
     
     try {
-      const userEmail = localStorage.getItem('userEmail')
+      const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"))
       if (!userEmail) {
         throw new Error('You are not logged in. Please login and try again.')
       }

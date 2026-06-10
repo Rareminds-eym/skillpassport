@@ -11,7 +11,7 @@
  *   error = ...    → fetch failed
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getCurrentSession } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 // Use Pages Functions for payments (not direct worker access)
 const getBaseUrl = () => {
@@ -19,19 +19,18 @@ const getBaseUrl = () => {
   return `${origin}/api/payments`;
 };
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
-  return token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
-}
-
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function extractErrorMessage(err) {
+  if (!err) return null;
+  if (typeof err === 'string') return err;
+  if (typeof err?.message === 'string') return err.message;
+  return null;
 }
 
 /**
@@ -90,25 +89,24 @@ export function useSubscriptionPlansData(options = {}) {
       const url = `${getBaseUrl()}/subscription-plans?${params}`;
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(url, { headers });
+        const response = await ssoClient.fetch(url);
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
           throw new Error(
-            errData.error || `HTTP ${response.status}: Failed to fetch plans`
+            extractErrorMessage(errData.error) || `HTTP ${response.status}: Failed to fetch plans`
           );
         }
 
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'API returned unsuccessful response');
+          throw new Error(extractErrorMessage(data.error) || 'API returned unsuccessful response');
         }
 
         if (!isMounted.current) return;
 
-        const fetchedPlans = data.plans || [];
+        const fetchedPlans = data.data?.plans ?? [];
         setPlans(fetchedPlans);
         setLoading(false);
         return fetchedPlans;
@@ -172,26 +170,25 @@ export function useSubscriptionPlan(planCode) {
       setError(null);
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(
-          `${getBaseUrl()}/subscription-plan?planCode=${encodeURIComponent(planCode)}`,
-          { headers }
+        const response = await ssoClient.fetch(
+          `${getBaseUrl()}/subscription-plan?planCode=${encodeURIComponent(planCode)}`
         );
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP ${response.status}`);
+          throw new Error(extractErrorMessage(errData.error) || `HTTP ${response.status}`);
         }
 
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch plan');
+          throw new Error(extractErrorMessage(data.error) || 'Failed to fetch plan');
         }
 
         if (!cancelled) {
-          setPlan(data.plan);
-          setFeatures(data.plan?.detailedFeatures || []);
+          const planData = data.data?.plan;
+          setPlan(planData);
+          setFeatures(planData?.detailedFeatures || []);
         }
       } catch (err) {
         if (!cancelled) {
@@ -228,26 +225,24 @@ export function useSubscriptionFeaturesComparison() {
       setError(null);
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(
-          `${getBaseUrl()}/subscription-features`,
-          { headers }
+        const response = await ssoClient.fetch(
+          `${getBaseUrl()}/subscription-features`
         );
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP ${response.status}`);
+          throw new Error(extractErrorMessage(errData.error) || `HTTP ${response.status}`);
         }
 
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch features comparison');
+          throw new Error(extractErrorMessage(data.error) || 'Failed to fetch features comparison');
         }
 
         if (!cancelled) {
-          setPlans(data.plans || []);
-          setComparison(data.comparison || []);
+          setPlans(data.data?.plans ?? []);
+          setComparison(data.data?.comparison ?? []);
         }
       } catch (err) {
         if (!cancelled) {

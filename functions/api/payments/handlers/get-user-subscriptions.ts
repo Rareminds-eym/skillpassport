@@ -6,19 +6,16 @@
  * Fetches the user's subscription history. Bypasses RLS. Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
 
-export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  return handleGetUserSubscriptions(context);
-});
-
 export async function handleGetUserSubscriptions(context: AuthenticatedContext): Promise<Response> {
   const startTime = Date.now();
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
-  const userId = context.data.user.sub;
+  const user = getContextUser(context);
+  const userId = user.id;
   const url = new URL(context.request.url);
   const includeAll = url.searchParams.get('includeAll') === 'true';
 
@@ -29,7 +26,7 @@ export async function handleGetUserSubscriptions(context: AuthenticatedContext):
       : 'id,created_at,subscription_start_date,subscription_end_date,plan_amount,status,plan_type,billing_cycle,razorpay_payment_id';
 
     const { data, error } = await supabase
-      .from('subscriptions')
+      .from('subscription_cache')
       .select(selectFields)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })

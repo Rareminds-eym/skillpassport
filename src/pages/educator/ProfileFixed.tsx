@@ -10,10 +10,11 @@ import {
 } from '@heroicons/react/24/outline';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getDocumentUrl } from '@/shared/api';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('EducatorProfileFixed');
 
@@ -98,8 +99,8 @@ const ProfileFixed = () => {
   // Stable function to get user email
   const getUserEmail = useCallback(() => {
     // Try multiple sources for email
-    const storedUser = localStorage.getItem('user');
-    const storedEmail = localStorage.getItem('userEmail');
+    const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
+    const storedEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
     
     if (storedUser) {
       try {
@@ -127,7 +128,7 @@ const ProfileFixed = () => {
       logger.info('Loading profile', { email });
 
       // Get current user ID from auth
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) {
         logger.error('No authenticated user');
         navigate('/login/educator');
@@ -137,17 +138,13 @@ const ProfileFixed = () => {
       logger.info('User ID', { userId: user.id });
 
       // Try school educators first
-      const { data: schoolData, error: schoolError } = await supabase
-        .from('school_educators')
-        .select(`
-          *,
-          school:organizations!school_educators_school_id_fkey (
-            name,
-            organization_type
-          )
-        `)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const schoolResult = await apiPost<any>('/educator/actions', {
+        action: 'get-school-educator-by-user-id',
+        userId: user.id,
+        select: '*, school:organizations!school_educators_school_id_fkey(name, organization_type)'
+      });
+
+      const schoolData = schoolResult?.data;
 
       if (schoolData) {
         logger.info('Found school educator data');
@@ -205,17 +202,13 @@ const ProfileFixed = () => {
       }
 
       // If not found in school_educators, try college_lecturers
-      const { data: collegeData, error: collegeError } = await supabase
-        .from('college_lecturers')
-        .select(`
-          *,
-          college:organizations!college_lecturers_collegeid_fkey (
-            name,
-            organization_type
-          )
-        `)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const collegeResult = await apiPost<any>('/educator/actions', {
+        action: 'get-college-lecturer-by-user-id',
+        userId: user.id,
+        select: '*, college:organizations!college_lecturers_collegeid_fkey(name, organization_type)'
+      });
+
+      const collegeData = collegeResult?.data;
 
       if (collegeData) {
         logger.info('Found college lecturer data');
@@ -415,13 +408,14 @@ const ProfileFixed = () => {
         logger.info('Saving profile', { updateData });
       }
 
-      const { error } = await supabase
-        .from('school_educators')
-        .update(updateData)
-        .eq('email', profile.email);
+      const saveResult = await apiPost<any>('/educator/actions', {
+        action: 'update-school-educator-by-email',
+        email: profile.email,
+        values: updateData
+      });
 
-      if (error) {
-        throw error;
+      if (!saveResult?.data) {
+        throw new Error('Failed to save profile');
       }
 
       // Update local state

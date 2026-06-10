@@ -1,10 +1,16 @@
 /**
  * Centralized Email Service
- * Single source of truth for all email operations via email-worker
+ * Single source of truth for all email operations via email-worker service binding
  */
 
-import type { PagesEnv } from '../../src/functions-lib/types';
+import type { PagesEnv } from './types';
 import { apiLogger } from './logger';
+import { z } from 'zod';
+
+// Zod schema for email service response validation
+const emailServiceResponseSchema = z.object({
+  messageId: z.string().optional()
+});
 
 const FROM_EMAIL = 'noreply@rareminds.in';
 const FROM_NAME = 'Skill Passport';
@@ -25,53 +31,48 @@ export interface EmailResult {
 }
 
 /**
- * Send email via email-worker
- * @throws Error if EMAIL_WORKER_URL or INTERNAL_API_KEY is not configured
+ * Send email via email-worker using service binding
+ * @throws Error if EMAIL_SERVICE binding is not configured
  */
 export async function sendEmail(
   env: PagesEnv,
   payload: EmailPayload
 ): Promise<EmailResult> {
-  // Validate environment
-  if (!env.EMAIL_WORKER_URL) {
-    throw new Error('EMAIL_WORKER_URL environment variable is not configured');
-  }
-  if (!env.INTERNAL_API_KEY) {
-    throw new Error('INTERNAL_API_KEY environment variable is not configured');
+  if (!env.EMAIL_SERVICE) {
+    throw new Error('EMAIL_SERVICE binding is not configured');
   }
 
   try {
-    const response = await fetch(`${env.EMAIL_WORKER_URL}/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Internal-Api-Key': env.INTERNAL_API_KEY,
-      },
-      body: JSON.stringify({
-        to: payload.to,
-        subject: payload.subject,
-        html: payload.html,
-        text: payload.text || '',
-        from: payload.from || FROM_EMAIL,
-        fromName: payload.fromName || FROM_NAME,
-      }),
+    apiLogger.info('Sending email via service binding RPC');
+    
+    // Use RPC method directly instead of HTTP request
+    const result = await env.EMAIL_SERVICE.sendEmail({
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text || '',
+      from: payload.from || FROM_EMAIL,
+      fromName: payload.fromName || FROM_NAME,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      apiLogger.error('Email API error', new Error(`HTTP ${response.status}: ${errorText}`));
-      return {
-        success: false,
-        error: `Email API error: HTTP ${response.status} - ${errorText}`,
-      };
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to send email');
     }
 
-    const result = await response.json();
-    apiLogger.info('Email sent successfully', { result });
+    // Validate the result structure using Zod
+    let validatedResult;
+    try {
+      validatedResult = emailServiceResponseSchema.parse(result);
+    } catch (parseError) {
+      apiLogger.error('Invalid email service response format', parseError as Error);
+      throw new Error('Invalid email service response');
+    }
+
+    apiLogger.info('Email sent successfully via service binding RPC', { result });
     
     return {
       success: true,
-      messageId: result.messageId || result.id,
+      messageId: validatedResult.messageId,
     };
   } catch (error) {
     apiLogger.error('Failed to send email', error as Error);
@@ -104,11 +105,8 @@ export async function sendEmailSafe(
  * @throws Error if required environment variables are missing
  */
 export function validateEmailEnv(env: PagesEnv): void {
-  if (!env.EMAIL_WORKER_URL) {
-    throw new Error('Missing required environment variable: EMAIL_WORKER_URL');
-  }
-  if (!env.INTERNAL_API_KEY) {
-    throw new Error('Missing required environment variable: INTERNAL_API_KEY');
+  if (!env.EMAIL_SERVICE) {
+    throw new Error('Missing required: EMAIL_SERVICE binding');
   }
 }
 
@@ -116,5 +114,5 @@ export function validateEmailEnv(env: PagesEnv): void {
  * Check if email environment is configured (non-throwing)
  */
 export function isEmailConfigured(env: PagesEnv): boolean {
-  return !!(env.EMAIL_WORKER_URL && env.INTERNAL_API_KEY);
+  return !!env.EMAIL_SERVICE;
 }

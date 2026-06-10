@@ -30,10 +30,11 @@
  * - Requires EMBEDDING_API_URL environment variable
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser, isValidUUID } from '../../shared/auth';
+import { apiSuccess, apiError } from '../../../lib/response';
+import { isValidUUID } from '../../../lib/validation';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { createClient, SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import type { SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
 import { callEmbeddingWorker } from '../services/embeddingWorkerClient';
 import {
   buildlearnerTextFromDatabase,
@@ -217,7 +218,7 @@ async function verifyEntityOwnership(
     }
     
     // Cast data once to a record for ownership verification
-    const record = data as Record<string, unknown>;
+    const record = data as unknown as Record<string, unknown>;
     const ownershipField = config.ownershipField;
     
     // Check 2: Verify ownershipField exists in the fetched data
@@ -352,29 +353,22 @@ async function fetchAndBuildText(
  */
 export async function handleGenerateEmbedding(
   request: Request,
-  env: Record<string, string>
+  env: Record<string, string>,
+  learnerId: string
 ): Promise<Response> {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
-
-  const auth = await authenticateUser(request, env);
-  if (!auth) {
-    return jsonResponse({ error: 'Authentication required' }, 401);
-  }
-
-  const { user } = auth;
-  const learnerId = user.id;
 
   if (!await checkRateLimit(learnerId, env)) {
-    return jsonResponse({ error: 'Rate limit exceeded' }, 429);
+    return apiError(429, 'ERROR', 'Rate limit exceeded', request);
   }
 
   let body: GenerateEmbeddingRequest;
   try {
     body = (await request.json()) as GenerateEmbeddingRequest;
   } catch {
-    return jsonResponse({ success: false, error: 'Invalid JSON' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', request);
   }
 
   const {
@@ -388,98 +382,56 @@ export async function handleGenerateEmbedding(
 
   // Validate required fields based on mode
   if (!table || !id) {
-    return jsonResponse(
-      {
-        success: false,
-        error: 'Missing required parameters: table, id',
-      },
-      400
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters: table, id', request);
   }
 
   // Mode validation
   if (!fromDatabase && !text) {
-    return jsonResponse(
-      {
-        success: false,
-        error: 'Missing required parameter: text (or set fromDatabase: true to fetch from DB)',
-      },
-      400
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'Missing required parameter: text (or set fromDatabase: true to fetch from DB)', request);
   }
 
   if (fromDatabase && text) {
-    return jsonResponse(
-      {
-        success: false,
-        error: 'Cannot specify both "text" and "fromDatabase: true". Choose one mode.',
-      },
-      400
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'Cannot specify both "text" and "fromDatabase: true". Choose one mode.', request);
   }
 
   if (!ALLOWED_TABLES.includes(table as typeof ALLOWED_TABLES[number])) {
-    return jsonResponse(
-      {
-        success: false,
-        error: `Invalid table. Allowed tables: ${ALLOWED_TABLES.join(', ')}`,
-      },
-      400
-    );
+    return apiError(400, 'VALIDATION_ERROR', `Invalid table. Allowed tables: ${ALLOWED_TABLES.join(', ')}`, request);
   }
 
   if (!isValidUUID(id)) {
-    return jsonResponse(
-      {
-        success: false,
-        error: 'Invalid id format. Must be a valid UUID.',
-      },
-      400
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid id format. Must be a valid UUID.', request);
   }
 
   console.log(`[Embedding] Generating for ${table} #${id} (mode: ${fromDatabase ? 'database' : 'direct'})`);
 
   try {
     // Create Supabase client for database operations
-    const supabase = createClient(
-      env.SUPABASE_URL || env.VITE_SUPABASE_URL,
-      env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const supabase = createSupabaseAdminClient(env);
 
     // SECURITY: Validate authorization ATOMICALLY with data fetch
     // This prevents TOCTOU race conditions where data could be modified between check and use
-    const userSupabase = auth.supabase;
+    const userSupabase = supabase;
     const config = ENTITY_CONFIGS[table];
     
     if (!config) {
-      return jsonResponse({
-        success: false,
-        error: `Unsupported table: ${table}`
-      }, 400);
+      return apiError(400, 'VALIDATION_ERROR', `Unsupported table: ${table}`, request);
     }
 
     // Store pre-validated data to prevent race conditions
     let preValidatedData: DatabaseRecord | null = null;
 
     // Check admin privileges for admin-only entities
-    if (config.requiresAdmin) {
-      const adminAuth = await verifyAdminPrivileges(learnerId, userSupabase);
-      if (!adminAuth.authorized) {
-        return jsonResponse({
-          success: false,
-          error: adminAuth.error
-        }, 403);
-      }
-    } else {
-      // Check entity ownership for user-owned entities ATOMICALLY with data fetch
-      const ownershipAuth = await verifyEntityOwnership(table, id, learnerId, userSupabase);
-      if (!ownershipAuth.authorized) {
-        return jsonResponse({
-          success: false,
-          error: ownershipAuth.error
-        }, 403);
-      }
+      if (config.requiresAdmin) {
+        const adminAuth = await verifyAdminPrivileges(learnerId, userSupabase);
+        if (!adminAuth.authorized) {
+          return apiError(403, 'FORBIDDEN', adminAuth.error || 'Admin access required', request);
+        }
+      } else {
+        // Check entity ownership for user-owned entities ATOMICALLY with data fetch
+        const ownershipAuth = await verifyEntityOwnership(table, id, learnerId, userSupabase);
+        if (!ownershipAuth.authorized) {
+          return apiError(403, 'FORBIDDEN', ownershipAuth.error || 'Unauthorized', request);
+        }
       // Store the validated data to use later (prevents race condition)
       preValidatedData = ownershipAuth.data ?? null;
     }
@@ -496,13 +448,7 @@ export async function handleGenerateEmbedding(
     } else {
       // MODE 1: Use provided text
       if (!text || typeof text !== 'string' || text.trim().length < EMBEDDING_CONFIG.MIN_TEXT_LENGTH) {
-        return jsonResponse(
-          {
-            success: false,
-            error: `Text too short (minimum ${EMBEDDING_CONFIG.MIN_TEXT_LENGTH} characters)`,
-          },
-          400
-        );
+        return apiError(400, 'VALIDATION_ERROR', `Text too short (minimum ${EMBEDDING_CONFIG.MIN_TEXT_LENGTH} characters)`, request);
       }
       finalText = text;
       console.log(`[Embedding] Using provided text (${finalText.length} chars)`);
@@ -519,19 +465,11 @@ export async function handleGenerateEmbedding(
         const result = await updateEmbedding(supabase, table, id, embedding);
         
         if (!result.success) {
-          return jsonResponse({
-            success: false,
-            error: result.error || 'Database update failed',
-          }, 500);
+          return apiError(500, 'INTERNAL_ERROR', result.error || 'Database update failed', request);
         }
       } catch (error) {
         if (error instanceof EmbeddingError) {
-          return jsonResponse({
-            success: false,
-            error: error.message,
-            code: error.code,
-            details: error.details,
-          }, 500);
+          return apiError(500, 'INTERNAL_ERROR', error.message, request);
         }
         throw error;
       }
@@ -539,49 +477,22 @@ export async function handleGenerateEmbedding(
 
     // Return response
     if (returnEmbedding) {
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         embedding,
         dimensions: embedding.length,
-      });
+      }, request);
     }
 
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       message: `Embedding generated for ${table} #${id}`,
       dimensions: embedding.length,
       mode: fromDatabase ? 'database' : 'direct',
       textLength: finalText.length,
-    });
+    }, request);
   } catch (error) {
     console.error('[Embedding] Error:', error);
     
-    // Handle EmbeddingError with proper status codes
-    if (error instanceof EmbeddingError) {
-      const statusCode = 
-        error.code === 'AUTH_REQUIRED' ? 401 :
-        error.code === 'RATE_LIMIT' ? 429 :
-        error.code === 'INVALID_TEXT' || error.code === 'INSUFFICIENT_DATA' ? 400 :
-        500;
-      
-      return jsonResponse(
-        {
-          success: false,
-          error: error.message,
-          code: error.code,
-        },
-        statusCode
-      );
-    }
-    
-    // Handle other errors
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return jsonResponse(
-      {
-        success: false,
-        error: errorMessage,
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', errorMessage, request);
   }
 }

@@ -10,6 +10,8 @@ import { useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { createOptimisticSubscription, type OptimisticSubscription } from '../lib/optimisticUpdates';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { extractErrorMessage } from '../api/paymentsApiService';
 
 interface UseOptimisticSubscriptionOptions {
   userId: string;
@@ -34,7 +36,7 @@ export function useOptimisticSubscription({
    * Create a freemium subscription with optimistic updates
    */
   const createFreemiumSubscription = useCallback(
-    async (planCode: string = PLAN_IDS.PAY_AS_YOU_GO) => {
+    async (planCode: string = PLAN_IDS.FREEMIUM) => {
       // Atomic check to prevent duplicate requests
       if (isCreatingRef.current) {
         console.warn('[useOptimisticSubscription] Already creating subscription');
@@ -65,38 +67,50 @@ export function useOptimisticSubscription({
       }));
 
       try {
-        // Step 3: Make actual API call
-        const response = await fetch('/api/payments/create-freemium-subscription', {
+        // Step 3: Make actual API call (auth handled automatically by ssoClient.fetch)
+        const response = await ssoClient.fetch('/api/payments/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, email }),
+          body: JSON.stringify({ 
+            userId, 
+            email, 
+            amount: 0, 
+            planId: planCode,
+            planName: 'freemium'
+          }),
           signal: abortControllerRef.current.signal,
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create subscription');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(extractErrorMessage(errorData) || 'Failed to create subscription');
         }
 
-        const data = await response.json();
+        const envelope = await response.json();
+
+        // apiSuccess wraps data at { success, data: { ... } }.
+        // For freemium, the handler returns apiSuccess({ isFreemium: true, data: { ...subscription } }),
+        // so the subscription lives at envelope.data.data.
+        const body = envelope.data;
+        const subscriptionData = body && body.data ? body.data : body;
 
         // Step 4: Replace optimistic with actual data
         setOptimisticSub(null);
         queryClient.setQueryData(['subscription', userId], (old: any) => ({
           ...old,
-          subscription: data.subscription,
-          planCode: data.subscription.planCode,
-          status: data.subscription.status,
+          subscription: subscriptionData,
+          planCode: subscriptionData?.planCode,
+          status: subscriptionData?.status,
         }));
 
         // Invalidate to refetch fresh data
         queryClient.invalidateQueries({ queryKey: ['subscription', userId] });
 
         if (onSuccess) {
-          onSuccess(data.subscription);
+          onSuccess(subscriptionData);
         }
 
-        return data.subscription;
+        return subscriptionData;
       } catch (error) {
         // Step 5: Rollback optimistic update on error
         if (error instanceof Error && error.name === 'AbortError') {

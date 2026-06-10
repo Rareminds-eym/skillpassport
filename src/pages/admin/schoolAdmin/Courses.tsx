@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -25,9 +26,9 @@ import {
 } from '@/features/educator';
 import toast from 'react-hot-toast'
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+
 
 import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 const logger = getLogger('school-admin-courses');
@@ -91,18 +92,18 @@ const Courses: React.FC = () => {
         logger.info('User authenticated from AuthContext', { userId: user.id, email: user.email, role: user.role });
 
         // Verify Supabase session and use Supabase user ID
-        const { data: { session } } = await authSessionService.getSession();
+        const user = useAuthStore.getState().user;
         if (!session) {
           logger.error('No Supabase session found');
           setError('Authentication session expired. Please log in again.');
           setLoading(false);
           return;
         }
-        logger.info('Supabase session verified', { supabaseUserId: session.user.id, authContextUserId: user.id });
+        logger.info('Supabase session verified', { supabaseUserId: user.id, authContextUserId: user.id });
         
         // IMPORTANT: Use Supabase auth user ID, not AuthContext user ID
         // This ensures the ID matches what RLS policies expect
-        const supabaseUserId = session.user.id;
+        const supabaseUserId = user.id;
         setEducatorId(supabaseUserId);
 
         // Use full_name from AuthContext if available
@@ -110,31 +111,13 @@ const Courses: React.FC = () => {
         setEducatorName(fullName);
         logger.info('School admin name set', { fullName });
 
-        // Get school_id from school_educators table for creating courses - use maybeSingle() to avoid 406 error
-        const { data: educatorData } = await supabase
-          .from('school_educators')
-          .select('school_id')
-          .eq('user_id', supabaseUserId)
-          .maybeSingle();
-
-        if (educatorData?.school_id) {
-          setSchoolId(educatorData.school_id);
-          logger.info('School ID set from school_educators', { schoolId: educatorData.school_id });
+        // Get school_id via API
+        const schoolResp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId' });
+        if (schoolResp.data?.schoolId) {
+          setSchoolId(schoolResp.data.schoolId);
+          logger.info('School ID set', { schoolId: schoolResp.data.schoolId });
         } else {
-          // Fallback: Check organizations table for school admins
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'school')
-            .or(`admin_id.eq.${supabaseUserId},email.eq.${session.user.email}`)
-            .maybeSingle();
-
-          if (org?.id) {
-            setSchoolId(org.id);
-            logger.info('School ID set from organizations', { schoolId: org.id });
-          } else {
-            logger.warn('No school_id found for user, will not be able to create courses');
-          }
+          logger.warn('No school_id found for user, will not be able to create courses');
         }
 
         // Load ALL courses (not filtered by school)
@@ -260,7 +243,7 @@ const Courses: React.FC = () => {
     }
 
     // Verify Supabase session before creating
-    const { data: { session } } = await authSessionService.getSession();
+    const user = useAuthStore.getState().user;
     if (!session) {
       logger.error('No Supabase session');
       setError('Authentication session expired. Please log in again.');
@@ -410,17 +393,15 @@ const Courses: React.FC = () => {
       setLoading(true);
       logger.info('Assigning educator to course', { educatorId, educatorName, courseId: assigningCourse.id });
 
-      // Update the course with new educator
-      const { error } = await supabase
-        .from('courses')
-        .update({
-          educator_id: educatorId,
-          educator_name: educatorName,
-          updated_at: new Date().toISOString()
-        })
-        .eq('course_id', assigningCourse.id);
+      // Update the course with new educator via API
+      const updateResp: any = await apiPost('/school-admin/actions', {
+        action: 'updateCourseEducator',
+        courseId: assigningCourse.id,
+        educatorId,
+        educatorName,
+      });
 
-      if (error) throw error;
+      if (updateResp.error) throw updateResp.error;
 
       logger.info('Educator assigned successfully', { courseId: assigningCourse.id, educatorName });
       

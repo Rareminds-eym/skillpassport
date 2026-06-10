@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import {
     Calendar,
     ChevronLeft,
@@ -20,10 +21,9 @@ import ConfirmationModal from '@/shared/ui/ConfirmationModal';
 import NotificationModal from '@/shared/ui/NotificationModal';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { useLearners } from '@/entities/learner';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { saveMentorNote } from '@/features/educator';
 import { mentorNotesService } from "@/features/counselling";
-import { authSessionService } from '@/features/auth';
 
 interface MentorNote {
   id: string;
@@ -161,22 +161,17 @@ const MentorNotesContent = () => {
         }
 
         // Fetch notes only for learners in educator's assigned classes/college
-        const { data: filteredNotes, error: notesError } = await supabase
-          .from("mentor_notes")
-          .select(`
-            id,
-            learner_id,
-            feedback,
-            action_points,
-            quick_notes,
-            note_date,
-            learners(name)
-          `)
-          .in("learner_id", learnerUserIds)
-          .order("note_date", { ascending: false });
+        const notesResult = await apiPost<any>('/educator/actions', {
+          action: 'list-mentor-notes',
+          select: 'id, learner_id, feedback, action_points, quick_notes, note_date, learners(name)',
+          filters: {
+            learner_id: { in: learnerUserIds },
+            note_date: { order: 'desc' }
+          }
+        });
 
-        if (notesError) throw notesError;
-        setNotes(filteredNotes || []);
+        if (!notesResult?.data) throw new Error('Failed to load notes');
+        setNotes(notesResult.data || []);
 
       } catch (err) {
         logger.error("Error loading mentor notes:", err);
@@ -205,22 +200,17 @@ const MentorNotesContent = () => {
       }
 
       // Fetch notes only for learners in educator's assigned classes/college
-      const { data: filteredNotes, error } = await supabase
-        .from("mentor_notes")
-        .select(`
-          id,
-          learner_id,
-          feedback,
-          action_points,
-          quick_notes,
-          note_date,
-          learners(name)
-        `)
-        .in("learner_id", learnerUserIds)
-        .order("note_date", { ascending: false });
+      const notesResult = await apiPost<any>('/educator/actions', {
+        action: 'list-mentor-notes',
+        select: 'id, learner_id, feedback, action_points, quick_notes, note_date, learners(name)',
+        filters: {
+          learner_id: { in: learnerUserIds },
+          note_date: { order: 'desc' }
+        }
+      });
 
-      if (error) throw error;
-      setNotes(filteredNotes || []);
+      if (!notesResult?.data) throw new Error('Failed to load notes');
+      setNotes(notesResult.data || []);
 
       // if current page has no items after refresh, go back a page
       const lastPage = Math.max(1, Math.ceil((filteredNotes?.length || 0) / pageSize));
@@ -276,7 +266,7 @@ const MentorNotesContent = () => {
       }
 
       // Get the current user
-      const { data: { user } } = await authSessionService.getUser();
+      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (!user) {
         showNotification("Error", "User not authenticated!", "error");
         return;
@@ -287,13 +277,14 @@ const MentorNotesContent = () => {
 
       if (educatorType === 'school') {
         // Get the educator ID from school_educators table
-        const { data: educator, error: educatorError } = await supabase
-          .from("school_educators")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const educatorResult = await apiPost<any>('/educator/actions', {
+          action: 'get-school-educator-by-user-id',
+          userId: user.id,
+          select: 'id'
+        });
 
-        if (educatorError || !educator) {
+        const educator = educatorResult?.data;
+        if (!educator) {
           showNotification("Error", "School educator profile not found!", "error");
           return;
         }
@@ -309,13 +300,14 @@ const MentorNotesContent = () => {
         };
       } else if (educatorType === 'college') {
         // Get the lecturer ID from college_lecturers table
-        const { data: lecturer, error: lecturerError } = await supabase
-          .from("college_lecturers")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const lecturerResult = await apiPost<any>('/educator/actions', {
+          action: 'get-college-lecturer-by-user-id',
+          userId: user.id,
+          select: 'id'
+        });
 
-        if (lecturerError || !lecturer) {
+        const lecturer = lecturerResult?.data;
+        if (!lecturer) {
           showNotification("Error", "College lecturer profile not found!", "error");
           return;
         }
@@ -356,13 +348,13 @@ const MentorNotesContent = () => {
 
   // update & delete helpers
   const updateMentorNote = async (id: string, updates: Partial<MentorNote>) => {
-    const { data, error } = await supabase
-      .from("mentor_notes")
-      .update(updates)
-      .eq("id", id)
-      .select();
-    if (error) throw error;
-    return data;
+    const result = await apiPost<any>('/educator/actions', {
+      action: 'update-mentor-note',
+      id,
+      values: updates
+    });
+    if (!result?.data) throw new Error('Failed to update note');
+    return result.data;
   };
 
   const deleteMentorNote = async (id: string) => {

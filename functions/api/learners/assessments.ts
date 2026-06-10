@@ -10,7 +10,7 @@
  *
  * Uses service_role to bypass RLS. Requires SSO authentication.
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import { createLogger } from '../../lib/logger';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -22,10 +22,10 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
-  const user = context.data.user;
+  const user = getContextUser(context);
 
   try {
-    const userId = user.sub;
+    const userId = user.id;
     const userEmail = user.email;
     logger.info('Fetching assessment data', { userId, userEmail });
     
@@ -47,10 +47,15 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     }
 
     const learnerId = learnerData.id;
-    logger.info('Learner found', { learnerId, userId });
+    logger.info('Learner found', { learnerId, userId, learnerDataId: learnerData.id });
 
     // Step 2: Check for in-progress assessment
-    const { data: inProgressAttempt, error: inProgressError } = await supabase
+    logger.info('Querying for in-progress attempts', {
+      learnerId,
+      queryFilters: { learner_id: learnerId, status: 'in_progress' }
+    });
+
+    const { data: inProgressAttempt, error: inProgressError, status } = await supabase
       .from('personal_assessment_attempts')
       .select('*')
       .eq('learner_id', learnerId)
@@ -60,8 +65,24 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       .maybeSingle();
 
     if (inProgressError) {
-      logger.error('Error fetching in-progress attempt', { learnerId, error: inProgressError });
+      logger.error('Error fetching in-progress attempt', {
+        learnerId,
+        errorMessage: inProgressError.message,
+        errorCode: inProgressError.code,
+        fullError: inProgressError
+      });
     }
+
+    logger.info('In-progress attempt check completed', {
+      learnerId,
+      found: !!inProgressAttempt,
+      attemptId: inProgressAttempt?.id,
+      status: inProgressAttempt?.status,
+      currentSectionIndex: inProgressAttempt?.current_section_index,
+      currentQuestionIndex: inProgressAttempt?.current_question_index,
+      queryStatus: status,
+      queryError: inProgressError
+    });
 
     // Step 3: Get latest completed assessment result
     const { data: latestResult, error: resultError } = await supabase
@@ -176,11 +197,18 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       latestResult: latestResult || null,
     };
 
-    logger.info('Assessment data fetched successfully', { 
-      learnerId, 
+    logger.info('Assessment data fetched successfully', {
+      learnerId,
       userId,
       hasAssessment: hasCompletedAssessment,
-      hasInProgress: !!inProgressAttempt
+      hasInProgress: !!inProgressAttempt,
+      inProgressAttemptFound: !!inProgressAttempt,
+      responseSummary: {
+        hasAssessment: assessmentData.hasAssessment,
+        hasInProgressAssessment: assessmentData.hasInProgressAssessment,
+        latestAttemptId: assessmentData.latestAttemptId,
+        inProgressAttemptId: assessmentData.inProgressAttempt?.id
+      }
     });
     
     return apiSuccess(assessmentData, context.request, { startTime });

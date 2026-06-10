@@ -31,7 +31,7 @@ import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
-import { authSessionService } from '@/features/auth';
+
 
 import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
 /**
@@ -133,7 +133,7 @@ function MySubscription() {
         price: plan.price,
         priceLabel: plan.contactSales ? 'Contact Sales' : 'Per Person',
         features: plan.features || [],
-        totalFeatures: plan.totalFeatures || plan.features?.length || 0,
+        totalFeatures: plan.totalFeatures ?? plan.features?.length ?? 0,
         hasMoreFeatures: plan.hasMoreFeatures || false,
         detailedFeatures: plan.detailedFeatures || [],
         limits: plan.limits
@@ -181,15 +181,10 @@ function MySubscription() {
     setIsCancelling(true);
 
     try {
-      // Get auth token
-      const { data: { session } } = await authSessionService.getSession();
-      const token = session?.access_token;
-
-      // Call Worker via paymentsApiService
+      // Auth is handled automatically by paymentsApiService via ssoClient.fetch()
       const result = await deactivateSubscription(
         subscriptionData.id,
-        cancelReason,
-        token
+        cancelReason
       );
 
       if (result.success) {
@@ -220,14 +215,10 @@ function MySubscription() {
     setIsPausing(true);
 
     try {
-      // Get auth token
-      const { data: { session } } = await authSessionService.getSession();
-      const token = session?.access_token;
-
+      // Auth is handled automatically by paymentsApiService via ssoClient.fetch()
       const result = await pauseSubscription(
         subscriptionData.id,
-        pauseMonths,
-        token
+        pauseMonths
       );
 
       if (result.success) {
@@ -255,11 +246,8 @@ function MySubscription() {
     setIsPausing(true); // Reuse isPausing state for loading
 
     try {
-      // Get auth token
-      const { data: { session } } = await authSessionService.getSession();
-      const token = session?.access_token;
-
-      const result = await resumeSubscription(subscriptionData.id, token);
+      // Auth is handled automatically by paymentsApiService via ssoClient.fetch()
+      const result = await resumeSubscription(subscriptionData.id);
 
       if (result.success) {
         alert('Subscription resumed successfully!');
@@ -351,9 +339,11 @@ function MySubscription() {
           .map(sub => ({
             id: sub.id,
             date: sub.created_at || sub.subscription_start_date,
-            amount: sub.plan_amount || '0',
+            amount: sub.plan_amount || '',
             status: sub.status === 'active' ? 'paid' : 'completed',
-            description: `${sub.plan_type || 'Basic Plan'} - ${sub.billing_cycle || 'Monthly'}`,
+            description: sub.billing_cycle
+              ? `${sub.plan_type ?? ''} — ${sub.billing_cycle}`
+              : `${sub.plan_type ?? ''}`,
             planType: sub.plan_type,
             billingCycle: sub.billing_cycle,
             subscriptionStatus: sub.status
@@ -720,7 +710,7 @@ function MySubscription() {
                           </span>
                         </div>
                         <h2 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                          {subscriptionData?.planName || subscriptionData?.plan_type || currentPlan?.name || 'Basic Plan'}
+                          {subscriptionData?.planName || subscriptionData?.plan_type || currentPlan?.name || ''}
                         </h2>
                         <div className="flex items-baseline gap-1">
                           <span className="text-4xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>

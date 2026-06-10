@@ -46,19 +46,20 @@ export async function sendCareerChatMessage(
 ): Promise<void> {
   try {
     // Use interceptor to handle token validation and refresh
-    const response = await getInterceptor().fetch(`${API_URL}/chat`, {
+    const response = await getInterceptor().request(`${API_URL}/chat`, {
       method: 'POST',
-      headers: getAuthHeaders(token),
       body: JSON.stringify({ conversationId, message, selectedChips }),
       signal: abortSignal,
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({})) as { error?: string };
-      logger.error('Career chat API request failed', new Error(error.error || 'Chat request failed'), {
+      const body = await response.json().catch(() => ({})) as any;
+      const errorDetail = body?.error;
+      const errorMsg = typeof errorDetail === 'string' ? errorDetail : errorDetail?.message || body?.message || 'Chat request failed';
+      logger.error('Career chat API request failed', new Error(errorMsg), {
         status: response.status
       });
-      onError?.(new Error(error.error || 'Chat request failed'));
+      onError?.(new Error(errorMsg));
       return;
     }
 
@@ -121,16 +122,18 @@ export async function getRecommendations(
   learnerId: string,
   { forceRefresh = false, limit = 20 }: RecommendationsParams = {}
 ): Promise<unknown> {
-  const response = await getInterceptor().fetch(`${API_URL}/recommend-opportunities`, {
+  const response = await getInterceptor().request(`${API_URL}/recommend-opportunities`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ learnerId, forceRefresh, limit }),
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({})) as { error?: string };
-    throw new Error(error.error || 'Failed to get recommendations');
-  }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({})) as any;
+      const errorDetail = body?.error;
+      const errorMsg = typeof errorDetail === 'string' ? errorDetail : errorDetail?.message || body?.message || 'Failed to get recommendations';
+      throw new Error(errorMsg);
+    }
 
   return response.json();
 }
@@ -160,16 +163,18 @@ export async function generateEmbedding({
   id,
   type = 'opportunity'
 }: GenerateEmbeddingParams): Promise<unknown> {
-  const response = await getInterceptor().fetch(`${API_URL}/generate-embedding`, {
+  const response = await getInterceptor().request(`${API_URL}/generate-embedding`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ text, table, id, type }),
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({})) as { error?: string };
-    throw new Error(error.error || 'Failed to generate embedding');
-  }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({})) as any;
+      const errorDetail = body?.error;
+      const errorMsg = typeof errorDetail === 'string' ? errorDetail : errorDetail?.message || body?.message || 'Failed to generate embedding';
+      throw new Error(errorMsg);
+    }
 
   return response.json();
 }

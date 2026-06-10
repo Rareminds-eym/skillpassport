@@ -1,25 +1,26 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { useAuthStore } from '@/shared/model/authStore';
+import { getApiUrl } from '@/shared/api/apiUtils';
 /**
  * File Upload Service for Cloudflare R2 Storage
  * Handles document uploads for faculty onboarding
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
-
-const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
+const STORAGE_API_URL = getApiUrl('storage');
 
 /**
  * Get authentication token from current session
  */
 async function getAuthToken(): Promise<string | null> {
   try {
-    const { data: { session }, error } = await getCurrentSession();
+    const user = useAuthStore.getState().user;
+    const error = null;
     
     if (error) {
       return null;
     }
     
-    return session?.access_token || null;
+    return ssoClient.getAccessToken() || null;
   } catch (error) {
     return null;
   }
@@ -69,11 +70,8 @@ export const uploadFile = async (
     formData.append('filename', filename);
 
     // Upload to Cloudflare Worker
-    const response = await fetch(`${STORAGE_API_URL}/upload`, {
+    const response = await ssoClient.fetch(`${STORAGE_API_URL}/upload`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
       body: formData,
     });
 
@@ -150,11 +148,10 @@ export const deleteFile = async (fileUrl: string): Promise<boolean> => {
       return false;
     }
 
-    const response = await fetch(`${STORAGE_API_URL}/delete`, {
+    const response = await ssoClient.fetch(`${STORAGE_API_URL}/delete`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ url: fileUrl }),
     });

@@ -1,11 +1,5 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
-/**
- * AI Job Matching Service
- * Uses vector embeddings and cosine similarity to match learner profiles with job opportunities
- * Implements industrial-grade caching - AI only processes when learner data changes
- */
+import { ssoClient } from '@/shared/api/ssoClient';
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 
 /**
@@ -34,9 +28,7 @@ export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = f
 
   const API_URL = getApiUrl('career');
 
-  // Get auth token from existing supabase client
-  const { data: { session } } = await getCurrentSession();
-  const token = session?.access_token;
+  const token = ssoClient.getAccessToken();
 
   const learnerId = learnerProfile?.id || learnerProfile?.learner_id;
   if (!learnerId) {
@@ -46,11 +38,11 @@ export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = f
   // NOTE: The API auto-generates learner embeddings if missing
   // No need to call ensurelearnerEmbedding here
 
-  const response = await fetch(`${API_URL}/recommend-opportunities`, {
+  const response = await ssoClient.fetch(`${API_URL}/recommend-opportunities`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
     body: JSON.stringify({
       learnerId,
@@ -65,7 +57,7 @@ export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = f
   }
 
   const result = await response.json();
-  const recommendations = result.recommendations || [];
+  const recommendations = result.data?.recommendations || [];
 
   if (recommendations.length === 0) {
     // Return empty array instead of throwing - no matches is valid
@@ -83,8 +75,8 @@ export async function matchJobsWithAI(learnerProfile, topN = 3, forceRefresh = f
     skills_gap: [],
     recommendation: 'Review the job requirements and apply if interested.',
     opportunity: rec, // Full opportunity data from API
-    cached: result.cached || false,
-    computed_at: result.computed_at
+    cached: result.data?.cached || false,
+    computed_at: result.data?.computed_at
   }));
 }
 

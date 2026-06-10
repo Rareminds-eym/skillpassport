@@ -20,7 +20,7 @@ import {
   updateCourse
 } from '@/features/college-admin';
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { View } from 'lucide-react';
 import { getLogger } from '@/shared/config/logging';
 
@@ -76,21 +76,23 @@ const Courses: React.FC = () => {
       logger.info('🔍 Checking affiliation for educator:', educatorId);
       
       // Check if educator is part of a school
-      const { data: schoolEducator, error: schoolError } = await supabase
-        .from('school_educators')
-        .select('school_id')
-        .eq('user_id', educatorId)
-        .maybeSingle();
+      const schoolResult = await apiPost<any>('/educator/actions', {
+        action: 'get-school-educator-by-user-id',
+        userId: educatorId,
+        select: 'school_id'
+      });
+      const schoolEducator = schoolResult?.data;
 
-      logger.info('School check result:', { schoolEducator, schoolError });
+      logger.info('School check result:', { schoolEducator });
 
-      if (!schoolError && schoolEducator?.school_id) {
+      if (schoolEducator?.school_id) {
         // Fetch school name from organizations table
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', schoolEducator.school_id)
-          .maybeSingle();
+        const orgResult = await apiPost<any>('/educator/actions', {
+          action: 'get-organization-by-id',
+          id: schoolEducator.school_id,
+          select: 'name'
+        });
+        const orgData = orgResult?.data;
         
         logger.info('✅ Educator is affiliated with school:', orgData?.name);
         return {
@@ -103,21 +105,23 @@ const Courses: React.FC = () => {
       }
 
       // Check if educator is part of a college
-      const { data: collegeEducator, error: collegeError } = await supabase
-        .from('college_lecturers')
-        .select('collegeId')
-        .eq('user_id', educatorId)
-        .maybeSingle();
+      const collegeResult = await apiPost<any>('/educator/actions', {
+        action: 'get-college-lecturer-by-user-id',
+        userId: educatorId,
+        select: 'collegeId'
+      });
+      const collegeEducator = collegeResult?.data;
 
-      logger.info('College check result:', { collegeEducator, collegeError });
+      logger.info('College check result:', { collegeEducator });
 
-      if (!collegeError && collegeEducator?.collegeId) {
+      if (collegeEducator?.collegeId) {
         // Fetch college name from organizations table
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', collegeEducator.collegeId)
-          .maybeSingle();
+        const orgResult = await apiPost<any>('/educator/actions', {
+          action: 'get-organization-by-id',
+          id: collegeEducator.collegeId,
+          select: 'name'
+        });
+        const orgData = orgResult?.data;
         
         logger.info('✅ Educator is affiliated with college:', orgData?.name);
         return {
@@ -130,21 +134,23 @@ const Courses: React.FC = () => {
       }
 
       // Check if educator is part of a university
-      const { data: universityEducator, error: universityError } = await supabase
-        .from('university_educators')
-        .select('university_id')
-        .eq('user_id', educatorId)
-        .maybeSingle();
+      const uniResult = await apiPost<any>('/educator/actions', {
+        action: 'get-university-educator-by-user-id',
+        userId: educatorId,
+        select: 'university_id'
+      });
+      const universityEducator = uniResult?.data;
 
-      logger.info('University check result:', { universityEducator, universityError });
+      logger.info('University check result:', { universityEducator });
 
-      if (!universityError && universityEducator?.university_id) {
+      if (universityEducator?.university_id) {
         // Fetch university name from organizations table
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', universityEducator.university_id)
-          .maybeSingle();
+        const orgResult = await apiPost<any>('/educator/actions', {
+          action: 'get-organization-by-id',
+          id: universityEducator.university_id,
+          select: 'name'
+        });
+        const orgData = orgResult?.data;
         
         logger.info('✅ Educator is affiliated with university:', orgData?.name);
         return {

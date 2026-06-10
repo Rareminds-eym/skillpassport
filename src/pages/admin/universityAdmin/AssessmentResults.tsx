@@ -10,7 +10,7 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { SearchBar } from '@/shared/ui';
 import { AssessmentReportDrawer } from '@/features/assessment';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { formatStreamId } from '@/shared/lib/utils/formatters';
 import { getLogger } from '@/shared/config/logging';
 
@@ -259,67 +259,30 @@ const UniversityAdminAssessmentResults: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('personal_assessment_results')
-        .select(`
-          id,
-          learner_id,
-          stream_id,
-          riasec_code,
-          riasec_scores,
-          aptitude_overall,
-          aptitude_scores,
-          bigfive_scores,
-          work_values_scores,
-          employability_readiness,
-          employability_scores,
-          knowledge_score,
-          knowledge_details,
-          status,
-          created_at,
-          career_fit,
-          skill_gap,
-          gemini_results,
-          overall_summary,
-          platform_courses,
-          roadmap,
-          profile_snapshot,
-          timing_analysis,
-          final_note,
-          personal_assessment_streams (
-            name
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (fetchError) throw fetchError;
+      const result = await apiPost('/university-admin/actions', {
+        action: 'list-assessment-results',
+        select: `id,learner_id,stream_id,riasec_code,riasec_scores,aptitude_overall,aptitude_scores,bigfive_scores,work_values_scores,employability_readiness,employability_scores,knowledge_score,knowledge_details,status,created_at,career_fit,skill_gap,gemini_results,overall_summary,platform_courses,roadmap,profile_snapshot,timing_analysis,final_note,personal_assessment_streams(name)`,
+      });
+      if (!result.success) throw new Error(result.error?.message || 'Failed to fetch results');
+      const data = result.data;
 
       // Fetch learner info for each result
       if (data && data.length > 0) {
         const learnerIds = [...new Set(data.map(r => r.learner_id))];
         
-        const { data: learnersData } = await supabase
-          .from('learners')
-          .select(`
-            user_id, 
-            name, 
-            email, 
-            college_id, 
-            enrollmentNumber, 
-            grade, 
-            program_id,
-            programs (
-              id,
-              name
-            )
-          `)
-          .in('user_id', learnerIds);
+        const learnersResp = await apiPost('/university-admin/actions', {
+          action: 'list-learners-by-ids',
+          learnerIds,
+          select: `user_id,name,email,college_id,enrollmentNumber,grade,program_id,programs(id,name)`,
+        });
+        const learnersData = learnersResp.success ? learnersResp.data : [];
 
-        // Fetch colleges from organizations table
-        const { data: collegesData } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .eq('organization_type', 'college');
+        const collegesResp = await apiPost('/university-admin/actions', {
+          action: 'list-organizations-by-type',
+          orgType: 'college',
+          select: 'id, name',
+        });
+        const collegesData = collegesResp.success ? collegesResp.data : [];
 
         const learnerMap = new Map(learnersData?.map(s => [s.user_id, s]) || []);
         const collegeMap = new Map(collegesData?.map(c => [c.id, c.name]) || []);
@@ -369,17 +332,15 @@ const UniversityAdminAssessmentResults: React.FC = () => {
     }
   };
 
-  // Fetch colleges for filter from organizations table
   const fetchColleges = async () => {
     try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('organization_type', 'college')
-        .order('name');
-      
-      if (!error && data) {
-        setColleges(data);
+      const resp = await apiPost('/university-admin/actions', {
+        action: 'list-organizations-by-type',
+        orgType: 'college',
+        select: 'id, name',
+      });
+      if (resp.success && resp.data) {
+        setColleges(resp.data);
       }
     } catch (err) {
       logger.error('Error fetching colleges:', err as Error);

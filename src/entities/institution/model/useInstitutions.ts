@@ -1,8 +1,5 @@
-/**
- * Hook to fetch schools, colleges, universities, programs, and classes
- */
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('useInstitutions');
@@ -28,141 +25,25 @@ export const useInstitutions = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch schools from organizations table
-      const { data: schoolsData, error: schoolsError } = await supabase
-        .from('organizations')
-        .select('id, name, city, state, code')
-        .eq('organization_type', 'school')
-        .in('account_status', ['active', 'pending'])
-        .order('name');
+      const result = await apiPost<any>('/learner-profile/actions', { action: 'get-institutions' });
 
-      if (schoolsError) {
-        logger.error('Error fetching schools', schoolsError as Error);
-        setSchools([]);
-      } else {
-        setSchools(schoolsData || []);
+      if (result?.data) {
+        setSchools(result.data.schools || []);
+        setColleges(result.data.colleges || []);
+        setUniversities(result.data.universities || []);
+        setUniversityColleges(result.data.universityColleges || []);
+        setDepartments(result.data.departments || []);
+        setPrograms(result.data.programs || []);
+        setSchoolClasses(result.data.schoolClasses || []);
+        setProgramSections(result.data.programSections || []);
       }
-
-      // Fetch colleges from organizations table
-      const { data: collegesData, error: collegesError } = await supabase
-        .from('organizations')
-        .select('id, name, city, state, code')
-        .eq('organization_type', 'college')
-        .in('account_status', ['active', 'pending'])
-        .order('name');
-
-      if (collegesError) {
-        logger.error('Error fetching colleges', collegesError as Error);
-        setColleges([]);
-      } else {
-        setColleges(collegesData || []);
-      }
-
-      // Fetch universities from organizations table
-      const { data: universitiesData, error: universitiesError } = await supabase
-        .from('organizations')
-        .select('id, name, city, state, code')
-        .eq('organization_type', 'university')
-        .in('account_status', ['active', 'pending'])
-        .order('name');
-
-      if (universitiesError) {
-        logger.error('Error fetching universities', universitiesError as Error);
-        setUniversities([]);
-      } else {
-        setUniversities(universitiesData || []);
-      }
-
-      // Fetch university colleges from university_colleges table (not organizations)
-      const { data: universityCollegesData, error: universityCollegesError } = await supabase
-        .from('university_colleges')
-        .select('id, name, code, university_id')
-        .order('name');
-
-      if (universityCollegesError) {
-        logger.error('Error fetching university colleges', universityCollegesError as Error);
-        setUniversityColleges([]);
-      } else {
-        setUniversityColleges(universityCollegesData || []);
-      }
-
-      // Fetch departments
-      const { data: departmentsData, error: departmentsError } = await supabase
-        .from('departments')
-        .select('id, name, code, college_id')
-        .order('name');
-
-      if (departmentsError) {
-        logger.error('Error fetching departments', departmentsError as Error);
-        setDepartments([]);
-      } else {
-        setDepartments(departmentsData || []);
-      }
-
-      // Fetch programs
-      const { data: programsData, error: programsError } = await supabase
-        .from('programs')
-        .select('id, name, code, degree_level, department_id')
-        .order('name');
-
-      if (programsError) {
-        logger.error('Error fetching programs', programsError as Error);
-        setPrograms([]);
-      } else {
-        setPrograms(programsData || []);
-      }
-
-      // Fetch school classes
-      const { data: schoolClassesData, error: schoolClassesError } = await supabase
-        .from('school_classes')
-        .select('id, name, grade, section, school_id')
-        .order('grade')
-        .order('section');
-
-      if (schoolClassesError) {
-        logger.error('Error fetching school classes', schoolClassesError as Error);
-        setSchoolClasses([]);
-      } else {
-        setSchoolClasses(schoolClassesData || []);
-      }
-
-      // Fetch program sections
-      const { data: programSectionsData, error: programSectionsError } = await supabase
-        .from('program_sections')
-        .select('id, program_id, semester, section')
-        .order('semester')
-        .order('section');
-
-      if (programSectionsError) {
-        logger.error('Error fetching program sections', programSectionsError as Error);
-        setProgramSections([]);
-      } else {
-        setProgramSections(programSectionsData || []);
-      }
-      
     } catch (err) {
       logger.error('Error fetching institutions', err as Error);
-      setError((err as any).message);
+      setError(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const refreshInstitutions = () => {
-    fetchInstitutions();
-  };
-
-  return {
-    schools,
-    colleges,
-    universities,
-    universityColleges,
-    departments,
-    programs,
-    programSections,
-    schoolClasses,
-    loading,
-    error,
-    refreshInstitutions,
-  };
+  return { schools, colleges, universities, universityColleges, departments, programs, schoolClasses, programSections, loading, error };
 };

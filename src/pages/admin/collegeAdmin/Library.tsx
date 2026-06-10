@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
 import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';
-import { authSessionService } from '@/features/auth';
+import { useAuthStore } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
+
 import {
   LibraryHeader,
   LibraryStatsCards,
@@ -256,7 +257,7 @@ export default function LibraryModule() {
       let userId: string | null = null;
       let universityId: string | null = null;
 
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -275,76 +276,28 @@ export default function LibraryModule() {
       }
 
       if (!schoolId && !collegeId) {
-        const { data: { user } } = await authSessionService.getUser();
-
+        const user = useAuthStore.getState().user;
         if (user) {
           userId = user.id;
-
-          const { data: userRecord } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-          userRole = userRecord?.role || null;
-
-          if (userRole === 'college_admin') {
-            const { data: org } = await supabase
-              .from('organizations')
-              .select('id, name, email')
-              .eq('organization_type', 'college')
-              .ilike('email', user.email || '')
-              .maybeSingle();
-
-            if (org?.id) {
-              collegeId = org.id;
-            }
-          } else {
-            const { data: educator } = await supabase
-              .from('school_educators')
-              .select('school_id')
-              .eq('user_id', user.id)
-              .single();
-
-            if (educator?.school_id) {
-              schoolId = educator.school_id;
-            } else {
-              const { data: org } = await supabase
-                .from('organizations')
-                .select('id')
-                .eq('organization_type', 'school')
-                .eq('email', user.email)
-                .maybeSingle();
-
-              schoolId = org?.id || null;
-            }
-          }
         }
       }
 
-      let query = supabase
-        .from('learners')
-        .select('id, name, roll_number, enrollmentNumber, admission_number, contact_number, email, grade, section, course_name, semester')
-        .eq('is_deleted', false)
-        .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`)
-        .order('name')
-        .limit(10);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'search-library-learners',
+        searchTerm,
+        userId,
+        email: useAuthStore.getState().user?.email,
+        passedSchoolId: schoolId,
+        passedCollegeId: collegeId,
+        passedUniversityId: universityId
+      });
 
-      if (schoolId) {
-        query = query.eq('school_id', schoolId);
-      } else if (collegeId) {
-        query = query.eq('college_id', collegeId);
-      } else if (universityId) {
-        query = query.eq('universityId', universityId);
+      if (!res.success) {
+        logger.error('API query error:', res.error);
+        throw new Error(res.error || 'Failed to search learners');
       }
 
-      const { data: learners, error } = await query;
-
-      if (error) {
-        logger.error('Supabase query error:', error as Error);
-        throw error;
-      }
-
+      const learners = res.data;
       setlearnerSearchResults(learners || []);
       setShowlearnerDropdown(learners && learners.length > 0);
 

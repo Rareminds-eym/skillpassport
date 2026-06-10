@@ -5,7 +5,7 @@ import {
   UserMinusIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import toast from 'react-hot-toast';
 
@@ -74,48 +74,36 @@ const AddLearnerModal: React.FC<AddlearnerModalProps> = ({
     setError(null);
     
     try {
-      // Check if department has college_id
-      if (!department.college_id) {
-        // Fetch department details to get college_id
-        const { data: deptData, error: deptFetchError } = await supabase
-          .from('departments')
-          .select('college_id')
-          .eq('id', department.id)
-          .single();
-          
-        if (deptFetchError || !deptData?.college_id) {
+      let targetCollegeId = department.college_id;
+
+      if (!targetCollegeId) {
+        const deptResult = await apiPost<any>('/college-admin/academic', {
+          action: 'get-department',
+          department_id: department.id,
+        });
+
+        if (!deptResult?.data?.college_id) {
           throw new Error('Department is not associated with a college');
         }
-        
-        // Update the department object with college_id
-        department.college_id = deptData.college_id;
-      }
-      
-      // Fetch current department learners
-      const { data: deptlearners, error: deptError } = await supabase
-        .from('learners')
-        .select('id, name, email, department_id, college_id, roll_number, course_name, branch_field, contactNumber, semester, section')
-        .eq('department_id', department.id);
 
-      if (deptError) {
-        logger.error('Error fetching department learners', deptError);
-        throw deptError;
+        targetCollegeId = deptResult.data.college_id;
+        department.college_id = targetCollegeId;
       }
 
-      // Fetch available learners (not assigned to any department but belong to the same college)
-      const { data: availlearners, error: availError } = await supabase
-        .from('learners')
-        .select('id, name, email, department_id, college_id, roll_number, course_name, branch_field, contactNumber, semester, section')
-        .is('department_id', null)
-        .eq('college_id', department.college_id);
+      const deptResult = await apiPost<any>('/college-admin/academic', {
+        action: 'get-college-learners',
+        college_id: targetCollegeId,
+        department_id: department.id,
+      });
 
-      if (availError) {
-        logger.error('Error fetching available learners', availError);
-        throw availError;
-      }
+      const availResult = await apiPost<any>('/college-admin/academic', {
+        action: 'get-college-learners',
+        college_id: targetCollegeId,
+        department_id: 'null',
+      });
 
-      setCurrentlearners(deptlearners || []);
-      setAvailablelearners(availlearners || []);
+      setCurrentlearners(deptResult?.data || []);
+      setAvailablelearners(availResult?.data || []);
     } catch (error: any) {
       logger.error('Error fetching learners', error);
       setError(`Failed to load learners: ${error.message || 'Unknown error'}`);
@@ -161,20 +149,14 @@ const AddLearnerModal: React.FC<AddlearnerModalProps> = ({
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("learners")
-        .update({ 
-          department_id: department.id,
-          semester: assignmentDetails.semester,
-          section: assignmentDetails.section.trim(),
-          course_name: assignmentDetails.course_name.trim()
-        })
-        .in("id", selectedlearners);
-
-      if (error) {
-        logger.error('Error adding learners', error);
-        throw error;
-      }
+      await apiPost('/college-admin/academic', {
+        action: 'assign-learners-to-department',
+        learner_ids: selectedlearners,
+        department_id: department.id,
+        semester: assignmentDetails.semester,
+        section: assignmentDetails.section.trim(),
+        course_name: assignmentDetails.course_name.trim(),
+      });
 
       const addedCount = selectedlearners.length;
       const learnerNames = availablelearners.filter(s => selectedlearners.includes(s.id!));
@@ -207,15 +189,10 @@ const AddLearnerModal: React.FC<AddlearnerModalProps> = ({
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("learners")
-        .update({ department_id: null })
-        .eq("id", learnerId);
-
-      if (error) {
-        logger.error('Error removing learner', error);
-        throw error;
-      }
+      await apiPost('/college-admin/academic', {
+        action: 'remove-learner-from-department',
+        learner_id: learnerId,
+      });
 
       toast.success(`${learnerName} removed from ${department.name}`);
       fetchlearners(); // Refresh the lists

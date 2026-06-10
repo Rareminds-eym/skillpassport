@@ -2,6 +2,7 @@ import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { updatePassword } from '@/features/auth/api';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 interface ResetPasswordState {
   password: string;
@@ -55,10 +56,10 @@ const ResetPassword = () => {
       return;
     }
 
-    if (state.password.length < 6) {
+    if (state.password.length < PASSWORD_MIN) {
       setState(prev => ({
         ...prev,
-        error: 'Password must be at least 6 characters long'
+        error: `Password must be at least ${PASSWORD_MIN} characters`
       }));
       return;
     }

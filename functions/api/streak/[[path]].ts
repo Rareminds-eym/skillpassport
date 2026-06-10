@@ -10,16 +10,20 @@
  * - POST /reset-daily - Reset daily flags (cron)
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
-import { authenticateUser } from '../shared/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getContextUser, withAuth } from '../../lib/auth';
+import { getCorsHeaders } from '../../lib/cors';
+import { apiError, apiSuccess } from '../../lib/response';
+import { ADMIN_ROLES } from '../../lib/roleCategories';
+import { getServiceClient } from '../../lib/supabase';
+import type { PagesFunction } from '../../lib/types';
 
 // ==================== GET LEARNER STREAK ====================
 
 async function handleGetStreak(supabase: SupabaseClient, learnerId: string): Promise<Response> {
   if (!learnerId) {
-    return jsonResponse({ error: 'Learner ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Learner ID is required', undefined);
   }
 
   const { data, error } = await supabase
@@ -31,30 +35,28 @@ async function handleGetStreak(supabase: SupabaseClient, learnerId: string): Pro
   if (error) {
     if (error.code === 'PGRST116') {
       // No record found, return default
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         data: {
           learner_id: learnerId,
           current_streak: 0,
           longest_streak: 0,
           streak_completed_today: false,
         },
-      });
+      }, undefined);
     }
-    return jsonResponse({ error: 'Failed to get streak', message: error.message }, 500);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error instanceof Error ? error.message : String(error)}`, undefined);
   }
 
-  return jsonResponse({
-    success: true,
+  return apiSuccess({
     data,
-  });
+  }, undefined);
 }
 
 // ==================== UPDATE STREAK (COMPLETE ACTIVITY) ====================
 
 async function handleCompleteStreak(supabase: SupabaseClient, learnerId: string): Promise<Response> {
   if (!learnerId) {
-    return jsonResponse({ error: 'Learner ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Learner ID is required', undefined);
   }
 
   const { data, error } = await supabase
@@ -64,21 +66,20 @@ async function handleCompleteStreak(supabase: SupabaseClient, learnerId: string)
     });
 
   if (error) {
-    return jsonResponse({ error: 'Failed to update streak', message: error.message }, 500);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to update streak: ${error.message}`, undefined);
   }
 
-  return jsonResponse({
-    success: true,
+  return apiSuccess({
     data,
     message: 'Streak updated successfully!',
-  });
+  }, undefined);
 }
 
 // ==================== GET NOTIFICATION HISTORY ====================
 
 async function handleGetNotifications(supabase: SupabaseClient, learnerId: string, limit: number = 10): Promise<Response> {
   if (!learnerId) {
-    return jsonResponse({ error: 'Learner ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Learner ID is required', undefined);
   }
 
   const { data, error } = await supabase
@@ -89,14 +90,13 @@ async function handleGetNotifications(supabase: SupabaseClient, learnerId: strin
     .limit(limit);
 
   if (error) {
-    return jsonResponse({ error: 'Failed to get notification history', message: error.message }, 500);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to get notification history: ${error.message}`, undefined);
   }
 
-  return jsonResponse({
-    success: true,
+  return apiSuccess({
     data: data || [],
     count: data?.length || 0,
-  });
+  }, undefined);
 }
 
 // ==================== PROCESS STREAK ====================
@@ -125,7 +125,7 @@ async function checklearnerActivityToday(supabase: SupabaseClient, learnerId: st
 
 async function handleProcessStreak(supabase: SupabaseClient, learnerId: string): Promise<Response> {
   if (!learnerId) {
-    return jsonResponse({ error: 'Learner ID is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Learner ID is required', undefined);
   }
 
   try {
@@ -139,39 +139,33 @@ async function handleProcessStreak(supabase: SupabaseClient, learnerId: string):
         });
 
       if (error) {
-        return jsonResponse({
-          success: true,
+        return apiSuccess({
           data: {
             hasActivity: true,
             streakUpdated: false,
             error: error.message,
           },
-        });
+        }, undefined);
       }
 
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         data: {
           hasActivity: true,
           streakUpdated: true,
           ...data,
         },
-      });
+      }, undefined);
     } else {
-      return jsonResponse({
-        success: true,
+      return apiSuccess({
         data: {
           hasActivity: false,
           streakUpdated: false,
           message: 'No activity today',
         },
-      });
+      }, undefined);
     }
   } catch (error) {
-    return jsonResponse({
-      error: 'Failed to process streak',
-      message: (error as Error).message
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to get streak: ${error instanceof Error ? error.message : String(error)}`, undefined);
   }
 }
 
@@ -182,24 +176,30 @@ async function handleResetDailyFlags(supabase: SupabaseClient): Promise<Response
     .rpc('reset_daily_streak_flags');
 
   if (error) {
-    return jsonResponse({ error: 'Failed to reset daily flags', message: error.message }, 500);
+    return apiError(500, 'INTERNAL_ERROR', `Failed to reset daily flags: ${error.message}`, undefined);
   }
 
-  return jsonResponse({
-    success: true,
+  return apiSuccess({
     message: `Reset daily flags for ${data} learners`,
     count: data,
-  });
+  }, undefined);
 }
 
 // ==================== MAIN HANDLER ====================
 
 export const onRequest: PagesFunction = async (context) => {
-  const { request, env } = context;
+  const { request } = context;
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    const origin = request.headers.get('Origin') || '';
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...getCorsHeaders(origin),
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
 
   const url = new URL(request.url);
@@ -212,69 +212,86 @@ export const onRequest: PagesFunction = async (context) => {
     // Health check (public endpoint)
     if (pathParts.length === 0) {
       if (request.method === 'GET') {
-        return jsonResponse({
+        return apiSuccess({
           status: 'ok',
           service: 'streak-api',
           endpoints: ['/:learnerId', '/:learnerId/complete', '/:learnerId/notifications', '/:learnerId/process', '/reset-daily'],
           timestamp: new Date().toISOString()
-        });
+        }, request);
       }
     }
 
-    // Authenticate user for all other endpoints
-    const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!authResult) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
-    const { user, supabase } = authResult;
+    // All other endpoints require authentication
+    return withAuth(async (authContext: AuthenticatedContext) => {
+      const user = getContextUser(authContext);
+      const supabase = getServiceClient(authContext.env as unknown as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string }) as unknown as SupabaseClient;
 
-    // POST /reset-daily (admin only - could add role check here)
-    if (pathParts.length === 1 && pathParts[0] === 'reset-daily' && request.method === 'POST') {
-      return await handleResetDailyFlags(supabase);
-    }
-
-    // Routes with learnerId
-    if (pathParts.length >= 1) {
-      const learnerId = pathParts[0];
-
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(learnerId)) {
-        return jsonResponse({ error: 'Invalid learner ID format' }, 400);
+      // POST /reset-daily - require admin role.
+      // Sourced from the shared ADMIN_ROLES group (NOT an inline literal — bug
+      // §7.1). NOTE: this normalizes the prior single-literal `roles.includes('admin')`
+      // check to the full admin role-category group; the own-streak routes below
+      // remain ownership-scoped (authenticated-only).
+      if (pathParts.length === 1 && pathParts[0] === 'reset-daily' && request.method === 'POST') {
+        const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
+        if (!isAdmin) {
+          return apiError(403, 'FORBIDDEN', 'Forbidden: Admin access required', request);
+        }
+        return await handleResetDailyFlags(supabase);
       }
 
-      // Security: Users can only access their own streak data
-      if (learnerId !== user.id) {
-        return jsonResponse({ error: 'Forbidden: Can only access your own streak data' }, 403);
+      // Routes with learnerId
+      if (pathParts.length >= 1) {
+        const learnerId = pathParts[0];
+
+        // Validate UUID format
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(learnerId)) {
+          return apiError(400, 'VALIDATION_ERROR', 'Invalid learner ID format', request);
+        }
+
+        // Security: Users can only access their own streak data
+        // learnerId comes from the URL (learners.id), user.sub from the JWT (auth.users.id).
+        // Look up the learner's user_id to verify ownership.
+        const { data: learner } = await supabase
+          .from('learners')
+          .select('user_id')
+          .eq('id', learnerId)
+          .maybeSingle();
+
+        if (!learner) {
+          return apiError(404, 'NOT_FOUND', 'Learner not found', request);
+        }
+
+        if (learner.user_id !== user.id) {
+          return apiError(403, 'FORBIDDEN', 'Forbidden: Can only access your own streak data', request);
+        }
+
+        // GET /:learnerId
+        if (pathParts.length === 1 && request.method === 'GET') {
+          return await handleGetStreak(supabase, learnerId);
+        }
+
+        // POST /:learnerId/complete
+        if (pathParts.length === 2 && pathParts[1] === 'complete' && request.method === 'POST') {
+          return await handleCompleteStreak(supabase, learnerId);
+        }
+
+        // GET /:learnerId/notifications
+        if (pathParts.length === 2 && pathParts[1] === 'notifications' && request.method === 'GET') {
+          const limit = parseInt(url.searchParams.get('limit') || '10');
+          return await handleGetNotifications(supabase, learnerId, limit);
+        }
+
+        // POST /:learnerId/process
+        if (pathParts.length === 2 && pathParts[1] === 'process' && request.method === 'POST') {
+          return await handleProcessStreak(supabase, learnerId);
+        }
       }
 
-      // GET /:learnerId
-      if (pathParts.length === 1 && request.method === 'GET') {
-        return await handleGetStreak(supabase, learnerId);
-      }
-
-      // POST /:learnerId/complete
-      if (pathParts.length === 2 && pathParts[1] === 'complete' && request.method === 'POST') {
-        return await handleCompleteStreak(supabase, learnerId);
-      }
-
-      // GET /:learnerId/notifications
-      if (pathParts.length === 2 && pathParts[1] === 'notifications' && request.method === 'GET') {
-        const limit = parseInt(url.searchParams.get('limit') || '10');
-        return await handleGetNotifications(supabase, learnerId, limit);
-      }
-
-      // POST /:learnerId/process
-      if (pathParts.length === 2 && pathParts[1] === 'process' && request.method === 'POST') {
-        return await handleProcessStreak(supabase, learnerId);
-      }
-    }
-
-    return jsonResponse({ error: 'Not found' }, 404);
+      return apiError(404, 'NOT_FOUND', 'Not found', request);
+    })(context);
   } catch (error) {
     console.error('Streak API Error:', error);
-    return jsonResponse({ 
-      error: (error as Error).message || 'Internal server error' 
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Internal server error', undefined);
   }
 };

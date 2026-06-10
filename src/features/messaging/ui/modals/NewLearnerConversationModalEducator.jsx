@@ -1,8 +1,8 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
-import { getCurrentUser } from '@/shared/api/authUtils';
 import toast from 'react-hot-toast';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Small Message Modal Component
 const MessageModal = ({ learner, isOpen, onClose, onSend, isLoading }) => {
@@ -178,75 +178,39 @@ const NewLearnerConversationModalEducator = ({ isOpen, onClose, onCreateConversa
         console.log('🔍 Fetching learners for educator:', educatorId);
         console.log('🔍 Prop schoolId:', propSchoolId);
         
-        let schoolId = propSchoolId; // Use prop schoolId if provided
+        let schoolId = propSchoolId;
         
-        // Only do complex lookup if schoolId not provided
         if (!schoolId) {
-          // Get current user to access email
-          const { data: { user } } = await getCurrentUser();
+          const user = useAuthStore.getState().user;
           if (!user) {
             console.log('❌ No authenticated user found');
             setlearners([]);
             setLoading(false);
             return;
           }
-          let educatorData = null;
-          let userData = null;
+
+          // Strategy 1: Try resolve-user-context by user_id
+          const { data: userContext } = await apiPost('/messaging/actions', { action: 'resolve-user-context', userId: educatorId, type: 'educator' });
           
-          // Strategy 1: Try to get school from school_educators table using user_id
-          const { data: educatorResult } = await supabase
-            .from('school_educators')
-            .select('school_id, id')
-            .eq('user_id', educatorId)
-            .maybeSingle();
-
-          educatorData = educatorResult;
-
-          if (educatorData?.school_id) {
-            schoolId = educatorData.school_id;
-            console.log('✅ Found school from school_educators (user_id):', schoolId);
+          if (userContext?.school_id) {
+            schoolId = userContext.school_id;
+            console.log('✅ Found school from resolve-user-context:', schoolId);
           } else {
-            console.log('⚠️ No school found in school_educators by user_id, trying by email...');
-            
-            // Strategy 2: Try using email (like useEducatorSchool hook)
-            const { data: educatorByEmailResult } = await supabase
-              .from('school_educators')
-              .select('school_id, user_id, id')
-              .eq('email', user.email)
-              .maybeSingle();
-            
-            if (educatorByEmailResult?.school_id) {
-              schoolId = educatorByEmailResult.school_id;
-              console.log('✅ Found school from school_educators (email):', schoolId);
+            console.log('⚠️ No school by user_id, trying email...');
+
+            // Strategy 2: Try by email
+            const { data: educatorByEmail } = await apiPost('/messaging/actions', { action: 'resolve-educator-by-email', email: user.email });
+            if (educatorByEmail?.school_id) {
+              schoolId = educatorByEmail.school_id;
+              console.log('✅ Found school by email:', schoolId);
             } else {
-              console.log('⚠️ No school found by email, trying by id...');
-              
-              // Strategy 3: Try using educatorId as the school_educators.id directly
-              const { data: educatorByIdResult } = await supabase
-                .from('school_educators')
-                .select('school_id, user_id')
-                .eq('id', educatorId)
-                .maybeSingle();
-              
-              if (educatorByIdResult?.school_id) {
-                schoolId = educatorByIdResult.school_id;
-                console.log('✅ Found school from school_educators (id):', schoolId);
-              } else {
-                console.log('⚠️ No school found in school_educators by id, trying users table...');
-                
-                // Strategy 4: Fallback to users table if it has school_id
-                const { data: userResult } = await supabase
-                  .from('users')
-                  .select('school_id')
-                  .eq('id', educatorId)
-                  .maybeSingle();
-                
-                userData = userResult;
-                
-                if (userData?.school_id) {
-                  schoolId = userData.school_id;
-                  console.log('✅ Found school from users table:', schoolId);
-                }
+              console.log('⚠️ No school by email, trying by educator id...');
+
+              // Strategy 3: Try by educator id
+              const { data: educatorById } = await apiPost('/messaging/actions', { action: 'resolve-educator-by-id', educatorId });
+              if (educatorById?.school_id) {
+                schoolId = educatorById.school_id;
+                console.log('✅ Found school by educator id:', schoolId);
               }
             }
           }
@@ -254,42 +218,14 @@ const NewLearnerConversationModalEducator = ({ isOpen, onClose, onCreateConversa
 
         if (!schoolId) {
           console.log('❌ No school found for educator');
-          toast.error('No school assignment found. Please contact your school administrator to assign you to a school.');
-          
-          // Show detailed error in console for debugging
-          console.log('🔍 Debugging info:');
-          console.log('- Educator ID:', educatorId);
-          console.log('- Email:', user.email);
-          console.log('- School educators query (user_id) result:', educatorData);
-          console.log('- Users table fallback result:', userData);
-          console.log('💡 To fix this issue, ensure the educator has a school_id in either school_educators or users table');
-          
+          toast.error('No school assignment found.');
           setlearners([]);
           setLoading(false);
           return;
         }
 
-        // Then fetch learners from the same school
-        const { data: learnersData, error: learnersError } = await supabase
-          .from('learners')
-          .select(`
-            id,
-            name,
-            email,
-            university,
-            branch_field,
-            school_id,
-            grade,
-            section,
-            contact_number
-          `)
-          .eq('school_id', schoolId)
-          .order('name');
-
-        if (learnersError) {
-          console.error('❌ Error fetching learners:', learnersError);
-          throw learnersError;
-        }
+        // Fetch learners from the same school
+        const { data: learnersData } = await apiPost('/messaging/actions', { action: 'fetch-recipients', conversationType: 'admin-learner', contextId: schoolId });
 
         console.log('✅ Learners data:', learnersData);
         setlearners(learnersData || []);

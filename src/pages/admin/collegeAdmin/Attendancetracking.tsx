@@ -2,7 +2,7 @@
 import { AddAttendanceSessionModal } from "@/features/admin";
 import { AttendanceDetailsModal } from "@/features/admin";
 import { LearnerHistoryModal } from "@/features/admin";
-import { supabase } from "@/shared/api";
+import { apiPost } from '@/shared/api/apiClient';
 import { AttendanceRecord, AttendanceSession, SubjectGroup, Learner as AttendanceLearner } from "@/features/college-admin";
 import { Learner as ProfileLearner } from "@/entities/learner";
 import { curriculumService } from "@/features/college-admin";
@@ -38,7 +38,7 @@ import ReactApexChart from "react-apexcharts";
 import { KPICard } from '@/features/analytics';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
-import { authSessionService } from '@/features/auth';
+
 
 
 
@@ -354,83 +354,39 @@ const AttendanceTracking: React.FC = () => {
     faculty: [] as string[],
   });
 
-  // Supabase Functions
   const fetchSubjectGroups = async () => {
     if (!collegeId) return;
     
     try {
       setLoading(true);
-      
-      let query = supabase
-        .from('college_subject_attendance_summary')
-        .select('*')
-        .eq('college_id', collegeId);
 
-      // Add search filter
-      if (searchQuery) {
-        query = query.or(`subject.ilike.%${searchQuery}%,faculty.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%`);
-      }
+      const response: any = await apiPost('/college-admin/attendance', {
+        action: 'get-subject-groups',
+        collegeId,
+        searchQuery,
+        filters,
+        dateRange,
+        currentPage,
+        itemsPerPage,
+      });
 
-      // Add filters
-      if (filters.departments.length > 0) {
-        query = query.in('department', filters.departments);
-      }
-      if (filters.courses.length > 0) {
-        query = query.in('course', filters.courses);
-      }
-      if (filters.semesters.length > 0) {
-        query = query.in('semester', filters.semesters);
-      }
-      if (filters.sections.length > 0) {
-        query = query.in('section', filters.sections);
-      }
-      if (filters.statuses.length > 0) {
-        query = query.in('latest_status', filters.statuses);
-      }
-      if (filters.faculty.length > 0) {
-        query = query.in('faculty', filters.faculty);
-      }
-
-      // Add date range filter
-      if (dateRange.from || dateRange.to) {
-        if (dateRange.from && dateRange.to) {
-          query = query.gte('first_date', dateRange.from).lte('last_date', dateRange.to);
-        } else if (dateRange.from) {
-          query = query.gte('first_date', dateRange.from);
-        } else if (dateRange.to) {
-          query = query.lte('last_date', dateRange.to);
-        }
-      }
-
-      // Add pagination
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      query = query.range(startIndex, startIndex + itemsPerPage - 1);
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      
-      // Transform Supabase data to match component structure
-      const transformedGroups = (data || []).map((item: any) => ({
+      const transformedGroups = (response.data?.groups || []).map((item: any) => ({
         subject: item.subject,
         department: item.department,
         course: item.course,
         semester: item.semester,
         section: item.section,
         faculty: item.faculty,
-        sessions: [], // Will be populated when needed
-        totalSessions: item.total_sessions,
-        avgAttendancePercentage: item.avg_attendance_percentage,
-        totallearners: item.total_learners,
-        totalPresentCount: item.total_present_count,
-        totalAbsentCount: item.total_absent_count,
-        totalLateCount: item.total_late_count,
-        totalExcusedCount: item.total_excused_count,
-        dateRange: {
-          first: item.first_date,
-          last: item.last_date,
-        },
-        latestStatus: item.latest_status,
+        sessions: [],
+        totalSessions: item.totalSessions,
+        avgAttendancePercentage: item.avgAttendancePercentage,
+        totallearners: item.totallearners,
+        totalPresentCount: item.totalPresentCount,
+        totalAbsentCount: item.totalAbsentCount,
+        totalLateCount: item.totalLateCount,
+        totalExcusedCount: item.totalExcusedCount,
+        dateRange: item.dateRange,
+        latestStatus: item.latestStatus,
       }));
 
       setSubjectGroups(transformedGroups);
@@ -445,41 +401,12 @@ const AttendanceTracking: React.FC = () => {
     if (!collegeId) return;
     
     try {
-      const { data, error } = await supabase
-        .from('college_attendance_sessions')
-        .select(`
-          id,
-          status,
-          attendance_percentage,
-          total_learners,
-          present_count,
-          absent_count
-        `)
-        .eq('college_id', collegeId)
-        .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]); // Last 30 days
-
-      if (error) throw error;
-
-      const sessions = data || [];
-      const totalSessions = sessions.length;
-      const completedSessions = sessions.filter(s => s.status === 'completed').length;
-      const avgAttendance = sessions.length > 0 
-        ? (sessions.reduce((acc, s) => acc + (s.attendance_percentage || 0), 0) / sessions.length).toFixed(1)
-        : "0";
-      const totallearners = sessions.reduce((acc, s) => acc + (s.total_learners || 0), 0);
-      const totalPresent = sessions.reduce((acc, s) => acc + (s.present_count || 0), 0);
-      const totalAbsent = sessions.reduce((acc, s) => acc + (s.absent_count || 0), 0);
-      const lowAttendanceSessions = sessions.filter(s => (s.attendance_percentage || 0) < 75).length;
-
-      setAnalytics({
-        totalSessions,
-        completedSessions,
-        avgAttendance,
-        totallearners,
-        totalPresent,
-        totalAbsent,
-        lowAttendanceSessions,
+      const response: any = await apiPost('/college-admin/attendance', {
+        action: 'get-analytics',
+        collegeId,
       });
+
+      setAnalytics(response.data);
     } catch (err: any) {
       logger.error('Failed to fetch analytics:', err as Error);
     }
@@ -487,141 +414,22 @@ const AttendanceTracking: React.FC = () => {
 
   const fetchFilterOptions = async () => {
     try {
-      // Get current user's college_id first
-      const { data: { user } } = await authSessionService.getUser();
-      let currentCollegeId = null;
-      
-      if (user) {
-        // Try to get from college_lecturers table
-        const { data: lecturerData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
+      if (!collegeId) return;
 
-        if (lecturerData?.collegeId) {
-          currentCollegeId = lecturerData.collegeId;
-        } else {
-          // Try organizations table by admin_id
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('admin_id', user.id)
-            .eq('organization_type', 'college')
-            .maybeSingle();
-
-          if (orgData?.id) {
-            currentCollegeId = orgData.id;
-          }
-        }
-      }
-
-      logger.info('Current user college_id:', { value: currentCollegeId });
-
-      // Get departments from program_sections_view
-      const departmentsQuery = supabase
-        .from('program_sections_view')
-        .select('department_name, department_id')
-        .eq('status', 'active')
-        .not('department_name', 'is', null);
-
-      const { data: departmentsData } = await departmentsQuery;
-
-      // Get programs/courses from program_sections_view
-      const programsQuery = supabase
-        .from('program_sections_view')
-        .select('program_name, program_id')
-        .eq('status', 'active')
-        .not('program_name', 'is', null);
-
-      const { data: programsData } = await programsQuery;
-
-      // Get semesters from program_sections_view
-      const semestersQuery = supabase
-        .from('program_sections_view')
-        .select('semester')
-        .eq('status', 'active')
-        .not('semester', 'is', null);
-
-      const { data: semestersData } = await semestersQuery;
-
-      // Get sections from program_sections_view
-      const sectionsQuery = supabase
-        .from('program_sections_view')
-        .select('section')
-        .eq('status', 'active')
-        .not('section', 'is', null);
-
-      const { data: sectionsData } = await sectionsQuery;
-
-      // Get faculty from college_lecturers table (filtered by college)
-      const facultyQuery = supabase
-        .from('college_lecturers')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          email,
-          department,
-          "collegeId"
-        `)
-        .eq('"accountStatus"', 'active')
-        .eq('"collegeId"', currentCollegeId);
-
-      const { data: facultyData, error: facultyError } = await facultyQuery;
-
-      logger.info('Faculty query result:', { value: { data: facultyData, error: facultyError } });
-
-      // Get subjects from college_courses (filtered by college)
-      const subjectsQuery = supabase
-        .from('college_courses')
-        .select('course_name, course_code, id, college_id')
-        .eq('is_active', true)
-        .eq('college_id', currentCollegeId);
-
-      const { data: subjectsData } = await subjectsQuery;
-
-      // Remove duplicates and format data
-      const uniqueDepartments = [...new Set((departmentsData || []).map(d => d.department_name))];
-      const uniquePrograms = [...new Set((programsData || []).map(p => p.program_name))];
-      const uniqueSemesters = [...new Set((semestersData || []).map(s => s.semester))].sort((a, b) => a - b);
-      const uniqueSections = [...new Set((sectionsData || []).map(s => s.section))].sort();
-
-      // Format faculty for dropdown (simple format expected by modal)
-      const facultyOptions = (facultyData || []).map(f => {
-        const displayName = f.first_name && f.last_name 
-          ? `${f.first_name} ${f.last_name}` 
-          : f.email;
-        
-        const collegeName = f.collegeId || 'Unknown College';
-        
-        logger.info('Faculty college mapping', { displayName, collegeName, collegeId: f.collegeId });
-        
-        return {
-          value: f.id, // Use actual faculty UUID
-          label: `${displayName} (${f.department || 'No Dept'})`, // Show name and department
-        };
+      const response: any = await apiPost('/college-admin/attendance', {
+        action: 'get-filter-options',
+        collegeId,
       });
 
-      logger.info('Filter options loaded', {
-        currentCollegeId,
-        departments: uniqueDepartments.length,
-        programs: uniquePrograms.length,
-        semesters: uniqueSemesters.length,
-        sections: uniqueSections.length,
-        faculty: facultyOptions.length,
-        subjects: (subjectsData || []).length
-      });
-
-      logger.info('Faculty list with colleges:', { value: facultyOptions });
+      const filterData = response.data;
 
       setFilterOptions({
-        departments: uniqueDepartments,
-        courses: uniquePrograms,
-        semesters: uniqueSemesters,
-        sections: uniqueSections,
-        faculty: facultyOptions,
-        subjects: subjectsData || [],
+        departments: filterData.departments,
+        courses: filterData.courses,
+        semesters: filterData.semesters,
+        sections: filterData.sections,
+        faculty: filterData.faculty,
+        subjects: filterData.subjects,
       });
     } catch (err: any) {
       logger.error('Failed to fetch filter options:', err as Error);
@@ -630,35 +438,12 @@ const AttendanceTracking: React.FC = () => {
 
   const fetchAttendanceRecords = async (subjectName: string) => {
     try {
-      const { data, error } = await supabase
-        .from('college_attendance_records')
-        .select('*')
-        .eq('subject_name', subjectName);
+      const response: any = await apiPost('/college-admin/attendance', {
+        action: 'get-attendance-records',
+        subjectName,
+      });
 
-      if (error) throw error;
-      
-      // Transform Supabase data to match component structure
-      const transformedRecords = (data || []).map((record: any) => ({
-        id: record.id,
-        learnerId: record.learner_id,
-        learnerName: record.learner_name,
-        rollNumber: record.roll_number,
-        department: record.department_name,
-        course: record.program_name,
-        semester: record.semester,
-        section: record.section,
-        date: record.date,
-        status: record.status,
-        timeIn: record.time_in,
-        timeOut: record.time_out,
-        subject: record.subject_name,
-        facultyId: record.faculty_id,
-        facultyName: record.faculty_name,
-        location: record.location,
-        remarks: record.remarks,
-      }));
-
-      setAttendanceRecords(transformedRecords);
+      setAttendanceRecords(response.data?.records || []);
     } catch (err: any) {
       logger.error('Failed to fetch attendance records:', err as Error);
     }
@@ -666,31 +451,15 @@ const AttendanceTracking: React.FC = () => {
 
   const fetchlearnerCount = async (department: string, course: string, semester: string, section: string) => {
     try {
-      logger.info('Fetching learner count for:', { value: { department, course, semester, section } });
-      
-      const { data, error } = await supabase
-        .from('program_sections_view')
-        .select('max_learners, department_name, program_name, semester, section, status')
-        .eq('department_name', department)
-        .eq('program_name', course)
-        .eq('semester', parseInt(semester))
-        .eq('section', section)
-        .eq('status', 'active');
+      const response: any = await apiPost('/college-admin/attendance', {
+        action: 'get-learner-count',
+        department,
+        course,
+        semester,
+        section,
+      });
 
-      logger.info('Learner count query result:', { value: { data, error } });
-
-      if (error) {
-        logger.error('Supabase error:', error as Error);
-        throw error;
-      }
-      
-      if (data && data.length > 0) {
-        logger.info('Found matching record:', { value: data[0] });
-        return data[0].max_learners || 0;
-      } else {
-        logger.info('No matching records found');
-        return 0;
-      }
+      return response.data?.count || 0;
     } catch (err: any) {
       logger.error('Failed to fetch learner count:', err as Error);
       return 0;
@@ -763,30 +532,13 @@ const AttendanceTracking: React.FC = () => {
   // useEffect hooks
   useEffect(() => {
     const fetchCollegeId = async () => {
-      const { data: { user } } = await authSessionService.getUser();
-      if (!user) return;
-      
       try {
-        const { data: lecturerData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
+        const response: any = await apiPost('/college-admin/attendance', {
+          action: 'resolve-college-id',
+        });
 
-        if (lecturerData?.collegeId) {
-          setCollegeId(lecturerData.collegeId);
-          return;
-        }
-
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('admin_id', user.id)
-          .eq('organization_type', 'college')
-          .maybeSingle();
-
-        if (orgData?.id) {
-          setCollegeId(orgData.id);
+        if (response.data?.collegeId) {
+          setCollegeId(response.data.collegeId);
         }
       } catch (error) {
         logger.error('Error fetching college ID:', error as Error);
@@ -915,53 +667,29 @@ const AttendanceTracking: React.FC = () => {
 
   const handleViewDetails = async (subjectGroup: SubjectGroup) => {
     try {
-      // Fetch actual sessions for this subject group
-      const { data: sessionsData, error: sessionsError } = await supabase
-        .from('college_attendance_sessions')
-        .select('*')
-        .eq('subject_name', subjectGroup.subject)
-        .eq('department_name', subjectGroup.department)
-        .eq('program_name', subjectGroup.course)
-        .eq('semester', subjectGroup.semester)
-        .eq('section', subjectGroup.section)
-        .order('date', { ascending: false });
+      const response: any = await apiPost('/college-admin/attendance', {
+        action: 'get-sessions',
+        subjectGroup: {
+          subject: subjectGroup.subject,
+          department: subjectGroup.department,
+          course: subjectGroup.course,
+          semester: subjectGroup.semester,
+          section: subjectGroup.section,
+        },
+      });
 
-      if (sessionsError) {
-        logger.error('Error fetching sessions:', sessionsError as Error);
+      if (!response.data?.sessions) {
         alert('Error loading session details');
         return;
       }
 
-      // Transform sessions data to match expected format
-      const transformedSessions = (sessionsData || []).map((session: any) => ({
-        id: session.id,
-        date: session.date,
-        startTime: session.start_time,
-        endTime: session.end_time,
-        subject: session.subject_name,
-        faculty: session.faculty_name,
-        department: session.department_name,
-        course: session.program_name,
-        semester: session.semester,
-        section: session.section,
-        totallearners: session.total_learners,
-        presentCount: session.present_count,
-        absentCount: session.absent_count,
-        lateCount: session.late_count,
-        excusedCount: session.excused_count,
-        attendancePercentage: session.attendance_percentage,
-        status: session.status,
-      }));
-
-      // Update the subject group with actual sessions data
       const updatedSubjectGroup = {
         ...subjectGroup,
-        sessions: transformedSessions,
+        sessions: response.data.sessions,
       };
 
       setSelectedSubjectGroup(updatedSubjectGroup);
       
-      // Fetch attendance records for this subject
       await fetchAttendanceRecords(subjectGroup.subject);
       
       setShowDetailsModal(true);
@@ -979,19 +707,18 @@ const AttendanceTracking: React.FC = () => {
   const handleDelete = async (subjectGroup: SubjectGroup) => {
     if (confirm(`Are you sure you want to delete all ${subjectGroup.totalSessions} sessions for ${subjectGroup.subject}?`)) {
       try {
-        const { error } = await supabase
-          .from('college_attendance_sessions')
-          .delete()
-          .eq('subject_name', subjectGroup.subject)
-          .eq('department_name', subjectGroup.department)
-          .eq('program_name', subjectGroup.course)
-          .eq('semester', subjectGroup.semester)
-          .eq('section', subjectGroup.section);
+        await apiPost('/college-admin/attendance', {
+          action: 'delete-sessions',
+          subjectGroup: {
+            subject: subjectGroup.subject,
+            department: subjectGroup.department,
+            course: subjectGroup.course,
+            semester: subjectGroup.semester,
+            section: subjectGroup.section,
+          },
+        });
 
-        if (error) throw error;
-        
         alert('Sessions deleted successfully!');
-        // Refresh the data
         fetchSubjectGroups();
       } catch (err: any) {
         alert(`Error deleting sessions: ${err.message}`);
@@ -1148,28 +875,20 @@ const AttendanceTracking: React.FC = () => {
     }
 
     try {
-      // Get current user
-      const { data: { user } } = await authSessionService.getUser();
-      if (!user) {
-        alert("Please log in to create a session.");
-        return;
-      }
+      // Look up faculty member via backend
+      const facultyResponse: any = await apiPost('/college-admin/attendance', {
+        action: 'get-faculty',
+        facultyId: sessionFormData.faculty,
+      });
 
-      // ✅ CORRECT: Get college_id from the FACULTY MEMBER using faculty_id
-      const { data: facultyData, error: facultyError } = await supabase
-        .from('college_lecturers')
-        .select('collegeId, first_name, last_name')
-        .eq('id', sessionFormData.faculty)  // Use faculty_id from form
-        .single();
-
-      if (facultyError || !facultyData) {
-        logger.error('Faculty lookup error:', facultyError as Error);
+      const facultyInfo = facultyResponse.data?.faculty;
+      if (!facultyInfo) {
         alert("Unable to find faculty member. Please try again.");
         return;
       }
 
-      const collegeId = facultyData.collegeId;  // ✅ Faculty's college_id
-      const facultyName = `${facultyData.first_name} ${facultyData.last_name}`;
+      const facultyCollegeId = facultyInfo.collegeId;
+      const facultyName = facultyInfo.fullName;
 
       // Get the actual names from the selected IDs
       const departmentName = departmentsData.find(d => d.id === sessionFormData.department)?.name || sessionFormData.department;
@@ -1179,45 +898,29 @@ const AttendanceTracking: React.FC = () => {
 
       logger.info('Creating session with CORRECT logic:', { value: {
         facultyId: sessionFormData.faculty,
-        facultyName: facultyName,
-        collegeId: collegeId,  // ✅ This is now the faculty's college_id
-        createdBy: user.id,     // ✅ Admin who created it
+        facultyName,
+        collegeId: facultyCollegeId,
         departmentName,
         programName,
-        subjectName
+        subjectName,
       } });
 
-      const { error } = await supabase
-        .from('college_attendance_sessions')
-        .insert({
-          date: sessionFormData.date,
-          start_time: sessionFormData.startTime,
-          end_time: sessionFormData.endTime,
-          subject_name: subjectName,
-          faculty_id: sessionFormData.faculty, // Faculty member's ID
-          faculty_name: facultyName, // Faculty member's actual name from database
-          department_name: departmentName,
-          program_name: programName,
-          semester: parseInt(sessionFormData.semester),
-          section: sessionFormData.section,
-          room_number: sessionFormData.roomNumber,
-          remarks: sessionFormData.remarks,
-          status: 'scheduled',
-          college_id: collegeId, // ✅ Faculty member's college_id (not admin's)
-          created_by: user.id, // Admin who created the session
-        })
-        .select()
-        .single();
+      await apiPost('/college-admin/attendance', {
+        action: 'create-session',
+        sessionData: sessionFormData,
+        departmentName,
+        programName,
+        subjectName,
+        facultyName,
+        collegeId: facultyCollegeId,
+        createdBy: sessionFormData.faculty,
+      });
 
-      if (error) throw error;
-      
       alert('Session created successfully!');
-      
-      // Refresh the data
+
       fetchSubjectGroups();
       setShowAddSessionModal(false);
-      
-      // Reset form
+
       setSessionFormData({
         department: "",
         course: "",

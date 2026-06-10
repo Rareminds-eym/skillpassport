@@ -1,35 +1,36 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { KPICard } from '@/features/analytics';
+import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
+import { Pagination, SearchBar } from '@/shared/ui';
 import {
-    AcademicCapIcon,
-    ArrowDownTrayIcon,
-    BellAlertIcon,
-    CalendarIcon,
-    ChartBarIcon,
-    CheckCircleIcon,
-    ChevronDownIcon,
-    ClipboardDocumentListIcon,
-    ClockIcon,
-    DocumentChartBarIcon,
-    DocumentTextIcon,
-    ExclamationCircleIcon,
-    FunnelIcon,
-    PrinterIcon,
-    ShieldCheckIcon,
-    TableCellsIcon,
-    UserGroupIcon,
-    UserIcon,
-    XCircleIcon,
-    XMarkIcon,
+  AcademicCapIcon,
+  ArrowDownTrayIcon,
+  BellAlertIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ClipboardDocumentListIcon,
+  ClockIcon,
+  DocumentChartBarIcon,
+  DocumentTextIcon,
+  ExclamationCircleIcon,
+  FunnelIcon,
+  PrinterIcon,
+  ShieldCheckIcon,
+  TableCellsIcon,
+  UserGroupIcon,
+  UserIcon,
+  XCircleIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import toast from 'react-hot-toast';
-import { getLogger } from '@/shared/config/logging';
-import { KPICard } from '@/features/analytics';
-import { Pagination } from '@/shared/ui';
-import { SearchBar } from '@/shared/ui';
-import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
+import { useAuthStore } from '@/shared/model/authStore';
+
+
 
 // ==================== TYPES ====================
 interface AttendanceRecord {
@@ -118,9 +119,8 @@ const FilterSection = ({ title, children, defaultOpen = false }: any) => {
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
         <ChevronDownIcon
-          className={`h-4 w-4 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""
+            }`}
         />
       </button>
       {isOpen && <div className="mt-3 space-y-2">{children}</div>}
@@ -202,7 +202,7 @@ const AttendanceReports: React.FC = () => {
         let currentSchoolId: string | null = null;
 
         // First, check if user is logged in via AuthContext (for school admins)
-        const storedUser = localStorage.getItem('user');
+        const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);
@@ -215,32 +215,10 @@ const AttendanceReports: React.FC = () => {
           }
         }
 
-        // If not found in localStorage, try Supabase Auth (for educators/teachers)
+        // Look up school_id via API
         if (!currentSchoolId) {
-          const { data: { user } } = await authSessionService.getUser();
-          
-          if (user) {
-            // Check school_educators table - use maybeSingle() to avoid 406 error
-            const { data: educator } = await supabase
-              .from('school_educators')
-              .select('school_id')
-              .eq('user_id', user.id)
-              .maybeSingle();
-
-            if (educator?.school_id) {
-              currentSchoolId = educator.school_id;
-            } else {
-              // Check organizations table by admin_id or email
-              const { data: school } = await supabase
-                .from('organizations')
-                .select('id')
-                .eq('organization_type', 'school')
-                .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-                .maybeSingle();
-
-              currentSchoolId = school?.id || null;
-            }
-          }
+          const schoolResp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId', storedUser: (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user")) });
+          currentSchoolId = schoolResp.data?.schoolId || null;
         }
 
         if (!currentSchoolId) {
@@ -265,64 +243,34 @@ const AttendanceReports: React.FC = () => {
     const fetchAttendanceData = async () => {
       try {
         setLoading(true);
-        
+
         logger.info('Fetching attendance for school', { schoolId });
-        
+
         // Calculate date range (last 30 days)
         const endDate = new Date().toISOString().split('T')[0];
         const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
+
         logger.info('Date range', { startDate, endDate });
         logger.info('Query params', { schoolId, startDate, endDate });
-        
-        // Fetch ALL attendance records for this school (last 60 days to be safe)
-        const safeStartDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
-        const { data: attendanceData, error } = await supabase
-          .from('attendance_records')
-          .select('*')
-          .eq('school_id', schoolId)
-          .gte('date', safeStartDate)
-          .order('date', { ascending: false });
 
-        if (error) {
-          logger.error('Error fetching attendance', error);
-          return;
-        }
+        // Fetch attendance data via API
+        const attResp: any = await apiPost('/school-admin/actions', { action: 'fetchAttendance', schoolId });
 
-        logger.info('Fetched attendance records', { count: attendanceData?.length || 0 });
-        
-        // Fetch learners separately
-        const { data: learnersData } = await supabase
-          .from('learners')
-          .select('id, name, roll_number, grade, section')
-          .eq('school_id', schoolId);
-        
-        // Create a learner lookup map
-        const learnerMap = new Map();
-        (learnersData || []).forEach((s: any) => {
-          learnerMap.set(s.id, s);
-        });
-
-        // Transform data to match component format with manual join
-        const transformedRecords: AttendanceRecord[] = (attendanceData || []).map((record: any) => {
-          const learner = learnerMap.get(record.learner_id);
-          return {
-            id: record.id,
-            learnerId: record.learner_id,
-            learnerName: learner?.name || 'Unknown',
-            rollNumber: learner?.roll_number || 'N/A',
-            class: learner?.grade || 'N/A',
-            section: learner?.section || 'N/A',
-            date: record.date,
-            status: record.status as "present" | "absent" | "late" | "excused",
-            timeIn: record.time_in,
-            timeOut: record.time_out,
-            remarks: record.remarks,
-            teacher: 'Teacher',
-            source: record.mode as "manual" | "rfid" | "biometric",
-          };
-        });
+        const transformedRecords: AttendanceRecord[] = (attResp.data || []).map((record: any) => ({
+          id: record.id,
+          learnerId: record.learnerId,
+          learnerName: record.learnerName || 'Unknown',
+          rollNumber: record.rollNumber || 'N/A',
+          class: record.class || 'N/A',
+          section: record.section || 'N/A',
+          date: record.date,
+          status: record.status as "present" | "absent" | "late" | "excused",
+          timeIn: record.timeIn,
+          timeOut: record.timeOut,
+          remarks: record.remarks,
+          teacher: 'Teacher',
+          source: record.source as "manual" | "rfid" | "biometric",
+        }));
 
         logger.info('Transformed records', { count: transformedRecords.length });
         if (transformedRecords.length > 0) {
@@ -349,30 +297,12 @@ const AttendanceReports: React.FC = () => {
     const fetchlearners = async () => {
       try {
         logger.info('Fetching learners for school', { schoolId });
-        
-        const { data, error } = await supabase
-          .from('learners')
-          .select('id, roll_number, name, grade, section, email, contactNumber')
-          .eq('school_id', schoolId);
 
-        if (error) {
-          logger.error('Error fetching learners', error);
-          return;
-        }
+        const learnersResp: any = await apiPost('/school-admin/actions', { action: 'fetchAttendanceLearners', schoolId });
 
-        logger.info('Fetched learners', { count: data?.length || 0 });
+        logger.info('Fetched learners', { count: learnersResp.data?.length || 0 });
 
-        const transformedlearners: Learner[] = (data || []).map((s: any) => ({
-          id: s.id,
-          rollNumber: s.roll_number || 'N/A',
-          name: s.name,
-          class: s.grade || 'N/A',
-          section: s.section || 'N/A',
-          email: s.email,
-          phone: s.contactNumber || 'N/A',
-        }));
-
-        setlearners(transformedlearners);
+        setlearners(learnersResp.data || []);
       } catch (err) {
         logger.error('Error', err as Error);
       }
@@ -448,7 +378,7 @@ const AttendanceReports: React.FC = () => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const recentRecords = filteredRecords.filter(r => new Date(r.date) >= thirtyDaysAgo);
-    
+
     const learnerAttendance = new Map<string, { present: number; total: number }>();
     recentRecords.forEach(record => {
       const current = learnerAttendance.get(record.learnerId) || { present: 0, total: 0 };
@@ -661,11 +591,10 @@ const AttendanceReports: React.FC = () => {
                       setActiveTab(tab.id as any);
                       setCurrentPage(1);
                     }}
-                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                      activeTab === tab.id
+                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
                         ? "border-indigo-600 text-indigo-600 bg-indigo-50"
                         : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     <Icon className="h-5 w-5" />
                     {tab.label}
@@ -866,7 +795,7 @@ const AttendanceReports: React.FC = () => {
 const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, filters, searchQuery, exportToCSV, showFilters, setShowFilters, totalFilters }: any) => {
   const dailyData = useMemo(() => {
     const records = attendanceRecords.filter((r: AttendanceRecord) => r.date === selectedDate);
-    
+
     // Group by class and section
     const grouped = new Map<string, any>();
     records.forEach((record: AttendanceRecord) => {
@@ -1002,11 +931,10 @@ const DailySummaryTab = ({ selectedDate, setSelectedDate, attendanceRecords, fil
                   {row.excused}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    parseFloat(row.percentage) >= 75 
-                      ? "bg-emerald-100 text-emerald-800" 
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${parseFloat(row.percentage) >= 75
+                      ? "bg-emerald-100 text-emerald-800"
                       : "bg-rose-100 text-rose-800"
-                  }`}>
+                    }`}>
                     {row.percentage}%
                   </span>
                 </td>
@@ -1093,7 +1021,7 @@ const LearnerTrendTab = ({ learners, attendanceRecords, selectedLearner, setSele
     // Apply search filter
     if (learnerSearch) {
       const query = learnerSearch.toLowerCase();
-      filtered = filtered.filter((s: any) => 
+      filtered = filtered.filter((s: any) =>
         s.name.toLowerCase().includes(query) ||
         s.rollNumber.toLowerCase().includes(query)
       );
@@ -1378,14 +1306,12 @@ const LearnerTrendTab = ({ learners, attendanceRecords, selectedLearner, setSele
           >
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0">
-                <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                  parseFloat(learner.percentage) >= 75 
-                    ? "bg-emerald-100 group-hover:bg-emerald-200" 
+                <div className={`h-12 w-12 rounded-full flex items-center justify-center ${parseFloat(learner.percentage) >= 75
+                    ? "bg-emerald-100 group-hover:bg-emerald-200"
                     : "bg-rose-100 group-hover:bg-rose-200"
-                }`}>
-                  <UserIcon className={`h-6 w-6 ${
-                    parseFloat(learner.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
-                  }`} />
+                  }`}>
+                  <UserIcon className={`h-6 w-6 ${parseFloat(learner.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
+                    }`} />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
@@ -1401,9 +1327,8 @@ const LearnerTrendTab = ({ learners, attendanceRecords, selectedLearner, setSele
                   {learner.rollNumber}
                 </p>
                 <div className="mt-3 flex items-center gap-3">
-                  <div className={`text-2xl font-bold ${
-                    parseFloat(learner.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
-                  }`}>
+                  <div className={`text-2xl font-bold ${parseFloat(learner.percentage) >= 75 ? "text-emerald-600" : "text-rose-600"
+                    }`}>
                     {learner.percentage}%
                   </div>
                   <div className="text-xs text-gray-500">
@@ -1412,16 +1337,15 @@ const LearnerTrendTab = ({ learners, attendanceRecords, selectedLearner, setSele
                 </div>
               </div>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="mt-4">
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all ${
-                    parseFloat(learner.percentage) >= 75 
-                      ? "bg-gradient-to-r from-emerald-500 to-green-500" 
+                <div
+                  className={`h-full rounded-full transition-all ${parseFloat(learner.percentage) >= 75
+                      ? "bg-gradient-to-r from-emerald-500 to-green-500"
                       : "bg-gradient-to-r from-rose-500 to-red-500"
-                  }`}
+                    }`}
                   style={{ width: `${learner.percentage}%` }}
                 />
               </div>
@@ -1467,7 +1391,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
     cutoffDate.setDate(cutoffDate.getDate() - duration);
 
     const recentRecords = attendanceRecords.filter((r: AttendanceRecord) => new Date(r.date) >= cutoffDate);
-    
+
     const learnerMap = new Map<string, any>();
     recentRecords.forEach((record: AttendanceRecord) => {
       if (!learnerMap.has(record.learnerId)) {
@@ -1505,7 +1429,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
       const learnerRecords = recentRecords
         .filter((r: AttendanceRecord) => r.learnerId === learnerId)
         .sort((a: AttendanceRecord, b: AttendanceRecord) => b.date.localeCompare(a.date));
-      
+
       let consecutive = 0;
       for (const record of learnerRecords) {
         if (record.status === "absent") {
@@ -1646,13 +1570,12 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
                   {row.class}-{row.section}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    parseFloat(row.percentage) < 50 
-                      ? "bg-rose-100 text-rose-800" 
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${parseFloat(row.percentage) < 50
+                      ? "bg-rose-100 text-rose-800"
                       : parseFloat(row.percentage) < 75
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-emerald-100 text-emerald-800"
-                  }`}>
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-emerald-100 text-emerald-800"
+                    }`}>
                     {row.percentage}%
                   </span>
                 </td>
@@ -1671,7 +1594,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <div className="flex items-center gap-2">
-                    <button 
+                    <button
                       onClick={() => handleScheduleMeeting(row)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium hover:bg-indigo-100 transition-colors"
                       title="Schedule parent meeting"
@@ -1681,7 +1604,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
                       </svg>
                       Meeting
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleAssignCounselor(row)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-100 transition-colors"
                       title="Assign counselor"
@@ -1691,7 +1614,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
                       </svg>
                       Counselor
                     </button>
-                    <button 
+                    <button
                       className="inline-flex items-center justify-center h-8 w-8 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
                       title="Send notification to parent"
                       onClick={() => toast.success(`Notification sent to parent of ${row.learnerName}`)}
@@ -1723,7 +1646,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowMeetingModal(false)} />
-            
+
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="sm:flex sm:items-start">
@@ -1745,7 +1668,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
                           Class: <span className="font-semibold text-gray-900">{selectedlearnerForAction.class}-{selectedlearnerForAction.section}</span>
                         </p>
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Meeting Date
@@ -1814,7 +1737,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowCounselorModal(false)} />
-            
+
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="sm:flex sm:items-start">
@@ -1839,7 +1762,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, learners, filters, searchQuery,
                           Attendance: <span className="font-semibold">{selectedlearnerForAction.percentage}%</span>
                         </p>
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Select Counselor
@@ -1935,7 +1858,7 @@ const ClasswiseTab = ({ attendanceRecords, dateRange, setDateRange, filters, exp
   // Monthly data for chart
   const monthlyData = useMemo(() => {
     const filtered = attendanceRecords.filter((r: AttendanceRecord) => r.date.startsWith(selectedMonth));
-    
+
     const grouped = new Map<string, any>();
     filtered.forEach((record: AttendanceRecord) => {
       const key = `${record.class}-${record.section}`;
@@ -2099,11 +2022,10 @@ const ClasswiseTab = ({ attendanceRecords, dateRange, setDateRange, filters, exp
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-600 font-medium">{row.late}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">{row.excused}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      parseFloat(row.percentage) >= 75 
-                        ? "bg-emerald-100 text-emerald-800" 
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${parseFloat(row.percentage) >= 75
+                        ? "bg-emerald-100 text-emerald-800"
                         : "bg-rose-100 text-rose-800"
-                    }`}>
+                      }`}>
                       {row.percentage}%
                     </span>
                   </td>

@@ -8,6 +8,7 @@
  * 3. Ensure your Supabase client is properly configured
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useMemo, useEffect } from 'react';
 import { getLogger } from '@/shared/config/logging';
 
@@ -28,8 +29,7 @@ import { CourseCard } from '@/features/courses';
 import { CourseFilters } from '@/features/courses';
 import { CreateCourseModal } from '@/features/courses';
 import { CourseDetailDrawer } from '@/features/courses';
-import { supabase } from '@/shared/api/supabaseClient';
-import { authSessionService } from '@/features/auth';
+
 import {
   getCoursesByEducator,
   createCourse,
@@ -70,7 +70,7 @@ const CoursesWithSupabase: React.FC = () => {
       setError(null);
 
       // Get current user
-      const { data: { user }, error: authError } = await authSessionService.getUser();
+      const { data: { user }, error: authError } = { data: { user: useAuthStore.getState().user } };
 
       if (authError || !user) {
         // Development mode fallback

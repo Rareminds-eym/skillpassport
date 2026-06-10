@@ -1,6 +1,7 @@
 import { City, State } from 'country-state-city';
 import { useEffect, useRef, useState } from 'react';
 import { capitalizeFirstLetter } from '@/features/subscription/lib';
+import { PASSWORD_MIN } from '@/shared/constants';
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
 
 // Languages list
@@ -300,8 +301,8 @@ const SchoolAdmin = () => {
         if (!value) {
           newErrors.password = 'Password is required';
           newSuccess.password = false;
-        } else if (value.length < 8) {
-          newErrors.password = 'Password must be at least 8 characters long';
+        } else if (value.length < PASSWORD_MIN) {
+          newErrors.password = `Password must be at least ${PASSWORD_MIN} characters long`;
           newSuccess.password = false;
         } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(value)) {
           newErrors.password = 'Password must contain uppercase, lowercase, number and special character';
@@ -478,7 +479,7 @@ const SchoolAdmin = () => {
       // TODO: Add actual database saving logic here
       // The finalFormData contains firstName and lastName separately with proper capitalization
       await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('School admin account created:', finalFormData);
+      if (import.meta.env.DEV) console.log('[SchoolAdmin] School admin account created:', finalFormData);
       alert('School admin account created successfully!');
       // Reset form
       setFormData({
@@ -557,7 +558,7 @@ const SchoolAdmin = () => {
   };
 
   const handleVerifyOtp = async () => {
-    if (!formData.otp || formData.otp.length !== 6) return;
+    if (!formData.otp || formData.otp.length !== 4) return;
     setVerifyingOtp(true);
     try {
       const result = await verifyOtpApi(formData.phoneNumber, formData.otp);

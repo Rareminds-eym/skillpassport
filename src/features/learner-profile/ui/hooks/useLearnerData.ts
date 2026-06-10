@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
 import { Learner, AssessmentResult, CurriculumData, LessonPlan, Course, AdmissionNote, Project, Certificate } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('learner-data');
 
@@ -171,136 +171,50 @@ export const useLearnerData = (learner: Learner | null, isOpen: boolean) => {
     
     setLoadingAdditional(true);
     try {
-      // Fetch Experience
-      const { data: expData } = await supabase
-        .from('experience')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('start_date', { ascending: false });
-      setExperience(expData || []);
+      const [expRes, trainingsRes, skillsRes, eduRes] = await Promise.all([
+        apiPost('/learner-profile/actions', { action: 'fetch-experience', learnerId: learner.id }),
+        apiPost('/learner-profile/actions', { action: 'fetch-trainings', learnerId: learner.id }),
+        apiPost('/learner-profile/actions', { action: 'fetch-learner-skills', learnerId: learner.id }),
+        apiPost('/learner-profile/actions', { action: 'fetch-education', learnerId: learner.id }),
+      ]);
+      setExperience(expRes?.data ?? []);
+      setTrainings(trainingsRes?.data ?? []);
+      setSkills(skillsRes?.data ?? []);
+      setEducation(eduRes?.data ?? []);
 
-      // Fetch Trainings
-      const { data: trainingsData } = await supabase
-        .from('trainings')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('created_at', { ascending: false });
-      setTrainings(trainingsData || []);
-
-      // Fetch Applied Jobs (using user_id)
+      // User-scoped fetches
       if (learner.user_id) {
-        const { data: appliedData } = await supabase
-          .from('applied_jobs')
-          .select(`
-            *,
-            opportunity:opportunities (
-              title,
-              company_name,
-              location,
-              employment_type
-            )
-          `)
-          .eq('learner_id', learner.user_id)
-          .order('applied_at', { ascending: false })
-          .limit(10);
-        setAppliedJobs(appliedData || []);
-
-        // Fetch Saved Jobs
-        const { data: savedData } = await supabase
-          .from('saved_jobs')
-          .select(`
-            *,
-            opportunity:opportunities (
-              title,
-              company_name,
-              location
-            )
-          `)
-          .eq('learner_id', learner.user_id)
-          .order('saved_at', { ascending: false })
-          .limit(10);
-        setSavedJobs(savedData || []);
-
-        // Fetch Skill Passport
-        const { data: passportData } = await supabase
-          .from('skill_passports')
-          .select('*')
-          .eq('learnerId', learner.user_id)
-          .single();
-        setSkillPassport(passportData || null);
-
-        // Fetch Streaks
-        const { data: streakData } = await supabase
-          .from('learner_streaks')
-          .select('*')
-          .eq('learner_id', learner.id)
-          .single();
-        setStreaks(streakData || null);
-
-        // Fetch Assignments
-        const { data: assignmentsData } = await supabase
-          .from('learner_assignments')
-          .select(`
-            *,
-            assignment:assignments (
-              title,
-              course_name,
-              due_date,
-              total_points
-            )
-          `)
-          .eq('learner_id', learner.user_id)
-          .order('assigned_date', { ascending: false })
-          .limit(20);
-        setAssignments(assignmentsData || []);
+        const [appliedRes, savedRes, passportRes, streakRes, assignRes] = await Promise.all([
+          apiPost('/learner-profile/actions', { action: 'fetch-applied-jobs', userId: learner.user_id }),
+          apiPost('/learner-profile/actions', { action: 'fetch-saved-jobs', userId: learner.user_id }),
+          apiPost('/learner-profile/actions', { action: 'fetch-skill-passports', learnerId: learner.user_id }),
+          apiPost('/learner-profile/actions', { action: 'fetch-learner-streaks', learnerId: learner.id }),
+          apiPost('/learner-profile/actions', { action: 'fetch-learner-assignments', userId: learner.user_id, limit: 20 }),
+        ]);
+        setAppliedJobs(appliedRes?.data ?? []);
+        setSavedJobs(savedRes?.data ?? []);
+        setSkillPassport(passportRes?.data ?? null);
+        setStreaks(streakRes?.data ?? null);
+        setAssignments(assignRes?.data ?? []);
       }
 
-      // Fetch Attendance (for school learners)
+      // School-scoped fetches
       if (learner.school_id) {
-        const { data: attendanceData } = await supabase
-          .from('attendance_records')
-          .select('*')
-          .eq('learner_id', learner.id)
-          .order('date', { ascending: false })
-          .limit(30);
-        setAttendance(attendanceData || []);
+        const attRes = await apiPost('/learner-profile/actions', { action: 'fetch-attendance-records', learnerId: learner.id });
+        setAttendance(attRes?.data ?? []);
       }
 
-      // Fetch College Events (for college learners)
-      if (learner.college_id) {
-        const { data: eventsData } = await supabase
-          .from('college_event_registrations')
-          .select(`
-            *,
-            event:college_events (
-              title,
-              event_type,
-              start_date,
-              end_date,
-              venue
-            )
-          `)
-          .eq('learner_id', learner.id)
-          .order('registered_at', { ascending: false });
-        setEvents(eventsData || []);
+      // College events
+      if (learner.id) {
+        const evRes = await apiPost('/learner-profile/actions', { action: 'fetch-learner-club-event-data', learnerId: learner.id });
+        const rawEvents: any[] = evRes?.data?.events ?? [];
+        setEvents(rawEvents.map((r: any) => ({
+          ...r,
+          event: r.college_events
+            ? { title: r.college_events.title, event_type: r.college_events.event_type, start_date: r.college_events.start_date, end_date: r.college_events.end_date, venue: r.college_events.venue }
+            : undefined,
+        })));
       }
-
-      // Fetch Skills
-      const { data: skillsData } = await supabase
-        .from('skills')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('created_at', { ascending: false });
-      setSkills(skillsData || []);
-
-      // Fetch Education
-      const { data: educationData } = await supabase
-        .from('education')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('year_of_passing', { ascending: false });
-      setEducation(educationData || []);
-
     } catch (error) {
       logger.error('Error fetching additional data', error as Error);
     } finally {
@@ -333,18 +247,8 @@ export const useLearnerData = (learner: Learner | null, isOpen: boolean) => {
     
     setLoadingAssessments(true);
     try {
-      const { data, error } = await supabase
-        .from('personal_assessment_results')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        logger.error('Error fetching assessment results', error);
-        setAssessmentResults([]);
-      } else {
-        setAssessmentResults(data || []);
-      }
+      const res = await apiPost('/learner-profile/actions', { action: 'fetch-personal-assessment-results', learnerId: learner.id });
+      setAssessmentResults(res?.data ?? []);
     } catch (error) {
       logger.error('Error fetching assessment results', error as Error);
       setAssessmentResults([]);
@@ -358,42 +262,15 @@ export const useLearnerData = (learner: Learner | null, isOpen: boolean) => {
     
     setLoadingCourses(true);
     try {
-      const { data: trainings, error: trainingsError } = await supabase
-        .from('trainings')
-        .select(`
-          *,
-          courses:course_id (
-            course_id,
-            title,
-            description,
-            duration,
-            status,
-            thumbnail,
-            educator_id
-          )
-        `)
-        .eq('learner_id', learner.id)
-        .in('approval_status', ['approved', 'verified', 'pending'])
-        .order('created_at', { ascending: false });
-
-      if (trainingsError) {
-        logger.error('Error fetching trainings', trainingsError);
-        setCourses([]);
-        return;
-      }
-
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from('course_enrollments')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('enrolled_at', { ascending: false });
-
-      if (enrollmentsError) {
-        logger.error('Error fetching course enrollments', enrollmentsError);
-      }
+      const [trainingsRes, enrollmentsRes] = await Promise.all([
+        apiPost('/learner-profile/actions', { action: 'fetch-trainings', learnerId: learner.id, filters: { approval_status: ['approved', 'verified', 'pending'] } }),
+        apiPost('/learner-profile/actions', { action: 'fetch-course-enrollments', learnerId: learner.id }),
+      ]);
+      const trainings: any[] = trainingsRes?.data ?? [];
+      const enrollments: any[] = enrollmentsRes?.data ?? [];
 
       const coursesData = (trainings || []).map((training: any) => {
-        const enrollment = (enrollments || []).find(e => e.training_id === training.id);
+        const enrollment = (enrollments || []).find((e: any) => e.training_id === training.id);
         
         let progress = 0;
         if (training.status === 'completed') {
@@ -448,26 +325,14 @@ export const useLearnerData = (learner: Learner | null, isOpen: boolean) => {
     
     setLoadingProjects(true);
     try {
-      // First try to get projects from learner.projects if it exists
       if (learner.projects && Array.isArray(learner.projects)) {
         setProjects(learner.projects);
         setLoadingProjects(false);
         return;
       }
 
-      // Try to fetch from a projects table if it exists
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('learner_projects')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('created_at', { ascending: false });
-
-      if (projectsError) {
-        logger.info('No projects table found, using learner.projects field');
-        setProjects([]);
-      } else {
-        setProjects(projectsData || []);
-      }
+      const res = await apiPost('/learner-profile/actions', { action: 'fetch-learner-projects', learnerId: learner.id });
+      setProjects(res?.data ?? []);
     } catch (error) {
       logger.error('Error fetching projects', error as Error);
       setProjects([]);
@@ -481,26 +346,14 @@ export const useLearnerData = (learner: Learner | null, isOpen: boolean) => {
     
     setLoadingCertificates(true);
     try {
-      // First try to get certificates from learner.certificates if it exists
       if (learner.certificates && Array.isArray(learner.certificates)) {
         setCertificates(learner.certificates);
         setLoadingCertificates(false);
         return;
       }
 
-      // Try to fetch from a certificates table if it exists
-      const { data: certificatesData, error: certificatesError } = await supabase
-        .from('learner_certificates')
-        .select('*')
-        .eq('learner_id', learner.id)
-        .order('issued_on', { ascending: false });
-
-      if (certificatesError) {
-        logger.info('No certificates table found, using learner.certificates field');
-        setCertificates([]);
-      } else {
-        setCertificates(certificatesData || []);
-      }
+      const res = await apiPost('/learner-profile/actions', { action: 'fetch-learner-certificates', learnerId: learner.id });
+      setCertificates(res?.data ?? []);
     } catch (error) {
       logger.error('Error fetching certificates', error as Error);
       setCertificates([]);
@@ -512,26 +365,19 @@ export const useLearnerData = (learner: Learner | null, isOpen: boolean) => {
   const fetchCurriculumData = async () => {
     if (!learner) return;
     
-    
     setLoadingCurriculum(true);
     try {
       let schoolClassId = learner.school_class_id;
       
       if (!schoolClassId && learner.school_id && learner.grade) {
-        let schoolClassQuery = supabase
-          .from('school_classes')
-          .select('id, grade, academic_year, school_id, section')
-          .eq('school_id', learner.school_id)
-          .eq('grade', learner.grade);
-        
-        if (learner.section) {
-          schoolClassQuery = schoolClassQuery.eq('section', learner.section);
-        }
-        
-        const { data: schoolClasses, error: searchError } = await schoolClassQuery;
-        
-        if (!searchError && schoolClasses && schoolClasses.length > 0) {
-          const selectedClass = schoolClasses.sort((a, b) => b.academic_year.localeCompare(a.academic_year))[0];
+        const schoolClassRes = await apiPost('/learner-profile/actions', { action: 'fetch-school-classes',
+          schoolId: learner.school_id,
+          grade: learner.grade,
+          section: learner.section || undefined,
+        });
+        const schoolClasses: any[] = schoolClassRes?.data ?? [];
+        if (schoolClasses.length > 0) {
+          const selectedClass = schoolClasses.sort((a: any, b: any) => b.academic_year.localeCompare(a.academic_year))[0];
           schoolClassId = selectedClass.id;
         }
       }
@@ -542,71 +388,29 @@ export const useLearnerData = (learner: Learner | null, isOpen: boolean) => {
         return;
       }
 
-      const { data: schoolClass, error: classError } = await supabase
-        .from('school_classes')
-        .select('grade, academic_year, school_id')
-        .eq('id', schoolClassId)
-        .single();
-
-      if (classError || !schoolClass) {
+      const classRes = await apiPost('/learner-profile/actions', { action: 'fetch-school-class-by-id', classId: schoolClassId });
+      const schoolClass = classRes?.data;
+      if (!schoolClass) {
         setCurriculumData([]);
         setLessonPlans([]);
         return;
       }
 
-      const learnerGrade = schoolClass.grade;
-      const learnerAcademicYear = schoolClass.academic_year;
-      const learnerSchoolId = schoolClass.school_id;
+      const learnerGrade: any = schoolClass.grade;
+      const learnerAcademicYear: any = schoolClass.academic_year;
+      const learnerSchoolId: any = schoolClass.school_id;
       
       setlearnerAcademicYear(learnerAcademicYear);
 
-      // Fetch lesson plans
-      const { data: allLessons, error: lessonsError } = await supabase
-        .from('lesson_plans')
-        .select(`
-          *,
-          curriculum_chapters!inner (
-            id,
-            name,
-            curriculum_id,
-            curriculums!inner (
-              id,
-              school_id,
-              subject,
-              academic_year
-            )
-          )
-        `)
-        .eq('class_name', learnerGrade)
-        .eq('status', 'approved')
-        .eq('curriculum_chapters.curriculums.school_id', learnerSchoolId)
-        .order('date', { ascending: false });
-      
-      if (!lessonsError) {
-        setLessonPlans(allLessons || []);
-      }
+      const [lessonsRes, curriculumsRes] = await Promise.all([
+        apiPost('/learner-profile/actions', { action: 'fetch-lesson-plans', classId: learnerGrade, schoolId: learnerSchoolId }),
+        apiPost('/learner-profile/actions', { action: 'fetch-curriculums', grade: learnerGrade, schoolId: learnerSchoolId }),
+      ]);
+      const allLessons: any[] = lessonsRes?.data ?? [];
+      setLessonPlans(allLessons);
+      const allCurriculums: any[] = curriculumsRes?.data ?? [];
 
-      // Fetch curriculums
-      let allCurriculumsQuery = supabase
-        .from('curriculums')
-        .select(`
-          *,
-          curriculum_chapters (
-            *,
-            curriculum_learning_outcomes (*)
-          )
-        `)
-        .eq('class', learnerGrade)
-        .eq('status', 'approved')
-        .order('academic_year', { ascending: false });
-
-      if (learnerSchoolId) {
-        allCurriculumsQuery = allCurriculumsQuery.eq('school_id', learnerSchoolId);
-      }
-
-      const { data: allCurriculums, error: curriculumError } = await allCurriculumsQuery;
-
-      if (curriculumError || !allCurriculums) {
+      if (!allCurriculums) {
         setCurriculumData([]);
         return;
       }
@@ -615,7 +419,7 @@ export const useLearnerData = (learner: Learner | null, isOpen: boolean) => {
       const curriculumsBySubject = new Map();
       const lessonsByChapter = new Map();
 
-      (allLessons || []).forEach(lesson => {
+      allLessons.forEach(lesson => {
         if (lesson.chapter_id) {
           if (!lessonsByChapter.has(lesson.chapter_id)) {
             lessonsByChapter.set(lesson.chapter_id, []);

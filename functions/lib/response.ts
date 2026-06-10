@@ -10,28 +10,7 @@
  * - Timing metadata
  */
 
-// ---------------------------------------------------------------------------
-// CORS
-// ---------------------------------------------------------------------------
-const ALLOWED_ORIGINS = [
-  'https://sso-auth.skillpassport.pages.dev',
-  'https://skillpassport.pages.dev',
-  'http://localhost:5173',
-  'http://localhost:8788',
-];
-
-function getCorsHeaders(request?: Request): Record<string, string> {
-  const origin = request?.headers?.get('Origin') || '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Request-ID',
-    'Access-Control-Expose-Headers': 'X-Request-ID',
-    'Access-Control-Max-Age': '86400',
-  };
-}
+import { getCorsHeaders } from './cors';
 
 // ---------------------------------------------------------------------------
 // Request ID
@@ -67,7 +46,6 @@ function mapDbError(error: any): { safeError: SafeError; status: number } {
     return { safeError: { code: mapped.code, message: mapped.message }, status: mapped.status };
   }
 
-  // Generic fallback — never expose raw error.message
   return {
     safeError: { code: 'INTERNAL_ERROR', message: 'An internal error occurred' },
     status: 500,
@@ -91,23 +69,29 @@ interface ApiResponse<T = any> {
 }
 
 function buildHeaders(requestId: string, request?: Request): Headers {
+  const origin = request?.headers?.get('Origin') ?? null;
   const headers = new Headers({
     'Content-Type': 'application/json',
     'X-Request-ID': requestId,
-    ...getCorsHeaders(request),
+    ...getCorsHeaders(origin),
   });
   return headers;
 }
 
 /**
  * Success response
+ * Accepts either a status number (3rd arg) or an options object with status/startTime
  */
 export function apiSuccess<T>(
   data: T,
   request?: Request,
-  options?: { status?: number; startTime?: number }
+  statusOrOptions?: number | { status?: number; startTime?: number }
 ): Response {
   const requestId = getRequestId();
+  const { status, startTime } = typeof statusOrOptions === 'number'
+    ? { status: statusOrOptions, startTime: undefined }
+    : { status: statusOrOptions?.status ?? 200, startTime: statusOrOptions?.startTime };
+
   const body: ApiResponse<T> = {
     success: true,
     data,
@@ -115,12 +99,12 @@ export function apiSuccess<T>(
     meta: {
       requestId,
       timestamp: new Date().toISOString(),
-      durationMs: options?.startTime ? Date.now() - options.startTime : undefined,
+      durationMs: startTime ? Date.now() - startTime : undefined,
     },
   };
 
   return new Response(JSON.stringify(body), {
-    status: options?.status || 200,
+    status,
     headers: buildHeaders(requestId, request),
   });
 }
@@ -158,7 +142,6 @@ export function apiError(
  */
 export function apiDbError(dbError: any, request?: Request, options?: { startTime?: number }): Response {
   const { safeError, status } = mapDbError(dbError);
-  // Log the REAL error server-side for debugging
   console.error(`[API] DB Error [${dbError?.code}]: ${dbError?.message}`);
   return apiError(status, safeError.code, safeError.message, request, options);
 }
@@ -206,11 +189,15 @@ export function apiNotFound(message = 'Resource not found', request?: Request): 
 }
 
 /**
- * CORS preflight handler
+ * Legacy JSON response builder (for backward compatibility)
  */
-export function handleCorsOptions(request: Request): Response {
-  return new Response(null, {
-    status: 204,
-    headers: new Headers(getCorsHeaders(request)),
+export function jsonResponse(body: any, status = 200, extraHeaders: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...getCorsHeaders(null),
+      ...extraHeaders
+    }
   });
 }

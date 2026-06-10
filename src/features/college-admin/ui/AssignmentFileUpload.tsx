@@ -1,4 +1,5 @@
-import { getCurrentSession, getCurrentUser } from '@/shared/api/authUtils';
+
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   DocumentArrowUpIcon,
@@ -10,7 +11,6 @@ import {
 import { uploadInstructionFile, deleteInstructionFile } from '@/features/educator-copilot';
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabase';
 import { ConfirmationModal, NotificationModal } from '@/shared/ui';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
@@ -140,8 +140,8 @@ const AssignmentFileUpload = React.forwardRef<
   const confirmDeleteFile = async () => {
     if (!fileToDelete) return;
 
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token || user?.access_token;
+    const user = useAuthStore.getState().user;
+    const token = ssoClient.getAccessToken() || user?.access_token;
 
     if (!token) {
       showNotificationModal('error', 'Authentication Error', 'Authentication required to delete files');
@@ -185,8 +185,8 @@ const AssignmentFileUpload = React.forwardRef<
   const uploadStagedFiles = async (newAssignmentId: string) => {
     if (stagedFiles.length === 0) return [];
 
-    const { data: { session } } = await getCurrentSession();
-    const token = session?.access_token || user?.access_token;
+    const user = useAuthStore.getState().user;
+    const token = ssoClient.getAccessToken() || user?.access_token;
 
     if (!token) {
       throw new Error('Authentication required. Please log in again.');

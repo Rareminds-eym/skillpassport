@@ -8,6 +8,7 @@ import { normalizeStreamId } from './streamUtils.js';
 import { validateQuestionBatch } from './questionValidator.js';
 import { classifyError, getUserErrorMessage, handleAPIError, handleNetworkError } from './assessmentErrors.js';
 import { getSavedQuestionsForLearner, saveAptitudeQuestions, saveKnowledgeQuestions, clearSavedQuestionsForLearner } from './assessmentRepository.js';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 /**
  * Generate questions with validation and retry logic
@@ -127,7 +128,8 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
     try {
       console.log(`📡 Calling Knowledge API (attempt ${attempt}/${maxRetries}) - requesting ${requestCount} to get ${questionCount} valid`);
       
-      const response = await fetch(`${apiUrl}/career-assessment/generate-knowledge`, {
+      // ssoClient.fetch attaches the JWT — the endpoint is behind withAuth (401 with plain fetch).
+      const response = await ssoClient.fetch(`${apiUrl}/career-assessment/generate-knowledge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -253,15 +255,10 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, le
   if (learnerId) {
     const saved = await getSavedQuestionsForLearner(learnerId, streamId, 'aptitude');
     if (saved && saved.length > 0) {
-      // Validate that saved questions have the expected count
-      if (saved.length === questionCount) {
-        console.log(`✅ Using saved aptitude questions for learner: ${saved.length}/${questionCount}`);
-        return saved;
-      } else {
-        console.warn(`⚠️ Saved questions count mismatch: ${saved.length}/${questionCount} - regenerating`);
-        // Clear invalid cached questions
-        await clearSavedQuestionsForLearner(learnerId, streamId, 'aptitude');
-      }
+      // For resume functionality, always use saved questions regardless of count
+      // This ensures consistency when resuming assessments
+      console.log(`✅ RESUME: Using saved aptitude questions for learner: ${saved.length} questions`);
+      return saved;
     }
   }
 
@@ -288,7 +285,8 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, le
       
       console.log(`📡 Calling API (attempt ${attempt}/${maxRetries}) - Need ${questionsNeeded} more questions`);
       
-      const response = await fetch(`${apiUrl}/career-assessment/generate-aptitude`, {
+      // ssoClient.fetch attaches the JWT — the endpoint is behind withAuth (401 with plain fetch).
+      const response = await ssoClient.fetch(`${apiUrl}/career-assessment/generate-aptitude`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

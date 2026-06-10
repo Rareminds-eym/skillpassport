@@ -4,27 +4,19 @@
 
 # ==================== SSO / AUTH CONFIGURATION ====================
 # Must match the SSO worker that issued the user's session token
-# SSO_DOMAIN is preferred; VITE_SSO_URL is used as fallback
 SSO_DOMAIN=http://localhost:8787
-VITE_SSO_URL=http://localhost:8787
+
 
 # ==================== SUPABASE CONFIGURATION ====================
-# SUPABASE_URL is preferred by Pages Functions; VITE_SUPABASE_URL is used as fallback
+# SUPABASE_URL is preferred by Pages Functions;
 SUPABASE_URL=https://dpooleduinyyzxgrcwko.supabase.co
-SUPABASE_ANON_KEY=your_supabase_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
-# JWT secret for minting Supabase Realtime tokens (found in Supabase Dashboard → Settings → API → JWT Secret)
-SUPABASE_JWT_SECRET=your_supabase_jwt_secret_here
 
 # ==================== PAYMENT WORKER CONFIGURATION ====================
 # URL of the payment-worker (standalone Cloudflare Worker on port 9003)
-# PAYMENTS_API_URL is preferred; VITE_PAYMENTS_API_URL is used as fallback
+# Note: Razorpay keys are managed by the payment worker and returned in API responses
 PAYMENTS_API_URL=http://localhost:9003
-VITE_PAYMENTS_API_URL=http://localhost:9003
-# Shared HS256 secret for Service JWT signing (must match payment-worker's RAZORPAY_SERVICE_SECRET)
-RAZORPAY_SERVICE_SECRET=your_service_secret_here
-# Razorpay key ID injected into create-order responses for frontend checkout
-RAZORPAY_KEY_ID=rzp_test_YourKeyIdHere
+
 
 # ==================== EMBEDDING WORKER CONFIGURATION ====================
 # URL of the embedding worker (standalone Cloudflare Worker on port 9002)
@@ -32,11 +24,12 @@ EMBEDDING_API_URL=http://localhost:9002
 # Optional API key for authenticating requests to the embedding worker
 EMBEDDING_API_KEY=your_embedding_api_key_here
 
+
 # ==================== EMAIL WORKER CONFIGURATION ====================
 # URL of the email worker (standalone Cloudflare Worker on port 9001)
 EMAIL_WORKER_URL=http://localhost:9001
 # API key for authenticating requests to the email worker
-INTERNAL_API_KEY=your_internal_api_key_here
+EMAIL_API_KEY=your_email_api_key_here
 # Admin email for event registration notifications
 ADMIN_EMAIL=admin@rareminds.in
 
@@ -58,10 +51,6 @@ AWS_ACCESS_KEY_ID=your_aws_access_key_here
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key_here
 AWS_REGION=ap-south-1
 
-# ==================== OTP CONFIGURATION (optional) ====================
-# OTP_LENGTH=6
-# OTP_EXPIRY_MINUTES=5
-# SMS_SENDER_ID=SKPASS
 
 # ==================== CLOUDFLARE R2 CONFIGURATION (for Storage) ====================
 CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id_here
@@ -70,33 +59,3 @@ CLOUDFLARE_R2_SECRET_ACCESS_KEY=your_r2_secret_key_here
 CLOUDFLARE_R2_BUCKET_NAME=skill-echosystem
 # Optional: public URL for R2 objects (if custom domain is configured)
 # CLOUDFLARE_R2_PUBLIC_URL=https://cdn.skillpassport.rareminds.in
-
-# ==================== NOTES ====================
-#
-# All API services run as Cloudflare Pages Functions at:
-#   Development: http://localhost:8788/api/*
-#   Production:  https://skillpassport.rareminds.in/api/*
-#
-# Standalone workers (NOT migrated to Pages Functions — configure URLs above):
-#   - payment-worker  (port 9003) — webhook requirement
-#   - email-worker    (port 9001) — cron jobs
-#   - embedding-worker (port 9002) — cron jobs
-#
-# Service Bindings (configured in wrangler.toml):
-#   - PAYMENT_WORKER → razorpay-api (RPC-style binding)
-#   - SSO_SERVICE → sso-api (HTTP-style binding for JWKS and token refresh)
-#
-# The following environment variables are NO LONGER NEEDED:
-#   ❌ VITE_ASSESSMENT_API_URL (removed)
-#   ❌ VITE_CAREER_API_URL (removed)
-#   ❌ VITE_COURSE_API_URL (removed)
-#   ❌ VITE_OTP_API_URL (removed)
-#   ❌ VITE_STORAGE_API_URL (removed)
-#   ❌ VITE_STREAK_API_URL (removed)
-#   ❌ VITE_USER_API_URL (removed)
-#   ❌ VITE_QUESTION_GENERATION_API_URL (removed)
-#   ❌ VITE_ANALYZE_ASSESSMENT_API_URL (removed)
-#   ❌ VITE_PAGES_URL (removed — uses window.location.origin)
-#   ❌ RESEND_API_KEY (removed — email-worker uses INTERNAL_API_KEY)
-#   ❌ PAYMENTS_API_URL (Pages Functions use PAYMENT_WORKER service binding)
-#   ❌ RAZORPAY_KEY_SECRET (should only be in payment-worker, not here)

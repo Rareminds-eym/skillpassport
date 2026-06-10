@@ -14,9 +14,10 @@
  * Plan code identifiers — must match plan_code values in Supabase subscription_plans table.
  */
 export const PLAN_IDS = {
-  PAY_AS_YOU_GO: 'pay_as_you_go',
+  FREEMIUM: 'freemium',
   BASIC: 'basic',
   PROFESSIONAL: 'professional',
+  PREMIUM: 'premium',
   ENTERPRISE: 'enterprise',
   ECOSYSTEM: 'enterprise_ecosystem',
 };
@@ -27,18 +28,33 @@ export const PLAN_IDS = {
  * NOT used for pricing — prices always come from the database.
  */
 export const PLAN_HIERARCHY = [
-  PLAN_IDS.PAY_AS_YOU_GO,
+  PLAN_IDS.FREEMIUM,
   PLAN_IDS.BASIC,
   PLAN_IDS.PROFESSIONAL,
+  PLAN_IDS.PREMIUM,
   PLAN_IDS.ENTERPRISE,
   PLAN_IDS.ECOSYSTEM,
 ];
 
 /**
- * Freemium plan feature configuration
- * Only these features are accessible on Freemium tier (pay_as_you_go)
+ * Plan hierarchy levels for access control
+ * Maps plan codes to numeric levels for comparison
  */
-export const PAY_AS_YOU_GO_FEATURES = {
+export const PLAN_HIERARCHY_LEVELS = {
+  'freemium': 0,
+  'basic': 1,
+  'professional': 2,
+  'premium': 3,
+  'enterprise': 4,
+  'ecosystem': 4,
+  'enterprise_ecosystem': 4
+};
+
+/**
+ * Freemium plan feature configuration
+ * Only these features are accessible on Freemium tier (freemium)
+ */
+export const FREEMIUM_FEATURES = {
   // Free features
   dashboard_access: true,
   profile_creation: true,
@@ -77,4 +93,4 @@ export function meetsMinimumPlan(userPlanId, requiredPlanId) {
   return userIndex >= requiredIndex;
 }
 
-export default { PLAN_IDS, PLAN_HIERARCHY, PAY_AS_YOU_GO_FEATURES, meetsMinimumPlan };
+export default { PLAN_IDS, PLAN_HIERARCHY, PLAN_HIERARCHY_LEVELS, FREEMIUM_FEATURES, meetsMinimumPlan };

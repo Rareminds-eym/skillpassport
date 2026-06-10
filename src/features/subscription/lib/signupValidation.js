@@ -1,6 +1,7 @@
 /**
  * Common validation functions for signup forms
  */
+import { PASSWORD_MIN } from '@/shared/constants';
 
 /**
  * Validate all common signup fields
@@ -77,8 +78,8 @@ export function validateSignupFields(formData, options = {}) {
   // Password validation
   if (!formData.password) {
     errors.password = 'Password is required';
-  } else if (formData.password.length < 8) {
-    errors.password = 'Password must be at least 8 characters';
+  } else if (formData.password.length < PASSWORD_MIN) {
+    errors.password = `Password must be at least ${PASSWORD_MIN} characters`;
   } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
     errors.password = 'Password must contain uppercase, lowercase, and number';
   }
@@ -136,7 +137,7 @@ export function formatPhoneNumber(value) {
 }
 
 export function formatOtp(value) {
-  return value.replace(/\D/g, '').slice(0, 6);
+  return value.replace(/\D/g, '').slice(0, 4);
 }
 
 export function capitalizeFirstLetter(name) {

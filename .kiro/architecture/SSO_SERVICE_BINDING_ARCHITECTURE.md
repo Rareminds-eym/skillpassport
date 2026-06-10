@@ -388,7 +388,7 @@ SSO_DOMAIN=http://localhost:8787
 ### Dependencies
 
 - `@rareminds-eym/auth-core@1.0.2` (with `jose@^6.2.3`)
-- `@rareminds-eym/auth-client@1.0.5`
+- `@rareminds-eym/auth-client@1.0.7`
 - `jose@^6.2.3`
 
 ---
