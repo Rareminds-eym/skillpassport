@@ -34,7 +34,7 @@ function ensureAuthInitialized(env: Record<string, unknown>): void {
   }
 
   try {
-    initAuth({ ssoRpc: ssoRpcRaw as any });
+    initAuth({ ssoRpc: ssoRpcRaw as any, ssoDomain: env.SSO_DOMAIN as string });
     _authInitialized = true;
   } catch (error) {
     console.error('[auth] Failed to initialize auth-core:', {

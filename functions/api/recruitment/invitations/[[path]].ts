@@ -8,6 +8,7 @@ import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
 import { ssoCreateMembership, ssoAssignMembershipRole, ssoUpdateMembershipStatus } from '../../../lib/sso-client';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { createClient } from '@supabase/supabase-js';
 
 interface AcceptInvitationRequest {
     token: string;
@@ -182,6 +183,10 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
     const env = context.env as Record<string, string>;
     const supabase = getServiceClient(env as any);
 
+    // Separate client for SSO Worker's database (port 54331) — the 3 RPCs below
+    // (get_sso_user_by_email, check_membership, get_role_by_name) only exist there.
+    const ssoSupabase = createClient(env.SSO_SUPABASE_URL, env.SSO_SUPABASE_SERVICE_ROLE_KEY);
+
     let body: AcceptInvitationRequest;
     try {
         body = await context.request.json();
@@ -260,7 +265,7 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
 
             // CRITICAL FIX: Look up user by EMAIL from invitation, not by userId from request
             // This ensures we always use the correct user for the invited email
-            const { data: userByEmail, error: userError } = await supabase.rpc('get_sso_user_by_email', {
+            const { data: userByEmail, error: userError } = await ssoSupabase.rpc('get_sso_user_by_email', {
                 p_email: invitation.invitee_email
             });
 
@@ -321,7 +326,7 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
         // 4. Check for existing membership using RPC (foreign tables not accessible via REST)
         // FIXED: Use actualUserId (from email lookup) instead of userId from request
         console.log('[accept-invitation] Step 6: Checking for existing membership');
-        const { data: existingMemberships, error: membershipCheckError } = await supabase
+        const { data: existingMemberships, error: membershipCheckError } = await ssoSupabase
             .rpc('check_membership', {
                 p_user_id: actualUserId,  // FIXED: Use actualUserId from email lookup
                 p_org_id: invitation.organization_id
@@ -388,7 +393,7 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
 
         // 5. Get role ID from SSO-Worker using RPC (foreign tables not accessible via REST)
         console.log('[accept-invitation] Step 7: Getting role ID from SSO');
-        const { data: roleResults, error: roleError } = await supabase
+        const { data: roleResults, error: roleError } = await ssoSupabase
             .rpc('get_role_by_name', {
                 p_role_name: ssoRoleName
             });

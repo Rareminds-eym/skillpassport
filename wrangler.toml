@@ -56,7 +56,6 @@ queue = "realtime-events-queue"
 [[services]]
 binding = "EMAIL_SERVICE"
 service = "shared-email-api"
-entrypoint = "EmailService"
 
 # ============================================================================
 # ENVIRONMENT VARIABLES
