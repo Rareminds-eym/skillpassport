@@ -10,7 +10,6 @@ export {
   isDevelopment,
   isProduction,
   isStaging,
-  isDemo,
   getEnvironment,
   isDomain,
   getBaseUrl,
