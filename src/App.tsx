@@ -83,7 +83,6 @@ function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
       '/signup',
       '/logout',
       '/forgot-password',
-      '/password-reset',
       '/reset-password',
       '/invite/accept',
     ];
