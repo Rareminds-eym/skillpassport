@@ -30,6 +30,7 @@
  */
 
 import { withAuth, getContextUser } from '../../lib/auth';
+import { initAuth, verifyJWT, extractToken } from '@rareminds-eym/auth-core';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 // Dedicated handlers — all routes use RPC or Supabase-direct (no proxy)
@@ -85,10 +86,66 @@ function notFound(request: Request): Response {
 }
 
 /**
+ * Optional auth handler — tries to authenticate, returns fallback on failure.
+ *
+ * For endpoints like get-active-subscription and get-user-entitlements that
+ * need user identity but should NOT return 401 during the login transition
+ * (when the old token is invalid but new tokens haven't been set yet).
+ *
+ * If auth succeeds → runs the handler normally.
+ * If auth fails → returns apiSuccess(fallbackData) so the frontend can
+ * retry once the tokens are ready.
+ */
+async function handleOptionalAuthRequest(
+  context: { request: Request; env: Record<string, unknown>; data?: any },
+  handler: (ctx: AuthenticatedContext) => Promise<Response>,
+  fallbackData: unknown
+): Promise<Response> {
+  // Ensure auth-core is initialized (same lazy singleton pattern as lib/auth.ts)
+  const ssoRpcRaw = context.env.SSO_SERVICE;
+  if (!ssoRpcRaw || typeof ssoRpcRaw !== 'object') {
+    console.warn('[Payments:OptionalAuth] SSO_SERVICE not configured, returning fallback');
+    return apiSuccess(fallbackData, context.request);
+  }
+
+  try {
+    // Initialize auth-core if not already done (same as ensureAuthInitialized in lib/auth.ts)
+    try {
+      initAuth({ ssoRpc: ssoRpcRaw as any });
+    } catch {
+      // Already initialized — that's fine
+    }
+
+    // Extract token from request
+    const token = extractToken(context.request);
+    if (!token) {
+      return apiSuccess(fallbackData, context.request);
+    }
+
+    // Try to verify the JWT
+    const user = await verifyJWT(token);
+
+    if (user.membership_status !== 'active') {
+      return apiSuccess(fallbackData, context.request);
+    }
+
+    // Auth succeeded — inject user and call handler
+    if (!context.data) context.data = {};
+    context.data.user = user;
+    return handler(context as AuthenticatedContext);
+  } catch {
+    // Auth failed (expired, invalid, tampered, etc.) → return fallback
+    return apiSuccess(fallbackData, context.request);
+  }
+}
+
+/**
  * Route dispatcher for payments API.
  *
- * Health check and create-registration-order are handled WITHOUT auth.
- * All other endpoints require SSO authentication via withAuth.
+ * Public (no auth): health, create-registration-order, update-registration-payment-status,
+ *   subscription-plans (catalog data).
+ * Optional auth (returns fallback on failure): get-active-subscription, get-user-entitlements.
+ * Required auth (all other endpoints): via withAuth SSO middleware.
  */
 export async function onRequest(context: { request: Request; env: Record<string, unknown>; data?: any }) {
   const url = new URL(context.request.url);
@@ -117,6 +174,26 @@ export async function onRequest(context: { request: Request; env: Record<string,
   if (path === '/update-registration-payment-status') {
     if (method !== 'POST') return methodNotAllowed(context.request);
     return handleUpdateRegistrationPaymentStatus(context as any);
+  }
+
+  // Subscription plans — no auth required (public catalog data)
+  if (path === '/subscription-plans') {
+    if (method !== 'GET') return methodNotAllowed(context.request);
+    return handleSubscriptionPlans(context);
+  }
+
+  // Get active subscription — optional auth (returns null if not authenticated)
+  // This prevents 401 race conditions during login when tokens aren't ready yet
+  if (path === '/get-active-subscription') {
+    if (method !== 'GET') return methodNotAllowed(context.request);
+    return handleOptionalAuthRequest(context, handleGetActiveSubscription, null);
+  }
+
+  // Get user entitlements — optional auth (returns [] if not authenticated)
+  // This prevents 401 race conditions during login when tokens aren't ready yet
+  if (path === '/get-user-entitlements') {
+    if (method !== 'GET') return methodNotAllowed(context.request);
+    return handleOptionalAuthRequest(context, handleGetUserEntitlements, []);
   }
 
   // All other endpoints require SSO authentication
@@ -234,10 +311,7 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
     return handleGetSubscription(context);
   }
 
-  if (path === '/get-active-subscription') {
-    if (method !== 'GET') return methodNotAllowed(context.request);
-    return handleGetActiveSubscription(context);
-  }
+  // get-active-subscription is handled in onRequest with optional auth
 
   if (path === '/check-subscription-access') {
     if (method !== 'GET') return methodNotAllowed(context.request);
@@ -279,10 +353,7 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
     return handleAddonCatalog(context);
   }
 
-  if (path === '/get-user-entitlements') {
-    if (method !== 'GET') return methodNotAllowed(context.request);
-    return handleGetUserEntitlements(context);
-  }
+  // get-user-entitlements is handled in onRequest with optional auth
 
   if (path === '/has-feature-access') {
     if (method !== 'GET') return methodNotAllowed(context.request);
@@ -299,10 +370,7 @@ const handleAuthenticatedRequest = withAuth(async (context: AuthenticatedContext
     return handleGetAddonByFeatureKey(context);
   }
 
-  if (path === '/subscription-plans') {
-    if (method !== 'GET') return methodNotAllowed(context.request);
-    return handleSubscriptionPlans(context);
-  }
+  // subscription-plans is handled in onRequest without auth (public catalog data)
 
   if (path === '/subscription-plan') {
     if (method !== 'GET') return methodNotAllowed(context.request);
