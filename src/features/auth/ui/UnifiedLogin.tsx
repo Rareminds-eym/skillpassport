@@ -323,7 +323,7 @@ const UnifiedLogin = () => {
 
   const handleForgotPassword = () => {
     trackLogin.forgotPasswordClick();
-    navigate('/password-reset');
+    navigate('/reset-password');
   };
 
   return (

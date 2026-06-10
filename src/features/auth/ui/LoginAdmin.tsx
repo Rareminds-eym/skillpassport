@@ -90,7 +90,7 @@ const LoginAdmin = () => {
                   variant="link"
                   type="button"
                   className="px-0 text-sm"
-                  onClick={() => navigate('/password-reset')}
+                  onClick={() => navigate('/reset-password')}
                 >
                   Forgot password?
                 </Button>
