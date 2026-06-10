@@ -98,7 +98,7 @@ External App → JWT Token → SkillPassport → Verify JWT → Process Request
 # wrangler.toml
 [[services]]
 binding = "SSO_SERVICE"
-service = "sso-api-production"
+service = "sso-api"
 # No entrypoint = HTTP-style binding (Fetcher)
 ```
 
@@ -377,7 +377,7 @@ export async function fetchWithTimeout(
 ```toml
 [[services]]
 binding = "SSO_SERVICE"
-service = "sso-api-production"
+service = "sso-api"
 ```
 
 **Environment Variables** (`.dev.vars`):
