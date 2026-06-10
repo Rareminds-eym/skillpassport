@@ -68,8 +68,9 @@ entrypoint = "EmailService"
 
 [vars]
 # ──────────────────────────────────────────────────────────────────────────
-# NON-SECRET CONFIGURATION 
+# NON-SECRET CONFIGURATION
 # ──────────────────────────────────────────────────────────────────────────
+ENVIRONMENT = "production"
 
 # SSO / Auth Configuration (Pages Functions)
 SSO_DOMAIN = "https://sso-api.dark-mode-d021.workers.dev/"
@@ -100,7 +101,6 @@ VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
 VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
-
 # Analytics 
 VITE_GTM_ID = "GTM-M2N3952J"
 
@@ -115,25 +115,24 @@ VITE_GTM_ID = "GTM-M2N3952J"
 # Required secrets:
 # - SUPABASE_ANON_KEY
 # - SUPABASE_SERVICE_ROLE_KEY
-# - VITE_SUPABASE_ANON_KEY
-# - SERVICE_AUTH_SECRET (shared secret for authenticating with SSO worker)
-# - CLOUDFLARE_R2_ACCESS_KEY_ID
 # - CLOUDFLARE_R2_SECRET_ACCESS_KEY
-# - CLOUDFLARE_ACCOUNT_ID
 # - EMAIL_API_KEY
 # - EMBEDDING_API_KEY
-# - OPENROUTER_API_KEY (optional, for AI features)
-# - CLAUDE_API_KEY (optional, for AI features)
-# - GEMINI_API_KEY (optional, for AI features)
-# - SIGNING_SECRET (optional, for media access tokens)
-# - CRON_SECRET (for authenticating cron job requests)
-# - DEEPGRAM_API_KEY (optional, for audio transcription)
-# - GROQ_API_KEY (optional, for audio transcription)
-# - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (for direct SMTP email sending)
-# - FROM_EMAIL, FROM_NAME (default sender identity)
+# - SIGNING_SECRET (for media access tokens)
+#
+# Required plain vars (set via dashboard):
+# - CLOUDFLARE_R2_ACCESS_KEY_ID
+# - CLOUDFLARE_ACCOUNT_ID
+#
+# Optional secrets (set only if using the feature):
+# - OPENROUTER_API_KEY (AI features)
+# - CLAUDE_API_KEY (AI features)
+# - DEEPGRAM_API_KEY (audio transcription)
+# - GROQ_API_KEY (audio transcription, fallback)
+# - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (direct SMTP email)
 # - ADMIN_EMAIL (admin notification recipient)
 # - APP_URL (public app base URL for email links)
-# - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (for AWS SDK usage)
+# - FROM_EMAIL, FROM_NAME (default sender identity)
 #
 # Note: Razorpay keys are NOT needed here - they are managed by the payment worker
 
