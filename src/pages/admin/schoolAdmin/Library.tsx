@@ -9,8 +9,9 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLearners } from '@/entities/learner/model/useAdminLearners';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('school-admin-library');
 
@@ -131,7 +132,7 @@ export default function LibraryModule() {
     const getCurrentSchoolId = async () => {
       try {
         // First try localStorage
-        const storedUser = localStorage.getItem('user');
+        const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           if (userData.schoolId) {

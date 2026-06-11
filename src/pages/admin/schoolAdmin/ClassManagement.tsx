@@ -1,24 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useAuthStore } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient'
+import { getLogger } from '@/shared/config/logging'
 import {
-    AcademicCapIcon,
-    ArrowPathIcon,
-    ChevronDownIcon,
-    ClockIcon,
-    EnvelopeIcon,
-    EyeIcon,
-    FunnelIcon,
-    MagnifyingGlassIcon,
-    PencilIcon,
-    PlusCircleIcon,
-    Squares2X2Icon,
-    TableCellsIcon,
-    UserGroupIcon,
-    XMarkIcon
+  AcademicCapIcon,
+  ArrowPathIcon,
+  ChevronDownIcon,
+  ClockIcon,
+  EnvelopeIcon,
+  EyeIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+  PencilIcon,
+  PlusCircleIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  UserGroupIcon,
+  XMarkIcon
 } from "@heroicons/react/24/outline"
 import { useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
-import { supabase } from '@/shared/api/supabaseClient'
-import { getLogger } from '@/shared/config/logging'
 
 const logger = getLogger('school-admin-class-management');
 
@@ -237,9 +238,8 @@ const ClassDetailsDrawer = ({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Learners</p>
-              <p className={`mt-2 text-2xl font-semibold ${
-                classItem.current_learners > classItem.max_learners ? 'text-red-600' : 'text-gray-900'
-              }`}>
+              <p className={`mt-2 text-2xl font-semibold ${classItem.current_learners > classItem.max_learners ? 'text-red-600' : 'text-gray-900'
+                }`}>
                 {classItem.current_learners} / {classItem.max_learners}
               </p>
               {classItem.current_learners > classItem.max_learners && (
@@ -417,44 +417,35 @@ const AddEditClassModal = ({
         .filter(Boolean)
 
       if (editingClass) {
-        const { error: updateError } = await supabase
-          .from("school_classes")
-          .update({
-            name: name.trim(),
-            grade: grade.trim(),
-            section: section.trim(),
-            academic_year: academicYear.trim(),
-            max_learners: maxlearnersNum,
-            updated_at: new Date().toISOString(),
-            metadata: {
-              ...editingClass.metadata,
-              skillAreas: skills
-            }
-          })
-          .eq("id", editingClass.id)
-
-        if (updateError) throw updateError
+        const resp: any = await apiPost('/school-admin/actions', {
+          action: 'updateClass',
+          classId: editingClass.id,
+          name: name.trim(),
+          grade: grade.trim(),
+          section: section.trim(),
+          academicYear: academicYear.trim(),
+          maxLearners: maxlearnersNum,
+          skills,
+        })
+        if (resp.error) throw resp.error
         toast.success("Class updated successfully")
       } else {
-        const { error: insertError } = await supabase
-          .from("school_classes")
-          .insert([
-            {
-              school_id: schoolId,
-              name: name.trim(),
-              grade: grade.trim(),
-              section: section.trim(),
-              academic_year: academicYear.trim(),
-              max_learners: maxlearnersNum,
-              current_learners: 0,
-              account_status: "active",
-              metadata: {
-                skillAreas: skills
-              }
-            }
-          ])
+        const resp: any = await apiPost('/school-admin/actions', {
+          action: 'createClass',
+          schoolId,
+          name: name.trim(),
+          grade: grade.trim(),
+          section: section.trim(),
+          academicYear: academicYear.trim(),
+          maxLearners: maxlearnersNum,
+          skills,
+          account_status: "active",
+          metadata: {
+            skillAreas: skills
+          }
+        })
 
-        if (insertError) throw insertError
+        if (resp.error) throw resp.error
         toast.success("Class created successfully")
       }
 
@@ -657,67 +648,16 @@ const ClassManagement = () => {
         return
       }
 
-      // Get user role first - use maybeSingle() to avoid 406 error
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle()
+      const schoolResp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId' })
+      const schoolId = schoolResp.data?.schoolId
 
-      if (userError && userError.code !== 'PGRST116') {
-        logger.error("Error fetching user data", userError)
-        toast.error("Failed to fetch user information")
+      if (schoolId) {
+        logger.info("Found school ID", { schoolId })
+        setSchoolId(schoolId)
         return
       }
 
-      logger.info("User role", { role: userData?.role })
-
-      // For school_admin: lookup school from organizations table
-      if (userData?.role === "school_admin") {
-        const { data: schoolData, error: schoolError } = await supabase
-          .from("organizations")
-          .select("id")
-          .eq("organization_type", "school")
-          .eq("admin_id", user.id)
-          .maybeSingle()
-
-        if (schoolError && schoolError.code !== 'PGRST116') {
-          logger.error("Error fetching school data", schoolError)
-        }
-
-        if (schoolData?.id) {
-          logger.info("Found school ID from organizations", { schoolId: schoolData.id })
-          setSchoolId(schoolData.id)
-          return
-        }
-
-        toast.error("School profile not found. Please ensure your school is registered.")
-        return
-      }
-
-      // For school_educator: lookup from school_educators table
-      if (userData?.role === "school_educator") {
-        const { data: educatorData, error: educatorError } = await supabase
-          .from("school_educators")
-          .select("school_id")
-          .eq("user_id", user.id)
-          .maybeSingle()
-
-        if (educatorError && educatorError.code !== 'PGRST116') {
-          logger.error("Error fetching educator data", educatorError)
-        }
-
-        if (educatorData?.school_id) {
-          logger.info("Found school ID from school_educators", { schoolId: educatorData.school_id })
-          setSchoolId(educatorData.school_id)
-          return
-        }
-
-        toast.error("Educator profile not found. Please contact your school admin.")
-        return
-      }
-
-      toast.error("You don't have access to this page")
+      toast.error("School profile not found. Please ensure your school is registered.")
     } catch (error) {
       logger.error("Error fetching school ID", error as Error)
       toast.error("An error occurred while loading school information")
@@ -731,54 +671,21 @@ const ClassManagement = () => {
       logger.warn("No school ID available")
       return
     }
-    
+
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from("school_classes")
-        .select("*")
-        .eq("school_id", schoolId)
-        .order("created_at", { ascending: false })
+      const resp: any = await apiPost('/school-admin/actions', { action: 'fetchClasses', schoolId })
 
-      if (error) {
-        logger.error("Error fetching classes", error)
-        throw error
+      if (resp.error) {
+        logger.error("Error fetching classes", resp.error)
+        throw resp.error
       }
-      
-      logger.info("Fetched classes", { count: data?.length || 0 })
-      
-      // Enrich classes with learner data and metadata
-      const enrichedClasses = await Promise.all((data || []).map(async (cls) => {
-        const { data: classlearners } = await supabase
-          .from("learners")
-          .select("id, name, email, updated_at")
-          .eq("school_class_id", cls.id)
-          .eq("is_deleted", false)
 
-        const learnerCount = classlearners?.length || 0
-        const metadata = cls.metadata || {}
-        
-        // Update current_learners count in database if it doesn't match
-        if (cls.current_learners !== learnerCount) {
-          await supabase
-            .from("school_classes")
-            .update({ current_learners: learnerCount })
-            .eq("id", cls.id)
-        }
-        
-        return {
-          ...cls,
-          current_learners: learnerCount, // Use actual count
-          learners: classlearners || [],
-          avg_progress: 0,
-          performance_band: "N/A",
-          skillAreas: metadata.skillAreas || [],
-          educator: metadata.educator || "",
-          educatorEmail: metadata.educatorEmail || ""
-        }
-      }))
+      const data = resp.data?.classes || []
 
-      setClasses(enrichedClasses)
+      logger.info("Fetched classes", { count: data.length })
+
+      setClasses(data)
     } catch (error: any) {
       logger.error("Failed to fetch classes", error)
       toast.error(`Failed to fetch classes: ${error.message || 'Unknown error'}`)
@@ -794,19 +701,15 @@ const ClassManagement = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("school_educators")
-        .select("id, first_name, last_name, email")
-        .eq("school_id", schoolId)
-        .eq("account_status", "active")
+      const resp: any = await apiPost('/school-admin/actions', { action: 'fetchEducators', schoolId })
 
-      if (error) {
-        logger.error("Error fetching educators", error)
-        throw error
+      if (resp.error) {
+        logger.error("Error fetching educators", resp.error)
+        throw resp.error
       }
-      
-      logger.info("Fetched educators", { count: data?.length || 0 })
-      setEducators(data || [])
+
+      logger.info("Fetched educators", { count: resp.data?.length || 0 })
+      setEducators(resp.data || [])
     } catch (error: any) {
       logger.error("Failed to fetch educators", error)
     }
@@ -819,19 +722,15 @@ const ClassManagement = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("learners")
-        .select("id, name, email, school_class_id")
-        .eq("school_id", schoolId)
-        .eq("is_deleted", false)
+      const resp: any = await apiPost('/school-admin/actions', { action: 'fetchLearners', schoolId })
 
-      if (error) {
-        logger.error("Error fetching learners", error)
-        throw error
+      if (resp.error) {
+        logger.error("Error fetching learners", resp.error)
+        throw resp.error
       }
-      
-      logger.info("Fetched learners", { count: data?.length || 0 })
-      setlearners(data || [])
+
+      logger.info("Fetched learners", { count: resp.data?.length || 0 })
+      setlearners(resp.data || [])
     } catch (error: any) {
       logger.error("Failed to fetch learners", error)
     }
@@ -841,12 +740,9 @@ const ClassManagement = () => {
     if (!confirm("Are you sure you want to delete this class?")) return
 
     try {
-      const { error } = await supabase
-        .from("school_classes")
-        .delete()
-        .eq("id", classId)
+      const resp: any = await apiPost('/school-admin/actions', { action: 'deleteClass', classId })
 
-      if (error) throw error
+      if (resp.error) throw resp.error
 
       toast.success("Class deleted successfully")
       fetchClasses()
@@ -1175,7 +1071,7 @@ const ClassManagement = () => {
                 <span>Loading classes...</span>
               </div>
             )}
-            
+
             {!loading && isEmpty && <EmptyState onCreate={() => setShowAddModal(true)} />}
 
             {!loading && !isEmpty && viewMode === "grid" && paginatedClasses.length > 0 && (
@@ -1194,25 +1090,23 @@ const ClassManagement = () => {
                     <div className="mb-4 space-y-3">
                       <div className="flex items-center justify-between text-sm text-gray-600">
                         <span>Enrolled Learners</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          classItem.current_learners > classItem.max_learners
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${classItem.current_learners > classItem.max_learners
                             ? 'bg-red-100 text-red-700'
                             : classItem.current_learners === classItem.max_learners
                               ? 'bg-yellow-100 text-yellow-700'
                               : 'bg-gray-100 text-gray-700'
-                        }`}>
+                          }`}>
                           {classItem.current_learners} / {classItem.max_learners}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className={`h-2 rounded-full transition-all ${
-                            classItem.current_learners > classItem.max_learners
+                          className={`h-2 rounded-full transition-all ${classItem.current_learners > classItem.max_learners
                               ? 'bg-red-500'
                               : classItem.current_learners === classItem.max_learners
                                 ? 'bg-yellow-500'
                                 : 'bg-indigo-600'
-                          }`}
+                            }`}
                           style={{
                             width: `${Math.min(100, (classItem.current_learners / classItem.max_learners) * 100)}%`
                           }}
@@ -1320,32 +1214,32 @@ const ClassManagement = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end space-x-2">
-                            <button 
+                            <button
                               onClick={() => {
                                 setSelectedClass(classItem)
                                 setShowEditModal(true)
-                              }} 
-                              className="text-indigo-600 hover:text-indigo-900" 
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900"
                               type="button"
                             >
                               Edit
                             </button>
-                            <button 
+                            <button
                               onClick={() => {
                                 setSelectedClass(classItem)
                                 setShowlearnersModal(true)
-                              }} 
-                              className="text-indigo-600 hover:text-indigo-900" 
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900"
                               type="button"
                             >
                               Learners
                             </button>
-                            <button 
+                            <button
                               onClick={() => {
                                 setSelectedClass(classItem)
                                 setShowDetailsDrawer(true)
-                              }} 
-                              className="text-indigo-600 hover:text-indigo-900" 
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900"
                               type="button"
                             >
                               View

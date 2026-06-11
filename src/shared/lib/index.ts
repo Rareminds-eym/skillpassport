@@ -14,5 +14,5 @@ export * from './utils/chart-download';
 export * from './utils/fingerprint';
 export * from './utils/formatters';
 export * from './utils/isbn-validator';
-export * from './utils/certificate-utils';
+export * from './certificateUtils';
 export * from './utils/environment';

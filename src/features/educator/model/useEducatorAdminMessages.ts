@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageService } from '@/features/messaging';
-import { supabase } from '@/shared/api/supabaseClient';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 /**
@@ -109,7 +108,7 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
   useEffect(() => {
     if (!conversationId || !enabled) return;
 
-    const subscription = MessageService.subscribeToConversation(
+    const subscription = MessageService.subscribeToConversationMessages(
       conversationId,
       (newMessage) => {
         // Update messages cache
@@ -136,7 +135,7 @@ export const useEducatorAdminMessages = ({ conversationId, enabled = true }) => 
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [conversationId, enabled, queryClient]);
 

@@ -2,7 +2,7 @@ import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Gemini API Service
  * Handles API communication with OpenRouter via Cloudflare Worker
- * 
+ *
  * @version 2.1.0
  */
 
@@ -123,9 +123,9 @@ export const callOpenRouterAssessment = async (assessmentData: AssessmentData): 
     // Add cache-busting parameter to force new worker version
     const cacheBuster = Date.now();
     const apiUrl = `${API_URL}?v=${cacheBuster}`;
-    
+
     const requestBody = { assessmentData };
-    
+
     const response = await ssoClient.fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -151,7 +151,7 @@ export const callOpenRouterAssessment = async (assessmentData: AssessmentData): 
         riasecAnswersCount: Object.keys(assessmentData.riasecAnswers || {}).length,
         aptitudeScores: JSON.stringify(assessmentData.aptitudeScores)
       });
-      
+
       let errorData: { error?: string; details?: string };
       try {
         errorData = JSON.parse(errorText);
@@ -175,11 +175,11 @@ export const callOpenRouterAssessment = async (assessmentData: AssessmentData): 
 
     logger.info('✅ Assessment analysis successful');
     logger.info('📊 Response keys:', { keys: Object.keys(result.data) });
-    
+
     // Log seed for deterministic verification
     if (result.data._metadata?.seed) {
       logger.info('🎲 DETERMINISTIC SEED:', { seed: result.data._metadata.seed, model: result.data._metadata.model, deterministic: result.data._metadata.deterministic });
-      
+
       // Log failure details if any models failed before success
       if (result.data._metadata.failureDetails && result.data._metadata.failureDetails.length > 0) {
         logger.warn('⚠️ MODEL FAILURES BEFORE SUCCESS:', {
@@ -190,14 +190,14 @@ export const callOpenRouterAssessment = async (assessmentData: AssessmentData): 
     } else {
       logger.warn('⚠️ NO SEED IN RESPONSE - Using old worker version?');
     }
-    
+
     // Debug: Log career clusters to verify stream alignment
     if (result.data.careerFit?.clusters) {
       logger.info('🎯 AI CAREER CLUSTERS (from worker):', {
         clusters: result.data.careerFit.clusters.map((c, idx) => `${idx + 1}. ${c.title} (${c.fit} - ${c.matchScore}%)`)
       });
     }
-    
+
     return result.data;
   } catch (error) {
     const err = error as Error;
@@ -210,7 +210,7 @@ export const callOpenRouterAssessment = async (assessmentData: AssessmentData): 
       bigFiveAnswers: Object.keys(assessmentData.bigFiveAnswers || {}).length,
       aptitudeScores: JSON.stringify(assessmentData.aptitudeScores)
     });
-    
+
     updateProgress('error', err.message);
     throw error;
   }
@@ -221,21 +221,35 @@ export const callOpenRouterAssessment = async (assessmentData: AssessmentData): 
  * Orchestrates the entire assessment analysis pipeline
  */
 export const analyzeAssessmentWithOpenRouter = async (
-  answers: unknown, 
-  stream: string, 
-  questionBanks: QuestionBanks, 
-  sectionTimings: Record<string, unknown> = {}, 
-  gradeLevel: string = 'after12', 
-  preCalculatedScores: unknown = null, 
-  learnerId: string | null = null, 
-  learnerContext: Record<string, unknown> = {}, 
-  adaptiveResults: unknown = null
+  answers: unknown,
+  stream: string,
+  questionBanks: QuestionBanks,
+  sectionTimings: Record<string, unknown> = {},
+  gradeLevel: string = 'after12',
+  preCalculatedScores: unknown = null,
+  learnerId: string | null = null,
+  learnerContext: Record<string, unknown> | null = {},
+  adaptiveResults: unknown = null,
+  allSections: unknown[] | null = null
 ): Promise<AssessmentResults> => {
+  // Callers may pass learnerContext as an explicit null (the default only
+  // covers undefined), so normalize it before downstream code reads it.
+  if (!learnerContext || typeof learnerContext !== 'object') {
+    logger.warn('⚠️ learnerContext is null or invalid, using fallback', { learnerContext });
+    learnerContext = {
+      rawGrade: gradeLevel || 'Learner',
+      programName: null,
+      programCode: null,
+      degreeLevel: null
+    };
+  }
+
   logger.info('=== analyzeAssessmentWithGemini START ===', {
     gradeLevel,
     stream,
     learnerId: learnerId || 'Not provided',
     hasAdaptiveResults: !!adaptiveResults,
+    learnerContext: learnerContext,
     hasPreCalculatedScores: !!preCalculatedScores,
     questionBanks: {
       riasec: questionBanks.riasecQuestions?.length || 0,
@@ -246,20 +260,24 @@ export const analyzeAssessmentWithOpenRouter = async (
       knowledge: questionBanks.streamKnowledgeQuestions ? Object.keys(questionBanks.streamKnowledgeQuestions).length : 0
     }
   });
-  
+
   updateProgress('preparing', 'Preparing your assessment data...');
-  
+
   try {
-    // Prepare the assessment data (includes rule-based stream hint for after10 and learner context)
+    // Prepare the assessment data (includes rule-based stream hint for after10 and learner context).
+    // allSections carries full question metadata (categoryMapping, riasecType, correct answers)
+    // so the backend can calculate all scores — question banks alone may be incomplete
+    // (the submission hook passes aptitudeQuestions: []).
     const assessmentData = prepareAssessmentData(
-      answers, 
-      stream, 
-      questionBanks, 
-      sectionTimings, 
-      gradeLevel, 
-      preCalculatedScores, 
-      learnerContext, 
-      adaptiveResults
+      answers,
+      stream,
+      questionBanks,
+      sectionTimings,
+      gradeLevel,
+      preCalculatedScores,
+      learnerContext,
+      adaptiveResults,
+      allSections
     );
 
     // Call the Cloudflare Worker (handles prompt building and AI call)
@@ -272,14 +290,14 @@ export const analyzeAssessmentWithOpenRouter = async (
     }
 
     logger.info('📋 Skipping course generation (will be generated on-demand)');
-    
+
     updateProgress('saving', 'Saving your results...');
-    
+
     logger.info('✅ Assessment analysis complete');
-    
+
     // Mark as complete after a short delay to show the saving stage
     setTimeout(() => updateProgress('complete', 'Analysis complete!'), 500);
-    
+
     // Return results without courses
     return parsedResults;
 

@@ -5,13 +5,13 @@
  * Migrated from: cloudflare-workers/role-overview-api/src/handlers/courseMatchingHandler.ts
  * Changes:
  * - Uses callOpenRouterWithRetry from shared/ai-config
- * - Uses shared utilities (jsonResponse, PagesFunction)
+ * - Uses shared utilities (apiSuccess, apiError, PagesFunction)
  * - Uses repairAndParseJSON for response parsing
  * - Simplified fallback chain (OpenRouter → Empty result)
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { callOpenRouterWithRetry, getAPIKeys, repairAndParseJSON } from '../../shared/ai-config';
 import { buildCourseMatchingPrompt, COURSE_MATCHING_SYSTEM_PROMPT } from '../prompts/role-overview';
 
@@ -71,27 +71,18 @@ export const handleCourseMatching: PagesFunction = async (context) => {
   try {
     body = await request.json() as CourseMatchingRequest;
   } catch {
-    return jsonResponse({
-      success: false,
-      error: 'Invalid JSON body',
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', request);
   }
 
   const { roleName, clusterTitle, courses } = body;
 
   // Validate required fields
   if (!roleName || typeof roleName !== 'string' || roleName.trim() === '') {
-    return jsonResponse({
-      success: false,
-      error: 'roleName is required',
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'roleName is required', request);
   }
 
   if (!courses || !Array.isArray(courses) || courses.length === 0) {
-    return jsonResponse({
-      success: false,
-      error: 'courses array is required and must not be empty',
-    }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'courses array is required and must not be empty', request);
   }
 
   const cleanRoleName = roleName.trim();
@@ -107,14 +98,13 @@ export const handleCourseMatching: PagesFunction = async (context) => {
 
   if (!openRouter) {
     console.warn('[CourseMatching] No OpenRouter API key, returning empty result');
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       data: {
         matchedCourseIds: [],
         reasoning: 'AI services unavailable, unable to match courses',
       },
       source: 'fallback',
-    });
+    }, request);
   }
 
   // Try OpenRouter with model fallback
@@ -133,23 +123,21 @@ export const handleCourseMatching: PagesFunction = async (context) => {
     const result = parseMatchingResponse(response);
     
     console.log(`[CourseMatching] Success via OpenRouter for: ${cleanRoleName}, matched ${result.matchedCourseIds.length} courses`);
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       data: result,
       source: 'openrouter',
-    });
+    }, request);
   } catch (error: any) {
     console.error(`[CourseMatching] OpenRouter failed:`, error.message);
 
     // Return empty result (no static fallback for matching)
     console.log(`[CourseMatching] AI services failed for: ${cleanRoleName}`);
-    return jsonResponse({
-      success: true,
+    return apiSuccess({
       data: {
         matchedCourseIds: [],
         reasoning: 'AI services unavailable, unable to match courses',
       },
       source: 'fallback',
-    });
+    }, request);
   }
 };

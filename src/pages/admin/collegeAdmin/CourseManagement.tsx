@@ -1,10 +1,11 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/shared/api/supabaseClient';
 import { Plus, Edit, Trash2, Search, BookOpen } from 'lucide-react';
 
 
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { apiPost } from '@/shared/api/apiClient';
 interface Course {
   id: string;
   course_code: string;
@@ -31,14 +32,18 @@ const CourseManagement: React.FC = () => {
     const fetchUserCollege = async () => {
       const { data: { user } } = { data: { user: useAuthStore.getState().user } };
       if (user) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('metadata')
-          .eq('id', user.id)
-          .single();
-        
-        if (userData?.metadata?.college_id) {
-          setCollegeId(userData.metadata.college_id);
+        try {
+          const orgRes: any = await apiPost('/college-admin/actions', {
+            action: 'get-org-by-admin-or-email',
+            userId: user.id,
+            email: user.email
+          });
+
+          if (orgRes.success && orgRes.data?.id) {
+            setCollegeId(orgRes.data.id);
+          }
+        } catch (error) {
+          console.error('Error fetching college ID:', error as Error);
         }
       }
     };
@@ -49,15 +54,13 @@ const CourseManagement: React.FC = () => {
   const { data: courses = [], isLoading } = useQuery({
     queryKey: queryKeys.courses.curriculum.byCollege(collegeId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('curriculum_courses')
-        .select('*')
-        .eq('college_id', collegeId)
-        .order('semester', { ascending: true })
-        .order('course_code', { ascending: true });
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-curriculum-courses',
+        college_id: collegeId
+      });
       
-      if (error) throw error;
-      return data || [];
+      if (!res.success) throw new Error(res.error);
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -66,14 +69,12 @@ const CourseManagement: React.FC = () => {
   const { data: departments = [] } = useQuery({
     queryKey: queryKeys.college.departments.byCollege(collegeId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('id, name')
-        .eq('college_id', collegeId)
-        .eq('status', 'active')
-        .order('name');
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-departments',
+        college_id: collegeId
+      });
+      if (!res.success) throw new Error(res.error);
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -82,13 +83,11 @@ const CourseManagement: React.FC = () => {
   const { data: programs = [] } = useQuery({
     queryKey: queryKeys.college.programs.byCollege(collegeId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('programs')
-        .select('id, name, department_id')
-        .eq('status', 'active')
-        .order('name');
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-programs'
+      });
+      if (!res.success) throw new Error(res.error);
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -337,22 +336,13 @@ const CourseFormModal: React.FC<CourseFormModalProps> = ({
         updated_at: new Date().toISOString()
       };
 
-      if (course) {
-        // Update existing course
-        const { error: updateError } = await supabase
-          .from('curriculum_courses')
-          .update(courseData)
-          .eq('id', course.id);
-        
-        if (updateError) throw updateError;
-      } else {
-        // Create new course
-        const { error: insertError } = await supabase
-          .from('curriculum_courses')
-          .insert([courseData]);
-        
-        if (insertError) throw insertError;
-      }
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'save-curriculum-course',
+        course_id: course ? course.id : undefined,
+        data: courseData
+      });
+
+      if (!res.success) throw new Error(res.error);
 
       onSuccess();
     } catch (err: any) {

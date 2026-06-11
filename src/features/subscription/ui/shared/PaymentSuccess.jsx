@@ -31,8 +31,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { downloadReceipt } from '@/features/subscription/lib';
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useSubscription, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useUserRole } from '@/shared/model/authStore';
+import { queryKeys } from '@/shared/lib/queryKeys';
 // ============================================================================
 // CONSTANTS & CONFIGURATION
 // ============================================================================
@@ -74,9 +76,6 @@ const CONFIG = {
 /** Dashboard routes by role */
 const DASHBOARD_ROUTES = {
   // Admin roles
-  super_admin: '/admin/dashboard',
-  rm_admin: '/admin/dashboard',
-  rm_manager: '/admin/dashboard',
   admin: '/admin/dashboard',
   company_admin: '/admin/dashboard',
   // Institution admin roles
@@ -89,15 +88,17 @@ const DASHBOARD_ROUTES = {
   college_educator: '/educator/dashboard',
   // Recruiter role
   recruiter: '/recruitment/overview',
+  // Admin/owner roles
+  owner: '/admin/dashboard',
   // Learner roles
   learner: '/learner/dashboard',
 };
 
 /** Subscription manage routes by role */
 const MANAGE_ROUTES = {
-  super_admin: '/admin/subscription/manage',
-  rm_admin: '/admin/subscription/manage',
   admin: '/admin/subscription/manage',
+  company_admin: '/admin/subscription/manage',
+  owner: '/admin/subscription/manage',
   school_admin: '/school-admin/subscription/manage',
   college_admin: '/college-admin/subscription/manage',
   university_admin: '/university-admin/subscription/manage',
@@ -417,6 +418,7 @@ function PaymentSuccess() {
   const user = useUser();
   const { role } = useUserRole();
   const { refreshSubscription, refreshAccess } = useSubscription();
+  const queryClient = useQueryClient();
 
   // ── Read exclusively from location.state (set by initiateRazorpayPayment callbacks) ──
   const stateData = location.state || {};
@@ -552,6 +554,12 @@ function PaymentSuccess() {
         log.error('Initial cache refresh failed (non-critical — store already updated):', err);
       });
 
+      // Invalidate React Query cache so useSubscriptionQuery() consumers
+      // (MySubscription, SubscriptionStatusWidget, dashboard, etc.) get fresh data
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.subscription.data.all,
+      });
+
       const isExistingOrAlreadyProcessed = transactionDetails.already_processed || transactionDetails.is_existing_subscription;
 
       if (!isExistingOrAlreadyProcessed) {
@@ -621,6 +629,9 @@ function PaymentSuccess() {
       } catch (e) {
         log.error('Failed to update store for subscription_created flag:', e);
       }
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.subscription.data.all,
+      });
       setEmailStatus(EMAIL_STATES.SENT);
     } else if (transactionDetails.subscription_error) {
       log.warn('Subscription creation issue:', transactionDetails.subscription_error);
@@ -644,9 +655,12 @@ function PaymentSuccess() {
       } catch (e) {
         log.error('Failed to update store:', e);
       }
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.subscription.data.all,
+      });
       setEmailStatus(EMAIL_STATES.SENT);
     }
-  }, [verificationStatus, transactionDetails, activationStatus, user]);
+  }, [verificationStatus, transactionDetails, activationStatus, user, queryClient]);
 
   // Redirect if no payment params — but check location.state first since
   // PaymentCompletion passes data via React Router state, not URL params
@@ -666,7 +680,7 @@ function PaymentSuccess() {
     if (verificationError?.code === 'NO_SESSION') {
       sessionTimeoutRef.current = setTimeout(() => {
         if (!user && mountedRef.current) {
-          navigate(`/auth/login?redirect=${encodeURIComponent(window.location.href)}`, { replace: true });
+          navigate(`/login?redirect=${encodeURIComponent(window.location.href)}`, { replace: true });
         }
       }, CONFIG.NO_SESSION_REDIRECT_DELAY_MS);
     }

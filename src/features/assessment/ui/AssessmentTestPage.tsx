@@ -13,9 +13,9 @@ import { useAssessmentStore } from '../model/assessmentStore';
 import {
   startAssessment,
   saveResponse,
-  submitAssessment,
   checkInProgress,
   abandonAttempt,
+  submitAssessment,
   analyzeAssessment,
   StartAssessmentResponse,
 } from '../api/assessmentApiService';
@@ -46,7 +46,7 @@ import type { GradeLevel as AdaptiveGradeLevel } from '@/shared/types/adaptiveAp
 import { getLogger } from '@/shared/config/logging';
 
 // Adaptive Aptitude Service
-import AdaptiveAptitudeApiService from '../api/adaptiveAptitudeApiService';
+import AdaptiveAptitudeApiService, { linkSessionToAttempt } from '../api/adaptiveAptitudeApiService';
 
 const logger = getLogger('AssessmentTestPage');
 
@@ -151,9 +151,41 @@ const AssessmentTestPage: React.FC = () => {
   const adaptiveHook = useAdaptiveAptitude({
     learnerId: learnerId || '',
     gradeLevel: getAdaptiveGradeLevel(selectedGrade),
-    onTestComplete: async () => {
-      // Show section-complete screen for adaptive test (it's the last section)
-      // User will click "Submit Assessment" to submit
+    onTestComplete: async (results) => {
+      // WHY: The adaptive session ID is the only link the backend (save-results)
+      // uses to derive aptitude_scores/aptitude_overall via the adaptive results.
+      // It must survive a page reload/resume between finishing the adaptive section
+      // and submitting the (later) aptitude/knowledge sections. We therefore persist
+      // it in TWO durable places, not just non-persisted Zustand state:
+      //   1) answers map  -> saved to attempts.all_responses (survives reload)
+      //   2) attempts.adaptive_aptitude_session_id -> via linkSessionToAttempt (DB)
+      // This restores the backup-link guarantee that was previously missing; without
+      // it a failed startTest link silently caused aptitude to be saved as 0/null.
+      const sessionId = results?.sessionId;
+      if (sessionId) {
+        store.saveAnswer('adaptive_aptitude_session_id', sessionId);
+
+        if (store.attemptId) {
+          try {
+            await linkSessionToAttempt(store.attemptId, sessionId);
+            logger.info('[onTestComplete] Adaptive session linked to attempt (backup link)', {
+              attemptId: store.attemptId,
+              sessionId,
+            });
+          } catch (err) {
+            // Non-blocking: store + answers fallback still allow submit-time recovery.
+            logger.warn('[onTestComplete] Backup session link failed (non-blocking)', {
+              error: err instanceof Error ? err.message : String(err),
+              attemptId: store.attemptId,
+              sessionId,
+            });
+          }
+        }
+      } else {
+        logger.warn('[onTestComplete] Completed adaptive test returned no sessionId');
+      }
+
+      // Show section-complete screen; user clicks "Submit Assessment" to submit.
       setCurrentScreen('section-complete');
     },
     onError: (err) => {
@@ -387,11 +419,8 @@ const AssessmentTestPage: React.FC = () => {
       const streamId = resumeData.streamId || resumeData.stream_id;
       const { currentSectionIndex, currentQuestionIndex, answers, elapsedTime, attemptId, sections } = resumeData;
 
-      // Use pre-fetched sections from resumeData if available
-      const sectionsToUse = sections || (await startAssessment({
-        gradeLevel,
-        streamId
-      })).sections;
+      // sections are loaded by checkInProgress and stored in resumeData
+      const sectionsToUse = sections;
 
       if (sectionsToUse) {
         // Initialize store with sections
@@ -410,6 +439,12 @@ const AssessmentTestPage: React.FC = () => {
         if (isAdaptiveCompleted) {
           const adaptiveSection = sectionsToUse.find((s: any) => s.isAdaptive || s.name === 'adaptive_aptitude');
           const adaptiveSectionIndex = adaptiveSection ? sectionsToUse.indexOf(adaptiveSection) : (sectionsToUse.length - 1);
+
+          // Set position FIRST before restoring answers — same pattern as regular resume flow.
+          // useAnswerSync's detect-answers effect fires when saveAnswer runs and captures
+          // store.currentQuestionIndex into pendingQuestionIndexRef. If setCurrentQuestion
+          // hasn't run yet, it captures 0 and syncs questionIndex: 0 to the backend → Q1 on resume.
+          store.setCurrentQuestion(currentSectionIndex || 0, currentQuestionIndex || 0);
 
           // Restore all previous answers
           if (answers && Object.keys(answers).length > 0) {
@@ -638,6 +673,7 @@ const AssessmentTestPage: React.FC = () => {
       }
     } catch (err: unknown) {
       const error = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[AssessmentTestPage] Submit error:', error);
       store.setError(error);
       setCurrentScreen('error');
     } finally {
@@ -791,6 +827,28 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [store.currentQuestionIndex, store.currentSectionIndex, store.sections]);
 
+  // AI section per-question countdown (59 → 0, loops back to 59)
+  useEffect(() => {
+    if (store.sections.length === 0) return;
+    const currentSection = store.sections[store.currentSectionIndex];
+    if (!isAISection(currentSection) || currentScreen !== 'assessment' || showSectionIntro) return;
+
+    const timer = setInterval(() => {
+      setAiSectionTimer(prev => (prev <= 1 ? 59 : prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [store.currentSectionIndex, store.currentQuestionIndex, currentScreen, showSectionIntro, store.sections]);
+
+  // Reset AI section timer to 59 when question changes
+  useEffect(() => {
+    if (store.sections.length === 0) return;
+    const currentSection = store.sections[store.currentSectionIndex];
+    if (isAISection(currentSection)) {
+      setAiSectionTimer(59);
+    }
+  }, [store.currentQuestionIndex, store.currentSectionIndex, store.sections]);
+
   // Reset elapsed time when section changes
   const previousSectionIndexRef = useRef<number | null>(null);
   useEffect(() => {
@@ -901,7 +959,7 @@ const AssessmentTestPage: React.FC = () => {
     store.sections[store.currentSectionIndex]
   ) {
     const currentSection = store.sections[store.currentSectionIndex];
-    const currentGradeLevel = (selectedGrade || 'after10') as GradeLevel;
+    const currentGradeLevel = (selectedGrade || 'after10') as AdaptiveGradeLevel;
 
     const isAdaptiveIntro = isAdaptiveSection(currentSection);
     // Mirror the per-question time limit: middle school = 5 minutes, other grades = 1 minute.

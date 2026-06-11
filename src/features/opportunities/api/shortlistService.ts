@@ -1,5 +1,5 @@
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('shortlist');
 
@@ -10,23 +10,9 @@ const logger = getLogger('shortlist');
  */
 export const getShortlists = async () => {
   try {
-    const { data, error } = await supabase
-      .from('shortlists')
-      .select(`
-        *,
-        shortlist_candidates(count)
-      `)
-      .order('created_date', { ascending: false });
-
-    if (error) throw error;
-
-    // Format the data to include candidate count
-    const formattedData = data?.map(item => ({
-      ...item,
-      candidate_count: item.shortlist_candidates?.[0]?.count || 0
-    }));
-
-    return { data: formattedData, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-shortlists' });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.shortlists || [], error: null };
   } catch (error) {
     logger.error('Error fetching shortlists', error as Error);
     return { data: null, error };
@@ -38,14 +24,9 @@ export const getShortlists = async () => {
  */
 export const getShortlistById = async (shortlistId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('shortlists')
-      .select('*')
-      .eq('id', shortlistId)
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-shortlist-by-id', id: shortlistId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.shortlist || null, error: null };
   } catch (error) {
     logger.error('Error fetching shortlist', error as Error, { shortlistId });
     return { data: null, error };
@@ -63,14 +44,9 @@ export const createShortlist = async (shortlistData: {
   created_by?: string;
 }) => {
   try {
-    const { data, error } = await supabase
-      .from('shortlists')
-      .insert([shortlistData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'create-shortlist', shortlist: shortlistData });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.shortlist || null, error: null };
   } catch (error) {
     logger.error('Error creating shortlist', error as Error, { name: shortlistData.name });
     return { data: null, error };
@@ -96,15 +72,9 @@ export const updateShortlist = async (
   }>
 ) => {
   try {
-    const { data, error } = await supabase
-      .from('shortlists')
-      .update(updates)
-      .eq('id', shortlistId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'update-shortlist', id: shortlistId, ...updates });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.shortlist || null, error: null };
   } catch (error) {
     logger.error('Error updating shortlist', error as Error, { shortlistId });
     return { data: null, error };
@@ -116,12 +86,8 @@ export const updateShortlist = async (
  */
 export const deleteShortlist = async (shortlistId: string) => {
   try {
-    const { error } = await supabase
-      .from('shortlists')
-      .delete()
-      .eq('id', shortlistId);
-
-    if (error) throw error;
+    const response: any = await apiPost('/opportunities', { action: 'delete-shortlist', id: shortlistId });
+    if (response?.error) return { error: response.error };
     return { error: null };
   } catch (error) {
     logger.error('Error deleting shortlist', error as Error, { shortlistId });
@@ -138,113 +104,10 @@ export const getShortlistCandidates = async (shortlistId: string) => {
   try {
     
     // First, check if the shortlist exists
-    const { data: shortlistCheck, error: shortlistError } = await supabase
-      .from('shortlists')
-      .select('id, name, candidate_count')
-      .eq('id', shortlistId)
-      .single();
-    
-    if (shortlistError) {
-      logger.error('Error checking shortlist', shortlistError as Error, { shortlistId });
-    }
-    
-    // Query the shortlist_candidates junction table
-    const { data, error } = await supabase
-      .from('shortlist_candidates')
-      .select(`
-        id,
-        added_at,
-        notes,
-        learner_id,
-        shortlist_id
-      `)
-      .eq('shortlist_id', shortlistId);
-
-    if (error) {
-      logger.error('Supabase query error', error as Error, { shortlistId });
-      throw error;
-    }
-
-
-    // If there are candidates, fetch their learner details
-    if (data && data.length > 0) {
-      const learnerIds = data.map(item => item.learner_id);
-      
-      // Query learners table with profile JSONB column
-      const { data: learners, error: learnersError } = await supabase
-        .from('learners')
-        .select('id, profile')
-        .in('id', learnerIds);
-      
-      if (learnersError) {
-        logger.error('Error fetching learners', learnersError as Error, { shortlistId });
-        throw learnersError;
-      }
-      
-      
-      // Merge learner data with junction table metadata
-      // Extract data from profile JSONB column
-      const formattedCandidates = data.map(item => {
-        const learner = learners?.find(s => s.id === item.learner_id);
-        if (!learner) {
-          return null;
-        }
-        
-        
-        // Extract data from profile JSONB
-        // Handle case where profile might be a string that needs parsing
-        let profile = learner.profile;
-        if (typeof profile === 'string') {
-          try {
-            profile = JSON.parse(profile);
-          } catch (e) {
-            logger.error('Error parsing profile JSON', e as Error);
-            profile = {};
-          }
-        }
-        profile = profile || {};
-        
-        
-        // Get education data - try to find the most recent or relevant entry
-        const educationArray = profile.education || [];
-        const education = educationArray.find(edu => edu.status === 'ongoing') || educationArray[0] || {};
-        
-        // Extract CGPA - check multiple possible fields
-        let cgpa = 'N/A';
-        if (education.cgpa) {
-          cgpa = education.cgpa;
-        } else if (profile.cgpa) {
-          cgpa = profile.cgpa;
-        } else {
-          // Try to find any education entry with CGPA
-          const eduWithCgpa = educationArray.find(edu => edu.cgpa);
-          if (eduWithCgpa) cgpa = eduWithCgpa.cgpa;
-        }
-        
-        const formattedCandidate = {
-          id: learner.id,
-          name: profile.name || profile.nm_id || 'Unknown',
-          email: profile.email || (profile.contact_number ? String(profile.contact_number) : 'N/A'),
-          phone: profile.contact_number ? String(profile.contact_number) : (profile.alternate_number ? String(profile.alternate_number) : 'N/A'),
-          university: education.university || profile.university || profile.college_school_name || 'N/A',
-          department: education.department || profile.branch_field || 'N/A',
-          cgpa: cgpa,
-          year_of_passing: education.yearOfPassing || education.year_of_passing || 'N/A',
-          employability_score: profile._ || profile.score || null,
-          photo: profile.photo || null,
-          verified: profile.verified || false,
-          added_at: item.added_at,
-          notes: item.notes,
-          junction_id: item.id
-        };
-        
-        return formattedCandidate;
-      }).filter(Boolean); // Filter out null entries
-      
-      return { data: formattedCandidates, error: null };
-    }
-
-    return { data: [], error: null };
+    // Shortlist candidates fetched via API
+    const response: any = await apiPost('/opportunities', { action: 'get-shortlist-candidates', shortlist_id: shortlistId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.candidates || [], error: null };
   } catch (error) {
     logger.error('Error fetching shortlist candidates', error as Error, { shortlistId });
     return { data: null, error };
@@ -261,34 +124,9 @@ export const addCandidateToShortlist = async (
   notes?: string
 ) => {
   try {
-    const { data, error } = await supabase
-      .from('shortlist_candidates')
-      .insert([
-        {
-          shortlist_id: shortlistId,
-          learner_id: learnerId,
-          added_by: addedBy,
-          notes: notes
-        }
-      ])
-      .select()
-      .single();
-
-    if (error) {
-      // Check if it's a duplicate entry error
-      if (error.code === '23505') {
-        return { 
-          data: null, 
-          error: { 
-            ...error, 
-            message: 'Candidate is already in this shortlist' 
-          } 
-        };
-      }
-      throw error;
-    }
-
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'add-candidate-to-shortlist', shortlist_id: shortlistId, learner_id: learnerId, added_by: addedBy, notes });
+    if (response?.error && !response.data) return { data: null, error: response.error };
+    return { data: response?.data?.data, error: null };
   } catch (error) {
     logger.error('Error adding candidate to shortlist', error as Error, { shortlistId, learnerId });
     return { data: null, error };
@@ -303,13 +141,8 @@ export const removeCandidateFromShortlist = async (
   learnerId: string
 ) => {
   try {
-    const { error } = await supabase
-      .from('shortlist_candidates')
-      .delete()
-      .eq('shortlist_id', shortlistId)
-      .eq('learner_id', learnerId);
-
-    if (error) throw error;
+    const response: any = await apiPost('/opportunities', { action: 'remove-candidate-from-shortlist', shortlist_id: shortlistId, learner_id: learnerId });
+    if (response?.error) return { error: response.error };
     return { error: null };
   } catch (error) {
     logger.error('Error removing candidate from shortlist', error as Error, { shortlistId, learnerId });
@@ -325,15 +158,9 @@ export const islearnerInShortlist = async (
   learnerId: string
 ) => {
   try {
-    const { data, error } = await supabase
-      .from('shortlist_candidates')
-      .select('id')
-      .eq('shortlist_id', shortlistId)
-      .eq('learner_id', learnerId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return { data: !!data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'is-learner-in-shortlist', shortlist_id: shortlistId, learner_id: learnerId });
+    if (response?.error) return { data: false, error: response.error };
+    return { data: response?.data?.inShortlist || false, error: null };
   } catch (error) {
     logger.error('Error checking candidate in shortlist', error as Error, { shortlistId, learnerId });
     return { data: false, error };
@@ -345,24 +172,9 @@ export const islearnerInShortlist = async (
  */
 export const getShortlistsForLearner = async (learnerId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('shortlist_candidates')
-      .select(`
-        *,
-        shortlists (
-          id,
-          name,
-          description,
-          created_date,
-          status
-        )
-      `)
-      .eq('learner_id', learnerId);
-
-    if (error) throw error;
-
-    const formattedData = data?.map(item => item.shortlists) || [];
-    return { data: formattedData, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-shortlists-for-learner', learner_id: learnerId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.shortlists || [], error: null };
   } catch (error) {
     logger.error('Error fetching shortlists for learner', error as Error, { learnerId });
     return { data: null, error };
@@ -378,16 +190,9 @@ export const updateCandidateNotes = async (
   notes: string
 ) => {
   try {
-    const { data, error } = await supabase
-      .from('shortlist_candidates')
-      .update({ notes })
-      .eq('shortlist_id', shortlistId)
-      .eq('learner_id', learnerId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'update-candidate-notes', shortlist_id: shortlistId, learner_id: learnerId, notes });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.data, error: null };
   } catch (error) {
     logger.error('Error updating candidate notes', error as Error, { shortlistId, learnerId });
     return { data: null, error };
@@ -407,14 +212,9 @@ export const logExportActivity = async (exportData: {
   include_pii?: boolean;
 }) => {
   try {
-    const { data, error } = await supabase
-      .from('export_activities')
-      .insert([exportData])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'log-export-activity', export_data: exportData });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.data, error: null };
   } catch (error) {
     logger.error('Error logging export activity', error as Error, { shortlistId: exportData.shortlist_id });
     return { data: null, error };
@@ -426,14 +226,9 @@ export const logExportActivity = async (exportData: {
  */
 export const getExportHistory = async (shortlistId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('export_activities')
-      .select('*')
-      .eq('shortlist_id', shortlistId)
-      .order('exported_at', { ascending: false });
-
-    if (error) throw error;
-    return { data, error: null };
+    const response: any = await apiPost('/opportunities', { action: 'get-export-history', shortlist_id: shortlistId });
+    if (response?.error) return { data: null, error: response.error };
+    return { data: response?.data?.exports || [], error: null };
   } catch (error) {
     logger.error('Error fetching export history', error as Error, { shortlistId });
     return { data: null, error };

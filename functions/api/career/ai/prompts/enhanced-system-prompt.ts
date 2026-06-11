@@ -375,7 +375,7 @@ Express certainty appropriately:
 
 ${buildExamplesSection(gradeLevel, intent)}
 
-${buildFewShotExamples(intent as CareerIntent, learnerName, ctx.profile, ctx.assessment)}
+${buildFewShotExamples(intent as CareerIntent, learnerName, ctx.profile)}
 
 ${buildSelfVerificationChecklist(ctx.phase, intent as CareerIntent)}
 

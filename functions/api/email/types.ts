@@ -2,8 +2,6 @@
  * Type definitions for Email API
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-
 // ==================== REQUEST TYPES ====================
 
 export interface GenericEmailRequest {

@@ -220,9 +220,12 @@ export function useRoleOverview(
     }
 
     fetchRoleOverview(roleName, clusterTitle, attemptId);
-    // counsellingAPI is intentionally excluded: callers pass an inline { generateRoleOverview,
-    // getFallbackRoleOverview } object that is a new reference every render, which would cause an
-    // infinite fetch→setState→render loop. The functions themselves are stable module imports.
+    // NOTE: `counsellingAPI` is intentionally excluded — callers pass it as a new
+    // object literal each render, so including it re-fired this effect on every
+    // render, spawning duplicate generations whose results were discarded by the
+    // stale-request guard (leaving responsibilities empty). fetchRoleOverview is
+    // a stable useCallback that already closes over the API.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roleName, clusterTitle, attemptId, fetchRoleOverview]);
 
   return {

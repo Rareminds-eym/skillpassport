@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 export interface LessonPlan {
   id: string;
@@ -27,77 +27,51 @@ export interface LessonPlan {
 }
 
 export const lessonPlanService = {
-  // Get all lesson plans for a school
   async getLessonPlans(schoolId: string): Promise<LessonPlan[]> {
-    const { data, error } = await supabase
-      .from('lesson_plans')
-      .select(`
-        *,
-        school_educators!inner(school_id)
-      `)
-      .eq('school_educators.school_id', schoolId)
-      .order('date', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const result: any = await apiPost('/educator-copilot/actions', {
+      action: 'lpGetLessonPlans',
+      schoolId,
+    });
+    return result?.data || [];
   },
 
-  // Get lesson plans for a specific educator
   async getEducatorLessonPlans(educatorId: string): Promise<LessonPlan[]> {
-    const { data, error } = await supabase
-      .from('lesson_plans')
-      .select('*')
-      .eq('educator_id', educatorId)
-      .order('date', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const result: any = await apiPost('/educator-copilot/actions', {
+      action: 'lpGetEducatorLessonPlans',
+      educatorId,
+    });
+    return result?.data || [];
   },
 
-  // Create a new lesson plan
   async createLessonPlan(lessonPlan: Omit<LessonPlan, 'id' | 'created_at' | 'updated_at'>): Promise<LessonPlan> {
-    const { data, error } = await supabase
-      .from('lesson_plans')
-      .insert(lessonPlan)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const result: any = await apiPost('/educator-copilot/actions', {
+      action: 'lpCreateLessonPlan',
+      lessonPlan,
+    });
+    return result?.data;
   },
 
-  // Update an existing lesson plan
   async updateLessonPlan(id: string, updates: Partial<LessonPlan>): Promise<LessonPlan> {
-    const { data, error } = await supabase
-      .from('lesson_plans')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const result: any = await apiPost('/educator-copilot/actions', {
+      action: 'lpUpdateLessonPlan',
+      id,
+      updates,
+    });
+    return result?.data;
   },
 
-  // Delete a lesson plan
   async deleteLessonPlan(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('lesson_plans')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    await apiPost('/educator-copilot/actions', {
+      action: 'lpDeleteLessonPlan',
+      id,
+    });
   },
 
-  // Get lesson plan by ID
   async getLessonPlanById(id: string): Promise<LessonPlan | null> {
-    const { data, error } = await supabase
-      .from('lesson_plans')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-    return data;
+    const result: any = await apiPost('/educator-copilot/actions', {
+      action: 'lpGetLessonPlanById',
+      id,
+    });
+    return result?.data || null;
   },
 };

@@ -10,7 +10,6 @@ import {
   getRecommendedCourses,
   getRecommendedCoursesByType
 } from '@/features/courses';
-import { supabase } from '@/shared/api/supabaseClient';
 import { updateProgress } from './geminiApiService.js';
 import { getLogger } from '@/shared/config/logging';
 

@@ -1,16 +1,39 @@
 /**
- * useFeatureGate Hook
- * 
- * Custom hook for checking feature access based on subscription plan and add-on entitlements.
- * Provides a unified interface for feature gating across the application.
+ * useFeatureGate Hook — UX-ONLY AFFORDANCE (NOT a security boundary).
+ *
+ * Custom hook for checking feature access based on subscription plan and add-on
+ * entitlements. It provides a unified interface for feature gating across the
+ * application so components can render the right affordance (enable/disable a
+ * control, show an upgrade prompt via `showUpgradePrompt`, etc.).
+ *
+ * This hook (and its in-memory `accessCache`) is for PRESENTATION ONLY and MUST
+ * NEVER be treated as a security boundary:
+ *   - The values returned (`hasAccess`, `accessSource`, `requiredAddOn`,
+ *     `canUpgrade`) are UI hints. Bypassing them client-side cannot grant
+ *     access to gated data or operations.
+ *   - The AUTHORITATIVE entitlement gate is the Cloudflare Function serving the
+ *     request — `requireFeatureAccess(featureKey, handler)` → `entitlementCheck`
+ *     (see `functions/lib/auth.ts` / `functions/lib/entitlements.ts`), which
+ *     verifies entitlement server-side behind the verified JWT against the
+ *     SSO-synced shadow caches.
+ *   - This hook SHALL NOT be the sole gate for protected functionality
+ *     (bug §9.2/§9.3, requirement E9.3).
+ *
+ * The client-side `entitlementService.hasFeatureAccess(...)` call below is also
+ * advisory/UX: it informs the prompt the user sees, not the access decision the
+ * server makes.
+ *
+ * KNOWN GAP (tracked, not introduced here): the server guard is implemented
+ * (task 24.1) but applying it to LIVE handlers is deferred (task 24.2) until the
+ * entitlement shadow caches are broadly populated. See the deferral note in
+ * `functions/lib/auth.ts`.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { addOnCatalogService } from '@/features/subscription';
-import { entitlementService } from '@/features/subscription';
+import { addOnCatalogService, entitlementService } from '@/features/subscription';
 import { createFeatureAccessErrorLog, logError } from '@/shared/lib/error-logging';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useUserEntitlements, useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionAccess, useUserEntitlements } from '@/features/subscription/model/subscriptionStore';
 import { useUser } from '@/shared/model/authStore';
 // Cache for feature access checks
 const accessCache = new Map();

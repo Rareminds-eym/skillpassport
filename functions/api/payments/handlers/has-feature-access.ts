@@ -7,26 +7,25 @@
  * Bypasses RLS. Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleHasFeatureAccess(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
   const url = new URL(context.request.url);
   const featureKey = url.searchParams.get('featureKey');
 
   if (!featureKey) {
-    return new Response(
-      JSON.stringify({ success: false, data: null, error: 'featureKey is required' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'featureKey is required', context.request);
   }
 
   try {
     const supabase = getServiceClient(env);
-    const userId = user.sub;
+    const userId = user.id;
 
     // First, check if user has a subscription plan that includes this feature
     const { data: subscription, error: subError } = await supabase
@@ -44,16 +43,10 @@ export async function handleHasFeatureAccess(context: AuthenticatedContext): Pro
         const endDate = new Date(subscription.subscription_end_date);
         const now = new Date();
         if (endDate >= now && planFeatures.includes(featureKey)) {
-          return new Response(
-            JSON.stringify({ success: true, data: { hasAccess: true, accessSource: 'plan' } }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
+          return apiSuccess({ hasAccess: true, accessSource: 'plan' }, context.request, 200);
         }
       } else if (planFeatures.includes(featureKey)) {
-        return new Response(
-          JSON.stringify({ success: true, data: { hasAccess: true, accessSource: 'plan' } }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
+        return apiSuccess({ hasAccess: true, accessSource: 'plan' }, context.request, 200);
       }
     }
 
@@ -69,25 +62,12 @@ export async function handleHasFeatureAccess(context: AuthenticatedContext): Pro
 
     if (!entError && entitlement) {
       const accessSource = entitlement.bundle_id ? 'bundle' : 'addon';
-      return new Response(
-        JSON.stringify({ success: true, data: { hasAccess: true, accessSource } }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiSuccess({ hasAccess: true, accessSource }, context.request, 200);
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data: { hasAccess: false, accessSource: null } }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ hasAccess: false, accessSource: null }, context.request, 200);
   } catch (error) {
     console.error('[HasFeatureAccess] Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        data: null,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(200, 'ERROR', error instanceof Error ? error.message : 'Unknown error', context.request);
   }
 }

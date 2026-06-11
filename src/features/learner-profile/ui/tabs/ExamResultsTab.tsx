@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GraduationCap, Calendar, TrendingUp, BookOpen, Target, Award, BarChart3 } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface ExamResult {
   id: string;
@@ -66,16 +66,10 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ learner, loading }) => 
       
       let learnerId = learner.id;
       
-      // If we don't have learner.id but have email, try to find the learner ID
       if (!learnerId && learner.email) {
-        const { data: learnerData } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('email', learner.email)
-          .single();
-          
-        if (learnerData?.id) {
-          learnerId = learnerData.id;
+        const lookupRes = await apiPost('/learner-profile/actions', { action: 'lookup-learner-by-email', email: learner.email });
+        if (lookupRes?.data?.id) {
+          learnerId = lookupRes.data.id;
         }
       }
       
@@ -83,52 +77,9 @@ const ExamResultsTab: React.FC<ExamResultsTabProps> = ({ learner, loading }) => 
         return;
       }
 
-      // Get mark entries with assessment data
-      const { data: markEntries, error: markError } = await supabase
-        .from('mark_entries')
-        .select(`
-          id,
-          marks_obtained,
-          total_marks,
-          percentage,
-          grade,
-          is_absent,
-          remarks,
-          created_at,
-          assessment_id,
-          subject_id,
-          assessments!inner(
-            id,
-            assessment_code,
-            type,
-            academic_year,
-            start_date,
-            end_date,
-            target_classes
-          )
-        `)
-        .eq('learner_id', learnerId)
-        .order('created_at', { ascending: false });
-
-      if (markError) {
-        return;
-      }
-
-      // Get all timetable data for these assessments
-      const assessmentIds = [...new Set((markEntries || []).map(entry => entry.assessment_id))];
-      let timetableData: any[] = [];
-      
-      if (assessmentIds.length > 0) {
-        const { data: timetable, error: timetableError } = await supabase
-          .from('exam_timetable')
-          .select('assessment_id, course_name, exam_date')
-          .in('assessment_id', assessmentIds)
-          .order('exam_date', { ascending: true });
-
-        if (!timetableError && timetable) {
-          timetableData = timetable;
-        }
-      }
+      const res = await apiPost('/learner-profile/actions', { action: 'fetch-learner-result-data', learnerId });
+      const markEntries: any[] = res?.data?.markEntries ?? [];
+      const timetableData: any[] = res?.data?.timetable ?? [];
 
       // Create a map of assessment_id -> unique subjects
       const assessmentSubjectsMap = new Map();

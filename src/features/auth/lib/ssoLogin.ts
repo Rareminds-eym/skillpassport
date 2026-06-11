@@ -7,6 +7,7 @@
  */
 import { AuthFetchError } from '@rareminds-eym/auth-client';
 import { useAuthStore } from '@/shared/model/authStore';
+import { PASSWORD_MIN } from '@/shared/constants';
 import type { UserRole } from '@/features/auth/api';
 
 export interface SsoLoginResult {
@@ -49,8 +50,8 @@ export async function ssoLoginWithRoleCheck(
     return { success: false, error: 'Please enter both email and password' };
   }
 
-  if (password.length < 8) {
-    return { success: false, error: 'Password must be at least 8 characters' };
+  if (password.length < PASSWORD_MIN) {
+    return { success: false, error: `Password must be at least ${PASSWORD_MIN} characters` };
   }
 
   try {

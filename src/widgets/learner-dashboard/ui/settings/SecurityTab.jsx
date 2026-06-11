@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Lock, Mail, Eye, EyeOff } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 const SecurityTab = ({
   passwordData,
@@ -103,10 +104,10 @@ const SecurityTab = ({
             </p>
             <ul className="text-xs text-gray-600 space-y-1">
               <li className="flex items-center gap-2">
-                <span className={passwordData.newPassword.length >= 8 ? "text-green-600 font-bold" : "text-gray-400"}>
-                  {passwordData.newPassword.length >= 8 ? "✓" : "○"}
+                <span className={passwordData.newPassword.length >= PASSWORD_MIN ? "text-green-600 font-bold" : "text-gray-400"}>
+                  {passwordData.newPassword.length >= PASSWORD_MIN ? "✓" : "○"}
                 </span>
-                At least 8 characters long
+                At least {PASSWORD_MIN} characters long
               </li>
               <li className="flex items-center gap-2">
                 <span className={passwordData.newPassword && passwordData.newPassword === passwordData.confirmPassword && passwordData.confirmPassword ? "text-green-600 font-bold" : "text-gray-400"}>

@@ -95,24 +95,13 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
     setIsLoadingCount(true);
 
-    // Get auth token
-    const token = ssoClient.getAccessToken();
-    
-    if (!token) {
-      logger.warn('No auth token available for generation usage fetch');
-      setTeacherGenerationCount(0);
-      setIsLoadingCount(false);
-      return;
-    }
-
     try {
 
       // Fetch generation usage from API
-      const response = await fetch('/api/ai-tutor/generation-usage', {
+      const response = await ssoClient.fetch('/api/ai-tutor/generation-usage', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
       });
 

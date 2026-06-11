@@ -5,7 +5,8 @@ import { AlertCircle, Building2, CheckCircle2, Eye, EyeOff, Gift, Globe, Languag
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { capitalizeFirstLetter } from '@/features/subscription';
-import { supabase } from '@/shared/api/supabaseClient';
+import { PASSWORD_MIN } from '@/shared/constants';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 // Languages list
 const LANGUAGES = [
@@ -199,7 +200,7 @@ const SignupAdmin = () => {
   };
 
   const handleVerifyOtp = async () => {
-    if (!formData.otp || formData.otp.length !== 6) return;
+    if (!formData.otp || formData.otp.length !== 4) return;
     setVerifyingOtp(true);
     try {
       const result = await verifyOtpApi(formData.adminPhone, formData.otp);
@@ -261,7 +262,7 @@ const SignupAdmin = () => {
         break;
       case 'password':
         if (!value) error = 'Password is required';
-        else if (value.length < 8) error = 'Password must be at least 8 characters';
+        else if (value.length < PASSWORD_MIN) error = `Password must be at least ${PASSWORD_MIN} characters`;
         else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value))
           error = 'Password must contain uppercase, lowercase, and number';
         break;
@@ -380,7 +381,7 @@ const SignupAdmin = () => {
       const { getApiUrl } = await import('@/shared/api/apiUtils');
       const USER_API_URL = getApiUrl('user');
 
-      const response = await fetch(`${USER_API_URL}/signup/recruiter-admin`, {
+      const response = await ssoClient.fetch(`${USER_API_URL}/signup/recruiter-admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -830,7 +831,7 @@ const SignupAdmin = () => {
                             <button
                               type="button"
                               onClick={handleVerifyOtp}
-                              disabled={verifyingOtp || !formData.otp || formData.otp.length !== 6}
+                              disabled={verifyingOtp || !formData.otp || formData.otp.length !== 4}
                               className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
                             >
                               {verifyingOtp ? 'Verifying...' : 'Verify'}

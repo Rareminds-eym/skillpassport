@@ -6,7 +6,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, Download, CheckCircle2, AlertCircle } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
 import Header from '../shared/ui/Header';
 import { Footer } from '@/shared/ui';
 import { jsPDF } from 'jspdf';

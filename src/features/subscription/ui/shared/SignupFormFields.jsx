@@ -324,7 +324,7 @@ export default function SignupFormFields({
             <button
               type="button"
               onClick={onVerifyOtp}
-              disabled={verifyingOtp || !formData.otp || formData.otp.length !== 6}
+              disabled={verifyingOtp || !formData.otp || formData.otp.length !== 4}
               className="px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {verifyingOtp ? 'Verifying...' : 'Verify'}

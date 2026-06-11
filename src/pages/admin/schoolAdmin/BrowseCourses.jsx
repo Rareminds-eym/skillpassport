@@ -12,7 +12,7 @@ import {
   ChevronRight,
   ArrowDownAZ
 } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { motion } from 'framer-motion';
 import { CourseDetailModal } from '@/features/courses';
 import { getLogger } from '@/shared/config/logging';
@@ -57,18 +57,8 @@ const BrowseCourses = () => {
     try {
       setLoading(true);
 
-      // Fetch courses with status Active or Upcoming (learners shouldn't see Drafts)
-      // Also exclude deleted courses
-      let query = supabase
-        .from('courses')
-        .select('*')
-        .in('status', ['Active', 'Upcoming'])
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      const resp = await apiPost('/school-admin/actions', { action: 'fetchBrowseCourses' });
+      const data = resp.data;
 
       logger.info('Fetched courses for learners', { count: data?.length || 0 });
       setCourses(data || []);

@@ -35,7 +35,7 @@ Due to the complexity of the original worker (multiple AI modules, context build
 ## Dependencies
 
 - `@supabase/supabase-js` - Database client
-- Shared utilities from `src/functions-lib/`
+- Shared utilities from `lib/`
 - OpenRouter API for AI models
 
 ## Environment Variables

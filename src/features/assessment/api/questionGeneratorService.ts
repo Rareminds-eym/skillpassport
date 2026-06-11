@@ -3,6 +3,7 @@
  * Handles AI-based question generation for aptitude and knowledge assessments
  */
 
+import { ssoClient } from '@/shared/api/ssoClient';
 import { STREAM_KNOWLEDGE_PROMPTS, APTITUDE_CATEGORIES } from '../lib/streamPrompts.js';
 import { normalizeStreamId } from '../lib/streamUtils.js';
 import { validateQuestionBatch } from '../lib/questionValidator.js';
@@ -153,7 +154,8 @@ export async function generateStreamKnowledgeQuestions(
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(`${apiUrl}/career-assessment/generate-knowledge`, {
+      // ssoClient.fetch attaches the JWT — the endpoint is behind withAuth (401 with plain fetch).
+      const response = await ssoClient.fetch(`${apiUrl}/career-assessment/generate-knowledge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -181,8 +183,11 @@ export async function generateStreamKnowledgeQuestions(
         }
       }
 
-      const data: ApiResponse = await response.json();
-      
+      // Backend wraps responses via apiSuccess: { success, data: { questions } }.
+      // Fall back to the raw body for any unwrapped legacy responses.
+      const json: any = await response.json();
+      const data: ApiResponse = json?.data ?? json;
+
       if (!data || !data.questions) {
         console.error(`❌ Invalid API response (attempt ${attempt}): missing questions array`);
         
@@ -280,7 +285,8 @@ export async function generateAptitudeQuestions(
       }
       
       
-      const response = await fetch(`${apiUrl}/career-assessment/generate-aptitude`, {
+      // ssoClient.fetch attaches the JWT — the endpoint is behind withAuth (401 with plain fetch).
+      const response = await ssoClient.fetch(`${apiUrl}/career-assessment/generate-aptitude`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -305,8 +311,11 @@ export async function generateAptitudeQuestions(
         }
       }
 
-      const data: ApiResponse = await response.json();
-      
+      // Backend wraps responses via apiSuccess: { success, data: { questions } }.
+      // Fall back to the raw body for any unwrapped legacy responses.
+      const json: any = await response.json();
+      const data: ApiResponse = json?.data ?? json;
+
       if (!data || !data.questions) {
         console.error(`❌ Invalid API response (attempt ${attempt}): missing questions array`);
         

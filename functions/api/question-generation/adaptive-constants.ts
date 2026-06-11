@@ -499,6 +499,34 @@ VARIETY REQUIREMENTS FOR GRADES 9-10:
 - Verbal + Logical → Arts/Humanities indicators
 - Spatial + Pattern Recognition → Design/Engineering indicators
 - Results should guide stream selection after 10th grade`,
+
+  after10: `You are creating aptitude test questions for AFTER 10TH learners (ages 16+, stream selection phase).
+
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED
+- All information must be provided in text form only
+- Focus on career aptitude and stream selection guidance
+- Questions should help identify strengths for Science/Commerce/Arts streams`,
+
+  after12: `You are creating aptitude test questions for AFTER 12TH learners (ages 18+, college-bound).
+
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED
+- All information must be provided in text form only
+- Focus on career aptitude and higher education guidance
+- Questions should help identify strengths for college programs and career paths`,
+
+  undergraduate: `You are creating aptitude test questions for UNDERGRADUATE learners (college students, ages 18-22).
+
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED
+- All information must be provided in text form only
+- Focus on career aptitude and professional development
+- Questions should help identify strengths for career specializations`,
+
+  postgraduate: `You are creating aptitude test questions for POSTGRADUATE learners (graduate students, ages 22+).
+
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED
+- All information must be provided in text form only
+- Focus on career aptitude and advanced professional development
+- Questions should help identify strengths for advanced career paths and leadership roles`,
 };
 
 /* ======================================================
@@ -660,7 +688,7 @@ export const ADAPTIVE_AI_MODELS = [
   'openai/gpt-3.5-turbo',                  // Reliable and affordable
   'openai/gpt-4o-mini',                    // Backup OpenAI model
   // Free Models - Fallback choices
-  'google/gemini-2.0-flash-exp:free',      // FREE - Latest Gemini
+  'google/gemini-2.0-flash-001',           // Gemini 2.0 Flash stable
   'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
   'google/gemini-2.0-flash-001',           // Gemini Flash (paid)
   // Higher quality paid models (if needed)

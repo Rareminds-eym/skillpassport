@@ -1,4 +1,5 @@
 
+import { useAuthStore } from '@/shared/model/authStore';
 import { reportsService } from "@/features/college-admin";
 import { ApexOptions } from "apexcharts";
 import jsPDF from 'jspdf';
@@ -120,7 +121,7 @@ const ReportsAnalytics: React.FC = () => {
     const fetchCollegeId = async () => {
       try {
         // Check localStorage first
-        const storedUser = localStorage.getItem('user');
+        const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           if (userData.role === 'college_admin' && userData.collegeId) {
@@ -129,20 +130,18 @@ const ReportsAnalytics: React.FC = () => {
           }
         }
 
-        // Fallback to Supabase auth
         if (user?.id) {
-          const { supabase } = await import('@/shared/api/supabaseClient');
-          
-          // Query organizations table for college
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college')
-            .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
-            .maybeSingle();
-          
-          if (org?.id) {
-            setCollegeId(org.id);
+          const apiModule = await import('@/shared/api/apiClient');
+          const orgResp = await apiModule.apiPost('/college-admin/actions', {
+            action: 'get-org-by-filters',
+            select: 'id',
+            filters: {
+              organization_type: { eq: 'college' },
+              or: { or: `admin_id.eq.${user.id},email.ilike.${user.email}` },
+            },
+          });
+          if (orgResp.success && orgResp.data?.id) {
+            setCollegeId(orgResp.data.id);
           }
         }
       } catch (error) {

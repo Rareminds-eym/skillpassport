@@ -20,17 +20,21 @@ kill_port() {
 
 # Stop all services by port
 kill_port 3000 "Frontend (Vite)"
+kill_port 8786 "SSO Worker (Scripted)"
+kill_port 8787 "Worker (Default 8787)"
 kill_port 8788 "Pages Functions"
+kill_port 8789 "Worker (Default 8789)"
+kill_port 8790 "Realtime Worker"
 kill_port 9001 "Email Worker"
-kill_port 9002 "Embedding Worker"
 kill_port 9003 "Payments Worker"
 
 # Kill any remaining node processes related to the project
 pkill -f "vite.*--mode development" 2>/dev/null
 pkill -f "wrangler pages dev" 2>/dev/null
 pkill -f "wrangler dev.*email-api" 2>/dev/null
-pkill -f "wrangler dev.*embedding-api" 2>/dev/null
 pkill -f "wrangler dev.*payments-api" 2>/dev/null
+pkill -f "wrangler dev.*sso-worker" 2>/dev/null
+pkill -f "wrangler dev.*realtime-worker" 2>/dev/null
 pkill -f "concurrently" 2>/dev/null
 
 echo "✅ All servers stopped!"

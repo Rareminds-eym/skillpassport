@@ -6,6 +6,9 @@ export { analyticsKeys } from './analytics';
 export { coursesKeys } from './courses';
 export { subscriptionKeys } from './subscription';
 export { messagesKeys } from './messages';
+export { recruitmentQueryKeys } from './recruitment';
+export { applicationsKeys } from './applications';
+export { interviewsKeys } from './interviews';
 
 export type { QueryKey, UserType, ConversationType, ArchiveStatus } from './types';
 
@@ -17,6 +20,9 @@ import { analyticsKeys } from './analytics';
 import { coursesKeys } from './courses';
 import { subscriptionKeys } from './subscription';
 import { messagesKeys } from './messages';
+import { recruitmentQueryKeys } from './recruitment';
+import { applicationsKeys } from './applications';
+import { interviewsKeys } from './interviews';
 
 /**
  * Centralized query key factory for React Query
@@ -66,4 +72,7 @@ export const queryKeys = {
     courses: coursesKeys,
     subscription: subscriptionKeys,
     messages: messagesKeys,
+    recruitment: recruitmentQueryKeys,
+    applications: applicationsKeys,
+    interviews: interviewsKeys,
 } as const;

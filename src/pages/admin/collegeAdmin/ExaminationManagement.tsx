@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -25,7 +26,6 @@ import { assessmentService } from '@/features/assessment';
 import { markEntryService } from '@/features/college-admin';
 import { transcriptService } from '@/features/college-admin';
 import { departmentService } from '@/entities/department';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-examination-management');
@@ -39,6 +39,7 @@ import type { Assessment, ExamSlot, MarkEntry, Transcript } from '@/shared/types
 
 
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 const ExaminationManagement: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -62,17 +63,9 @@ const ExaminationManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchUserCollege = async () => {
-      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-      if (user) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('metadata')
-          .eq('id', user.id)
-          .single();
-
-        if (userData?.metadata?.college_id) {
-          setCollegeId(userData.metadata.college_id);
-        }
+      const user = useAuthStore.getState().user;
+      if (user?.orgId) {
+        setCollegeId(user.orgId);
       }
     };
     fetchUserCollege();
@@ -82,14 +75,9 @@ const ExaminationManagement: React.FC = () => {
   const { data: assessments = [], isLoading: loading, error: assessmentsError } = useQuery({
     queryKey: ['assessments', collegeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('assessments')
-        .select('*')
-        .eq('college_id', collegeId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/assessments', { action: 'get-assessments', college_id: collegeId });
+      if (!res.success) throw new Error(res.error?.message || 'Error fetching assessments');
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -98,14 +86,9 @@ const ExaminationManagement: React.FC = () => {
   const { data: departments = [] } = useQuery({
     queryKey: queryKeys.college.departments.byCollege(collegeId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('id, name, code')
-        .eq('college_id', collegeId)
-        .eq('status', 'active')
-        .order('name');
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/academic', { action: 'get-mapping-departments', college_id: collegeId });
+      if (!res.success) throw new Error(res.error?.message || 'Error fetching departments');
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -114,13 +97,9 @@ const ExaminationManagement: React.FC = () => {
   const { data: programs = [] } = useQuery({
     queryKey: queryKeys.college.programs.byCollege(collegeId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('programs')
-        .select('id, name, code, department_id')
-        .eq('status', 'active')
-        .order('name');
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/academic', { action: 'get-mapping-programs' });
+      if (!res.success) throw new Error(res.error?.message || 'Error fetching programs');
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -129,14 +108,9 @@ const ExaminationManagement: React.FC = () => {
   const { data: courses = [] } = useQuery({
     queryKey: queryKeys.courses.curriculum.byCollege(collegeId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('curriculum_courses')
-        .select('id, course_name, course_code, semester, course_type, credits')
-        .eq('is_active', true)
-        .order('semester', { ascending: true })
-        .order('course_name', { ascending: true });
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/academic', { action: 'get-courses', college_id: collegeId });
+      if (!res.success) throw new Error(res.error?.message || 'Error fetching courses');
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -145,12 +119,9 @@ const ExaminationManagement: React.FC = () => {
   const { data: examSlots = [] } = useQuery({
     queryKey: ['examSlots', collegeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('exam_timetable')
-        .select('*')
-        .order('exam_date');
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/assessments', { action: 'get-exam-slots' });
+      if (!res.success) throw new Error(res.error?.message || 'Error fetching exam slots');
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -159,11 +130,9 @@ const ExaminationManagement: React.FC = () => {
   const { data: markEntries = [] } = useQuery({
     queryKey: ['markEntries', collegeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('mark_entries')
-        .select('*');
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/marks', { action: 'get-mark-entries' });
+      if (!res.success) throw new Error(res.error?.message || 'Error fetching mark entries');
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -172,12 +141,9 @@ const ExaminationManagement: React.FC = () => {
   const { data: transcripts = [] } = useQuery({
     queryKey: ['transcripts', collegeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('transcripts')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/transcripts', { action: 'get-transcripts' });
+      if (!res.success) throw new Error(res.error?.message || 'Error fetching transcripts');
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -186,12 +152,9 @@ const ExaminationManagement: React.FC = () => {
   const { data: learners = [] } = useQuery({
     queryKey: ['learners', collegeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('learners')
-        .select('id, roll_number, name, email, phone, department_id, program_id, semester, college_id')
-        .eq('college_id', collegeId);
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/actions', { action: 'get-learners', college_id: collegeId });
+      if (!res.success) throw new Error(res.error?.message || 'Error fetching learners');
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -200,12 +163,9 @@ const ExaminationManagement: React.FC = () => {
   const { data: faculty = [] } = useQuery({
     queryKey: ['faculty', collegeId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('college_lecturers')
-        .select('*, users!inner(firstName, lastName, email)')
-        .eq('collegeId', collegeId);
-      if (error) throw error;
-      return data || [];
+      const res: any = await apiPost('/college-admin/academic', { action: 'get-faculty', college_id: collegeId });
+      if (!res.success) throw new Error(res.error?.message || 'Error fetching faculty');
+      return res.data || [];
     },
     enabled: !!collegeId
   });
@@ -253,32 +213,22 @@ const ExaminationManagement: React.FC = () => {
       const assessmentCode = data.assessment_code || autoGeneratedCode;
 
       // Check if assessment with same code already exists (globally unique)
-      const { data: existingAssessment } = await supabase
-        .from('assessments')
-        .select('id, assessment_code')
-        .eq('assessment_code', assessmentCode)
-        .maybeSingle();
-
-      if (existingAssessment) {
-        throw new Error(`Assessment with code "${assessmentCode}" already exists. Please use a different code or leave empty for auto-generation.`);
-      }
-
-      // Remove id from data to let database auto-generate it
       const { id, ...dataWithoutId } = data as any;
-
-      const { data: result, error } = await supabase
-        .from('assessments')
-        .insert([{
-          ...dataWithoutId,
-          assessment_code: assessmentCode,
-          course_name: course?.course_name || '',
-          course_code: course?.course_code || '',
-          college_id: collegeId
-        }])
-        .select()
-        .single();
-      if (error) throw error;
-      return result;
+      const res: any = await apiPost('/college-admin/assessments', {
+        action: 'create-assessment',
+        ...dataWithoutId,
+        assessment_code: assessmentCode,
+        course_name: course?.course_name || '',
+        course_code: course?.course_code || '',
+        college_id: collegeId
+      });
+      if (!res.success) {
+        if (res.error?.code === '23505' || res.error?.message?.includes('duplicate key')) {
+           throw new Error(`Assessment with code "${assessmentCode}" already exists. Please use a different code or leave empty for auto-generation.`);
+        }
+        throw new Error(res.error?.message || 'Error creating assessment');
+      }
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
@@ -310,32 +260,6 @@ const ExaminationManagement: React.FC = () => {
 
         const typeCode = type.substring(0, 3).toUpperCase();
         assessmentCode = `${typeCode}-${courseCode.toUpperCase()}-S${semester}-${year}`;
-
-        // Check if another assessment with same code exists (excluding current one)
-        const { data: existingCode } = await supabase
-          .from('assessments')
-          .select('id, assessment_code')
-          .eq('assessment_code', assessmentCode)
-          .neq('id', id)
-          .maybeSingle();
-
-        if (existingCode) {
-          throw new Error(`Assessment with code "${assessmentCode}" already exists.`);
-        }
-      }
-
-      // Check if custom assessment_code conflicts
-      if (data.assessment_code && data.assessment_code !== currentAssessment?.assessment_code) {
-        const { data: existingAssessment } = await supabase
-          .from('assessments')
-          .select('id, assessment_code')
-          .eq('assessment_code', data.assessment_code)
-          .neq('id', id)
-          .maybeSingle();
-
-        if (existingAssessment) {
-          throw new Error(`Assessment with code "${data.assessment_code}" already exists.`);
-        }
       }
 
       const updateData: any = { ...data };
@@ -347,14 +271,18 @@ const ExaminationManagement: React.FC = () => {
         updateData.course_code = course.course_code;
       }
 
-      const { data: result, error } = await supabase
-        .from('assessments')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return result;
+      const res: any = await apiPost('/college-admin/assessments', {
+        action: 'update-assessment',
+        id,
+        ...updateData
+      });
+      if (!res.success) {
+        if (res.error?.code === '23505' || res.error?.message?.includes('duplicate key')) {
+           throw new Error(`Assessment with code already exists.`);
+        }
+        throw new Error(res.error?.message || 'Error updating assessment');
+      }
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments'] });
@@ -419,12 +347,11 @@ const ExaminationManagement: React.FC = () => {
         status: 'scheduled'
       }));
 
-      const { data, error } = await supabase
-        .from('exam_timetable')
-        .insert(enrichedSlots)
-        .select();
-
-      if (error) throw error;
+      const results = await Promise.all(enrichedSlots.map(slot => 
+        apiPost('/college-admin/assessments', { action: 'create-exam-slot', ...slot })
+      ));
+      const failed = results.find(r => !r.success);
+      if (failed) throw new Error(failed.error?.message || 'Error scheduling slots');
 
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       setShowTimetableModal(false);
@@ -445,12 +372,8 @@ const ExaminationManagement: React.FC = () => {
 
   const handleSaveMarks = async (marks: Partial<MarkEntry>[]) => {
     try {
-      const { data, error } = await supabase
-        .from('mark_entries')
-        .upsert(marks, { onConflict: 'assessment_id,learner_id' })
-        .select();
-
-      if (error) throw error;
+      const res: any = await apiPost('/college-admin/marks', { action: 'enter-marks', entries: marks });
+      if (!res.success) throw new Error(res.error?.message || 'Error saving marks');
 
       queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       return { success: true };
@@ -477,19 +400,16 @@ const ExaminationManagement: React.FC = () => {
 
   const handleModerate = async (entryId: string, newMarks: number, reason: string) => {
     try {
-      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
+      const user = useAuthStore.getState().user;
+      const res: any = await apiPost('/college-admin/marks', {
+        action: 'moderate-marks',
+        entry_id: entryId,
+        marks_obtained: newMarks,
+        reason: reason,
+        moderated_by: user?.id
+      });
 
-      const { error } = await supabase
-        .from('mark_entries')
-        .update({
-          marks_obtained: newMarks,
-          moderated_by: user?.id,
-          moderation_reason: reason,
-          moderation_date: new Date().toISOString()
-        })
-        .eq('id', entryId);
-
-      if (error) throw error;
+      if (!res.success) throw new Error(res.error?.message || 'Error moderating marks');
 
       queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       return { success: true };
@@ -539,13 +459,13 @@ const ExaminationManagement: React.FC = () => {
 
   const handleRemoveInvigilator = async (slotId: string, facultyId: string) => {
     try {
-      const { error } = await supabase
-        .from('invigilator_assignments')
-        .delete()
-        .eq('exam_timetable_id', slotId)
-        .eq('invigilator_id', facultyId);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'delete-invigilator',
+        slotId,
+        facultyId
+      });
 
-      if (error) throw error;
+      if (!res.success) throw new Error(res.error?.message || 'Error removing invigilator');
 
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       return { success: true };
@@ -560,18 +480,14 @@ const ExaminationManagement: React.FC = () => {
     try {
       const verificationId = `TR${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
-      const { data: transcript, error } = await supabase
-        .from('transcripts')
-        .insert([{
-          ...data,
-          verification_id: verificationId,
-          status: 'draft',
-          generated_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'generate-transcript',
+        verificationId,
+        data
+      });
 
-      if (error) throw error;
+      if (!res.success) throw new Error(res.error?.message || 'Error generating transcript');
+      const transcript = res.data;
 
       queryClient.invalidateQueries({ queryKey: ['transcripts'] });
       setShowTranscriptModal(false);

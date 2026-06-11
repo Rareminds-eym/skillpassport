@@ -1,12 +1,11 @@
 // Few-Shot Examples for Career AI
 
-import type { CareerIntent, LearnerProfile, AssessmentResults } from '../../types';
+import type { CareerIntent, LearnerProfile } from '../../types';
 
 export function buildFewShotExamples(
   intent: CareerIntent, 
   learnerName: string, 
-  profile: LearnerProfile, 
-  assessment?: AssessmentResults
+  profile: LearnerProfile
 ): string {
   const examples: Partial<Record<CareerIntent, string>> = {
     'find-jobs': `

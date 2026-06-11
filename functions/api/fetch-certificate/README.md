@@ -54,7 +54,7 @@ Verify certificate authenticity.
 - Supabase for data storage
 - PDF generation library
 - R2 storage for certificate PDFs
-- Shared utilities from `src/functions-lib/`
+- Shared utilities from `lib/`
 
 ## Environment Variables
 

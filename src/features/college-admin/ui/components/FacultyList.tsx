@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Search, Eye, CheckCircle, Clock, XCircle, FileText } from "lucide-react";
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 import { FacultyDocumentViewerModal } from '@/features/college-admin';
@@ -81,16 +81,13 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("college_lecturers")
-        .select("*")
-        .eq("collegeId", collegeId)
-        .order("createdAt", { ascending: false });
+      const result = await apiPost('/college-admin/faculty', {
+        action: 'get-lecturers',
+        college_id: collegeId,
+      });
 
-      if (error) {
-        logger.error('Error loading faculty', error);
-      } else if (data) {
-        setFaculty(data);
+      if (result.data) {
+        setFaculty(result.data);
       }
     } catch (error) {
       logger.error('Error in loadFaculty', error as Error);
@@ -160,16 +157,16 @@ const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
   };
 
   const updateFacultyStatus = async (facultyId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from("college_lecturers")
-      .update({ accountStatus: newStatus })
-      .eq("id", facultyId);
-
-    if (!error) {
+    try {
+      await apiPost('/college-admin/faculty', {
+        action: 'update-faculty-status',
+        id: facultyId,
+        account_status: newStatus,
+      });
       loadFaculty();
       setSelectedFaculty(null);
-    } else {
-      logger.error('Error updating faculty status', error);
+    } catch (err) {
+      logger.error('Error updating faculty status', err as Error);
     }
   };
 

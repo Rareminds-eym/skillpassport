@@ -79,6 +79,7 @@ export interface CheckInProgressResponse {
   timerRemaining?: number | null;
   elapsedTime?: number;
   started_at?: string;
+  sections?: any[];
   // Adaptive test resume fields
   adaptiveSession?: AdaptiveSessionInfo | null;
   isAdaptiveInProgress?: boolean;
@@ -285,6 +286,7 @@ export async function checkInProgress(): Promise<CheckInProgressResponse> {
       timerRemaining: data.timerRemaining,
       elapsedTime: data.elapsedTime,
       started_at: data.started_at,
+      sections: data.sections,
       // Adaptive test resume fields
       adaptiveSession: data.adaptiveSession,
       isAdaptiveInProgress: data.isAdaptiveInProgress,
@@ -357,5 +359,79 @@ export async function analyzeAssessment(attemptId: string, gradeLevel: string): 
       success: false,
       error: err.message || 'Network error'
     };
+  }
+}
+
+/**
+ * Get the latest completed assessment result for a learner
+ */
+export async function getLatestResult(learnerId: string) {
+  try {
+    const { apiPost } = await import('@/shared/api/apiClient');
+    const response = await apiPost('/learner-profile/actions', {
+      action: 'fetch-personal-assessment-results',
+      learnerId
+    });
+    
+    if (response?.data && response.data.length > 0) {
+      return response.data[0];
+    }
+    return null;
+  } catch (error) {
+    console.error('Failed to get latest result:', error);
+    return null;
+  }
+}
+
+/**
+ * Get an assessment attempt with its results
+ */
+export async function getAttemptWithResults(attemptId: string) {
+  try {
+    const response = await ssoClient.fetch(`${API_BASE}/result?attemptId=${attemptId}`);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return data.attempt || null;
+  } catch (error) {
+    console.error('Failed to get attempt with results:', error);
+    return null;
+  }
+}
+
+/**
+ * Complete attempt (bypasses RLS to save AI results directly)
+ */
+export async function completeAttempt(
+  attemptId: string,
+  learnerId: string,
+  streamId: string | null,
+  gradeLevel: string,
+  geminiResults: any,
+  sectionTimings: any = null
+) {
+  try {
+    const response = await ssoClient.fetch(`${API_BASE}/save-results`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        attemptId,
+        learnerId,
+        streamId,
+        gradeLevel,
+        geminiResults,
+        sectionTimings
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to save assessment results');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Failed to complete attempt:', error);
+    throw error;
   }
 }

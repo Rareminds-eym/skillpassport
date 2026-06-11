@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { GradingModal } from '@/features/educator';
 import {
     ArrowPathIcon,
@@ -22,7 +23,6 @@ import { ConfirmationModal } from '@/shared/ui';
 import { NotificationModal } from '@/shared/ui';
 import { useAuth } from '@/features/auth';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 
@@ -277,7 +277,7 @@ const Assessments = () => {
                 setLoading(true);
 
                 // First, try to get educator_id from localStorage
-                const storedUser = localStorage.getItem('user');
+                const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
                 let educatorId = null;
 
                 if (storedUser) {

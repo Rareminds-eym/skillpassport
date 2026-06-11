@@ -19,10 +19,9 @@ import { useProgramSections } from '@/features/college-admin/model/useProgramSec
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool'
 import toast from "react-hot-toast"
 import { Pagination } from '@/shared/ui'
-import { useAuth } from "@/features/auth"
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore'
 import { ProgramSection } from "@/features/college-admin"
 import { ManageProgramLearnersModal } from '@/features/educator'
-import { usePermission } from '@/entities/user/model/usePermissions'
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, string> = {
@@ -165,7 +164,7 @@ const ProgramSectionDetailsDrawer = ({
   )
 }
 
-const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
+const EmptyState = ({ onCreate }: { onCreate?: () => void }) => {
   return (
     <div className="flex flex-col items-center justify-center text-center bg-white border border-dashed border-gray-300 rounded-lg p-10">
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
@@ -175,6 +174,7 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
       <p className="mt-2 text-sm text-gray-500 max-w-sm">
         No program sections found. Create a new program section to get started with your educator workspace.
       </p>
+      {onCreate && (
       <div className="mt-6">
         <button
           onClick={onCreate}
@@ -184,6 +184,7 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
           Create New Program Section
         </button>
       </div>
+      )}
     </div>
   )
 }
@@ -193,10 +194,6 @@ const ProgramSectionsPage = () => {
   const user = useUser()
   const isAuthenticated = useIsAuthenticated()
   const { college: educatorCollege, loading: schoolLoading } = useEducatorSchool()
-  
-  // Permission controls for Classroom Management module
-  const canView = usePermission("Classroom Management", "view")
-  const canCreate = usePermission("Classroom Management", "create")
   
   const {
     programSections,
@@ -217,25 +214,16 @@ const ProgramSectionsPage = () => {
   // Security check
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
     
-    if (user?.role !== 'educator' && user?.role !== 'college_educator') {
+    if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
       logger.error('Unauthorized access attempt to program sections page')
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
   }, [isAuthenticated, user, navigate])
-
-  // Permission check - redirect if no view permission
-  useEffect(() => {
-    if (!canView) {
-      logger.warn('Access denied: No view permission for Classroom Management')
-      navigate('/educator/dashboard')
-      return
-    }
-  }, [canView, navigate])
 
   // Fetch departments when college is loaded
   useEffect(() => {
@@ -287,31 +275,6 @@ const ProgramSectionsPage = () => {
 
   const isLoading = loading || schoolLoading
   const isEmpty = !isLoading && paginatedSections.length === 0 && !error && !searchQuery
-
-  // Show access denied if no view permission
-  if (!canView) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-            <XMarkIcon className="h-6 w-6 text-red-600" />
-          </div>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">Access Denied</h3>
-          <p className="mt-2 text-sm text-gray-500">
-            You don't have permission to view the Classroom Management module.
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={() => navigate('/educator/dashboard')}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Go to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="flex overflow-y-auto mb-4 flex-col h-screen">
@@ -476,20 +439,11 @@ const ProgramSectionsPage = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
-                            if (!canCreate) {
-                              alert('❌ Access Denied: You need CREATE permission to manage learners');
-                              return;
-                            }
                             setManagelearnersSection(section);
                           }}
-                          disabled={!canCreate.allowed}
-                          className={`inline-flex items-center px-3 py-1.5 border rounded text-xs font-medium transition-all ${
-                            canCreate.allowed
-                              ? 'border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 cursor-pointer'
-                              : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-50 blur-sm'
-                          }`}
+                          className="inline-flex items-center px-3 py-1.5 border rounded text-xs font-medium transition-all border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 cursor-pointer"
                           type="button"
-                          title={canCreate.allowed ? 'Manage Learners' : '❌ No CREATE permission'}
+                          title="Manage Learners"
                         >
                           <UserGroupIcon className="h-4 w-4 mr-1" />
                           Learners
@@ -498,20 +452,11 @@ const ProgramSectionsPage = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
-                            if (!canView) {
-                              alert('❌ Access Denied: You need VIEW permission to see details');
-                              return;
-                            }
                             setDetailSection(section);
                           }}
-                          disabled={!canView.allowed}
-                          className={`inline-flex items-center px-3 py-1.5 border rounded text-xs font-medium transition-all ${
-                            canView.allowed
-                              ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 cursor-pointer'
-                              : 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-50 blur-sm'
-                          }`}
+                          className="inline-flex items-center px-3 py-1.5 border rounded text-xs font-medium transition-all border-gray-300 text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
                           type="button"
-                          title={canView.allowed ? 'View Details' : '❌ No VIEW permission'}
+                          title="View Details"
                         >
                           <EyeIcon className="h-4 w-4 mr-1" />
                           View
@@ -561,38 +506,20 @@ const ProgramSectionsPage = () => {
                           <div className="flex items-center justify-end space-x-2">
                             <button 
                               onClick={() => {
-                                if (!canCreate) {
-                                  alert('❌ Access Denied: You need CREATE permission to manage learners');
-                                  return;
-                                }
                                 setManagelearnersSection(section);
                               }} 
-                              disabled={!canCreate.allowed}
-                              className={`transition-all ${
-                                canCreate.allowed
-                                  ? 'text-indigo-600 hover:text-indigo-900 cursor-pointer'
-                                  : 'text-gray-400 cursor-not-allowed opacity-50 blur-sm'
-                              }`}
+                              className="transition-all text-indigo-600 hover:text-indigo-900 cursor-pointer"
                               type="button"
-                              title={canCreate.allowed ? 'Manage Learners' : '❌ No CREATE permission'}
+                              title="Manage Learners"
                             >
                               Learners
                             </button>
                             <button onClick={() => {
-                              if (!canView) {
-                                alert('❌ Access Denied: You need VIEW permission to see details');
-                                return;
-                              }
                               setDetailSection(section);
                             }} 
-                            disabled={!canView.allowed}
-                            className={`transition-all ${
-                              canView.allowed
-                                ? 'text-indigo-600 hover:text-indigo-900 cursor-pointer'
-                                : 'text-gray-400 cursor-not-allowed opacity-50 blur-sm'
-                            }`}
+                            className="transition-all text-indigo-600 hover:text-indigo-900 cursor-pointer"
                             type="button"
-                            title={canView.allowed ? 'View Details' : '❌ No VIEW permission'}
+                            title="View Details"
                             >
                               View
                             </button>

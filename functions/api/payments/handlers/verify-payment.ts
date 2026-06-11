@@ -11,13 +11,14 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { R2Client } from '../../storage/utils/r2-client';
 import { generateReceiptPDF, fetchImageBytes, type ReceiptData } from '../../storage/utils/pdf-generator';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
 import type { EventConfirmationTemplateData } from '../../email/types';
 import { sendEmailSafe } from '../../../lib/email-service';
@@ -28,9 +29,10 @@ import {
   ssoSyncSubscription,
 } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
   try {
@@ -38,22 +40,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     try {
       body = (await context.request.json()) as Record<string, unknown>;
     } catch {
-      return new Response(
-        JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Invalid JSON body' } }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
     }
 
     if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required',
-          },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required', context.request);
     }
 
     // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
@@ -68,10 +59,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const plan = body.plan as Record<string, unknown> | undefined;
     if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
       console.warn('[VerifyPayment] Signature verified but no plan data provided');
-      return new Response(JSON.stringify({ success: true, ...verifyResult }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiSuccess(verifyResult, context.request);
     }
 
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
@@ -79,31 +67,21 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 2.5: Validate plan exists via plans_cache (local shadow of auth DB)
     const { data: validPlan, error: planError } = await supabase
       .from('plans_cache')
-      .select('id, plan_code, name, is_active, pricing_matrix')
+      .select('id, plan_code, name, is_active, pricing_matrix, base_features')
       .eq('id', plan.id)
       .eq('is_active', true)
       .maybeSingle();
 
     if (planError || !validPlan) {
       console.error('[VerifyPayment] Invalid or inactive plan:', plan.id, planError);
-      return new Response(JSON.stringify({
-        error: {
-          code: 'INVALID_PLAN',
-          message: 'Selected plan is not valid or inactive',
-        },
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return apiError(400, 'VALIDATION_ERROR', 'Selected plan is not valid or inactive', context.request);
     }
 
     // Authoritative price from DB — never trust client-supplied price
     const yearlyPrice = validPlan.pricing_matrix?.all?.yearly;
     if (typeof yearlyPrice !== 'number') {
       console.error('[VerifyPayment] Plan has no yearly price:', plan.id, validPlan.pricing_matrix);
-      return new Response(JSON.stringify({
-        error: { code: 'INVALID_PLAN', message: 'Selected plan has no valid pricing' },
-      }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing', context.request);
     }
     const planPrice = yearlyPrice;
 
@@ -117,7 +95,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const { data: existingCache } = await supabase
       .from('subscription_cache')
       .select('id, status, plan_id, plan_code')
-      .eq('user_id', user.sub)
+      .eq('user_id', user.id)
       .in('status', ['active', 'pending', 'grace_period'])
       .maybeSingle();
 
@@ -140,9 +118,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         const currentPrice = currentPlan.pricing_matrix?.all?.yearly;
         if (typeof currentPrice !== 'number' || typeof planPrice !== 'number') {
           console.warn('[VerifyPayment] Cannot compare plan pricing:', { currentPrice, planPrice });
-          return new Response(JSON.stringify({
-            error: { code: 'UPGRADE_FAILED', message: 'Cannot determine plan pricing. Please contact support.' },
-          }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+          return apiError(400, 'VALIDATION_ERROR', 'Cannot determine plan pricing. Please contact support.', context.request);
         }
 
         if (planPrice <= currentPrice) {
@@ -151,15 +127,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             currentPrice,
             newPrice: planPrice,
           });
-          return new Response(JSON.stringify({
-            error: {
-              code: 'INVALID_UPGRADE',
-              message: 'Cannot downgrade or lateral move. Please contact support for plan changes.',
-            },
-          }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return apiError(400, 'VALIDATION_ERROR', 'Cannot downgrade or lateral move. Please contact support for plan changes.', context.request);
         }
       }
 
@@ -183,7 +151,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         // Record failed upgrade as an event in auth DB
         try {
           await ssoRecordTransaction(env, {
-            user_id: user.sub,
+            user_id: user.id,
             razorpay_order_id: body.razorpay_order_id as string,
             razorpay_payment_id: body.razorpay_payment_id as string,
             amount: planPrice,
@@ -200,8 +168,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           console.error('[VerifyPayment] Failed to log upgrade failure:', logError);
         }
 
-        return new Response(JSON.stringify({
-          success: true,
+        return apiSuccess({
           payment_verified: true,
           subscription_upgraded: false,
           ...verifyResult,
@@ -209,18 +176,15 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             code: 'UPGRADE_FAILED',
             message: 'Payment verified but upgrade failed. Support will contact you within 24 hours.',
           },
-        }), {
-          status: 207,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        }, context.request, 207);
       }
     } else {
       // New subscription — create in auth DB
-      console.log('[VerifyPayment] Creating new subscription for user:', user.sub);
+      console.log('[VerifyPayment] Creating new subscription for user:', user.id);
 
       try {
         subscription = await ssoCreateSubscription(env, {
-          user_id: user.sub,
+          user_id: user.id,
           plan_id: plan.id as string,
           plan_code: validPlan.plan_code,
           plan_type: plan.name as string,
@@ -236,8 +200,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       } catch (createError: any) {
         console.error('[VerifyPayment] Subscription creation failed:', createError.message);
 
-        return new Response(JSON.stringify({
-          success: true,
+        return apiSuccess({
           payment_verified: true,
           subscription_created: false,
           ...verifyResult,
@@ -246,10 +209,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             message: 'Payment verified but subscription creation failed. Please contact support.',
             details: createError.message,
           },
-        }), {
-          status: 207,
-          headers: { 'Content-Type': 'application/json' },
-        });
+        }, context.request, 207);
       }
     }
 
@@ -257,12 +217,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     try {
       await ssoRecordTransaction(env, {
         subscription_id: subscription.id as string,
-        user_id: user.sub,
+        user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
         amount: planPrice,
         currency: 'INR',
-        status: 'success',
+        status: 'completed',
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
       });
     } catch (txError) {
@@ -272,9 +232,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 3.5: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.sub, body.email || (user as any).email);
+      await syncUserShadow(supabase, user.id, body.email || (user as any).email);
 
-      const syncData = await ssoSyncSubscription(env, user.sub);
+      const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {
         await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
       }
@@ -296,7 +256,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       const { data: learner } = await supabase
         .from('learners')
         .select('name')
-        .eq('user_id', user.sub)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       let logoBytes: Uint8Array | undefined;
@@ -342,7 +302,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
       const pdfBytes = await generateReceiptPDF(receiptData);
 
-      const shortUserId = user.sub.substring(0, 8);
+      const shortUserId = user.id.substring(0, 8);
       const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
       const timestamp = Date.now();
       receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
@@ -374,8 +334,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       console.error('[VerifyPayment] Email failed (non-critical):', emailErr);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
+    return apiSuccess({
       ...verifyResult,
       subscription_created: true,
       receipt_url: receiptUrl,
@@ -388,13 +347,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         start_date: subscription.subscription_start_date,
         end_date: subscription.subscription_end_date,
       },
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    }, context.request);
   } catch (error) {
     console.error('[VerifyPayment] Error:', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }
 

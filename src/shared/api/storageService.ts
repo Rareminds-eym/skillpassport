@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Storage Service for handling file uploads to Cloudflare R2

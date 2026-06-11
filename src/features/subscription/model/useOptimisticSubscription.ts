@@ -11,6 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createOptimisticSubscription, type OptimisticSubscription } from '../lib/optimisticUpdates';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import { ssoClient } from '@/shared/api/ssoClient';
+import { extractErrorMessage } from '../api/paymentsApiService';
 
 interface UseOptimisticSubscriptionOptions {
   userId: string;
@@ -81,29 +82,35 @@ export function useOptimisticSubscription({
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create subscription');
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(extractErrorMessage(errorData) || 'Failed to create subscription');
         }
 
-        const data = await response.json();
+        const envelope = await response.json();
+
+        // apiSuccess wraps data at { success, data: { ... } }.
+        // For freemium, the handler returns apiSuccess({ isFreemium: true, data: { ...subscription } }),
+        // so the subscription lives at envelope.data.data.
+        const body = envelope.data;
+        const subscriptionData = body && body.data ? body.data : body;
 
         // Step 4: Replace optimistic with actual data
         setOptimisticSub(null);
         queryClient.setQueryData(['subscription', userId], (old: any) => ({
           ...old,
-          subscription: data.subscription,
-          planCode: data.subscription.planCode,
-          status: data.subscription.status,
+          subscription: subscriptionData,
+          planCode: subscriptionData?.planCode,
+          status: subscriptionData?.status,
         }));
 
         // Invalidate to refetch fresh data
         queryClient.invalidateQueries({ queryKey: ['subscription', userId] });
 
         if (onSuccess) {
-          onSuccess(data.subscription);
+          onSuccess(subscriptionData);
         }
 
-        return data.subscription;
+        return subscriptionData;
       } catch (error) {
         // Step 5: Rollback optimistic update on error
         if (error instanceof Error && error.name === 'AbortError') {

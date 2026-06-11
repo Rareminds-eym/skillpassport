@@ -13,9 +13,8 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 import { transcribeVideo } from '../utils/transcription';
 import { 
   generateVideoSummary, 
@@ -57,17 +56,15 @@ interface VideoSummarizerRequestBody {
  * - Full video summary data
  */
 export const onRequestPost = async (context: AuthenticatedContext) => {
+  const { request, env, waitUntil } = context;
   try {
-    const { request, env, waitUntil, data } = context;
-    const user = data.user;
-    const userId = user.sub;
 
     // Parse request body
     let body: VideoSummarizerRequestBody;
     try {
       body = await request.json() as VideoSummarizerRequestBody;
     } catch (error) {
-      return jsonResponse({ error: 'Invalid JSON in request body' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', request);
     }
 
     const { 
@@ -81,7 +78,7 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
 
     // Validate required fields
     if (!videoUrl) {
-      return jsonResponse({ error: 'Video URL is required' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Video URL is required', request);
     }
 
     // Create Supabase admin client for database operations
@@ -96,7 +93,7 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
       .maybeSingle();
 
     if (existing) {
-      return jsonResponse(existing, 200);
+      return apiSuccess(existing, request);
     }
 
     // Check if already processing
@@ -108,11 +105,12 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
       .maybeSingle();
 
     if (inProgress) {
-      return jsonResponse(
+      return apiSuccess(
         { 
           ...inProgress, 
           message: 'Video is being processed. Poll for status updates.' 
         }, 
+        request,
         202
       );
     }
@@ -132,10 +130,7 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
 
     if (insertError) {
       console.error('Failed to create processing record:', insertError);
-      return jsonResponse(
-        { error: `Failed to create record: ${insertError.message}` }, 
-        500
-      );
+      return apiError(500, 'INTERNAL_ERROR', `Failed to create record: ${insertError.message}`, request);
     }
 
     const recordId = record.id;
@@ -229,21 +224,19 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
     })());
 
     // Return immediately with 202 Accepted
-    return jsonResponse(
+    return apiSuccess(
       {
         id: recordId,
         video_url: videoUrl,
         processing_status: 'processing',
         message: 'Video processing started. Poll for status updates.'
       },
+      request,
       202
     );
 
   } catch (error) {
     console.error('AI video summarizer error:', error);
-    return jsonResponse(
-      { error: 'Internal server error' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 };

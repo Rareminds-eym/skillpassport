@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/ui/Di
 import { Input } from '@/shared/ui/Input';
 import { Label } from '@/shared/ui/Label';
 import { Progress } from '@/shared/ui/Progress';
-import { supabase } from "@/shared/api";
+import { apiPost } from '@/shared/api/apiClient';
 import { Textarea } from '@/shared/ui/Textarea';
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
@@ -627,16 +627,14 @@ const UnifiedProfileEditModal = ({
     // For hide/show, we need to update the database directly without triggering versioning
     // We'll update just the enabled field for this specific item
     try {
-      // Get table name from config (defaults to 'certificates' for backward compatibility)
       const tableName = config.tableName || 'certificates';
 
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from(tableName)
-        .update({ enabled: newState })
-        .eq('id', item.id);
-
-      if (error) throw error;
+      await apiPost('/learners/profile', {
+        action: 'toggle-visibility',
+        tableName,
+        itemId: item.id,
+        enabled: newState,
+      });
 
       // Trigger parent refresh if available
       if (typeof onSave === 'function' && onSave.refresh) {

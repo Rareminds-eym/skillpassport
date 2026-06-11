@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -22,7 +23,6 @@ import {
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import MessageService, { Conversation } from '@/features/messaging';
-import { supabase } from '@/shared/api/supabaseClient';
 import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -229,7 +229,7 @@ const EducatorCommunication = () => {
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [schoolId, queryClient]);
   

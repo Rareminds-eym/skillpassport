@@ -7,7 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import loginIllustration from "@/assets/images/auth/Recruiter-illustration.png";
 import { SignupFormFields } from '@/features/subscription';
 import { capitalizeFirstLetter, formatOtp, formatPhoneNumber, getInitialFormData, validateSignupFields } from "@/features/subscription";
-import { supabase } from "@/shared/api/supabaseClient";
+import { ssoClient } from "@/shared/api/ssoClient";
 import FeatureCard from "@/features/auth/ui/FeatureCard";
 
 export default function SignupRecruiter() {
@@ -65,7 +65,7 @@ export default function SignupRecruiter() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!formData.otp || formData.otp.length !== 6) return;
+    if (!formData.otp || formData.otp.length !== 4) return;
     setVerifyingOtp(true);
     try {
       const result = await verifyOtpApi(formData.phone, formData.otp);
@@ -114,7 +114,7 @@ export default function SignupRecruiter() {
       const { getApiUrl } = await import('@/shared/api/apiUtils');
       const USER_API_URL = getApiUrl('user');
 
-      const response = await fetch(`${USER_API_URL}/signup/recruiter`, {
+      const response = await ssoClient.fetch(`${USER_API_URL}/signup/recruiter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

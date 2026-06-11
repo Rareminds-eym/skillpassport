@@ -1,4 +1,17 @@
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(',')[1] || result);
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export interface Circular {
   id: string;
@@ -46,254 +59,75 @@ export interface UpdateCircularData extends Partial<CreateCircularData> {
 }
 
 class CircularService {
-  /**
-   * Create a new circular
-   */
   async createCircular(data: CreateCircularData): Promise<Circular> {
-    const user = useAuthStore.getState().user;
-    if (!user.user) throw new Error('Not authenticated');
-
-    const { data: circular, error } = await supabase
-      .from('circulars')
-      .insert({
-        ...data,
-        created_by: user.user.id,
-        status: 'draft',
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return circular;
+    const result: any = await apiPost('/college-admin/circulars', { action: 'create', ...data });
+    return result.data;
   }
 
-  /**
-   * Update a circular
-   */
   async updateCircular(id: string, data: UpdateCircularData): Promise<Circular> {
-    const { data: circular, error } = await supabase
-      .from('circulars')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return circular;
+    const result: any = await apiPost('/college-admin/circulars', { action: 'update', id, ...data });
+    return result.data;
   }
 
-  /**
-   * Publish a circular
-   */
   async publishCircular(id: string): Promise<Circular> {
-    const { data: circular, error } = await supabase
-      .from('circulars')
-      .update({
-        status: 'published',
-        published_at: new Date().toISOString(),
-        publish_date: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Create recipients
-    await this.createRecipients(id);
-
-    return circular;
+    const result: any = await apiPost('/college-admin/circulars', { action: 'publish', id });
+    return result.data;
   }
 
-  /**
-   * Archive a circular
-   */
   async archiveCircular(id: string): Promise<Circular> {
-    const { data: circular, error } = await supabase
-      .from('circulars')
-      .update({
-        status: 'archived',
-        archived_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return circular;
+    const result: any = await apiPost('/college-admin/circulars', { action: 'archive', id });
+    return result.data;
   }
 
-  /**
-   * Delete a circular
-   */
   async deleteCircular(id: string): Promise<void> {
-    const { error } = await supabase.from('circulars').delete().eq('id', id);
-    if (error) throw error;
+    await apiPost('/college-admin/circulars', { action: 'delete', id });
   }
 
-  /**
-   * Get all circulars (admin view)
-   */
-  async getCirculars(filters?: {
-    status?: string;
-    college_id?: string;
-    search?: string;
-  }): Promise<Circular[]> {
-    let query = supabase
-      .from('circulars')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (filters?.status) {
-      query = query.eq('status', filters.status);
-    }
-
-    if (filters?.college_id) {
-      query = query.eq('college_id', filters.college_id);
-    }
-
-    if (filters?.search) {
-      query = query.or(`title.ilike.%${filters.search}%,message.ilike.%${filters.search}%`);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
+  async getCirculars(filters?: { status?: string; college_id?: string; search?: string }): Promise<Circular[]> {
+    const result: any = await apiPost('/college-admin/circulars', { action: 'get-all', ...filters });
+    return result.data || [];
   }
 
-  /**
-   * Get a single circular
-   */
   async getCircular(id: string): Promise<Circular> {
-    const { data, error } = await supabase
-      .from('circulars')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-    return data;
+    const result: any = await apiPost('/college-admin/circulars', { action: 'get', id });
+    return result.data;
   }
 
-  /**
-   * Get circulars for current user
-   */
   async getMyCirculars(): Promise<Circular[]> {
-    const user = useAuthStore.getState().user;
-    if (!user.user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('circulars')
-      .select(`
-        *,
-        circular_recipients!inner(is_read, read_at)
-      `)
-      .eq('circular_recipients.user_id', user.user.id)
-      .eq('status', 'published')
-      .order('publish_date', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const result: any = await apiPost('/college-admin/circulars', { action: 'get-my' });
+    return result.data || [];
   }
 
-  /**
-   * Get unread circulars count
-   */
   async getUnreadCount(): Promise<number> {
-    const user = useAuthStore.getState().user;
-    if (!user.user) throw new Error('Not authenticated');
-
-    const { count, error } = await supabase
-      .from('circular_recipients')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.user.id)
-      .eq('is_read', false);
-
-    if (error) throw error;
-    return count || 0;
+    const result: any = await apiPost('/college-admin/circulars', { action: 'get-unread-count' });
+    return result.data || 0;
   }
 
-  /**
-   * Mark circular as read
-   */
   async markAsRead(circularId: string): Promise<void> {
-    const user = useAuthStore.getState().user;
-    if (!user.user) throw new Error('Not authenticated');
-
-    const { error } = await supabase.rpc('mark_circular_read', {
-      p_circular_id: circularId,
-      p_user_id: user.user.id,
-    });
-
-    if (error) throw error;
+    await apiPost('/college-admin/circulars', { action: 'mark-read', circular_id: circularId });
   }
 
-  /**
-   * Create recipients for a circular
-   */
-  private async createRecipients(circularId: string): Promise<void> {
-    const { error } = await supabase.rpc('create_circular_recipients', {
-      p_circular_id: circularId,
-    });
-
-    if (error) throw error;
+  async getCircularStats(circularId: string): Promise<{ total_recipients: number; read_count: number; unread_count: number; read_percentage: number }> {
+    const result: any = await apiPost('/college-admin/circulars', { action: 'get-stats', circular_id: circularId });
+    return result.data;
   }
 
-  /**
-   * Get circular statistics
-   */
-  async getCircularStats(circularId: string): Promise<{
-    total_recipients: number;
-    read_count: number;
-    unread_count: number;
-    read_percentage: number;
-  }> {
-    const { data: recipients, error: recipientsError } = await supabase
-      .from('circular_recipients')
-      .select('is_read')
-      .eq('circular_id', circularId);
-
-    if (recipientsError) throw recipientsError;
-
-    const total = recipients?.length || 0;
-    const read = recipients?.filter((r) => r.is_read).length || 0;
-    const unread = total - read;
-    const percentage = total > 0 ? (read / total) * 100 : 0;
-
-    return {
-      total_recipients: total,
-      read_count: read,
-      unread_count: unread,
-      read_percentage: Math.round(percentage * 10) / 10,
-    };
-  }
-
-  /**
-   * Upload attachment
-   */
   async uploadAttachment(file: File, circularId: string): Promise<string> {
     const fileExt = file.name.split('.').pop();
     const fileName = `${circularId}/${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('circular-attachments')
-      .upload(fileName, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data } = supabase.storage
-      .from('circular-attachments')
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
+    const base64 = await fileToBase64(file);
+    const result: any = await apiPost('/college-admin/storage', {
+      action: 'upload',
+      bucket: 'circular-attachments',
+      path: fileName,
+      file_base64: base64,
+      content_type: file.type || 'application/octet-stream',
+    });
+    return result?.data?.publicUrl;
   }
 
-  /**
-   * Auto-expire circulars
-   */
   async autoExpireCirculars(): Promise<void> {
-    const { error } = await supabase.rpc('auto_expire_circulars');
-    if (error) throw error;
+    await apiPost('/college-admin/circulars', { action: 'auto-expire' });
   }
 }
 

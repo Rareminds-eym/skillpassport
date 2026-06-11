@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 /**
  * Service for analyzing skills demand from opportunities
@@ -22,30 +22,27 @@ export class SkillsAnalyticsService {
   static async debugOpportunitiesTable() {
     try {
       this.log('=== DEBUGGING OPPORTUNITIES TABLE ===');
-      
-      // Check table structure by fetching sample records
-      const { data: samples, error: sampleError } = await supabase
-        .from('opportunities')
-        .select('*')
-        .limit(5);
 
-      if (sampleError) {
-        this.error('Error fetching sample opportunities:', sampleError);
+      const response = await apiPost('/recruiter-pipeline', { action: 'debug-opportunities-table' });
+
+      if (!response) {
+        this.error('Error fetching debug data: no response');
         return;
       }
 
-      if (samples && samples.length > 0) {
-        this.log('Sample opportunity structure:', Object.keys(samples[0]));
-        
-        // Analyze different skill formats in the samples
+      const data = response.data || response;
+
+      this.log('Sample opportunity structure:', Object.keys(data.samples?.[0] || {}));
+
+      if (data.samples?.length > 0) {
         this.log('=== SKILL FORMAT ANALYSIS ===');
-        samples.forEach((sample, index) => {
+        data.samples.forEach((sample, index) => {
           this.log(`Sample ${index + 1}:`);
           this.log(`  ID: ${sample.id}, Title: ${sample.job_title}`);
           this.log(`  Skills Type: ${typeof sample.skills_required}`);
           this.log(`  Is Array: ${Array.isArray(sample.skills_required)}`);
           this.log(`  Raw Skills:`, sample.skills_required);
-          
+
           if (sample.skills_required) {
             const parsed = this.parseSkills(sample.skills_required);
             this.log(`  Parsed Skills (${parsed.length}):`, parsed);
@@ -54,60 +51,12 @@ export class SkillsAnalyticsService {
         });
       }
 
-      // Count total opportunities
-      const { count: totalCount } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true });
+      this.log(`Total opportunities in table: ${data.totalCount}`);
+      this.log(`Active opportunities: ${data.activeCount}`);
+      this.log(`Active opportunities with skills: ${data.skillsCount}`);
 
-      this.log(`Total opportunities in table: ${totalCount}`);
-
-      // Count active opportunities
-      const { count: activeCount } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-
-      this.log(`Active opportunities: ${activeCount}`);
-
-      // Count opportunities with skills
-      const { count: skillsCount } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .not('skills_required', 'is', null);
-
-      this.log(`Active opportunities with skills: ${skillsCount}`);
-
-      // Analyze skill format distribution
-      const { data: allSkillsData } = await supabase
-        .from('opportunities')
-        .select('skills_required')
-        .eq('is_active', true)
-        .not('skills_required', 'is', null)
-        .limit(100); // Sample first 100
-
-      if (allSkillsData) {
-        const formatCounts = {
-          array: 0,
-          string: 0,
-          object: 0,
-          other: 0
-        };
-
-        allSkillsData.forEach(item => {
-          const skills = item.skills_required;
-          if (Array.isArray(skills)) {
-            formatCounts.array++;
-          } else if (typeof skills === 'string') {
-            formatCounts.string++;
-          } else if (typeof skills === 'object') {
-            formatCounts.object++;
-          } else {
-            formatCounts.other++;
-          }
-        });
-
-        this.log('Skill format distribution (sample of 100):', formatCounts);
+      if (data.formatDistribution) {
+        this.log('Skill format distribution (sample of 100):', data.formatDistribution);
       }
 
       this.log('=== DEBUG COMPLETE ===');
@@ -197,106 +146,26 @@ export class SkillsAnalyticsService {
   static async getTopSkillsInDemand(limit = 5) {
     try {
       this.log(`Starting getTopSkillsInDemand with limit: ${limit}`);
-      
-      // Fetch all active opportunities with their skills_required field
-      this.log('Fetching opportunities from database...');
-      const { data: opportunities, error } = await supabase
-        .from('opportunities')
-        .select('skills_required, job_title, id')
-        .eq('is_active', true)
-        .not('skills_required', 'is', null);
 
-      if (error) {
-        this.error('Error fetching opportunities:', error);
+      const response = await apiPost('/recruiter-pipeline', { action: 'get-top-skills-in-demand', limit });
+
+      if (!response) {
+        this.error('Error fetching skills: no response');
         return [];
       }
 
-      this.log(`Fetched ${opportunities?.length || 0} opportunities`);
+      const data = response?.data?.skills || [];
 
-      if (!opportunities || opportunities.length === 0) {
+      this.log(`Fetched skills data from backend`);
+
+      if (data.length === 0) {
         this.log('No opportunities found with skills_required');
         return [];
       }
 
-      // Debug: Show sample opportunities with different formats
-      this.log('Sample opportunities with skill formats:');
-      opportunities.slice(0, 5).forEach((opp, index) => {
-        this.log(`  ${index + 1}. ID: ${opp.id}, Title: ${opp.job_title}`);
-        this.log(`     Skills Type: ${typeof opp.skills_required}, IsArray: ${Array.isArray(opp.skills_required)}`);
-        this.log(`     Raw Skills:`, opp.skills_required);
-        this.log(`     Parsed Skills:`, this.parseSkills(opp.skills_required));
-      });
+      this.log(`Top ${limit} skills for display:`, data);
 
-      // Count skill occurrences with enhanced parsing
-      this.log('Starting enhanced skill analysis...');
-      const skillCounts = {};
-      let processedOpportunities = 0;
-      let totalSkillsFound = 0;
-      let formatStats = {
-        array: 0,
-        string: 0,
-        object: 0,
-        other: 0,
-        empty: 0
-      };
-      
-      opportunities.forEach((opportunity) => {
-        const skillsData = opportunity.skills_required;
-        
-        // Track format statistics
-        if (!skillsData) {
-          formatStats.empty++;
-          return;
-        } else if (Array.isArray(skillsData)) {
-          formatStats.array++;
-        } else if (typeof skillsData === 'string') {
-          formatStats.string++;
-        } else if (typeof skillsData === 'object') {
-          formatStats.object++;
-        } else {
-          formatStats.other++;
-        }
-
-        // Parse skills using the enhanced parser
-        const parsedSkills = this.parseSkills(skillsData);
-        
-        if (parsedSkills.length > 0) {
-          processedOpportunities++;
-          
-          parsedSkills.forEach(skill => {
-            const normalizedSkill = skill.trim();
-            if (normalizedSkill) {
-              skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
-              totalSkillsFound++;
-            }
-          });
-        }
-      });
-
-      this.log('Format Statistics:', formatStats);
-      this.log(`Processed ${processedOpportunities} opportunities with skills`);
-      this.log(`Found ${totalSkillsFound} total skill entries`);
-      this.log(`Unique skills count: ${Object.keys(skillCounts).length}`);
-
-      // Show top 10 skills for debugging
-      const topSkillsDebug = Object.entries(skillCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
-      this.log('Top 10 skills found:', topSkillsDebug);
-
-      // Convert to array and sort by count
-      const sortedSkills = Object.entries(skillCounts)
-        .map(([skill, count]) => ({
-          skill,
-          count,
-          percentage: Math.round((count / opportunities.length) * 100)
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, limit);
-
-      this.log(`Top ${limit} skills for display:`, sortedSkills);
-
-      return sortedSkills;
+      return data;
     } catch (error) {
       this.error('Error in getTopSkillsInDemand:', error);
       return [];
@@ -311,20 +180,19 @@ export class SkillsAnalyticsService {
   static async getSkillsDemandAnalysis(limit = 5) {
     try {
       const topSkills = await this.getTopSkillsInDemand(limit);
-      
-      // Get total opportunities count for context
-      const { count: totalOpportunities } = await supabase
-        .from('opportunities')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
+
+      const response = await apiPost('/recruiter-pipeline', { action: 'get-skills-demand-analysis', limit });
+
+      const analysisData = response?.data || response || {};
+      const totalOpportunities = analysisData.totalOpportunities || 0;
 
       return {
         topSkills,
-        totalOpportunities: totalOpportunities || 0,
+        totalOpportunities,
         lastUpdated: new Date().toISOString(),
         analysis: {
           mostDemandedSkill: topSkills[0]?.skill || null,
-          averageDemand: topSkills.length > 0 
+          averageDemand: topSkills.length > 0
             ? Math.round(topSkills.reduce((sum, skill) => sum + skill.count, 0) / topSkills.length)
             : 0
         }

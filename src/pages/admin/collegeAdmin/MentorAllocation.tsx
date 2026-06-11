@@ -14,9 +14,9 @@ import {
   ClockIcon,
 } from "@heroicons/react/24/outline";
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
 
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 import { useMentorAllocation } from '@/features/college-admin/model/useMentorAllocation';
 import { findAllocationId, updateMentorAllocation } from "@/features/college-admin";
 import { SearchBar } from '@/shared/ui';
@@ -99,26 +99,14 @@ const MentorAllocation: React.FC = () => {
       if (!user?.id) return;
       
       try {
-        const { data: lecturerData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
+        const orgRes: any = await apiPost('/college-admin/actions', {
+          action: 'get-org-by-admin-or-email',
+          userId: user.id,
+          email: user.email
+        });
 
-        if (lecturerData?.collegeId) {
-          setCollegeId(lecturerData.collegeId);
-          return;
-        }
-
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('admin_id', user.id)
-          .eq('organization_type', 'college')
-          .maybeSingle();
-
-        if (orgData?.id) {
-          setCollegeId(orgData.id);
+        if (orgRes.success && orgRes.data?.id) {
+          setCollegeId(orgRes.data.id);
         }
       } catch (error) {
         logger.error('Error fetching college ID:', error as Error);
@@ -367,29 +355,12 @@ const MentorAllocation: React.FC = () => {
     try {
       logger.info('Fetching assigned learners info...');
       
-      const { data: allocations, error } = await supabase
-        .from('college_mentor_learner_allocations')
-        .select(`
-          learner_id,
-          mentor_id
-        `)
-        .in('status', ['active', 'pending']);
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-mentor-allocations-with-names'
+      });
       
-      // Fetch mentor names separately
-      let allocationsWithMentors = allocations;
-      if (allocations && allocations.length > 0) {
-        const mentorIds = [...new Set(allocations.map(a => a.mentor_id))];
-        const { data: mentorsData } = await supabase
-          .from('college_lecturers')
-          .select('id, first_name, last_name')
-          .in('id', mentorIds);
-        
-        const mentorMap = new Map(mentorsData?.map(m => [m.id, m]) || []);
-        allocationsWithMentors = allocations.map(allocation => ({
-          ...allocation,
-          college_lecturers: mentorMap.get(allocation.mentor_id)
-        }));
-      }
+      const allocationsWithMentors = res.success ? res.data : null;
+      const error = res.success ? null : res.error;
 
       logger.info('Allocations query result:', { allocationsCount: allocationsWithMentors?.length, error });
 
@@ -482,38 +453,25 @@ const MentorAllocation: React.FC = () => {
         return;
       }
 
-      // ✅ VALIDATION: Check if any learners are already assigned to a mentor
-      const { data: existingAllocations, error: checkError } = await supabase
-        .from('college_mentor_learner_allocations')
-        .select(`
-          learner_id,
-          mentor_id
-        `)
-        .in('learner_id', learnerUuids)
-        .eq('status', 'active');
+      const checkRes: any = await apiPost('/college-admin/actions', {
+        action: 'check-existing-allocations',
+        learner_ids: learnerUuids
+      });
 
-      if (checkError) {
-        logger.error('Error checking existing allocations:', checkError as Error);
+      if (!checkRes.success) {
+        logger.error('Error checking existing allocations:', checkRes.error);
         toast.error('Failed to validate learner assignments');
         return;
       }
 
+      const existingAllocations = checkRes.data;
+
       if (existingAllocations && existingAllocations.length > 0) {
-        // Fetch mentor names separately
-        const mentorIds = [...new Set(existingAllocations.map(a => a.mentor_id))];
-        const { data: mentorsData } = await supabase
-          .from('college_lecturers')
-          .select('id, first_name, last_name')
-          .in('id', mentorIds);
-        
-        const mentorMap = new Map(mentorsData?.map(m => [m.id, m]) || []);
-        
         // Build error message with mentor names
-        const alreadyAssignedlearners = existingAllocations.map(allocation => {
+        const alreadyAssignedlearners = existingAllocations.map((allocation: any) => {
           const learner = dynamicUnallocatedlearners.find(s => s.id === allocation.learner_id);
-          const mentor = mentorMap.get(allocation.mentor_id);
-          const mentorName = mentor 
-            ? `${mentor.first_name} ${mentor.last_name}`.trim()
+          const mentorName = allocation.college_lecturers 
+            ? `${allocation.college_lecturers.first_name} ${allocation.college_lecturers.last_name}`.trim()
             : 'Unknown Mentor';
           return {
             learnerName: learner?.name || 'Unknown Learner',
@@ -1031,26 +989,13 @@ const MentorAllocation: React.FC = () => {
         return;
       }
 
-      // First, delete all learner allocations for this period
-      const { error: allocError } = await supabase
-        .from('college_mentor_learner_allocations')
-        .delete()
-        .eq('period_id', periodId);
+      const deleteRes: any = await apiPost('/college-admin/actions', {
+        action: 'delete-mentor-period',
+        period_id: periodId
+      });
 
-      if (allocError) {
-        logger.error('Error deleting allocations:', allocError as Error);
-        toast.error('Failed to delete period allocations. Please try again.');
-        return;
-      }
-
-      // Then delete the period itself
-      const { error: periodError } = await supabase
-        .from('college_mentor_periods')
-        .delete()
-        .eq('id', periodId);
-
-      if (periodError) {
-        logger.error('Error deleting period:', periodError as Error);
+      if (!deleteRes.success) {
+        logger.error('Error deleting period:', deleteRes.error);
         toast.error('Failed to delete period. Please try again.');
         return;
       }

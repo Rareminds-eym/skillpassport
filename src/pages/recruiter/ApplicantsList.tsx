@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { AppliedJobsService } from '@/features/opportunities';
 import { getAllPipelineCandidatesByStage, moveCandidateToStage } from '@/features/opportunities';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, ArrowDownTrayIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { MessageModal } from '@/features/messaging';
 import { useMessageNotifications } from '@/features/messaging';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarIcon, MapPinIcon, ClockIcon, UserGroupIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 interface Event {
   id: string;
@@ -36,67 +36,25 @@ const EventsTab: React.FC<EventsTabProps> = ({ learner, loading: externalLoading
       
       setLoading(true);
       try {
-        // COLLEGE EVENT SYSTEM - Fetch events the learner has registered for
-        // Note: This uses college_event_registrations (not event_registrations which is for paid external events)
-        const { data: registrations, error: regError } = await supabase
-          .from('college_event_registrations')
-          .select(`
-            event_id,
-            registered_at,
-            attended,
-            college_events (
-              id,
-              title,
-              description,
-              event_type,
-              start_date,
-              end_date,
-              venue,
-              status,
-              organizer,
-              max_participants,
-              created_at
-            )
-          `)
-          .eq('learner_id', learner.id);
-        
-        if (regError) {
-          // Fallback: try direct query if join fails
-          const { data: directRegs } = await supabase
-            .from('college_event_registrations')
-            .select('event_id')
-            .eq('learner_id', learner.id);
-          
-          if (directRegs && directRegs.length > 0) {
-            const eventIds = directRegs.map(r => r.event_id);
-            const { data: eventsData } = await supabase
-              .from('college_events')
-              .select('*')
-              .in('id', eventIds)
-              .order('start_date', { ascending: false });
-            
-            setEvents((eventsData || []).map(e => ({ ...e, is_registered: true })));
-          } else {
-            setEvents([]);
-          }
-        } else {
-          // Extract events from registrations
-          const learnerEvents = (registrations || [])
-            .filter(r => r.college_events)
-            .map(r => ({
-              ...(r.college_events as any),
-              is_registered: true,
-              attended: r.attended,
-              registered_at: r.registered_at
-            }))
-            .sort((a, b) => {
-              const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
-              const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
-              return dateB - dateA;
-            });
-          
-          setEvents(learnerEvents);
-        }
+        const res = await apiPost('/learner-profile/actions', {
+          action: 'fetch-learner-club-event-data',
+          learnerId: learner.id,
+        });
+        const registrations: any[] = res?.data?.events ?? [];
+        const learnerEvents = registrations
+          .filter((r: any) => r.college_events)
+          .map((r: any) => ({
+            ...r.college_events,
+            is_registered: true,
+            attended: r.attended,
+            registered_at: r.registered_at,
+          }))
+          .sort((a: any, b: any) => {
+            const dateA = a.start_date ? new Date(a.start_date).getTime() : 0;
+            const dateB = b.start_date ? new Date(b.start_date).getTime() : 0;
+            return dateB - dateA;
+          });
+        setEvents(learnerEvents);
       } catch (err) {
         setEvents([]);
       } finally {

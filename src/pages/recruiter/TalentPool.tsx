@@ -567,8 +567,7 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
 
       const { data, error } = await createSavedSearch(
         searchName.trim(),
-        searchCriteria,
-        'current-user' // Replace with actual user ID when auth is implemented
+        searchCriteria
       );
 
       if (error) {

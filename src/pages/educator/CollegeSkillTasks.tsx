@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { useState, useMemo, useEffect } from "react";
 import { 
   Search, Users, Calendar, Trophy, Plus, X, 
@@ -11,7 +12,6 @@ import {
   MoreVertical,
   Trash2
 } from "lucide-react";
-import { supabase } from '@/shared/api/supabaseClient';
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import toast from "react-hot-toast";
 import * as collegeAssignmentService from "@/features/college-admin";

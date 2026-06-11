@@ -13,7 +13,7 @@ import * as fc from 'fast-check';
 
 // Mock service binding interface
 interface ServiceBinding {
-  ssoClient.fetch(request: Request): Promise<Response>;
+  fetch(request: Request): Promise<Response>;
 }
 
 // Mock environment with service bindings

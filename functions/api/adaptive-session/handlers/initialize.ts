@@ -5,12 +5,12 @@
  * Creates a new adaptive aptitude test session
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse, apiSuccess } from '../../../lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import type { GradeLevel, InitializeTestResult } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
-import { authenticateUser } from '../../shared/auth';
+import { getContextUser } from '../../../lib/auth';
 import { fetchDiagnosticQuestions, extractGradeNumber, learnerGradeToGradeLevel } from '../utils/question-bank';
 
 /**
@@ -28,12 +28,10 @@ export const initializeHandler: PagesFunction = async (context) => {
   const { request, env } = context;
 
   try {
-    // Authenticate user
-    const auth = await authenticateUser(request, env as unknown as Record<string, string>);
-    if (!auth) {
-      console.error('❌ [InitializeHandler] Authentication required');
-      return jsonResponse({ error: 'Authentication required' }, 401);
-    }
+    const user = getContextUser(context);
+    
+    // Create an auth object to preserve compatibility with existing code
+    const auth = { user };
 
     console.log('✅ [InitializeHandler] User authenticated:', auth.user.id);
 
@@ -121,7 +119,9 @@ export const initializeHandler: PagesFunction = async (context) => {
           firstQuestion: currentPhaseQuestions[0] || null,
         };
 
-        return jsonResponse(result, 200);
+        // Use the standard apiSuccess envelope so the whole adaptive-session
+        // module is consistent (every other handler envelopes its response).
+        return apiSuccess(result, request, 200);
       } else {
         return jsonResponse(
           {
@@ -194,7 +194,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       firstQuestion: diagnosticQuestions[0],
     };
 
-    return jsonResponse(result, 201);
+    return apiSuccess(result, request, 201);
 
   } catch (error) {
     console.error('❌ [InitializeHandler] Error:', error);

@@ -36,8 +36,11 @@ export enum EducationLevel {
  */
 export interface LearnerData {
     university_college_id?: string | null;
+    universityCollegeId?: string | null;
     college_id?: string | null;  // Alias used in some files
+    collegeId?: string | null;
     school_id?: string | null;
+    schoolId?: string | null;
     grade?: string | null;
     role?: string | null;
     program_id?: string | null;
@@ -107,34 +110,35 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
     if (learner.learner_type) {
         const typeStr = String(learner.learner_type).toLowerCase().trim();
         
-        if (typeStr === 'school_student') {
+        if (typeStr === 'school_student' || typeStr === 'school') {
             const level = getGradeLevelFromGrade(learner.grade) as EducationLevel | null;
             return {
                 isCollegeLearner: false,
                 isSchoolLearner: true,
                 isLearner: false,
                 educationLevel: level,
-                institutionId: learner.school_id || null,
+                institutionId: learner.school_id || learner.schoolId || null,
                 category: LearnerCategory.SCHOOL_STUDENT
             };
         }
         
-        if (typeStr === 'college_student') {
+        if (typeStr === 'college_student' || typeStr === 'college') {
             return {
                 isCollegeLearner: true,
                 isSchoolLearner: false,
                 isLearner: false,
                 educationLevel: EducationLevel.COLLEGE,
-                institutionId: learner.university_college_id || null,
+                institutionId: learner.university_college_id || learner.universityCollegeId || learner.college_id || learner.collegeId || null,
                 category: LearnerCategory.COLLEGE_STUDENT
             };
         }
     }
 
     // Normalize college_id alias (some files use college_id, others use university_college_id)
-    const collegeId = learner.university_college_id || learner.college_id;
+    const collegeId = learner.university_college_id || learner.universityCollegeId || learner.college_id || learner.collegeId;
     const hasCollegeId = Boolean(collegeId);
-    const hasSchoolId = Boolean(learner.school_id);
+    const schoolId = learner.school_id || learner.schoolId;
+    const hasSchoolId = Boolean(schoolId);
 
     // Extract role from multiple possible sources (priority order):
     // 1. userRole (direct property from learnerSettingsService)
@@ -179,7 +183,7 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
                 isSchoolLearner: true,
                 isLearner: false,
                 educationLevel: level,
-                institutionId: learner.school_id || null,
+                institutionId: schoolId || null,
                 category: LearnerCategory.SCHOOL_STUDENT
             };
         }
@@ -212,7 +216,7 @@ export function determinelearnerType(learner: LearnerData | null | undefined): L
             isSchoolLearner: true,
             isLearner: false,
             educationLevel: level,
-            institutionId: learner.school_id || null,
+            institutionId: schoolId || null,
             category: LearnerCategory.SCHOOL_STUDENT
         };
     }

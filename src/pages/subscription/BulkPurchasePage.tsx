@@ -5,13 +5,14 @@
  * Provides organization context and handles purchase completion.
  */
 
+import { useAuthStore } from '@/shared/model/authStore';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import BulkPurchaseWizard from '@/features/subscription/ui/organization/BulkPurchaseWizard';
 import type { PurchaseData } from '@/features/subscription/ui/organization/BulkPurchaseWizard';
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { organizationMemberService } from '@/entities/organization';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
 import { getLogger } from '@/shared/config/logging';
@@ -62,7 +63,7 @@ function BulkPurchasePage() {
       if (userWithOrg?.collegeId) { setOrganizationId(String(userWithOrg.collegeId)); return; }
       if (userWithOrg?.universityId) { setOrganizationId(String(userWithOrg.universityId)); return; }
 
-      const storedUser = localStorage.getItem('user');
+      const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
@@ -76,7 +77,7 @@ function BulkPurchasePage() {
       let userEmail = user?.email;
 
       if (!userEmail) {
-        userEmail = localStorage.getItem('userEmail') || undefined;
+        userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || undefined;
       }
 
       if (!userId && !userEmail) {
@@ -85,55 +86,33 @@ function BulkPurchasePage() {
 
       try {
         if (organizationType === 'school' && userId) {
-          const { data: educatorData } = await supabase
-            .from('school_educators')
-            .select('school_id')
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          if (educatorData?.school_id) {
-            setOrganizationId(educatorData.school_id);
+          const result = await apiPost<any>('/subscription/actions', { action: 'get-school-by-user-id', userId });
+          if (result.data?.school_id) {
+            setOrganizationId(result.data.school_id);
             return;
           }
         }
 
         if (organizationType === 'college' && userId) {
-          const { data: lecturerData } = await supabase
-            .from('college_lecturers')
-            .select('collegeId')
-            .eq('user_id', userId)
-            .maybeSingle();
-
-          if (lecturerData?.collegeId) {
-            setOrganizationId(lecturerData.collegeId);
+          const result = await apiPost<any>('/subscription/actions', { action: 'get-college-by-user-id', userId });
+          if (result.data?.collegeId) {
+            setOrganizationId(result.data.collegeId);
             return;
           }
         }
 
         if (userEmail) {
-          const { data: orgByEmail } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', organizationType)
-            .ilike('email', userEmail)
-            .maybeSingle();
-
-          if (orgByEmail?.id) {
-            setOrganizationId(orgByEmail.id);
+          const result = await apiPost<any>('/subscription/actions', { action: 'get-org-by-email-and-type', email: userEmail, organizationType });
+          if (result.data?.id) {
+            setOrganizationId(result.data.id);
             return;
           }
         }
 
         if (userId) {
-          const { data: orgByAdminId } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', organizationType)
-            .eq('admin_id', userId)
-            .maybeSingle();
-
-          if (orgByAdminId?.id) {
-            setOrganizationId(orgByAdminId.id);
+          const result = await apiPost<any>('/subscription/actions', { action: 'get-org-by-admin-id', userId, organizationType });
+          if (result.data?.id) {
+            setOrganizationId(result.data.id);
             return;
           }
         }

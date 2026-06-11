@@ -17,22 +17,66 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 // @ts-ignore - JS module without types
 import {
   formatRegistrationDate,
+  FULL_REGISTRATION_START_DATE,
   getTimeUntilFullRegOpens,
-  isFullRegistrationOpen,
-  FULL_REGISTRATION_START_DATE
+  isFullRegistrationOpen
 } from '@/shared/config/registrationConfig';
 // Import OTP functions directly from otpService (not from index which has stubs)
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api/otpService';
 // @ts-ignore - JS module without types
 import { DatePicker } from '@/features/subscription';
 import { ssoClient } from '@/shared/api/ssoClient';
-import { useAuthStore } from '@/shared/model/authStore';
-import { AuthFetchError } from '@rareminds-eym/auth-client';
-import { OtpInput } from '@/shared/ui';
+import { PASSWORD_MIN } from '@/shared/constants';
 import { isLocalhost } from '@/shared/lib';
 import { trackSignup } from '@/shared/lib/analytics';
+import { useAuthStore } from '@/shared/model/authStore';
+import { OtpInput } from '@/shared/ui';
+import { AuthFetchError } from '@rareminds-eym/auth-client';
+// `UserRole` is canonically defined ONCE in the generated module (task 6.2).
+import type { UserRole } from '@/shared/types/generated/roles';
 
-type UserRole = 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
+/**
+ * UI-ONLY redirect label — NOT a canonical SSO `UserRole`.
+ *
+ * `recruitment_admin` is never sent to the SSO backend and is NEVER used in any
+ * authorization / role check. Selecting it in the signup dropdown simply means
+ * "I want to create a company": `handleSubmit` redirects to `/signup/company`
+ * and returns early before any SSO signup call (see the early `return` below).
+ *
+ * It is deliberately kept OUT of the canonical `UserRole` so the phantom role is
+ * never reintroduced into the authorization type (RBAC migration §2.4 / §6.4).
+ */
+const RECRUITMENT_ADMIN_REDIRECT = 'recruitment_admin' as const;
+
+/**
+ * The set of options the signup dropdown can offer: a curated subset of real
+ * SSO `UserRole`s plus the UI-only `recruitment_admin` redirect label above.
+ * This is a UI concern, distinct from the canonical `UserRole`.
+ */
+type SignupRoleOption = UserRole | typeof RECRUITMENT_ADMIN_REDIRECT;
+
+/**
+ * The concrete, ordered list of roles offered by the signup dropdown.
+ * `satisfies readonly SignupRoleOption[]` validates every real role against the
+ * canonical `UserRole` (typo-safe) while permitting the `recruitment_admin`
+ * redirect label. `OfferedSignupRole` is the exact union of these options, so
+ * the display-name and entity-type maps below stay exhaustive (no missing keys)
+ * without covering all 16 SSO roles.
+ */
+// NOTE: Educators (school_educator / college_educator) are intentionally NOT
+// offered here. Institutions onboard educators via the admin "Teacher/Educator
+// onboarding" (seat-based) flow, not the public self-signup. Their roles still
+// exist for login and admin-created accounts.
+const SIGNUP_ROLE_OPTIONS = [
+  'learner',
+  'recruiter',
+  RECRUITMENT_ADMIN_REDIRECT,
+  'school_admin',
+  'college_admin',
+  'university_admin',
+] as const satisfies readonly SignupRoleOption[];
+
+type OfferedSignupRole = (typeof SIGNUP_ROLE_OPTIONS)[number];
 
 interface SignupState {
   firstName: string;
@@ -43,7 +87,7 @@ interface SignupState {
   countryCode: string;
   password: string;
   confirmPassword: string;
-  selectedRole: UserRole | null;
+  selectedRole: OfferedSignupRole | null;
   country: string;
   state: string;
   city: string;
@@ -260,9 +304,11 @@ const UnifiedSignup = () => {
 
   // Get return URL from query params or session storage (for invitation flow)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
+  const invitationEmail = searchParams.get('email') || sessionStorage.getItem('invitation_email');
+  const invitationToken = sessionStorage.getItem('invitation_token');
 
   const [state, setState] = useState<SignupState>({
-    firstName: '', lastName: '', dateOfBirth: '', email: '', phone: '', countryCode: '+91',
+    firstName: '', lastName: '', dateOfBirth: '', email: invitationEmail || '', phone: '', countryCode: '+91',
     password: '', confirmPassword: '', selectedRole: null,
     country: 'IN', state: '', city: '', preferredLanguage: 'en', referralCode: '',
     agreeToTerms: false, otp: '', otpSent: false, otpVerified: false, verificationId: '',
@@ -292,15 +338,41 @@ const UnifiedSignup = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Clear persisted auth state when starting invitation signup
+  // This prevents old user email from localStorage interfering with invitation email
+  useEffect(() => {
+    if (invitationToken && invitationEmail) {
+      console.log('[UnifiedSignup] Invitation detected, clearing persisted auth state');
+      console.log('[UnifiedSignup] Invitation email:', invitationEmail);
+
+      // Clear the Zustand persisted state
+      localStorage.removeItem('skillpassport-auth-v1');
+
+      // Ensure the email state matches the invitation email
+      setState(prev => {
+        if (prev.email !== invitationEmail) {
+          console.log('[UnifiedSignup] Correcting email from', prev.email, 'to', invitationEmail);
+          return { ...prev, email: invitationEmail };
+        }
+        return prev;
+      });
+    }
+  }, [invitationToken, invitationEmail]);
+
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
-  const allRoles: UserRole[] = ['learner', 'school_educator', 'college_educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
+  // `allRoles` is the curated set of options the signup dropdown offers
+  // (SIGNUP_ROLE_OPTIONS above, which excludes educators — onboarded via the
+  // admin flow). 'recruitment_admin' is the UI-only redirect label (NOT an SSO
+  // role): it redirects to the company signup page (see handleSubmit early-return).
+  // 'recruiter' is for invitation-based signups (no company creation).
+  const allRoles = SIGNUP_ROLE_OPTIONS;
 
-  const getRoleDisplayName = (role: UserRole): string => {
-    const names: Record<UserRole, string> = {
+  const getRoleDisplayName = (role: OfferedSignupRole): string => {
+    const names: Record<OfferedSignupRole, string> = {
       learner: 'Learner',
-      school_educator: 'School Educator', college_educator: 'College Educator',
-      recruiter: 'Recruiter',
+      recruiter: 'Recruiter (I have an invitation)',
+      recruitment_admin: 'Recruitment Admin',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
     };
     return names[role];
@@ -463,7 +535,7 @@ const UnifiedSignup = () => {
       if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     }
 
-    if (!state.password || state.password.length < 10) { setState(prev => ({ ...prev, error: 'Password must be at least 10 characters' })); return false; }
+    if (!state.password || state.password.length < PASSWORD_MIN) { setState(prev => ({ ...prev, error: `Password must be at least ${PASSWORD_MIN} characters` })); return false; }
     const typesCount = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter(r => r.test(state.password!)).length;
     if (typesCount < 3) { setState(prev => ({ ...prev, error: 'Password must contain at least 3 of: uppercase letters, lowercase letters, numbers, special characters' })); return false; }
     if (state.password !== state.confirmPassword) { setState(prev => ({ ...prev, error: 'Passwords do not match' })); return false; }
@@ -505,6 +577,50 @@ const UnifiedSignup = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    console.log('=== SIGNUP FORM SUBMITTED ===');
+    console.log('[UnifiedSignup] Checking invitation token at form submit');
+    console.log('[UnifiedSignup] invitationToken constant:', invitationToken);
+    console.log('[UnifiedSignup] invitationToken from sessionStorage (fresh):', sessionStorage.getItem('invitation_token'));
+    console.log('[UnifiedSignup] invitationEmail:', invitationEmail);
+    console.log('[UnifiedSignup] returnUrl:', returnUrl);
+    console.log('[UnifiedSignup] selectedRole:', state.selectedRole);
+
+    // CRITICAL: Force email to match invitation email if invitation token exists
+    // This prevents using a stale email from a previous session
+    const emailToUse = invitationToken ? (invitationEmail || state.email) : state.email;
+    console.log('[UnifiedSignup] Email being used for signup:', emailToUse);
+    console.log('[UnifiedSignup] state.email value:', state.email);
+
+    if (invitationToken && emailToUse !== invitationEmail) {
+      console.error('[UnifiedSignup] ❌ EMAIL MISMATCH DETECTED!');
+      console.error('[UnifiedSignup] Expected (invitation):', invitationEmail);
+      console.error('[UnifiedSignup] Got (state.email):', state.email);
+      console.error('[UnifiedSignup] Using invitation email:', emailToUse);
+    }
+
+    // If user selected the UI-only Recruitment Admin label, redirect to company
+    // signup with their details. NOTE: `recruitment_admin` is never sent to the
+    // SSO backend and is not a real role — this branch returns early so every
+    // value passed to the backend below is a genuine SSO `UserRole`.
+    if (state.selectedRole === 'recruitment_admin') {
+      navigate('/signup/company', {
+        state: {
+          firstName: state.firstName,
+          lastName: state.lastName,
+          email: state.email,
+          phone: state.phone,
+          countryCode: state.countryCode,
+          password: state.password,
+          country: state.country,
+          state: state.state,
+          city: state.city,
+          preferredLanguage: state.preferredLanguage,
+          dateOfBirth: state.dateOfBirth,
+        }
+      });
+      return;
+    }
+
     // Track signup_submit — form is valid, API call is about to start
     trackSignup.submit(
       state.selectedRole || undefined,
@@ -523,21 +639,28 @@ const UnifiedSignup = () => {
         // Admin signup creates user + org
         const orgName = `${state.firstName} ${state.lastName}'s Institution`;
         const ssoResult = await ssoClient.signup({
-          email: state.email,
+          email: emailToUse,
           password: state.password,
           org_name: orgName,
+          role: state.selectedRole!,
           redirect_url: window.location.origin,
         });
         ssoUserId = ssoResult.user.id;
+        if (ssoResult.email_sent === false) {
+          sessionStorage.setItem('email_sent_failed', 'true');
+        }
       } else {
         // Member signup (learner, educator, recruiter) — no org creation
         const ssoResult = await ssoClient.signupMember({
-          email: state.email,
+          email: emailToUse, // Use the forced email, not state.email
           password: state.password,
           role: state.selectedRole!,
           redirect_url: window.location.origin,
         });
         ssoUserId = ssoResult.user.id;
+        if (ssoResult.email_sent === false) {
+          sessionStorage.setItem('email_sent_failed', 'true');
+        }
       }
 
       // Update auth store with the new user
@@ -567,7 +690,7 @@ const UnifiedSignup = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: ssoUserId,
-          email: state.email,
+          email: emailToUse, // Use the forced email, not state.email
           firstName: state.firstName,
           lastName: state.lastName,
           phone: state.phone || undefined,
@@ -587,11 +710,10 @@ const UnifiedSignup = () => {
       }
 
       // Step 3: Redirect based on role
-      const entityTypeMap: Record<UserRole, string> = {
+      const entityTypeMap: Record<OfferedSignupRole, string> = {
         learner: 'learner',
-        school_educator: 'educator',
-        college_educator: 'college-educator',
         recruiter: 'recruitment-recruiter',
+        recruitment_admin: 'recruitment-recruiter',
         school_admin: 'school',
         college_admin: 'college',
         university_admin: 'university-admin'
@@ -600,6 +722,123 @@ const UnifiedSignup = () => {
 
       // Track signup_success — profile created, about to redirect
       trackSignup.success(ssoUserId, state.email, state.selectedRole || 'unknown');
+
+      console.log('=== INVITATION AUTO-ACCEPTANCE DEBUG ===');
+      console.log('[UnifiedSignup] Signup successful, checking for invitation token');
+
+      // IMPORTANT: Read fresh from sessionStorage, not the stale constant
+      const freshInvitationToken = sessionStorage.getItem('invitation_token');
+      console.log('[UnifiedSignup] invitationToken (constant from mount):', invitationToken);
+      console.log('[UnifiedSignup] invitationToken (fresh from sessionStorage):', freshInvitationToken);
+      console.log('[UnifiedSignup] ssoUserId:', ssoUserId);
+      console.log('[UnifiedSignup] selectedRole:', state.selectedRole);
+      console.log('[UnifiedSignup] user email:', state.email);
+      console.log('[UnifiedSignup] Current origin:', window.location.origin);
+
+      // Check for invitation token and auto-accept if present
+      // This is important for recruiter signups via invitation
+      if (freshInvitationToken) {
+        console.log('[UnifiedSignup] ✓ Invitation token found, attempting auto-accept');
+        console.log('[UnifiedSignup] Request payload:', {
+          token: freshInvitationToken,
+          userId: ssoUserId,
+        });
+
+        try {
+          // Auto-accept the invitation
+          // IMPORTANT: Use relative URL to ensure it goes to the Pages Functions server, not SSO-Worker
+          const apiUrl = '/api/recruitment/invitations/accept';
+          console.log('[UnifiedSignup] Making POST request to:', apiUrl);
+          console.log('[UnifiedSignup] Full URL will be:', `${window.location.origin}${apiUrl}`);
+
+          const invitationResponse = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: freshInvitationToken,
+              userId: ssoUserId,
+            }),
+          });
+
+          console.log('[UnifiedSignup] Invitation API response status:', invitationResponse.status);
+          console.log('[UnifiedSignup] Invitation API response ok:', invitationResponse.ok);
+
+          if (invitationResponse.ok) {
+            const invitationResult = await invitationResponse.json();
+            console.log('[UnifiedSignup] ✓ Invitation accepted successfully:', invitationResult);
+
+            // CRITICAL FIX: After accepting invitation, force logout and redirect to login
+            // This is necessary because:
+            // 1. The invitation acceptance created a membership in SSO database
+            // 2. But the current JWT doesn't include this membership yet
+            // 3. User needs to login again to get a fresh JWT with the new role/membership
+            console.log('[UnifiedSignup] Step: Force logout to clear stale JWT');
+
+            // Store invitation context for post-login verification flow
+            sessionStorage.setItem('post_signup_verification_redirect', '/recruitment/overview');
+            sessionStorage.setItem('invitation_just_accepted', 'true');
+            sessionStorage.setItem('invitation_org_id', invitationResult.organizationId);
+            sessionStorage.setItem('invitation_role', invitationResult.role);
+
+            console.log('[UnifiedSignup] ✓ Stored post-verification context');
+            console.log('[UnifiedSignup] ✓ Clearing invitation tokens (no longer needed)');
+            sessionStorage.removeItem('invitation_token');
+            sessionStorage.removeItem('invitation_email');
+            sessionStorage.removeItem('invitation_return_url');
+
+            // Logout to clear the current JWT
+            try {
+              await ssoClient.logout();
+              console.log('[UnifiedSignup] ✓ Logged out successfully');
+            } catch (logoutError) {
+              console.warn('[UnifiedSignup] Logout failed (non-critical):', logoutError);
+            }
+
+            // Clear auth store
+            useAuthStore.setState({
+              user: null,
+              isAuthenticated: false,
+              role: null,
+              isLearner: false,
+              isEducator: false,
+              isAdmin: false,
+              isRecruiter: false,
+            });
+
+            // Redirect to verify-email page
+            // User will verify email, then get redirected based on stored context
+            console.log('[UnifiedSignup] ✓ Redirecting to verify-email page');
+            console.log('=== INVITATION AUTO-ACCEPTANCE SUCCESS - AWAITING EMAIL VERIFICATION ===');
+            navigate('/verify-email', { replace: true });
+            return; // Exit early, don't continue with normal flow
+          } else {
+            // If invitation acceptance fails, show error
+            const errorData = await invitationResponse.json();
+            console.error('[UnifiedSignup] ✗ Invitation API returned error:', errorData);
+            console.error('[UnifiedSignup] Response status:', invitationResponse.status);
+            console.error('[UnifiedSignup] Response statusText:', invitationResponse.statusText);
+            throw new Error(errorData.error || 'Failed to accept invitation');
+          }
+        } catch (invitationError) {
+          console.error('=== INVITATION AUTO-ACCEPTANCE FAILED ===');
+          console.error('[UnifiedSignup] ✗ Exception during auto-accept:', invitationError);
+          console.error('[UnifiedSignup] Error type:', invitationError instanceof Error ? 'Error' : typeof invitationError);
+          console.error('[UnifiedSignup] Error message:', invitationError instanceof Error ? invitationError.message : String(invitationError));
+          console.error('[UnifiedSignup] Error stack:', invitationError instanceof Error ? invitationError.stack : 'N/A');
+
+          // Show error to user instead of continuing
+          setState(prev => ({
+            ...prev,
+            loading: false,
+            error: 'Failed to accept invitation. Please try logging in to accept the invitation.'
+          }));
+          return;
+        }
+      } else {
+        console.log('[UnifiedSignup] ✗ No invitation token found in sessionStorage');
+        console.log('[UnifiedSignup] Continuing with normal signup flow');
+        console.log('=== INVITATION AUTO-ACCEPTANCE SKIPPED ===');
+      }
 
       // Check for return URL (invitation flow) - redirect there instead of subscription plans
       if (returnUrl) {
@@ -921,8 +1160,29 @@ const UnifiedSignup = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address <span className="text-red-500">*</span></label>
-                  <input type="email" name="email" value={state.email} onChange={handleInputChange} placeholder="john@example.com" className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Email Address <span className="text-red-500">*</span>
+                    {invitationEmail && <span className="text-xs text-blue-600 ml-2">(From invitation)</span>}
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={state.email}
+                    onChange={handleInputChange}
+                    placeholder="john@example.com"
+                    readOnly={!!invitationEmail}
+                    disabled={!!invitationEmail}
+                    autoComplete={invitationEmail ? "off" : "email"}
+                    data-lpignore="true"
+                    data-form-type="other"
+                    className={`block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none ${invitationEmail ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-50 focus:bg-white'
+                      }`}
+                  />
+                  {invitationEmail && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      This email is locked because you're accepting an invitation
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1093,7 +1353,7 @@ const UnifiedSignup = () => {
                     {state.roleDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
                         {allRoles.map(role => {
-                          const isAvailable = role === 'learner';
+                          const isAvailable = true; // All roles are now available
                           return (
                             <button
                               key={role}
@@ -1180,7 +1440,11 @@ const UnifiedSignup = () => {
                 <div className="flex gap-4 pt-4">
                   <button type="button" onClick={handlePrevStep} disabled={state.loading} className="px-6 py-4 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all">Back</button>
                   <button type="submit" disabled={state.loading || !state.agreeToTerms} className="flex-1 py-4 px-6 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                    {state.loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Create Account</span>}
+                    {state.loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <span>{state.selectedRole === 'recruitment_admin' ? 'Create Company Account' : 'Create Account'}</span>
+                    )}
                   </button>
                 </div>
               </div>

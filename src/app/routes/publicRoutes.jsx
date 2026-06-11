@@ -56,6 +56,12 @@ const OrganizationPaymentPage = lazy(() =>
 const AcceptInvitationPage = lazy(() =>
   import("@/pages/subscription/AcceptInvitationPage")
 );
+const InvitationSignup = lazy(() =>
+  import("@/pages/subscription/InvitationSignup")
+);
+const CompleteProfile = lazy(() =>
+  import("@/pages/auth/CompleteProfile")
+);
 
 const EventSales = lazy(() =>
   import("@/pages/event/EventSales")
@@ -76,6 +82,7 @@ const SkillPassportPreRegistration = lazy(() =>
 );
 
 const NetworkError = lazy(() => import("@/pages/NetworkError"));
+const Unauthorized = lazy(() => import("@/pages/Unauthorized"));
 
 const InternalTestingRegistration = lazy(() =>
   import("@/pages/register/InternalTestingRegistration")
@@ -85,11 +92,10 @@ const Register = lazy(() => import("@/pages/auth/components/SignIn/Register"));
 const UnifiedLogin = lazy(() => import("@/pages/auth/UnifiedLogin"));
 const UnifiedSignup = lazy(() => import("@/pages/auth/UnifiedSignup"));
 const UnifiedForgotPassword = lazy(() => import("@/features/auth/ui/UnifiedForgotPassword"));
-const PasswordReset = lazy(() => import("@/features/auth/ui/PasswordReset"));
 const TokenPasswordReset = lazy(() => import("@/pages/auth/TokenPasswordReset"));
-const ResetPassword = lazy(() => import("@/features/auth/ui/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/auth/VerifyEmail"));
 const AcceptInvite = lazy(() => import("@/pages/auth/AcceptInvite"));
+const CompanySignup = lazy(() => import("@/pages/auth/CompanySignup"));
 const SignupRecruiter = lazy(() =>
   import("@/pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );
@@ -154,9 +160,9 @@ export const publicRoutes = [
     {/* Unified Login */}
     <Route path="/login" element={<UnifiedLogin />} />
     <Route path="/signup" element={<UnifiedSignup />} />
+    <Route path="/signup/company" element={<CompanySignup />} />
     <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
-    <Route path="/password-reset" element={<TokenPasswordReset />} />
-    <Route path="/reset-password" element={<ResetPassword />} />
+    <Route path="/reset-password" element={<TokenPasswordReset />} />
     <Route path="/verify-email" element={<VerifyEmail />} />
     <Route path="/invite/accept" element={<AcceptInvite />} />
 
@@ -169,7 +175,8 @@ export const publicRoutes = [
     {/* Registration routes */}
     <Route path="/signup/recruitment" element={<Register />} />
     <Route path="/signup/:type" element={<Register />} />
-    <Route path="/signup/recruitment-recruiter" element={<SignupRecruiter />} />
+    {/* Individual recruiter signup disabled - recruiters must be invited by organization admins */}
+    <Route path="/signup/recruitment-recruiter" element={<Navigate to="/signup" replace />} />
     <Route path="/signup/recruitment-admin" element={<SignupAdmin />} />
     <Route path="/signin/school" element={<SignInSchool />} />
     <Route path="/signin/university" element={<SignInUniversity />} />
@@ -183,7 +190,11 @@ export const publicRoutes = [
     <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
     <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
     <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+    <Route path="/invitation/accept" element={<AcceptInvitationPage />} />
+    <Route path="/invitation/signup" element={<InvitationSignup />} />
+    <Route path="/complete-profile" element={<CompleteProfile />} />
     <Route path="/network-error" element={<NetworkError />} />
+    <Route path="/unauthorized" element={<Unauthorized />} />
     <Route path="/learner/profile/:learnerId" element={<LearnerPublicViewer />} />
   </Route>,
 

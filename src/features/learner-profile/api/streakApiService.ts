@@ -10,8 +10,6 @@ const API_URL = getApiUrl('streak');
 
 async function getAuthToken(): Promise<string> {
   try {
-    const { supabase } = await import('./supabaseClient');
-    const user = useAuthStore.getState().user;
     return ssoClient.getAccessToken() || '';
   } catch {
     return '';

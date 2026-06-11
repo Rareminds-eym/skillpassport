@@ -4,7 +4,7 @@
  * Uses optimized batch processing and multi-layer caching.
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 import { cosineSimilarity } from '@/shared/lib/vectorUtils';
 import { buildProfileText } from './profileBuilder';
 import { generateEmbedding } from '../../api/embeddingService';
@@ -229,38 +229,19 @@ export const getRecommendedCourses = async (assessmentResults) => {
  */
 const fallbackFetchByType = async (maxPerType) => {
   try {
-    const [technicalResult, softResult] = await Promise.all([
-      supabase
-        .from('courses')
-        .select('course_id, title, code, description, duration, category, skill_type')
-        .eq('status', 'Active')
-        .eq('skill_type', 'technical')
-        .is('deleted_at', null)
-        .limit(maxPerType),
-      supabase
-        .from('courses')
-        .select('course_id, title, code, description, duration, category, skill_type')
-        .eq('status', 'Active')
-        .eq('skill_type', 'soft')
-        .is('deleted_at', null)
-        .limit(maxPerType)
+    const [technicalRes, softRes] = await Promise.all([
+      apiGet(`/courses/by-category?skillType=technical&limit=${maxPerType}`),
+      apiGet(`/courses/by-category?skillType=soft&limit=${maxPerType}`),
     ]);
-
     return {
-      technical: (technicalResult.data || []).map(c => ({
-        ...c,
-        skills: [],
-        relevance_score: DEFAULT_FALLBACK_SCORE,
-        match_reasons: ['Recommended course'],
-        skill_gaps_addressed: []
+      technical: (technicalRes?.data || []).map(c => ({
+        ...c, skills: [], relevance_score: DEFAULT_FALLBACK_SCORE,
+        match_reasons: ['Recommended course'], skill_gaps_addressed: [],
       })),
-      soft: (softResult.data || []).map(c => ({
-        ...c,
-        skills: [],
-        relevance_score: DEFAULT_FALLBACK_SCORE,
-        match_reasons: ['Recommended course'],
-        skill_gaps_addressed: []
-      }))
+      soft: (softRes?.data || []).map(c => ({
+        ...c, skills: [], relevance_score: DEFAULT_FALLBACK_SCORE,
+        match_reasons: ['Recommended course'], skill_gaps_addressed: [],
+      })),
     };
   } catch (error) {
     console.error('Fallback fetch by type failed:', error);

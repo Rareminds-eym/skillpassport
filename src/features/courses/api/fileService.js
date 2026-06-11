@@ -3,8 +3,6 @@
  * Uses Cloudflare Worker (preferred) or Supabase Edge Function as fallback
  */
 
-import { getFileUrl } from '@/features/courses';
-
 // Get the API URL from environment variables
 const FILE_SERVER_URL = import.meta.env.VITE_FILE_SERVER_URL || import.meta.env.VITE_EXTERNAL_API_KEY || 'http://localhost:3001';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;

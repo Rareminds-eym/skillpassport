@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/shared/api/supabaseClient";
+import { apiPost } from '@/shared/api/apiClient';
 import { 
   collegeTimetableSlotsService, 
   collegeBreaksService, 
@@ -269,17 +269,14 @@ const CalendarTimetable: React.FC<CalendarTimetableProps> = ({ collegeId }) => {
     setLoading(true);
     try {
       if (editingBreakId) {
-        await supabase
-          .from("college_breaks")
-          .update({
-            break_type: breakForm.break_type,
-            name: breakForm.name,
-            start_date: breakForm.start_date,
-            end_date: breakForm.end_date,
-            description: breakForm.description,
-            is_recurring: breakForm.is_recurring,
-          })
-          .eq("id", editingBreakId);
+        await collegeBreaksService.updateBreak(editingBreakId, {
+          break_type: breakForm.break_type,
+          name: breakForm.name,
+          start_date: breakForm.start_date,
+          end_date: breakForm.end_date,
+          description: breakForm.description,
+          is_recurring: breakForm.is_recurring,
+        });
       } else {
         await collegeBreaksService.createBreak({
           college_id: collegeId,

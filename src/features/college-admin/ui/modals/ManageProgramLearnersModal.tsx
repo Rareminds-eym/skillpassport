@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { XMarkIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ProgramSection, ProgramLearner, getlearnersByProgramSection, getAvailablelearnersForProgram, addlearnerToProgram, removelearnerFromProgram } from '@/features/college-admin'
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool'
-import { usePermission } from '@/entities/user/model/usePermissions'
 import toast from 'react-hot-toast'
 import { getLogger } from '@/shared/config/logging'
 
@@ -22,10 +21,6 @@ const ManageProgramLearnersModal: React.FC<ManageProgramLearnersModalProps> = ({
   onlearnersUpdated
 }) => {
   const { college } = useEducatorSchool()
-
-  // Permission controls for Classroom Management module
-  const canCreate = usePermission("Classroom Management", "create")
-  const canEdit = usePermission("Classroom Management", "edit")
 
   const [learners, setlearners] = useState<ProgramLearner[]>([])
   const [availablelearners, setAvailablelearners] = useState<ProgramLearner[]>([])
@@ -141,59 +136,36 @@ const ManageProgramLearnersModal: React.FC<ManageProgramLearnersModalProps> = ({
           </div>
 
           <div className="mt-6">
-            {/* Add Learner Section - Only show if user has create permission */}
-            {canCreate.allowed ? (
-              <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Add Learner to Program</h3>
-                <div className="flex gap-3">
-                  <select
-                    value={selectedLearnerId}
-                    onChange={(e) => setSelectedLearnerId(e.target.value)}
-                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    disabled={addingLearner}
-                  >
-                    <option value="">Select a learner...</option>
-                    {availablelearners.map((learner) => (
-                      <option key={learner.id} value={learner.id}>
-                        {learner.name} ({learner.email})
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => {
-                      handleAddLearner();
-                    }}
-                    disabled={!selectedLearnerId || addingLearner}
-                    className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-                    type="button"
-                  >
-                    <UserPlusIcon className="h-4 w-4 mr-2" />
-                    {addingLearner ? 'Adding...' : 'Add Learner'}
-                  </button>
-                </div>
+            {/* Add Learner Section */}
+            <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Add Learner to Program</h3>
+              <div className="flex gap-3">
+                <select
+                  value={selectedLearnerId}
+                  onChange={(e) => setSelectedLearnerId(e.target.value)}
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={addingLearner}
+                >
+                  <option value="">Select a learner...</option>
+                  {availablelearners.map((learner) => (
+                    <option key={learner.id} value={learner.id}>
+                      {learner.name} ({learner.email})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => {
+                    handleAddLearner();
+                  }}
+                  disabled={!selectedLearnerId || addingLearner}
+                  className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                  type="button"
+                >
+                  <UserPlusIcon className="h-4 w-4 mr-2" />
+                  {addingLearner ? 'Adding...' : 'Add Learner'}
+                </button>
               </div>
-            ) : (
-              <div className="mb-6 rounded-lg border border-gray-200 bg-gray-100 p-4 opacity-50 blur-sm">
-                <h3 className="text-sm font-medium text-gray-500 mb-3">Add Learner to Program</h3>
-                <div className="flex gap-3">
-                  <select
-                    disabled
-                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
-                  >
-                    <option value="">❌ No CREATE Permission</option>
-                  </select>
-                  <button
-                    disabled
-                    className="inline-flex items-center rounded-md bg-gray-300 px-4 py-2 text-sm font-medium text-gray-500 cursor-not-allowed"
-                    type="button"
-                    title="❌ No CREATE permission to add learners"
-                  >
-                    <UserPlusIcon className="h-4 w-4 mr-2" />
-                    No Permission
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
 
             {/* Current Learners */}
             <div>
@@ -234,33 +206,17 @@ const ManageProgramLearnersModal: React.FC<ManageProgramLearnersModalProps> = ({
                           )}
                         </div>
                       </div>
-                      {/* Remove button - permission-based styling */}
-                      {canEdit.allowed ? (
-                        <button
-                          onClick={() => {
-                            handleRemoveLearner(learner.id);
-                          }}
-                          className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-all"
-                          type="button"
-                          title="Remove learner from program"
-                        >
-                          <TrashIcon className="h-4 w-4 mr-1" />
-                          Remove
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            logger.warn('Access denied: User lacks EDIT permission to remove learners');
-                          }}
-                          disabled
-                          className="inline-flex items-center rounded-md border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 cursor-not-allowed opacity-50 blur-sm transition-all"
-                          type="button"
-                          title="❌ No EDIT permission to remove learners"
-                        >
-                          <TrashIcon className="h-4 w-4 mr-1" />
-                          No Permission
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          handleRemoveLearner(learner.id);
+                        }}
+                        className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-all"
+                        type="button"
+                        title="Remove learner from program"
+                      >
+                        <TrashIcon className="h-4 w-4 mr-1" />
+                        Remove
+                      </button>
                     </div>
                   ))}
                 </div>

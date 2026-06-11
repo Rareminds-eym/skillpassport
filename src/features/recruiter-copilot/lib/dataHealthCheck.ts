@@ -1,11 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
-
-/**
- * Data Health Check Utility
- * 
- * Senior-level database validation to ensure recruiter AI has quality data
- * Provides actionable insights when data is missing or incomplete
- */
+import { apiPost } from '@/shared/api/apiClient';
 
 export interface DataHealthReport {
   status: 'healthy' | 'warning' | 'critical';
@@ -28,58 +21,39 @@ export interface DataHealthReport {
 }
 
 class DataHealthCheckService {
-  
-  /**
-   * Comprehensive data health check
-   */
   async checkDataHealth(): Promise<DataHealthReport> {
     const issues: DataHealthReport['issues'] = [];
-    
-    // Check 1: Total learners
-    const { count: totallearners } = await supabase
-      .from('learners')
-      .select('user_id', { count: 'exact', head: true })
-      .not('name', 'is', null);
 
-    // Check 2: Learners with skills
-    const { data: learnersWithSkills } = await supabase
-      .from('skills')
-      .select('learner_id')
-      .eq('enabled', true);
-    
-    const uniquelearnersWithSkills = new Set(learnersWithSkills?.map(s => s.learner_id) || []).size;
+    const totallearners = await apiPost<number>('/recruiter-copilot', {
+      action: 'count-learners',
+    });
 
-    // Check 3: Total skills
-    const { count: totalSkills } = await supabase
-      .from('skills')
-      .select('id', { count: 'exact', head: true })
-      .eq('enabled', true);
+    const learnersWithSkillsData = await apiPost<any[]>('/recruiter-copilot', {
+      action: 'fetch-skills-learner-ids',
+    });
 
-    // Check 4: Unique skill names
-    const { data: skillNames } = await supabase
-      .from('skills')
-      .select('name')
-      .eq('enabled', true);
-    
-    const uniqueSkillNames = new Set(skillNames?.map(s => s.name) || []).size;
+    const uniquelearnersWithSkills = new Set(learnersWithSkillsData?.map((s: any) => s.learner_id) || []).size;
 
-    // Check 5: Learners with location data
-    const { count: learnersWithLocation } = await supabase
-      .from('learners')
-      .select('user_id', { count: 'exact', head: true })
-      .not('name', 'is', null)
-      .not('city', 'is', null);
+    const totalSkills = await apiPost<number>('/recruiter-copilot', {
+      action: 'count-skills',
+    });
 
-    // Check 6: Learners with CGPA
-    const { count: learnersWithCGPA } = await supabase
-      .from('learners')
-      .select('user_id', { count: 'exact', head: true })
-      .not('name', 'is', null)
-      .not('currentCgpa', 'is', null);
+    const skillNamesData = await apiPost<any[]>('/recruiter-copilot', {
+      action: 'fetch-skills-names',
+    });
 
-    // Calculate metrics
-    const avgSkillsPerLearner = uniquelearnersWithSkills > 0 
-      ? (totalSkills || 0) / uniquelearnersWithSkills 
+    const uniqueSkillNames = new Set(skillNamesData?.map((s: any) => s.name) || []).size;
+
+    const learnersWithLocation = await apiPost<number>('/recruiter-copilot', {
+      action: 'count-learners-with-location',
+    });
+
+    const learnersWithCGPA = await apiPost<number>('/recruiter-copilot', {
+      action: 'count-learners-with-cgpa',
+    });
+
+    const avgSkillsPerLearner = uniquelearnersWithSkills > 0
+      ? (totalSkills || 0) / uniquelearnersWithSkills
       : 0;
 
     const skillCoveragePercent = totallearners && totallearners > 0
@@ -94,14 +68,13 @@ class DataHealthCheckService {
       ? ((learnersWithCGPA || 0) / totallearners) * 100
       : 0;
 
-    // Identify issues
     if (skillCoveragePercent < 50) {
       issues.push({
         severity: 'high',
         category: 'skills',
         issue: `Only ${skillCoveragePercent.toFixed(0)}% of learners have skills listed`,
         recommendation: 'Import skills from resume parsing, LinkedIn, or manual entry',
-        affectedCount: totallearners ? totallearners - uniquelearnersWithSkills : 0
+        affectedCount: totallearners ? totallearners - uniquelearnersWithSkills : 0,
       });
     }
 
@@ -111,7 +84,7 @@ class DataHealthCheckService {
         category: 'skills',
         issue: `Average only ${avgSkillsPerLearner.toFixed(1)} skills per learner`,
         recommendation: 'Encourage learners to add more skills (target: 5-8 skills)',
-        affectedCount: uniquelearnersWithSkills
+        affectedCount: uniquelearnersWithSkills,
       });
     }
 
@@ -121,7 +94,7 @@ class DataHealthCheckService {
         category: 'skills',
         issue: `Only ${uniqueSkillNames} unique skills in database`,
         recommendation: 'Skill diversity is low. Add more varied skills to improve matching',
-        affectedCount: uniqueSkillNames
+        affectedCount: uniqueSkillNames,
       });
     }
 
@@ -131,7 +104,7 @@ class DataHealthCheckService {
         category: 'learners',
         issue: `Only ${locationCoveragePercent.toFixed(0)}% have location data`,
         recommendation: 'Add city/state information for better location-based matching',
-        affectedCount: totallearners ? totallearners - (learnersWithLocation || 0) : 0
+        affectedCount: totallearners ? totallearners - (learnersWithLocation || 0) : 0,
       });
     }
 
@@ -141,18 +114,15 @@ class DataHealthCheckService {
         category: 'learners',
         issue: `Only ${cgpaCoveragePercent.toFixed(0)}% have CGPA data`,
         recommendation: 'Add academic performance data for better candidate assessment',
-        affectedCount: totallearners ? totallearners - (learnersWithCGPA || 0) : 0
+        affectedCount: totallearners ? totallearners - (learnersWithCGPA || 0) : 0,
       });
     }
 
-    // Determine overall status
     const hasHighSeverity = issues.some(i => i.severity === 'high');
     const hasMediumSeverity = issues.some(i => i.severity === 'medium');
-    
-    const status: DataHealthReport['status'] = 
-      hasHighSeverity ? 'critical' :
-      hasMediumSeverity ? 'warning' :
-      'healthy';
+
+    const status: DataHealthReport['status'] =
+      hasHighSeverity ? 'critical' : hasMediumSeverity ? 'warning' : 'healthy';
 
     return {
       status,
@@ -164,24 +134,20 @@ class DataHealthCheckService {
         unique_skill_names: uniqueSkillNames,
         avg_skills_per_learner: Number(avgSkillsPerLearner.toFixed(2)),
         learners_with_location: learnersWithLocation || 0,
-        learners_with_cgpa: learnersWithCGPA || 0
-      }
+        learners_with_cgpa: learnersWithCGPA || 0,
+      },
     };
   }
 
-  /**
-   * Get common skills in the database
-   */
   async getCommonSkills(limit: number = 20): Promise<Array<{ skill: string; count: number }>> {
-    const { data: skills } = await supabase
-      .from('skills')
-      .select('name')
-      .eq('enabled', true);
+    const skills = await apiPost<any[]>('/recruiter-copilot', {
+      action: 'fetch-skills-names',
+    });
 
     if (!skills || skills.length === 0) return [];
 
     const skillCounts = new Map<string, number>();
-    skills.forEach(({ name }) => {
+    skills.forEach(({ name }: { name: string }) => {
       if (name) {
         skillCounts.set(name, (skillCounts.get(name) || 0) + 1);
       }
@@ -193,48 +159,30 @@ class DataHealthCheckService {
       .slice(0, limit);
   }
 
-  /**
-   * Check if a specific skill exists in database
-   */
   async skillExists(skillName: string): Promise<boolean> {
-    const { count } = await supabase
-      .from('skills')
-      .select('id', { count: 'exact', head: true })
-      .eq('enabled', true)
-      .ilike('name', `%${skillName}%`);
-
-    return (count || 0) > 0;
+    return await apiPost<boolean>('/recruiter-copilot', {
+      action: 'count-skill-by-name',
+      skill_name: skillName,
+    });
   }
 
-  /**
-   * Get skill suggestions based on query
-   */
   async suggestSimilarSkills(skillName: string, limit: number = 10): Promise<string[]> {
-    const { data: skills } = await supabase
-      .from('skills')
-      .select('name')
-      .eq('enabled', true)
-      .ilike('name', `%${skillName}%`)
-      .limit(limit);
+    const skills = await apiPost<any[]>('/recruiter-copilot', {
+      action: 'fetch-skills',
+      skill_name_filter: skillName,
+      limit,
+    });
 
-    return [...new Set(skills?.map(s => s.name) || [])];
+    return [...new Set(skills?.map((s: any) => s.name) || [])];
   }
 
-  /**
-   * Format health report for display
-   */
   formatHealthReport(report: DataHealthReport): string {
     const { status, issues, summary } = report;
 
-    const statusEmoji = {
-      healthy: '✅',
-      warning: '⚠️',
-      critical: '🚨'
-    }[status];
+    const statusEmoji = { healthy: '✅', warning: '⚠️', critical: '🚨' }[status];
 
     let output = `${statusEmoji} Data Health Status: ${status.toUpperCase()}\n\n`;
-    
-    output += `📊 Summary:\n`;
+    output += 'Summary:\n';
     output += `• Total Learners: ${summary.total_learners}\n`;
     output += `• Learners with Skills: ${summary.learners_with_skills} (${((summary.learners_with_skills / summary.total_learners) * 100).toFixed(0)}%)\n`;
     output += `• Total Skills: ${summary.total_skills}\n`;
@@ -244,18 +192,16 @@ class DataHealthCheckService {
     output += `• Learners with CGPA: ${summary.learners_with_cgpa} (${((summary.learners_with_cgpa / summary.total_learners) * 100).toFixed(0)}%)\n\n`;
 
     if (issues.length > 0) {
-      output += `⚠️ Issues Found (${issues.length}):\n\n`;
+      output += `Issues Found (${issues.length}):\n\n`;
       issues.forEach((issue, idx) => {
         const icon = { high: '🔴', medium: '🟡', low: '🟢' }[issue.severity];
         output += `${idx + 1}. ${icon} ${issue.issue}\n`;
         output += `   Recommendation: ${issue.recommendation}\n`;
-        if (issue.affectedCount) {
-          output += `   Affected: ${issue.affectedCount} records\n`;
-        }
-        output += `\n`;
+        if (issue.affectedCount) output += `   Affected: ${issue.affectedCount} records\n`;
+        output += '\n';
       });
     } else {
-      output += `✅ No issues found! Data quality is good.\n`;
+      output += 'No issues found! Data quality is good.\n';
     }
 
     return output;

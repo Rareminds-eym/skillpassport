@@ -8,9 +8,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getLogger } from '../../../../src/shared/config/logging';
+import { createLogger } from '../../../lib/logger';
 
-const logger = getLogger('generation-limit');
+const logger = createLogger('generation-limit');
 
 // Single source of truth for generation limit
 export const TEACHER_GENERATION_LIMIT = 2;

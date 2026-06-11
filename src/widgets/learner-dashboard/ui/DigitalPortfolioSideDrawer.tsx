@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     BookOpen,
@@ -58,7 +59,7 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
   const user = useUser();
   
   // Get learner data to check if learner
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData } = useLearnerDataByEmail(userEmail);
   const isLearnerUser = isLearner(learnerData);
   

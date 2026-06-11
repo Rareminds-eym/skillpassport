@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 /**
  * Badge Service - Handles badge generation and milestone tracking
@@ -376,21 +376,18 @@ export const getBadgesByCategory = (badges) => {
  */
 export const saveBadgesToDatabase = async (learnerId, badges) => {
   try {
-    // Store in learner profile metadata
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        metadata: {
-          badges: badges.map(b => ({
-            id: b.id,
-            earnedAt: b.earnedAt
-          }))
-        }
-      })
-      .eq('id', learnerId);
+    const response: any = await apiPost('/college-admin/digital-portfolio', {
+      action: 'save-badges',
+      learner_id: learnerId,
+      metadata: {
+        badges: badges.map(b => ({
+          id: b.id,
+          earnedAt: b.earnedAt
+        }))
+      }
+    });
 
-    if (error) throw error;
-    return { success: true, data };
+    return { success: true, data: response?.data };
   } catch (error) {
     return { success: false, error };
   }

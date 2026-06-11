@@ -50,14 +50,16 @@ export const addOnPaymentService = {
         return { success: false, error: extractErrorMessage(data) || 'Failed to create addon order' };
       }
 
+      // apiSuccess wraps payload at { success, data: { ... } }
+      const addonPayload = data.data;
       return {
         success: true,
         data: {
-          orderId: data.id,
-          amount: data.amount,
-          currency: data.currency || 'INR',
-          addonName: data.addon_name,
-          razorpayKeyId: data.razorpay_key_id, // Key ID from payment worker response
+          orderId: addonPayload?.id,
+          amount: addonPayload?.amount,
+          currency: addonPayload?.currency || 'INR',
+          addonName: addonPayload?.addon_name,
+          razorpayKeyId: addonPayload?.razorpay_key_id,
           userEmail,
           userName,
         }
@@ -96,16 +98,18 @@ export const addOnPaymentService = {
         return { success: false, error: extractErrorMessage(data) || 'Failed to create bundle order' };
       }
 
+      // apiSuccess wraps payload at { success, data: { ... } }
+      const bundlePayload = data.data;
       return {
         success: true,
         data: {
-          orderId: data.id,
-          amount: data.amount,
-          currency: data.currency || 'INR',
-          bundleName: data.bundle_name,
-          bundleId: bundleId, // Include for verification
-          billingPeriod: billingPeriod, // Include for verification
-          razorpayKeyId: data.razorpay_key_id || data.key || import.meta.env.VITE_RAZORPAY_KEY_ID, // Key ID from payment worker response
+          orderId: bundlePayload?.id,
+          amount: bundlePayload?.amount,
+          currency: bundlePayload?.currency || 'INR',
+          bundleName: bundlePayload?.bundle_name,
+          bundleId: bundleId,
+          billingPeriod: billingPeriod,
+          razorpayKeyId: bundlePayload?.razorpay_key_id || bundlePayload?.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
           userEmail,
           userName,
         }

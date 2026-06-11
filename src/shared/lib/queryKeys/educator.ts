@@ -32,4 +32,16 @@ export const educatorKeys = {
         messages: (conversationId: string): QueryKey =>
             ['educator', 'admin', 'messages', conversationId] as const,
     },
+
+    // Detail
+    detail: (educatorId: string): QueryKey =>
+        ['educator', 'detail', educatorId] as const,
+
+    // Activities
+    activities: (entityId: string): QueryKey =>
+        ['educator', 'activities', entityId] as const,
+
+    // Assessment results
+    results: (educatorId: string): QueryKey =>
+        ['educator', 'results', educatorId] as const,
 } as const;

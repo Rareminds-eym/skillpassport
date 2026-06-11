@@ -1,3 +1,5 @@
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore, useUser, useIsAuthenticated } from '@/shared/model/authStore';
 import {
     Award,
     BookOpen,
@@ -17,8 +19,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { SwapRequestModal } from '@/features/college-admin';
-import { supabase } from '@/shared/api/supabaseClient';
-import { usePermission } from '@/entities/user/model/usePermissions';
 import { getLogger } from '@/shared/config/logging';
 import {
     createSwapRequest,
@@ -28,8 +28,6 @@ import {
 } from "@/features/college-admin";
 import type { ClassSwapRequest, CreateSwapRequestPayload, SlotInfo } from '@/shared/types/classSwap';
 import SwapRequestsDashboard from "./SwapRequestsDashboard";
-
-import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
 
 import {
   getWeekDates,
@@ -109,17 +107,6 @@ const DEFAULT_PERIODS: TimePeriod[] = [
   { period_number: 8, period_name: "Period 6", start_time: "14:10", end_time: "15:00", is_break: false },
 ];
 
-const SLOT_COLORS = [
-  "bg-blue-100 border-blue-300 text-blue-900",
-  "bg-purple-100 border-purple-300 text-purple-900",
-  "bg-green-100 border-green-300 text-green-900",
-  "bg-orange-100 border-orange-300 text-orange-900",
-  "bg-pink-100 border-pink-300 text-pink-900",
-  "bg-cyan-100 border-cyan-300 text-cyan-900",
-  "bg-amber-100 border-amber-300 text-amber-900",
-  "bg-indigo-100 border-indigo-300 text-indigo-900",
-];
-
 const BREAK_BG_COLORS: Record<string, string> = {
   holiday: "bg-red-50",
   event: "bg-purple-50",
@@ -144,11 +131,6 @@ const MyTimetable: React.FC = () => {
   const navigate = useNavigate()
   const user = useUser()
   const isAuthenticated = useIsAuthenticated()
-  
-  // Permission controls for Classroom Management module - same as Program Sections
-  const canView = usePermission("Classroom Management", "view")
-  const canCreate = usePermission("Classroom Management", "create")
-  const canEdit = usePermission("Classroom Management", "edit")
   
   const [slots, setSlots] = useState<TimetableSlot[]>([]);
   const [breaks, setBreaks] = useState<Break[]>([]);
@@ -177,23 +159,15 @@ const MyTimetable: React.FC = () => {
   // Security check - same as Program Sections
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/auth/login')
+      navigate('/login')
       return
     }
     
-    if (user?.role !== 'educator' && user?.role !== 'college_educator') {
-      navigate('/auth/login')
+    if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
+      navigate('/login')
       return
     }
   }, [isAuthenticated, user, navigate])
-
-  // Permission check - redirect if no view permission - same as Program Sections
-  useEffect(() => {
-    if (!canView) {
-      navigate('/educator/dashboard')
-      return
-    }
-  }, [canView, navigate])
 
   // Week dates
   const weekDates = useMemo(() => getWeekDates(currentWeekStart), [currentWeekStart]);
@@ -228,46 +202,35 @@ const MyTimetable: React.FC = () => {
 
   const loadEducatorData = async () => {
     try {
-      const { data: userData } = { data: { user: useAuthStore.getState().user } };
-      if (!userData?.user?.id) {
+      const user = useAuthStore.getState().user;
+      if (!user?.id) {
         throw new Error("User not authenticated");
       }
 
-      const userId = userData.user.id;
-      const userRole = userData.user.user_metadata?.user_role || userData.user.user_metadata?.role;
+      const userId = user.id;
+      const userRole = user.user_metadata?.user_role || user.user_metadata?.role;
 
       // Check if user is a college educator - try college_lecturers table first
       if (userRole === 'college_educator') {
-        const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
-          .from("college_lecturers")
-          .select('id, first_name, last_name, "collegeId"')
-          .eq("user_id", userId)
-          .single();
+        const collegeLecturerRes = await apiPost('/teacher/actions', { action: 'get-college-lecturer', userId });
+        const collegeLecturerData = collegeLecturerRes.data;
 
-        if (!collegeLecturerError && collegeLecturerData) {
+        if (collegeLecturerData) {
           setEducatorId(collegeLecturerData.id);
           setEducatorName(`${collegeLecturerData.first_name} ${collegeLecturerData.last_name}`);
-          // For college educators, we use collegeId as the school_id for timetable lookup
           setSchoolId(collegeLecturerData.collegeId);
           setIsCollegeEducator(true);
           
-          // Load department info for college educator
           await loadDepartmentInfo(collegeLecturerData.id);
-          // Load assigned classes
           await loadAssignedClasses(collegeLecturerData.id);
           return;
         }
-        // College lecturer lookup returned no results, trying school_educators...
       }
 
-      // Try school_educators table (for school educators or fallback)
-      const { data: educatorData, error: educatorError } = await supabase
-        .from("school_educators")
-        .select("id, first_name, last_name, school_id")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const educatorRes = await apiPost('/teacher/actions', { action: 'get-school-educator', userId });
+      const educatorData = educatorRes.data;
 
-      if (!educatorError && educatorData) {
+      if (educatorData) {
         setEducatorId(educatorData.id);
         setEducatorName(`${educatorData.first_name} ${educatorData.last_name}`);
         setSchoolId(educatorData.school_id);
@@ -289,21 +252,12 @@ const MyTimetable: React.FC = () => {
 
   const loadDepartmentInfo = async (lecturerId: string) => {
     try {
-      // First get the department assignment
-      const { data: assignment } = await supabase
-        .from("department_faculty_assignments")
-        .select("department_id, is_hod")
-        .eq("lecturer_id", lecturerId)
-        .eq("is_active", true)
-        .maybeSingle();
+      const assignmentRes = await apiPost('/teacher/actions', { action: 'get-department-assignment', lecturerId });
+      const assignment = assignmentRes.data;
 
       if (assignment?.department_id) {
-        // Then get department details
-        const { data: dept } = await supabase
-          .from("departments")
-          .select("id, name, code")
-          .eq("id", assignment.department_id)
-          .single();
+        const deptRes = await apiPost('/teacher/actions', { action: 'get-department', departmentId: assignment.department_id });
+        const dept = deptRes.data;
 
         if (dept) {
           setDepartmentInfo({
@@ -321,20 +275,14 @@ const MyTimetable: React.FC = () => {
 
   const loadAssignedClasses = async (lecturerId: string) => {
     try {
-      // First get class IDs assigned to this faculty
-      const { data: assignments } = await supabase
-        .from("college_faculty_class_assignments")
-        .select("class_id")
-        .eq("faculty_id", lecturerId);
+      const assignmentsRes = await apiPost('/teacher/actions', { action: 'get-faculty-class-assignments', facultyId: lecturerId });
+      const assignments = assignmentsRes.data;
 
       if (assignments && assignments.length > 0) {
         const classIds = extractClassIds(assignments);
         
-        // Then get class details
-        const { data: classData } = await supabase
-          .from("college_classes")
-          .select("id, name, grade, section")
-          .in("id", classIds);
+        const classRes = await apiPost('/teacher/actions', { action: 'get-college-classes-by-ids', classIds });
+        const classData = classRes.data;
 
         if (classData) {
           const { names, classes } = transformClassesForDisplay(classData);
@@ -350,67 +298,39 @@ const MyTimetable: React.FC = () => {
   const loadTimetableData = async () => {
     try {
       const currentYear = new Date().getFullYear();
+      const academicYear = `${currentYear}-${currentYear + 1}`;
       
       if (isCollegeEducator) {
-        // Load college timetable
-        const { data: timetable } = await supabase
-          .from("college_timetables")
-          .select("id, status")
-          .eq("college_id", schoolId)
-          .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const [timetableRes, breaksRes] = await Promise.all([
+          apiPost('/teacher/actions', { action: 'get-college-timetable', collegeId: schoolId, academicYear }),
+          apiPost('/teacher/actions', { action: 'get-college-breaks', collegeId: schoolId }),
+        ]);
 
+        const timetable = timetableRes.data;
         if (timetable) {
           setTimetableId(timetable.id);
           setPublishStatus(timetable.status);
         }
 
-        // Load college breaks
-        const { data: breaksData } = await supabase
-          .from("college_breaks")
-          .select("*")
-          .eq("college_id", schoolId)
-          .order("start_date");
-
+        const breaksData = breaksRes.data;
         if (breaksData) setBreaks(breaksData);
-
-        // Note: For college educators, classes are loaded via loadAssignedClasses()
-        // which only shows classes assigned to this educator
       } else {
-        // Load school timetable
-        const { data: timetable } = await supabase
-          .from("timetables")
-          .select("id, status")
-          .eq("school_id", schoolId)
-          .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const [timetableRes, breaksRes, classesRes] = await Promise.all([
+          apiPost('/teacher/actions', { action: 'get-school-timetable', schoolId, academicYear }),
+          apiPost('/teacher/actions', { action: 'get-school-breaks', schoolId }),
+          apiPost('/teacher/actions', { action: 'get-school-classes', schoolId }),
+        ]);
 
+        const timetable = timetableRes.data;
         if (timetable) {
           setTimetableId(timetable.id);
           setPublishStatus(timetable.status);
         }
 
-        // Load school breaks
-        const { data: breaksData } = await supabase
-          .from("school_breaks")
-          .select("*")
-          .eq("school_id", schoolId)
-          .order("start_date");
-
+        const breaksData = breaksRes.data;
         if (breaksData) setBreaks(breaksData);
 
-        // Load school classes
-        const { data: classesData } = await supabase
-          .from("school_classes")
-          .select("id, name, grade, section")
-          .eq("school_id", schoolId)
-          .eq("account_status", "active")
-          .order("grade");
-
+        const classesData = classesRes.data;
         if (classesData) setClasses(classesData);
       }
     } catch (error) {
@@ -422,38 +342,12 @@ const MyTimetable: React.FC = () => {
     setLoading(true);
     try {
       if (isCollegeEducator) {
-        // Load college timetable slots
-        const { data, error } = await supabase
-          .from("college_timetable_slots")
-          .select(`
-            *,
-            college_classes!college_timetable_slots_class_id_fkey(id, name)
-          `)
-          .eq("timetable_id", timetableId)
-          .eq("educator_id", educatorId)
-          .order("day_of_week")
-          .order("period_number");
-
-        if (error) throw error;
-
-        const transformedSlots = transformSlotsWithClassNames(data || [], 'college_classes');
+        const slotsRes = await apiPost('/teacher/actions', { action: 'get-college-timetable-slots', timetableId, educatorId });
+        const transformedSlots = transformSlotsWithClassNames(slotsRes.data || [], 'college_classes');
         setSlots(transformedSlots);
       } else {
-        // Load school timetable slots
-        const { data, error } = await supabase
-          .from("timetable_slots")
-          .select(`
-            *,
-            school_classes!timetable_slots_class_id_fkey(id, name, grade, section)
-          `)
-          .eq("timetable_id", timetableId)
-          .eq("educator_id", educatorId)
-          .order("day_of_week")
-          .order("period_number");
-
-        if (error) throw error;
-
-        const transformedSlots = transformSchoolSlots(data || []);
+        const slotsRes = await apiPost('/teacher/actions', { action: 'get-school-timetable-slots', timetableId, educatorId });
+        const transformedSlots = transformSchoolSlots(slotsRes.data || []);
         setSlots(transformedSlots);
       }
     } catch (error) {
@@ -466,24 +360,14 @@ const MyTimetable: React.FC = () => {
   const loadPeriods = async () => {
     try {
       if (isCollegeEducator) {
-        // Load college time periods
-        const { data } = await supabase
-          .from("college_time_periods")
-          .select("*")
-          .eq("timetable_id", timetableId)
-          .order("period_number");
-
+        const periodRes = await apiPost('/teacher/actions', { action: 'get-college-time-periods', timetableId });
+        const data = periodRes.data;
         if (data && data.length > 0) {
           setPeriods(data);
         }
       } else {
-        // Load school time periods
-        const { data } = await supabase
-          .from("school_time_periods")
-          .select("*")
-          .eq("timetable_id", timetableId)
-          .order("period_number");
-
+        const periodRes = await apiPost('/teacher/actions', { action: 'get-school-time-periods', timetableId });
+        const data = periodRes.data;
         if (data && data.length > 0) {
           setPeriods(data);
         }
@@ -528,11 +412,6 @@ const MyTimetable: React.FC = () => {
   };
 
   const handleInitiateSwap = async (slot: TimetableSlot) => {
-    if (!canCreate) {
-      alert('❌ Access Denied: You need CREATE permission to send swap requests');
-      return;
-    }
-    
     setSelectedSlotForSwap(slot);
     
     // Load available slots for swapping
@@ -629,66 +508,9 @@ const MyTimetable: React.FC = () => {
     );
   }
 
-  // Show access denied if no view permission - same as Program Sections
-  if (!canView) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-            <XMarkIcon className="h-6 w-6 text-red-600" />
-          </div>
-          <h3 className="mt-4 text-lg font-medium text-gray-900">Access Denied</h3>
-          <p className="mt-2 text-sm text-gray-500">
-            You don't have permission to view the Classroom Management module.
-          </p>
-          <div className="mt-6">
-            <button
-              onClick={() => navigate('/educator/dashboard')}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Go to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex overflow-y-auto mb-4 flex-col h-screen">
-      {/* Permission Debug Panel - Only in development - same as Program Sections */}
-      {/* {process.env.NODE_ENV === 'development' && (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">
-                📅 Educator Permission Debug - Classroom Management (Timetable)
-              </h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p><strong>User Role:</strong> {user?.role}</p>
-                <p><strong>Module:</strong> Classroom Management</p>
-                <div className="flex gap-4 mt-1">
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canView ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    View: {canView ? '✅' : '❌'}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canCreate ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    Create: {canCreate ? '✅' : '❌'}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canEdit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    Edit: {canEdit ? '✅' : '❌'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )} */}
+
       
       <div className="flex h-full bg-gray-50">
       {/* Left Sidebar */}
@@ -824,19 +646,10 @@ const MyTimetable: React.FC = () => {
             </div>
             <button
               onClick={() => {
-                if (!canView) {
-                  alert('❌ Access Denied: You need VIEW permission to view swap requests');
-                  return;
-                }
-                setShowSwapDashboard(true);
-              }}
-              disabled={!canView.allowed}
-              className={`w-full mt-3 px-3 py-2 text-xs font-medium rounded-lg transition ${
-                canView.allowed
-                  ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer'
-                  : 'text-gray-400 bg-gray-50 cursor-not-allowed opacity-50 blur-sm'
-              }`}
-              title={canView.allowed ? 'View All Requests' : '❌ No VIEW permission'}
+              setShowSwapDashboard(true);
+            }}
+              className="w-full mt-3 px-3 py-2 text-xs font-medium rounded-lg transition text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer"
+              title="View All Requests"
             >
               View All Requests
             </button>
@@ -897,19 +710,11 @@ const MyTimetable: React.FC = () => {
               {/* Swap Requests Button with Notification Badge */}
               <button 
                 onClick={() => {
-                  if (!canView) {
-                    alert('❌ Access Denied: You need VIEW permission to view swap requests');
-                    return;
-                  }
                   setShowSwapDashboard(true);
                 }}
-                disabled={!canView.allowed}
-                className={`relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition ${
-                  canView.allowed
-                    ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer'
-                    : 'text-gray-400 bg-gray-50 cursor-not-allowed opacity-50 blur-sm'
-                }`}
-                title={canView.allowed ? 'Swap Requests' : '❌ No VIEW permission'}
+
+                className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer"
+                title="Swap Requests"
               >
                 <RefreshCw className="h-4 w-4" />
                 <span>Swap Requests</span>
@@ -1089,13 +894,8 @@ const MyTimetable: React.FC = () => {
                                 {/* Swap Button (appears on hover) */}
                                 <button
                                   onClick={() => handleInitiateSwap(slot)}
-                                  disabled={!canCreate.allowed}
-                                  className={`absolute top-1 right-1 p-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity ${
-                                    canCreate.allowed
-                                      ? 'bg-white hover:bg-indigo-50 cursor-pointer'
-                                      : 'bg-gray-100 cursor-not-allowed opacity-50 blur-sm'
-                                  }`}
-                                  title={canCreate.allowed ? 'Request Class Swap' : '❌ No CREATE permission'}
+                                  className="absolute top-1 right-1 p-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity bg-white hover:bg-indigo-50 cursor-pointer"
+                                  title="Request Class Swap"
                                 >
                                   <RefreshCw className="h-3 w-3 text-indigo-600" />
                                 </button>

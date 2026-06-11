@@ -5,12 +5,12 @@
  *
  * Queries Supabase directly for all active subscription plans.
  * Transforms the raw DB schema into the shape the frontend expects.
- * Requires SSO authentication.
+ * Does NOT require SSO authentication — this is public catalog data.
  */
 
-import { withAuth } from '../../../lib/auth';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 /**
  * Transform a raw subscription_plans row into the shape the frontend PlanCard expects.
@@ -77,7 +77,7 @@ function transformPlan(raw: Record<string, unknown>, entityType: string): Record
   };
 }
 
-export async function handleSubscriptionPlans(context: AuthenticatedContext): Promise<Response> {
+export async function handleSubscriptionPlans(context: { request: Request; env: Record<string, unknown> }): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
 
   try {
@@ -108,15 +108,7 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
 
     if (error) {
       console.error('[SubscriptionPlans] Supabase error:', error);
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'Failed to fetch subscription plans',
-          },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch subscription plans', context.request);
     }
 
     // Transform raw DB rows into the shape the frontend expects
@@ -147,15 +139,17 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
             const detailedFeatures = featuresByPlan[plan.id as string];
             if (detailedFeatures) {
               (plan as Record<string, unknown>).detailedFeatures = detailedFeatures;
-              // Override features with detailed ones if available
-              (plan as Record<string, unknown>).features = detailedFeatures.map((f: Record<string, unknown>) => ({
-                name: f.feature_name,
-                feature_key: f.feature_key,
-                value: f.feature_value,
-                category: f.category,
-                is_included: f.is_included,
-                is_addon: f.is_addon,
-              }));
+              (plan as Record<string, unknown>).features = detailedFeatures.map((f: unknown) => {
+                const feat = f as Record<string, unknown>;
+                return {
+                  name: feat.feature_name,
+                  feature_key: feat.feature_key,
+                  value: feat.feature_value,
+                  category: feat.category,
+                  is_included: feat.is_included,
+                  is_addon: feat.is_addon,
+                };
+              });
             }
           }
         }
@@ -165,20 +159,9 @@ export async function handleSubscriptionPlans(context: AuthenticatedContext): Pr
       }
     }
 
-    return new Response(
-      JSON.stringify({ success: true, plans }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ plans }, context.request, 200);
   } catch (error) {
     console.error('[SubscriptionPlans] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to fetch subscription plans',
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to fetch subscription plans', context.request);
   }
 }

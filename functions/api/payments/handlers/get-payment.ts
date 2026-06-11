@@ -10,6 +10,7 @@
 import { withAuth } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const url = new URL(context.request.url);
@@ -17,10 +18,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const paymentId = path.split('/').pop();
 
   if (!paymentId) {
-    return new Response(
-      JSON.stringify({ error: { code: 'INVALID_INPUT', message: 'Payment ID is required' } }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(400, 'VALIDATION_ERROR', 'Payment ID is required', context.request);
   }
 
   return handleGetPayment(context, paymentId);
@@ -34,12 +32,9 @@ export async function handleGetPayment(context: AuthenticatedContext, paymentId:
     const worker = getPaymentWorker(env);
     const payment = await worker.getPayment(paymentId);
 
-    return new Response(JSON.stringify({ success: true, payment }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return apiSuccess({ payment }, context.request);
   } catch (error) {
     console.error('[GetPayment] Error:', error);
-    return rpcErrorResponse(error);
+    return rpcErrorResponse(error, context.request);
   }
 }

@@ -30,7 +30,7 @@ import { QRCodeSVG } from "qrcode.react";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { supabase } from "@/shared/api/supabaseClient";
+import { apiPost } from '@/shared/api/apiClient';
 import { generateBadges } from "@/features/digital-portfolio";
 import {
   calculateEmployabilityScore,
@@ -384,18 +384,15 @@ const ProfileHeroEdit = ({ onEditClick, learnerData: propLearnerData, loading: p
       // If school learner and no school relationship data
       if (reallearnerData.school_id && !reallearnerData.schools?.name) {
         try {
-          const { data, error } = await supabase
-            .from('organizations')
-            .select('name, city, state')
-            .eq('id', reallearnerData.school_id)
-            .single();
+          const data = await apiPost('/learner-dashboard-widgets/actions', {
+            action: 'get-institution-info',
+            organizationId: reallearnerData.school_id,
+          });
 
-          if (data && !error) {
+          if (data) {
             setFetchedInstitutionName(data.name);
-            // Set location if city or state exists
             if (data.city || data.state) {
-              const locationParts = [data.city, data.state].filter(Boolean);
-              setFetchedInstitutionLocation(locationParts.join(', '));
+              setFetchedInstitutionLocation([data.city, data.state].filter(Boolean).join(', '));
             }
           }
         } catch (err) {
@@ -406,32 +403,21 @@ const ProfileHeroEdit = ({ onEditClick, learnerData: propLearnerData, loading: p
       // If college learner and no college relationship data
       if (reallearnerData.university_college_id && !reallearnerData.university_colleges) {
         try {
-          const { data, error } = await supabase
-            .from('university_colleges')
-            .select(`
-              name,
-              university:organizations!university_colleges_university_id_fkey (
-                name,
-                city,
-                state,
-                organization_type
-              )
-            `)
-            .eq('id', reallearnerData.university_college_id)
-            .single();
+          const data = await apiPost('/learner-dashboard-widgets/actions', {
+            action: 'get-institution-info',
+            collegeId: reallearnerData.university_college_id,
+          });
 
-          if (data && !error) {
+          if (data) {
             const collegeName = data.name;
             const universityName = data.university?.name;
             setFetchedInstitutionName(
               universityName ? `${collegeName} - ${universityName}` : collegeName
             );
-            // Set location if city or state exists
             const city = data.university?.city;
             const state = data.university?.state;
             if (city || state) {
-              const locationParts = [city, state].filter(Boolean);
-              setFetchedInstitutionLocation(locationParts.join(', '));
+              setFetchedInstitutionLocation([city, state].filter(Boolean).join(', '));
             }
           }
         } catch (err) {

@@ -28,12 +28,13 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { getServiceClient } from '../../../lib/auth';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
-import { getLogger } from '../../../../src/shared/config/logging';
+import { getContextUser, getServiceClient } from '../../../lib/auth';
+import { createLogger } from '../../../lib/logger';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { ADMIN_ROLES } from '../../../lib/roleCategories';
+import type { PagesEnv } from '../../../lib/types';
 
-const logger = getLogger('get-learner-type');
+const logger = createLogger('get-learner-type');
 
 interface RequiredEnv {
   SUPABASE_URL: string;
@@ -43,33 +44,30 @@ interface RequiredEnv {
 type TypedContext = AuthenticatedContext<PagesEnv> & { env: RequiredEnv };
 
 export const onRequestGet = async (context: TypedContext) => {
+  const { request, env } = context;
   try {
-    const { request, env, data } = context;
-    const authenticatedUser = data.user;
+    const authenticatedUser = getContextUser(context);
     // strict: no-any verified
     const supabase = getServiceClient(env);
 
     // Parse query parameters
     const url = new URL(request.url);
     const requestedUserId = url.searchParams.get('userId');
-    
+
     // Use requested userId or fall back to authenticated user
-    const userId = requestedUserId || authenticatedUser.sub;
+    const userId = requestedUserId || authenticatedUser.id;
 
     if (!userId) {
-      return jsonResponse({ error: 'Missing userId parameter' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Missing userId parameter', request);
     }
 
-    // Security check: Only allow users to fetch their own learner_type
-    // unless they have admin privileges
-    const isAdmin = authenticatedUser.roles?.some((role: string) => 
-      ['admin', 'school_admin', 'college_admin', 'university_admin', 'owner'].includes(role)
-    );
+    // Ownership-scoped: any user may fetch their OWN learner type; admins
+    // (shared ADMIN_ROLES group) may fetch anyone's. Non-guard role check →
+    // uses ADMIN_ROLES, replacing the inline literal (bug §7.1).
+    const isAdmin = authenticatedUser.roles?.some((role: string) => ADMIN_ROLES.includes(role));
 
-    if (requestedUserId && requestedUserId !== authenticatedUser.sub && !isAdmin) {
-      return jsonResponse({ 
-        error: 'Forbidden: You can only fetch your own learner type' 
-      }, 403);
+    if (requestedUserId && requestedUserId !== authenticatedUser.id && !isAdmin) {
+      return apiError(403, 'FORBIDDEN', 'Forbidden: You can only fetch your own learner type', request);
     }
 
     // Fetch learner_type from learners table
@@ -81,10 +79,7 @@ export const onRequestGet = async (context: TypedContext) => {
 
     if (fetchError) {
       logger.error('Failed to fetch learner_type', fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
-      return jsonResponse({ 
-        error: 'Failed to fetch learner type',
-        details: fetchError.message 
-      }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch learner type', request);
     }
 
     // Extract learner_type (null if no record found)
@@ -92,20 +87,14 @@ export const onRequestGet = async (context: TypedContext) => {
     const hasLearnerRecord = !!learner;
     const isTeacher = learnerType === 'teacher';
 
-    return jsonResponse({
+    return apiSuccess({
       userId,
       learnerType,
       isTeacher,
       hasLearnerRecord,
-    });
+    }, request);
   } catch (error: unknown) {
     logger.error('Get learner type error', error instanceof Error ? error : new Error(String(error)));
-    return jsonResponse(
-      { 
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 };

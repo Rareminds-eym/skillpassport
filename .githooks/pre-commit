@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+#
+# Pre-commit hook — RBAC role-type drift guard (spec: rbac-architecture-violations-fix, task 18.2 / FC-7)
+#
+# Fails the commit if the committed `src/shared/types/generated/roles.ts` is
+# STALE relative to the app DB (the `roles` + `role_categories` tables).
+#
+# Activation (dependency-free, no Husky): the `prepare` npm script runs
+#   `git config core.hooksPath .githooks`
+# on `npm install`, so this directory becomes the active hooks path. To enable
+# manually: `git config core.hooksPath .githooks`.
+#
+# DB availability: this hook uses `check:roles:precommit`, which SKIPS-WITH-WARNING
+# when the local app DB is unreachable (so devs without `supabase start` are not
+# blocked by a confusing failure). A real drift (DB reachable, file stale) still
+# blocks the commit. CI (.github/workflows/roles-drift.yml) runs the same check
+# against a live DB with NO skip, so drift can never reach main unnoticed.
+#
+# Fast path: only runs when files that can introduce role drift are staged
+# (the generated module, the generator, or role migrations/seeds).
+
+set -e
+
+# Files whose staged changes can introduce role-type drift.
+PATTERN='^(src/shared/types/generated/roles\.ts|scripts/generate-role-types\.ts|supabase/(migrations|seed)/.*(role|rbac).*\.sql)$'
+
+CHANGED="$(git diff --cached --name-only --diff-filter=ACMR | grep -E "$PATTERN" || true)"
+
+if [ -z "$CHANGED" ]; then
+  exit 0
+fi
+
+echo "▶ pre-commit: checking generated role types for drift (FC-7)…"
+npm run --silent check:roles:precommit

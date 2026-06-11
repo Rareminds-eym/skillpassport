@@ -84,12 +84,13 @@ import {
 import { useLearnerMessageNotifications, useLearnerUnreadCount, useLearnerDataByEmail } from '@/entities/learner';
 import { useLearnerAchievements } from '@/entities/learner';
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
-import { supabase } from '@/shared/api/supabaseClient';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { useUserRole } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
+import { apiPost } from '@/shared/api/apiClient';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import {
   useHasAssessment,
   useHasInProgressAssessment,
@@ -1299,17 +1300,14 @@ const LearnerDashboard = () => {
   useEffect(() => {
     if (!userEmail || isViewingOthersProfile) return;
 
-    // Subscribe to real-time changes in opportunities table
-    const channel = supabase
-      .channel("opportunities-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "opportunities",
-        },
-        (payload) => {
+    const sseClient = getWSClient();
+
+    // Subscribe to INSERT events on opportunities table
+    const unsubscribeInsert = sseClient.subscribe(
+      'opportunities',
+      { event: 'INSERT' },
+      (event) => {
+        if (event.type === 'change') {
           // Refresh opportunities list
           refreshOpportunities();
 
@@ -1318,23 +1316,24 @@ const LearnerDashboard = () => {
             refreshRecentUpdates();
           }, 1000); // Small delay to ensure DB trigger has fired
         }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "opportunities",
-        },
-        (payload) => {
+      }
+    );
+
+    // Subscribe to UPDATE events on opportunities table
+    const unsubscribeUpdate = sseClient.subscribe(
+      'opportunities',
+      { event: 'UPDATE' },
+      (event) => {
+        if (event.type === 'change') {
           refreshOpportunities();
         }
-      )
-      .subscribe();
+      }
+    );
 
-    // Cleanup subscription on unmount
+    // Cleanup subscriptions on unmount
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribeInsert();
+      unsubscribeUpdate();
     };
   }, [userEmail, isViewingOthersProfile]);
 
@@ -1357,9 +1356,7 @@ const LearnerDashboard = () => {
   useEffect(() => {
     const testSupabaseDirectly = async () => {
       try {
-        const { data, error, count } = await supabase
-          .from("opportunities")
-          .select("*", { count: "exact" });
+        await apiPost('/learner-pages/actions', { action: 'test-supabase-connectivity' });
 
         // Run debug for recent updates (commented out to prevent automatic execution)
         // await debugRecentUpdates();
@@ -1633,23 +1630,11 @@ const LearnerDashboard = () => {
     }
 
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skillId);
-
-      if (error) {
-        logger.error('🔧 Dashboard - Database error', error);
-        throw error;
-      }
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId,
+        enabled: newState,
+      });
 
       // Refresh technical skills to get updated data
       if (refreshTechnicalSkills) {
@@ -1690,20 +1675,11 @@ const LearnerDashboard = () => {
     }
 
     try {
-      // Import supabase client
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-
-      // Update only the enabled field directly in database
-      const { error } = await supabase
-        .from('skills')
-        .update({ enabled: newState })
-        .eq('id', skillId);
-
-      if (error) throw error;
+      await apiPost('/learners/profile', {
+        action: 'toggle-skill-visibility',
+        skillId,
+        enabled: newState,
+      });
 
       // Refresh soft skills to get updated data
       if (refreshSoftSkills) {
@@ -1936,19 +1912,7 @@ const LearnerDashboard = () => {
                         if (!window.confirm('DEV: Are you sure you want to clear your assessment data? This will delete all your assessment results.')) return;
 
                         try {
-                          const { error: resultsError } = await supabase
-                            .from('personal_assessment_results')
-                            .delete()
-                            .eq('learner_id', learnerId);
-
-                          if (resultsError) throw resultsError;
-
-                          const { error: attemptsError } = await supabase
-                            .from('personal_assessment_attempts')
-                            .delete()
-                            .eq('learner_id', learnerId);
-
-                          if (attemptsError) throw attemptsError;
+                          await apiPost('/learner-pages/actions', { action: 'clear-assessment-data', learnerId });
 
                           localStorage.removeItem('assessment_gemini_results');
                           localStorage.removeItem('assessment_section_timings');
@@ -2504,34 +2468,26 @@ const LearnerDashboard = () => {
             </button>
           </div>
         </CardHeader>
-        <CardContent className="pt-4 p-8 space-y-4">
+        <CardContent className="p-5 space-y-4">
           {/* No Assessment CTA - TOP (only show when not expanded) */}
           {!hasAssessment && !aiLoading && !showAllTraining && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border-2 border-dashed border-blue-300 shadow-sm">
               <div className="flex items-start gap-3">
                 <div
-                  className="w-16 h-16 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
+                  className="w-14 h-14 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
                   style={{
                     boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
                   }}
                 >
-                  <img src="/assets/HomePage/Ai Logo.png" alt="AI" className="w-16 h-16 object-contain" />
+                  <img src="/assets/HomePage/Ai Logo.png" alt="AI" className="w-11 h-11 object-contain" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-base font-bold text-gray-900 mb-2">
+                  <h4 className="text-sm font-bold text-gray-900 mb-1">
                     Get Personalized Recommendations
                   </h4>
-                  <p className="text-sm text-gray-900 mb-3 font-medium">
+                  <p className="text-xs text-gray-500 font-medium">
                     Take our assessment to receive AI-powered course recommendations tailored to your career goals and skills.
                   </p>
-                  {/* <Button
-                    onClick={() => navigate("/learner/assessment/test")}
-                    size="sm"
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
-                  >
-                    Take Assessment
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button> */}
                 </div>
               </div>
             </div>
@@ -2539,71 +2495,71 @@ const LearnerDashboard = () => {
 
           {/* AI-Powered Recommendations Section */}
           {hasAssessment && aiRecommendations && (
-            <div className="mb-6">
-              <div className="max-h-[400px] overflow-y-auto pr-2">
-                <TrainingRecommendations
-                  recommendations={aiRecommendations}
-                  showAll={showAllTraining}
-                />
-              </div>
+            <div>
+              <TrainingRecommendations
+                recommendations={aiRecommendations}
+                showAll={showAllTraining}
+              />
             </div>
           )}
 
           {/* My Learning Section - Enrolled Courses */}
           {tableTraining && tableTraining.length > 0 && (
-            <div className="mt-6">
+            <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-blue-600" />
                 My Learning
               </h3>
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 blue-scrollbar">
+              <div className="space-y-2.5 blue-scrollbar">
                 {tableTraining.map((course, idx) => (
                   <div
                     key={course.id || `course-${idx}`}
-                    className="p-4 rounded-xl bg-white border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+                    className="bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
                     onClick={() => navigate('/learner/my-learning')}
                   >
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <h4 className="text-base font-bold text-gray-900 flex-1">
-                        {course.course}
-                      </h4>
-                      {course.verified && (
-                        <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-2 py-1 text-xs font-semibold rounded-full">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Verified
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 mb-3">
-                      <Building2 className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm text-gray-600">{course.provider}</span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    {course.progress !== undefined && (
-                      <div className="mb-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-600 font-medium">Progress</span>
-                          <span className="text-xs text-gray-900 font-semibold">{Math.round(course.progress)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all"
-                            style={{ width: `${course.progress}%` }}
-                          />
-                        </div>
+                    <div className="px-3.5 py-3">
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <h4 className="text-sm font-semibold text-gray-900 flex-1">
+                          {course.course}
+                        </h4>
+                        {course.verified && (
+                          <Badge className="shrink-0 !bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                            <CheckCircle className="w-3 h-3 mr-0.5" />
+                            Verified
+                          </Badge>
+                        )}
                       </div>
-                    )}
 
-                    <div className="flex items-center justify-between gap-3 mt-3">
-                      {course.duration && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Clock className="w-4 h-4" />
-                          <span>{course.duration}</span>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Building2 className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-xs text-gray-500">{course.provider}</span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      {course.progress !== undefined && (
+                        <div className="mb-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-gray-500 font-medium">Progress</span>
+                            <span className="text-[11px] text-gray-700 font-semibold">{Math.round(course.progress)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div
+                              className="bg-gradient-to-r from-blue-600 to-indigo-600 h-1.5 rounded-full transition-all"
+                              style={{ width: `${course.progress}%` }}
+                            />
+                          </div>
                         </div>
                       )}
-                      <span className="text-sm text-blue-600 font-medium">Continue Learning →</span>
+
+                      <div className="flex items-center justify-between gap-3">
+                        {course.duration && (
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{course.duration}</span>
+                          </div>
+                        )}
+                        <span className="text-xs text-blue-600 font-medium">Continue Learning →</span>
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -12,8 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
 
-import { supabase } from '@/shared/api/supabaseClient';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-digital-portfolio');
@@ -212,55 +212,35 @@ const CollegeAdminDigitalPortfolio = () => {
         setLoading(true);
 
         // Find college by matching email in organizations table (case-insensitive)
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .select('id, name, email')
-          .eq('organization_type', 'college')
-          .ilike('email', user.email)
-          .maybeSingle();
+        const orgRes: any = await apiPost('/college-admin/actions', {
+          action: 'get-org-by-admin-or-email',
+          userId: user.id,
+          email: user.email
+        });
 
-        if (orgError || !org?.id) {
-          logger.error('Error fetching organization', orgError, { email: user.email });
+        if (!orgRes.success || !orgRes.data?.id) {
+          logger.error('Error fetching organization', orgRes.error, { email: user.email });
           setLoading(false);
           return;
         }
 
-        const collegeId = org.id;
-        const collegeData = org;
+        const collegeId = orgRes.data.id;
+        const collegeData = orgRes.data;
         
         setCollegeInfo(collegeData);
 
         // Fetch learners from the same college using the learners table with skills, projects, and experience
-        const { data: learnersData, error: learnersError } = await supabase
-          .from('learners')
-          .select(`
-            id,
-            name,
-            email,
-            college_id,
-            branch_field,
-            created_at,
-            updated_at,
-            github_link,
-            linkedin_link,
-            portfolio_link,
-            bio,
-            skill_summary,
-            hobbies,
-            languages,
-            interests,
-            metadata,
-            skills:skills(name, type, level, verified),
-            projects:projects(title, description, status, tech_stack, demo_link, github_link, organization),
-            experience:experience(organization, role, start_date, end_date, duration, verified)
-          `)
-          .eq('college_id', collegeId)
-          .not('college_id', 'is', null);
+        const learnersRes: any = await apiPost('/college-admin/actions', {
+          action: 'get-digital-portfolios',
+          college_id: collegeId
+        });
 
-        if (learnersError) {
-          logger.error('Error fetching learners:', learnersError as Error);
-          throw learnersError;
+        if (!learnersRes.success) {
+          logger.error('Error fetching learners:', learnersRes.error);
+          throw new Error(learnersRes.error || 'Failed to fetch learners');
         }
+        
+        const learnersData = learnersRes.data;
 
         // Transform data to match the expected format
         const transformedlearners = learnersData?.map(learner => {

@@ -1,7 +1,7 @@
 import { ArrowLeft, Award, Target } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('AssessmentResults');
@@ -35,17 +35,14 @@ const Results: React.FC = () => {
       if (!location.state?.attemptId) return;
       
       try {
-        await supabase
-          .from('external_assessment_attempts')
-          .update({
-            status: 'completed',
-            score: percentage,
-            correct_answers: score,
-            completed_at: new Date().toISOString(),
-            time_taken: totalTimeTaken
-          })
-          .eq('id', location.state.attemptId);
-        
+        await apiPost('/learner-pages/actions', {
+          action: 'mark-assessment-completed',
+          attemptId: location.state.attemptId,
+          percentage,
+          score,
+          totalTimeTaken,
+        });
+
         logger.info('Assessment marked as completed', { attemptId: location.state.attemptId });
       } catch (error) {
         logger.error('Failed to mark assessment as completed', error);

@@ -46,17 +46,18 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handlePresigned({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data).toHaveProperty('uploadUrl');
       expect(data.data).toHaveProperty('fileKey');
       expect(data.data).toHaveProperty('headers');
-      expect(data.data.fileKey).toMatch(/^courses\/course-123\/lessons\/lesson-456\/\d+-[a-f0-9]+\.pdf$/);
-      expect(data.data.headers['Content-Type']).toBe('application/pdf');
-      expect(data.data.headers['Authorization']).toBeDefined();
-      expect(data.data.headers['x-amz-date']).toBeDefined();
+      expect((data.data as Record<string, unknown>).fileKey).toMatch(/^courses\/course-123\/lessons\/lesson-456\/\d+-[a-f0-9]+\.pdf$/);
+      const d = data.data as Record<string, unknown>;
+      expect((d.headers as Record<string, string>)['Content-Type']).toBe('application/pdf');
+      expect((d.headers as Record<string, string>)['Authorization']).toBeDefined();
+      expect((d.headers as Record<string, string>)['x-amz-date']).toBeDefined();
     });
 
     it('should reject non-POST requests', async () => {
@@ -65,7 +66,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handlePresigned({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(405);
       expect(data.error).toBe('Method not allowed');
@@ -82,7 +83,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handlePresigned({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing required fields');
@@ -100,7 +101,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handlePresigned({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing required fields');
@@ -118,7 +119,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handlePresigned({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing required fields');
@@ -136,7 +137,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handlePresigned({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing required fields');
@@ -155,10 +156,10 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handlePresigned({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
-      expect(data.data.fileKey).toMatch(/\.pdf$/);
+      expect((data.data as Record<string, unknown>).fileKey).toMatch(/\.pdf$/);
     });
 
     it('should include optional fileSize in request', async () => {
@@ -174,7 +175,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handlePresigned({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -194,7 +195,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handleConfirm({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -203,10 +204,10 @@ describe('Presigned URL Handlers', () => {
       expect(data.data).toHaveProperty('name');
       expect(data.data).toHaveProperty('size');
       expect(data.data).toHaveProperty('type');
-      expect(data.data.key).toBe('courses/course-123/lessons/lesson-456/test.pdf');
-      expect(data.data.name).toBe('test.pdf');
-      expect(data.data.size).toBe(1024000);
-      expect(data.data.type).toBe('application/pdf');
+      expect((data.data as Record<string, unknown>).key).toBe('courses/course-123/lessons/lesson-456/test.pdf');
+      expect((data.data as Record<string, unknown>).name).toBe('test.pdf');
+      expect((data.data as Record<string, unknown>).size).toBe(1024000);
+      expect((data.data as Record<string, unknown>).type).toBe('application/pdf');
     });
 
     it('should reject non-POST requests', async () => {
@@ -215,7 +216,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handleConfirm({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(405);
       expect(data.error).toBe('Method not allowed');
@@ -230,7 +231,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handleConfirm({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Missing fileKey');
@@ -245,14 +246,14 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handleConfirm({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.data.key).toBe('courses/course-123/lessons/lesson-456/test.pdf');
-      expect(data.data.name).toBeUndefined();
-      expect(data.data.size).toBeUndefined();
-      expect(data.data.type).toBeUndefined();
+      expect((data.data as Record<string, unknown>).key).toBe('courses/course-123/lessons/lesson-456/test.pdf');
+      expect((data.data as Record<string, unknown>).name).toBeUndefined();
+      expect((data.data as Record<string, unknown>).size).toBeUndefined();
+      expect((data.data as Record<string, unknown>).type).toBeUndefined();
     });
   });
 
@@ -266,7 +267,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handleGetUrl({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -279,7 +280,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handleGetUrl({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(405);
       expect(data.error).toBe('Method not allowed');
@@ -292,7 +293,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handleGetUrl({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('fileKey is required');
@@ -307,7 +308,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handleGetUrl({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -328,7 +329,7 @@ describe('Presigned URL Handlers', () => {
       });
 
       const response = await handleGetFileUrl({ request, env: mockEnv } as any);
-      const data = await response.json();
+      const data = await response.json() as Record<string, unknown>;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);

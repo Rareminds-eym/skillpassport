@@ -1,3 +1,4 @@
+// @public-endpoint: CORS-bypass fetch of public certificate pages; restricted by an SSRF domain allow-list. FLAG: consider requiring withAuth to curb anonymous use of the fetch proxy (RBAC guard-matrix, task 11.1/11.4; CC-2)
 /**
  * Fetch Certificate API - Pages Function
  * Fetches certificate pages from external platforms (bypasses CORS)
@@ -6,8 +7,10 @@
  * - POST / - Fetch certificate page HTML and metadata
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import { getCorsHeaders } from '../../lib/cors';
+import { apiError, apiSuccess } from '../../lib/response';
+import type { PagesFunction } from '../../lib/types';
+;
 
 const ALLOWED_DOMAINS = [
   'udemy.com',
@@ -26,14 +29,14 @@ const ALLOWED_DOMAINS = [
 
 async function handleFetchCertificate(request: Request): Promise<Response> {
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return apiError(405, 'ERROR', 'Method not allowed', request);
   }
 
   const body = await request.json() as { url?: string };
   const { url } = body;
 
   if (!url) {
-    return jsonResponse({ error: 'URL is required' }, 400);
+    return apiError(400, 'VALIDATION_ERROR', 'URL is required', request);
   }
 
   // Validate URL domain
@@ -41,9 +44,7 @@ async function handleFetchCertificate(request: Request): Promise<Response> {
   const isAllowed = ALLOWED_DOMAINS.some(domain => urlObj.hostname.includes(domain));
 
   if (!isAllowed) {
-    return jsonResponse({ 
-      error: 'URL domain not allowed. Only certificate platforms are supported.' 
-    }, 403);
+    return apiError(403, 'FORBIDDEN', 'URL domain not allowed. Only certificate platforms are supported.', request);
   }
 
   // Expand short URLs
@@ -66,11 +67,11 @@ async function handleFetchCertificate(request: Request): Promise<Response> {
   });
 
   if (!response.ok) {
-    return jsonResponse({ 
+    return apiSuccess({
       success: false,
       error: `Certificate not found or invalid (${response.status})`,
       details: `The certificate URL returned ${response.status} ${response.statusText}. Please verify the certificate ID is correct.`
-    }, 200); // Return 200 so client can read the error message
+    }, request); // Return 200 so client can read the error message
   }
 
   const html = await response.text();
@@ -127,13 +128,13 @@ async function handleFetchCertificate(request: Request): Promise<Response> {
     .trim()
     .slice(0, 5000);
 
-  return jsonResponse({
+  return apiSuccess({
     success: true,
     metadata,
     platformData,
     htmlLength: html.length,
     bodySnippet,
-  });
+  }, request);
 }
 
 // ==================== MAIN HANDLER ====================
@@ -143,7 +144,14 @@ export const onRequest: PagesFunction = async (context) => {
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    const origin = request.headers.get('Origin') || '';
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...getCorsHeaders(origin),
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
 
   const url = new URL(request.url);
@@ -153,23 +161,21 @@ export const onRequest: PagesFunction = async (context) => {
     // Health check
     if (path === '/api/fetch-certificate' || path === '/api/fetch-certificate/') {
       if (request.method === 'GET') {
-        return jsonResponse({
+        return apiSuccess({
           status: 'ok',
           service: 'fetch-certificate',
           endpoints: ['POST /'],
           allowedDomains: ALLOWED_DOMAINS,
           timestamp: new Date().toISOString()
-        });
+        }, request);
       }
       // POST to root - fetch certificate
       return await handleFetchCertificate(request);
     }
 
-    return jsonResponse({ error: 'Not found' }, 404);
+    return apiError(404, 'NOT_FOUND', 'Not found', request);
   } catch (error) {
     console.error('Fetch Certificate API Error:', error);
-    return jsonResponse({ 
-      error: (error as Error).message || 'Internal server error' 
-    }, 500);
+    return apiError(500, 'INTERNAL_ERROR', (error as Error).message || 'Internal server error', request);
   }
 };

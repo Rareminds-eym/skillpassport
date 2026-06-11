@@ -20,9 +20,9 @@ function getManagePath(userRole) {
   if (!userRole) return null; // Return null instead of default to prevent wrong redirects
 
   const manageRoutes = {
-    super_admin: '/admin/subscription/manage',
-    rm_admin: '/admin/subscription/manage',
     admin: '/admin/subscription/manage',
+    company_admin: '/admin/subscription/manage',
+    owner: '/admin/subscription/manage',
     school_admin: '/school-admin/subscription/manage',
     college_admin: '/college-admin/subscription/manage',
     university_admin: '/university-admin/subscription/manage',
@@ -33,6 +33,28 @@ function getManagePath(userRole) {
     learner: '/learner/subscription/manage',
   };
   return manageRoutes[userRole] || null; // Return null instead of default to prevent wrong redirects
+}
+
+/**
+ * Get the dashboard path based on user role
+ */
+function getDashboardPath(userRole) {
+  if (!userRole) return '/learner/dashboard';
+
+  const dashboardRoutes = {
+    learner: '/learner/dashboard',
+    educator: '/educator/dashboard',
+    school_educator: '/educator/dashboard',
+    college_educator: '/educator/dashboard',
+    school_admin: '/school-admin/dashboard',
+    college_admin: '/college-admin/dashboard',
+    university_admin: '/university-admin/dashboard',
+    recruiter: '/recruitment/overview',
+    admin: '/admin/dashboard',
+    company_admin: '/admin/dashboard',
+    owner: '/admin/dashboard',
+  };
+  return dashboardRoutes[userRole] || '/learner/dashboard';
 }
 
 /**
@@ -59,10 +81,8 @@ function getManagePathFromType(type) {
     'university-admin': '/university-admin/subscription/manage',
     // Recruiter
     'recruiter': '/recruitment/subscription/manage',
-    // Generic admin (super_admin, rm_admin)
+    // Generic admin
     'admin': '/admin/subscription/manage',
-    'super_admin': '/admin/subscription/manage',
-    'rm_admin': '/admin/subscription/manage',
   };
 
   return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
@@ -897,8 +917,8 @@ function SubscriptionPlans() {
         // Refresh subscription access
         await refreshAccess();
 
-        // Navigate to appropriate dashboard based on user type
-        const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/learner/dashboard`;
+        // Navigate to appropriate dashboard based on user role
+        const targetPath = getDashboardPath(userRole) || `/learner/dashboard`;
         navigate(targetPath);
 
       } catch (error) {

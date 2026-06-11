@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import MessageService from '@/shared/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { getLogger } from '@/shared/config/logging';
@@ -61,7 +61,7 @@ export const useLearnerCollegeAdminMessages = ({
   useEffect(() => {
     if (!conversationId || !enableRealtime) return;
 
-    const subscription = MessageService.subscribeToConversation(
+    const subscription = MessageService.subscribeToConversationMessages(
       conversationId,
       (newMessage) => {
         // Add message to cache optimistically
@@ -84,7 +84,7 @@ export const useLearnerCollegeAdminMessages = ({
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [conversationId, enableRealtime, queryClient, learnerId]);
 
@@ -232,13 +232,12 @@ export const useCreateLearnerCollegeAdminConversation = () => {
       subject
     }) => {
       // Get learner's college_id
-      const { data: learnerData, error: learnerError } = await supabase
-        .from('learners')
-        .select('college_id, university_college_id')
-        .eq('user_id', learnerId)
-        .maybeSingle();
+      const learnerResult = await apiPost('/learner-profile/actions', {
+        action: 'fetch-learner', userId: learnerId,
+      });
+      const learnerData = learnerResult?.data || null;
 
-      if (learnerError || (!learnerData?.college_id && !learnerData?.university_college_id)) {
+      if (!learnerData?.college_id && !learnerData?.university_college_id) {
         throw new Error('Could not find learner college');
       }
 

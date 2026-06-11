@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
 import {
   getPipelineCandidatesByStage,
   getPipelineCandidatesWithFilters
@@ -9,6 +8,7 @@ import { AppliedJobsService } from '@/features/opportunities';
 import { recruiterInsights } from '@/features/recruiter-copilot';
 import { PipelineFilters, PipelineSortOptions } from '@/shared/types/recruiter';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('usePipelineData');
 
@@ -192,18 +192,13 @@ export const usePipelineData = (
 
       const opportunityIds = [...new Set(applicantsForAnalysis.map((a: any) => a.opportunity_id))];
       
-      const { data: opportunities } = await supabase
-        .from('opportunities')
-        .select('id, skills_required')
-        .in('id', opportunityIds);
+      const response2: any = await apiPost('/opportunities', { action: 'get-opportunities-by-ids', ids: opportunityIds });
+      const opportunities = response2?.data?.opportunities || [];
 
       // Fetch skills for all learners from the skills table
       const learnerIds = [...new Set(applicantsData.map((a: any) => a.learner_id))];
-      const { data: skillsData } = await supabase
-        .from('skills')
-        .select('learner_id, name, enabled')
-        .in('learner_id', learnerIds)
-        .eq('enabled', true);
+      const response3: any = await apiPost('/opportunities', { action: 'get-skills-by-learner-ids', learner_ids: learnerIds });
+      const skillsData = response3?.data?.skills || [];
 
       // Create a map of learner_id to skills array
       const skillsMap: Record<string, string[]> = {};

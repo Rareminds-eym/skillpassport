@@ -1,4 +1,5 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { useAuthStore } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
 import { 
   getExpenditureSummary, 
   getDepartmentExpenditure, 
@@ -84,15 +85,9 @@ class ExpenditureService {
     if (collegeId) return collegeId;
     
     // Fallback: get from organizations table
-    const { data: orgs } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('organization_type', 'college')
-      .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-      .limit(1);
-    
-    if (orgs && orgs.length > 0) {
-      return orgs[0].id;
+    const orgResult = await apiPost('/college-admin/faculty', { action: 'get-organization-by-admin', userId: user.id });
+    if (orgResult?.data?.id) {
+      return orgResult.data.id;
     }
     
     throw new Error('No college found for user');
@@ -103,60 +98,16 @@ class ExpenditureService {
     try {
       const collegeId = await this.getCurrentCollegeId();
       
-      let query = supabase
-        .from('v_learner_fee_ledger_detailed')
-        .select('*', { count: 'exact' })
-        .eq('college_id', collegeId)
-        .order('due_date', { ascending: false });
-
-      // Apply filters
-      if (filters?.department_id) {
-        query = query.eq('program_id', filters.department_id);
-      }
-
-      if (filters?.program_id) {
-        query = query.eq('program_id', filters.program_id);
-      }
-
-      if (filters?.academic_year) {
-        query = query.eq('academic_year', filters.academic_year);
-      }
-
-      if (filters?.semester) {
-        query = query.eq('semester', filters.semester);
-      }
-
-      if (filters?.payment_status) {
-        query = query.eq('payment_status', filters.payment_status);
-      }
-
-      if (filters?.is_overdue !== undefined) {
-        query = query.eq('is_overdue', filters.is_overdue);
-      }
-
-      if (filters?.date_from) {
-        query = query.gte('due_date', filters.date_from);
-      }
-
-      if (filters?.date_to) {
-        query = query.lte('due_date', filters.date_to);
-      }
-
-      if (filters?.search) {
-        query = query.or(`learner_name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%,admission_number.ilike.%${filters.search}%,fee_head_name.ilike.%${filters.search}%`);
-      }
-
-      // Apply pagination
-      if (filters?.page && filters?.limit) {
-        const from = (filters.page - 1) * filters.limit;
-        const to = from + filters.limit - 1;
-        query = query.range(from, to);
-      }
-
-      const { data, error, count } = await query;
+      const result = await apiPost('/college-admin/faculty', {
+        action: 'get-fee-ledger-detailed',
+        college_id: collegeId,
+        ...filters,
+      });
       
-      if (error) throw error;
-      return { data: data as LearnerFeeLedgerDetailed[], count };
+      if (result.success && result.data) {
+        return { data: result.data.data as LearnerFeeLedgerDetailed[], count: result.data.count };
+      }
+      throw new Error(result.error || 'Failed to fetch fee ledger');
     } catch (error) {
       // Return mock data if view doesn't exist
       const mockData: LearnerFeeLedgerDetailed[] = [
@@ -375,26 +326,15 @@ class ExpenditureService {
     try {
       const collegeId = await this.getCurrentCollegeId();
       
-      const { data, error } = await supabase
-        .from('v_learner_fee_ledger_detailed')
-        .select('academic_year, semester, payment_status, department_name, program_name_full')
-        .eq('college_id', collegeId);
+      const result = await apiPost('/college-admin/faculty', {
+        action: 'get-fee-ledger-filter-options',
+        college_id: collegeId,
+      });
       
-      if (error) throw error;
-      
-      const academicYears = [...new Set(data.map(d => d.academic_year))].filter(Boolean).sort();
-      const semesters = [...new Set(data.map(d => d.semester))].filter(Boolean).sort();
-      const paymentStatuses = [...new Set(data.map(d => d.payment_status))].filter(Boolean);
-      const departments = [...new Set(data.map(d => d.department_name))].filter(Boolean).sort();
-      const programs = [...new Set(data.map(d => d.program_name_full))].filter(Boolean).sort();
-      
-      return {
-        academicYears,
-        semesters,
-        paymentStatuses,
-        departments,
-        programs
-      };
+      if (result.success && result.data) {
+        return result.data;
+      }
+      throw new Error(result.error || 'Failed to fetch filter options');
     } catch (error) {
       // Return mock filter options if view doesn't exist
       return {

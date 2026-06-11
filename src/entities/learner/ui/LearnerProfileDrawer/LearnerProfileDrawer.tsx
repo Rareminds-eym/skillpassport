@@ -190,7 +190,7 @@ const LearnerProfileDrawer: React.FC<LearnerProfileDrawerProps> = ({
       case 'academic':
         return <AcademicTab learner={learner} />;
       case 'courses':
-        return <CoursesTab courses={courses} loading={loadingCourses} learnerId={learner?.id} />;
+        return <CoursesTab courses={courses} loading={loadingCourses} learnerId={learner?.user_id || learner?.id} />;
       case 'projects':
         return <ProjectsTab projects={projects} loading={loadingProjects} />;
       case 'certificates':

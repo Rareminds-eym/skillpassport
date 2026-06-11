@@ -11,7 +11,7 @@ import {
   FunnelIcon
 } from '@heroicons/react/24/outline';
 import KPICard from './KPICard';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('kpi-dashboard-advanced');
@@ -62,115 +62,14 @@ const KPIDashboardAdvanced: React.FC<KPIDashboardAdvancedProps> = ({
   const fetchKPIData = async () => {
     try {
       setError(null);
-      
-      // Build base query with filters
-      let learnersQuery = supabase
-        .from('learners')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
-
-      if (schoolId) learnersQuery = learnersQuery.eq('school_id', schoolId);
-      if (filters.grade) learnersQuery = learnersQuery.eq('grade', filters.grade);
-      if (filters.section) learnersQuery = learnersQuery.eq('section', filters.section);
-
-      const { count: totallearners, error: learnersError } = await learnersQuery;
-      if (learnersError) throw learnersError;
-
-      // Fetch Attendance Today with real-time calculation
-      const today = new Date().toISOString().split('T')[0];
-      let attendanceQuery = supabase
-        .from('attendance_records')
-        .select('status, learner_id');
-
-      if (schoolId) attendanceQuery = attendanceQuery.eq('school_id', schoolId);
-      attendanceQuery = attendanceQuery.eq('date', today);
-
-      const { data: attendanceData, error: attendanceError } = await attendanceQuery;
-      if (attendanceError) throw attendanceError;
-
-      const presentCount = attendanceData?.filter(a => a.status === 'present').length || 0;
-      const totalAttendance = attendanceData?.length || 1;
-      const attendancePercentage = Math.round((presentCount / totalAttendance) * 100);
-
-      // Fetch Exams Scheduled (active exams)
-      // Using exam_timetable table instead of non-existent 'exams' table
-      let examsQuery = supabase
-        .from('exam_timetable')
-        .select('*', { count: 'exact', head: true })
-        .gte('exam_date', today);
-
-      if (schoolId) examsQuery = examsQuery.eq('school_id', schoolId);
-
-      const { count: examsScheduled, error: examsError } = await examsQuery;
-      if (examsError) logger.warn('Fetch exams scheduled failed', { error: examsError.message, schoolId });
-
-      // Fetch Pending Assessments (unpublished assessments)
-      // Using assessments table instead of non-existent 'marks' table
-      let assessmentsQuery = supabase
-        .from('assessments')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_published', false);
-
-      if (schoolId) assessmentsQuery = assessmentsQuery.eq('school_id', schoolId);
-
-      const { count: pendingAssessments, error: assessmentsError } = await assessmentsQuery;
-      if (assessmentsError) logger.warn('Fetch pending assessments failed', { error: assessmentsError.message, schoolId });
-
-      // Fetch Fee Collection based on date range
-      // Note: fee_payments doesn't have school_id column
-      const getFeeData = async (daysBack: number) => {
-        const dateFrom = new Date();
-        dateFrom.setDate(dateFrom.getDate() - daysBack);
-        
-        const feeQuery = supabase
-          .from('fee_payments')
-          .select('amount')
-          .eq('status', 'success')
-          .gte('payment_date', dateFrom.toISOString());
-
-        // Note: school_id filter removed as fee_payments table doesn't have this column
-
-        const { data, error } = await feeQuery;
-        if (error) logger.warn('Fetch fee collection failed', { error: error.message, daysBack });
-
-        return data?.reduce((sum, fee) => sum + (fee.amount || 0), 0) || 0;
-      };
-
-      const dailyFees = await getFeeData(0);
-      const weeklyFees = await getFeeData(7);
-      const monthlyFees = await getFeeData(30);
-
-      // Fetch Career Readiness Index (AI-driven average)
-      // Note: career_recommendations table doesn't exist, using placeholder
-      const avgCareerReadiness = 0;
-
-      // Fetch Library Overdue Items
-      // Using library_book_issues_school table instead of non-existent 'book_issue' table
-      let libraryQuery = supabase
-        .from('library_book_issues_school')
-        .select('*', { count: 'exact', head: true })
-        .lt('due_date', today)
-        .is('return_date', null);
-
-      if (schoolId) libraryQuery = libraryQuery.eq('school_id', schoolId);
-
-      const { count: libraryOverdue, error: libraryError } = await libraryQuery;
-      if (libraryError) logger.warn('Fetch library overdue items failed', { error: libraryError.message, schoolId });
-
-      setKpiData({
-        totallearners: totallearners || 0,
-        attendanceToday: attendancePercentage,
-        examsScheduled: examsScheduled || 0,
-        pendingAssessments: pendingAssessments || 0,
-        feeCollection: {
-          daily: dailyFees,
-          weekly: weeklyFees,
-          monthly: monthlyFees,
-        },
-        careerReadinessIndex: avgCareerReadiness,
-        libraryOverdue: libraryOverdue || 0,
+      const { data } = await apiPost('/kpi-dashboard/actions', {
+        action: 'get-kpi-data-advanced',
+        schoolId,
+        grade: filters.grade,
+        section: filters.section,
+        dateRange: filters.dateRange,
       });
-
+      setKpiData(data);
       setLastUpdated(new Date());
       setLoading(false);
     } catch (err) {

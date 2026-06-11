@@ -4,6 +4,7 @@ import { CheckCircle, AlertCircle, Loader2, Eye, EyeOff, Lock, Users } from 'luc
 import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
 import { AuthFetchError } from '@rareminds-eym/auth-client';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 type InviteState = 'form' | 'loading' | 'success' | 'error';
 
@@ -23,8 +24,8 @@ const AcceptInvite = () => {
     if (!token) return;
 
     // Password is optional for existing users, required for new users
-    if (password && password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (password && password.length < PASSWORD_MIN) {
+      setError(`Password must be at least ${PASSWORD_MIN} characters`);
       return;
     }
 
@@ -114,10 +115,10 @@ const AcceptInvite = () => {
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); setError(''); }}
                     disabled={loading}
-                    minLength={8}
+                    minLength={PASSWORD_MIN}
                     autoComplete="new-password"
                     className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 transition-colors"
-                    placeholder="Set a password (8+ characters)"
+                    placeholder="Set a password (10+ characters)"
                   />
                   <button
                     type="button"

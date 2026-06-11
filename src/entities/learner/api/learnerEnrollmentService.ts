@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('LearnerEnrollmentService');
@@ -24,9 +24,6 @@ export interface EnrolledLearnerView {
 }
 
 export const learnerEnrollmentService = {
-  /**
-   * Get all enrolled learners with filters (using learners table directly)
-   */
   async getEnrolledLearners(filters?: {
     college_id?: string;
     department_id?: string;
@@ -35,55 +32,11 @@ export const learnerEnrollmentService = {
     search?: string;
   }): Promise<{ success: boolean; data?: EnrolledLearnerView[]; error?: string }> {
     try {
-      let query = supabase
-        .from('learners')
-        .select(`
-          id,
-          name,
-          roll_number,
-          email,
-          contact_number,
-          college_id,
-          program_id,
-          semester,
-          section,
-          enrollmentDate,
-          created_at,
-          updated_at,
-          programs!learners_program_id_fkey (
-            id,
-            name,
-            code,
-            department_id,
-            departments!programs_department_id_fkey (
-              id,
-              name,
-              code
-            )
-          )
-        `)
-        .eq('is_deleted', false)
-        .not('program_id', 'is', null)
-        .order('name', { ascending: true });
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'fetch-enrolled-learners', filters: filters || {},
+      });
+      const data = result?.data || [];
 
-      if (filters?.college_id) {
-        query = query.eq('college_id', filters.college_id);
-      }
-      if (filters?.program_id) {
-        query = query.eq('program_id', filters.program_id);
-      }
-      if (filters?.semester) {
-        query = query.eq('semester', filters.semester);
-      }
-      if (filters?.search) {
-        query = query.or(`name.ilike.%${filters.search}%,roll_number.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // Transform data to match EnrolledLearnerView interface
       const transformedData: EnrolledLearnerView[] = (data || []).map((learner: any) => ({
         learner_id: learner.id,
         learner_name: learner.name,
@@ -104,7 +57,6 @@ export const learnerEnrollmentService = {
         updated_at: learner.updated_at,
       }));
 
-      // Apply department filter manually (since it's nested)
       let filteredData = transformedData;
       if (filters?.department_id) {
         filteredData = transformedData.filter(s => s.department_id === filters.department_id);
@@ -114,16 +66,10 @@ export const learnerEnrollmentService = {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       logger.error('Error fetching enrolled learners', error instanceof Error ? error : new Error(String(error)), { filters });
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return { success: false, error: errorMessage };
     }
   },
 
-  /**
-   * Enroll a learner (update learners table)
-   */
   async enrollLearner(data: {
     learner_id: string;
     program_id: string;
@@ -131,34 +77,29 @@ export const learnerEnrollmentService = {
     semester: number;
   }): Promise<{ success: boolean; data?: { id: string; program_id: string; semester: number; section?: string; enrollmentDate: string }; error?: string }> {
     try {
-      const { data: learner, error } = await supabase
-        .from('learners')
-        .update({
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'update-learner-by-id',
+        learnerId: data.learner_id,
+        updates: {
           program_id: data.program_id,
           semester: data.semester,
           section: data.section || null,
           enrollmentDate: new Date().toISOString().split('T')[0],
-        })
-        .eq('id', data.learner_id)
-        .select()
-        .single();
+        },
+      });
 
-      if (error) throw error;
+      if (!result?.data) {
+        return { success: false, error: 'Failed to enroll learner' };
+      }
 
-      return { success: true, data: learner };
+      return { success: true, data: result.data };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       logger.error('Error enrolling learner', error instanceof Error ? error : new Error(String(error)), { learnerId: data.learner_id, programId: data.program_id });
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return { success: false, error: errorMessage };
     }
   },
 
-  /**
-   * Bulk enroll learners (update learners table)
-   */
   async bulkEnrollLearners(enrollments: Array<{
     learner_id: string;
     program_id: string;
@@ -167,141 +108,86 @@ export const learnerEnrollmentService = {
   }>): Promise<{ success: boolean; data?: { id: string; program_id: string; semester: number; section?: string; enrollmentDate: string }[]; error?: string }> {
     try {
       const results = [];
-      
       for (const enrollment of enrollments) {
         const result = await this.enrollLearner(enrollment);
         if (result.success && result.data) {
           results.push(result.data);
         }
       }
-
       return { success: true, data: results };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       logger.error('Error bulk enrolling learners', error instanceof Error ? error : new Error(String(error)), { count: enrollments.length });
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return { success: false, error: errorMessage };
     }
   },
 
-  /**
-   * Update enrollment (update learners table)
-   */
   async updateEnrollment(
     learnerId: string,
-    updates: {
-      section?: string;
-      semester?: number;
-      program_id?: string;
-    }
+    updates: { section?: string; semester?: number; program_id?: string }
   ): Promise<{ success: boolean; data?: { id: string; program_id?: string; semester?: number; section?: string }; error?: string }> {
     try {
-      const { data, error } = await supabase
-        .from('learners')
-        .update(updates)
-        .eq('id', learnerId)
-        .select()
-        .single();
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'update-learner-by-id',
+        learnerId,
+        updates,
+      });
 
-      if (error) throw error;
+      if (!result?.data) {
+        return { success: false, error: 'Failed to update enrollment' };
+      }
 
-      return { success: true, data };
+      return { success: true, data: result.data };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       logger.error('Error updating enrollment', error instanceof Error ? error : new Error(String(error)), { learnerId, updates });
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return { success: false, error: errorMessage };
     }
   },
 
-  /**
-   * Get unenrolled learners (learners without program_id)
-   */
   async getUnenrolledLearners(): Promise<{ success: boolean; data?: { id: string; name: string; roll_number: string; email: string; contact_number: string; college_id: string }[]; error?: string }> {
     try {
-      const { data, error } = await supabase
-        .from('learners')
-        .select('id, name, roll_number, email, contact_number, college_id')
-        .eq('is_deleted', false)
-        .is('program_id', null);
-
-      if (error) throw error;
-
-      return { success: true, data: data || [] };
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'fetch-unenrolled-learners',
+      });
+      return { success: true, data: result?.data || [] };
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       logger.error('Error fetching unenrolled learners', error instanceof Error ? error : new Error(String(error)));
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return { success: false, error: errorMessage };
     }
   },
 
-  /**
-   * Get enrollment statistics
-   */
   async getEnrollmentStats(filters?: {
     department_id?: string;
     program_id?: string;
   }): Promise<{ success: boolean; data?: { total: number; byProgram: Record<string, number>; bySemester: Record<number, number> }; error?: string }> {
     try {
-      let query = supabase
-        .from('learners')
-        .select(`
-          id,
-          program_id,
-          semester,
-          programs!learners_program_id_fkey (
-            name,
-            department_id,
-            departments!programs_department_id_fkey (
-              id,
-              name
-            )
-          )
-        `)
-        .eq('is_deleted', false)
-        .not('program_id', 'is', null);
+      const result = await apiPost('/learner-profile/actions', {
+        action: 'fetch-enrollment-stats', filters: filters || {},
+      });
 
-      if (filters?.program_id) {
-        query = query.eq('program_id', filters.program_id);
+      if (!result?.data) {
+        return { success: false, error: 'Failed to fetch enrollment stats' };
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
+      const raw = result.data as any[];
 
       const stats = {
-        total: data?.length || 0,
+        total: raw?.length || 0,
         byProgram: {} as Record<string, number>,
         bySemester: {} as Record<number, number>,
       };
 
-      data?.forEach((learner: any) => {
+      raw?.forEach((learner: any) => {
         const programName = learner.programs?.name || 'Unknown';
         const semester = learner.semester || 0;
-
-        if (!stats.byProgram[programName]) {
-          stats.byProgram[programName] = 0;
-        }
-        stats.byProgram[programName]++;
-
-        if (!stats.bySemester[semester]) {
-          stats.bySemester[semester] = 0;
-        }
-        stats.bySemester[semester]++;
+        stats.byProgram[programName] = (stats.byProgram[programName] || 0) + 1;
+        stats.bySemester[semester] = (stats.bySemester[semester] || 0) + 1;
       });
 
-      // Apply department filter manually
       if (filters?.department_id) {
-        const filteredTotal = data?.filter((s: any) => 
-          s.programs?.department_id === filters.department_id
-        ).length || 0;
+        const filteredTotal = raw?.filter((s: any) => s.programs?.department_id === filters.department_id).length || 0;
         stats.total = filteredTotal;
       }
 
@@ -309,10 +195,7 @@ export const learnerEnrollmentService = {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       logger.error('Error fetching enrollment stats', error instanceof Error ? error : new Error(String(error)), { filters });
-      return {
-        success: false,
-        error: errorMessage,
-      };
+      return { success: false, error: errorMessage };
     }
   },
 };

@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Resume Parser Service
@@ -49,8 +50,6 @@ const parseWithClaude = async (resumeText) => {
     const { getApiUrl } = await import('@/shared/api/apiUtils');
     const API_URL = getApiUrl('career');
 
-    // Get current session for auth token
-    const { supabase } = await import('@/shared/api/supabaseClient');
     const user = useAuthStore.getState().user;
     const token = ssoClient.getAccessToken();
 

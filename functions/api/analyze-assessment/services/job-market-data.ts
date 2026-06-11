@@ -4,7 +4,7 @@
  */
 
 import { callOpenRouterWithRetry, getAPIKeys, AI_MODELS } from '../../shared/ai-config';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 export interface JobMarketData {
   category: string;
@@ -244,20 +244,25 @@ The categories above were selected because they align with your ${riasecCode} pr
 export function extractCareerCategories(
   riasecCode: string,
   aptitudeLevel: number,
-  interests: string[],
-  stream?: string
+  stream?: string | string[]
 ): string[] {
   const categories: string[] = [];
-  
+
   // Parse RIASEC code (e.g., "ASR" -> ['A', 'S', 'R'])
   const riasecTypes = riasecCode.split('').slice(0, 3);
-  
+
+  // `stream` may arrive as a string, an array (e.g. []), or undefined depending
+  // on the caller. Normalize to a lowercase string so string ops never crash.
+  const streamStr = Array.isArray(stream)
+    ? stream.join(' ').toLowerCase()
+    : (typeof stream === 'string' ? stream.toLowerCase() : '');
+
   console.log('[JOB MARKET] Analyzing RIASEC profile:', riasecCode);
   console.log('[JOB MARKET] Top 3 types:', riasecTypes.join(', '));
-  console.log('[JOB MARKET] Stream:', stream || 'not provided');
-  
+  console.log('[JOB MARKET] Stream:', streamStr || 'not provided');
+
   // CRITICAL: Special handling for psychology stream
-  if (stream && stream.toLowerCase().includes('psychology')) {
+  if (streamStr.includes('psychology')) {
     console.log('[JOB MARKET] 🚨 PSYCHOLOGY STREAM DETECTED - Prioritizing psychology categories');
     
     // For psychology stream, ALWAYS prioritize psychology-related categories

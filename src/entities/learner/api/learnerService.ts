@@ -5,7 +5,7 @@ import { useAuthStore } from '@/shared/model/authStore';
  * Handles all learner-related operations with TypeScript types
  */
 
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPut, apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { apiGet, apiPost } from '@/shared/api/apiClient';
 import {
@@ -71,126 +71,16 @@ function generateAvatar(name?: string): string {
 
 // ==================== CORE LEARNER FUNCTIONS ====================
 
-/**
- * Create a user record in the users table
- */
-export const createUserRecord = async (userId: string, userData: UserCreateData): Promise<ServiceResponse> => {
-  try {
-    const { email, firstName, lastName, user_role, role, dateOfBirth } = userData;
-
-    const userRecord = {
-      id: userId,
-      email: email,
-      firstName: firstName || null,
-      lastName: lastName || null,
-      role: role || user_role || 'learner',
-      isActive: true,
-      dob: dateOfBirth || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('users')
-      .insert([userRecord])
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Error creating user record', error);
-      return { success: false, data: null, error: error.message };
-    }
-
-    logger.info('User record created successfully', { userId });
-    return { success: true, data: data, error: null };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    logger.error('Unexpected error creating user record', error instanceof Error ? error : new Error(String(error)));
-    return { success: false, data: null, error: errorMessage };
-  }
-};
-
-/**
- * Create a learner record in the learners table
- */
-export const createLearner = async (learnerData: LearnerData, userId: string): Promise<ServiceResponse> => {
-  try {
-    const {
-      name,
-      email,
-      phone,
-      learnerType,
-      schoolId,
-      collegeId,
-      country,
-      state,
-      city,
-      preferredLanguage,
-      referralCode
-    } = learnerData;
-
-    const normalizedlearnerType = learnerType?.toLowerCase().replace('-learner', '').replace('-educator', '') || 'learner';
-
-    const learner = {
-      id: userId,
-      user_id: userId,
-      name: name,
-      email: email,
-      contact_number: phone || null,
-      learner_type: normalizedlearnerType,
-      school_id: schoolId || null,
-      college_id: collegeId || null,
-      country: country || null,
-      state: state || null,
-      city: city || null,
-      preferred_language: preferredLanguage || 'en',
-      referral_code: referralCode || null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('learners')
-      .insert([learner])
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Error creating learner record', error, { userId, email: learnerData.email });
-      return { success: false, data: null, error: error.message };
-    }
-
-    logger.info('Learner record created successfully', { learnerId: data.id });
-    return { success: true, data: data, error: null };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    logger.error('Unexpected error creating learner', error instanceof Error ? error : new Error(String(error)), { userId, email: learnerData.email });
-    return { success: false, data: null, error: errorMessage };
-  }
-};
-
-
-/**
- * Update learner by learner ID
- */
 export const updateLearner = async (learnerId: string, updates: LearnerUpdateData): Promise<ServiceResponse> => {
   try {
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', learnerId)
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Error updating learner', error, { learnerId });
-      return { success: false, data: null, error: error.message };
-    }
-
-    return { success: true, data: data, error: null };
+    const body = {
+      ...updates,
+      id: learnerId,
+      updated_at: new Date().toISOString(),
+    };
+    const response: any = await apiPost('/learners', body);
+    const data = response?.data?.learner ?? response?.learner;
+    return { success: true, data: data ?? body, error: null };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     logger.error('Unexpected error updating learner', error instanceof Error ? error : new Error(String(error)), { learnerId });
@@ -203,25 +93,19 @@ export const updateLearner = async (learnerId: string, updates: LearnerUpdateDat
  */
 export const softDeleteLearner = async (learnerId: string, educatorId: string): Promise<ServiceResponse> => {
   try {
-    const { data, error } = await supabase
-      .from('learners')
-      .update({
-        is_deleted: true,
-        deleted_at: new Date().toISOString(),
-        deleted_by: educatorId,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', learnerId)
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Error soft deleting learner', error, { learnerId });
-      return { success: false, data: null, error: error.message };
+    const body = {
+      id: learnerId,
+      is_deleted: true,
+      deleted_at: new Date().toISOString(),
+      deleted_by: educatorId,
+      updated_at: new Date().toISOString(),
+    };
+    const response: any = await apiPost('/learners', body);
+    const data = response?.data?.learner ?? response?.learner;
+    if (data) {
+      logger.info('Learner soft deleted successfully', { learnerId });
     }
-
-    logger.info('Learner soft deleted successfully', { learnerId: data.id });
-    return { success: true, data: data, error: null };
+    return { success: true, data: data ?? body, error: null };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     logger.error('Unexpected error soft deleting learner', error instanceof Error ? error : new Error(String(error)), { learnerId });
@@ -320,17 +204,12 @@ function transformProfileData(profile: ProfileInput | null, email: string, learn
 export const getlearnerByEmail = async (email: string): Promise<ServiceResponse> => {
   try {
     // Route through the secure backend endpoint to bypass RLS
-    const { ssoClient } = await import('@/shared/api/ssoClient');
-    const getCurrentSession = () => ({ data: { session: { access_token: ssoClient.getAccessToken() } } });
     const user = useAuthStore.getState().user;
 
     const origin = window.location.origin;
     const response = await ssoClient.fetch(`${origin}/api/learners/by-email?email=${encodeURIComponent(email)}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(ssoClient.getAccessToken() ? { } : {}),
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     const result = await response.json();
@@ -504,21 +383,23 @@ export const getlearnerByEmail = async (email: string): Promise<ServiceResponse>
     const trainingIds = approvedTrainings.map((t: TrainingRecord) => t.id).filter(Boolean);
     let trainingCertificates: CertificateRecord[] = [];
     let trainingSkills: SkillRecord[] = [];
+    const fetchLearnerId = (data as any)?.id || (data as any)?.learner_id;
 
-    if (trainingIds.length > 0) {
-      const { data: certData } = await supabase
-        .from('certificates')
-        .select('training_id, link')
-        .in('training_id', trainingIds);
+    if (trainingIds.length > 0 && fetchLearnerId) {
+      try {
+        const certResponse: any = await apiGet(`/learners/data/${fetchLearnerId}/certificates`);
+        const allCerts: any[] = certResponse?.data ?? certResponse ?? [];
+        trainingCertificates = allCerts.filter((c: any) => trainingIds.includes(c.training_id));
+      } catch {
+      }
 
-      trainingCertificates = certData || [];
-
-      const { data: skillsData } = await supabase
-        .from('skills')
-        .select('training_id, name, type, level, description')
-        .in('training_id', trainingIds);
-
-      trainingSkills = skillsData || [];
+      try {
+        const skillsResponse: any = await apiGet(`/learners/data/${fetchLearnerId}/skills`);
+        const allSkills: any[] = skillsResponse?.data ?? skillsResponse ?? [];
+        trainingSkills = allSkills.filter((s: any) => trainingIds.includes(s.training_id))
+          .map((s: any) => ({ training_id: s.training_id, name: s.name, type: s.type, level: s.level, description: s.description }));
+      } catch {
+      }
     }
 
     const formattedTrainings = approvedTrainings.map((train: TrainingRecord) => {
@@ -645,6 +526,7 @@ export const getlearnerByEmail = async (email: string): Promise<ServiceResponse>
 
       users: data.users || null,
       userRole: data.users?.role || null,
+      learner_type: data.learner_type || null,
 
       school_id: data.school_id,
       university_college_id: data.university_college_id,
@@ -743,87 +625,14 @@ export const getlearnerByEmail = async (email: string): Promise<ServiceResponse>
  */
 export const getlearnerById = async (learnerId: string): Promise<ServiceResponse> => {
   try {
-    let { data, error } = await supabase
-      .from('learners')
-      .select(`
-        *,
-        users!fk_learners_user (
-          role
-        ),
-        school:organizations!learners_school_id_fkey (
-          id,
-          name,
-          code,
-          city,
-          state,
-          organization_type
-        ),
-        university_colleges:university_college_id (
-          id,
-          name,
-          code,
-          university:organizations!university_colleges_university_id_fkey (
-            id,
-            name,
-            city,
-            state,
-            organization_type
-          )
-        ),
-        skill_passports (
-          id,
-          projects,
-          certificates,
-          assessments,
-          status,
-          aiVerification,
-          nsqfLevel,
-          skills,
-          createdAt,
-          updatedAt
-        ),
-        projects (
-          id,
-          title,
-          description,
-          role,
-          status,
-          start_date,
-          end_date,
-          duration,
-          organization,
-          tech_stack,
-          demo_link,
-          github_link,
-          enabled,
-          approval_status,
-          created_at,
-          updated_at,
-          certificate_url,
-          video_url,
-          ppt_url
-        ),
-        certificates (*),
-        experience (*),
-        skills(*),
-        trainings (*),
-        education (*) 
-      `)
-      .eq('id', learnerId)
-      .maybeSingle();
+    const response: any = await apiGet(`/learners?id=${learnerId}`);
+    const data = response?.data?.learner ?? response?.learner;
 
-    if (error) {
-      logger.error('Supabase error fetching learner by ID', error);
-      return { success: false, data: null, error: error.message };
-    }
-
-    if (!data) {
+    if (!data?.email) {
       return { success: false, data: null, error: 'No data found for this learner ID.' };
     }
 
-    // Use the same data processing logic as getlearnerByEmail
-    const email = data.email;
-    return await getlearnerByEmail(email);
+    return await getlearnerByEmail(data.email);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in getlearnerById', err instanceof Error ? err : new Error(String(err)));
@@ -836,22 +645,12 @@ export const getlearnerById = async (learnerId: string): Promise<ServiceResponse
  */
 export async function findlearnerByEmail(email: string): Promise<ServiceResponse> {
   try {
-    const { data: learnerRecord, error } = await supabase
-      .from('learners')
-      .select('*')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (error) {
-      logger.error('Database error finding learner', error, { email });
-      return { success: false, data: null, error: error.message };
-    }
-
-    if (!learnerRecord) {
+    const response: any = await apiGet(`/learners/data/find-by-email?email=${encodeURIComponent(email)}`);
+    const data = response?.data ?? response;
+    if (!data?.id) {
       return { success: false, data: null, error: 'Learner not found' };
     }
-
-    return { success: true, data: learnerRecord, error: null };
+    return { success: true, data: { id: data.id, email }, error: null };
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in findlearnerByEmail', err instanceof Error ? err : new Error(String(err)));
@@ -979,24 +778,21 @@ export async function updatelearnerByEmail(email: string, updates: LearnerUpdate
     }
 
     columnUpdates.updated_at = new Date().toISOString();
+    columnUpdates.id = (learnerRecord as LearnerRecord).id;
 
-    const { data, error } = await supabase
-      .from('learners')
-      .update(columnUpdates)
-      .eq('id', (learnerRecord as LearnerRecord).id)
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('Supabase update error', error, { email });
-      return { success: false, data: null, error: error.message };
+    let updateResult: any;
+    try {
+      updateResult = await apiPost('/learners', columnUpdates);
+    } catch (err: any) {
+      logger.error('API update error', err, { email });
+      return { success: false, data: null, error: err.message || 'Update failed' };
     }
 
     const updatedResult = await getlearnerByEmail(email);
 
     return {
       success: true,
-      data: updatedResult.success ? updatedResult.data : data,
+      data: updatedResult.success ? updatedResult.data : (updateResult?.data?.learner ?? updateResult?.learner),
       error: null
     };
 
@@ -1014,25 +810,16 @@ export async function updatelearnerByEmail(email: string, updates: LearnerUpdate
 export async function updateTrainingByEmail(email: string, trainingData: TrainingUpdateDataFull[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    if (!findResult.success) return findResult;
 
     const learnerRecord = findResult.data as LearnerRecord;
     const learnerId = learnerRecord.id;
 
-    // Get existing training records
-    const { data: existingTrainings, error: existingError } = await supabase
-      .from('trainings')
-      .select('*')
-      .eq('learner_id', learnerId);
-    if (existingError) {
-      return { success: false, data: null, error: existingError.message };
-    }
+    const existingResponse: any = await apiGet(`/learners/data/${learnerId}/trainings`);
+    const existingTrainings: any[] = existingResponse?.data ?? existingResponse ?? [];
 
     const nowIso = new Date().toISOString();
 
-    // Format training data for database
     const formatted = (trainingData || [])
       .filter((train: TrainingUpdateDataFull) => {
         const titleField = train.course || train.title;
@@ -1041,7 +828,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
       .map((train: TrainingUpdateDataFull) => {
         const titleValue = train.course || train.title || '';
 
-        const record: TrainingCreateData = {
+        const record: any = {
           id: generateUuid(),
           learner_id: learnerId,
           title: titleValue.trim(),
@@ -1058,7 +845,6 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
           updated_at: nowIso,
         };
 
-        // Preserve existing ID if valid UUID
         const rawId = typeof train.id === 'string' ? train.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
@@ -1067,8 +853,7 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
           record.approval_status = 'pending';
         }
 
-        // Handle versioning for existing records
-        const existingRecord = (existingTrainings || []).find((e: TrainingRecord) => e.id === record.id);
+        const existingRecord = (existingTrainings || []).find((e: any) => e.id === record.id);
 
         if (existingRecord && existingRecord.has_pending_edit === true) {
           record.verified_data = existingRecord.verified_data;
@@ -1123,45 +908,26 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
         return record;
       });
 
-    // Determine which records to delete
     const incomingIds = new Set(formatted.map((record) => record.id));
     const toDelete = (existingTrainings || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
 
-    // Delete removed records and their related data
-    if (toDelete.length > 0) {
-      await supabase.from('certificates').delete().in('training_id', toDelete);
-      await supabase.from('skills').delete().in('training_id', toDelete);
+    await apiPut(`/learners/data/${learnerId}/trainings`, { deleteIds: toDelete, records: formatted });
 
-      const { error: deleteError } = await supabase
-        .from('trainings')
-        .delete()
-        .in('id', toDelete);
+    // Fetch all existing skills for skills management
+    const skillsResponse: any = await apiGet(`/learners/data/${learnerId}/skills`);
+    const allExistingSkills: any[] = skillsResponse?.data ?? skillsResponse ?? [];
 
-      if (deleteError) {
-        logger.error('Error deleting trainings', deleteError);
-        return { success: false, data: null, error: deleteError.message };
-      }
-    }
-
-    // Upsert training records
+    // Handle skills for each training
     if (formatted.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('trainings')
-        .upsert(formatted, { onConflict: 'id' });
+      const allSkillDeleteIds: string[] = [];
+      const allSkillRecords: any[] = [];
 
-      if (upsertError) {
-        logger.error('Error upserting trainings', upsertError);
-        return { success: false, data: null, error: upsertError.message };
-      }
-
-      // Handle skills for each training
       for (const training of formatted) {
         const trainingId = training.id;
         const originalTrainingData = trainingData.find((t: TrainingUpdateDataFull) => t.id === trainingId);
 
-        // Get skills from either skills array or skillsList array
         let skillsFromTraining: SkillData[] = [];
         if (originalTrainingData?.skills && Array.isArray(originalTrainingData.skills)) {
           skillsFromTraining = originalTrainingData.skills;
@@ -1169,59 +935,37 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
           skillsFromTraining = originalTrainingData.skillsList;
         }
 
-        if (skillsFromTraining.length > 0) {
-          // Get existing skills for this training
-          const { data: existingSkills } = await supabase
-            .from('skills')
-            .select('id, name, type')
-            .eq('training_id', trainingId) as { data: SkillRecord[] | null };
+        const existingSkillsForTraining = allExistingSkills.filter((s: any) => s.training_id === trainingId);
 
+        if (skillsFromTraining.length > 0) {
           const existingSkillsMap = new Map(
-            (existingSkills || []).map((s: SkillRecord) => [`${s.name.toLowerCase().trim()}_${s.type}`, s])
+            existingSkillsForTraining.map((s: any) => [`${s.name.toLowerCase().trim()}_${s.type}`, s])
           );
 
-          // Process skills - preserve the type from the skill object
           const skillsToProcess = skillsFromTraining.map((skill: SkillData) => {
             if (typeof skill === 'object' && skill && skill.name) {
-              return {
-                name: skill.name.trim(),
-                type: skill.type // Use the actual type from the skill object
-              };
+              return { name: skill.name.trim(), type: skill.type };
             } else if (typeof skill === 'string') {
-              return {
-                name: skill.trim(),
-                type: 'technical' as const
-              };
+              return { name: skill.trim(), type: 'technical' as const };
             }
             return null;
-          }).filter(skill => skill !== null && skill.name);
+          }).filter(skill => skill !== null && skill!.name);
 
-          // Find skills to add
-          const skillsToAdd = skillsToProcess.filter(skill => {
-            if (!skill) return false;
-            const key = `${skill.name.toLowerCase()}_${skill.type}`;
-            return !existingSkillsMap.has(key);
-          });
-
-          // Find skills to remove
           const currentSkillKeys = new Set(
-            skillsToProcess.filter(skill => skill !== null).map(skill => `${skill!.name.toLowerCase()}_${skill!.type}`)
+            skillsToProcess.filter(s => s !== null).map(s => `${s!.name.toLowerCase()}_${s!.type}`)
           );
-          const skillIdsToDelete = (existingSkills || [])
-            .filter(s => !currentSkillKeys.has(`${s.name.toLowerCase().trim()}_${s.type}`))
-            .map(s => s.id);
 
-          // Delete removed skills
-          if (skillIdsToDelete.length > 0) {
-            await supabase
-              .from('skills')
-              .delete()
-              .in('id', skillIdsToDelete);
-          }
+          const skillIdsToDelete = existingSkillsForTraining
+            .filter((s: any) => !currentSkillKeys.has(`${s.name.toLowerCase().trim()}_${s.type}`))
+            .map((s: any) => s.id);
+          allSkillDeleteIds.push(...skillIdsToDelete);
 
-          // Add new skills
-          if (skillsToAdd.length > 0) {
-            const skillRecords = skillsToAdd.filter(skill => skill !== null).map((skill) => ({
+          const skillsToAdd = skillsToProcess.filter(s => {
+            if (!s) return false;
+            return !existingSkillsMap.has(`${s.name.toLowerCase()}_${s.type}`);
+          });
+          skillsToAdd.filter(s => s !== null).forEach((skill) => {
+            allSkillRecords.push({
               id: generateUuid(),
               learner_id: learnerId,
               training_id: trainingId,
@@ -1230,23 +974,16 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
               level: 3,
               created_at: nowIso,
               updated_at: nowIso,
-            }));
-
-            const { error: skillsInsertError } = await supabase
-              .from('skills')
-              .insert(skillRecords);
-
-            if (skillsInsertError) {
-              logger.error('Error inserting skills', skillsInsertError);
-            }
-          }
+            });
+          });
         } else {
-          // No skills, delete any existing skills for this training
-          await supabase
-            .from('skills')
-            .delete()
-            .eq('training_id', trainingId);
+          const existingIds = existingSkillsForTraining.map((s: any) => s.id);
+          allSkillDeleteIds.push(...existingIds);
         }
+      }
+
+      if (allSkillDeleteIds.length > 0 || allSkillRecords.length > 0) {
+        await apiPut(`/learners/data/${learnerId}/skills`, { deleteIds: allSkillDeleteIds, records: allSkillRecords });
       }
     }
 
@@ -1264,31 +1001,20 @@ export async function updateTrainingByEmail(email: string, trainingData: Trainin
 export async function updateTechnicalSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    if (!findResult.success) return findResult;
 
     const learnerRecord = findResult.data as LearnerRecord;
     const learnerId = learnerRecord.id;
 
-    // Get existing technical skills only
-    const { data: existingSkills, error: existingError } = await supabase
-      .from('skills')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .eq('type', 'technical');
-
-    if (existingError) {
-      return { success: false, data: null, error: existingError.message };
-    }
+    const existingResponse: any = await apiGet(`/learners/data/${learnerId}/skills?type=technical`);
+    const existingSkills: any[] = existingResponse?.data ?? existingResponse ?? [];
 
     const nowIso = new Date().toISOString();
 
-    // Format technical skills data
     const formatted = (skillsData || [])
       .filter((skill: SkillUpdateData) => skill && skill.name && typeof skill.name === 'string' && skill.name.trim().length > 0)
       .map((skill: SkillUpdateData) => {
-        const record: SkillCreateData = {
+        const record: any = {
           learner_id: learnerId,
           name: skill.name!.trim(),
           type: 'technical',
@@ -1301,7 +1027,6 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
           updated_at: nowIso,
         };
 
-        // Preserve existing ID if valid UUID (technical skills)
         const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
@@ -1312,36 +1037,12 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
         return record;
       });
 
-    // Determine which technical skills to delete
     const incomingIds = new Set(formatted.map((record) => record.id));
     const toDelete = (existingSkills || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
 
-    // Delete removed technical skills
-    if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('skills')
-        .delete()
-        .in('id', toDelete);
-
-      if (deleteError) {
-        logger.error('Error deleting technical skills', deleteError);
-        return { success: false, data: null, error: deleteError.message };
-      }
-    }
-
-    // Upsert technical skills records
-    if (formatted.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('skills')
-        .upsert(formatted, { onConflict: 'id' });
-
-      if (upsertError) {
-        logger.error('Error upserting technical skills', upsertError);
-        return { success: false, data: null, error: upsertError.message };
-      }
-    }
+    await apiPut(`/learners/data/${learnerId}/skills`, { deleteIds: toDelete, records: formatted });
 
     return await getlearnerByEmail(email);
   } catch (err: unknown) {
@@ -1357,31 +1058,20 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: Sk
 export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    if (!findResult.success) return findResult;
 
     const learnerRecord = findResult.data as LearnerRecord;
     const learnerId = learnerRecord.id;
 
-    // Get existing soft skills only
-    const { data: existingSkills, error: existingError } = await supabase
-      .from('skills')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .eq('type', 'soft');
-
-    if (existingError) {
-      return { success: false, data: null, error: existingError.message };
-    }
+    const existingResponse: any = await apiGet(`/learners/data/${learnerId}/skills?type=soft`);
+    const existingSkills: any[] = existingResponse?.data ?? existingResponse ?? [];
 
     const nowIso = new Date().toISOString();
 
-    // Format soft skills data
     const formatted = (skillsData || [])
       .filter((skill: SkillUpdateData) => skill && skill.name && typeof skill.name === 'string' && skill.name.trim().length > 0)
       .map((skill: SkillUpdateData) => {
-        const record: SkillCreateData = {
+        const record: any = {
           learner_id: learnerId,
           name: skill.name!.trim(),
           type: 'soft',
@@ -1394,7 +1084,6 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
           updated_at: nowIso,
         };
 
-        // Preserve existing ID if valid UUID (soft skills)
         const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
@@ -1405,36 +1094,12 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
         return record;
       });
 
-    // Determine which soft skills to delete
     const incomingIds = new Set(formatted.map((record) => record.id));
     const toDelete = (existingSkills || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
 
-    // Delete removed soft skills
-    if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('skills')
-        .delete()
-        .in('id', toDelete);
-
-      if (deleteError) {
-        logger.error('Error deleting soft skills', deleteError);
-        return { success: false, data: null, error: deleteError.message };
-      }
-    }
-
-    // Upsert soft skills records
-    if (formatted.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('skills')
-        .upsert(formatted, { onConflict: 'id' });
-
-      if (upsertError) {
-        logger.error('Error upserting soft skills', upsertError);
-        return { success: false, data: null, error: upsertError.message };
-      }
-    }
+    await apiPut(`/learners/data/${learnerId}/skills`, { deleteIds: toDelete, records: formatted });
 
     return await getlearnerByEmail(email);
   } catch (err: unknown) {
@@ -1450,30 +1115,20 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: SkillUp
 export async function updateExperienceByEmail(email: string, experienceData: ExperienceUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    if (!findResult.success) return findResult;
 
     const learnerRecord = findResult.data as LearnerRecord;
     const learnerId = learnerRecord.id;
 
-    // Get existing experience records
-    const { data: existingExperience, error: existingError } = await supabase
-      .from('experience')
-      .select('*')
-      .eq('learner_id', learnerId);
-
-    if (existingError) {
-      return { success: false, data: null, error: existingError.message };
-    }
+    const existingResponse: any = await apiGet(`/learners/data/${learnerId}/experience`);
+    const existingExperience: any[] = existingResponse?.data ?? existingResponse ?? [];
 
     const nowIso = new Date().toISOString();
 
-    // Format experience data
     const formatted = (experienceData || [])
       .filter((exp: ExperienceUpdateData) => exp && exp.organization && typeof exp.organization === 'string' && exp.organization.trim().length > 0)
       .map((exp: ExperienceUpdateData) => {
-        const record: ExperienceCreateData = {
+        const record: any = {
           learner_id: learnerId,
           organization: exp.organization?.trim() || '',
           role: exp.role?.trim() || '',
@@ -1487,7 +1142,6 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
           updated_at: nowIso,
         };
 
-        // Preserve existing ID if valid UUID
         const rawId = typeof exp.id === 'string' ? exp.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
@@ -1498,36 +1152,12 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
         return record;
       });
 
-    // Determine which records to delete
     const incomingIds = new Set(formatted.map((record) => record.id));
     const toDelete = (existingExperience || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
 
-    // Delete removed records
-    if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('experience')
-        .delete()
-        .in('id', toDelete);
-
-      if (deleteError) {
-        logger.error('Error deleting experience', deleteError);
-        return { success: false, data: null, error: deleteError.message };
-      }
-    }
-
-    // Upsert experience records
-    if (formatted.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('experience')
-        .upsert(formatted, { onConflict: 'id' });
-
-      if (upsertError) {
-        logger.error('Error upserting experience', upsertError);
-        return { success: false, data: null, error: upsertError.message };
-      }
-    }
+    await apiPut(`/learners/data/${learnerId}/experience`, { deleteIds: toDelete, records: formatted });
 
     return await getlearnerByEmail(email);
   } catch (err: unknown) {
@@ -1543,33 +1173,23 @@ export async function updateExperienceByEmail(email: string, experienceData: Exp
 export async function updateEducationByEmail(email: string, educationData: EducationUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    if (!findResult.success) return findResult;
 
     const learnerRecord = findResult.data as LearnerRecord;
     const learnerId = learnerRecord.id;
 
-    // Get existing education records
-    const { data: existingEducation, error: existingError } = await supabase
-      .from('education')
-      .select('*')
-      .eq('learner_id', learnerId);
-
-    if (existingError) {
-      return { success: false, data: null, error: existingError.message };
-    }
+    const existingResponse: any = await apiGet(`/learners/data/${learnerId}/education`);
+    const existingEducation: any[] = existingResponse?.data ?? existingResponse ?? [];
 
     const nowIso = new Date().toISOString();
 
-    // Format education data
     const formatted = (educationData || [])
       .filter((edu: EducationUpdateData) => {
         const degreeField = edu.degree || edu.qualification;
         return edu && typeof degreeField === 'string' && (degreeField as string).trim().length > 0;
       })
       .map((edu: EducationUpdateData) => {
-        const record: EducationCreateData = {
+        const record: any = {
           learner_id: learnerId,
           level: edu.level?.trim() || "Bachelor's",
           degree: (edu.degree || edu.qualification)?.trim() || "",
@@ -1584,7 +1204,6 @@ export async function updateEducationByEmail(email: string, educationData: Educa
           updated_at: nowIso,
         };
 
-        // Preserve existing ID if valid UUID
         const rawId = typeof edu.id === 'string' ? edu.id.trim() : null;
         if (rawId && rawId.length === 36 && rawId.includes('-')) {
           record.id = rawId;
@@ -1595,36 +1214,12 @@ export async function updateEducationByEmail(email: string, educationData: Educa
         return record;
       });
 
-    // Determine which records to delete
     const incomingIds = new Set(formatted.map((record) => record.id));
     const toDelete = (existingEducation || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
 
-    // Delete removed records
-    if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('education')
-        .delete()
-        .in('id', toDelete);
-
-      if (deleteError) {
-        logger.error('Error deleting education', deleteError);
-        return { success: false, data: null, error: deleteError.message };
-      }
-    }
-
-    // Upsert education records
-    if (formatted.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('education')
-        .upsert(formatted, { onConflict: 'id' });
-
-      if (upsertError) {
-        logger.error('Error upserting education', upsertError);
-        return { success: false, data: null, error: upsertError.message };
-      }
-    }
+    await apiPut(`/learners/data/${learnerId}/education`, { deleteIds: toDelete, records: formatted });
 
     return await getlearnerByEmail(email);
   } catch (err: unknown) {
@@ -1640,30 +1235,20 @@ export async function updateEducationByEmail(email: string, educationData: Educa
 export async function updateCertificatesByEmail(email: string, certificatesData: CertificateUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    if (!findResult.success) return findResult;
 
     const learnerRecord = findResult.data as LearnerRecord;
     const learnerId = learnerRecord.id;
 
-    // Get existing certificates
-    const { data: existingCertificates, error: existingError } = await supabase
-      .from('certificates')
-      .select('*')
-      .eq('learner_id', learnerId);
-
-    if (existingError) {
-      return { success: false, data: null, error: existingError.message };
-    }
+    const existingResponse: any = await apiGet(`/learners/data/${learnerId}/certificates`);
+    const existingCertificates: any[] = existingResponse?.data ?? existingResponse ?? [];
 
     const nowIso = new Date().toISOString();
 
-    // Format certificates data
     const formatted = (certificatesData || [])
       .filter((cert: CertificateUpdateData) => cert && cert.title && typeof cert.title === 'string' && cert.title.trim().length > 0)
       .map((cert: CertificateUpdateData) => {
-        const record: CertificateCreateData = {
+        const record: any = {
           learner_id: learnerId,
           title: cert.title?.trim() || '',
           issuer: cert.issuer?.trim() || '',
@@ -1682,7 +1267,6 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
           updated_at: nowIso,
         };
 
-        // Preserve existing ID if valid UUID
         const rawId = typeof cert.id === 'string' ? cert.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
@@ -1693,36 +1277,12 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
         return record;
       });
 
-    // Determine which records to delete
     const incomingIds = new Set(formatted.map((record) => record.id));
     const toDelete = (existingCertificates || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
 
-    // Delete removed records
-    if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('certificates')
-        .delete()
-        .in('id', toDelete);
-
-      if (deleteError) {
-        logger.error('Error deleting certificates', deleteError);
-        return { success: false, data: null, error: deleteError.message };
-      }
-    }
-
-    // Upsert certificates records
-    if (formatted.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('certificates')
-        .upsert(formatted, { onConflict: 'id' });
-
-      if (upsertError) {
-        logger.error('Error upserting certificates', upsertError);
-        return { success: false, data: null, error: upsertError.message };
-      }
-    }
+    await apiPut(`/learners/data/${learnerId}/certificates`, { deleteIds: toDelete, records: formatted });
 
     return await getlearnerByEmail(email);
   } catch (err: unknown) {
@@ -1771,30 +1331,20 @@ export async function updateSkillsByEmail(email: string, skillsData: SkillUpdate
 export async function updateProjectsByEmail(email: string, projectsData: ProjectUpdateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findlearnerByEmail(email);
-    if (!findResult.success) {
-      return findResult;
-    }
+    if (!findResult.success) return findResult;
 
     const learnerRecord = findResult.data as LearnerRecord;
     const learnerId = learnerRecord.id;
 
-    // Get existing projects
-    const { data: existingProjects, error: existingError } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('learner_id', learnerId);
-
-    if (existingError) {
-      return { success: false, data: null, error: existingError.message };
-    }
+    const existingResponse: any = await apiGet(`/learners/data/${learnerId}/projects`);
+    const existingProjects: any[] = existingResponse?.data ?? existingResponse ?? [];
 
     const nowIso = new Date().toISOString();
 
-    // Format projects data
     const formatted = (projectsData || [])
       .filter((project: ProjectUpdateData) => project && project.title && typeof project.title === 'string' && project.title.trim().length > 0)
       .map((project: ProjectUpdateData) => {
-        const record: ProjectCreateData = {
+        const record: any = {
           learner_id: learnerId,
           title: project.title?.trim() || '',
           description: project.description?.trim() || '',
@@ -1815,7 +1365,6 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
           updated_at: nowIso,
         };
 
-        // Preserve existing ID if valid UUID
         const rawId = typeof project.id === 'string' ? project.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
@@ -1826,36 +1375,12 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
         return record;
       });
 
-    // Determine which records to delete
     const incomingIds = new Set(formatted.map((record) => record.id));
     const toDelete = (existingProjects || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
 
-    // Delete removed records
-    if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('projects')
-        .delete()
-        .in('id', toDelete);
-
-      if (deleteError) {
-        logger.error('Error deleting projects', deleteError);
-        return { success: false, data: null, error: deleteError.message };
-      }
-    }
-
-    // Upsert projects records
-    if (formatted.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('projects')
-        .upsert(formatted, { onConflict: 'id' });
-
-      if (upsertError) {
-        logger.error('Error upserting projects', upsertError);
-        return { success: false, data: null, error: upsertError.message };
-      }
-    }
+    await apiPut(`/learners/data/${learnerId}/projects`, { deleteIds: toDelete, records: formatted });
 
     return await getlearnerByEmail(email);
   } catch (err: unknown) {
@@ -1871,7 +1396,8 @@ export async function updateProjectsByEmail(email: string, projectsData: Project
 export async function updateSingleTrainingById(trainingId: string, updateData: TrainingUpdateDataFull): Promise<ServiceResponse> {
   try {
     const nowIso = new Date().toISOString();
-    const updateRecord = {
+
+    const body: any = {
       title: updateData.course?.trim() || updateData.title?.trim(),
       organization: updateData.provider?.trim() || updateData.organization?.trim() || null,
       start_date: updateData.startDate || updateData.start_date || null,
@@ -1885,119 +1411,15 @@ export async function updateSingleTrainingById(trainingId: string, updateData: T
       updated_at: nowIso,
     };
 
-    const { data: updatedTraining, error: updateError } = await supabase
-      .from('trainings')
-      .update(updateRecord)
-      .eq('id', trainingId)
-      .select()
-      .single();
-
-    if (updateError) {
-      logger.error('Error updating training', updateError);
-      return { success: false, data: null, error: updateError.message };
+    if (Array.isArray(updateData.skills)) {
+      body.skills = updateData.skills;
     }
 
-    // Handle skills update if provided
-    const skills = updateData.skills;
-    if (Array.isArray(skills)) {
-      const learnerId = updatedTraining.learner_id;
+    const response: any = await apiPut(`/learners/data/_/trainings/${trainingId}`, body);
+    const updatedTraining = response?.data?.training ?? response?.training;
 
-      // Get existing skills for this training
-      const { data: existingSkills } = await supabase
-        .from('skills')
-        .select('id, name, type, level, description')
-        .eq('training_id', trainingId);
-
-      // Normalize skills to objects with full data
-      const normalizedSkills = skills.map((skill: SkillData | SkillInput | string): NormalizedSkill | null => {
-        if (typeof skill === 'object' && skill && skill.name) {
-          // Handle SkillData type with string level
-          const level = typeof skill.level === 'string' ?
-            ({ 'Beginner': 1, 'Intermediate': 2, 'Advanced': 3, 'Expert': 4 }[skill.level] || 3) :
-            (skill.level || 3);
-
-          return {
-            name: skill.name.trim(),
-            type: skill.type || 'technical',
-            level: level,
-            description: skill.description || ''
-          };
-        } else if (typeof skill === 'string') {
-          return {
-            name: skill.trim(),
-            type: 'technical',
-            level: 3,
-            description: ''
-          };
-        }
-        return null;
-      }).filter((skill): skill is NormalizedSkill => skill !== null && !!skill.name);
-
-      // Create a map of existing skills by name+type for comparison
-      const existingSkillsMap = new Map(
-        (existingSkills || []).map(s => [
-          `${s.name.toLowerCase().trim()}_${s.type}`,
-          s
-        ])
-      );
-
-      // Find skills to add or update
-      const skillsToUpsert = [];
-      const processedKeys = new Set();
-
-      for (const skill of normalizedSkills) {
-        const key = `${skill.name.toLowerCase()}_${skill.type}`;
-        processedKeys.add(key);
-
-        const existing = existingSkillsMap.get(key);
-
-        if (existing) {
-          // Check if we need to update
-          if (existing.level !== skill.level || existing.description !== skill.description) {
-            await supabase
-              .from('skills')
-              .update({
-                level: skill.level,
-                description: skill.description,
-                updated_at: nowIso
-              })
-              .eq('id', existing.id);
-          }
-        } else {
-          // New skill to add
-          skillsToUpsert.push({
-            id: generateUuid(),
-            learner_id: learnerId,
-            training_id: trainingId,
-            name: skill.name,
-            type: skill.type,
-            level: skill.level,
-            description: skill.description,
-            created_at: nowIso,
-            updated_at: nowIso,
-          });
-        }
-      }
-
-      // Find skills to remove
-      const skillIdsToDelete = (existingSkills || [])
-        .filter(s => !processedKeys.has(`${s.name.toLowerCase().trim()}_${s.type}`))
-        .map(s => s.id);
-
-      // Delete removed skills
-      if (skillIdsToDelete.length > 0) {
-        await supabase
-          .from('skills')
-          .delete()
-          .in('id', skillIdsToDelete);
-      }
-
-      // Insert new skills
-      if (skillsToUpsert.length > 0) {
-        await supabase
-          .from('skills')
-          .insert(skillsToUpsert);
-      }
+    if (!updatedTraining) {
+      return { success: false, data: null, error: 'Failed to update training' };
     }
 
     return { success: true, data: updatedTraining, error: null };

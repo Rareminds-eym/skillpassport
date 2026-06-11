@@ -4,6 +4,8 @@
  * 
  * Endpoints:
  * - POST /api/email/send or / - Generic email sending
+ * - POST /api/email/verification - Email verification emails
+ * - POST /api/email/password-reset - Password reset emails
  * - POST /api/email/invitation - Organization invitation emails
  * - POST /api/email/countdown - Single countdown email
  * - POST /api/email/send-bulk-countdown - Bulk countdown emails
@@ -12,15 +14,21 @@
  * - GET /api/email/download-receipt/:orderId - Download PDF receipt
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { getCorsHeaders } from '../../lib/cors';
+import { createSupabaseClient } from '../../lib/supabase';
+import { apiSuccess, apiError } from '../../lib/response';
+import { withAuth } from '../../lib/auth';
+import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { handleGenericEmail } from './handlers/generic';
 import { handleInvitationEmail } from './handlers/invitation';
 import { handleCountdownEmail } from './handlers/countdown';
 import { handleBulkCountdownEmail } from './handlers/bulk-countdown';
 import { handleEventConfirmation, handleEventOTP } from './handlers/event-registration';
 import { handlePDFReceipt } from './handlers/pdf-receipt';
+import type { PagesEnv } from '../../lib/types';
 import { apiLogger } from '../../lib/logger';
+import type { EventConfirmationRequest, EventOTPRequest, CountdownEmailRequest, BulkCountdownEmailRequest, GenericEmailRequest, InvitationEmailRequest } from './types';
 
 // ==================== MAIN HANDLER ====================
 
@@ -29,22 +37,31 @@ export const onRequest: PagesFunction = async (context) => {
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    const origin = request.headers.get('Origin') || '';
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...getCorsHeaders(origin),
+        'Access-Control-Max-Age': '86400',
+      },
+    });
   }
 
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/email', '');
 
   try {
-    // GET routes (PDF download and health check)
+    // GET routes (PDF download and health check) — public
     if (request.method === 'GET') {
       // Health check
       if (path === '' || path === '/') {
-        return jsonResponse({
+        return apiSuccess({
           status: 'ok',
           service: 'email-api',
           endpoints: [
             '/send',
+            '/verification',
+            '/password-reset',
             '/invitation',
             '/countdown',
             '/send-bulk-countdown',
@@ -53,7 +70,7 @@ export const onRequest: PagesFunction = async (context) => {
             '/download-receipt/:orderId'
           ],
           timestamp: new Date().toISOString()
-        });
+        }, request);
       }
 
       const pdfMatch = path.match(/^\/download-receipt\/(.+)$/);
@@ -63,62 +80,68 @@ export const onRequest: PagesFunction = async (context) => {
         return await handlePDFReceipt(orderId, env, supabase);
       }
       
-      return jsonResponse({ success: false, error: 'Route not found' }, 404);
+      return apiError(404, 'NOT_FOUND', 'Route not found', request);
     }
 
-    // Only POST requests for email operations
+    // Only POST requests for email operations (authenticated)
     if (request.method !== 'POST') {
-      return jsonResponse({ success: false, error: 'Method not allowed' }, 405);
+      return apiError(405, 'ERROR', 'Method not allowed', request);
     }
 
-    // Parse JSON body with proper error handling
-    let body;
-    try {
-      body = await request.json();
-    } catch (error) {
-      return jsonResponse({ 
-        success: false, 
-        error: 'Invalid JSON in request body' 
-      }, 400);
-    }
+    // All POST email operations require authentication
+    return withAuth(async (authContext: AuthenticatedContext) => {
+      const env = authContext.env as Record<string, string>;
 
-    // Routes that don't need Supabase
-    if (path === '/event-confirmation') {
-      return await handleEventConfirmation(body, env);
-    }
-    
-    if (path === '/event-otp') {
-      return await handleEventOTP(body, env);
-    }
+      // Note: /verification and /password-reset routes are excluded from this router
+      // They are handled by dedicated endpoint files (verification.ts and password-reset.ts)
+      // This separation allows for specialized validation and security handling
+      // for authentication-related email templates
+      
+      // Parse JSON body with proper error handling
+      let body;
+      try {
+        body = await authContext.request.json();
+      } catch (error) {
+        return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', authContext.request);
+      }
 
-    // Routes that need Supabase - create client only when needed
-    const supabase = createSupabaseClient(env);
-    
-    // Route to appropriate handler
-    if (path === '/invitation') {
-      return await handleInvitationEmail(request, body, env, supabase);
-    }
-    
-    if (path === '/countdown') {
-      return await handleCountdownEmail(body, env, supabase);
-    }
-    
-    if (path === '/send-bulk-countdown') {
-      return await handleBulkCountdownEmail(body, env, supabase);
-    }
-    
-    if (path === '' || path === '/' || path === '/send') {
-      return await handleGenericEmail(body, env, supabase);
-    }
+      const envTyped = env as unknown as PagesEnv;
 
-    return jsonResponse({ success: false, error: 'Route not found' }, 404);
+      // Routes that don't need Supabase
+      if (path === '/event-confirmation') {
+        return await handleEventConfirmation(body as EventConfirmationRequest, envTyped);
+      }
+      
+      if (path === '/event-otp') {
+        return await handleEventOTP(body as EventOTPRequest, envTyped);
+      }
+
+      // Routes that need Supabase - create client only when needed
+      const supabase = createSupabaseClient(env);
+      
+      // Route to appropriate handler
+      if (path === '/invitation') {
+        return await handleInvitationEmail(body as InvitationEmailRequest, envTyped);
+      }
+      
+      if (path === '/countdown') {
+        return await handleCountdownEmail(body as CountdownEmailRequest, envTyped, supabase);
+      }
+      
+      if (path === '/send-bulk-countdown') {
+        return await handleBulkCountdownEmail(body as BulkCountdownEmailRequest, envTyped, supabase);
+      }
+      
+      if (path === '' || path === '/' || path === '/send') {
+        return await handleGenericEmail(body as GenericEmailRequest, envTyped, supabase);
+      }
+
+      return apiError(404, 'NOT_FOUND', 'Route not found', authContext.request);
+    })(context);
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     apiLogger.error('Email API Error', error as Error);
-    return jsonResponse(
-      { success: false, error: errorMessage },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', errorMessage, request);
   }
 };

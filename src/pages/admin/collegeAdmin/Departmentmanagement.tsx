@@ -25,7 +25,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { toast } from 'react-hot-toast';
 import { Pagination } from '@/shared/ui';
 import { SearchBar } from '@/shared/ui';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('college-admin-department-management');
@@ -172,20 +172,19 @@ const DepartmentManagement: React.FC = () => {
     queryKey: ['userCollege', user?.id],
     queryFn: async () => {
       logger.info('Fetching college for user:', { userId: user?.id });
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('id, name')
-        .eq('organization_type', 'college')
-        .or(`admin_id.eq.${user?.id},email.eq.${user?.email}`)
-        .maybeSingle();
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-org-by-admin-or-email',
+        userId: user?.id,
+        email: user?.email
+      });
       
-      if (error) {
-        logger.error('Error fetching college from organizations:', error);
-        throw error;
+      if (!res.success) {
+        logger.error('Error fetching college from organizations:', res.error);
+        throw new Error(res.error || 'Failed to fetch college');
       }
       
-      logger.info('College data fetched from organizations:', { data });
-      return data;
+      logger.info('College data fetched from organizations:', { data: res.data });
+      return res.data;
     },
     enabled: !!user?.id,
     retry: 1,

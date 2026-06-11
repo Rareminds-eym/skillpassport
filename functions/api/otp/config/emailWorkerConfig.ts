@@ -3,7 +3,7 @@
  * Single source of truth for email worker URL and API key
  */
 
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 export interface EmailWorkerConfig {
   url: string;
@@ -80,7 +80,7 @@ export function getEmailWorkerConfig(env: PagesEnv): EmailWorkerConfig {
   // Type-safe extraction with validation
   const url = getRequiredEnvVar(
     env,
-    'EMAIL_API_URL',
+    'EMAIL_WORKER_URL',
     'URL of the email worker service endpoint'
   );
 
@@ -91,7 +91,7 @@ export function getEmailWorkerConfig(env: PagesEnv): EmailWorkerConfig {
   );
 
   // Validate URL format
-  validateUrl(url, 'EMAIL_API_URL');
+  validateUrl(url, 'EMAIL_WORKER_URL');
 
   return {
     url,

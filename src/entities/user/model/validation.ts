@@ -3,26 +3,28 @@
  * Validation rules and functions for user data
  */
 
+import { PASSWORD_MIN } from '@/shared/constants';
 import { isValidEmail } from '@/shared/lib/validation';
-import type { User, UserRole, CreateUserData, UpdateUserData } from '@/shared/types';
+import type { SchoolInternalRole } from '@/shared/types/permissions';
+import type { CreateUserData, UpdateUserData, User, UserRole } from './types';
 
 // ============================================================================
 // Role Validation
 // ============================================================================
 
-const VALID_ROLES: UserRole[] = [
+// `VALID_ROLES` spans BOTH the canonical SSO `UserRole` set and the
+// school-internal `SchoolInternalRole` taxonomy, because both kinds of role
+// strings are accepted as valid user roles by this validator.
+const VALID_ROLES: ReadonlyArray<UserRole | SchoolInternalRole> = [
   'learner',
   'recruiter',
   'educator',
   'school_admin',
   'college_admin',
   'university_admin',
-  'learner',
-  'learner',
   'school_educator',
   'college_educator',
   'admin',
-  'learner',
   'hr',
   'principal',
   'vice_principal',
@@ -31,8 +33,8 @@ const VALID_ROLES: UserRole[] = [
   'subject_teacher',
 ];
 
-export const isValidRole = (role: string): role is UserRole => {
-  return VALID_ROLES.includes(role as UserRole);
+export const isValidRole = (role: string): role is UserRole | SchoolInternalRole => {
+  return VALID_ROLES.includes(role as UserRole | SchoolInternalRole);
 };
 
 // ============================================================================
@@ -62,7 +64,7 @@ export const isLearnerRole = (role: string | null | undefined): boolean =>
 // ============================================================================
 
 export const isValidPassword = (password: string): boolean => {
-  return password.length >= 6;
+  return password.length >= PASSWORD_MIN;
 };
 
 export const validatePasswordStrength = (password: string): {
@@ -71,12 +73,8 @@ export const validatePasswordStrength = (password: string): {
 } => {
   const errors: string[] = [];
 
-  if (password.length < 6) {
-    errors.push('Password must be at least 6 characters long');
-  }
-
-  if (password.length < 8) {
-    errors.push('Password should be at least 8 characters for better security');
+  if (password.length < PASSWORD_MIN) {
+    errors.push(`Password must be at least ${PASSWORD_MIN} characters`);
   }
 
   return {
@@ -104,7 +102,7 @@ export const validateCreateUserData = (data: CreateUserData): {
   if (!data.password) {
     errors.push('Password is required');
   } else if (!isValidPassword(data.password)) {
-    errors.push('Password must be at least 6 characters long');
+    errors.push(`Password must be at least ${PASSWORD_MIN} characters long`);
   }
 
   if (!data.role) {

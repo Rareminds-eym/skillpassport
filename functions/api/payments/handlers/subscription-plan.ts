@@ -7,9 +7,10 @@
  * Requires SSO authentication.
  */
 
-import { withAuth } from '../../../lib/auth';
+
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getServiceClient } from '../../../lib/supabase';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleSubscriptionPlan(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -19,15 +20,7 @@ export async function handleSubscriptionPlan(context: AuthenticatedContext): Pro
     const planId = url.searchParams.get('plan_id');
 
     if (!planId) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INVALID_INPUT',
-            message: 'plan_id query parameter is required',
-          },
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'plan_id query parameter is required', context.request);
     }
 
     const supabase = getServiceClient(env);
@@ -40,43 +33,16 @@ export async function handleSubscriptionPlan(context: AuthenticatedContext): Pro
 
     if (error) {
       console.error('[SubscriptionPlan] Supabase error:', error);
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: 'Failed to fetch subscription plan',
-          },
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch subscription plan', context.request);
     }
 
     if (!data) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            code: 'NOT_FOUND',
-            message: `Subscription plan with id '${planId}' not found`,
-          },
-        }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
-      );
+      return apiError(404, 'NOT_FOUND', `Subscription plan with id '${planId}' not found`, context.request);
     }
 
-    return new Response(
-      JSON.stringify({ success: true, plan: data }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiSuccess({ plan: data }, context.request, 200);
   } catch (error) {
     console.error('[SubscriptionPlan] Error:', error);
-    return new Response(
-      JSON.stringify({
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to fetch subscription plan',
-        },
-      }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to fetch subscription plan', context.request);
   }
 }

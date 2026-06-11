@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import {
   Calendar,
   Clock,
@@ -164,122 +164,106 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   };
 
   const loadLeaveTypes = async () => {
-    const { data } = await supabase
-      .from('college_leave_types')
-      .select('*')
-      .eq('college_id', collegeId)
-      .eq('is_active', true)
-      .order('name');
-    if (data) setLeaveTypes(data);
+    try {
+      const result = await apiPost('/college-admin/faculty', { action: 'get-leave-types', college_id: collegeId });
+      if (result.data) setLeaveTypes(result.data.filter((t: any) => t.is_active));
+    } catch {}
   };
 
   const loadLeaveRequests = async () => {
-    const { data } = await supabase
-      .from('college_faculty_leaves')
-      .select(`
-        id, faculty_id, leave_type_id, start_date, end_date, total_days,
-        reason, status, applied_at, reviewed_at, review_notes,
-        college_lecturers!faculty_id(first_name, last_name),
-        college_leave_types!leave_type_id(name, code, color)
-      `)
-      .eq('college_id', collegeId)
-      .order('applied_at', { ascending: false });
-
-    if (data) {
-      const processed = data.map((item: any) => ({
-        id: item.id,
-        faculty_id: item.faculty_id,
-        faculty_name: `${item.college_lecturers?.first_name || ''} ${item.college_lecturers?.last_name || ''}`.trim(),
-        leave_type_id: item.leave_type_id,
-        leave_type_name: item.college_leave_types?.name || '',
-        leave_type_code: item.college_leave_types?.code || '',
-        leave_color: item.college_leave_types?.color || '#6366f1',
-        start_date: item.start_date,
-        end_date: item.end_date,
-        total_days: item.total_days,
-        reason: item.reason,
-        status: item.status,
-        applied_at: item.applied_at,
-        reviewed_at: item.reviewed_at,
-        review_notes: item.review_notes,
-      }));
-      setLeaveRequests(processed);
-    }
+    try {
+      const result = await apiPost('/college-admin/faculty', { action: 'get-faculty-leaves', college_id: collegeId });
+      const data = result.data;
+      if (data) {
+        const processed = data.map((item: any) => ({
+          id: item.id,
+          faculty_id: item.faculty_id,
+          faculty_name: `${item.faculty?.first_name || ''} ${item.faculty?.last_name || ''}`.trim(),
+          leave_type_id: item.leave_type_id,
+          leave_type_name: item.leave_type?.name || '',
+          leave_type_code: item.leave_type?.code || '',
+          leave_color: item.leave_type?.color || '#6366f1',
+          start_date: item.start_date,
+          end_date: item.end_date,
+          total_days: item.total_days,
+          reason: item.reason,
+          status: item.status,
+          applied_at: item.applied_at,
+          reviewed_at: item.reviewed_at,
+          review_notes: item.review_notes,
+        }));
+        setLeaveRequests(processed);
+      }
+    } catch {}
   };
 
   const loadSubstitutions = async () => {
-    const { data } = await supabase
-      .from('college_faculty_substitutions')
-      .select(`
-        id, leave_id, original_faculty_id, substitute_faculty_id,
-        substitution_date, period_number, class_id, subject_name, status, notes,
-        original:college_lecturers!original_faculty_id(first_name, last_name),
-        substitute:college_lecturers!substitute_faculty_id(first_name, last_name),
-        college_classes!class_id(name, grade, section)
-      `)
-      .eq('college_id', collegeId)
-      .order('substitution_date', { ascending: true });
-
-    if (data) {
-      const processed = data.map((item: any) => ({
-        id: item.id,
-        leave_id: item.leave_id,
-        original_faculty_id: item.original_faculty_id,
-        original_faculty_name: `${item.original?.first_name || ''} ${item.original?.last_name || ''}`.trim(),
-        substitute_faculty_id: item.substitute_faculty_id,
-        substitute_faculty_name: item.substitute ? `${item.substitute.first_name || ''} ${item.substitute.last_name || ''}`.trim() : null,
-        substitution_date: item.substitution_date,
-        period_number: item.period_number,
-        class_id: item.class_id,
-        class_name: item.college_classes ? `${item.college_classes.name} (${item.college_classes.grade}-${item.college_classes.section})` : '',
-        subject_name: item.subject_name,
-        status: item.status,
-      }));
-      setSubstitutions(processed);
-    }
+    try {
+      const result = await apiPost('/college-admin/faculty', { action: 'get-faculty-substitutions', college_id: collegeId });
+      const data = result.data;
+      if (data) {
+        const processed = data.map((item: any) => ({
+          id: item.id,
+          leave_id: item.leave_id,
+          original_faculty_id: item.original_faculty_id || item.faculty_id,
+          original_faculty_name: `${item.faculty?.first_name || ''} ${item.faculty?.last_name || ''}`.trim(),
+          substitute_faculty_id: item.substitute_faculty_id,
+          substitute_faculty_name: item.substitute ? `${item.substitute.first_name || ''} ${item.substitute.last_name || ''}`.trim() : null,
+          substitution_date: item.substitution_date,
+          period_number: item.period_number,
+          class_id: item.class_id,
+          class_name: item.class ? `${item.class.name} (${item.class.grade}-${item.class.section})` : '',
+          subject_name: item.subject_name,
+          status: item.status,
+        }));
+        setSubstitutions(processed);
+      }
+    } catch {}
   };
 
   const loadFaculty = async () => {
-    const { data } = await supabase
-      .from('college_lecturers')
-      .select('id, first_name, last_name, department, subject_expertise')
-      .eq('collegeId', collegeId)
-      .eq('accountStatus', 'active')
-      .order('first_name');
-
-    if (data) {
-      const processed = data.map((f: any) => ({
-        id: f.id,
-        name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
-        department: f.department || '',
-        subject_expertise: f.subject_expertise || [],
-      }));
-      setFaculty(processed);
+    try {
+      const response: any = await apiPost('/college-admin/faculty', {
+        action: 'get-lecturers',
+        college_id: collegeId,
+        status: 'active',
+      });
+      const data = response.data;
+      if (data) {
+        const processed = data.map((f: any) => ({
+          id: f.id,
+          name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
+          department: f.department || '',
+          subject_expertise: f.subject_expertise || [],
+        }));
+        setFaculty(processed);
+      }
+    } catch (error) {
+      logger.error('Error loading faculty', error as Error);
     }
   };
 
   const loadLecturersWithBalances = async () => {
     // Fetch lecturers
-    const { data: lecturers } = await supabase
-      .from('college_lecturers')
-      .select('id, first_name, last_name, email, phone, department, designation, employeeId, accountStatus')
-      .eq('collegeId', collegeId)
-      .order('first_name');
+    let lecturers: any[] | null = null;
+    try {
+      const response: any = await apiPost('/college-admin/faculty', {
+        action: 'get-lecturers',
+        college_id: collegeId,
+      });
+      lecturers = response.data;
+    } catch (error) {
+      logger.error('Error loading lecturers', error as Error);
+      return;
+    }
 
     if (!lecturers) return;
 
-    // Fetch leave balances for all lecturers
-    const { data: balances } = await supabase
-      .from('college_faculty_leave_balances')
-      .select(`
-        faculty_id,
-        leave_type_id,
-        total_days,
-        used_days,
-        college_leave_types!leave_type_id(name, code)
-      `)
-      .eq('college_id', collegeId)
-      .eq('academic_year', '2025-2026');
+    let balancesResult;
+    try {
+      balancesResult = await apiPost('/college-admin/faculty', { action: 'get-leave-balances', college_id: collegeId });
+    } catch {}
+    const balances = balancesResult?.data || [];
 
     // Map balances to lecturers
     const lecturersWithBal = lecturers.map((lecturer: any) => {
@@ -316,13 +300,10 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
       return;
     }
 
-    const { error } = await supabase
-      .from('college_lecturers')
-      .delete()
-      .eq('id', lecturerId);
-
-    if (error) {
-      toast.error(`Error deleting lecturer: ${error.message}`);
+    try {
+      await apiPost('/college-admin/faculty', { action: 'delete-faculty-record', id: lecturerId });
+    } catch (err: any) {
+      toast.error(`Error deleting lecturer: ${err.message}`);
       return;
     }
 
@@ -336,64 +317,64 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
     const leave = leaveRequests.find(l => l.id === leaveId);
     if (!leave) return;
 
-    const { error } = await supabase
-      .from('college_faculty_leaves')
-      .update({ 
-        status: 'approved', 
-        reviewed_at: new Date().toISOString() 
-      })
-      .eq('id', leaveId);
+    try {
+      await apiPost('/college-admin/faculty', { action: 'approve-leave', id: leaveId });
 
-    if (!error) {
       // Update leave balance - increment used_days
-      const { data: currentBalance } = await supabase
-        .from('college_faculty_leave_balances')
-        .select('used_days')
-        .eq('faculty_id', leave.faculty_id)
-        .eq('leave_type_id', leave.leave_type_id)
-        .eq('academic_year', '2025-2026')
-        .single();
-
-      if (currentBalance) {
-        await supabase
-          .from('college_faculty_leave_balances')
-          .update({ 
-            used_days: Number(currentBalance.used_days) + leave.total_days 
-          })
-          .eq('faculty_id', leave.faculty_id)
-          .eq('leave_type_id', leave.leave_type_id)
-          .eq('academic_year', '2025-2026');
-      }
+      try {
+        const balResult = await apiPost('/college-admin/faculty', {
+          action: 'get-leave-balances',
+          college_id: collegeId,
+          faculty_id: leave.faculty_id,
+        });
+        const currentBalance = (balResult.data || []).find((b: any) => b.leave_type_id === leave.leave_type_id);
+        if (currentBalance) {
+          await apiPost('/college-admin/faculty', {
+            action: 'update-leave-balance',
+            id: currentBalance.id,
+            used_days: Number(currentBalance.used_days) + leave.total_days,
+          });
+        }
+      } catch {}
 
       // Create substitution entries for approved leave
       await createSubstitutionsForLeave(leave);
       
       await loadLeaveRequests();
       await loadSubstitutions();
+    } catch (error: any) {
+      toast.error(`Error approving leave: ${error.message}`);
     }
   };
 
   const handleRejectLeave = async (leaveId: string) => {
     const reason = prompt('Reason for rejection (optional):');
     
-    await supabase
-      .from('college_faculty_leaves')
-      .update({ 
-        status: 'rejected', 
-        reviewed_at: new Date().toISOString(),
-        review_notes: reason 
-      })
-      .eq('id', leaveId);
-
-    await loadLeaveRequests();
+    try {
+      await apiPost('/college-admin/faculty', {
+        action: 'reject-leave',
+        id: leaveId,
+        rejection_reason: reason || '',
+      });
+      await loadLeaveRequests();
+    } catch (error: any) {
+      toast.error(`Error rejecting leave: ${error.message}`);
+    }
   };
 
   const createSubstitutionsForLeave = async (leave: LeaveRequest) => {
     // Get timetable slots for this faculty during leave period
-    const { data: slots } = await supabase
-      .from('college_timetable_slots')
-      .select('id, day_of_week, period_number, class_id, subject_name')
-      .eq('educator_id', leave.faculty_id);
+    let slots: any[] | null = null;
+    try {
+      const response: any = await apiPost('/college-admin/classes', {
+        action: 'get-timetable-slots',
+        educator_ids: [leave.faculty_id],
+      });
+      slots = response.data;
+    } catch (error) {
+      logger.error('Error fetching timetable slots', error as Error);
+      return;
+    }
 
     if (!slots || slots.length === 0) return;
 
@@ -427,13 +408,14 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
   };
 
   const handleAssignSubstitute = async (substitutionId: string, substituteId: string) => {
-    await supabase
-      .from('college_faculty_substitutions')
-      .update({ 
-        substitute_faculty_id: substituteId, 
-        status: 'assigned' 
-      })
-      .eq('id', substitutionId);
+    try {
+      await apiPost('/college-admin/faculty', {
+        action: 'update-substitution',
+        id: substitutionId,
+        substitute_faculty_id: substituteId,
+        status: 'assigned',
+      });
+    } catch {}
 
     await loadSubstitutions();
     setShowAssignSubstituteModal(false);
@@ -1436,16 +1418,15 @@ const AssignSubstituteModal: React.FC<{
         let dayOfWeek = subDate.getDay(); // 0=Sun, 1=Mon, etc.
         if (dayOfWeek === 0) dayOfWeek = 7; // Convert Sunday to 7
 
-        // Fetch all timetable slots for this day and period
-        const { data: busySlots } = await supabase
-          .from('college_timetable_slots')
-          .select(`
-            educator_id,
-            subject_name,
-            college_classes!class_id(name)
-          `)
-          .eq('day_of_week', dayOfWeek)
-          .eq('period_number', substitution.period_number);
+        let busySlots: any[] = [];
+        try {
+          const slotResult = await apiPost('/college-admin/classes', {
+            action: 'get-timetable-slots',
+            day_of_week: dayOfWeek,
+            period_number: substitution.period_number,
+          });
+          busySlots = slotResult.data || [];
+        } catch {}
 
         // Build availability map
         const availMap = new Map<string, FacultyAvailability>();
@@ -1831,21 +1812,18 @@ const EditLecturerModal: React.FC<{
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('college_lecturers')
-        .update({
-          first_name: form.first_name,
-          last_name: form.last_name,
-          email: form.email || null,
-          phone: form.phone || null,
-          department: form.department || null,
-          designation: form.designation || null,
-          employeeId: form.employeeId || null,
-          accountStatus: form.accountStatus,
-        })
-        .eq('id', lecturer.id);
-
-      if (error) throw error;
+      await apiPost('/college-admin/faculty', {
+        action: 'update-lecturer',
+        id: lecturer.id,
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email || null,
+        phone: form.phone || null,
+        department: form.department || null,
+        designation: form.designation || null,
+        employeeId: form.employeeId || null,
+        accountStatus: form.accountStatus,
+      });
       onSave();
     } catch (error: any) {
       toast.error(`Error updating lecturer: ${error.message}`);

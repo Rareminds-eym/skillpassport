@@ -1,4 +1,5 @@
 
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   DocumentArrowUpIcon,
@@ -10,7 +11,6 @@ import {
 import { uploadInstructionFile, deleteInstructionFile } from '@/features/college-admin';
 
 import { getApiUrl } from '@/shared/api/apiUtils';
-import { supabase } from '@/shared/api/supabaseClient';
 import ConfirmationModal from '@/shared/ui/ConfirmationModal';
 import NotificationModal from '@/shared/ui/NotificationModal';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/utils/file-validation';

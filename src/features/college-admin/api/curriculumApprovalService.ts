@@ -1,7 +1,5 @@
-import { supabase } from '@/shared/api/supabaseClient';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('curriculum-approval-service');
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 
 export interface CollegeAffiliation {
   isAffiliated: boolean;
@@ -65,414 +63,214 @@ export interface ApprovalStatistics {
   published: number;
 }
 
-class CurriculumApprovalService {
-  /**
-   * Check if the current user's college is affiliated with a university
-   * Simple logic: If college_id exists in university_colleges table with active status, then it's affiliated
-   */
-  async checkCollegeAffiliation(): Promise<{ success: boolean; data?: CollegeAffiliation; error?: string }> {
-    try {
-      
-      // Get current user
-      const user = useAuthStore.getState().user;
-    const userError = null;
-      if (userError || !user) {
-        logger.error('Failed to get authenticated user', userError instanceof Error ? userError : new Error(String(userError)));
-        return {
-          success: true,
-          data: {
-            isAffiliated: false,
-            collegeId: null,
-            universityId: null,
-            universityName: null,
-          }
-        };
-      }
-
-      // Get user's organization (college)
-      const { data: userData, error: userDataError } = await supabase
-        .from('users')
-        .select('organizationId')
-        .eq('id', user.id)
-        .single();
-
-      if (userDataError || !userData?.organizationId) {
-        logger.error('User has no organization assigned', userDataError instanceof Error ? userDataError : new Error(String(userDataError)));
-        return {
-          success: true,
-          data: {
-            isAffiliated: false,
-            collegeId: null,
-            universityId: null,
-            universityName: null,
-          }
-        };
-      }
-
-      const collegeId = userData.organizationId;
-
-      // Simple query without foreign key reference - just get university_id first
-      const { data: affiliationData, error: affiliationError } = await supabase
-        .from('university_colleges')
-        .select('university_id, account_status')
-        .eq('college_id', collegeId)
-        .eq('account_status', 'active')
-        .limit(1);
-
-      if (affiliationError) {
-        logger.error('Failed to check college affiliation', affiliationError instanceof Error ? affiliationError : new Error(String(affiliationError)));
-        return { success: false, error: affiliationError.message };
-      }
-
-      // If no records found or empty result, college is not affiliated
-      if (!affiliationData || affiliationData.length === 0) {
-        return {
-          success: true,
-          data: {
-            isAffiliated: false,
-            collegeId: collegeId,
-            universityId: null,
-            universityName: null,
-          }
-        };
-      }
-
-      // College is affiliated! Now get university name
-      const affiliation = affiliationData[0];
-      
-      // Get university name in a separate query
-      let universityName = 'University';
-      if (affiliation.university_id) {
-        const { data: universityData, error: universityError } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', affiliation.university_id)
-          .single();
-
-        if (universityData) {
-          universityName = universityData.name;
-        }
-      }
-      
+export async function checkCollegeAffiliation(): Promise<{ success: boolean; data?: CollegeAffiliation; error?: string }> {
+  try {
+    const user = useAuthStore.getState().user;
+    if (!user) {
       return {
         success: true,
         data: {
-          isAffiliated: true,
-          collegeId: collegeId,
-          universityId: affiliation.university_id,
-          universityName: universityName,
+          isAffiliated: false,
+          collegeId: null,
+          universityId: null,
+          universityName: null,
         }
       };
-
-    } catch (error: any) {
-      logger.error('Failed to check college affiliation', error instanceof Error ? error : new Error(String(error)));
-      return { success: false, error: error.message };
     }
-  }
 
-  /**
-   * Submit curriculum for approval (for affiliated colleges)
-   */
-  async submitForApproval(curriculumId: string, message?: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { data, error } = await supabase.rpc('submit_curriculum_for_approval', {
-        p_curriculum_id: curriculumId,
-        p_message: message || null
-      });
-      
-      if (error) {
-        logger.error('Failed to submit curriculum for approval', error instanceof Error ? error : new Error(String(error)), {
-          curriculumId
-        });
-        return { success: false, error: error.message };
-      }
+    const result = await apiPost('/college-admin/curriculum-approvals', { action: 'check-affiliation' });
 
-      if (!data) {
-        return { success: false, error: 'Failed to submit curriculum for approval' };
-      }
-
-      return { success: true };
-    } catch (error: any) {
-      logger.error('Failed to submit curriculum for approval', error instanceof Error ? error : new Error(String(error)), {
-        curriculumId
-      });
-      return { success: false, error: error.message };
+    if (!result.success || !result.data) {
+      return { success: false, error: result.error || 'Failed to check college affiliation' };
     }
-  }
 
-  /**
-   * Review curriculum (approve/reject) - University Admin only
-   */
-  async reviewCurriculum(curriculumId: string, decision: 'approved' | 'rejected', notes?: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      // First, try to update the curriculum directly if the RPC function fails
-      const { data, error } = await supabase.rpc('review_curriculum', {
-        p_curriculum_id: curriculumId,
-        p_decision: decision,
-        p_notes: notes || null
-      });
-      
-      if (error) {
-        logger.error('RPC function failed, attempting direct update', error instanceof Error ? error : new Error(String(error)), {
-          curriculumId,
-          decision
-        });
-        
-        // Fallback: Update curriculum directly
-        const newStatus = decision === 'approved' ? 'published' : 'rejected';
-        const { error: updateError } = await supabase
-          .from('college_curriculums')
-          .update({
-            status: newStatus,
-            review_notes: notes,
-            review_date: new Date().toISOString(),
-            published_date: decision === 'approved' ? new Date().toISOString() : null
-          })
-          .eq('id', curriculumId)
-          .eq('status', 'pending_approval');
-        
-        if (updateError) {
-          logger.error('Direct curriculum update failed', updateError instanceof Error ? updateError : new Error(String(updateError)), {
-            curriculumId
-          });
-          return { success: false, error: (updateError as any).message };
-        }
-        return { success: true };
-      }
-
-      if (!data) {
-        return { success: false, error: 'Failed to review curriculum' };
-      }
-
-      return { success: true };
-    } catch (error: any) {
-      logger.error('Failed to review curriculum', error instanceof Error ? error : new Error(String(error)), {
-        curriculumId,
-        decision
-      });
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Approve curriculum - University Admin only
-   */
-  async approveCurriculum(requestId: string, notes?: string): Promise<{ success: boolean; error?: string }> {
-    return this.reviewCurriculum(requestId, 'approved', notes);
-  }
-
-  /**
-   * Reject curriculum - University Admin only
-   */
-  async rejectCurriculum(requestId: string, notes?: string): Promise<{ success: boolean; error?: string }> {
-    return this.reviewCurriculum(requestId, 'rejected', notes);
-  }
-
-  /**
-   * Get approval requests for university admin
-   */
-  async getApprovalRequests(universityId: string, filters?: {
-    status?: string;
-    collegeId?: string;
-    departmentId?: string;
-    limit?: number;
-  }): Promise<{ success: boolean; data?: CurriculumApprovalDashboard[]; error?: string }> {
-    try {
-      let query = supabase
-        .from('curriculum_approval_dashboard')
-        .select('*')
-        .eq('university_id', universityId)
-        .order('request_date', { ascending: false });
-
-      // Apply filters
-      if (filters?.status) {
-        query = query.eq('status', filters.status);
-      }
-      if (filters?.collegeId) {
-        query = query.eq('college_id', filters.collegeId);
-      }
-      if (filters?.departmentId) {
-        query = query.eq('department_id', filters.departmentId);
-      }
-      if (filters?.limit) {
-        query = query.limit(filters.limit);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        logger.error('Failed to fetch approval requests', error instanceof Error ? error : new Error(String(error)), {
-          universityId,
-          filters
-        });
-        return { success: false, error: error.message };
-      }
-
-      const approvalRequests: CurriculumApprovalDashboard[] = (data || []).map(item => ({
-        request_id: item.curriculum_id,
-        curriculum_id: item.curriculum_id,
-        academic_year: item.academic_year || '',
-        course_name: item.course_name || '',
-        course_code: item.course_code || '',
-        semester: item.semester || 1,
-        department_name: item.department_name || '',
-        program_name: item.program_name || '',
-        college_name: item.college_name || '',
-        requester_name: item.requester_name || '',
-        requester_email: item.requester_email || '',
-        request_date: item.request_date || item.created_at || new Date().toISOString(),
-        published_date: item.published_date,
-        request_message: item.request_message,
-        request_status: item.status || 'draft',
-        review_notes: item.review_notes,
-        review_date: item.review_date,
-        reviewer_name: item.reviewer_name,
-      }));
-
-      return { success: true, data: approvalRequests };
-    } catch (error: any) {
-      logger.error('Failed to get approval requests', error instanceof Error ? error : new Error(String(error)), {
-        universityId
-      });
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Get approval statistics for university admin
-   */
-  async getApprovalStatistics(universityId: string): Promise<{ success: boolean; data?: ApprovalStatistics; error?: string }> {
-    try {
-      const { data, error } = await supabase
-        .from('curriculum_approval_dashboard')
-        .select('status')
-        .eq('university_id', universityId);
-      
-      if (error) {
-        logger.error('Failed to fetch approval statistics', error instanceof Error ? error : new Error(String(error)), {
-          universityId
-        });
-        return { success: false, error: error.message };
-      }
-
-      const stats = (data || []).reduce((acc, item) => {
-        acc.total++;
-        switch (item.status) {
-          case 'pending_approval':
-            acc.pending++;
-            break;
-          case 'approved':
-            acc.approved++;
-            break;
-          case 'rejected':
-            acc.rejected++;
-            break;
-          case 'published':
-            acc.published++;
-            break;
-        }
-        return acc;
-      }, { total: 0, pending: 0, approved: 0, rejected: 0, published: 0 });
-
-      return { success: true, data: stats };
-    } catch (error: any) {
-      logger.error('Failed to get approval statistics', error instanceof Error ? error : new Error(String(error)), {
-        universityId
-      });
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Get pending approvals for university admin
-   */
-  async getPendingApprovals(): Promise<{ success: boolean; data?: PendingApproval[]; error?: string }> {
-    try {
-      const { data, error } = await supabase
-        .from('curriculum_approval_dashboard')
-        .select('*')
-        .eq('status', 'pending_approval') // Use existing status column
-        .order('request_date', { ascending: false });
-      
-      if (error) {
-        logger.error('Failed to fetch pending approvals', error instanceof Error ? error : new Error(String(error)));
-        return { success: false, error: error.message };
-      }
-
-      const pendingApprovals: PendingApproval[] = (data || []).map(item => ({
-        curriculumId: item.curriculum_id,
-        academicYear: item.academic_year,
-        courseName: item.course_name,
-        courseCode: item.course_code,
-        semester: item.semester,
-        departmentName: item.department_name || '',
-        programName: item.program_name || '',
-        collegeName: item.college_name || '',
-        requesterName: item.requester_name || '',
-        requesterEmail: item.requester_email || '',
-        requestDate: item.request_date,
-        requestMessage: item.request_message,
-      }));
-
-      return { success: true, data: pendingApprovals };
-    } catch (error: any) {
-      logger.error('Failed to get pending approvals', error instanceof Error ? error : new Error(String(error)));
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Get curriculum approval history
-   */
-  async getApprovalHistory(limit = 50): Promise<{ success: boolean; data?: any[]; error?: string }> {
-    try {
-      const { data, error } = await supabase
-        .from('curriculum_approval_dashboard')
-        .select('*')
-        .in('status', ['approved', 'rejected', 'published']) // Use existing status column
-        .order('review_date', { ascending: false })
-        .limit(limit);
-      
-      if (error) {
-        logger.error('Failed to fetch approval history', error instanceof Error ? error : new Error(String(error)), {
-          limit
-        });
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data: data || [] };
-    } catch (error: any) {
-      logger.error('Failed to get approval history', error instanceof Error ? error : new Error(String(error)));
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Get curriculum status for college admin
-   */
-  async getCurriculumStatus(curriculumId: string): Promise<{ success: boolean; data?: any; error?: string }> {
-    try {
-      const { data, error } = await supabase
-        .from('college_curriculum_status')
-        .select('*')
-        .eq('curriculum_id', curriculumId)
-        .single();
-      
-      if (error) {
-        logger.error('Failed to fetch curriculum status', error instanceof Error ? error : new Error(String(error)), {
-          curriculumId
-        });
-        return { success: false, error: error.message };
-      }
-
-      return { success: true, data };
-    } catch (error: any) {
-      logger.error('Failed to get curriculum status', error instanceof Error ? error : new Error(String(error)), {
-        curriculumId
-      });
-      return { success: false, error: error.message };
-    }
+    return { success: true, data: result.data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
 
-export const curriculumApprovalService = new CurriculumApprovalService();
+export async function submitForApproval(curriculumId: string, message?: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const result = await apiPost('/college-admin/curriculum-approvals', {
+      action: 'submit-for-approval',
+      curriculum_id: curriculumId,
+      message
+    });
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'Failed to submit curriculum for approval' };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function reviewCurriculum(curriculumId: string, decision: 'approved' | 'rejected', notes?: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const result = await apiPost('/college-admin/curriculum-approvals', {
+      action: 'review-curriculum',
+      curriculum_id: curriculumId,
+      decision,
+      notes
+    });
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'Failed to review curriculum' };
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function approveCurriculum(requestId: string, notes?: string): Promise<{ success: boolean; error?: string }> {
+  return reviewCurriculum(requestId, 'approved', notes);
+}
+
+export async function rejectCurriculum(requestId: string, notes?: string): Promise<{ success: boolean; error?: string }> {
+  return reviewCurriculum(requestId, 'rejected', notes);
+}
+
+export async function getApprovalRequests(universityId: string, filters?: {
+  status?: string;
+  collegeId?: string;
+  departmentId?: string;
+  limit?: number;
+}): Promise<{ success: boolean; data?: CurriculumApprovalDashboard[]; error?: string }> {
+  try {
+    const result = await apiPost('/college-admin/curriculum-approvals', {
+      action: 'get-approval-requests',
+      university_id: universityId,
+      ...filters
+    });
+
+    if (!result.success || !result.data) {
+      return { success: false, error: result.error || 'Failed to fetch approval requests' };
+    }
+
+    const approvalRequests: CurriculumApprovalDashboard[] = (result.data || []).map((item: any) => ({
+      request_id: item.curriculum_id,
+      curriculum_id: item.curriculum_id,
+      academic_year: item.academic_year || '',
+      course_name: item.course_name || '',
+      course_code: item.course_code || '',
+      semester: item.semester || 1,
+      department_name: item.department_name || '',
+      program_name: item.program_name || '',
+      college_name: item.college_name || '',
+      requester_name: item.requester_name || '',
+      requester_email: item.requester_email || '',
+      request_date: item.request_date || item.created_at || new Date().toISOString(),
+      published_date: item.published_date,
+      request_message: item.request_message,
+      request_status: item.status || 'draft',
+      review_notes: item.review_notes,
+      review_date: item.review_date,
+      reviewer_name: item.reviewer_name,
+    }));
+
+    return { success: true, data: approvalRequests };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getApprovalStatistics(universityId: string): Promise<{ success: boolean; data?: ApprovalStatistics; error?: string }> {
+  try {
+    const result = await apiPost('/college-admin/curriculum-approvals', {
+      action: 'get-approval-statistics',
+      university_id: universityId
+    });
+
+    if (!result.success || !result.data) {
+      return { success: false, error: result.error || 'Failed to fetch approval statistics' };
+    }
+
+    return { success: true, data: result.data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getPendingApprovals(): Promise<{ success: boolean; data?: PendingApproval[]; error?: string }> {
+  try {
+    const result = await apiPost('/college-admin/curriculum-approvals', {
+      action: 'get-pending-approvals'
+    });
+
+    if (!result.success || !result.data) {
+      return { success: false, error: result.error || 'Failed to fetch pending approvals' };
+    }
+
+    const pendingApprovals: PendingApproval[] = (result.data || []).map((item: any) => ({
+      curriculumId: item.curriculum_id,
+      academicYear: item.academic_year,
+      courseName: item.course_name,
+      courseCode: item.course_code,
+      semester: item.semester,
+      departmentName: item.department_name || '',
+      programName: item.program_name || '',
+      collegeName: item.college_name || '',
+      requesterName: item.requester_name || '',
+      requesterEmail: item.requester_email || '',
+      requestDate: item.request_date,
+      requestMessage: item.request_message,
+    }));
+
+    return { success: true, data: pendingApprovals };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getApprovalHistory(limit = 50): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  try {
+    const result = await apiPost('/college-admin/curriculum-approvals', {
+      action: 'get-approval-history',
+      limit
+    });
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'Failed to fetch approval history' };
+    }
+
+    return { success: true, data: result.data || [] };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getCurriculumStatus(curriculumId: string): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const result = await apiPost('/college-admin/curriculum-approvals', {
+      action: 'get-curriculum-status',
+      curriculum_id: curriculumId
+    });
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'Failed to fetch curriculum status' };
+    }
+
+    return { success: true, data: result.data };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Namespace export for compatibility
+export const curriculumApprovalService = {
+  checkCollegeAffiliation,
+  submitForApproval,
+  reviewCurriculum,
+  approveCurriculum,
+  rejectCurriculum,
+  getApprovalRequests,
+  getApprovalStatistics,
+  getPendingApprovals,
+  getApprovalHistory,
+  getCurriculumStatus,
+};

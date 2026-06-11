@@ -1,12 +1,9 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
+
 
 const logger = getLogger('reports-service');
-
-/**
- * College Reports & Analytics Service
- * Fetches real data from Supabase for the Reports & Analytics Hub
- */
 
 export interface ReportKPI {
   title: string;
@@ -35,7 +32,6 @@ export interface ReportFilters {
   collegeId: string;
 }
 
-// Helper to get date range
 const getDateRange = (dateRange: string): { startDate: string; endDate: string } => {
   const now = new Date();
   const endDate = now.toISOString().split('T')[0];
@@ -63,7 +59,6 @@ const getDateRange = (dateRange: string): { startDate: string; endDate: string }
   return { startDate, endDate };
 };
 
-// Helper to determine status
 const getStatus = (value: number, threshold = 90): string => {
   if (value >= 95) return 'Excellent';
   if (value >= threshold) return 'Good';
@@ -71,150 +66,47 @@ const getStatus = (value: number, threshold = 90): string => {
   return 'Needs Attention';
 };
 
-// Helper to get college ID from current user - matches useLearners hook logic
-const getCollegeIdForCurrentUser = async (): Promise<string | null> => {
+const getCollegeIdFromStorage = (): string | null => {
   try {
-    // Check localStorage first (same as useLearners)
-    const storedUser = localStorage.getItem('user');
+    const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
     if (storedUser) {
       const userData = JSON.parse(storedUser);
       if (userData.role === 'college_admin' && userData.collegeId) {
         return userData.collegeId;
       }
     }
-
-    // Fallback to Supabase auth (same as useLearners)
-    const {
-      data: { user },
-    } = await getCurrentUser();
-
-    if (user) {
-      // Get user role from users table (same as useLearners)
-      const { data: userRecord } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
-
-      const userRole = userRecord?.role || null;
-
-      // Check for college admin (using unified organizations table)
-      if (userRole === 'college_admin' && user.email) {
-        // Find college by matching admin_id or email in organizations table
-        const { data: college, error: collegeError } = await supabase
-          .from('organizations')
-          .select('id, name, email')
-          .eq('organization_type', 'college')
-          .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
-          .single();
-
-        if (college?.id) {
-          return college.id;
-        } else if (collegeError) {
-          logger.error('Error looking up college in organizations', collegeError as Error, { userId: user.id, userEmail: user.email });
-        }
-      }
-
-      // Also try admin_id as fallback
-      if (user.id) {
-        const { data: collegeByAdmin, error: adminError } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .eq('organization_type', 'college')
-          .eq('admin_id', user.id)
-          .single();
-
-        if (collegeByAdmin?.id) {
-          return collegeByAdmin.id;
-        } else if (adminError) {
-          logger.error('Error looking up college by admin_id', adminError as Error, { userId: user.id });
-        }
-      }
-    }
-    return null;
-  } catch (error) {
-    logger.error('Error getting college ID for current user', error as Error, {});
-    return null;
+  } catch {
   }
+  return null;
 };
 
 export const reportsService = {
   async getAttendanceReport(filters: ReportFilters): Promise<ReportData> {
     try {
       const { startDate, endDate } = getDateRange(filters.dateRange);
+      const collegeId = filters.collegeId || getCollegeIdFromStorage() || '';
 
-      // Get college ID - use provided or fetch from current user
-      let collegeId = filters.collegeId;
+      const result: any = await apiPost('/college-admin/reports', {
+        action: 'attendance',
+        collegeId,
+        dateRange: filters.dateRange,
+      });
 
-      if (!collegeId) {
-        collegeId = (await getCollegeIdForCurrentUser()) || '';
-      }
-
-      // Query learners
-      let learnersQuery = supabase
-        .from('learners')
-        .select('id, college_id');
-
-      if (collegeId) {
-        learnersQuery = learnersQuery.eq('college_id', collegeId);
-      }
-
-      const { data: learners, error: learnersError } = await learnersQuery;
-
-      if (learnersError) {
-        logger.error('Error fetching learners for attendance report', learnersError as Error, { collegeId });
-      }
-
+      const { learners, attendanceRecords, departments } = result.data || {};
       const totallearners = learners?.length || 0;
-
-      // ✅ NOW CONNECTED: Fetch real attendance data from college_attendance_records (Attendance Tracking)
-      let recordsQuery = supabase
-        .from('college_attendance_records')
-        .select(`
-          id,
-          status,
-          date,
-          learner_id,
-          department_name,
-          session_id
-        `)
-        .gte('date', startDate)
-        .lte('date', endDate);
-
-      // Filter by college through sessions
-      if (collegeId) {
-        // First get session IDs for this college
-        const { data: sessions } = await supabase
-          .from('college_attendance_sessions')
-          .select('id')
-          .eq('college_id', collegeId);
-        
-        const sessionIds = sessions?.map(s => s.id) || [];
-        
-        if (sessionIds.length > 0) {
-          recordsQuery = recordsQuery.in('session_id', sessionIds);
-        }
-      }
-
-      const { data: attendanceRecords, error: recordsError } = await recordsQuery;
-
-      if (recordsError) {
-        logger.error('Error fetching attendance records', recordsError as Error, { collegeId });
-      }
-
       const totalRecords = attendanceRecords?.length || 0;
-      // Count present, late, and excused as "attended"
       const presentCount = attendanceRecords?.filter(
-        a => a.status === 'present' || a.status === 'late' || a.status === 'excused'
+        (a: any) => a.status === 'present' || a.status === 'late' || a.status === 'excused'
       ).length || 0;
       const hasRealData = totalRecords > 0;
 
-      // Calculate monthly attendance
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       let chartValues: number[];
       let attendanceRate: number;
 
       if (hasRealData) {
-        // Use real data - calculate monthly attendance
         const monthlyData = new Map<number, { total: number; present: number }>();
-        
-        attendanceRecords.forEach(record => {
+        attendanceRecords.forEach((record: any) => {
           const month = new Date(record.date).getMonth();
           const current = monthlyData.get(month) || { total: 0, present: 0 };
           current.total++;
@@ -231,26 +123,16 @@ export const reportsService = {
 
         attendanceRate = Math.round((presentCount / totalRecords) * 100);
       } else {
-        // No data - show zeros
         chartValues = months.map(() => 0);
         attendanceRate = 0;
       }
 
-      // Fetch departments
-      let deptQuery = supabase.from('departments').select('id, name, code');
-      if (collegeId) {
-        deptQuery = deptQuery.eq('college_id', collegeId);
-      }
-      const { data: departments } = await deptQuery;
-
-      // Calculate department-wise attendance from real records
-      const tableData = (departments || []).slice(0, 5).map(dept => {
+      const tableData = (departments || []).slice(0, 5).map((dept: any) => {
         if (hasRealData) {
-          // Filter records by department name
-          const deptRecords = attendanceRecords.filter(r => r.department_name === dept.name);
+          const deptRecords = attendanceRecords.filter((r: any) => r.department_name === dept.name);
           const deptTotal = deptRecords.length;
           const deptPresent = deptRecords.filter(
-            r => r.status === 'present' || r.status === 'late' || r.status === 'excused'
+            (r: any) => r.status === 'present' || r.status === 'late' || r.status === 'excused'
           ).length;
           const deptRate = deptTotal > 0 ? (deptPresent / deptTotal) * 100 : 0;
 
@@ -272,18 +154,17 @@ export const reportsService = {
         }
       });
 
-      // Calculate learners below 75% threshold
-      const belowThreshold = hasRealData 
+      const belowThreshold = hasRealData
         ? new Set(
             attendanceRecords
-              .filter(r => {
-                const learnerRecords = attendanceRecords.filter(ar => ar.learner_id === r.learner_id);
+              .filter((r: any) => {
+                const learnerRecords = attendanceRecords.filter((ar: any) => ar.learner_id === r.learner_id);
                 const learnerPresent = learnerRecords.filter(
-                  sr => sr.status === 'present' || sr.status === 'late' || sr.status === 'excused'
+                  (sr: any) => sr.status === 'present' || sr.status === 'late' || sr.status === 'excused'
                 ).length;
                 return learnerRecords.length > 0 && (learnerPresent / learnerRecords.length) < 0.75;
               })
-              .map(r => r.learner_id)
+              .map((r: any) => r.learner_id)
           ).size
         : Math.floor(totallearners * 0.03);
 
@@ -305,85 +186,42 @@ export const reportsService = {
 
   async getPerformanceReport(filters: ReportFilters): Promise<ReportData> {
     try {
-      // Get college ID
-      let collegeId = filters.collegeId;
-      if (!collegeId) {
-        collegeId = await getCollegeIdForCurrentUser() || '';
-      }
+      const collegeId = filters.collegeId || getCollegeIdFromStorage() || '';
 
-      // First, get learners from this college to filter mark entries
-      let learnersQuery = supabase.from('learners').select('id');
-      if (collegeId) {
-        learnersQuery = learnersQuery.eq('college_id', collegeId);
-      }
-      const { data: collegelearners } = await learnersQuery;
-      const learnerIds = collegelearners?.map(s => s.id) || [];
+      const result: any = await apiPost('/college-admin/reports', {
+        action: 'performance',
+        collegeId,
+        dateRange: filters.dateRange,
+      });
 
-      // Fetch mark entries only for this college's learners
-      let markEntriesQuery = supabase
-        .from('mark_entries')
-        .select('marks_obtained, grade, learner_id, assessment_id');
-
-      // Filter by learner IDs from this college
-      if (learnerIds.length > 0) {
-        markEntriesQuery = markEntriesQuery.in('learner_id', learnerIds);
-      } else {
-        // No learners in this college, so no mark entries
-        markEntriesQuery = markEntriesQuery.eq('learner_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
-      }
-
-      const { data: markEntries } = await markEntriesQuery;
-
-      // Get departments from this college to filter assessments
-      let deptQuery = supabase.from('departments').select('id, name');
-      if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
-      const { data: departments } = await deptQuery;
-      const departmentIds = departments?.map(d => d.id) || [];
-
-      // Fetch assessments only for this college's departments
-      let assessmentsQuery = supabase
-        .from('assessments')
-        .select('id, total_marks, pass_marks, department_id');
-
-      if (departmentIds.length > 0) {
-        assessmentsQuery = assessmentsQuery.in('department_id', departmentIds);
-      } else {
-        assessmentsQuery = assessmentsQuery.eq('department_id', '00000000-0000-0000-0000-000000000000');
-      }
-
-      const { data: assessments } = await assessmentsQuery;
+      const { markEntries, assessments, departments } = result.data || {};
 
       let passCount = 0;
       const totalEntries = markEntries?.length || 0;
-
-      markEntries?.forEach(entry => {
-        const assessment = assessments?.find(a => a.id === entry.assessment_id);
+      markEntries?.forEach((entry: any) => {
+        const assessment = assessments?.find((a: any) => a.id === entry.assessment_id);
         if (assessment && entry.marks_obtained >= assessment.pass_marks) passCount++;
       });
 
       const passRate = totalEntries > 0 ? Math.round((passCount / totalEntries) * 100) : 0;
-
       const hasRealData = totalEntries > 0;
-      const avgGPA = 0; // Will be calculated from real data when available
-      const topPerformers = markEntries?.filter(e => e.grade === 'O' || e.grade === 'A+').length || 0;
-      const needSupport = markEntries?.filter(e => e.grade === 'C' || e.grade === 'F').length || 0;
+      const topPerformers = markEntries?.filter((e: any) => e.grade === 'O' || e.grade === 'A+').length || 0;
+      const needSupport = markEntries?.filter((e: any) => e.grade === 'C' || e.grade === 'F').length || 0;
 
-      const chartLabels = (departments || []).slice(0, 5).map(d => d.name);
-      const chartValues = chartLabels.map(() => 0); // Real calculation needed
+      const chartLabels = (departments || []).slice(0, 5).map((d: any) => d.name);
+      const chartValues = chartLabels.map(() => 0);
 
-      const tableData = (departments || []).slice(0, 5).map(dept => {
-        return {
-          period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-          department: dept.name,
-          value: '0%',
-          change: '0%',
-          status: 'No Data'
-        };
-      });
+      const tableData = (departments || []).slice(0, 5).map((dept: any) => ({
+        period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        department: dept.name,
+        value: '0%',
+        change: '0%',
+        status: 'No Data'
+      }));
 
       return {
         kpis: [
-          { title: 'Average GPA', value: hasRealData ? avgGPA.toFixed(2) : '0.00', change: '0', trend: 'neutral', color: 'green' },
+          { title: 'Average GPA', value: hasRealData ? '0.00' : '0.00', change: '0', trend: 'neutral', color: 'green' },
           { title: 'Pass Rate', value: `${passRate}%`, change: '0%', trend: 'neutral', color: 'blue' },
           { title: 'Top Performers', value: topPerformers.toString(), change: '0', trend: 'neutral', color: 'purple' },
           { title: 'Need Support', value: needSupport.toString(), change: '0', trend: 'neutral', color: 'orange' }
@@ -403,85 +241,26 @@ export const reportsService = {
   async getPlacementReport(filters: ReportFilters): Promise<ReportData> {
     try {
       const { startDate, endDate } = getDateRange(filters.dateRange);
+      const collegeId = filters.collegeId || getCollegeIdFromStorage() || '';
 
-      // Get college ID
-      let collegeId = filters.collegeId;
-      if (!collegeId) {
-        collegeId = await getCollegeIdForCurrentUser() || '';
-      }
+      const result: any = await apiPost('/college-admin/reports', {
+        action: 'placement',
+        collegeId,
+        dateRange: filters.dateRange,
+      });
 
-      // First, get learners from this college to filter candidates
-      let learnersQuery = supabase.from('learners').select('id');
-      if (collegeId) {
-        learnersQuery = learnersQuery.eq('college_id', collegeId);
-      }
-      const { data: collegelearners } = await learnersQuery;
-      const learnerIds = collegelearners?.map(s => s.id) || [];
-
-      // Fetch candidates only for this college's learners
-      let candidatesQuery = supabase
-        .from('pipeline_candidates')
-        .select('id, stage, status, added_at, learner_id')
-        .gte('added_at', startDate)
-        .lte('added_at', endDate);
-
-      // Filter by learner IDs from this college
-      if (learnerIds.length > 0) {
-        candidatesQuery = candidatesQuery.in('learner_id', learnerIds);
-      } else {
-        // No learners in this college, so no candidates
-        candidatesQuery = candidatesQuery.eq('learner_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
-      }
-
-      const { data: candidates } = await candidatesQuery;
+      const { candidates, companies, placementOffers, departments } = result.data || {};
 
       const totalCandidates = candidates?.length || 0;
-      const hiredCount = candidates?.filter(c => c.stage === 'hired').length || 0;
+      const hiredCount = candidates?.filter((c: any) => c.stage === 'hired').length || 0;
       const placementRate = totalCandidates > 0 ? Math.round((hiredCount / totalCandidates) * 100) : 0;
+      const uniqueCompanies = companies?.length || 0;
+      const offersCount = candidates?.filter((c: any) => c.stage === 'offer' || c.stage === 'offered').length || 0;
 
-      // Get companies count from companies table (same as placement page)
-      let uniqueCompanies = 0;
-      try {
-        const { data: companies, error: companiesError } = await supabase
-          .from('companies')
-          .select('id');
-
-        if (companiesError) {
-          logger.error('Error fetching companies', companiesError as Error, { collegeId });
-          uniqueCompanies = 0;
-        } else {
-          uniqueCompanies = companies?.length || 0;
-        }
-      } catch (error) {
-        logger.error('Error in companies table fetch', error as Error, { collegeId });
-        uniqueCompanies = 0;
-      }
-
-      const offersCount = candidates?.filter(c => c.stage === 'offer' || c.stage === 'offered').length || 0;
-
-      // Fetch real placement offers for average package
-      let offersQuery = supabase
-        .from('placement_offers')
-        .select('package_amount, status, offer_date')
-        .eq('status', 'accepted')
-        .gte('offer_date', startDate)
-        .lte('offer_date', endDate);
-
-      if (collegeId) {
-        offersQuery = offersQuery.eq('college_id', collegeId);
-      }
-
-      const { data: placementOffers, error: offersError } = await offersQuery;
-
-      if (offersError) {
-        logger.error('Error fetching placement offers', offersError as Error, { collegeId });
-      }
-      
       let avgPackage = '₹0';
       if (placementOffers && placementOffers.length > 0) {
-        const totalPackage = placementOffers.reduce((sum, o) => sum + Number(o.package_amount), 0);
+        const totalPackage = placementOffers.reduce((sum: number, o: any) => sum + Number(o.package_amount), 0);
         const avgAmount = totalPackage / placementOffers.length;
-        
         if (avgAmount >= 10000000) {
           avgPackage = `₹${(avgAmount / 10000000).toFixed(1)}Cr`;
         } else if (avgAmount >= 100000) {
@@ -492,42 +271,32 @@ export const reportsService = {
       }
 
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      
-      // Calculate real monthly placement data
       const hasRealData = totalCandidates > 0;
-      const placements = hasRealData 
+      const placements = hasRealData
         ? months.map((_, idx) => {
-            const monthCandidates = candidates?.filter(c => {
+            return candidates?.filter((c: any) => {
               const candidateMonth = new Date(c.added_at).getMonth();
               return candidateMonth === idx && c.stage === 'hired';
             }).length || 0;
-            return monthCandidates;
           })
         : months.map(() => 0);
-      
+
       const applications = hasRealData
         ? months.map((_, idx) => {
-            const monthCandidates = candidates?.filter(c => {
+            return candidates?.filter((c: any) => {
               const candidateMonth = new Date(c.added_at).getMonth();
               return candidateMonth === idx;
             }).length || 0;
-            return monthCandidates;
           })
         : months.map(() => 0);
 
-      let deptQuery = supabase.from('departments').select('id, name');
-      if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
-      const { data: departments } = await deptQuery;
-
-      const tableData = (departments || []).slice(0, 5).map(dept => {
-        return {
-          period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-          department: dept.name,
-          value: '0%',
-          change: '0%',
-          status: 'No Data'
-        };
-      });
+      const tableData = (departments || []).slice(0, 5).map((dept: any) => ({
+        period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        department: dept.name,
+        value: '0%',
+        change: '0%',
+        status: 'No Data'
+      }));
 
       return {
         kpis: [
@@ -547,70 +316,33 @@ export const reportsService = {
 
   async getSkillAnalyticsReport(filters: ReportFilters): Promise<ReportData> {
     try {
-      // Get college ID
-      let collegeId = filters.collegeId;
-      if (!collegeId) {
-        collegeId = await getCollegeIdForCurrentUser() || '';
-      }
+      const collegeId = filters.collegeId || getCollegeIdFromStorage() || '';
 
-      // First, get learners from this college to filter enrollments
-      let learnersQuery = supabase.from('learners').select('id');
-      if (collegeId) {
-        learnersQuery = learnersQuery.eq('college_id', collegeId);
-      }
-      const { data: collegelearners } = await learnersQuery;
-      const learnerIds = collegelearners?.map(s => s.id) || [];
+      const result: any = await apiPost('/college-admin/reports', {
+        action: 'skill-analytics',
+        collegeId,
+        dateRange: filters.dateRange,
+      });
 
-      // Fetch enrollments only for this college's learners
-      let enrollmentsQuery = supabase
-        .from('course_enrollments')
-        .select('id, status, progress, course_id, learner_id, created_at');
-
-      // Filter by learner IDs from this college
-      if (learnerIds.length > 0) {
-        enrollmentsQuery = enrollmentsQuery.in('learner_id', learnerIds);
-      } else {
-        // No learners in this college, so no enrollments
-        enrollmentsQuery = enrollmentsQuery.eq('learner_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
-      }
-
-      const { data: enrollments, error: enrollmentsError } = await enrollmentsQuery;
-
-      if (enrollmentsError) {
-        logger.error('Error fetching course enrollments', enrollmentsError as Error, { collegeId });
-      }
+      const { enrollments, courses, departments } = result.data || {};
 
       const totalEnrollments = enrollments?.length || 0;
-      const completedCount = enrollments?.filter(e => e.status === 'completed').length || 0;
-      const inProgressCount = enrollments?.filter(e => e.status === 'in_progress').length || 0;
+      const completedCount = enrollments?.filter((e: any) => e.status === 'completed').length || 0;
+      const inProgressCount = enrollments?.filter((e: any) => e.status === 'in_progress').length || 0;
       const completionRate = totalEnrollments > 0 ? Math.round((completedCount / totalEnrollments) * 100) : 0;
-
-      const { data: courses, error: coursesError } = await supabase.from('courses').select('id, title, category');
-
-      if (coursesError) {
-        logger.error('Error fetching courses', coursesError as Error, { collegeId });
-      }
-      
       const totalCourses = courses?.length || 0;
-      const avgProgress = totalEnrollments > 0 ? enrollments?.reduce((sum, e) => sum + (e.progress || 0), 0) / totalEnrollments : 0;
+      const avgProgress = totalEnrollments > 0 ? enrollments?.reduce((sum: number, e: any) => sum + (e.progress || 0), 0) / totalEnrollments : 0;
 
-      const hasRealData = totalEnrollments > 0;
       const categories = ['Technical', 'Soft Skills', 'Domain', 'Certification', 'Language'];
       const chartValues = categories.map(() => 0);
 
-      let deptQuery = supabase.from('departments').select('id, name');
-      if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
-      const { data: departments } = await deptQuery;
-
-      const tableData = (departments || []).slice(0, 5).map(dept => {
-        return {
-          period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-          department: dept.name,
-          value: '0%',
-          change: '0%',
-          status: 'No Data'
-        };
-      });
+      const tableData = (departments || []).slice(0, 5).map((dept: any) => ({
+        period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        department: dept.name,
+        value: '0%',
+        change: '0%',
+        status: 'No Data'
+      }));
 
       return {
         kpis: [
@@ -630,20 +362,19 @@ export const reportsService = {
 
   async getBudgetReport(filters: ReportFilters): Promise<ReportData> {
     try {
-      // Get college ID
-      let collegeId = filters.collegeId;
-      if (!collegeId) {
-        collegeId = await getCollegeIdForCurrentUser() || '';
-      }
+      const collegeId = filters.collegeId || getCollegeIdFromStorage() || '';
 
-      const { data: budgets } = await supabase
-        .from('department_budgets')
-        .select('id, department_id, budget_heads, status, period_from, period_to');
+      const result: any = await apiPost('/college-admin/reports', {
+        action: 'budget',
+        collegeId,
+        dateRange: filters.dateRange,
+      });
+
+      const { budgets, departments } = result.data || {};
 
       let totalAllocated = 0;
       let totalSpent = 0;
-
-      budgets?.forEach(budget => {
+      budgets?.forEach((budget: any) => {
         const heads = budget.budget_heads || [];
         heads.forEach((head: any) => {
           totalAllocated += head.allocated_amount || 0;
@@ -655,23 +386,17 @@ export const reportsService = {
       const utilizationRate = totalAllocated > 0 ? Math.round((totalSpent / totalAllocated) * 100) : 0;
       const remaining = totalAllocated - totalSpent;
 
-      let deptQuery = supabase.from('departments').select('id, name');
-      if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
-      const { data: departments } = await deptQuery;
-
-      const deptNames = (departments || []).slice(0, 6).map(d => d.name);
+      const deptNames = (departments || []).slice(0, 6).map((d: any) => d.name);
       const allocated = deptNames.map(() => 0);
       const spent = deptNames.map(() => 0);
 
-      const tableData = (departments || []).slice(0, 5).map(dept => {
-        return {
-          period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-          department: dept.name,
-          value: '0%',
-          change: '0%',
-          status: 'No Data'
-        };
-      });
+      const tableData = (departments || []).slice(0, 5).map((dept: any) => ({
+        period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        department: dept.name,
+        value: '0%',
+        change: '0%',
+        status: 'No Data'
+      }));
 
       const formatCurrency = (amount: number): string => {
         if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(1)}Cr`;
@@ -701,46 +426,37 @@ export const reportsService = {
 
   async getExamProgressReport(filters: ReportFilters): Promise<ReportData> {
     try {
-      // Get college ID
-      let collegeId = filters.collegeId;
-      if (!collegeId) {
-        collegeId = await getCollegeIdForCurrentUser() || '';
-      }
+      const collegeId = filters.collegeId || getCollegeIdFromStorage() || '';
 
-      let examQuery = supabase.from('exam_windows').select('id, window_name, status, start_date, end_date, is_published');
-      if (collegeId) examQuery = examQuery.eq('college_id', collegeId);
-      const { data: examWindows } = await examQuery;
+      const result: any = await apiPost('/college-admin/reports', {
+        action: 'exam-progress',
+        collegeId,
+        dateRange: filters.dateRange,
+      });
+
+      const { examWindows, registrations, departments } = result.data || {};
 
       const totalExams = examWindows?.length || 0;
-      const completedExams = examWindows?.filter(e => e.status === 'completed').length || 0;
-      const ongoingExams = examWindows?.filter(e => e.status === 'ongoing').length || 0;
-      const scheduledExams = examWindows?.filter(e => e.status === 'scheduled').length || 0;
-
-      const { data: registrations } = await supabase.from('exam_registrations').select('id, status, fee_paid');
+      const completedExams = examWindows?.filter((e: any) => e.status === 'completed').length || 0;
+      const ongoingExams = examWindows?.filter((e: any) => e.status === 'ongoing').length || 0;
+      const scheduledExams = examWindows?.filter((e: any) => e.status === 'scheduled').length || 0;
       const totalRegistrations = registrations?.length || 0;
 
-      const hasRealData = totalExams > 0;
       const statuses = ['Completed', 'Ongoing', 'Scheduled', 'Draft'];
       const chartValues = [
-        completedExams, 
-        ongoingExams, 
-        scheduledExams, 
+        completedExams,
+        ongoingExams,
+        scheduledExams,
         Math.max(0, totalExams - completedExams - ongoingExams - scheduledExams)
       ];
 
-      let deptQuery = supabase.from('departments').select('id, name');
-      if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
-      const { data: departments } = await deptQuery;
-
-      const tableData = (departments || []).slice(0, 5).map(dept => {
-        return {
-          period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-          department: dept.name,
-          value: '0%',
-          change: '0%',
-          status: 'No Data'
-        };
-      });
+      const tableData = (departments || []).slice(0, 5).map((dept: any) => ({
+        period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        department: dept.name,
+        value: '0%',
+        change: '0%',
+        status: 'No Data'
+      }));
 
       return {
         kpis: [
@@ -760,17 +476,12 @@ export const reportsService = {
 
   async getDepartments(collegeId?: string): Promise<{ id: string; name: string; code: string }[]> {
     try {
-      // Get college ID if not provided
-      let cId = collegeId;
-      if (!cId) {
-        cId = await getCollegeIdForCurrentUser() || '';
-      }
-
-      let query = supabase.from('departments').select('id, name, code').order('name');
-      if (cId) query = query.eq('college_id', cId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+      const cId = collegeId || getCollegeIdFromStorage() || '';
+      const result: any = await apiPost('/college-admin/reports', {
+        action: 'departments',
+        collegeId: cId,
+      });
+      return result.data || [];
     } catch (error) {
       logger.error('Error fetching departments', error as Error, { collegeId });
       return [];

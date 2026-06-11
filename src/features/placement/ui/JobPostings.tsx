@@ -253,7 +253,7 @@ const JobPostings: React.FC = () => {
     return <span className={`px-2 py-1 text-xs font-medium rounded-full ${colorClass}`}>{displayStatus}</span>;
   };
 
-  const viewJobDetails = async (jobId: number) => {
+  const viewJobDetails = async (jobId: number | string) => {
     try {
       const job = await opportunitiesService.getOpportunityById(jobId);
       if (job) {
@@ -263,13 +263,16 @@ const JobPostings: React.FC = () => {
         await opportunitiesService.incrementViewCount(jobId);
         // Refresh the opportunities list to show updated view count
         loadOpportunities();
+      } else {
+        toast.error('Job not found');
       }
     } catch (error) {
+      console.error('Failed to load job details:', error);
       toast.error('Failed to load job details');
     }
   };
 
-  const editJob = async (jobId: number) => {
+  const editJob = async (jobId: number | string) => {
     try {
       const job = await opportunitiesService.getOpportunityById(jobId);
       if (job) {
@@ -294,13 +297,16 @@ const JobPostings: React.FC = () => {
           status: job.status || 'draft'
         });
         setShowAddJobModal(true);
+      } else {
+        toast.error('Job not found');
       }
     } catch (error) {
+      console.error('Failed to load job for editing:', error);
       toast.error('Failed to load job for editing');
     }
   };
 
-  const publishJobPost = (jobId: number) => {
+  const publishJobPost = (jobId: number | string) => {
     const job = opportunities.find(j => j.id === jobId);
     if (job) {
       toast.success(`Job "${job.title}" published and learners auto-listed successfully!`);
@@ -338,7 +344,7 @@ const JobPostings: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const exportShortlist = (jobId: number) => {
+  const exportShortlist = (jobId: number | string) => {
     const job = opportunities.find(j => j.id === jobId);
     if (job) {
       const shortlistData = [{
@@ -360,7 +366,7 @@ const JobPostings: React.FC = () => {
     }
   };
 
-  const exportJobDetails = (jobId: number) => {
+  const exportJobDetails = (jobId: number | string) => {
     const job = opportunities.find(j => j.id === jobId);
     if (job) {
       const jobDetails = [{
@@ -466,7 +472,7 @@ const JobPostings: React.FC = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-900">Job Posting & Application Tracking</h2>
-        <button 
+        {/* <button 
           onClick={() => {
             toast.info('Job creation feature is currently disabled. You can edit existing jobs.');
           }}
@@ -475,7 +481,7 @@ const JobPostings: React.FC = () => {
         >
           <Plus className="h-4 w-4" />
           Create Job Posting
-        </button>
+        </button> */}
       </div>
       
       <p className="text-gray-600 mb-4">Manage job roles, eligibility rules, rounds scheduling, learner allocation, and application stage updates.</p>

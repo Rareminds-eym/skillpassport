@@ -1,72 +1,53 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { RecruiterContext } from '@/features/learner-profile/model';
 
-/**
- * Build comprehensive recruiter context for AI
- * Fetches recruiter profile and recruitment activities from actual schema
- */
 export async function buildRecruiterContext(recruiterId: string): Promise<RecruiterContext> {
   try {
-    // Building recruiter context
+    const recruiter = await apiPost<any | null>('/recruiter-copilot', {
+      action: 'fetch-recruiter-by-id',
+      id: recruiterId,
+    });
 
-    // Fetch recruiter profile
-    const { data: recruiter, error: recruiterError } = await supabase
-      .from('recruiters')
-      .select('id, name, email, phone, state, website, isactive')
-      .eq('id', recruiterId)
-      .single();
-
-    if (recruiterError || !recruiter) {
-      // Using fallback context
+    if (!recruiter) {
       return buildFallbackContext();
     }
 
-    // Fetch active opportunities count
-    const { count: activeJobsCount } = await supabase
-      .from('opportunities')
-      .select('id', { count: 'exact', head: true })
-      .eq('recruiter_id', recruiterId)
-      .eq('is_active', true);
+    const activeJobsCount = await apiPost<number>('/recruiter-copilot', {
+      action: 'count-active-opportunities',
+      recruiter_id: recruiterId,
+    });
 
-    // Fetch opportunity IDs first
-    const { data: opportunities } = await supabase
-      .from('opportunities')
-      .select('id')
-      .eq('recruiter_id', recruiterId);
+    const opportunities = await apiPost<any[]>('/recruiter-copilot', {
+      action: 'fetch-opportunities-basic',
+      recruiter_id: recruiterId,
+    });
 
-    const opportunityIds = opportunities?.map(o => o.id) || [];
+    const opportunityIds = opportunities?.map((o: any) => o.id) || [];
 
-    // Fetch total candidates in pipeline
-    const { count: totalCandidates } = opportunityIds.length > 0
-      ? await supabase
-          .from('pipeline_candidates')
-          .select('id', { count: 'exact', head: true })
-          .in('opportunity_id', opportunityIds)
-      : { count: 0 };
+    const totalCandidates = opportunityIds.length > 0
+      ? await apiPost<number>('/recruiter-copilot', {
+          action: 'fetch-pipeline-candidates',
+          opportunity_ids: opportunityIds,
+        }).then((data: any) => Array.isArray(data) ? data.length : 0)
+      : 0;
 
-    // Fetch recent opportunities posted
-    const { data: recentOpportunities } = await supabase
-      .from('opportunities')
-      .select('job_title, company_name, employment_type, posted_date, status')
-      .eq('recruiter_id', recruiterId)
-      .order('posted_date', { ascending: false })
-      .limit(5);
+    const recentOpportunities = await apiPost<any[]>('/recruiter-copilot', {
+      action: 'fetch-opportunities-recent',
+      recruiter_id: recruiterId,
+      limit: 5,
+    });
 
-    // Build recent activities
-    const recentActivities = recentOpportunities?.map(opp => 
+    const recentActivities = recentOpportunities?.map((opp: any) =>
       `Posted "${opp.job_title}" at ${opp.company_name} (${opp.status || 'active'})`
     ) || ['No recent activities'];
 
-    // Identify specializations from posted opportunities
-    const { data: oppDepts } = await supabase
-      .from('opportunities')
-      .select('department')
-      .eq('recruiter_id', recruiterId)
-      .not('department', 'is', null);
+    const oppDepts = await apiPost<any[]>('/recruiter-copilot', {
+      action: 'fetch-opportunities-departments',
+      recruiter_id: recruiterId,
+    });
 
-    const specializations = [...new Set(oppDepts?.map(o => o.department).filter(Boolean))] || [];
+    const specializations = [...new Set(oppDepts?.map((o: any) => o.department).filter(Boolean))] || [];
 
-    // Build context object
     const context: RecruiterContext = {
       name: recruiter.name || 'Recruiter',
       company: recentOpportunities?.[0]?.company_name || 'Multiple Companies',
@@ -74,20 +55,15 @@ export async function buildRecruiterContext(recruiterId: string): Promise<Recrui
       active_jobs: activeJobsCount || 0,
       total_candidates: totalCandidates || 0,
       specializations: specializations.slice(0, 3),
-      recent_activities: recentActivities.slice(0, 5)
+      recent_activities: recentActivities.slice(0, 5),
     };
 
     return context;
-
-  } catch (error) {
-    // Error handled with fallback
+  } catch {
     return buildFallbackContext();
   }
 }
 
-/**
- * Fallback context when data fetch fails
- */
 function buildFallbackContext(): RecruiterContext {
   return {
     name: 'Recruiter',
@@ -95,16 +71,13 @@ function buildFallbackContext(): RecruiterContext {
     active_jobs: 0,
     total_candidates: 0,
     specializations: [],
-    recent_activities: ['Getting started with recruitment']
+    recent_activities: ['Getting started with recruitment'],
   };
 }
 
-/**
- * Helper to format recruiter summary for display
- */
 export function formatRecruiterSummary(context: RecruiterContext): string {
   return `
-📊 Recruitment Overview:
+Recruitment Overview:
 • ${context.active_jobs} active job posting${context.active_jobs !== 1 ? 's' : ''}
 • ${context.total_candidates} candidates in talent pool
 • Department: ${context.department || 'Not specified'}

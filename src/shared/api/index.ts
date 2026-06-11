@@ -6,8 +6,7 @@ export * from './httpClient';
 export * from './apiUtils';
 export * from './constants';
 
-// Supabase client
-export { supabase } from './supabaseClient';
+// Supabase client — no longer re-exported; use apiPost/apiGet instead
 
 // Common types
 export type * from './types';

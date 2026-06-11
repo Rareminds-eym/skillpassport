@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { apiPost } from '@/shared/api/apiClient';
 import { useNavigate } from 'react-router-dom';
 // src/components/Recruiter/components/CandidateProfileDrawer.tsx
 import React, { useEffect, useState } from 'react';
@@ -22,7 +23,6 @@ import {
 import AddToShortlistModal from './modals/AddToShortlistModal';
 import ScheduleInterviewModal from './modals/ScheduleInterviewModal';
 import { QRCodeSVG } from 'qrcode.react';
-import { supabase } from '@/shared/api/supabaseClient';
 import { File } from 'lucide-react';
 import { getLogger } from '@/shared/config/logging';
 
@@ -595,7 +595,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
 
   useEffect(() => {
     // Use user_id if available, fallback to id
-    const learnerId = candidate?.user_id || candidate?.id;
+    const learnerId = candidate?.learner_id;
     if (!learnerId) return;
 
     // Check if data is already available from useLearners (prefetched)
@@ -618,16 +618,10 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       if (!hasProjects) {
         setLoadingProjects(true);
         fetchPromises.push(
-          supabase
-            .from('projects')
-            .select('*')
-            .eq('learner_id', learnerId)
-            .eq('enabled', true)
-            .in('approval_status', ['approved', 'verified'])
-            .order('created_at', { ascending: false })
-            .then(({ data, error }) => {
-              if (error) throw error;
-              setProjects(data || []);
+          apiPost('/recruiter-pipeline', { action: 'get-learner-projects', learnerId })
+            .then((response: any) => {
+              const data = response?.data?.projects || [];
+              setProjects(data);
               setLoadingProjects(false);
             })
             .catch(error => {
@@ -641,16 +635,10 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       if (!hasCertificates) {
         setLoadingCertificates(true);
         fetchPromises.push(
-          supabase
-            .from('certificates')
-            .select('*')
-            .eq('learner_id', learnerId)
-            .eq('enabled', true)
-            .in('approval_status', ['approved', 'verified'])
-            .order('issued_on', { ascending: false })
-            .then(({ data, error }) => {
-              if (error) throw error;
-              setCertificates(data || []);
+          apiPost('/recruiter-pipeline', { action: 'get-learner-certificates', learnerId })
+            .then((response: any) => {
+              const data = response?.data?.certificates || [];
+              setCertificates(data);
               setLoadingCertificates(false);
             })
             .catch(error => {
@@ -664,35 +652,17 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
       // Always fetch assignments (not included in useLearners)
       setLoadingAssessments(true);
       fetchPromises.push(
-        supabase
-          .from('learner_assignments')
-          .select(`
-            *,
-            assignments (
-              title,
-              description,
-              course_name,
-              course_code,
-              assignment_type,
-              due_date,
-              total_points,
-              skill_outcomes,
-              educator_name
-            )
-          `)
-          .eq('learner_id', learnerId)
-          .eq('is_deleted', false)
-          .order('updated_date', { ascending: false })
-          .then(({ data, error }) => {
-            if (error) throw error;
-            setAssessments(data || []);
-            setLoadingAssessments(false);
-          })
-          .catch(error => {
-            logger.error('Failed to fetch assignments', error as Error);
-            setAssessments([]);
-            setLoadingAssessments(false);
-          })
+        apiPost('/recruiter-pipeline', { action: 'get-learner-assignments', learnerId })
+          .then((response: any) => {
+              const data = response?.data?.assignments || [];
+              setAssessments(data);
+              setLoadingAssessments(false);
+            })
+            .catch(error => {
+              logger.error('Failed to fetch assignments', error as Error);
+              setAssessments([]);
+              setLoadingAssessments(false);
+            })
       );
 
       // Execute all fetches in parallel
@@ -700,7 +670,7 @@ const CandidateProfileDrawer = ({ candidate, isOpen, onClose }) => {
     };
 
     fetchAllData();
-  }, [candidate?.user_id, candidate?.id, candidate?.projects, candidate?.certificates]);
+  }, [candidate?.learner_id, candidate?.projects, candidate?.certificates]);
 
 
 

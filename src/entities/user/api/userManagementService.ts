@@ -1,8 +1,18 @@
-import { supabase } from '@/shared/api';
+import { useAuthStore } from '@/shared/model/authStore';
+import { apiGet, apiPost } from '@/shared/api/apiClient';
 import userApiService from './userApiService';
 import type { QualificationData, ImportError, UserRoleHistoryRecord } from '@/types/LearnerManagement';
 
 const { unifiedSignup } = userApiService;
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => { const result = reader.result as string; resolve(result.split(',')[1] || result); };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export interface UserProfile {
   id: string;
@@ -126,62 +136,33 @@ export interface BulkImportResult {
 }
 
 class UserManagementService {
-  /**
-   * Get all users with filters
-   */
   async getUsers(filters?: {
     role?: string;
     isActive?: boolean;
     search?: string;
     college_id?: string;
   }): Promise<User[]> {
-    let query = supabase
-      .from('users')
-      .select('*')
-      .order('createdAt', { ascending: false });
-
-    if (filters?.role) {
-      query = query.eq('role', filters.role);
-    }
-
-    if (filters?.isActive !== undefined) {
-      query = query.eq('isActive', filters.isActive);
-    }
-
-    if (filters?.search) {
-      query = query.or(
-        `email.ilike.%${filters.search}%,firstName.ilike.%${filters.search}%,lastName.ilike.%${filters.search}%`
-      );
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
+    const params = new URLSearchParams();
+    if (filters?.role) params.set('role', filters.role);
+    if (filters?.search) params.set('search', filters.search);
+    const qs = params.toString();
+    const response: any = await apiGet(`/user/list${qs ? `?${qs}` : ''}`);
+    return response?.data?.users ?? [];
   }
 
-  /**
-   * Get a single user by ID
-   */
   async getUser(userId: string): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+    try {
+      const response: any = await apiGet(`/user/by-id?id=${encodeURIComponent(userId)}`);
+      return response?.data?.user ?? null;
+    } catch {
+      return null;
+    }
   }
 
-  /**
-   * Create a new user using Worker API with proper rollback
-   */
   async createUser(userData: CreateUserData): Promise<User> {
-    // Parse name into firstName and lastName if not provided
     const firstName = userData.firstName || '';
     const lastName = userData.lastName || '';
 
-    // Map role to worker API expected format
     const roleMapping: Record<string, string> = {
       'learner': 'learner',
       'educator': 'school_educator',
@@ -196,7 +177,6 @@ class UserManagementService {
 
     const mappedRole = roleMapping[userData.role] || 'learner';
 
-    // Use Worker API for signup with proper rollback
     const result = await unifiedSignup({
       email: userData.email,
       password: userData.password,
@@ -204,334 +184,187 @@ class UserManagementService {
       lastName,
       role: mappedRole as any,
       phone: (userData.metadata as any)?.phone || null,
-      dateOfBirth: new Date().toISOString().split('T')[0], // Default value
-      country: 'US', // Default value
-      state: 'CA', // Default value  
-      city: 'San Francisco', // Default value
-      preferredLanguage: 'en' // Default value
+      dateOfBirth: new Date().toISOString().split('T')[0],
+      country: 'US',
+      state: 'CA',
+      city: 'San Francisco',
+      preferredLanguage: 'en',
     });
 
     if (!result.success || !result.user?.id) {
       throw new Error(result.error || 'Failed to create user');
     }
 
-    // Update user profile with additional metadata
-    const { data: user, error: updateError } = await supabase
-      .from('users')
-      .update({
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        role: userData.role,
-        metadata: userData.metadata,
-      })
-      .eq('id', result.user.id)
-      .select()
-      .single();
+    const response: any = await apiPost('/user/update', {
+      id: result.user.id,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      role: userData.role,
+      metadata: userData.metadata,
+    });
+    const user = response?.data?.user;
+    if (!user) throw new Error('Failed to update user');
 
-    if (updateError) throw updateError;
-
-    // Log activity
     await this.logActivity(result.user.id, 'user_created', 'User account created');
-
     return user;
   }
 
-  /**
-   * Update user
-   */
   async updateUser(userId: string, userData: UpdateUserData): Promise<User> {
-    const { data, error } = await supabase
-      .from('users')
-      .update(userData)
-      .eq('id', userId)
-      .select()
-      .single();
+    const response: any = await apiPost('/user/update', { id: userId, ...userData });
+    const user = response?.data?.user;
+    if (!user) throw new Error('Failed to update user');
 
-    if (error) throw error;
-
-    // Log activity
     await this.logActivity(userId, 'profile_updated', 'User profile updated');
-
-    return data;
+    return user;
   }
 
-  /**
-   * Delete user (soft delete by setting isActive to false)
-   */
   async deleteUser(userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('users')
-      .update({ isActive: false })
-      .eq('id', userId);
-
-    if (error) throw error;
-
-    // Log activity
+    await apiPost('/user/delete', { id: userId });
     await this.logActivity(userId, 'user_deactivated', 'User account deactivated');
   }
 
-  /**
-   * Change user role
-   */
   async changeUserRole(
     userId: string,
     newRole: string,
     reason?: string
   ): Promise<void> {
-    const currentUser = useAuthStore.getState().user;
-    if (!currentUser.user) throw new Error('Not authenticated');
-
-    const { error } = await supabase.rpc('change_user_role', {
-      p_user_id: userId,
-      p_new_role: newRole,
-      p_reason: reason,
-      p_changed_by: currentUser.user.id,
+    await apiPost('/user/change-role', {
+      user_id: userId,
+      new_role: newRole,
+      reason,
     });
-
-    if (error) throw error;
   }
 
-  /**
-   * Get user extended profile
-   */
   async getUserProfile(userId: string): Promise<UserProfileExtended | null> {
-    const { data, error } = await supabase
-      .from('user_profile_extended')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    try {
+      const response: any = await apiGet(`/user/profile-extended?userId=${encodeURIComponent(userId)}`);
+      return response?.data?.profile ?? null;
+    } catch {
+      return null;
+    }
   }
 
-  /**
-   * Update user extended profile
-   */
   async updateUserProfile(
     userId: string,
     profileData: Partial<UserProfileExtended>
   ): Promise<UserProfileExtended> {
-    const { data, error } = await supabase
-      .from('user_profile_extended')
-      .upsert({
-        user_id: userId,
-        ...profileData,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const response: any = await apiPost('/user/profile-extended', {
+      user_id: userId,
+      ...profileData,
+    });
+    const profile = response?.data?.profile;
+    if (!profile) throw new Error('Failed to update profile');
+    return profile;
   }
 
-  /**
-   * Get user documents
-   */
   async getUserDocuments(userId: string): Promise<UserDocument[]> {
-    const { data, error } = await supabase
-      .from('user_documents')
-      .select('*')
-      .eq('user_id', userId)
-      .order('uploaded_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const response: any = await apiGet(`/user/documents?userId=${encodeURIComponent(userId)}`);
+    return response?.data?.documents ?? [];
   }
 
-  /**
-   * Upload user document
-   */
   async uploadDocument(
     userId: string,
     file: File,
     documentType: string
   ): Promise<UserDocument> {
-    // Upload file to storage
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${documentType}/${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('user-documents')
-      .upload(fileName, file);
+    const base64 = await fileToBase64(file);
+    const uploadResult: any = await apiPost('/college-admin/storage', {
+      action: 'upload', bucket: 'user-documents', path: fileName, file_base64: base64, content_type: file.type || 'application/octet-stream',
+    });
+    const publicUrl = uploadResult?.data?.publicUrl;
 
-    if (uploadError) throw uploadError;
-
-    const { data: urlData } = supabase.storage
-      .from('user-documents')
-      .getPublicUrl(fileName);
-
-    // Create document record
-    const { data, error } = await supabase
-      .from('user_documents')
-      .insert({
+    const response: any = await apiPost('/user/update', {
+      id: userId,
+      documents: {
         user_id: userId,
         document_type: documentType,
         document_name: file.name,
-        document_url: urlData.publicUrl,
+        document_url: publicUrl,
         file_size: file.size,
         file_type: file.type,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+      },
+    });
+    return response?.data;
   }
 
-  /**
-   * Verify document
-   */
   async verifyDocument(
     documentId: string,
     status: 'verified' | 'rejected',
     reason?: string
   ): Promise<void> {
-    const currentUser = useAuthStore.getState().user;
+    const currentUser = (await import('@/shared/model/authStore')).useAuthStore.getState().user;
     if (!currentUser.user) throw new Error('Not authenticated');
 
-    const updateData: {
-      verification_status: 'verified' | 'rejected';
-      verified_by: string;
-      verified_at: string;
-      rejection_reason?: string;
-    } = {
+    await apiPost('/user/actions', {
+      action: 'verify-document',
+      documentId,
       verification_status: status,
       verified_by: currentUser.user.id,
       verified_at: new Date().toISOString(),
-    };
-
-    if (status === 'rejected' && reason) {
-      updateData.rejection_reason = reason;
-    }
-
-    const { error } = await supabase
-      .from('user_documents')
-      .update(updateData)
-      .eq('id', documentId);
-
-    if (error) throw error;
+      ...(status === 'rejected' && reason ? { rejection_reason: reason } : {}),
+    });
   }
 
-  /**
-   * Get user activity log
-   */
   async getUserActivity(
     userId: string,
     limit: number = 50
   ): Promise<UserActivity[]> {
-    const { data, error } = await supabase
-      .from('user_activity_log')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (error) throw error;
-    return data || [];
+    const response: any = await apiGet(`/user/activity?userId=${encodeURIComponent(userId)}&limit=${limit}`);
+    return response?.data?.activities ?? [];
   }
 
-  /**
-   * Log user activity
-   */
   async logActivity(
     userId: string,
     activityType: string,
     description?: string,
     metadata?: Record<string, string | number | boolean>
   ): Promise<void> {
-    const { error } = await supabase.rpc('log_user_activity', {
-      p_user_id: userId,
-      p_activity_type: activityType,
-      p_description: description,
-      p_metadata: metadata || {},
+    await apiPost('/user/log-activity', {
+      user_id: userId,
+      activity_type: activityType,
+      description: description || '',
+      metadata: metadata || {},
     });
-
-    if (error) throw error;
   }
 
-  /**
-   * Bulk import users from CSV
-   */
   async bulkImportUsers(file: File): Promise<BulkImportResult> {
-    const currentUser = useAuthStore.getState().user;
+    const currentUser = (await import('@/shared/model/authStore')).useAuthStore.getState().user;
     if (!currentUser.user) throw new Error('Not authenticated');
 
-    // Upload CSV file
     const fileName = `bulk-imports/${Date.now()}_${file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from('user-documents')
-      .upload(fileName, file);
+    const base64 = await fileToBase64(file);
+    const uploadResult: any = await apiPost('/college-admin/storage', {
+      action: 'upload', bucket: 'user-documents', path: fileName, file_base64: base64, content_type: file.type || 'application/octet-stream',
+    });
+    const publicUrl = uploadResult?.data?.publicUrl;
 
-    if (uploadError) throw uploadError;
-
-    const { data: urlData } = supabase.storage
-      .from('user-documents')
-      .getPublicUrl(fileName);
-
-    // Create import job
-    const { data, error } = await supabase
-      .from('user_bulk_imports')
-      .insert({
-        imported_by: currentUser.user.id,
-        file_name: file.name,
-        file_url: urlData.publicUrl,
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // TODO: Process CSV in background job
-    // For now, return the job record
-    return data;
+    const response: any = await apiPost('/user/actions', {
+      action: 'create-bulk-import',
+      imported_by: currentUser.user.id,
+      file_name: file.name,
+      file_url: publicUrl,
+    });
+    return response?.data;
   }
 
-  /**
-   * Get bulk import status
-   */
   async getBulkImportStatus(importId: string): Promise<BulkImportResult> {
-    const { data, error } = await supabase
-      .from('user_bulk_imports')
-      .select('*')
-      .eq('id', importId)
-      .single();
-
-    if (error) throw error;
-    return data;
+    const response: any = await apiPost('/user/actions', { action: 'get-bulk-import-status', importId });
+    return response?.data;
   }
 
-  /**
-   * Get user statistics
-   */
   async getUserStats(): Promise<{
     total: number;
     active: number;
     inactive: number;
     by_role: Record<string, number>;
   }> {
-    const { data: users, error } = await supabase.from('users').select('role, isActive');
-
-    if (error) throw error;
-
-    const stats = {
-      total: users?.length || 0,
-      active: users?.filter((u) => u.isActive).length || 0,
-      inactive: users?.filter((u) => !u.isActive).length || 0,
-      by_role: {} as Record<string, number>,
-    };
-
-    users?.forEach((user) => {
-      stats.by_role[user.role] = (stats.by_role[user.role] || 0) + 1;
-    });
-
-    return stats;
+    const response: any = await apiGet('/user/stats');
+    return response?.data ?? { total: 0, active: 0, inactive: 0, by_role: {} };
   }
 
-  /**
-   * Reset user password (admin function)
-   */
   async resetUserPassword(userId: string, newPassword: string): Promise<void> {
     const { ssoClient } = await import('@/shared/api/ssoClient');
     const ssoUrl = import.meta.env.VITE_SSO_URL;
@@ -546,18 +379,9 @@ class UserManagementService {
     }
   }
 
-  /**
-   * Get user role history
-   */
   async getUserRoleHistory(userId: string): Promise<UserRoleHistoryRecord[]> {
-    const { data, error } = await supabase
-      .from('user_role_history')
-      .select('*')
-      .eq('user_id', userId)
-      .order('assigned_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    const response: any = await apiGet(`/user/role-history?userId=${encodeURIComponent(userId)}`);
+    return response?.data?.history ?? [];
   }
 }
 

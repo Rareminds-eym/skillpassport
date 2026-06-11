@@ -20,7 +20,7 @@ import { useSubscriptionAccess } from '@/features/subscription/model/subscriptio
 // Plan hierarchy for access-control comparisons (lowest → highest).
 // Must match plan_code values in the Supabase subscription_plans table.
 // Pricing is never read from here — prices come exclusively from the DB via the API.
-const PLAN_HIERARCHY = ['basic', 'professional', 'enterprise', 'enterprise_ecosystem'];
+const PLAN_HIERARCHY = ['freemium', 'basic', 'professional', 'premium', 'enterprise', 'enterprise_ecosystem'];
 
 /**
  * Get the base path for subscription routes based on current location

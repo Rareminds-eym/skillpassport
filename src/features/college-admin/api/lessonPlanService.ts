@@ -1,12 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('lesson-plan-service');
-
-/**
- * College Lesson Plan Service
- * Handles lesson plan CRUD operations for college faculty
- */
+import { apiPost } from '@/shared/api/apiClient';
 
 export interface CollegeLessonPlan {
   id: string;
@@ -52,7 +44,6 @@ export interface CollegeLessonPlan {
   updated_at: string;
   published_at?: string;
   metadata: Record<string, any>;
-  // Joined fields
   course_name?: string;
   course_code?: string;
   department_name?: string;
@@ -60,54 +51,18 @@ export interface CollegeLessonPlan {
   unit_name?: string;
 }
 
-// Get current user's college ID
-async function getCurrentUserCollegeId(): Promise<string | null> {
-  const user = useAuthStore.getState().user;
-  if (!user) return null;
-
-  // Try college_lecturers first
-  const { data: lecturerData } = await supabase
-    .from('college_lecturers')
-    .select('collegeId')
-    .or(`user_id.eq.${user.id},email.eq.${user.email}`)
-    .maybeSingle();
-
-  if (lecturerData?.collegeId) {
-    return lecturerData.collegeId;
-  }
-
-  // Try organizations table
-  const { data: orgData } = await supabase
-    .from('organizations')
-    .select('id')
-    .eq('admin_id', user.id)
-    .eq('organization_type', 'college')
-    .maybeSingle();
-
-  return orgData?.id || null;
-}
-
 export const lessonPlanService = {
-  /**
-   * Get departments for current user's college
-   */
   async getDepartments(): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
-      const collegeId = await getCurrentUserCollegeId();
-      if (!collegeId) {
-        return { success: false, error: { message: 'Unable to determine user college' } };
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'get-departments'
+      });
+
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch departments' } };
       }
 
-      const { data, error } = await supabase
-        .from('departments')
-        .select('id, name, code')
-        .eq('college_id', collegeId)
-        .eq('status', 'active')
-        .order('name');
-
-      if (error) throw error;
-
-      return { success: true, data: data || [] };
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
       return {
         success: false,
@@ -119,21 +74,18 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Get programs for a department
-   */
   async getPrograms(departmentId: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
-      const { data, error } = await supabase
-        .from('programs')
-        .select('id, name, code, department_id')
-        .eq('department_id', departmentId)
-        .eq('status', 'active')
-        .order('name');
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'get-programs',
+        department_id: departmentId
+      });
 
-      if (error) throw error;
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch programs' } };
+      }
 
-      return { success: true, data: data || [] };
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
       return {
         success: false,
@@ -145,23 +97,18 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Get available semesters for a program
-   */
   async getSemesters(programId: string): Promise<{ success: boolean; data?: number[]; error?: any }> {
     try {
-      const { data, error } = await supabase
-        .from('college_course_mappings')
-        .select('semester')
-        .eq('program_id', programId)
-        .order('semester');
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'get-semesters',
+        program_id: programId
+      });
 
-      if (error) throw error;
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch semesters' } };
+      }
 
-      // Get unique semesters
-      const uniqueSemesters = [...new Set((data || []).map(item => item.semester))];
-      
-      return { success: true, data: uniqueSemesters };
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
       return {
         success: false,
@@ -173,44 +120,19 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Get courses for a specific program and semester
-   */
   async getCourses(programId: string, semester: number): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
-      const { data, error } = await supabase
-        .from('college_course_mappings')
-        .select(`
-          id, 
-          offering_type,
-          course:college_courses(
-            id,
-            course_code, 
-            course_name, 
-            credits,
-            course_type
-          )
-        `)
-        .eq('program_id', programId)
-        .eq('semester', semester);
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'get-courses',
+        program_id: programId,
+        semester
+      });
 
-      if (error) throw error;
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch courses' } };
+      }
 
-      // Transform data to match expected format
-      const transformedData = (data || []).map(mapping => {
-        const course = mapping.course;
-        return {
-          id: course?.id || null,
-          mapping_id: mapping.id,
-          course_code: course?.course_code || null,
-          course_name: course?.course_name || null,
-          credits: course?.credits || null,
-          offering_type: mapping.offering_type,
-          course_type: course?.course_type || null
-        };
-      }).filter(item => item.id); // Filter out items without valid course IDs
-
-      return { success: true, data: transformedData };
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
       return {
         success: false,
@@ -222,77 +144,25 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Get curriculum units for a specific course, program, and academic year
-   * Returns both units and curriculum_id
-   */
   async getCurriculumUnits(courseId: string, programId: string, academicYear: string): Promise<{ success: boolean; data?: any[]; curriculumId?: string; error?: any }> {
     try {
-      const collegeId = await getCurrentUserCollegeId();
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'get-lesson-plan-curriculums',
+        course_id: courseId,
+        program_id: programId,
+        academic_year: academicYear
+      });
 
-      if (!collegeId) {
-        return { success: false, error: { message: 'Unable to determine user college' } };
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch curriculum units' } };
       }
 
-      // First find the curriculum - try published first, then approved, then draft
-      let { data: curriculum, error: curriculumError } = await supabase
-        .from('college_curriculums')
-        .select('id, status, created_at')
-        .eq('college_id', collegeId)
-        .eq('program_id', programId)
-        .eq('course_id', courseId)
-        .eq('academic_year', academicYear)
-        .eq('status', 'published')
-        .single();
-
-      // If no published curriculum found, try approved
-      if (curriculumError || !curriculum) {
-        const { data: approvedCurriculum, error: approvedError } = await supabase
-          .from('college_curriculums')
-          .select('id, status, created_at')
-          .eq('college_id', collegeId)
-          .eq('program_id', programId)
-          .eq('course_id', courseId)
-          .eq('academic_year', academicYear)
-          .eq('status', 'approved')
-          .single();
-
-        curriculum = approvedCurriculum;
-        curriculumError = approvedError;
-      }
-
-      // If no approved curriculum found, try draft
-      if (curriculumError || !curriculum) {
-        const { data: draftCurriculum, error: draftError } = await supabase
-          .from('college_curriculums')
-          .select('id, status, created_at')
-          .eq('college_id', collegeId)
-          .eq('program_id', programId)
-          .eq('course_id', courseId)
-          .eq('academic_year', academicYear)
-          .eq('status', 'draft')
-          .single();
-
-        curriculum = draftCurriculum;
-        curriculumError = draftError;
-      }
-
-      if (curriculumError || !curriculum) {
-        return { success: true, data: [], curriculumId: undefined };
-      }
-
-      // Get units for this curriculum
-      const { data: units, error: unitsError } = await supabase
-        .from('college_curriculum_units')
-        .select('*')
-        .eq('curriculum_id', curriculum.id)
-        .order('order_index');
-
-      if (unitsError) throw unitsError;
-
-      return { success: true, data: units || [], curriculumId: curriculum.id };
+      return {
+        success: true,
+        data: result.data?.units || [],
+        curriculumId: result.data?.curriculumId
+      };
     } catch (error: any) {
-      logger.error('Error in getCurriculumUnits', error, { courseId, programId, academicYear });
       return {
         success: false,
         error: {
@@ -303,19 +173,22 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Get learning outcomes for a specific unit
-   */
+  async getLessonPlanCurriculums(courseId: string, programId: string, academicYear: string): Promise<{ success: boolean; data?: any[]; curriculumId?: string; error?: any }> {
+    return this.getCurriculumUnits(courseId, programId, academicYear);
+  },
+
   async getLearningOutcomes(unitId: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
-      const { data, error } = await supabase
-        .from('college_curriculum_outcomes')
-        .select('*')
-        .eq('unit_id', unitId);
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'get-lesson-plan-outcomes',
+        unit_id: unitId
+      });
 
-      if (error) throw error;
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch learning outcomes' } };
+      }
 
-      return { success: true, data: data || [] };
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
       return {
         success: false,
@@ -327,61 +200,22 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Create new lesson plan
-   */
+  async getLessonPlanOutcomes(unitId: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
+    return this.getLearningOutcomes(unitId);
+  },
+
   async createLessonPlan(data: Omit<CollegeLessonPlan, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'college_id'>): Promise<{ success: boolean; data?: CollegeLessonPlan; error?: any }> {
     try {
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        return { success: false, error: { message: 'User not authenticated' } };
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'create-lesson-plan',
+        ...data
+      });
+
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to create lesson plan' } };
       }
 
-      const collegeId = await getCurrentUserCollegeId();
-      if (!collegeId) {
-        return { success: false, error: { message: 'Unable to determine user college' } };
-      }
-
-      const { data: lessonPlan, error } = await supabase
-        .from('college_lesson_plans')
-        .insert([{
-          ...data,
-          college_id: collegeId,
-          created_by: user.id,
-        }])
-        .select(`
-          *,
-          course:college_courses!college_lesson_plans_course_id_fkey(course_code, course_name),
-          department:departments!college_lesson_plans_department_id_fkey(name),
-          program:programs!college_lesson_plans_program_id_fkey(name),
-          unit:college_curriculum_units!college_lesson_plans_unit_id_fkey(name)
-        `)
-        .single();
-
-      if (error) {
-        logger.error('Database error creating lesson plan', error as Error, { userId: user.id, collegeId });
-
-        // Handle specific constraint violations
-        if (error.message?.includes('session_date') && error.message?.includes('not-null')) {
-          throw new Error('Session date is required and cannot be empty');
-        } else if (error.message?.includes('violates not-null constraint')) {
-          throw new Error('Please fill in all required fields');
-        } else {
-          throw error;
-        }
-      }
-
-      // Flatten the response
-      const result = {
-        ...lessonPlan,
-        course_code: lessonPlan.course?.course_code,
-        course_name: lessonPlan.course?.course_name,
-        department_name: lessonPlan.department?.name,
-        program_name: lessonPlan.program?.name,
-        unit_name: lessonPlan.unit?.name,
-      };
-
-      return { success: true, data: result };
+      return { success: true, data: result.data };
     } catch (error: any) {
       return {
         success: false,
@@ -393,46 +227,19 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Update lesson plan
-   */
   async updateLessonPlan(id: string, updates: Partial<CollegeLessonPlan>): Promise<{ success: boolean; data?: CollegeLessonPlan; error?: any }> {
     try {
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        return { success: false, error: { message: 'User not authenticated' } };
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'update-lesson-plan',
+        id,
+        ...updates
+      });
+
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to update lesson plan' } };
       }
 
-      const { data, error } = await supabase
-        .from('college_lesson_plans')
-        .update({
-          ...updates,
-          updated_by: user.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select(`
-          *,
-          course:college_courses!college_lesson_plans_course_id_fkey(course_code, course_name),
-          department:departments!college_lesson_plans_department_id_fkey(name),
-          program:programs!college_lesson_plans_program_id_fkey(name),
-          unit:college_curriculum_units!college_lesson_plans_unit_id_fkey(name)
-        `)
-        .single();
-
-      if (error) throw error;
-
-      // Flatten the response
-      const result = {
-        ...data,
-        course_code: data.course?.course_code,
-        course_name: data.course?.course_name,
-        department_name: data.department?.name,
-        program_name: data.program?.name,
-        unit_name: data.unit?.name,
-      };
-
-      return { success: true, data: result };
+      return { success: true, data: result.data };
     } catch (error: any) {
       return {
         success: false,
@@ -444,9 +251,6 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Get lesson plans with filters
-   */
   async getLessonPlans(filters: {
     department_id?: string;
     program_id?: string;
@@ -456,50 +260,16 @@ export const lessonPlanService = {
     status?: string;
   } = {}): Promise<{ success: boolean; data?: CollegeLessonPlan[]; error?: any }> {
     try {
-      const collegeId = await getCurrentUserCollegeId();
-      if (!collegeId) {
-        return { success: false, error: { message: 'Unable to determine user college' } };
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'get-lesson-plans',
+        ...filters
+      });
+
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch lesson plans' } };
       }
 
-      const user = useAuthStore.getState().user;
-      if (!user) {
-        return { success: false, error: { message: 'User not authenticated' } };
-      }
-
-      let query = supabase
-        .from('college_lesson_plans')
-        .select(`
-          *,
-          course:college_courses!college_lesson_plans_course_id_fkey(course_code, course_name),
-          department:departments!college_lesson_plans_department_id_fkey(name),
-          program:programs!college_lesson_plans_program_id_fkey(name),
-          unit:college_curriculum_units!college_lesson_plans_unit_id_fkey(name)
-        `)
-        .eq('college_id', collegeId)
-        .eq('created_by', user.id); // Only show user's own lesson plans
-
-      if (filters.department_id) query = query.eq('department_id', filters.department_id);
-      if (filters.program_id) query = query.eq('program_id', filters.program_id);
-      if (filters.course_id) query = query.eq('course_id', filters.course_id);
-      if (filters.semester) query = query.eq('semester', filters.semester);
-      if (filters.academic_year) query = query.eq('academic_year', filters.academic_year);
-      if (filters.status) query = query.eq('status', filters.status);
-
-      const { data: lessonPlans, error } = await query.order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Transform data
-      const result: CollegeLessonPlan[] = (lessonPlans || []).map(plan => ({
-        ...plan,
-        course_code: plan.course?.course_code,
-        course_name: plan.course?.course_name,
-        department_name: plan.department?.name,
-        program_name: plan.program?.name,
-        unit_name: plan.unit?.name,
-      }));
-
-      return { success: true, data: result };
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
       return {
         success: false,
@@ -511,17 +281,62 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Delete lesson plan
-   */
+  async getLessonPlan(id: string): Promise<{ success: boolean; data?: CollegeLessonPlan; error?: any }> {
+    try {
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'get-lesson-plan',
+        id
+      });
+
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch lesson plan' } };
+      }
+
+      return { success: true, data: result.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'FETCH_ERROR',
+          message: error.message || 'Failed to fetch lesson plan',
+        },
+      };
+    }
+  },
+
+  async getLessonPlanUnits(curriculumId: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
+    try {
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'get-lesson-plan-units',
+        curriculum_id: curriculumId
+      });
+
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch units' } };
+      }
+
+      return { success: true, data: result.data || [] };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'FETCH_ERROR',
+          message: error.message || 'Failed to fetch units',
+        },
+      };
+    }
+  },
+
   async deleteLessonPlan(id: string): Promise<{ success: boolean; error?: any }> {
     try {
-      const { error } = await supabase
-        .from('college_lesson_plans')
-        .delete()
-        .eq('id', id);
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'delete-lesson-plan',
+        id
+      });
 
-      if (error) throw error;
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to delete lesson plan' } };
+      }
 
       return { success: true };
     } catch (error: any) {
@@ -535,37 +350,20 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Check what curriculums exist for debugging
-   */
   async debugCurriculums(courseId?: string, programId?: string, academicYear?: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
-      const collegeId = await getCurrentUserCollegeId();
-      if (!collegeId) {
-        return { success: false, error: { message: 'Unable to determine user college' } };
+      const result = await apiPost<any>('/college-admin/lesson-plans', {
+        action: 'debug-curriculums',
+        course_id: courseId,
+        program_id: programId,
+        academic_year: academicYear
+      });
+
+      if (!result.success) {
+        return { success: false, error: { message: result.error || 'Failed to fetch curriculums' } };
       }
 
-      let query = supabase
-        .from('college_curriculums')
-        .select(`
-          id, 
-          status, 
-          academic_year,
-          created_at,
-          course:college_courses!college_curriculums_course_id_fkey(course_code, course_name),
-          program:programs!college_curriculums_program_id_fkey(name, code)
-        `)
-        .eq('college_id', collegeId);
-
-      if (courseId) query = query.eq('course_id', courseId);
-      if (programId) query = query.eq('program_id', programId);
-      if (academicYear) query = query.eq('academic_year', academicYear);
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      return { success: true, data: data || [] };
+      return { success: true, data: result.data || [] };
     } catch (error: any) {
       return {
         success: false,
@@ -577,19 +375,16 @@ export const lessonPlanService = {
     }
   },
 
-  /**
-   * Generate academic years
-   */
   getAcademicYears(): string[] {
     const currentYear = new Date().getFullYear();
     const years = [];
-    
+
     for (let i = -1; i <= 2; i++) {
       const startYear = currentYear + i;
       const endYear = startYear + 1;
       years.push(`${startYear}-${endYear}`);
     }
-    
+
     return years;
   },
 };

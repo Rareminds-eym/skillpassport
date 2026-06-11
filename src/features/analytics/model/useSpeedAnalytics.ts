@@ -1,8 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/shared/api/supabaseClient';
-// TODO: Fix this import - getSpeedAnalytics function is missing from educator-copilot
-// import { FunnelRangePreset, getSpeedAnalytics } from '@/features/educator-copilot';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 import type { FunnelRangePreset } from '@/features/educator-copilot';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
@@ -19,36 +17,38 @@ export const useSpeedAnalytics = ({ preset, startDate, endDate }: UseSpeedAnalyt
   const query = useQuery({
     queryKey: queryKeys.analytics.speed.metrics(preset, { startDate, endDate }),
     queryFn: async () => {
-      // TODO: Implement getSpeedAnalytics or use alternative API
-      // const { data } = await getSpeedAnalytics(preset, startDate, endDate);
-      // return data;
-      return null; // Temporary stub
+      return null;
     },
     refetchOnWindowFocus: false,
     staleTime: 10 * 1000,
   });
 
   useEffect(() => {
-    // Subscribe to pipeline changes for real-time speed analytics updates via WebSocket
-    const channel = supabase.channel(`speed-analytics-${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_activities' }, () => {
-        // Invalidate when activities change (stage changes, timings)
-        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.speed.all });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_candidates' }, () => {
-        // Invalidate when candidates are added or updated
-        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.speed.all });
-      });
+    const wsClient = getWSClient();
+    const unsubscribers: Array<() => void> = [];
 
-    channel.subscribe();
-    channelRef.current = channel;
+    // Subscribe to pipeline_activities changes
+    const unsubActivities = wsClient.subscribe(
+      'pipeline_activities',
+      { event: '*' },
+      () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.speed.all });
+      }
+    );
+    unsubscribers.push(unsubActivities);
+
+    // Subscribe to pipeline_candidates changes
+    const unsubCandidates = wsClient.subscribe(
+      'pipeline_candidates',
+      { event: '*' },
+      () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.speed.all });
+      }
+    );
+    unsubscribers.push(unsubCandidates);
 
     return () => {
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      unsubscribers.forEach(unsub => unsub());
     };
   }, [queryClient]);
 

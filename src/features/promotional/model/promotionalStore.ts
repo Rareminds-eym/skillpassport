@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 // Types
 export interface PromotionalEvent {
@@ -221,15 +221,9 @@ export const usePromotionalStore = create<PromotionalState>()(
           });
 
           try {
-            const { data, error } = await supabase
-              .from('promotional_events')
-              .select('*')
-              .eq('is_active', true)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+            const { data } = await apiPost('/promotional/actions', { action: 'fetch-promotional-event' });
 
-            if (!error && data) {
+            if (data) {
               set((state) => {
                 state.assessmentEvent = data;
               });

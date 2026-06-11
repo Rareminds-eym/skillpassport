@@ -9,9 +9,8 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
-import { getServiceClient } from '../../../lib/auth';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { getContextUser, getServiceClient } from '../../../lib/auth';
+import { apiSuccess, apiError } from '../../../lib/response';
 
 interface UpdateProgressRequestBody {
   courseId?: string;
@@ -37,10 +36,10 @@ interface UpdateProgressRequestBody {
  * - progress: array of progress records
  */
 export const onRequestGet = async (context: AuthenticatedContext) => {
+  const { request, env } = context;
   try {
-    const { request, env, data } = context;
-    const user = data.user;
-    const learnerId = user.sub;
+    const user = getContextUser(context);
+    const learnerId = user.id;
     const supabase = getServiceClient(env as any);
 
     // Parse query parameters
@@ -48,7 +47,7 @@ export const onRequestGet = async (context: AuthenticatedContext) => {
     const courseId = url.searchParams.get('courseId');
 
     if (!courseId) {
-      return jsonResponse({ error: 'Missing courseId parameter' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Missing courseId parameter', request);
     }
 
     // Fetch learner progress for the course
@@ -60,7 +59,7 @@ export const onRequestGet = async (context: AuthenticatedContext) => {
 
     if (progressError) {
       console.error('Failed to fetch progress:', progressError);
-      return jsonResponse({ error: 'Failed to fetch progress' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to fetch progress', request);
     }
 
     // Fetch total lessons in the course
@@ -79,7 +78,7 @@ export const onRequestGet = async (context: AuthenticatedContext) => {
       .filter((p: any) => p.last_accessed)
       .sort((a: any, b: any) => new Date(b.last_accessed!).getTime() - new Date(a.last_accessed!).getTime())[0];
 
-    return jsonResponse({
+    return apiSuccess({
       courseId,
       totalLessons,
       completedLessons,
@@ -87,13 +86,10 @@ export const onRequestGet = async (context: AuthenticatedContext) => {
       lastAccessedLessonId: lastAccessed?.lesson_id || null,
       lastAccessedAt: lastAccessed?.last_accessed || null,
       progress: progress || []
-    });
+    }, request);
   } catch (error) {
     console.error('AI tutor progress GET error:', error);
-    return jsonResponse(
-      { error: 'Internal server error' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 };
 
@@ -112,10 +108,10 @@ export const onRequestGet = async (context: AuthenticatedContext) => {
  * - progress: object with updated progress record
  */
 export const onRequestPost = async (context: AuthenticatedContext) => {
+  const { request, env } = context;
   try {
-    const { request, env, data } = context;
-    const user = data.user;
-    const learnerId = user.sub;
+    const user = getContextUser(context);
+    const learnerId = user.id;
     const supabase = getServiceClient(env as any);
 
     // Parse request body
@@ -123,25 +119,19 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
     try {
       body = await request.json() as UpdateProgressRequestBody;
     } catch (error) {
-      return jsonResponse({ error: 'Invalid JSON in request body' }, 400);
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', request);
     }
 
     const { courseId, lessonId, status } = body;
 
     // Validate required fields
     if (!courseId || !lessonId || !status) {
-      return jsonResponse(
-        { error: 'Missing required fields: courseId, lessonId, status' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: courseId, lessonId, status', request);
     }
 
     // Validate status value
     if (!['not_started', 'in_progress', 'completed'].includes(status)) {
-      return jsonResponse(
-        { error: 'Invalid status. Must be: not_started, in_progress, or completed' },
-        400
-      );
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid status. Must be: not_started, in_progress, or completed', request);
     }
 
     // Prepare update data
@@ -169,15 +159,12 @@ export const onRequestPost = async (context: AuthenticatedContext) => {
 
     if (upsertError) {
       console.error('Failed to update progress:', upsertError);
-      return jsonResponse({ error: 'Failed to update progress' }, 500);
+      return apiError(500, 'INTERNAL_ERROR', 'Failed to update progress', request);
     }
 
-    return jsonResponse({ success: true, progress: result });
+    return apiSuccess({ progress: result }, request);
   } catch (error) {
     console.error('AI tutor progress POST error:', error);
-    return jsonResponse(
-      { error: 'Internal server error' },
-      500
-    );
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 };

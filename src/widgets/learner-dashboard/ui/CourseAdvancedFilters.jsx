@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, SlidersHorizontal } from 'lucide-react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,36 +25,16 @@ const CourseAdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
     const fetchFilterOptions = async () => {
       try {
         setLoadingOptions(true);
-        
-        // Fetch distinct categories
-        const { data: categories } = await supabase
-          .from('courses')
-          .select('category')
-          .not('category', 'is', null)
-          .is('deleted_at', null);
-
-        // Fetch distinct skill types
-        const { data: skillTypes } = await supabase
-          .from('courses')
-          .select('skill_type')
-          .not('skill_type', 'is', null)
-          .is('deleted_at', null);
-
-        // Fetch distinct durations
-        const { data: durations } = await supabase
-          .from('courses')
-          .select('duration')
-          .not('duration', 'is', null)
-          .is('deleted_at', null);
-
+        const data = await apiPost('/learner-dashboard-widgets/actions', {
+          action: 'get-course-filter-options',
+        });
         setAvailableOptions({
-          categories: [...new Set(categories?.map(c => c.category).filter(Boolean))] || [],
-          skillTypes: [...new Set(skillTypes?.map(s => s.skill_type).filter(Boolean))] || [],
-          durations: [...new Set(durations?.map(d => d.duration).filter(Boolean))] || [],
+          categories: data.categories || [],
+          skillTypes: data.skillTypes || [],
+          durations: data.durations || [],
         });
       } catch (error) {
         console.error('Error fetching filter options:', error);
-        // Fallback to static options
         setAvailableOptions({
           categories: ['Corporate Training', 'Academic', 'Professional Development', 'Certification'],
           skillTypes: ['technical', 'soft'],

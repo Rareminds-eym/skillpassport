@@ -18,9 +18,12 @@ import {
   getTopLocations,
 } from '@/features/analytics/lib';
 
+import { useUser } from '@/shared/model/authStore';
+
 const Analytics = () => {
   const navigate = useNavigate();
-  const userEmail = localStorage.getItem('userEmail');
+  const user = useUser();
+  const userEmail = user?.email;
 
   const {
     applications,

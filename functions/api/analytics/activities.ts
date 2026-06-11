@@ -1,12 +1,13 @@
 /**
  * Analytics - Activities API
  */
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { apiSuccess, apiError } from '../../lib/response';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const user = context.data.user;
+  const user = getContextUser(context);
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
@@ -18,7 +19,6 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   let query = supabase
     .from('activities')
     .select('*', { count: 'exact' })
-    .eq('org_id', user.org_id)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -27,6 +27,6 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   }
 
   const { data, error, count } = await query;
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ activities: data, total: count });
+  if (error) return apiError(500, 'INTERNAL_ERROR', error.message, context.request);
+  return apiSuccess({ activities: data, total: count }, context.request);
 });

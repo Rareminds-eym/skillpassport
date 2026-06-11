@@ -1,10 +1,11 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { supabase } from '@/shared/api/supabaseClient';
 import { MessageService } from '@/features/messaging';
 import { Learner } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('admission-note-modal');
 
@@ -68,11 +69,8 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
       let educatorId: string | null = null;
 
       // Check if user is a school educator
-      const { data: schoolEducatorData, error: schoolError } = await supabase
-        .from('school_educators')
-        .select('id, school_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const schoolEducatorRes = await apiPost('/learner-profile/actions', { action: 'fetch-school-educator-by-user', userId: user.id });
+      const schoolEducatorData = schoolEducatorRes?.data;
 
       if (schoolEducatorData) {
         userType = 'school_educator';
@@ -80,21 +78,16 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         organizationId = schoolEducatorData.school_id;
       } else {
         // Check if user is a college lecturer
-        const { data: lecturerData, error: lecturerError } = await supabase
-          .from('college_lecturers')
-          .select('id, collegeId, designation, user_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        const lecturerRes = await apiPost('/learner-profile/actions', { action: 'fetch-user-college-lecturer', userId: user.id });
+        const lecturerData = lecturerRes?.data;
         
         if (lecturerData) {
           educatorId = lecturerData.id;
           organizationId = lecturerData.collegeId;
           
-          // Check if they're an admin based on designation
-          // Common admin designations: 'Principal', 'Dean', 'HOD', 'Admin', etc.
           const adminDesignations = ['principal', 'dean', 'hod', 'admin', 'director'];
           const isAdmin = lecturerData.designation && 
-                         adminDesignations.some(d => lecturerData.designation.toLowerCase().includes(d));
+                         adminDesignations.some((d: string) => lecturerData.designation.toLowerCase().includes(d));
           
           if (isAdmin) {
             userType = 'college_admin';
@@ -103,12 +96,8 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
           }
         } else {
           // Fallback: check if user is college owner in organizations table
-          const { data: orgData, error: orgError } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college')
-            .eq('admin_id', user.id)
-            .maybeSingle();
+          const orgRes = await apiPost('/learner-profile/actions', { action: 'fetch-org-by-admin', adminId: user.id });
+          const orgData = orgRes?.data;
           
           if (orgData?.id) {
             userType = 'college_admin';
@@ -165,12 +154,9 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         subject: `${notePrefix} Note`
       };
 
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert(messageData);
-
-      if (messageError) {
-        throw messageError;
+      const msgRes = await apiPost('/learner-profile/actions', { action: 'send-learner-message', ...messageData });
+      if (!msgRes?.data) {
+        throw new Error('Failed to send message');
       }
 
       toast.success(`Note sent to learner via communication`);

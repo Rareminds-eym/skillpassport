@@ -1,23 +1,9 @@
-/**
- * Consolidated Learner Messages Hook
- * 
- * Consolidates:
- * - useLearnerMessages
- * - useLearnerMessageNotifications
- * - useLearnerEducatorMessages
- * - useLearnerAdminMessages
- * - useLearnerCollegeAdminMessages
- * - useLearnerCollegeLecturerMessages
- * 
- * Returns: messages, notifications, conversations (all types)
- */
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback } from 'react';
 import { MessageService, Message } from '@/features/messaging';
 import { useMessageStore } from '@/shared/model/useMessageStore';
-import { supabase } from '@/shared/api/supabaseClient';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
 export interface UseLearnerMessagesOptions {
   learnerId: string | null;
@@ -41,26 +27,6 @@ export interface Conversation {
   created_at: string;
 }
 
-/**
- * @deprecated This hook is deprecated and will be removed in a future version.
- * Please migrate to the new unified messaging hooks from @/features/messaging:
- * 
- * **Migration Guide:**
- * ```typescript
- * // Before:
- * import { useLearnerMessages } from '@/entities/learner' (or @/features/learner-profile);
- * const { messages, isLoading, sendMessage } = useLearnerMessages({ learnerId, conversationId });
- * 
- * // After:
- * import { useLearnerMessages } from '@/features/messaging';
- * const { messages, isLoadingMessages, sendMessage } = useLearnerMessages(
- *   learnerId,
- *   { conversationId }
- * );
- * ```
- * 
- * @see {@link useLearnerMessages} from @/features/messaging - New unified learner messaging hook
- */
 export const useLearnerMessages = ({
   learnerId,
   conversationId = null,
@@ -81,7 +47,6 @@ export const useLearnerMessages = ({
     setUnreadCount
   } = useMessageStore();
 
-  // Fetch messages for a specific conversation
   const {
     data: fetchedMessages,
     isLoading: isLoadingMessages,
@@ -105,14 +70,12 @@ export const useLearnerMessages = ({
     refetchInterval: false
   });
 
-  // Sync fetched messages to zustand store
   useEffect(() => {
     if (fetchedMessages) {
       setMessages(fetchedMessages);
     }
   }, [fetchedMessages, setMessages]);
 
-  // Fetch conversations
   const {
     data: conversations = [],
     isLoading: isLoadingConversations,
@@ -141,7 +104,6 @@ export const useLearnerMessages = ({
     retry: 1
   });
 
-  // Fetch unread count
   const { data: unreadCount = 0 } = useQuery({
     queryKey: queryKeys.learner.unread.count(learnerId || 'none'),
     queryFn: async () => {
@@ -155,176 +117,118 @@ export const useLearnerMessages = ({
     staleTime: 30000
   });
 
-  // Realtime subscription for conversation messages
   useEffect(() => {
     if (!conversationId || !enabled || !enableRealtime) return;
 
-    const channel = supabase
-      .channel(`learner-conversation:${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          addMessage(newMessage);
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.learner.messages.conversation(conversationId),
-            refetchType: 'none'
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        (payload) => {
-          const updatedMessage = payload.new as Message;
-          useMessageStore.getState().updateMessage(updatedMessage.id, updatedMessage);
-        }
-      )
-      .subscribe();
+    const wsClient = getWSClient();
+    const unsubInsert = wsClient.subscribe('messages', {
+      event: 'INSERT',
+      filter: `conversation_id=eq.${conversationId}`
+    }, (event) => {
+      if (event.type === 'change') {
+        const newMessage = event.payload as Message;
+        addMessage(newMessage);
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.learner.messages.conversation(conversationId),
+          refetchType: 'none'
+        });
+      }
+    });
+
+    const unsubUpdate = wsClient.subscribe('messages', {
+      event: 'UPDATE',
+      filter: `conversation_id=eq.${conversationId}`
+    }, (event) => {
+      if (event.type === 'change') {
+        const updatedMessage = event.payload as Message;
+        useMessageStore.getState().updateMessage(updatedMessage.id, updatedMessage);
+      }
+    });
 
     return () => {
-      channel.unsubscribe();
+      unsubInsert();
+      unsubUpdate();
     };
   }, [conversationId, enabled, enableRealtime, addMessage, queryClient]);
 
-  // Realtime subscription for unread count
   useEffect(() => {
     if (!learnerId || !enabled || !enableRealtime) return;
 
-    const channel = supabase
-      .channel(`learner-unread:${learnerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${learnerId}`
-        },
-        () => {
-          incrementUnreadCount();
+    const wsClient = getWSClient();
+    const unsubInsert = wsClient.subscribe('messages', {
+      event: 'INSERT',
+      filter: `receiver_id=eq.${learnerId}`
+    }, () => {
+      incrementUnreadCount();
+    });
+
+    const unsubUpdate = wsClient.subscribe('messages', {
+      event: 'UPDATE',
+      filter: `receiver_id=eq.${learnerId}`
+    }, (event) => {
+      if (event.type === 'change') {
+        const updatedMessage = event.payload as Message;
+        if (updatedMessage.is_read && updatedMessage.receiver_id === learnerId) {
+          useMessageStore.getState().decrementUnreadCount();
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${learnerId}`
-        },
-        (payload) => {
-          const updatedMessage = payload.new as Message;
-          if (updatedMessage.is_read && !(payload.old as Message).is_read) {
-            useMessageStore.getState().decrementUnreadCount();
-          }
-        }
-      )
-      .subscribe();
+      }
+    });
 
     return () => {
-      channel.unsubscribe();
+      unsubInsert();
+      unsubUpdate();
     };
   }, [learnerId, enabled, enableRealtime, incrementUnreadCount]);
 
-  // Realtime subscription for conversations
   useEffect(() => {
     if (!learnerId || !enabled || !enableRealtime) return;
 
-    const channel = supabase
-      .channel(`learner-conversations:${learnerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'conversations',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        (payload) => {
-          const updatedConv = payload.new as any;
+    const wsClient = getWSClient();
+    const unsubUpdate = wsClient.subscribe('conversations', {
+      event: 'UPDATE',
+      filter: `learner_id=eq.${learnerId}`
+    }, (event) => {
+      if (event.type === 'change') {
+        const updatedConv = event.payload as any;
+        if (updatedConv.deleted_by_learner || updatedConv.deleted_by_recruiter) return;
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.learner.conversations.byLearner(learnerId || 'none', conversationType),
+          refetchType: 'active'
+        });
+      }
+    });
 
-          if (updatedConv.deleted_by_learner || updatedConv.deleted_by_recruiter) {
-            return;
-          }
-
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.learner.conversations.byLearner(learnerId || 'none', conversationType),
-            refetchType: 'active'
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'conversations',
-          filter: `learner_id=eq.${learnerId}`
-        },
-        () => {
-          refetchConversations();
-        }
-      )
-      .subscribe();
+    const unsubInsert = wsClient.subscribe('conversations', {
+      event: 'INSERT',
+      filter: `learner_id=eq.${learnerId}`
+    }, () => {
+      refetchConversations();
+    });
 
     return () => {
-      channel.unsubscribe();
+      unsubUpdate();
+      unsubInsert();
     };
   }, [learnerId, enabled, enableRealtime, conversationType, refetchConversations, queryClient]);
 
-  // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async ({
-      senderId,
-      senderType,
-      receiverId,
-      receiverType,
-      messageText,
-      applicationId,
-      opportunityId,
-      classId,
-      subject
+      senderId, senderType, receiverId, receiverType, messageText,
+      applicationId, opportunityId, classId, subject
     }: {
-      senderId: string;
-      senderType: 'learner' | 'recruiter' | 'educator' | 'admin';
-      receiverId: string;
-      receiverType: 'learner' | 'recruiter' | 'educator' | 'admin';
-      messageText: string;
-      applicationId?: number;
-      opportunityId?: number;
-      classId?: string;
-      subject?: string;
+      senderId: string; senderType: 'learner' | 'recruiter' | 'educator' | 'admin';
+      receiverId: string; receiverType: 'learner' | 'recruiter' | 'educator' | 'admin';
+      messageText: string; applicationId?: number; opportunityId?: number;
+      classId?: string; subject?: string;
     }) => {
       if (!conversationId) throw new Error('No conversation selected');
-
       return await MessageService.sendMessage(
-        conversationId,
-        senderId,
-        senderType,
-        receiverId,
-        receiverType,
-        messageText,
-        applicationId,
-        opportunityId,
-        classId,
-        subject
+        conversationId, senderId, senderType, receiverId, receiverType,
+        messageText, applicationId, opportunityId, classId, subject
       );
     },
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.learner.messages.conversation(conversationId!) });
-
       const tempId = addOptimisticMessage({
         conversation_id: conversationId!,
         sender_id: variables.senderId,
@@ -335,32 +239,24 @@ export const useLearnerMessages = ({
         application_id: variables.applicationId,
         opportunity_id: variables.opportunityId
       });
-
       return { tempId };
     },
     onSuccess: (realMessage, variables, context) => {
-      if (context?.tempId) {
-        removeOptimisticMessage(context.tempId);
-      }
+      if (context?.tempId) removeOptimisticMessage(context.tempId);
       addMessage(realMessage);
     },
     onError: (error, variables, context) => {
-      if (context?.tempId) {
-        removeOptimisticMessage(context.tempId);
-      }
+      if (context?.tempId) removeOptimisticMessage(context.tempId);
     }
   });
 
-  // Clear unread count for a conversation
   const clearUnreadCount = useCallback((convId: string) => {
     const currentConversations = queryClient.getQueryData<any[]>(
       queryKeys.learner.conversations.byLearner(learnerId || 'none', conversationType)
     ) || [];
 
     const optimisticConversations = currentConversations.map(conv => {
-      if (conv.id === convId) {
-        return { ...conv, learner_unread_count: 0 };
-      }
+      if (conv.id === convId) return { ...conv, learner_unread_count: 0 };
       return conv;
     });
 
@@ -370,38 +266,28 @@ export const useLearnerMessages = ({
     );
   }, [learnerId, conversationType, queryClient]);
 
-  // Get conversations by type
   const getConversationsByType = useCallback((type: string) => {
     return conversations.filter(conv => conv.conversation_type === type);
   }, [conversations]);
 
   return {
-    // Messages
     messages,
     isLoadingMessages,
     messagesError,
     sendMessage: sendMessageMutation.mutate,
     isSending: sendMessageMutation.isPending,
     refetchMessages,
-
-    // Conversations
     conversations,
     isLoadingConversations,
     conversationsError,
     refetchConversations,
     clearUnreadCount,
-
-    // Conversation helpers
     recruiterConversations: getConversationsByType('learner_recruiter'),
     educatorConversations: getConversationsByType('learner_educator'),
     adminConversations: getConversationsByType('learner_admin'),
     collegeAdminConversations: getConversationsByType('learner_college_admin'),
     collegeLecturerConversations: getConversationsByType('learner_college_educator'),
-
-    // Notifications
     unreadCount,
-
-    // Loading states
     loading: isLoadingMessages || isLoadingConversations,
     error: messagesError || conversationsError
   };

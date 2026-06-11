@@ -11,7 +11,7 @@ import {
   IconSparkles, 
   IconBrain
 } from '@tabler/icons-react';
-import { supabase } from '@/shared/api';
+import { apiGet } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('courses-tab');
@@ -38,54 +38,42 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ courses, loading, learnerId }) 
   const [recommendedCourses, setRecommendedCourses] = useState<RecommendedCourse[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
-  // Fetch course recommendations based on assessment results
+  // Fetch saved course recommendations from database
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (!learnerId) return;
       
       setLoadingRecommendations(true);
       try {
-        const { data, error } = await supabase
-          .from('personal_assessment_results')
-          .select('gemini_results')
-          .eq('learner_id', learnerId)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (error) {
-          logger.error('Error fetching assessment results', error);
-          return;
-        }
-
-        if (data && data.length > 0 && data[0].gemini_results) {
-          const geminiResults = data[0].gemini_results;
-          
-          // Extract top 3 courses from coursesByType based on relevance_score
-          const allCourses = [
-            ...(geminiResults.coursesByType?.technical || []),
-            ...(geminiResults.coursesByType?.soft || [])
-          ];
-          
-          // Sort by relevance_score and take top 3
-          const topCourses = allCourses
-            .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
-            .slice(0, 3)
-            .map(course => ({
-              course_id: course.course_id,
-              title: course.title,
-              description: course.description,
-              duration: course.duration,
-              relevance_score: course.relevance_score,
-              skill_type: course.skill_type,
-              skills: course.skills || [],
-              match_reasons: course.match_reasons || [],
-              target_outcomes: course.target_outcomes || []
+        // Fetch saved course recommendations from learner_course_recommendations table
+        const response = await apiGet(`/courses/recommendations/saved?learnerId=${learnerId}&status=active`);
+        
+        if (response?.data?.length > 0) {
+          // Map the saved recommendations to the expected format
+          const savedCourses = response.data
+            .sort((a: any, b: any) => (b.relevance_score || 0) - (a.relevance_score || 0))
+            .slice(0, 3) // Get top 3 recommendations
+            .map((rec: any) => ({
+              course_id: rec.course_id,
+              title: rec.course?.title || rec.course?.name || 'Untitled Course',
+              description: rec.course?.description || '',
+              duration: rec.course?.duration || 'N/A',
+              relevance_score: rec.relevance_score || 0,
+              skill_type: rec.course?.category || 'general',
+              skills: rec.skill_gaps_addressed || [],
+              match_reasons: rec.match_reasons || [],
+              target_outcomes: []
             }));
 
-          setRecommendedCourses(topCourses);
+          setRecommendedCourses(savedCourses);
+          logger.info('Successfully fetched saved course recommendations', { count: savedCourses.length, learnerId });
+        } else {
+          logger.info('No saved course recommendations found for learner', { learnerId });
+          setRecommendedCourses([]);
         }
       } catch (error) {
-        logger.error('Error processing recommendations', error as Error);
+        logger.error('Error fetching saved course recommendations', error as Error);
+        setRecommendedCourses([]);
       } finally {
         setLoadingRecommendations(false);
       }

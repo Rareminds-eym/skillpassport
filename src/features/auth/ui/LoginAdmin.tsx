@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Label } from '@/shared/ui/Label';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/ButtonNew';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 const ADMIN_ROLES: UserRole[] = ['school_admin', 'college_admin', 'university_admin'];
 
@@ -31,7 +32,7 @@ const LoginAdmin = () => {
       }
 
       toast.success('Welcome back!');
-      redirectToRoleDashboard(result.role as UserRole, navigate);
+      await redirectToRoleDashboard(result.role as UserRole, navigate);
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +80,7 @@ const LoginAdmin = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN}
                   autoComplete="current-password"
                 />
               </div>
@@ -89,7 +90,7 @@ const LoginAdmin = () => {
                   variant="link"
                   type="button"
                   className="px-0 text-sm"
-                  onClick={() => navigate('/password-reset')}
+                  onClick={() => navigate('/reset-password')}
                 >
                   Forgot password?
                 </Button>

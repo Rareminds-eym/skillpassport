@@ -1,3 +1,5 @@
+import { useAuthStore } from '@/shared/model/authStore';
+import { PASSWORD_MIN } from '@/shared/constants';
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -66,7 +68,7 @@ export const validatePassword = (password: string): ValidationResult => {
     return { valid: false, code: AUTH_ERROR_CODES.INVALID_INPUT_FORMAT };
   }
   
-  if (password.length < 8) {
+  if (password.length < PASSWORD_MIN) {
     return { valid: false, code: AUTH_ERROR_CODES.PASSWORD_TOO_WEAK };
   }
   
@@ -236,7 +238,7 @@ const ERROR_MESSAGES: Record<AuthErrorCode, string> = {
   [AUTH_ERROR_CODES.INVALID_CREDENTIALS]: 'Invalid email or password. Please check your credentials and try again.',
   [AUTH_ERROR_CODES.USER_NOT_FOUND]: 'No account found with this email. Please sign up first.',
   [AUTH_ERROR_CODES.EMAIL_NOT_CONFIRMED]: 'Please verify your email address before signing in.',
-  [AUTH_ERROR_CODES.PASSWORD_TOO_WEAK]: 'Password is too weak. Please use at least 8 characters with uppercase, lowercase, and numbers.',
+  [AUTH_ERROR_CODES.PASSWORD_TOO_WEAK]: `Password is too weak. Please use at least ${PASSWORD_MIN} characters with uppercase, lowercase, and numbers.`,
   [AUTH_ERROR_CODES.INVALID_INPUT_FORMAT]: 'Please check your input and try again.',
   [AUTH_ERROR_CODES.RATE_LIMITED]: 'Too many requests. Please wait a moment and try again.',
   [AUTH_ERROR_CODES.TOO_MANY_ATTEMPTS]: 'Too many failed attempts. Please try again later.',

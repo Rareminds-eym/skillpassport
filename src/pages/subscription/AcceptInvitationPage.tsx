@@ -9,12 +9,13 @@
  */
 
 import { memberInvitationService, OrganizationInvitation } from '@/entities/organization';
-import { supabase } from '@/shared/api';
+import { apiGet } from '@/shared/api/apiClient';
 import { AlertCircle, Building2, Check, Clock, LogIn, RefreshCw, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
+import { useAuthStore } from '@/shared/model/authStore';
 
 const logger = getLogger('invitation-acceptance');
 
@@ -31,6 +32,7 @@ export default function AcceptInvitationPage() {
   const [error, setError] = useState<string>('');
   const [isAccepting, setIsAccepting] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [userExists, setUserExists] = useState<boolean | null>(null);
 
   useEffect(() => {
     checkAuthAndLoadInvitation();
@@ -44,13 +46,9 @@ export default function AcceptInvitationPage() {
     }
 
     try {
-      // Check if user is logged in
-      const { data: { user: currentUser } } = { data: { user: useAuthStore.getState().user } };
-      setUser(currentUser);
-
-      // Load invitation details
+      // Load invitation details FIRST to check if it's recruitment
       const inv = await memberInvitationService.getInvitationByToken(token);
-      
+
       if (!inv) {
         setPageState('invalid');
         setError('This invitation link is invalid or has already been used');
@@ -58,6 +56,33 @@ export default function AcceptInvitationPage() {
       }
 
       setInvitation(inv);
+
+      // CRITICAL FIX: For recruitment invitations, redirect to signup immediately
+      const isRecruitmentInvitation = inv.memberType?.includes('company_admin') ||
+        inv.memberType?.includes('recruiter') ||
+        inv.memberType?.includes('viewer');
+
+      if (isRecruitmentInvitation) {
+        console.log('[AcceptInvitationPage] Recruitment invitation detected, redirecting to signup');
+        console.log('[AcceptInvitationPage] Token:', token);
+        console.log('[AcceptInvitationPage] Email:', inv.email);
+
+        // Store invitation data
+        sessionStorage.setItem('invitation_token', token);
+        sessionStorage.setItem('invitation_email', inv.email);
+        sessionStorage.setItem('invitation_return_url', window.location.href);
+
+        // Redirect to signup with token
+        const signupUrl = `/signup?invitation_token=${token}&email=${encodeURIComponent(inv.email)}`;
+        console.log('[AcceptInvitationPage] Redirecting to:', signupUrl);
+        navigate(signupUrl, { replace: true });
+        return;
+      }
+
+      // For non-recruitment invitations, continue with normal flow
+      // Check if user is logged in
+      const { data: { user: currentUser } } = { data: { user: useAuthStore.getState().user } };
+      setUser(currentUser);
 
       // Check invitation status
       if (inv.status === 'accepted') {
@@ -81,6 +106,9 @@ export default function AcceptInvitationPage() {
       setOrganizationName(orgName);
 
       if (!currentUser) {
+        // Check if user account exists for this email
+        const accountExists = await checkIfUserExists(inv.email);
+        setUserExists(accountExists);
         setPageState('not_logged_in');
       } else {
         setPageState('valid');
@@ -94,15 +122,18 @@ export default function AcceptInvitationPage() {
 
   const getOrganizationName = async (orgId: string, _orgType: string): Promise<string> => {
     try {
-      const { data } = await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', orgId)
-        .single();
-      return data?.name || 'Organization';
+      const resp: any = await apiGet(`/organization/handler?action=getOrganizationName&orgId=${orgId}`);
+      return resp.data || 'Organization';
     } catch {
       return 'Organization';
     }
+  };
+
+  const checkIfUserExists = async (email: string): Promise<boolean> => {
+    // TODO(SSO-Migration): Implement user existence check via SSO API if needed.
+    // For now, default to false so the user is prompted to sign up,
+    // but they can click "Log in" if they already have an account.
+    return false;
   };
 
   const handleAcceptInvitation = async () => {
@@ -117,8 +148,34 @@ export default function AcceptInvitationPage() {
 
     setIsAccepting(true);
     try {
-      const result = await memberInvitationService.acceptInvitation(token!, user.id);
-      
+      // Check if this is a recruitment invitation
+      const isRecruitmentInvitation = invitation.memberType.includes('company_admin') ||
+        invitation.memberType.includes('recruiter') ||
+        invitation.memberType.includes('viewer');
+
+      let result;
+      if (isRecruitmentInvitation) {
+        // Use recruitment-specific endpoint that creates SSO-Worker memberships
+        const response = await fetch('/api/recruitment/invitations/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: token!,
+            userId: user.id,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to accept invitation');
+        }
+
+        result = await response.json();
+      } else {
+        // Use standard school/college invitation flow
+        result = await memberInvitationService.acceptInvitation(token!, user.id);
+      }
+
       setPageState('accepted');
       toast.success(`Welcome to ${result.organizationName}!`);
 
@@ -137,10 +194,62 @@ export default function AcceptInvitationPage() {
   };
 
   const handleLoginRedirect = () => {
+    console.log('=== INVITATION LOGIN REDIRECT ===');
+    console.log('[AcceptInvitationPage] Redirecting to login with invitation');
+    console.log('[AcceptInvitationPage] Token:', token);
+    console.log('[AcceptInvitationPage] Email:', invitation?.email);
+
     // Store the current URL to redirect back after login
     const returnUrl = window.location.pathname + window.location.search;
     sessionStorage.setItem('invitation_return_url', returnUrl);
-    navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+
+    // Store invitation token and email for auto-acceptance after login
+    if (token) {
+      console.log('[AcceptInvitationPage] Storing invitation token in sessionStorage');
+      sessionStorage.setItem('invitation_token', token);
+      sessionStorage.setItem('invitation_email', invitation?.email || '');
+
+      // Verify storage
+      const storedToken = sessionStorage.getItem('invitation_token');
+      const storedEmail = sessionStorage.getItem('invitation_email');
+      console.log('[AcceptInvitationPage] ✓ Token stored:', storedToken ? `${storedToken.substring(0, 8)}...` : 'FAILED');
+      console.log('[AcceptInvitationPage] ✓ Email stored:', storedEmail);
+    } else {
+      console.error('[AcceptInvitationPage] ✗ No token available to store!');
+    }
+
+    navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}&email=${encodeURIComponent(invitation?.email || '')}`);
+  };
+
+  const handleSignupRedirect = () => {
+    console.log('=== INVITATION SIGNUP REDIRECT ===');
+    console.log('[AcceptInvitationPage] Redirecting to signup with invitation');
+    console.log('[AcceptInvitationPage] Token:', token);
+    console.log('[AcceptInvitationPage] Email:', invitation?.email);
+
+    // Clear persisted auth state to prevent old user data from interfering
+    console.log('[AcceptInvitationPage] Clearing persisted auth state');
+    localStorage.removeItem('skillpassport-auth-v1');
+
+    // Store invitation token in sessionStorage for auto-acceptance after signup
+    if (token) {
+      console.log('[AcceptInvitationPage] Storing invitation token in sessionStorage');
+      sessionStorage.setItem('invitation_token', token);
+      sessionStorage.setItem('invitation_email', invitation?.email || '');
+
+      // Verify storage
+      const storedToken = sessionStorage.getItem('invitation_token');
+      const storedEmail = sessionStorage.getItem('invitation_email');
+      console.log('[AcceptInvitationPage] ✓ Token stored:', storedToken ? `${storedToken.substring(0, 8)}...` : 'FAILED');
+      console.log('[AcceptInvitationPage] ✓ Email stored:', storedEmail);
+    } else {
+      console.error('[AcceptInvitationPage] ✗ No token available to store!');
+    }
+
+    // Redirect to simplified invitation signup page
+    const signupUrl = `/invitation/signup?token=${token}&email=${encodeURIComponent(invitation?.email || '')}`;
+    console.log('[AcceptInvitationPage] Navigating to:', signupUrl);
+    navigate(signupUrl);
   };
 
   const getDashboardPath = (memberType: string): string => {
@@ -150,7 +259,12 @@ export default function AcceptInvitationPage() {
     if (memberType.includes('educator')) {
       return '/educator/dashboard';
     }
-    return '/dashboard';
+    if (memberType.includes('recruiter') || memberType.includes('company_admin')) {
+      // Company admins should go to admin dashboard, regular recruiters to overview
+      return memberType.includes('company_admin') ? '/recruitment/admin' : '/recruitment/overview';
+    }
+    // Fallback to learner dashboard instead of non-existent /dashboard
+    return '/learner/dashboard';
   };
 
   const getMemberTypeDisplay = (memberType: string): string => {
@@ -311,35 +425,60 @@ export default function AcceptInvitationPage() {
               <div className="flex gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm text-amber-800 font-medium">Login Required</p>
+                  <p className="text-sm text-amber-800 font-medium">
+                    {userExists ? 'Login Required' : 'Account Required'}
+                  </p>
                   <p className="text-sm text-amber-700 mt-1">
-                    Please log in or create an account to accept this invitation.
+                    {userExists
+                      ? 'Please log in with your account to accept this invitation.'
+                      : 'Please create an account with the invited email to accept this invitation.'
+                    }
                   </p>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={handleLoginRedirect}
-              className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 font-medium"
-            >
-              <LogIn className="w-5 h-5" />
-              Login to Accept
-            </button>
+            {userExists ? (
+              <button
+                onClick={handleLoginRedirect}
+                className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 font-medium"
+              >
+                <LogIn className="w-5 h-5" />
+                Login to Accept
+              </button>
+            ) : (
+              <button
+                onClick={handleSignupRedirect}
+                className="w-full px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 font-medium"
+              >
+                <UserPlus className="w-5 h-5" />
+                Create Account & Accept
+              </button>
+            )}
 
             <div className="mt-4 text-center">
               <p className="text-sm text-gray-500">
-                Don't have an account?{' '}
-                <button
-                  onClick={() => {
-                    const returnUrl = window.location.pathname + window.location.search;
-                    sessionStorage.setItem('invitation_return_url', returnUrl);
-                    navigate(`/signup?returnUrl=${encodeURIComponent(returnUrl)}`);
-                  }}
-                  className="font-medium text-indigo-600 hover:text-indigo-500"
-                >
-                  Sign up
-                </button>
+                {userExists ? (
+                  <>
+                    Don't have an account?{' '}
+                    <button
+                      onClick={handleSignupRedirect}
+                      className="font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                      Sign up
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Already have an account?{' '}
+                    <button
+                      onClick={handleLoginRedirect}
+                      className="font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                      Login
+                    </button>
+                  </>
+                )}
               </p>
             </div>
           </div>

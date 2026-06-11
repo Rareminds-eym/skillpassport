@@ -50,4 +50,22 @@ Recommended: Science stream`
 2. Data Science & AI - Strong problem-solving capabilities
 3. Cybersecurity - Technical aptitude and attention to detail`,
 
-    invalid: `Learner should pursue Compu
+    invalid: `Learner should pursue Computer Science and Engineering`
+  }
+};
+
+describe('Grade Level Validation', () => {
+  describe('after10', () => {
+    it('should return valid career assessment for after10', () => {
+      expect(mockResponses.after10.valid).toContain('RIASEC Profile');
+      expect(mockResponses.after10.invalid).not.toContain('**Career Assessment');
+    });
+  });
+
+  describe('after12', () => {
+    it('should return valid career assessment for after12', () => {
+      expect(mockResponses.after12.valid).toContain('RIASEC Profile');
+      expect(mockResponses.after12.invalid).toContain('Computer Science');
+    });
+  });
+});

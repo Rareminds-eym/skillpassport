@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { loginLearner } from '@/features/auth/api';
+import { PASSWORD_MIN } from '@/shared/constants';
 
 const SignInUniversity = () => {
   const [formData, setFormData] = useState({
@@ -34,8 +35,8 @@ const SignInUniversity = () => {
       case 'password':
         if (!value) {
           newErrors.password = 'Password is required';
-        } else if (value.length < 6) {
-          newErrors.password = 'Password must be at least 6 characters';
+        } else if (value.length < PASSWORD_MIN) {
+          newErrors.password = `Password must be at least ${PASSWORD_MIN} characters`;
         } else {
           delete newErrors.password;
         }

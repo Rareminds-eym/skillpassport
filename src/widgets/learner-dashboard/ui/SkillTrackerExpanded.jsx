@@ -11,7 +11,7 @@ import {
     Zap
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet } from '@/shared/api/apiClient';
 import { Badge } from '@/shared/ui/Badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
 
@@ -30,27 +30,14 @@ const SkillTrackerExpanded = ({ learnerId, email }) => {
     try {
       setLoading(true);
 
-      // Get learner ID if only email is provided
-      let actualLearnerId = learnerId;
-      if (!actualLearnerId && email) {
-        const { data: learnerData } = await supabase
-          .from('learners')
-          .select('id')
-          .eq('email', email)
-          .single();
-        actualLearnerId = learnerData?.id;
-      }
+      const lookupParam = learnerId ? `learner_id=${learnerId}` : email ? `email=${encodeURIComponent(email)}` : '';
+      if (!lookupParam) return;
 
-      if (!actualLearnerId) return;
+      const response = await apiGet(`/learners/dashboard?${lookupParam}`);
+      const data = response?.data ?? response ?? {};
 
-      // Fetch technical and soft skills from skills table with type filtering
-      const [techRes, softRes] = await Promise.all([
-        supabase.from('skills').select('*').eq('learner_id', actualLearnerId).eq('type', 'technical'),
-        supabase.from('skills').select('*').eq('learner_id', actualLearnerId).eq('type', 'soft')
-      ]);
-
-      setTechSkills(techRes.data || []);
-      setSoftSkills(softRes.data || []);
+      setTechSkills(data.skills?.technical || []);
+      setSoftSkills(data.skills?.soft || []);
     } catch (err) {
       console.error('Error fetching skills:', err);
     } finally {

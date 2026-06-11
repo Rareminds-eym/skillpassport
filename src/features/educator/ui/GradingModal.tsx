@@ -1,7 +1,7 @@
 
+import { useAuthStore } from '@/shared/model/authStore';
 import { useEffect, useState, useMemo } from 'react'
 import { getAssignmentLearners, gradeAssignment } from '@/features/educator';
-import { supabase } from '@/shared/api/supabaseClient';
 import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 import {

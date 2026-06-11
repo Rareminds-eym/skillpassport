@@ -1,50 +1,14 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiPost, apiDelete } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('course-progress-service');
 
-/**
- * Course Progress Tracking Service
- * Handles granular progress tracking including video position, lesson progress,
- * quiz state, and session restoration functionality.
- */
 export const courseProgressService = {
-  // ═══════════════════════════════════════════════════════════════════════════
-  // VIDEO PROGRESS METHODS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Save video playback position for resume functionality
-   */
   async saveVideoPosition(learnerId, courseId, lessonId, positionSeconds, durationSeconds) {
     try {
-      if (!learnerId || !courseId || !lessonId) {
-        return { success: false, error: 'Missing required parameters' };
-      }
-
-      // Validate position
-      if (typeof positionSeconds !== 'number' || positionSeconds < 0) {
-        return { success: false, error: 'Invalid position value' };
-      }
-
-      const videoCompleted = durationSeconds > 0 && (positionSeconds / durationSeconds) >= 0.9;
-
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert({
-          learner_id: learnerId,
-          course_id: courseId,
-          lesson_id: lessonId,
-          video_position_seconds: Math.floor(positionSeconds),
-          video_duration_seconds: Math.floor(durationSeconds || 0),
-          video_completed: videoCompleted,
-          last_accessed: new Date().toISOString(),
-          status: videoCompleted ? 'completed' : 'in_progress'
-        }, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
-
-      if (error) throw error;
+      if (!learnerId || !courseId || !lessonId) return { success: false, error: 'Missing required parameters' };
+      if (typeof positionSeconds !== 'number' || positionSeconds < 0) return { success: false, error: 'Invalid position value' };
+      await apiPost('/courses/progress/video-position', { learnerId, courseId, lessonId, positionSeconds, durationSeconds });
       return { success: true };
     } catch (error) {
       logger.error('Error saving video position', error instanceof Error ? error : new Error(String(error)));
@@ -52,49 +16,19 @@ export const courseProgressService = {
     }
   },
 
-  /**
-   * Get saved video position for resume
-   */
   async getVideoPosition(learnerId, courseId, lessonId) {
     try {
       if (!learnerId || !courseId || !lessonId) return null;
-
-      const { data, error } = await supabase
-        .from('learner_course_progress')
-        .select('video_position_seconds, video_duration_seconds, video_completed')
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId)
-        .eq('lesson_id', lessonId)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data || null;
+      return await apiGet(`/courses/progress/video-position?learnerId=${encodeURIComponent(learnerId)}&courseId=${encodeURIComponent(courseId)}&lessonId=${encodeURIComponent(lessonId)}`);
     } catch (error) {
       logger.error('Error getting video position', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
 
-  /**
-   * Mark video as completed
-   */
   async markVideoCompleted(learnerId, courseId, lessonId) {
     try {
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert({
-          learner_id: learnerId,
-          course_id: courseId,
-          lesson_id: lessonId,
-          video_completed: true,
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
-
-      if (error) throw error;
+      await apiPost('/courses/progress/video-completed', { learnerId, courseId, lessonId });
       return { success: true };
     } catch (error) {
       logger.error('Error marking video completed', error instanceof Error ? error : new Error(String(error)));
@@ -102,36 +36,10 @@ export const courseProgressService = {
     }
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SESSION RESTORE METHODS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Save current position for session restore
-   */
   async saveRestorePoint(learnerId, courseId, moduleIndex, lessonIndex, lessonId, videoPosition = 0) {
     try {
-      if (!learnerId || !courseId) {
-        return { success: false, error: 'Missing required parameters' };
-      }
-
-      const { error } = await supabase
-        .from('course_enrollments')
-        .update({
-          last_module_index: moduleIndex,
-          last_lesson_index: lessonIndex,
-          last_lesson_id: lessonId,
-          last_video_position: Math.floor(videoPosition),
-          last_accessed: new Date().toISOString()
-        })
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId);
-
-      if (error) {
-        logger.error('Error saving restore point', error instanceof Error ? error : new Error(String(error)));
-        throw error;
-      }
-      
+      if (!learnerId || !courseId) return { success: false, error: 'Missing required parameters' };
+      await apiPost('/courses/progress/restore-point', { learnerId, courseId, moduleIndex, lessonIndex, lessonId, videoPosition });
       return { success: true };
     } catch (error) {
       logger.error('Error saving restore point', error instanceof Error ? error : new Error(String(error)));
@@ -139,69 +47,19 @@ export const courseProgressService = {
     }
   },
 
-  /**
-   * Get restore point for course re-entry
-   */
   async getRestorePoint(learnerId, courseId) {
     try {
       if (!learnerId || !courseId) return null;
-
-      const { data, error } = await supabase
-        .from('course_enrollments')
-        .select(`
-          course_id,
-          last_module_index,
-          last_lesson_index,
-          last_lesson_id,
-          last_video_position,
-          progress,
-          last_accessed,
-          status,
-          course_title
-        `)
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId)
-        .maybeSingle();
-
-      if (error) throw error;
-      
-      // Only return restore point if there's actual progress
-      if (data && data.progress > 0 && data.progress < 100) {
-        return {
-          courseId: data.course_id,
-          lastModuleIndex: data.last_module_index || 0,
-          lastLessonIndex: data.last_lesson_index || 0,
-          lastLessonId: data.last_lesson_id,
-          lastVideoPosition: data.last_video_position || 0,
-          progress: data.progress,
-          lastAccessed: data.last_accessed,
-          courseTitle: data.course_title
-        };
-      }
-      return null;
+      return await apiGet(`/courses/progress/restore-point?learnerId=${encodeURIComponent(learnerId)}&courseId=${encodeURIComponent(courseId)}`);
     } catch (error) {
       logger.error('Error getting restore point', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
 
-  /**
-   * Clear restore point (when user chooses "Start Fresh")
-   */
   async clearRestorePoint(learnerId, courseId) {
     try {
-      const { error } = await supabase
-        .from('course_enrollments')
-        .update({
-          last_module_index: 0,
-          last_lesson_index: 0,
-          last_lesson_id: null,
-          last_video_position: 0
-        })
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId);
-
-      if (error) throw error;
+      await apiDelete(`/courses/progress/restore-point?learnerId=${encodeURIComponent(learnerId)}&courseId=${encodeURIComponent(courseId)}`);
       return { success: true };
     } catch (error) {
       logger.error('Error clearing restore point', error instanceof Error ? error : new Error(String(error)));
@@ -209,57 +67,19 @@ export const courseProgressService = {
     }
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // LESSON PROGRESS METHODS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Get detailed progress for a specific lesson
-   */
   async getLessonProgress(learnerId, courseId, lessonId) {
     try {
       if (!learnerId || !courseId || !lessonId) return null;
-
-      const { data, error } = await supabase
-        .from('learner_course_progress')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId)
-        .eq('lesson_id', lessonId)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data || null;
+      return await apiGet(`/courses/progress/lesson?learnerId=${encodeURIComponent(learnerId)}&courseId=${encodeURIComponent(courseId)}&lessonId=${encodeURIComponent(lessonId)}`);
     } catch (error) {
       logger.error('Error getting lesson progress', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
 
-  /**
-   * Update lesson status
-   */
   async updateLessonStatus(learnerId, courseId, lessonId, status) {
     try {
-      const updateData = {
-        learner_id: learnerId,
-        course_id: courseId,
-        lesson_id: lessonId,
-        status: status,
-        last_accessed: new Date().toISOString()
-      };
-
-      if (status === 'completed') {
-        updateData.completed_at = new Date().toISOString();
-      }
-
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert(updateData, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
-
-      if (error) throw error;
+      await apiPost('/courses/progress/lesson-status', { learnerId, courseId, lessonId, status });
       return { success: true };
     } catch (error) {
       logger.error('Error updating lesson status', error instanceof Error ? error : new Error(String(error)));
@@ -267,132 +87,29 @@ export const courseProgressService = {
     }
   },
 
-  /**
-   * Save time spent on lesson
-   */
   async saveTimeSpent(learnerId, courseId, lessonId, additionalSeconds) {
     try {
-      // First get current time spent
-      const { data: existing } = await supabase
-        .from('learner_course_progress')
-        .select('time_spent_seconds')
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId)
-        .eq('lesson_id', lessonId)
-        .maybeSingle();
-
-      const currentTime = existing?.time_spent_seconds || 0;
-      const newTime = currentTime + additionalSeconds;
-
-      const { error } = await supabase
-        .from('learner_course_progress')
-        .upsert({
-          learner_id: learnerId,
-          course_id: courseId,
-          lesson_id: lessonId,
-          time_spent_seconds: newTime,
-          last_accessed: new Date().toISOString()
-        }, {
-          onConflict: 'learner_id,course_id,lesson_id'
-        });
-
-      if (error) throw error;
-      return { success: true, totalTime: newTime };
+      const result = await apiPost<{ success: boolean; totalTime: number }>('/courses/progress/time-spent', { learnerId, courseId, lessonId, additionalSeconds });
+      return { success: true, totalTime: result.totalTime };
     } catch (error) {
       logger.error('Error saving time spent', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // QUIZ PROGRESS METHODS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Start or resume a quiz attempt
-   */
   async startQuizAttempt(learnerId, courseId, lessonId, quizId, totalQuestions) {
     try {
-      // Check for existing in-progress attempt
-      const { data: existing } = await supabase
-        .from('learner_quiz_progress')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .eq('quiz_id', quizId)
-        .eq('status', 'in_progress')
-        .order('attempt_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existing) {
-        return { success: true, data: existing, resumed: true };
-      }
-
-      // Get highest attempt number
-      const { data: lastAttempt } = await supabase
-        .from('learner_quiz_progress')
-        .select('attempt_number')
-        .eq('learner_id', learnerId)
-        .eq('quiz_id', quizId)
-        .order('attempt_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const attemptNumber = (lastAttempt?.attempt_number || 0) + 1;
-
-      // Create new attempt
-      const { data, error } = await supabase
-        .from('learner_quiz_progress')
-        .insert({
-          learner_id: learnerId,
-          course_id: courseId,
-          lesson_id: lessonId,
-          quiz_id: quizId,
-          attempt_number: attemptNumber,
-          total_questions: totalQuestions,
-          status: 'in_progress',
-          started_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return { success: true, data, resumed: false };
+      const result = await apiPost<any>('/courses/progress/quiz/start', { learnerId, courseId, lessonId, quizId, totalQuestions });
+      return { success: true, data: result.data, resumed: result.resumed };
     } catch (error) {
       logger.error('Error starting quiz attempt', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
 
-  /**
-   * Save quiz answer
-   */
   async saveQuizAnswer(learnerId, quizId, attemptNumber, questionId, answer) {
     try {
-      // Get current answers
-      const { data: current } = await supabase
-        .from('learner_quiz_progress')
-        .select('answers, current_question_index')
-        .eq('learner_id', learnerId)
-        .eq('quiz_id', quizId)
-        .eq('attempt_number', attemptNumber)
-        .maybeSingle();
-
-      const answers = current?.answers || {};
-      answers[questionId] = answer;
-
-      const { error } = await supabase
-        .from('learner_quiz_progress')
-        .update({
-          answers: answers,
-          current_question_index: (current?.current_question_index || 0) + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('learner_id', learnerId)
-        .eq('quiz_id', quizId)
-        .eq('attempt_number', attemptNumber);
-
-      if (error) throw error;
+      await apiPost('/courses/progress/quiz/answer', { learnerId, quizId, attemptNumber, questionId, answer });
       return { success: true };
     } catch (error) {
       logger.error('Error saving quiz answer', error instanceof Error ? error : new Error(String(error)));
@@ -400,174 +117,47 @@ export const courseProgressService = {
     }
   },
 
-  /**
-   * Get in-progress quiz for resume
-   */
   async getQuizProgress(learnerId, quizId) {
     try {
-      const { data, error } = await supabase
-        .from('learner_quiz_progress')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .eq('quiz_id', quizId)
-        .eq('status', 'in_progress')
-        .order('attempt_number', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data || null;
+      return await apiGet(`/courses/progress/quiz?learnerId=${encodeURIComponent(learnerId)}&quizId=${encodeURIComponent(quizId)}`);
     } catch (error) {
       logger.error('Error getting quiz progress', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
 
-  /**
-   * Submit quiz and calculate score
-   */
   async submitQuiz(learnerId, quizId, attemptNumber, correctAnswers, totalQuestions) {
     try {
-      const scorePercentage = totalQuestions > 0 
-        ? (correctAnswers / totalQuestions) * 100 
-        : 0;
-      const passed = scorePercentage >= 70;
-
-      const { data, error } = await supabase
-        .from('learner_quiz_progress')
-        .update({
-          status: 'completed',
-          correct_answers: correctAnswers,
-          score_percentage: scorePercentage,
-          passed: passed,
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('learner_id', learnerId)
-        .eq('quiz_id', quizId)
-        .eq('attempt_number', attemptNumber)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Embedding regeneration handled by database trigger on learner_quiz_progress
-
-      return { success: true, data, score: scorePercentage, passed };
+      const result = await apiPost<{ data: any; score: number; passed: boolean }>('/courses/progress/quiz/submit', { learnerId, quizId, attemptNumber, correctAnswers, totalQuestions });
+      return { success: true, data: result.data, score: result.score, passed: result.passed };
     } catch (error) {
       logger.error('Error submitting quiz', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };
     }
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SUMMARY & ANALYTICS METHODS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Get comprehensive course progress summary
-   */
   async getCourseProgressSummary(learnerId, courseId) {
     try {
-      // Get enrollment data
-      const { data: enrollment, error: enrollError } = await supabase
-        .from('course_enrollments')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId)
-        .maybeSingle();
-
-      if (enrollError) throw enrollError;
-
-      // Get all lesson progress
-      const { data: lessonProgress, error: progressError } = await supabase
-        .from('learner_course_progress')
-        .select('*')
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId);
-
-      if (progressError) throw progressError;
-
-      // Calculate totals
-      const completedLessons = lessonProgress?.filter(l => l.status === 'completed').length || 0;
-      const totalTimeSpent = lessonProgress?.reduce((acc, l) => acc + (l.time_spent_seconds || 0), 0) || 0;
-
-      return {
-        courseId,
-        overallProgress: enrollment?.progress || 0,
-        completedLessons,
-        totalLessons: enrollment?.total_lessons || 0,
-        totalTimeSpent,
-        lastAccessed: enrollment?.last_accessed,
-        status: enrollment?.status || 'not_started',
-        restorePoint: enrollment ? {
-          lastModuleIndex: enrollment.last_module_index || 0,
-          lastLessonIndex: enrollment.last_lesson_index || 0,
-          lastLessonId: enrollment.last_lesson_id,
-          lastVideoPosition: enrollment.last_video_position || 0
-        } : null,
-        lessonProgress: lessonProgress || []
-      };
+      return await apiGet(`/courses/progress/summary?learnerId=${encodeURIComponent(learnerId)}&courseId=${encodeURIComponent(courseId)}`);
     } catch (error) {
       logger.error('Error getting course progress summary', error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   },
 
-  /**
-   * Get progress for all enrolled courses
-   */
   async getAllCoursesProgress(learnerId) {
     try {
-      const { data, error } = await supabase
-        .from('course_enrollments')
-        .select(`
-          course_id,
-          course_title,
-          progress,
-          status,
-          last_accessed,
-          last_module_index,
-          last_lesson_index,
-          total_lessons,
-          completed_lessons
-        `)
-        .eq('learner_id', learnerId)
-        .order('last_accessed', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
+      return await apiGet(`/courses/progress/all?learnerId=${encodeURIComponent(learnerId)}`);
     } catch (error) {
       logger.error('Error getting all courses progress', error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   },
 
-  /**
-   * Update total time spent on course
-   */
   async updateCourseTotalTime(learnerId, courseId, additionalSeconds) {
     try {
-      const { data: current } = await supabase
-        .from('course_enrollments')
-        .select('total_time_spent_seconds')
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId)
-        .maybeSingle();
-
-      const newTotal = (current?.total_time_spent_seconds || 0) + additionalSeconds;
-
-      const { error } = await supabase
-        .from('course_enrollments')
-        .update({
-          total_time_spent_seconds: newTotal,
-          last_accessed: new Date().toISOString()
-        })
-        .eq('learner_id', learnerId)
-        .eq('course_id', courseId);
-
-      if (error) throw error;
-      return { success: true, totalTime: newTotal };
+      const result = await apiPost<{ success: boolean; totalTime: number }>('/courses/progress/course-time', { learnerId, courseId, additionalSeconds });
+      return { success: true, totalTime: result.totalTime };
     } catch (error) {
       logger.error('Error updating course total time', error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: error.message };

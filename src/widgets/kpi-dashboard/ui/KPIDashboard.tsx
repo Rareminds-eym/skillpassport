@@ -14,7 +14,7 @@ import {
   UsersIcon
 } from '@heroicons/react/24/outline'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/shared/api/supabaseClient'
+import { apiPost } from '@/shared/api/apiClient'
 import { FeatureGate } from '@/features/subscription'
 import { KPICard } from '@/features/analytics'
 import type { KPIDashboardProps, KPIData } from '..'
@@ -35,182 +35,24 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
     try {
       setError(null)
       setLoading(true)
-      
-      let totallearners = 0
-      let attendancePercentage = 0
-      let examsScheduled = 0
-      let pendingAssessments = 0
-      let dailyTotal = 0
-      let weeklyTotal = 0
-      let monthlyTotal = 0
-      let avgCareerReadiness = 0
-      let libraryOverdue = 0
-      
-      // Fetch Total Learners
-      try {
-        if (schoolId) {
-          const { count, error: learnersError } = await supabase
-            .from('learners')
-            .select('*', { count: 'exact', head: true })
-            .eq('school_id', schoolId)
-          
-          if (!learnersError) {
-            totallearners = count || 0
-          }
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch learners', { error: err });
-      }
 
-      // Fetch Attendance Today
-      const today = new Date().toISOString().split('T')[0]
-      try {
-        let attendanceQuery = supabase
-          .from('attendance_records')
-          .select('status')
-          .eq('date', today)
-        
-        if (schoolId) {
-          attendanceQuery = attendanceQuery.eq('school_id', schoolId)
-        }
-        
-        const { data: attendanceData, error: attendanceError } = await attendanceQuery
-
-        if (!attendanceError && attendanceData) {
-          const presentCount = attendanceData.filter(a => a.status === 'present').length
-          const totalAttendance = attendanceData.length || 1
-          attendancePercentage = Math.round((presentCount / totalAttendance) * 100)
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch attendance', { error: err });
-      }
-
-      // Fetch Exams Scheduled
-      try {
-        let examsQuery = supabase
-          .from('exam_timetable')
-          .select('*', { count: 'exact', head: true })
-          .gte('exam_date', today)
-        
-        if (schoolId) {
-          examsQuery = examsQuery.eq('school_id', schoolId)
-        }
-        
-        const { count, error: examsError } = await examsQuery
-
-        if (!examsError) {
-          examsScheduled = count || 0
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch exams', { error: err });
-      }
-
-      // Fetch Pending Assessments
-      try {
-        let assessmentsQuery = supabase
-          .from('assessments')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_published', false)
-        
-        if (schoolId) {
-          assessmentsQuery = assessmentsQuery.eq('school_id', schoolId)
-        }
-        
-        const { count, error: assessmentsError } = await assessmentsQuery
-
-        if (!assessmentsError) {
-          pendingAssessments = count || 0
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch assessments', { error: err });
-      }
-
-      // Fetch Fee Collection - Daily
-      try {
-        const { data: dailyFees, error: dailyFeesError } = await supabase
-          .from('fee_payments')
-          .select('amount')
-          .eq('status', 'success')
-          .gte('payment_date', today)
-          .lt('payment_date', `${today}T23:59:59`)
-
-        if (!dailyFeesError && dailyFees) {
-          dailyTotal = dailyFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch daily fees', { error: err });
-      }
-
-      // Fetch Fee Collection - Weekly
-      try {
-        const weekAgo = new Date()
-        weekAgo.setDate(weekAgo.getDate() - 7)
-        const { data: weeklyFees, error: weeklyFeesError } = await supabase
-          .from('fee_payments')
-          .select('amount')
-          .eq('status', 'success')
-          .gte('payment_date', weekAgo.toISOString())
-
-        if (!weeklyFeesError && weeklyFees) {
-          weeklyTotal = weeklyFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch weekly fees', { error: err });
-      }
-
-      // Fetch Fee Collection - Monthly
-      try {
-        const monthAgo = new Date()
-        monthAgo.setMonth(monthAgo.getMonth() - 1)
-        const { data: monthlyFees, error: monthlyFeesError } = await supabase
-          .from('fee_payments')
-          .select('amount')
-          .eq('status', 'success')
-          .gte('payment_date', monthAgo.toISOString())
-
-        if (!monthlyFeesError && monthlyFees) {
-          monthlyTotal = monthlyFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch monthly fees', { error: err });
-      }
-
-      // Career Readiness Index - placeholder
-      avgCareerReadiness = 0
-
-      // Fetch Library Overdue Items
-      try {
-        let libraryQuery = supabase
-          .from('library_book_issues_school')
-          .select('*', { count: 'exact', head: true })
-          .lt('due_date', today)
-          .is('return_date', null)
-        
-        if (schoolId) {
-          libraryQuery = libraryQuery.eq('school_id', schoolId)
-        }
-        
-        const { count, error: libraryError } = await libraryQuery
-
-        if (!libraryError) {
-          libraryOverdue = count || 0
-        }
-      } catch (err) {
-        logger.warn('Failed to fetch library data', { error: err });
-      }
+      const data: any = await apiPost('/kpi-dashboard/actions', {
+        action: 'get-kpi-data',
+        schoolId,
+      })
 
       setKpiData({
-        totallearners,
-        attendanceToday: attendancePercentage,
-        examsScheduled,
-        pendingAssessments,
+        totallearners: data.totalLearners || 0,
+        attendanceToday: data.attendancePercentage || 0,
+        examsScheduled: data.examsScheduled || 0,
+        pendingAssessments: data.pendingAssessments || 0,
         feeCollection: {
-          daily: dailyTotal,
-          weekly: weeklyTotal,
-          monthly: monthlyTotal,
+          daily: data.dailyTotal || 0,
+          weekly: data.weeklyTotal || 0,
+          monthly: data.monthlyTotal || 0,
         },
-        careerReadinessIndex: avgCareerReadiness,
-        libraryOverdue,
+        careerReadinessIndex: 0,
+        libraryOverdue: data.libraryOverdue || 0,
       })
 
       setLoading(false)

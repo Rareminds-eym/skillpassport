@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from "react";
 import {
   PlusCircleIcon,
@@ -10,7 +11,7 @@ import {
 import { getLogger } from '@/shared/config/logging';
 import { useUsers } from '@/entities/user';
 import { departmentService } from '@/features/college-admin';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 import UserFormModal from "@/features/college-admin/ui/components/UserFormModal";
 import { ConfirmModal } from '@/shared/ui';
@@ -106,50 +107,49 @@ const UserManagement: React.FC = () => {
           return;
         }
 
-        // Try to get college ID from college_lecturers
-        const { data: lecturerData } = await supabase
-          .from('college_lecturers')
-          .select('collegeId')
-          .eq('email', currentUser.email)
-          .maybeSingle();
+        const lecturerResp = await apiPost('/college-admin/actions', {
+          action: 'get-college-lecturer-by-email',
+          email: currentUser.email,
+          select: 'collegeId',
+        });
 
-        let collegeId = lecturerData?.collegeId;
+        let collegeId = lecturerResp.success ? lecturerResp.data?.collegeId : null;
 
-        // If not found, try organizations table (colleges table doesn't exist)
         if (!collegeId) {
-          // Try by admin_id first
-          const { data: orgByAdminId } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college')
-            .eq('admin_id', currentUser.id)
-            .maybeSingle();
+          const orgResp = await apiPost('/college-admin/actions', {
+            action: 'get-org-by-filters',
+            select: 'id',
+            filters: {
+              organization_type: { eq: 'college' },
+              admin_id: { eq: currentUser.id },
+            },
+          });
 
-          if (orgByAdminId?.id) {
-            collegeId = orgByAdminId.id;
+          if (orgResp.success && orgResp.data?.id) {
+            collegeId = orgResp.data.id;
           } else {
-            // Try by email
-            const { data: orgByEmail } = await supabase
-              .from('organizations')
-              .select('id')
-              .eq('organization_type', 'college')
-              .eq('email', currentUser.email)
-              .maybeSingle();
+            const orgByEmailResp = await apiPost('/college-admin/actions', {
+              action: 'get-org-by-filters',
+              select: 'id',
+              filters: {
+                organization_type: { eq: 'college' },
+                email: { eq: currentUser.email },
+              },
+            });
 
-            collegeId = orgByEmail?.id;
+            collegeId = orgByEmailResp.success ? orgByEmailResp.data?.id : null;
           }
         }
 
-        // If still not found, get first college from organizations
         if (!collegeId) {
-          const { data: firstCollege } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college')
-            .limit(1)
-            .maybeSingle();
+          const firstResp = await apiPost('/college-admin/actions', {
+            action: 'get-org-by-filters',
+            select: 'id',
+            filters: { organization_type: { eq: 'college' } },
+            limit: 1,
+          });
 
-          collegeId = firstCollege?.id;
+          collegeId = firstResp.success ? firstResp.data?.id : null;
         }
 
         if (!collegeId) {

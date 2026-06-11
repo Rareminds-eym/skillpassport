@@ -152,7 +152,7 @@ const Messages = () => {
     );
 
     return () => {
-      subscription.unsubscribe();
+      subscription();
     };
   }, [recruiterId, queryClient]);
   

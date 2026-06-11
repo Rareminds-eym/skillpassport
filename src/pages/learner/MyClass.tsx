@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/features/auth';
@@ -32,7 +33,7 @@ import { useUser } from '@/shared/model/authStore';
  */
 const MyClass: React.FC = () => {
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail);
   const learnerId = learnerData?.id;
 

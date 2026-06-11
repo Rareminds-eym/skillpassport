@@ -2,7 +2,8 @@
 // Import this in ClassManagement.tsx if needed
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/shared/api/supabaseClient"
+import { apiPost } from '@/shared/api/apiClient'
+import { useAuthStore } from '@/shared/model/authStore'
 import toast from "react-hot-toast"
 import { XMarkIcon, UserPlusIcon, UserMinusIcon } from "@heroicons/react/24/outline"
 import { getLogger } from "@/shared/config/logging"
@@ -90,20 +91,14 @@ export const ManageLearnersModal = ({
 
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from("learners")
-        .update({ school_class_id: classItem.id })
-        .in("id", selectedlearners)
-
-      if (error) throw error
-
-      await supabase
-        .from("school_classes")
-        .update({ 
-          current_learners: newCount,
-          updated_at: new Date().toISOString()
+      for (const learnerId of selectedlearners) {
+        await apiPost('/college-admin/classes', {
+          action: 'add-learner-to-class',
+          learner_id: learnerId,
+          class_id: classItem.id,
+          educator_type: 'school',
         })
-        .eq("id", classItem.id)
+      }
 
       const addedCount = selectedlearners.length
       const learnerNames = learners.filter(s => selectedlearners.includes(s.id))
@@ -128,20 +123,12 @@ export const ManageLearnersModal = ({
     
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from("learners")
-        .update({ school_class_id: null })
-        .eq("id", learnerId)
-
-      if (error) throw error
-
-      await supabase
-        .from("school_classes")
-        .update({ 
-          current_learners: Math.max(0, classlearners.length - 1),
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", classItem.id)
+      await apiPost('/college-admin/classes', {
+        action: 'remove-learner-from-class',
+        learner_id: learnerId,
+        class_id: classItem.id,
+        educator_type: 'school',
+      })
 
       toast.success(`${learnerName} removed`)
       onUpdate()
@@ -343,20 +330,10 @@ export const AssignEducatorModal = ({
 
   const fetchAssignments = async () => {
     try {
-      const { data, error } = await supabase
-        .from("school_educator_class_assignments")
-        .select(`
-          *,
-          school_educators (
-            id,
-            first_name,
-            last_name,
-            email
-          )
-        `)
-        .eq("class_id", classItem.id)
-
-      if (error) throw error
+      const data = await apiPost<any[]>('/college-admin/classes', {
+        action: 'fetch-class-educator-assignments',
+        class_id: classItem.id,
+      })
       setAssignments(data || [])
     } catch (error: any) {
       logger.error("Error fetching assignments", error)
@@ -374,21 +351,16 @@ export const AssignEducatorModal = ({
     setSubmitting(true)
     try {
       const user = useAuthStore.getState().user;
-      
-      const { error } = await supabase
-        .from("school_educator_class_assignments")
-        .insert([
-          {
-            educator_id: selectedEducatorId,
-            class_id: classItem.id,
-            subject: subject.trim(),
-            academic_year: classItem.academic_year,
-            is_primary: isPrimary,
-            assigned_by: user?.id
-          }
-        ])
 
-      if (error) throw error
+      await apiPost('/college-admin/classes', {
+        action: 'create-educator-class-assignment',
+        educator_id: selectedEducatorId,
+        class_id: classItem.id,
+        subject: subject.trim(),
+        academic_year: classItem.academic_year,
+        is_primary: isPrimary,
+        assigned_by: user?.id,
+      })
 
       const educator = educators.find(e => e.id === selectedEducatorId)
       const educatorName = educator ? `${educator.first_name} ${educator.last_name}` : "Educator"
@@ -412,12 +384,10 @@ export const AssignEducatorModal = ({
     
     setSubmitting(true)
     try {
-      const { error } = await supabase
-        .from("school_educator_class_assignments")
-        .delete()
-        .eq("id", assignmentId)
-
-      if (error) throw error
+      await apiPost('/college-admin/classes', {
+        action: 'delete-educator-class-assignment',
+        id: assignmentId,
+      })
 
       toast.success(`${educatorName} removed`)
       fetchAssignments()

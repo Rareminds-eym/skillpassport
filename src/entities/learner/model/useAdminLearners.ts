@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '@/shared/api/supabaseClient'
+import { apiPost } from '@/shared/api/apiClient'
+import { useAuthStore } from '@/shared/model/authStore'
 
 // Raw DB row type (minimal)
 interface LearnerRow {
@@ -359,20 +360,17 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
       setLoading(true)
       setError(null)
       try {
-        // Get current user's school_id or college_id
         let schoolId: string | null = null;
         let collegeId: string | null = null;
         let userRole: string | null = null;
         let userId: string | null = null;
         let universityId: string | null = null;
-        
-        // First, check if user is logged in via AuthContext (for school/college admins)
-        const storedUser = localStorage.getItem('user');
+
+        const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
           try {
             const userData = JSON.parse(storedUser);
             userRole = userData.role;
-            
             if (userData.role === 'school_admin' && userData.schoolId) {
               schoolId = userData.schoolId;
             } else if (userData.role === 'college_admin' && userData.collegeId) {
@@ -381,178 +379,75 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
               universityId = userData.universityId || userData.organizationId;
             }
           } catch (e) {
-            // Silently fail - will try Supabase auth next
+            // Silently fail
           }
         }
-        
-        // If not found in localStorage, try Supabase Auth
+
         if (!schoolId && !collegeId) {
           const user = useAuthStore.getState().user;
-          
           if (user) {
             userId = user.id;
-            
-            // Get user role from users table
-            const { data: userRecord } = await supabase
-              .from('users')
-              .select('role')
-              .eq('id', user.id)
-              .maybeSingle();
-            
-            userRole = userRecord?.role || null;
-            
-            // Check for college admin (using unified organizations table)
-            if (userRole === 'college_admin') {
-              // Find college by matching admin_id or email in organizations table
-              const { data: college } = await supabase
-                .from('organizations')
-                .select('id, name, email')
-                .eq('organization_type', 'college')
-                .or(`admin_id.eq.${user.id},email.ilike.${user.email}`)
-                .maybeSingle();
-              
-              if (college?.id) {
-                collegeId = college.id;
-              }
-            }
-            // Check for school admin/educator
-            else {
-              // Check school_educators table
-              const { data: educator } = await supabase
-                .from('school_educators')
-                .select('school_id')
-                .eq('user_id', user.id)
-                .maybeSingle();
-              
-              if (educator?.school_id) {
-                schoolId = educator.school_id;
+            const userRes = await apiPost('/learner-profile/actions', { action: 'fetch-user-by-id', userId });
+
+            if (userRes?.data) {
+              userRole = userRes.data.role || null;
+
+              if (userRole === 'college_admin') {
+                const orgRes = await apiPost('/learner-profile/actions', {
+                  action: 'fetch-org-by-admin', userId: user.id, email: user.email, orgType: 'college',
+                });
+                if (orgRes?.data?.id) collegeId = orgRes.data.id;
               } else {
-                // Check organizations table for school by admin_id or email
-                const { data: school } = await supabase
-                  .from('organizations')
-                  .select('id')
-                  .eq('organization_type', 'school')
-                  .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-                  .maybeSingle();
-                
-                schoolId = school?.id || null;
+                const educatorRes = await apiPost('/learner-profile/actions', {
+                  action: 'fetch-school-educator-by-user', userId: user.id,
+                });
+                if (educatorRes?.data?.school_id) {
+                  schoolId = educatorRes.data.school_id;
+                } else {
+                  const orgRes = await apiPost('/learner-profile/actions', {
+                    action: 'fetch-org-by-admin', userId: user.id, email: user.email, orgType: 'school',
+                  });
+                  if (orgRes?.data?.id) schoolId = orgRes.data.id;
+                }
               }
             }
           }
         }
-        
-        // For university admin, get organizationId from users table if not already set
+
         if (userRole === 'university_admin' && !universityId && userId) {
-          const { data: dbUser } = await supabase
-            .from('users')
-            .select('organizationId')
-            .eq('id', userId)
-            .maybeSingle();
-          
-          if (dbUser?.organizationId) {
-            universityId = dbUser.organizationId;
+          const userRes = await apiPost('/learner-profile/actions', { action: 'fetch-user-by-id', userId });
+          if (userRes?.data?.organizationId) {
+            universityId = userRes.data.organizationId;
           }
         }
-        
+
         let collegeIds: string[] = [];
-        
-        // If university admin, get all colleges under this university (from organizations table)
         if (universityId) {
-          // Note: This assumes colleges have a reference to their parent university
-          // You may need to adjust based on your actual data model
-          const { data: colleges, error: collegesError } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_type', 'college');
-          
-          if (!collegesError && colleges && colleges.length > 0) {
-            collegeIds = colleges.map(c => c.id);
+          const orgsRes = await apiPost('/learner-profile/actions', { action: 'fetch-orgs-by-type', orgType: 'college' });
+          if (orgsRes?.data?.length) {
+            collegeIds = orgsRes.data.map((c: any) => c.id);
           }
         }
-        
-        // First, get total count for pagination
-        let countQuery = supabase
-          .from('learners')
-          .select('id', { count: 'exact', head: true });
-        
-        // Apply same filters to count query
-        if (schoolId) {
-          countQuery = countQuery.eq('school_id', schoolId);
-        } else if (collegeId) {
-          countQuery = countQuery.eq('college_id', collegeId);
-        } else if (universityId) {
-          countQuery = countQuery.eq('universityId', universityId);
+
+        const countRes = await apiPost('/learner-profile/actions', {
+          action: 'fetch-learner-count',
+          schoolId, collegeId, universityId, searchTerm,
+        });
+        if (countRes?.data?.count !== undefined) {
+          setTotalCount(countRes.data.count);
         }
-        
-        if (searchTerm && searchTerm.trim()) {
-          countQuery = countQuery.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`);
-        }
-        
-        const { count } = await countQuery;
-        if (count !== null) {
-          setTotalCount(count);
-        }
-        
-        // Calculate pagination range
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize - 1;
-        
-        // Build the query - use foreign key hints for joins
-        let query = supabase
-          .from('learners')
-          .select(`*,
-            skills!skills_learner_id_fkey(id,name,type,level,description,verified,enabled,approval_status,created_at,updated_at),
-            projects!projects_learner_id_fkey(id,title,description,status,start_date,end_date,duration,tech_stack,demo_link,github_link,approval_status,certificate_url,video_url,ppt_url,organization,enabled,created_at,updated_at),
-            certificates!certificates_learner_id_fkey(id,title,issuer,level,credential_id,link,issued_on,description,status,approval_status,document_url,enabled,created_at,updated_at),
-            education!education_learner_id_fkey(id,level,degree,department,university,year_of_passing,cgpa,status,approval_status,created_at,updated_at),
-            experience!experience_learner_id_fkey(id,organization,role,start_date,end_date,duration,verified,approval_status,created_at,updated_at),
-            trainings!trainings_learner_id_fkey(id,title,organization,start_date,end_date,duration,description,approval_status,created_at,updated_at)`)
-          .order('updatedAt', { ascending: false })
-          .range(startIndex, endIndex);
-        
-        // Filter by school_id, college_id, or universityId based on user role
-        if (schoolId) {
-          query = query.eq('school_id', schoolId);
-        } else if (collegeId) {
-          query = query.eq('college_id', collegeId);
-        } else if (universityId) {
-          query = query.eq('universityId', universityId);
-        }
-        
-        // Apply search filter to main query (same as count query)
-        if (searchTerm && searchTerm.trim()) {
-          query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`);
-        }
-        
-        let result = await query;
-        
-        // If full query fails, try simpler query
-        if (result.error) {
-          let simpleQuery = supabase
-            .from('learners')
-            .select('*')
-            .order('updatedAt', { ascending: false })
-            .limit(500);
-          
-          // Filter by school_id, college_id, or universityId based on user role
-          if (schoolId) {
-            simpleQuery = simpleQuery.eq('school_id', schoolId);
-          } else if (collegeId) {
-            simpleQuery = simpleQuery.eq('college_id', collegeId);
-          } else if (universityId) {
-            simpleQuery = simpleQuery.eq('universityId', universityId);
-          }
-          
-          // Apply search filter to simple query as well
-          if (searchTerm && searchTerm.trim()) {
-            simpleQuery = simpleQuery.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,roll_number.ilike.%${searchTerm}%`);
-          }
-          
-          result = await simpleQuery;
-        }
-        
-        if (result.error) {
-          throw result.error;
+
+        let result;
+        try {
+          result = await apiPost('/learner-profile/actions', {
+            action: 'fetch-learners-admin',
+            schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: false,
+          });
+        } catch {
+          result = await apiPost('/learner-profile/actions', {
+            action: 'fetch-learners-admin',
+            schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: true,
+          });
         }
         
         if (!isMounted) return;

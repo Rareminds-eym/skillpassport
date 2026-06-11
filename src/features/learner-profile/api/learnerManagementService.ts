@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api';
+import { apiPost } from '@/shared/api/apiClient';
 import type {
   AdmissionApplication,
   LearnerProfile,
@@ -10,6 +10,15 @@ import { validateFileSize } from '@/shared/lib/utils';
 import { getFileSizeLimit } from '@/shared/config';
 
 // ============= ADMISSION WORKFLOW =============
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => { const result = reader.result as string; resolve(result.split(',')[1] || result); };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export const admissionService = {
   // US-SM-03: Create new admission application
@@ -37,55 +46,33 @@ export const admissionService = {
       return { data: null, error: ageValidation.message || 'Age validation failed' };
     }
 
-    // Generate application number
-    const applicationNumber = await this.generateApplicationNumber(schoolId);
-
-    const { data: application, error } = await supabase
-      .from('admission_applications')
-      .insert({
-        school_id: schoolId,
-        application_number: applicationNumber,
-        learner_name: data.learnerName,
-        date_of_birth: data.dateOfBirth,
-        gender: data.gender,
-        aadhar_number: data.aadharNumber,
-        passport_number: data.passportNumber,
-        email: data.email,
-        phone: data.phone,
-        father_name: data.fatherName,
-        father_occupation: data.fatherOccupation,
-        father_phone: data.fatherPhone,
-        father_email: data.fatherEmail,
-        mother_name: data.motherName,
-        mother_occupation: data.motherOccupation,
-        mother_phone: data.motherPhone,
-        guardian_name: data.guardianName,
-        guardian_relation: data.guardianRelation,
-        guardian_phone: data.guardianPhone,
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        pincode: data.pincode,
-        previous_school: data.previousSchool,
-        previous_class: data.previousClass,
-        previous_board: data.previousBoard,
+    const result: any = await apiPost('/learners/management', {
+      action: 'create-application', schoolId, data: {
+        ...data,
+        learnerName: data.learnerName,
+        dateOfBirth: data.dateOfBirth,
+        aadharNumber: data.aadharNumber,
+        passportNumber: data.passportNumber,
+        fatherName: data.fatherName,
+        fatherOccupation: data.fatherOccupation,
+        fatherPhone: data.fatherPhone,
+        fatherEmail: data.fatherEmail,
+        motherName: data.motherName,
+        motherOccupation: data.motherOccupation,
+        motherPhone: data.motherPhone,
+        guardianName: data.guardianName,
+        guardianRelation: data.guardianRelation,
+        guardianPhone: data.guardianPhone,
+        previousSchool: data.previousSchool,
+        previousClass: data.previousClass,
+        previousBoard: data.previousBoard,
         documents: data.documents || {},
-        applied_for: data.appliedFor,
-        fee_amount: data.feeAmount,
-        status: 'pending'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return { data: null, error: error.message };
-    }
-
-    // Generate admission receipt
-    await this.generateAdmissionReceipt(application);
-
-    // Send SMS/Email confirmation to parent
-    await this.sendAdmissionConfirmation(application);
+        appliedFor: data.appliedFor,
+        feeAmount: data.feeAmount,
+      }
+    });
+    if (result?.error) return { data: null, error: result.error.message || result.error };
+    const application = result.data?.application;
 
     return { data: application, error: null };
   },
@@ -118,178 +105,53 @@ export const admissionService = {
 
   // Generate admission receipt
   async generateAdmissionReceipt(application: AdmissionApplication): Promise<string> {
-    // In production, this would generate a PDF receipt
-    // For now, return a receipt URL
-    const receiptUrl = `/receipts/admission/${application.id}`;
-    
-    // Store receipt reference in documents
-    await supabase
-      .from('admission_applications')
-      .update({
-        documents: {
-          ...application.documents,
-          admissionReceipt: receiptUrl
-        }
-      })
-      .eq('id', application.id);
-
-    return receiptUrl;
-  },
-
-  // Send admission confirmation
-  async sendAdmissionConfirmation(application: AdmissionApplication): Promise<void> {
-    // In production, integrate with SMS/Email service
-    // For now, silently handle the notification
-    // TODO: Integrate with actual SMS/Email service
-    // await smsService.send(application.phone, `Your child's admission application ${application.applicationNumber} has been received.`);
-    // await emailService.send(application.email, 'Admission Application Received', emailTemplate);
+    const result: any = await apiPost('/learners/management', { action: 'generate-admission-receipt', applicationId: application.id });
+    return result?.data?.receiptUrl || `/receipts/admission/${application.id}`;
   },
 
   // Generate unique application number
   async generateApplicationNumber(schoolId: string): Promise<string> {
-    const year = new Date().getFullYear().toString().slice(-2);
-    const { count } = await supabase
-      .from('admission_applications')
-      .select('*', { count: 'exact', head: true })
-      .eq('school_id', schoolId);
-
-    const sequence = (count || 0) + 1;
-    return `APP${year}${sequence.toString().padStart(5, '0')}`;
+    const result: any = await apiPost('/learners/management', { action: 'generate-application-number', schoolId });
+    return result?.data?.applicationNumber || '';
   },
 
   // Get all applications for a school
   async getApplications(schoolId: string, filters?: { status?: string; appliedFor?: string }) {
-    let query = supabase
-      .from('admission_applications')
-      .select('*')
-      .eq('school_id', schoolId)
-      .order('applied_date', { ascending: false });
-
-    if (filters?.status) {
-      query = query.eq('status', filters.status);
-    }
-    if (filters?.appliedFor) {
-      query = query.eq('applied_for', filters.appliedFor);
-    }
-
-    return await query;
+    const result: any = await apiPost('/learners/management', { action: 'get-applications', schoolId, status: filters?.status, appliedFor: filters?.appliedFor });
+    return { data: result?.data?.applications ?? null, error: result?.error ?? null };
   },
 
   // Update application status
-  async updateApplicationStatus(
-    applicationId: string,
-    status: string,
-    verifiedBy?: string,
-    remarks?: string
-  ) {
-    const updateData: {
-      status: string;
-      updated_at: string;
-      verified_by?: string;
-      verified_date?: string;
-      remarks?: string;
-    } = {
-      status,
-      updated_at: new Date().toISOString()
-    };
-
-    if (status === 'approved') {
-      updateData.verified_by = verifiedBy;
-      updateData.verified_date = new Date().toISOString();
-    }
-
-    if (remarks) {
-      updateData.remarks = remarks;
-    }
-
-    return await supabase
-      .from('admission_applications')
-      .update(updateData)
-      .eq('id', applicationId)
-      .select()
-      .single();
+  async updateApplicationStatus(applicationId: string, status: string, verifiedBy?: string, remarks?: string) {
+    const result: any = await apiPost('/learners/management', { action: 'update-application-status', applicationId, status, verifiedBy, remarks });
+    return { data: result?.data?.application ?? null, error: result?.error ?? null };
   },
 
   // Upload documents
   async uploadDocument(file: File, applicationId: string, documentType: string) {
     const fileName = `${applicationId}/${documentType}/${Date.now()}_${file.name}`;
     
-    const { error } = await supabase.storage
-      .from('admission-documents')
-      .upload(fileName, file);
+    const base64 = await fileToBase64(file);
+    const result: any = await apiPost('/college-admin/storage', {
+      action: 'upload', bucket: 'admission-documents', path: fileName, file_base64: base64, content_type: file.type || 'application/octet-stream',
+    });
 
-    if (error) return { data: null, error };
+    if (!result?.data?.publicUrl) return { data: null, error: result?.error };
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('admission-documents')
-      .getPublicUrl(fileName);
-
-    return { data: { url: publicUrl, path: fileName }, error: null };
+    return { data: { url: result.data.publicUrl, path: fileName }, error: null };
   },
 
   // Approve and generate enrollment
   async approveAndEnroll(applicationId: string, academicYear: string, schoolId: string) {
-    // Get application details
-    const { data: application, error: appError } = await supabase
-      .from('admission_applications')
-      .select('*')
-      .eq('id', applicationId)
-      .single();
-
-    if (appError || !application) {
-      return { data: null, error: appError || { message: 'Application not found' } };
-    }
-
-    // Generate enrollment number using database function
-    const { data: enrollmentData, error: enrollError } = await supabase
-      .rpc('generate_enrollment_number', {
-        p_school_id: schoolId,
-        p_academic_year: academicYear
-      });
-
-    if (enrollError) return { data: null, error: enrollError };
-
-    const enrollmentNumber = enrollmentData;
-
-    // Update application with enrollment number
-    const { error: updateError } = await supabase
-      .from('admission_applications')
-      .update({
-        status: 'approved',
-        enrollment_number: enrollmentNumber,
-        verified_date: new Date().toISOString()
-      })
-      .eq('id', applicationId);
-
-    if (updateError) return { data: null, error: updateError };
-
-    return { data: { enrollmentNumber }, error: null };
+    const result: any = await apiPost('/learners/management', { action: 'approve-and-enroll', applicationId, academicYear, schoolId });
+    if (result?.error) return { data: null, error: result.error };
+    return { data: { enrollmentNumber: result.data?.enrollmentNumber }, error: null };
   },
 
   // Record fee payment
   async recordFeePayment(applicationId: string, amount: number) {
-    const { data: application } = await supabase
-      .from('admission_applications')
-      .select('fee_amount, fee_paid')
-      .eq('id', applicationId)
-      .single();
-
-    if (!application) {
-      return { data: null, error: { message: 'Application not found' } };
-    }
-
-    const newFeePaid = (application.fee_paid || 0) + amount;
-    const feeStatus = newFeePaid >= (application.fee_amount || 0) ? 'paid' : 'partial';
-
-    return await supabase
-      .from('admission_applications')
-      .update({
-        fee_paid: newFeePaid,
-        fee_status: feeStatus
-      })
-      .eq('id', applicationId)
-      .select()
-      .single();
+    const result: any = await apiPost('/learners/management', { action: 'record-fee-payment', applicationId, amount });
+    return { data: result?.data?.application ?? null, error: result?.error ?? null };
   }
 };
 
@@ -298,82 +160,48 @@ export const admissionService = {
 export const learnerProfileService = {
   // Create extended profile after admission
   async createExtendedProfile(learnerId: string, schoolId: string, data: Partial<LearnerProfile>): Promise<{ data: LearnerProfile | null; error: string | null }> {
-    const { data: result, error } = await supabase
-      .from('learner_management_records')
-      .insert({
-        learner_id: learnerId,
-        school_id: schoolId,
-        enrollment_number: data.enrollmentNumber,
-        class: data.class,
-        section: data.section,
-        roll_number: data.rollNumber,
-        admission_date: data.admissionDate,
-        academic_year: data.academicYear,
-        blood_group: data.medicalInfo?.bloodGroup,
-        allergies: data.medicalInfo?.allergies,
-        chronic_conditions: data.medicalInfo?.chronicConditions,
-        medications: data.medicalInfo?.medications,
-        emergency_contact: data.medicalInfo?.emergencyContact,
-        emergency_phone: data.medicalInfo?.emergencyPhone,
+    const result: any = await apiPost('/learners/management', {
+      action: 'create-extended-profile', learnerId, schoolId, data: {
+        enrollment_number: data.enrollmentNumber, class: data.class,
+        section: data.section, roll_number: data.rollNumber,
+        admission_date: data.admissionDate, academic_year: data.academicYear,
+        blood_group: data.medicalInfo?.bloodGroup, allergies: data.medicalInfo?.allergies,
+        chronic_conditions: data.medicalInfo?.chronicConditions, medications: data.medicalInfo?.medications,
+        emergency_contact: data.medicalInfo?.emergencyContact, emergency_phone: data.medicalInfo?.emergencyPhone,
         primary_interest: data.careerInterests?.primaryInterest,
         secondary_interest: data.careerInterests?.secondaryInterest,
-        career_skills: data.careerInterests?.skills,
-        aspirations: data.careerInterests?.aspirations,
-        total_fee: data.feeStatus?.totalFee,
-        paid_amount: data.feeStatus?.paidAmount,
-        pending_amount: data.feeStatus?.pendingAmount,
-        photo_url: data.photo
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return { data: null, error: error.message };
-    }
-
-    return { data: result as LearnerProfile, error: null };
+        career_skills: data.careerInterests?.skills, aspirations: data.careerInterests?.aspirations,
+        total_fee: data.feeStatus?.totalFee, paid_amount: data.feeStatus?.paidAmount,
+        pending_amount: data.feeStatus?.pendingAmount, photo_url: data.photo,
+      },
+    });
+    if (result?.error) return { data: null, error: result.error };
+    return { data: result.data as LearnerProfile, error: null };
   },
 
   // Get learner profile with extended data
   async getlearnerProfile(learnerId: string): Promise<{ data: LearnerProfile | null; error: string | null }> {
-    const { data, error } = await supabase
-      .from('learners')
-      .select(`
-        *,
-        extended:learner_management_records(*),
-        attendance:attendance_records(*)
-      `)
-      .eq('id', learnerId)
-      .single();
+    const result: any = await apiPost('/learners/management', {
+      action: 'get-learner-profile', learnerId,
+    });
+    if (result?.error) return { data: null, error: result.error.message || result.error };
 
-    if (error) return { data: null, error: error.message };
-
-    // Calculate attendance trend
-    const attendanceRecords = data.attendance || [];
+    const profile = result.data;
+    const attendanceRecords = profile?.attendance || [];
     const totalDays = attendanceRecords.length;
     const presentDays = attendanceRecords.filter((r: any) => r.status === 'present').length;
     const percentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
 
     return {
-      data: {
-        ...data,
-        attendanceTrend: {
-          totalDays,
-          presentDays,
-          absentDays: totalDays - presentDays,
-          percentage,
-          isAtRisk: percentage < 75
-        }
-      } as LearnerProfile,
+      data: { ...profile, attendanceTrend: { totalDays, presentDays, absentDays: totalDays - presentDays, percentage, isAtRisk: percentage < 75 } } as LearnerProfile,
       error: null
     };
   },
 
   // Update learner profile
   async updateProfile(learnerId: string, updates: Partial<LearnerProfile>): Promise<{ data: LearnerProfile | null; error: string | null }> {
-    const { data, error } = await supabase
-      .from('learner_management_records')
-      .update({
+    const result: any = await apiPost('/learners/management', {
+      action: 'update-profile', learnerId, updates: {
         blood_group: updates.medicalInfo?.bloodGroup,
         allergies: updates.medicalInfo?.allergies,
         chronic_conditions: updates.medicalInfo?.chronicConditions,
@@ -385,40 +213,20 @@ export const learnerProfileService = {
         career_skills: updates.careerInterests?.skills,
         aspirations: updates.careerInterests?.aspirations,
         photo_url: updates.photo,
-        status: updates.status
-      })
-      .eq('learner_id', learnerId)
-      .select()
-      .single();
-
-    if (error) {
-      return { data: null, error: error.message };
-    }
-
-    return { data: data as LearnerProfile, error: null };
+        status: updates.status,
+      },
+    });
+    if (result?.error) return { data: null, error: result.error.message || result.error };
+    return { data: result.data as LearnerProfile, error: null };
   },
 
   // Get all learners for a school
   async getSchoollearners(schoolId: string, filters?: { class?: string; section?: string; status?: string }): Promise<{ data: LearnerProfile[] | null; error: string | null }> {
-    let query = supabase
-      .from('learner_management_records')
-      .select(`
-        *,
-        learner:learners(*)
-      `)
-      .eq('school_id', schoolId);
-
-    if (filters?.class) query = query.eq('class', filters.class);
-    if (filters?.section) query = query.eq('section', filters.section);
-    if (filters?.status) query = query.eq('status', filters.status);
-
-    const { data, error } = await query.order('enrollment_number', { ascending: true });
-    
-    if (error) {
-      return { data: null, error: error.message };
-    }
-    
-    return { data: data as LearnerProfile[], error: null };
+    const result: any = await apiPost('/learners/management', {
+      action: 'get-school-learners', schoolId, class: filters?.class, section: filters?.section, status: filters?.status,
+    });
+    if (result?.error) return { data: null, error: result.error.message || result.error };
+    return { data: result.data as LearnerProfile[], error: null };
   }
 };
 
@@ -454,64 +262,44 @@ export const attendanceService = {
       }
     }
 
-    const attendanceData = records.map(record => ({
-      learner_id: record.learnerId,
-      school_id: record.schoolId,
-      date: record.date || new Date().toISOString().split('T')[0],
-      status: record.status,
-      mode: 'manual',
-      marked_by: markedBy,
-      remarks: record.remarks
-    }));
+    const result: any = await apiPost('/learners/management', {
+      action: 'mark-attendance', records: records.map(record => ({
+        learner_id: record.learnerId, school_id: record.schoolId,
+        date: record.date || new Date().toISOString().split('T')[0],
+        status: record.status, mode: 'manual',
+        marked_by: markedBy, remarks: record.remarks,
+      })),
+    });
 
-    const { data: attendanceResult, error } = await supabase
-      .from('attendance_records')
-      .upsert(attendanceData, {
-        onConflict: 'learner_id,date'
-      })
-      .select();
+    if (result?.error) return { data: null, error: result.error.message || result.error };
 
-    if (error) {
-      return { data: null, error: error.message };
-    }
-
-    // Notify parents if learner is absent
-    for (const record of attendanceResult || []) {
+    const attendanceResult = result.data || [];
+    for (const record of attendanceResult) {
       if (record.status === 'absent') {
         await this.notifyParentAbsence(record.learner_id, record.date);
       }
     }
 
-    // Trigger alert check
-    await supabase.rpc('check_attendance_alerts');
+    await apiPost('/learners/management', { action: 'check-attendance-alerts' });
 
     return { data: attendanceResult, error: null };
   },
 
   // Check for duplicate attendance (learner present in multiple classes)
   async checkDuplicateAttendance(learnerId: string, date: string): Promise<boolean> {
-    const { data } = await supabase
-      .from('attendance_records')
-      .select('id')
-      .eq('learner_id', learnerId)
-      .eq('date', date)
-      .eq('status', 'present')
-      .limit(1);
-
-    return (data && data.length > 0) || false;
+    const result: any = await apiPost('/learners/management', {
+      action: 'check-duplicate-attendance', learnerId, date,
+    });
+    return result?.data?.isDuplicate || false;
   },
 
   // Notify parent of absence
   async notifyParentAbsence(learnerId: string, date: string): Promise<void> {
-    // Get learner and parent info
-    const { data: learner } = await supabase
-      .from('learners')
-      .select('name, parent_phone, parent_email')
-      .eq('id', learnerId)
-      .single();
-
+    const result: any = await apiPost('/learner-profile/actions', {
+      action: 'fetch-learner', id: learnerId,
+    });
+    const learner = result?.data;
     if (!learner) return;
-
     // TODO: Integrate with SMS/Email service
     // await smsService.send(learner.parent_phone, `Your child ${learner.name} was marked absent on ${date}.`);
   },
@@ -525,115 +313,50 @@ export const attendanceService = {
 
   // Mark attendance via Mobile OTP
   async markAttendanceMobile(learnerId: string, schoolId: string, otp: string) {
-    // Verify OTP (implement OTP verification logic)
-    const isValidOTP = await this.verifyOTP(learnerId, otp);
-    
-    if (!isValidOTP) {
+    if (!this.verifyOTP(learnerId, otp)) {
       return { data: null, error: { message: 'Invalid OTP' } };
     }
 
-    return await supabase
-      .from('attendance_records')
-      .insert({
-        learner_id: learnerId,
-        school_id: schoolId,
-        date: new Date().toISOString().split('T')[0],
-        status: 'present',
-        mode: 'mobile',
-        time_in: new Date().toTimeString().split(' ')[0],
-        otp_verified: true
-      })
-      .select()
-      .single();
+    return await apiPost('/learners/management', {
+      action: 'mark-attendance-mobile', learnerId, schoolId,
+    });
   },
 
   // Verify OTP (placeholder)
   async verifyOTP(_learnerId: string, otp: string): Promise<boolean> {
     // Implement actual OTP verification logic
-    return otp.length === 6;
+    return otp.length === 4;
   },
 
   // Get attendance for date range
   async getAttendance(schoolId: string, startDate: string, endDate: string, _filters?: { class?: string; section?: string }) {
-    const query = supabase
-      .from('attendance_records')
-      .select(`
-        *,
-        learner:learners(
-          *,
-          extended:learner_management_records(*)
-        )
-      `)
-      .eq('school_id', schoolId)
-      .gte('date', startDate)
-      .lte('date', endDate);
-
-    return await query.order('date', { ascending: false });
+    return await apiPost('/learners/management', {
+      action: 'get-attendance', schoolId, startDate, endDate,
+    });
   },
 
   // Get attendance alerts
   async getAttendanceAlerts(schoolId: string, unnotifiedOnly: boolean = false) {
-    let query = supabase
-      .from('attendance_alerts')
-      .select(`
-        *,
-        learner:learners(
-          *,
-          extended:learner_management_records(*)
-        )
-      `)
-      .eq('school_id', schoolId);
-
-    if (unnotifiedOnly) {
-      query = query.eq('parent_notified', false);
-    }
-
-    return await query.order('created_at', { ascending: false });
+    return await apiPost('/learners/management', {
+      action: 'get-attendance-alerts', schoolId, unnotifiedOnly,
+    });
   },
 
   // Mark alert as notified
   async markAlertNotified(alertId: string) {
-    return await supabase
-      .from('attendance_alerts')
-      .update({
-        parent_notified: true,
-        notified_date: new Date().toISOString()
-      })
-      .eq('id', alertId);
+    return await apiPost('/learners/management', {
+      action: 'mark-alert-notified', alertId,
+    });
   },
 
   // Get learner attendance summary
   async getlearnerAttendanceSummary(learnerId: string, startDate?: string, endDate?: string) {
     const start = startDate || new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0];
     const end = endDate || new Date().toISOString().split('T')[0];
-
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .gte('date', start)
-      .lte('date', end);
-
-    if (error) return { data: null, error };
-
-    const totalDays = data.length;
-    const presentDays = data.filter(r => r.status === 'present').length;
-    const absentDays = data.filter(r => r.status === 'absent').length;
-    const lateDays = data.filter(r => r.status === 'late').length;
-    const percentage = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
-
-    return {
-      data: {
-        totalDays,
-        presentDays,
-        absentDays,
-        lateDays,
-        percentage,
-        isAtRisk: percentage < 75,
-        records: data
-      },
-      error: null
-    };
+    const result: any = await apiPost('/learners/management', {
+      action: 'get-learner-attendance-summary', learnerId, startDate: start, endDate: end,
+    });
+    return result || { data: null, error: null };
   }
 };
 
@@ -641,203 +364,53 @@ export const attendanceService = {
 
 export const collegeAttendanceService = {
   // Create college attendance session
-  async createAttendanceSession(sessionData: {
-    date: string;
-    startTime: string;
-    endTime: string;
-    subjectName: string;
-    subjectCode?: string;
-    courseType?: string;
-    facultyId: string;
-    facultyName: string;
-    departmentName: string;
-    programName: string;
-    programCode?: string;
-    semester: number;
-    section: string;
-    roomNumber?: string;
-    academicYear?: string;
-    collegeId: string;
-    createdBy: string;
-  }) {
-    const { data, error } = await supabase
-      .from('college_attendance_sessions')
-      .insert({
-        date: sessionData.date,
-        start_time: sessionData.startTime,
-        end_time: sessionData.endTime,
-        subject_name: sessionData.subjectName,
-        subject_code: sessionData.subjectCode,
-        course_type: sessionData.courseType || 'theory',
-        faculty_id: sessionData.facultyId,
-        faculty_name: sessionData.facultyName,
-        department_name: sessionData.departmentName,
-        program_name: sessionData.programName,
-        program_code: sessionData.programCode,
-        semester: sessionData.semester,
-        section: sessionData.section,
-        room_number: sessionData.roomNumber,
-        academic_year: sessionData.academicYear || '2024-25',
-        status: 'scheduled',
-        created_by: sessionData.createdBy,
-        college_id: sessionData.collegeId
-      })
-      .select()
-      .single();
-
-    return { data, error };
+  async createAttendanceSession(sessionData: any) {
+    const result: any = await apiPost('/learners/management', {
+      action: 'create-attendance-session', sessionData,
+    });
+    return { data: result?.data, error: result?.error };
   },
 
   // Mark college attendance
-  async markCollegeAttendance(records: {
-    sessionId: string;
-    learnerId: string;
-    learnerName: string;
-    rollNumber: string;
-    departmentName: string;
-    programName: string;
-    semester: number;
-    section: string;
-    date: string;
-    status: 'present' | 'absent' | 'late' | 'excused';
-    timeIn?: string;
-    timeOut?: string;
-    subjectName: string;
-    subjectCode?: string;
-    facultyId: string;
-    facultyName: string;
-    location?: string;
-    remarks?: string;
-    markedBy: string;
-    collegeId: string;
-  }[]) {
-    const { data, error } = await supabase
-      .from('college_attendance_records')
-      .insert(records.map(record => ({
-        session_id: record.sessionId,
-        learner_id: record.learnerId,
-        learner_name: record.learnerName,
-        roll_number: record.rollNumber,
-        department_name: record.departmentName,
-        program_name: record.programName,
-        semester: record.semester,
-        section: record.section,
-        date: record.date,
-        status: record.status,
-        time_in: record.timeIn,
-        time_out: record.timeOut,
-        subject_name: record.subjectName,
-        subject_code: record.subjectCode,
-        faculty_id: record.facultyId,
-        faculty_name: record.facultyName,
-        location: record.location,
-        remarks: record.remarks,
-        marked_by: record.markedBy,
-        marked_at: new Date().toISOString(),
-        college_id: record.collegeId
-      })))
-      .select();
-
-    return { data, error };
+  async markCollegeAttendance(records: any[]) {
+    const result: any = await apiPost('/learners/management', {
+      action: 'mark-college-attendance', records,
+    });
+    return { data: result?.data, error: result?.error };
   },
 
   // Get college attendance sessions for faculty
   async getFacultyAttendanceSessions(facultyId: string, collegeId: string, date?: string) {
-    let query = supabase
-      .from('college_attendance_sessions')
-      .select('*')
-      .eq('faculty_id', facultyId)
-      .eq('college_id', collegeId);
-
-    if (date) {
-      query = query.eq('date', date);
-    }
-
-    return await query.order('date', { ascending: false }).order('start_time');
+    return await apiPost('/learners/management', {
+      action: 'get-faculty-attendance-sessions', facultyId, collegeId, date,
+    });
   },
 
   // Get college attendance records for session
   async getSessionAttendanceRecords(sessionId: string) {
-    return await supabase
-      .from('college_attendance_records')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('roll_number');
+    return await apiPost('/learners/management', {
+      action: 'get-session-attendance-records', sessionId,
+    });
   },
 
   // Get college learner attendance summary
   async getCollegeLearnerAttendanceSummary(learnerId: string, collegeId: string, startDate?: string, endDate?: string) {
     const start = startDate || new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0];
     const end = endDate || new Date().toISOString().split('T')[0];
-
-    const { data, error } = await supabase
-      .from('college_attendance_records')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .eq('college_id', collegeId)
-      .gte('date', start)
-      .lte('date', end);
-
-    if (error) return { data: null, error };
-
-    const totalClasses = data.length;
-    const presentClasses = data.filter(r => r.status === 'present').length;
-    const absentClasses = data.filter(r => r.status === 'absent').length;
-    const lateClasses = data.filter(r => r.status === 'late').length;
-    const excusedClasses = data.filter(r => r.status === 'excused').length;
-    const percentage = totalClasses > 0 ? ((presentClasses + lateClasses + excusedClasses) / totalClasses) * 100 : 0;
-
-    return {
-      data: {
-        totalClasses,
-        presentClasses,
-        absentClasses,
-        lateClasses,
-        excusedClasses,
-        percentage,
-        isAtRisk: percentage < 75,
-        records: data
-      },
-      error: null
-    };
+    const result: any = await apiPost('/learners/management', {
+      action: 'get-college-learner-attendance-summary', learnerId, collegeId, startDate: start, endDate: end,
+    });
+    return result || { data: null, error: null };
   },
 
   // Get college attendance analytics
   async getCollegeAttendanceAnalytics(collegeId: string, facultyId?: string, startDate?: string, endDate?: string) {
     const start = startDate || new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0];
     const end = endDate || new Date().toISOString().split('T')[0];
-
-    let query = supabase
-      .from('college_attendance_sessions')
-      .select('*')
-      .eq('college_id', collegeId)
-      .gte('date', start)
-      .lte('date', end);
-
-    if (facultyId) {
-      query = query.eq('faculty_id', facultyId);
-    }
-
-    const { data: sessions, error } = await query;
-
-    if (error) return { data: null, error };
-
-    const totalSessions = sessions.length;
-    const completedSessions = sessions.filter(s => s.status === 'completed').length;
-    const avgAttendance = sessions.length > 0 
-      ? sessions.reduce((sum, s) => sum + (s.attendance_percentage || 0), 0) / sessions.length 
-      : 0;
-
-    return {
-      data: {
-        totalSessions,
-        completedSessions,
-        pendingSessions: totalSessions - completedSessions,
-        avgAttendance: Math.round(avgAttendance * 100) / 100,
-        sessions
-      },
-      error: null
-    };
+    const result: any = await apiPost('/learners/management', {
+      action: 'get-college-attendance-analytics', collegeId, facultyId, startDate: start, endDate: end,
+    });
+    return result || { data: null, error: null };
   }
 };
 
@@ -877,46 +450,41 @@ export const learnerReportService = {
 
   // Generate academic performance report
   async generateAcademicReport(learnerId: string, schoolId: string, academicYear: string, term?: string) {
-    // Fetch academic data (grades, assessments, etc.)
-    const { data: assessments } = await supabase
-      .from('skill_assessments')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .eq('school_id', schoolId);
+    const assessmentsResult: any = await apiPost('/learners/management', {
+      action: 'get-learner-assessments', learnerId, schoolId,
+    });
+    const assessments = assessmentsResult?.data || [];
 
     const reportData = {
-      assessments: assessments?.map(a => ({
+      assessments: assessments.map((a: any) => ({
         skillName: a.assessment_type,
         level: 'intermediate' as const,
         score: Number(a.score) || 0,
         maxScore: 100,
         assessmentDate: a.created_at || new Date().toISOString()
-      })) || [],
+      })),
       overallSkillLevel: 'intermediate',
       recommendedSkills: [],
       improvementAreas: []
     };
 
     return await this.createReport({
-      learnerId,
-      schoolId,
+      learnerId, schoolId,
       reportType: 'academic',
       title: `Academic Performance Report - ${academicYear}${term ? ` (${term})` : ''}`,
-      academicYear,
-      term,
-      data: reportData
+      academicYear, term, data: reportData
     });
   },
 
   // Generate career readiness report
   async generateCareerReadinessReport(learnerId: string, schoolId: string, academicYear: string) {
-    const { data: assessments } = await supabase
-      .from('skill_assessments')
-      .select('*')
-      .eq('learner_id', learnerId);
+    const assessmentsResult: any = await apiPost('/learners/management', {
+      action: 'get-learner-assessments', learnerId,
+    });
+    const assessments = assessmentsResult?.data || [];
 
     const reportData = {
-      assessments: assessments?.map(a => ({
+      assessments: assessments.map((a: any) => ({
         skillName: a.assessment_type,
         level: 'intermediate' as const,
         score: Number(a.score) || 0,
@@ -929,49 +497,25 @@ export const learnerReportService = {
     };
 
     return await this.createReport({
-      learnerId,
-      schoolId,
+      learnerId, schoolId,
       reportType: 'career_readiness',
       title: `Career Readiness Report - ${academicYear}`,
-      academicYear,
-      data: reportData
+      academicYear, data: reportData
     });
   },
 
   // Create report record
   async createReport(reportData: Partial<LearnerReport>) {
-    const user = useAuthStore.getState().user;
-    
-    return await supabase
-      .from('learner_reports')
-      .insert({
-        learner_id: reportData.learnerId,
-        school_id: reportData.schoolId,
-        report_type: reportData.reportType,
-        title: reportData.title,
-        academic_year: reportData.academicYear,
-        term: reportData.term,
-        data: reportData.data,
-        generated_by: user?.user?.id,
-        has_school_logo: true,
-        is_parent_friendly: true
-      })
-      .select()
-      .single();
+    return await apiPost('/learners/management', {
+      action: 'create-report', reportData,
+    });
   },
 
   // Get all reports for a learner
   async getlearnerReports(learnerId: string, reportType?: string) {
-    let query = supabase
-      .from('learner_reports')
-      .select('*')
-      .eq('learner_id', learnerId);
-
-    if (reportType) {
-      query = query.eq('report_type', reportType);
-    }
-
-    return await query.order('generated_date', { ascending: false });
+    return await apiPost('/learners/management', {
+      action: 'get-learner-reports', learnerId, reportType,
+    });
   },
 
   // Export report to PDF (placeholder - implement with PDF library)
@@ -986,37 +530,18 @@ export const learnerReportService = {
 
   // Helper: Get monthly attendance
   async getMonthlyAttendance(learnerId: string) {
-    const { data } = await supabase
-      .from('attendance_records')
-      .select('date, status')
-      .eq('learner_id', learnerId)
-      .gte('date', new Date(new Date().setMonth(new Date().getMonth() - 6)).toISOString().split('T')[0]);
-
-    // Group by month
-    const monthlyData: Record<string, { present: number; absent: number; total: number }> = {};
-    data?.forEach(record => {
-      const month = record.date.substring(0, 7); // YYYY-MM
-      if (!monthlyData[month]) {
-        monthlyData[month] = { present: 0, absent: 0, total: 0 };
-      }
-      monthlyData[month].total++;
-      if (record.status === 'present') monthlyData[month].present++;
-      if (record.status === 'absent') monthlyData[month].absent++;
+    const result: any = await apiPost('/learners/management', {
+      action: 'get-monthly-attendance', learnerId,
     });
-
-    return monthlyData;
+    return result?.data || {};
   },
 
   // Helper: Get learner alerts
   async getlearnerAlerts(learnerId: string) {
-    const { data } = await supabase
-      .from('attendance_alerts')
-      .select('*')
-      .eq('learner_id', learnerId)
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    return data;
+    const result: any = await apiPost('/learners/management', {
+      action: 'get-learner-alerts', learnerId,
+    });
+    return result?.data || [];
   },
 
   // Helper: Group assessments by subject
@@ -1249,14 +774,9 @@ export const validationUtils = {
     dateOfBirth: string, 
     parentPhone: string
   ): Promise<boolean> {
-    const { data } = await supabase
-      .from('admission_applications')
-      .select('id')
-      .eq('learner_name', name)
-      .eq('date_of_birth', dateOfBirth)
-      .eq('phone', parentPhone)
-      .limit(1);
-
-    return (data && data.length > 0) || false;
+    const result: any = await apiPost('/learner-profile/actions', {
+      action: 'check-duplicate-application', name, dateOfBirth, phone: parentPhone,
+    });
+    return result?.data?.isDuplicate || false;
   }
 }

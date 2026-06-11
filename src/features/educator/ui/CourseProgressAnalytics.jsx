@@ -22,7 +22,7 @@ import {
     XAxis,
     YAxis
 } from 'recharts';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 
 /**
  * Course Progress Analytics Dashboard for Educators
@@ -47,23 +47,12 @@ const CourseProgressAnalytics = ({ courseId, courseName }) => {
     setLoading(true);
     try {
       // Fetch enrollments with progress
-      const { data: enrollmentData, error: enrollError } = await supabase
-        .from('course_enrollments')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('enrolled_at', { ascending: false });
-
-      if (enrollError) throw enrollError;
-      setEnrollments(enrollmentData || []);
+      const enrollRes = await apiPost('/educator/actions', { action: 'fetch-course-enrollments', courseId });
+      setEnrollments(enrollRes?.data || []);
 
       // Fetch lesson-level progress
-      const { data: progressData, error: progressError } = await supabase
-        .from('learner_course_progress')
-        .select('*')
-        .eq('course_id', courseId);
-
-      if (progressError) throw progressError;
-      setLessonProgress(progressData || []);
+      const progressRes = await apiPost('/educator/actions', { action: 'fetch-learner-course-progress', courseId });
+      setLessonProgress(progressRes?.data || []);
 
     } catch (error) {
       console.error('Error fetching analytics:', error);

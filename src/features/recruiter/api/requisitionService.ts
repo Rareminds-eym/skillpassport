@@ -1,61 +1,17 @@
 // Requisition API Service
-import { supabase } from '@/shared/api/supabaseClient';
 import type { RequisitionImportRow } from '../model/types';
+import { apiPost } from '@/shared/api/apiClient';
 
 /**
  * Import requisitions from Excel/CSV data
  */
 export async function importRequisitions(rows: RequisitionImportRow[]) {
-  const results = {
-    success: 0,
-    failed: 0,
-    errors: [] as Array<{ row: number; error: string }>
-  };
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    
-    try {
-      const requisitionData = {
-        title: row.job_title,
-        job_title: row.job_title,
-        company_name: row.company_name,
-        department: row.department,
-        location: row.location,
-        work_mode: row.work_mode,
-        employment_type: row.employment_type,
-        experience_required: row.experience_required,
-        salary_range: row.salary_range,
-        description: row.description,
-        requirements: row.requirements,
-        posted_date: row.posted_date,
-        status: row.status || 'open',
-        type: 'job'
-      };
-
-      const { error } = await supabase
-        .from('opportunities')
-        .insert(requisitionData);
-
-      if (error) {
-        results.failed++;
-        results.errors.push({
-          row: i + 1,
-          error: error.message
-        });
-      } else {
-        results.success++;
-      }
-    } catch (error) {
-      results.failed++;
-      results.errors.push({
-        row: i + 1,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
+  try {
+    const { data } = await apiPost('/recruiter/actions', { action: 'import-requisitions', rows });
+    return data || { success: 0, failed: 0, errors: [] };
+  } catch (error) {
+    return { success: 0, failed: rows.length, errors: [{ row: 0, error: error instanceof Error ? error.message : 'Import failed' }] };
   }
-
-  return results;
 }
 
 /**

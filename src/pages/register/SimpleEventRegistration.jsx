@@ -36,6 +36,7 @@ import {
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { Footer, Header, OTPInput, ShinyButton, Sparkles } from '@/shared/ui';
 import { paymentsApiService } from '@/features/subscription';
+import { ssoClient } from '@/shared/api/ssoClient';
 
 // Fixed registration fee
 const REGISTRATION_FEE = 499;
@@ -85,7 +86,7 @@ const validateForm = (form, emailVerified, consentGiven) => {
 
 // Send OTP email via worker
 const sendOTPEmail = async (email, otp, name) => {
-  const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
+  const response = await ssoClient.fetch(`${EMAIL_API_URL}/event-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -104,7 +105,7 @@ const sendConfirmationEmail = async (details) => {
   const { name, email, phone, amount, orderId, campaign } = details;
 
   try {
-    const response = await fetch(`${EMAIL_API_URL}/event-confirmation`, {
+    const response = await ssoClient.fetch(`${EMAIL_API_URL}/event-confirmation`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -374,7 +375,7 @@ export default function SimpleEventRegistration() {
 
     try {
       // Worker handles everything: check duplicate, create/reuse registration, create order
-      const orderData = await paymentsApiService.createEventOrder({
+      const envelope = await paymentsApiService.createEventOrder({
         amount: REGISTRATION_FEE * 100,
         currency: 'INR',
         planName: `Registration - ${campaign}`,
@@ -384,6 +385,7 @@ export default function SimpleEventRegistration() {
         campaign: campaign,
         origin: window.location.origin,
       }, null);
+      const orderData = envelope.data;
 
       // Worker returns registrationId (either existing or newly created)
       const registrationId = orderData.registrationId;

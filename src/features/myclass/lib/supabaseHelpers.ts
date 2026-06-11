@@ -1,4 +1,4 @@
-import { supabase } from '@/shared/api/supabaseClient';
+import { useAuthStore } from '@/shared/model/authStore';
 
 /**
  * Reusable Supabase query helpers

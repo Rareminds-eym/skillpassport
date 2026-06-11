@@ -1,6 +1,11 @@
+import { apiPost } from '@/shared/api/apiClient';
+
 /**
  * Assessment Generation Service
- * Generates dynamic assessments based on course name using AI
+ * Generates dynamic assessments based on course name using AI.
+ *
+ * Backend-first: all persistence and AI calls go through authenticated
+ * Pages Functions endpoints — no direct Supabase access from the frontend.
  */
 
 type AssessmentLevel = 'Beginner' | 'Intermediate' | 'Advanced';
@@ -36,8 +41,19 @@ interface SaveResult {
   error?: string;
 }
 
+interface LoadResult {
+  success: boolean;
+  data?: Assessment | null;
+  notFound?: boolean;
+  error?: string;
+}
+
 /**
- * Save generated assessment to database for reuse
+ * Save generated assessment to database for reuse.
+ *
+ * @deprecated The backend /question-generation/generate endpoint already
+ * caches generated assessments server-side; this function is kept only for
+ * barrel-export compatibility and has no active callers.
  */
 export async function saveGeneratedAssessment(
   courseName: string,
@@ -45,38 +61,15 @@ export async function saveGeneratedAssessment(
   assessment: Assessment
 ): Promise<SaveResult> {
   try {
-    const { supabase } = await import('@/shared/api/supabaseClient');
-    
-    console.log('💾 Saving generated assessment to database...', {
-      courseName,
-      courseId,
-      questionCount: assessment.questions?.length
+    const result = await apiPost<{ data?: { alreadyExists?: boolean; data?: any } }>('/assessment/actions', {
+      action: 'save-generated-assessment', courseName, courseId, assessment,
     });
 
-    const { data, error } = await supabase
-      .from('generated_external_assessment')
-      .insert({
-        certificate_name: courseName,
-        course_id: courseId,
-        assessment_level: assessment.level,
-        total_questions: assessment.questions.length,
-        questions: assessment.questions,
-        generated_by: 'AI'
-      })
-      .select()
-      .single();
-
-    if (error) {
-      // If duplicate (already exists), that's okay
-      if (error.code === '23505') {
-        console.log('ℹ️ Assessment already exists in database');
-        return { success: true, data: null, alreadyExists: true };
-      }
-      throw error;
+    if (result?.data?.alreadyExists) {
+      return { success: true, data: null, alreadyExists: true };
     }
 
-    console.log('✅ Assessment saved to database:', data.id);
-    return { success: true, data, alreadyExists: false };
+    return { success: true, data: result?.data?.data || null, alreadyExists: false };
   } catch (error) {
     const err = error as Error;
     console.error('❌ Error saving assessment to database:', err);
@@ -85,50 +78,37 @@ export async function saveGeneratedAssessment(
 }
 
 /**
- * Load generated assessment from database
+ * Load generated assessment from database.
+ *
+ * @deprecated The backend /question-generation/generate endpoint already
+ * checks the server-side cache before generating; this function is kept only
+ * for barrel-export compatibility and has no active callers.
  */
-export async function loadGeneratedAssessment(courseName: string): Promise<Assessment | null> {
+export async function loadGeneratedAssessment(courseName: string): Promise<LoadResult> {
   try {
-    const { supabase } = await import('@/shared/api/supabaseClient');
-    
-    console.log('🔍 Loading generated assessment from database...', courseName);
-
-    const { data, error } = await supabase
-      .from('generated_external_assessment')
-      .select('*')
-      .eq('certificate_name', courseName)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        console.log('ℹ️ No generated assessment found in database');
-        return null;
-      }
-      throw error;
-    }
-
-    console.log('✅ Loaded assessment from database:', {
-      id: data.id,
-      questionCount: data.questions?.length,
-      generatedAt: data.generated_at
+    const result = await apiPost<{ data?: Assessment | null }>('/assessment/actions', {
+      action: 'load-generated-assessment', courseName,
     });
 
-    // Transform to expected format
-    return {
-      course: data.certificate_name,
-      level: data.assessment_level,
-      total_questions: data.total_questions,
-      questions: data.questions
-    };
+    if (!result?.data) {
+      return { success: true, data: null, notFound: true };
+    }
+
+    return { success: true, data: result.data, notFound: false };
   } catch (error) {
     const err = error as Error;
     console.error('❌ Error loading assessment from database:', err);
-    return null;
+    return { success: false, error: err.message };
   }
 }
 
 /**
- * Generate assessment using backend API (which calls Claude AI)
+ * Generate assessment using the backend question-generation API.
+ *
+ * The backend handles the full lifecycle: checks the server-side cache in
+ * generated_external_assessment, generates via AI on a miss, validates,
+ * and caches the result. Requires authentication (withAuth on the router),
+ * so the call must go through apiPost/ssoClient for token attachment.
  */
 export async function generateAssessment(
   courseName: string,
@@ -139,45 +119,21 @@ export async function generateAssessment(
   try {
     console.log('🎯 Generating assessment for:', courseName, 'Level:', level);
 
-    // Call backend API (Cloudflare Worker) to generate assessment
-    // Use unified question generation API
-    const { getApiUrl } = await import('@/shared/api/apiUtils');
-    const apiUrl = `${getApiUrl('question-generation')}/generate`;
+    // Backend returns apiSuccess shape: { success, data: <assessment> }
+    const result = await apiPost<{ success: boolean; data: Assessment }>(
+      '/question-generation/generate',
+      { courseName, level, questionCount }
+    );
 
-    console.log('📡 Calling backend API:', apiUrl);
+    const assessment = result.data;
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        courseName,
-        level,
-        questionCount
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('❌ API Error:', errorData);
-      
-      if (response.status === 401) {
-        throw new Error('Invalid API key on server. Please check server configuration.');
-      }
-      
-      throw new Error(errorData.error || `API Error (${response.status}): Failed to generate assessment`);
-    }
-
-    const assessment: Assessment = await response.json();
-    
     console.log('✅ Generated assessment with AI:', {
       course: assessment.course,
       level: assessment.level,
       questionCount: assessment.questions?.length,
       firstQuestion: assessment.questions?.[0]?.question?.substring(0, 50) + '...'
     });
-    
+
     // Validate the assessment
     const validation = validateAssessment(assessment);
     if (!validation.valid) {
@@ -199,7 +155,7 @@ export async function generateAssessment(
  */
 export function validateAssessment(assessment: Assessment): ValidationResult {
   const errors: string[] = [];
-  
+
   if (!assessment.course) errors.push('Missing course name');
   if (!['Beginner', 'Intermediate', 'Advanced'].includes(assessment.level)) {
     errors.push('Invalid level');
@@ -210,7 +166,7 @@ export function validateAssessment(assessment: Assessment): ValidationResult {
   if (assessment.questions && assessment.questions.length !== assessment.total_questions) {
     errors.push('Question count mismatch');
   }
-  
+
   if (assessment.questions) {
     assessment.questions.forEach((q, idx) => {
       if (!q.id) errors.push(`Question ${idx + 1}: Missing id`);
@@ -218,13 +174,13 @@ export function validateAssessment(assessment: Assessment): ValidationResult {
       if (!q.question) errors.push(`Question ${idx + 1}: Missing question text`);
       if (!q.correct_answer) errors.push(`Question ${idx + 1}: Missing correct answer`);
       if (!q.skill_tag) errors.push(`Question ${idx + 1}: Missing skill tag`);
-      
+
       if (q.type === 'mcq' && (!q.options || q.options.length < 2)) {
         errors.push(`Question ${idx + 1}: MCQ must have at least 2 options`);
       }
     });
   }
-  
+
   return { valid: errors.length === 0, errors };
 }
 
@@ -250,18 +206,18 @@ export function getCachedAssessment(courseName: string): Assessment | null {
   try {
     const cacheKey = `assessment_${courseName.toLowerCase().replace(/\s+/g, '_')}`;
     const cached = localStorage.getItem(cacheKey);
-    
+
     if (cached) {
       const assessment: Assessment = JSON.parse(cached);
       // Check if cache is less than 7 days old
       const cacheAge = Date.now() - new Date(assessment.cachedAt!).getTime();
       const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-      
+
       if (cacheAge < maxAge) {
         return assessment;
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error loading cached assessment:', error);

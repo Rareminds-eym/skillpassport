@@ -20,7 +20,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiPost } from '@/shared/api/apiClient';
 import { 
   getShortlists, 
   getShortlistCandidates, 
@@ -1244,118 +1244,20 @@ const Shortlists = () => {
   const [sortField, setSortField] = useState<ShortlistSortField>('created_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  // Fetch shortlists from Supabase with SQL-optimized filters
+  // Fetch shortlists via backend API
   const fetchShortlists = async () => {
     try {
       setLoading(true);
 
-      const buildQuery = (from: 'shortlists_with_counts' | 'shortlists') => {
-        const baseSelect = from === 'shortlists' 
-          ? '*, shortlist_candidates(count)'
-          : '*';
-        let query = supabase.from(from).select(baseSelect as any);
+      const response = await apiPost('/recruiter/shortlists-actions', {
+        action: 'list',
+        searchQuery,
+        advancedFilters,
+        sortField,
+        sortDirection,
+      });
 
-        // Search (server-side for name/description/creator)
-        if (searchQuery) {
-          const q = searchQuery.trim();
-          query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%,created_by.ilike.%${q}%`);
-        }
-
-        // Status filter
-        if (advancedFilters.status.length > 0) {
-          query = query.in('status', advancedFilters.status);
-        }
-
-        // Sharing filter
-        if (advancedFilters.shared === 'shared') {
-          query = query.eq('shared', true);
-        } else if (advancedFilters.shared === 'private') {
-          query = query.eq('shared', false);
-        }
-
-        // Tags (match any)
-        if (advancedFilters.tags.length > 0) {
-          // overlaps (ov) operator
-          // @ts-ignore - overlaps is supported by postgrest-js
-          query = (query as any).overlaps('tags', advancedFilters.tags);
-        }
-
-        // Created By
-        if (advancedFilters.createdBy.length > 0) {
-          query = query.in('created_by', advancedFilters.createdBy);
-        }
-
-        // Date range
-        if (advancedFilters.dateRange.startDate) {
-          query = query.gte('created_date', advancedFilters.dateRange.startDate);
-        }
-        if (advancedFilters.dateRange.endDate) {
-          query = query.lte('created_date', advancedFilters.dateRange.endDate);
-        }
-
-        // Candidate count range (only available on view)
-        if (from === 'shortlists_with_counts' && advancedFilters.candidateCountRange !== 'all') {
-          const map: Record<string, { min: number; max: number | null }> = {
-            '0': { min: 0, max: 0 },
-            '1-5': { min: 1, max: 5 },
-            '6-20': { min: 6, max: 20 },
-            '21-50': { min: 21, max: 50 },
-            '50+': { min: 51, max: null },
-            'all': { min: 0, max: null }
-          };
-          const r = map[advancedFilters.candidateCountRange];
-          if (r) {
-            // @ts-ignore candidate_count exists on the view
-            query = query.gte('candidate_count', r.min);
-            if (r.max !== null) {
-              // @ts-ignore
-              query = query.lte('candidate_count', r.max);
-            }
-          }
-        }
-
-        // Ordering
-        const asc = sortDirection === 'asc';
-        if (sortField === 'candidate_count') {
-          // Only order in SQL if view is used (field exists)
-          if (from === 'shortlists_with_counts') {
-            // @ts-ignore
-            query = query.order('candidate_count', { ascending: asc });
-          }
-        } else if (sortField === 'share_expiry') {
-          // Handle nulls last when sorting by expiry
-          // @ts-ignore
-          query = query.order('share_expiry', { ascending: asc, nullsFirst: !asc });
-        } else {
-          query = query.order(sortField, { ascending: asc });
-        }
-        return query;
-      };
-
-      // Try the optimized view first, fall back to base table if not available
-      let usingView = true;
-      let { data, error } = await buildQuery('shortlists_with_counts');
-      if (error) {
-        usingView = false;
-        ({ data, error } = await buildQuery('shortlists'));
-      }
-      if (error) throw error;
-
-      const rows = (data as any[]) || [];
-      const formatted = rows.map((item) => ({
-        ...item,
-        candidate_count: item.candidate_count ?? (item.shortlist_candidates?.[0]?.count ?? 0)
-      }));
-
-      // If ordering by candidate_count and we couldn't use view, sort on client
-      if (!usingView && sortField === 'candidate_count') {
-        formatted.sort((a: any, b: any) => {
-          const diff = (a.candidate_count || 0) - (b.candidate_count || 0);
-          return sortDirection === 'asc' ? diff : -diff;
-        });
-      }
-
-      setShortlists(formatted);
+      setShortlists(response.data || []);
     } catch (error) {
       logger.error('Error fetching shortlists', error);
       alert('Failed to load shortlists');

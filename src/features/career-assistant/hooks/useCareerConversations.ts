@@ -1,15 +1,5 @@
-/**
- * Hook for managing Career AI conversations
- * Fetches, creates, and manages conversation history from Supabase
- * 
- * PERFORMANCE OPTIMIZATIONS:
- * - Pagination: Load 20 conversations at a time
- * - Message limiting: Load only last 50 messages per conversation
- * - Lazy loading: Load full messages only when conversation is opened
- */
-
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/shared/api/supabaseClient';
+import { apiGet, apiDelete } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
 import { CONVERSATIONS_PER_PAGE, MAX_MESSAGES_PER_CONVERSATION } from '../constants';
@@ -30,7 +20,7 @@ export interface Conversation {
   messages: ConversationMessage[];
   created_at: string;
   updated_at: string;
-  message_count?: number; // Cached count for performance
+  message_count?: number;
 }
 
 export interface UseCareerConversationsReturn {
@@ -58,11 +48,6 @@ export function useCareerConversations(): UseCareerConversationsReturn {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
-  /**
-   * Fetch conversations with pagination
-   * OPTIMIZATION: Only loads conversation metadata, not full messages
-   * FIX: Uses functional setState to avoid stale closure
-   */
   const fetchConversations = useCallback(async (reset = false) => {
     if (!user?.id) return;
 
@@ -71,69 +56,35 @@ export function useCareerConversations(): UseCareerConversationsReturn {
 
     try {
       const currentPage = reset ? 0 : page;
-      const from = currentPage * CONVERSATIONS_PER_PAGE;
-      const to = from + CONVERSATIONS_PER_PAGE - 1;
+      const response: any = await apiGet(`/career/conversations?page=${currentPage}`);
 
-      const { data, error: fetchError, count } = await supabase
-        .from('career_ai_conversations')
-        .select('id, title, created_at, updated_at, message_count', { count: 'exact' })
-        .eq('learner_id', user.id)
-        .order('updated_at', { ascending: false })
-        .range(from, to);
-
-      if (fetchError) {
-        logger.error('Failed to fetch conversations', fetchError instanceof Error ? fetchError : new Error(String(fetchError)), {
-          page: currentPage
-        });
-        setError('Failed to load conversations');
-        return;
-      }
-
-      // Add empty messages array for list display
-      const conversationsWithEmptyMessages = (data || []).map(conv => ({
+      const data = response.data || {};
+      const items = (data.conversations || []).map((conv: any) => ({
         ...conv,
-        messages: [] as ConversationMessage[]
+        messages: [] as ConversationMessage[],
       }));
 
-      // Use functional setState to avoid stale closure
       setConversations(prev => {
-        if (reset) {
-          return conversationsWithEmptyMessages;
-        }
-        return [...prev, ...conversationsWithEmptyMessages];
+        if (reset) return items;
+        return [...prev, ...items];
       });
 
-      if (reset) {
-        setPage(0);
-      }
-
-      // Calculate total loaded using functional approach
-      const newLength = conversationsWithEmptyMessages.length;
-      setHasMore(count ? (reset ? newLength : newLength + (currentPage * CONVERSATIONS_PER_PAGE)) < count : false);
-
+      if (reset) setPage(0);
+      setHasMore(data.hasMore ?? false);
     } catch (err) {
-      logger.error('Exception in fetchConversations', err instanceof Error ? err : new Error(String(err)), {
-        page
-      });
+      logger.error('Exception in fetchConversations', err instanceof Error ? err : new Error(String(err)), { page });
       setError('Failed to load conversations');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, page]); // Removed conversations.length dependency
+  }, [user?.id, page]);
 
-  /**
-   * Load more conversations (pagination)
-   */
   const loadMore = useCallback(async () => {
     if (!hasMore || loading) return;
     setPage(prev => prev + 1);
     await fetchConversations(false);
   }, [hasMore, loading, fetchConversations]);
 
-  /**
-   * Load a specific conversation with messages
-   * OPTIMIZATION: Only loads last 50 messages for performance
-   */
   const loadConversation = useCallback(async (id: string) => {
     if (!user?.id) return;
 
@@ -141,26 +92,20 @@ export function useCareerConversations(): UseCareerConversationsReturn {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('career_ai_conversations')
-        .select('*')
-        .eq('id', id)
-        .eq('learner_id', user.id)
-        .single();
+      const response: any = await apiGet(`/career/conversation?id=${encodeURIComponent(id)}`);
+      const data = response.data;
 
-      if (fetchError) {
-        logger.error('Failed to load conversation', fetchError instanceof Error ? fetchError : new Error(String(fetchError)));
+      if (!data) {
         setError('Failed to load conversation');
         return;
       }
 
-      // Limit messages to last 50 for performance
       const allMessages = data.messages || [];
       const limitedMessages = allMessages.slice(-MAX_MESSAGES_PER_CONVERSATION);
 
       setCurrentConversation({
         ...data,
-        messages: limitedMessages
+        messages: limitedMessages,
       });
       setCurrentConversationId(id);
     } catch (err) {
@@ -171,61 +116,43 @@ export function useCareerConversations(): UseCareerConversationsReturn {
     }
   }, [user?.id]);
 
-  // Create a new conversation (just resets state, actual creation happens on first message)
   const createNewConversation = useCallback(() => {
     setCurrentConversation(null);
     setCurrentConversationId(null);
   }, []);
 
-  // Delete a conversation with optimistic update
   const deleteConversation = useCallback(async (id: string) => {
     if (!user?.id) return;
 
-    // Optimistic update: Remove from UI immediately
     const previousConversations = conversations;
     setConversations(prev => prev.filter(c => c.id !== id));
 
-    // If deleted conversation was current, reset
     if (currentConversationId === id) {
       setCurrentConversation(null);
       setCurrentConversationId(null);
     }
 
     try {
-      const { error: deleteError } = await supabase
-        .from('career_ai_conversations')
-        .delete()
-        .eq('id', id)
-        .eq('learner_id', user.id);
-
-      if (deleteError) {
-        logger.error('Failed to delete conversation', deleteError instanceof Error ? deleteError : new Error(String(deleteError)));
-        setError('Failed to delete conversation');
-        // Rollback on error
-        setConversations(previousConversations);
-        if (currentConversationId === id) {
-          const conv = previousConversations.find(c => c.id === id);
-          if (conv) {
-            setCurrentConversation(conv);
-            setCurrentConversationId(id);
-          }
-        }
-        return;
-      }
+      await apiDelete(`/career/conversations?id=${encodeURIComponent(id)}`);
     } catch (err) {
       logger.error('Exception in deleteConversation', err instanceof Error ? err : new Error(String(err)));
       setError('Failed to delete conversation');
-      // Rollback on error
       setConversations(previousConversations);
+      if (currentConversationId === id) {
+        const conv = previousConversations.find(c => c.id === id);
+        if (conv) {
+          setCurrentConversation(conv);
+          setCurrentConversationId(id);
+        }
+      }
     }
   }, [user?.id, currentConversationId, conversations]);
 
-  // Fetch conversations on mount
   useEffect(() => {
     if (user?.id) {
-      fetchConversations(true); // Reset on mount
+      fetchConversations(true);
     }
-  }, [user?.id, fetchConversations]); // Added fetchConversations to dependencies
+  }, [user?.id, fetchConversations]);
 
   return {
     conversations,

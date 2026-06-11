@@ -1,6 +1,7 @@
+import { useAuthStore } from '@/shared/model/authStore';
 import { ssoClient } from '@/shared/api/ssoClient';
-import { supabase } from '@/shared/api/supabaseClient';
-import { getApiUrl, getAuthHeaders } from '@/shared/api/apiUtils';
+import { apiPost } from '@/shared/api/apiClient';
+import { getApiUrl } from '@/shared/api/apiUtils';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('video-summarizer');
@@ -228,12 +229,8 @@ export async function processVideo(
       }
 
       if (status === 'failed') {
-        const { data: failedRecord } = await supabase
-          .from('video_summaries')
-          .select('error_message, processing_status')
-          .eq('id', jobId)
-          .single();
-        const dbError = failedRecord?.error_message || 'Video processing failed (no details available)';
+        const failedRes = await apiPost('/ai-tutor/actions', { action: 'get-failed-record', id: jobId });
+        const dbError = failedRes?.data?.error_message || 'Video processing failed (no details available)';
         throw new Error(`Processing failed\n\nDatabase error_message: ${dbError}`);
       }
 
@@ -254,21 +251,8 @@ export async function processVideo(
 
 export async function getVideoSummaryByLesson(lessonId: string): Promise<VideoSummary | null> {
   try {
-    const { data, error } = await supabase
-      .from('video_summaries')
-      .select('*')
-      .eq('lesson_id', lessonId)
-      .eq('processing_status', 'completed')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      logger.warn('Error querying video_summaries by lesson_id', { error, lessonId });
-      return null;
-    }
-
-    return data ? transformVideoSummary(data) : null;
+    const response = await apiPost('/ai-tutor/actions', { action: 'get-video-summary-by-lesson', lesson_id: lessonId });
+    return response?.data ? transformVideoSummary(response.data) : null;
   } catch (err) {
     logger.warn('Exception querying video_summaries by lesson_id', { err, lessonId });
     return null;
@@ -279,111 +263,24 @@ export async function getVideoSummaryByLesson(lessonId: string): Promise<VideoSu
  * Get video summary with robust error handling and fallback strategies
  */
 export async function getVideoSummaryRobust(lessonId?: string, videoUrl?: string): Promise<VideoSummary | null> {
-  // Strategy 1: Try lesson_id first (most reliable for presigned URLs)
-  if (lessonId) {
-    try {
-      logger.info('Attempting lesson_id lookup', { lessonId });
-      
-      // Get ANY status (completed, failed, processing) to check what exists
-      const { data, error } = await supabase
-        .from('video_summaries')
-        .select('*')
-        .eq('lesson_id', lessonId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        logger.warn('Lesson_id query error', { error, lessonId });
-      } else if (data) {
-        logger.info('Found by lesson_id', { status: data.processing_status, lessonId });
-        
-        // Return completed summaries
-        if (data.processing_status === 'completed') {
-          return transformVideoSummary(data);
-        }
-        
-        // Return failed summaries (so UI can show the error)
-        if (data.processing_status === 'failed') {
-          return transformVideoSummary(data);
-        }
-        
-        // Return processing summaries (so UI can poll)
-        if (data.processing_status === 'processing') {
-          return transformVideoSummary(data);
-        }
-      }
-    } catch (err) {
-      logger.warn('Lesson_id lookup failed', { err, lessonId });
+  try {
+    const response = await apiPost('/ai-tutor/actions', { action: 'get-video-summary-robust', lesson_id: lessonId, video_url: videoUrl });
+    const data = response?.data;
+    if (!data) return null;
+    if (data.processing_status === 'completed' || data.processing_status === 'failed' || data.processing_status === 'processing') {
+      return transformVideoSummary(data);
     }
+    return null;
+  } catch (err) {
+    logger.warn('getVideoSummaryRobust failed', { err, lessonId });
+    return null;
   }
-
-  // Strategy 2: Try video_url if lesson_id failed (less reliable for presigned URLs)
-  if (videoUrl) {
-    try {
-      logger.info('Attempting video_url lookup');
-      
-      // Extract the base file path from presigned URL (remove query params)
-      const baseUrl = videoUrl.split('?')[0];
-      
-      const { data, error } = await supabase
-        .from('video_summaries')
-        .select('*')
-        .or(`video_url.eq.${videoUrl},video_url.like.${baseUrl}%`)
-        .eq('processing_status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (data) {
-        logger.info('Found by video_url');
-        return transformVideoSummary(data);
-      }
-      
-      if (error) {
-        logger.warn('Video_url query error', { error });
-      }
-    } catch (err) {
-      logger.warn('Video_url lookup failed', { err });
-    }
-  }
-
-  logger.info('No summary found with any strategy');
-  return null;
 }
 
 export async function getVideoSummaryByUrl(videoUrl: string): Promise<VideoSummary | null> {
   try {
-    // First, try to find by exact URL match (for backward compatibility)
-    let { data, error } = await supabase
-      .from('video_summaries')
-      .select('*')
-      .eq('video_url', videoUrl)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // If not found and the URL looks like a presigned URL, try to find by file key
-    if (!data && !error && videoUrl.includes('X-Amz-')) {
-      const fileKey = extractFileKey(videoUrl);
-      
-      // Get all video summaries and check if any match the file key
-      const { data: allSummaries, error: allError } = await supabase
-        .from('video_summaries')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (!allError && allSummaries) {
-        data = allSummaries.find(summary => isSameFile(summary.video_url, videoUrl)) || null;
-      }
-    }
-
-    if (error) {
-      logger.warn('Error querying video_summaries by video_url', { error, videoUrl });
-      return null;
-    }
-
-    return data ? transformVideoSummary(data) : null;
+    const response = await apiPost('/ai-tutor/actions', { action: 'get-video-summary-by-url', video_url: videoUrl });
+    return response?.data ? transformVideoSummary(response.data) : null;
   } catch (err) {
     logger.warn('Exception querying video_summaries by video_url', { err, videoUrl });
     return null;
@@ -392,18 +289,8 @@ export async function getVideoSummaryByUrl(videoUrl: string): Promise<VideoSumma
 
 export async function getVideoSummary(id: string): Promise<VideoSummary | null> {
   try {
-    const { data, error } = await supabase
-      .from('video_summaries')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      logger.warn('Error querying video_summaries by id', { error, id });
-      return null;
-    }
-
-    return data ? transformVideoSummary(data) : null;
+    const response = await apiPost('/ai-tutor/actions', { action: 'get-video-summary', id });
+    return response?.data ? transformVideoSummary(response.data) : null;
   } catch (err) {
     logger.warn('Exception querying video_summaries by id', { err, id });
     return null;
@@ -412,13 +299,7 @@ export async function getVideoSummary(id: string): Promise<VideoSummary | null> 
 
 export async function deleteVideoSummary(id: string): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('video_summaries')
-      .delete()
-      .eq('id', id);
-    if (error) {
-      logger.warn('Error deleting video summary', { error, id });
-    }
+    await apiPost('/ai-tutor/actions', { action: 'delete-video-summary', id });
   } catch (err) {
     logger.warn('Exception deleting video summary', { err, id });
   }
@@ -429,22 +310,12 @@ export async function checkProcessingStatus(id: string): Promise<{
   summary?: VideoSummary;
 }> {
   try {
-    const { data, error } = await supabase
-      .from('video_summaries')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) {
-      logger.warn('Error checking processing status', { error, id });
-      return { status: 'not_found' };
-    }
-
-    if (!data) return { status: 'not_found' };
-
+    const response = await apiPost('/ai-tutor/actions', { action: 'check-processing-status', id });
+    const result = response?.data;
+    if (!result) return { status: 'not_found' };
     return {
-      status: data.processing_status,
-      summary: data.processing_status === 'completed' ? transformVideoSummary(data) : undefined,
+      status: result.status,
+      summary: result.status === 'completed' && result.summary ? transformVideoSummary(result.summary) : undefined,
     };
   } catch (err) {
     logger.warn('Exception checking processing status', { err, id });
