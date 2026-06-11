@@ -5,8 +5,8 @@
  * @module assessment/services/assessment-repository
  */
 
-import { createSupabaseAdminClient, type PagesEnv } from '../../../../src/functions-lib/supabase';
-import type { Database } from '@/shared/types/supabase';
+import { getServiceClient } from '../../../lib/supabase';
+import type { PagesEnv } from '../../../lib/types';
 
 type QuestionType = 'aptitude' | 'knowledge';
 type GradeLevel = 'after10' | 'after12' | 'higher_secondary' | 'college' | 'middle' | 'highschool';
@@ -51,7 +51,7 @@ export async function getSavedQuestionsForLearner(
   });
 
   try {
-    const supabase = createSupabaseAdminClient(env);
+    const supabase = getServiceClient(env as any);
 
     const { data, error } = await supabase
       .from('career_assessment_ai_questions')
@@ -151,7 +151,7 @@ export async function saveAptitudeQuestions(
   );
 
   try {
-    const supabase = createSupabaseAdminClient(env);
+    const supabase = getServiceClient(env as any);
 
     const saveData = {
       learner_id: learnerId,
@@ -233,7 +233,7 @@ export async function saveKnowledgeQuestions(
   );
 
   try {
-    const supabase = createSupabaseAdminClient(env);
+    const supabase = getServiceClient(env as any);
 
     const { data, error } = await supabase
       .from('career_assessment_ai_questions')
@@ -280,7 +280,7 @@ export async function clearSavedQuestionsForLearner(
   streamId: string
 ): Promise<void> {
   try {
-    const supabase = createSupabaseAdminClient(env);
+    const supabase = getServiceClient(env as any);
 
     await supabase
       .from('career_assessment_ai_questions')
