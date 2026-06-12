@@ -395,7 +395,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!userId) return apiError(400, 'VALIDATION_ERROR', 'userId required', context.request, { startTime });
         const { data, error } = await supabase
           .from('learners')
-          .select('id, learner_id, users!inner(firstName, lastName)')
+ow          .select('id, learner_id, name, users!inner(firstName, lastName)')
           .eq('user_id', userId)
           .single();
         if (error) return apiDbError(error, context.request, { startTime });

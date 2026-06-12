@@ -22,7 +22,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         let query = supabase
           .from('courses')
           .select('*')
-          .order('createdAt', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (params.category) {
           query = query.eq('category', params.category);
@@ -60,8 +60,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase
           .from('course_enrollments')
           .select('*')
-          .eq('userId', userId)
-          .order('enrolledAt', { ascending: false });
+          .eq('learner_id', userId)
+          .order('enrolled_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
       }
@@ -72,8 +72,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase
           .from('course_enrollments')
           .select('id')
-          .eq('userId', userId)
-          .eq('courseId', courseId)
+          .eq('learner_id', userId)
+          .eq('course_id', courseId)
           .maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
         return apiSuccess({ enrolled: data !== null }, context.request, { startTime });
@@ -83,10 +83,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { userId, courseId } = params;
         if (!userId || !courseId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId or courseId', context.request, { startTime });
         const { data, error } = await supabase
-          .from('course_progress')
+          .from('learner_course_progress')
           .select('*')
-          .eq('userId', userId)
-          .eq('courseId', courseId)
+          .eq('learner_id', userId)
+          .eq('course_id', courseId)
           .maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || null, context.request, { startTime });
@@ -96,10 +96,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { userId } = params;
         if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
         const { data, error } = await supabase
-          .from('course_progress')
+          .from('learner_course_progress')
           .select('*')
-          .eq('userId', userId)
-          .order('lastAccessedAt', { ascending: false });
+          .eq('learner_id', userId)
+          .order('last_accessed', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
       }
@@ -208,9 +208,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase
           .from('course_enrollments')
           .insert({
-            userId,
-            courseId,
-            enrolledAt: new Date().toISOString(),
+            learner_id: userId,
+            course_id: courseId,
+            enrolled_at: new Date().toISOString(),
             status: 'active',
           })
           .select()
@@ -225,8 +225,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { error } = await supabase
           .from('course_enrollments')
           .update({ status: 'dropped' })
-          .eq('userId', userId)
-          .eq('courseId', courseId);
+          .eq('learner_id', userId)
+          .eq('course_id', courseId);
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true }, context.request, { startTime });
       }
@@ -238,10 +238,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .from('course_enrollments')
           .update({
             status: 'completed',
-            completedAt: new Date().toISOString(),
+            completed_at: new Date().toISOString(),
           })
-          .eq('userId', userId)
-          .eq('courseId', courseId);
+          .eq('learner_id', userId)
+          .eq('course_id', courseId);
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true }, context.request, { startTime });
       }
@@ -250,15 +250,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { userId, courseId, completedLessons, totalLessons, progressPercentage } = params;
         if (!userId || !courseId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId or courseId', context.request, { startTime });
         const { error } = await supabase
-          .from('course_progress')
-          .upsert({
-            userId,
-            courseId,
-            completedLessons,
-            totalLessons,
-            progressPercentage,
-            lastAccessedAt: new Date().toISOString(),
-          });
+          .from('course_enrollments')
+          .update({
+            completed_lessons: completedLessons,
+            total_lessons: totalLessons,
+            progress: progressPercentage,
+            last_accessed: new Date().toISOString(),
+          })
+          .eq('learner_id', userId)
+          .eq('course_id', courseId);
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true }, context.request, { startTime });
       }
@@ -266,20 +266,18 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'save-certificate': {
         const { certificateData, learnerId, courseId } = params;
         if (!certificateData || !learnerId || !courseId) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request, { startTime });
-        
-        // Save to certificates table
+
         const { error: certificateError } = await supabase.from('certificates').insert(certificateData);
         if (certificateError) return apiDbError(certificateError, context.request, { startTime });
-        
-        // Update course_enrollments
+
         const { error: enrollmentError } = await supabase
           .from('course_enrollments')
           .update({ certificate_url: certificateData.link || certificateData.document_url })
-          .eq('userId', learnerId) // Use userId instead of learner_id as seen in enroll-in-course
-          .eq('courseId', courseId);
-          
+          .eq('learner_id', learnerId)
+          .eq('course_id', courseId);
+
         if (enrollmentError) return apiDbError(enrollmentError, context.request, { startTime });
-        
+
         return apiSuccess({ success: true }, context.request, { startTime });
       }
 
@@ -287,13 +285,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { userId, courseId, lessonId } = params;
         if (!userId || !courseId || !lessonId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, courseId, or lessonId', context.request, { startTime });
         const { error } = await supabase
-          .from('lesson_completions')
-          .insert({
-            userId,
-            courseId,
-            lessonId,
-            completedAt: new Date().toISOString(),
-          });
+          .from('learner_course_progress')
+          .upsert({
+            learner_id: userId,
+            course_id: courseId,
+            lesson_id: lessonId,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+          }, { onConflict: 'learner_id,course_id,lesson_id' });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true }, context.request, { startTime });
       }
