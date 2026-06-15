@@ -124,8 +124,21 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     if (typeof value === 'string') {
       return value === '' ? null : value;
     }
-    // Convert null/undefined to null, everything else to string
-    return value === null || value === undefined ? null : String(value);
+    if (value === null || value === undefined) {
+      return null;
+    }
+    // For non-string, non-null values, preserve them by converting to string
+    // This handles cases where frontend sends numbers or booleans
+    return String(value);
+  };
+
+  // Helper for numeric fields
+  const toNullIfEmptyNumber = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const num = Number(value);
+    return isNaN(num) ? null : num;
   };
 
   try {
@@ -154,7 +167,7 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     if (body.programSectionId !== undefined) updateData.program_section_id = toNullIfEmpty(body.programSectionId);
     if (body.grade !== undefined) updateData.grade = toNullIfEmpty(body.grade);
     if (body.gradeStartDate !== undefined) updateData.grade_start_date = toNullIfEmpty(body.gradeStartDate);
-    if (body.semester !== undefined) updateData.semester = toNullIfEmpty(body.semester);
+    if (body.semester !== undefined) updateData.semester = toNullIfEmptyNumber(body.semester);
     if (body.section !== undefined) updateData.section = toNullIfEmpty(body.section);
     if (body.university !== undefined) updateData.university = toNullIfEmpty(body.university);
     if (body.college !== undefined) updateData.college_school_name = toNullIfEmpty(body.college);
