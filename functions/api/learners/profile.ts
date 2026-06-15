@@ -153,6 +153,8 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     if (body.university !== undefined) updateData.university = toNullIfEmpty(body.university);
     if (body.college !== undefined) updateData.college_school_name = toNullIfEmpty(body.college);
     if (body.school_name !== undefined) updateData.school_name = toNullIfEmpty(body.school_name);
+    
+    // Handle branch field with proper validation to avoid overwriting with undefined
     if (body.branch !== undefined) {
       const branchValue = toNullIfEmpty(body.branch);
       updateData.branch_field = branchValue;

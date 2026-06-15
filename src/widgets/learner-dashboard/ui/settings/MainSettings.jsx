@@ -531,17 +531,37 @@ const MainSettings = () => {
     }
 
     if (field === 'schoolId') {
+      // Always handle the state updates, even if clearing the field
       setShowCustomSchool(false);
       setCustomSchoolName('');
-      setShowCustomSchoolClass(false);
-      setCustomSchoolClassName('');
-      setProfileData((prev) => ({
-        ...prev,
-        schoolId: value,
-        schoolClassId: '',
-        section: '',
-        school_name: '',
-      }));
+      
+      // Only clear dependent fields if a valid schoolId is being set
+      if (value && value !== '' && value !== 'add_new') {
+        setShowCustomSchoolClass(false);
+        setCustomSchoolClassName('');
+        setProfileData((prev) => ({
+          ...prev,
+          schoolId: value,
+          schoolClassId: '',
+          section: '',
+          school_name: '',
+        }));
+      } else if (value === '') {
+        // If clearing schoolId, also clear dependent fields
+        setProfileData((prev) => ({
+          ...prev,
+          schoolId: '',
+          schoolClassId: '',
+          section: '',
+          school_name: '',
+        }));
+      } else {
+        // Just update schoolId without clearing dependent fields
+        setProfileData((prev) => ({
+          ...prev,
+          schoolId: value,
+        }));
+      }
       return;
     }
 
@@ -555,7 +575,8 @@ const MainSettings = () => {
           ? schoolClasses.find(sc => sc.id === value) 
           : null;
         
-        if (selectedClass && selectedClass.grade) {
+        // Use optional chaining for safe property access
+        if (selectedClass?.grade) {
           // Map school class grade to Academic Details grade format
           const gradeMapping = {
             '6': 'Grade 6',
@@ -1151,8 +1172,13 @@ const MainSettings = () => {
         const selectedClass = Array.isArray(schoolClasses) 
           ? schoolClasses.find(sc => sc.id === dataToSave.schoolClassId) 
           : null;
-        if (selectedClass) {
-          dataToSave.section = selectedClass.section || dataToSave.section || null;
+        
+        // Use optional chaining and handle section properly
+        if (selectedClass?.section) {
+          dataToSave.section = selectedClass.section;
+        } else if (selectedClass && !dataToSave.section) {
+          // If selectedClass exists but has no section, preserve existing or set to null
+          dataToSave.section = dataToSave.section || null;
         }
       }
       
