@@ -1385,7 +1385,10 @@ const CoursePlayer = () => {
       const learnerIdText = learnerRecord.learner_id;
       
       // Get learner name from learners table
-      const prefillName = learnerRecord.name || user?.email?.split('@')[0] || '';
+      const userFullName = learnerRecord.users
+        ? [learnerRecord.users.firstName, learnerRecord.users.lastName].filter(Boolean).join(' ')
+        : '';
+      const prefillName = learnerRecord.name || userFullName || user?.email?.split('@')[0] || '';
 
       await apiPost('/learner-pages/actions', {
         action: 'complete-course-enrollment',
