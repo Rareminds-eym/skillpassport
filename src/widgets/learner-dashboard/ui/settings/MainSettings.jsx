@@ -551,7 +551,10 @@ const MainSettings = () => {
       const isUniversityPath = profileData.universityId || profileData.universityCollegeId || profileData.programId;
       
       if (!isUniversityPath) {
-        const selectedClass = schoolClasses.find(sc => sc.id === value);
+        const selectedClass = Array.isArray(schoolClasses) 
+          ? schoolClasses.find(sc => sc.id === value) 
+          : null;
+        
         if (selectedClass && selectedClass.grade) {
           // Map school class grade to Academic Details grade format
           const gradeMapping = {
@@ -570,6 +573,9 @@ const MainSettings = () => {
         if (selectedClass) {
           setShowCustomSchoolClass(false);
           setCustomSchoolClassName('');
+          // NOTE: section field is used differently for school vs university learners
+          // For school learners: stores class section (e.g., 'A', 'B', 'C')
+          // For university learners: stores semester/section info (e.g., 'Sem 3-A')
           handleProfileChange('section', selectedClass.section || '');
         }
       }
@@ -1142,7 +1148,9 @@ const MainSettings = () => {
 
       // If schoolClassId is selected from dropdown, persist its display section too.
       if (dataToSave.schoolClassId && dataToSave.schoolClassId !== null) {
-        const selectedClass = schoolClasses.find(sc => sc.id === dataToSave.schoolClassId);
+        const selectedClass = Array.isArray(schoolClasses) 
+          ? schoolClasses.find(sc => sc.id === dataToSave.schoolClassId) 
+          : null;
         if (selectedClass) {
           dataToSave.section = selectedClass.section || dataToSave.section || null;
         }
