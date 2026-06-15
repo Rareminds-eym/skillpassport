@@ -112,14 +112,25 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         .maybeSingle();
 
       if (dbPlan) {
-        const yearlyPrice = dbPlan.pricing_matrix?.all?.yearly;
-        if (typeof yearlyPrice !== 'number') {
-          logger.warn('Plan has no yearly price', { planId: body.planId, pricingMatrix: dbPlan.pricing_matrix });
-          return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing', context.request);
+        const pricingMatrix = dbPlan.pricing_matrix as Record<string, any>;
+        const clientAmount = body.amount as number;
+        let isValidPrice = false;
+
+        if (pricingMatrix) {
+          for (const key in pricingMatrix) {
+            const price = pricingMatrix[key]?.yearly;
+            if (typeof price === 'number') {
+              const expectedPaise = Math.round(price * 100);
+              if (clientAmount === expectedPaise) {
+                isValidPrice = true;
+                break;
+              }
+            }
+          }
         }
-        const expectedPaise = Math.round(yearlyPrice * 100);
-        if (body.amount !== expectedPaise) {
-          logger.warn('Price mismatch', { clientAmount: body.amount, expected: expectedPaise, planId: body.planId });
+
+        if (!isValidPrice) {
+          logger.warn('Price mismatch or no valid pricing found', { clientAmount, planId: body.planId, pricingMatrix });
           return apiError(400, 'VALIDATION_ERROR', 'Plan price does not match. Please refresh and try again.', context.request);
         }
       } else {

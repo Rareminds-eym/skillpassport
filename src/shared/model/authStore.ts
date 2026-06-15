@@ -342,6 +342,14 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { authenticated } = await ssoClient.initSession();
           if (authenticated) {
+            // Guard against concurrent getMe() calls during initialization
+            const currentState = get();
+            if (currentState.isAuthenticated && currentState.user) {
+              set((state) => { state.loading = false; });
+              startTokenRefresh();
+              return;
+            }
+
             const me = await ssoClient.getMe();
             const user = mapMeToUser(me);
             set((state) => {
@@ -465,8 +473,18 @@ export const useAuthStore = create<AuthState>()(
 // ─── Cross-tab sync via auth-client ────────────────────────────
 
 if (typeof window !== 'undefined') {
+  // Handle session expiration without hard reloads
+  window.addEventListener('sso-session-expired', () => {
+    const store = useAuthStore.getState();
+    stopTokenRefresh();
+    store.setUser(null);
+  });
+
   ssoClient.onAuthStateChange(async (event) => {
     const store = useAuthStore.getState();
+
+    // Skip handling if auth is still initializing to prevent race conditions
+    if (store.loading) return;
 
     if (event === 'LOGOUT') {
       stopTokenRefresh();

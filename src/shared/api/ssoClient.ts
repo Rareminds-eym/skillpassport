@@ -16,8 +16,10 @@ if (!SSO_BASE_URL) {
 export const ssoClient = new AuthClient({
   baseURL: SSO_BASE_URL || '',
   onSessionExpired: () => {
-    // Redirect to login when session cannot be restored
-    window.location.href = '/login';
+    // Dispatch event to auth store instead of hard page reload to avoid infinite redirect loops
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sso-session-expired'));
+    }
   },
   debug: import.meta.env.DEV,
 });

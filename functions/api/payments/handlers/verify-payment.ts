@@ -78,12 +78,24 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
 
     // Authoritative price from DB — never trust client-supplied price
-    const yearlyPrice = validPlan.pricing_matrix?.all?.yearly;
-    if (typeof yearlyPrice !== 'number') {
-      console.error('[VerifyPayment] Plan has no yearly price:', plan.id, validPlan.pricing_matrix);
-      return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing', context.request);
+    const pricingMatrix = validPlan.pricing_matrix as Record<string, any>;
+    const clientPrice = plan.price as number;
+    let planPrice: number | undefined;
+
+    if (pricingMatrix) {
+      for (const key in pricingMatrix) {
+        const price = pricingMatrix[key]?.yearly;
+        if (typeof price === 'number' && price === clientPrice) {
+          planPrice = price;
+          break;
+        }
+      }
     }
-    const planPrice = yearlyPrice;
+
+    if (typeof planPrice !== 'number') {
+      console.error('[VerifyPayment] Plan price mismatch or no yearly price found:', { planId: plan.id, clientPrice, pricingMatrix });
+      return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing matching the request', context.request);
+    }
 
     // Calculate subscription dates
     const now = new Date();
@@ -94,7 +106,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Check for existing active subscription via shadow table
     const { data: existingCache } = await supabase
       .from('subscription_cache')
-      .select('id, status, plan_id, plan_code')
+      .select('id, status, plan_id, plan_code, plan_amount')
       .eq('user_id', user.id)
       .in('status', ['active', 'pending', 'grace_period'])
       .maybeSingle();
@@ -107,15 +119,16 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       isUpgrade = true;
       console.log('[VerifyPayment] Upgrading existing subscription:', existingCache.id);
 
-      // Validate upgrade direction via plans_cache pricing
+      // Validate upgrade direction via current plan amount
+      const currentPrice = existingCache.plan_amount;
+      
       const { data: currentPlan } = await supabase
         .from('plans_cache')
-        .select('plan_code, pricing_matrix')
+        .select('plan_code')
         .eq('id', existingCache.plan_id)
         .single();
 
       if (currentPlan) {
-        const currentPrice = currentPlan.pricing_matrix?.all?.yearly;
         if (typeof currentPrice !== 'number' || typeof planPrice !== 'number') {
           console.warn('[VerifyPayment] Cannot compare plan pricing:', { currentPrice, planPrice });
           return apiError(400, 'VALIDATION_ERROR', 'Cannot determine plan pricing. Please contact support.', context.request);
