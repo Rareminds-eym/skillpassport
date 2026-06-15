@@ -119,8 +119,14 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     course_name?: string | null;
   }
 
-  // Helper function for consistent empty-string-to-null conversion
-  const toNullIfEmpty = (value: any): any => value === '' ? null : value;
+  // Type-safe helper function for consistent empty-string-to-null conversion
+  const toNullIfEmpty = (value: unknown): string | null => {
+    if (typeof value === 'string') {
+      return value === '' ? null : value;
+    }
+    // Convert null/undefined to null, everything else to string
+    return value === null || value === undefined ? null : String(value);
+  };
 
   try {
     // Get learner by user_id

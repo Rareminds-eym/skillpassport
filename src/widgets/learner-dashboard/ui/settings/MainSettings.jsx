@@ -562,11 +562,14 @@ const MainSettings = () => {
           schoolId: value,
         }));
       }
+      
+      // Don't return early - allow handleProfileChange to be called for proper sync
+      handleProfileChange(field, value);
       return;
     }
 
     // Sync School Class with grade and section fields ONLY for school learners
-    if (field === 'schoolClassId' && value) {
+    else if (field === 'schoolClassId' && value) {
       // Check if this is a school learner (not university path)
       const isUniversityPath = profileData.universityId || profileData.universityCollegeId || profileData.programId;
       
@@ -1018,6 +1021,7 @@ const MainSettings = () => {
       if (isUniversityPath) {
         dataToSave.schoolId = null;
         dataToSave.schoolClassId = null;
+        dataToSave.school_name = null; // Clear custom school name when switching to university
         // Don't clear college field as it's used for university college name
       }
       
@@ -1029,8 +1033,15 @@ const MainSettings = () => {
         dataToSave.programSectionId = null;
         dataToSave.university = null;
         dataToSave.branch = null;
-
-        dataToSave.school_name = null;
+        // Note: school_name is handled separately in custom school logic below
+        // Don't clear it here as it may contain valid custom school name
+        
+        // IMPORTANT: Clear section field for school learners
+        // Section should only be used for university learners (semester/section)
+        // For school learners, class info comes from schoolClassId or grade
+        if (!dataToSave.programSectionId && !showCustomSemester) {
+          dataToSave.section = null;
+        }
       }
 
       // DO NOT auto-clear grade - users may have manually set it
