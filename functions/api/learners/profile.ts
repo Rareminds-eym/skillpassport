@@ -100,6 +100,25 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
+  // Define type-safe interface for learner profile updates
+  interface LearnerUpdateData {
+    school_id?: string | null;
+    school_class_id?: string | null;
+    university_id?: string | null;
+    university_college_id?: string | null;
+    program_id?: string | null;
+    program_section_id?: string | null;
+    grade?: string | null;
+    grade_start_date?: string | null;
+    semester?: number | null;
+    section?: string | null;
+    university?: string | null;
+    college_school_name?: string | null;
+    school_name?: string | null;
+    branch_field?: string | null;
+    course_name?: string | null;
+  }
+
   try {
     // Get learner by user_id
     const { data: learner, error: fetchError } = await supabase
@@ -115,25 +134,26 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
       );
     }
 
-    // Map frontend field names to database columns
-    const updateData: Record<string, any> = {};
+    // Map frontend field names to database columns with validation
+    const updateData: LearnerUpdateData = {};
 
-    if (body.schoolId !== undefined) updateData.school_id = body.schoolId;
-    if (body.schoolClassId !== undefined) updateData.school_class_id = body.schoolClassId;
-    if (body.universityId !== undefined) updateData.university_id = body.universityId;
-    if (body.universityCollegeId !== undefined) updateData.university_college_id = body.universityCollegeId;
-    if (body.programId !== undefined) updateData.program_id = body.programId;
-    if (body.programSectionId !== undefined) updateData.program_section_id = body.programSectionId;
-    if (body.grade !== undefined) updateData.grade = body.grade;
-    if (body.gradeStartDate !== undefined) updateData.grade_start_date = body.gradeStartDate;
-    if (body.semester !== undefined) updateData.semester = body.semester;
-    if (body.section !== undefined) updateData.section = body.section;
-    if (body.university !== undefined) updateData.university = body.university;
-    if (body.college !== undefined) updateData.college_school_name = body.college;
-    if (body.school_name !== undefined) updateData.school_name = body.school_name;
+    if (body.schoolId !== undefined) updateData.school_id = body.schoolId === '' ? null : body.schoolId;
+    if (body.schoolClassId !== undefined) updateData.school_class_id = body.schoolClassId === '' ? null : body.schoolClassId;
+    if (body.universityId !== undefined) updateData.university_id = body.universityId === '' ? null : body.universityId;
+    if (body.universityCollegeId !== undefined) updateData.university_college_id = body.universityCollegeId === '' ? null : body.universityCollegeId;
+    if (body.programId !== undefined) updateData.program_id = body.programId === '' ? null : body.programId;
+    if (body.programSectionId !== undefined) updateData.program_section_id = body.programSectionId === '' ? null : body.programSectionId;
+    if (body.grade !== undefined) updateData.grade = body.grade === '' ? null : body.grade;
+    if (body.gradeStartDate !== undefined) updateData.grade_start_date = body.gradeStartDate === '' ? null : body.gradeStartDate;
+    if (body.semester !== undefined) updateData.semester = body.semester === '' ? null : body.semester;
+    if (body.section !== undefined) updateData.section = body.section === '' ? null : body.section;
+    if (body.university !== undefined) updateData.university = body.university === '' ? null : body.university;
+    if (body.college !== undefined) updateData.college_school_name = body.college === '' ? null : body.college;
+    if (body.school_name !== undefined) updateData.school_name = body.school_name === '' ? null : body.school_name;
     if (body.branch !== undefined) {
-      updateData.branch_field = body.branch;
-      updateData.course_name = body.branch;
+      const branchValue = body.branch === '' ? null : body.branch;
+      updateData.branch_field = branchValue;
+      updateData.course_name = branchValue;
     }
 
     // Update learner profile

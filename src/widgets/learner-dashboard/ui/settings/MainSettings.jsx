@@ -343,7 +343,7 @@ const MainSettings = () => {
         university: learnerData.university || "",
         branch: learnerData.branch || "",
         college: learnerData.college || "",
-        schoolName: learnerData.school_name || "",
+        school_name: learnerData.school_name || "",
         registrationNumber: learnerData.registrationNumber || "",
         enrollmentNumber: learnerData.enrollmentNumber || "",
         currentCgpa: learnerData.currentCgpa || "",
@@ -541,7 +541,6 @@ const MainSettings = () => {
         schoolClassId: '',
         section: '',
         school_name: '',
-        schoolName: '',
       }));
       return;
     }
