@@ -251,7 +251,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           if (userError && userError.code !== 'PGRST116') return apiDbError(userError, context.request, { startTime });
           if (userData?.firstName || userData?.lastName) {
             const fullName = [userData.firstName, userData.lastName].filter(Boolean).join(' ');
-            return apiSuccess({ name: fullName }, context.request, { startTime });
+            return apiSuccess({ name: fullName || null }, context.request, { startTime });
           }
         }
 
