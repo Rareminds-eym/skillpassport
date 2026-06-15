@@ -243,11 +243,12 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         // Fallback: try users table firstName + lastName
         if (id) {
-          const { data: userData } = await supabase
+          const { data: userData, error: userError } = await supabase
             .from('users')
             .select('"firstName", "lastName"')
             .eq('id', id)
             .maybeSingle();
+          if (userError && userError.code !== 'PGRST116') return apiDbError(userError, context.request, { startTime });
           if (userData?.firstName) {
             const fullName = [userData.firstName, userData.lastName].filter(Boolean).join(' ');
             return apiSuccess({ name: fullName }, context.request, { startTime });
