@@ -21,6 +21,19 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
         const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString();
 
+        // Step 1: get learner IDs for this school so fee_payments can be filtered by school
+        let schoolLearnerIds: string[] = [];
+        if (schoolId) {
+          const { data: schoolLearners } = await supabase
+            .from('learners')
+            .select('user_id')
+            .eq('school_id', schoolId)
+            .eq('is_deleted', false)
+            .not('user_id', 'is', null);
+          schoolLearnerIds = (schoolLearners || []).map((l: any) => l.user_id).filter(Boolean);
+        }
+
+        // Step 2: run all KPI queries in parallel
         const [learnersRes, attendanceRes, examsRes, assessmentsRes, dailyFeesRes, weeklyFeesRes, monthlyFeesRes, libraryRes] = await Promise.all([
           schoolId
             ? supabase.from('learners').select('*', { count: 'exact', head: true }).eq('school_id', schoolId)
@@ -40,9 +53,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             if (schoolId) q = q.eq('school_id', schoolId);
             return q;
           })(),
-          supabase.from('fee_payments').select('amount').eq('status', 'success').gte('payment_date', today).lt('payment_date', `${today}T23:59:59`),
-          supabase.from('fee_payments').select('amount').eq('status', 'success').gte('payment_date', weekAgo),
-          supabase.from('fee_payments').select('amount').eq('status', 'success').gte('payment_date', monthAgo),
+          // fee_payments has no school_id — filter via learner_id instead
+          schoolLearnerIds.length > 0
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).eq('payment_date', today)
+            : { data: [], error: null },
+          schoolLearnerIds.length > 0
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).gte('payment_date', weekAgo)
+            : { data: [], error: null },
+          schoolLearnerIds.length > 0
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).gte('payment_date', monthAgo)
+            : { data: [], error: null },
           (() => {
             let q = supabase.from('library_book_issues_school').select('*', { count: 'exact', head: true }).lt('due_date', today).is('return_date', null);
             if (schoolId) q = q.eq('school_id', schoolId);
