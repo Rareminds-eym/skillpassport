@@ -40,6 +40,7 @@ export const getlearnerSettingsByEmail = async (email) => {
       : data.users?.role;
 
     const collegeSchoolName = data.college_school_name || '';
+    const schoolName = data.school_name || '';
 
     const settingsData = {
       id: data.id,
@@ -60,7 +61,7 @@ export const getlearnerSettingsByEmail = async (email) => {
       university: data.university || '',
       branch: data.branch_field || '',
       college: userRole === 'learner' ? collegeSchoolName : '',
-      schoolName: userRole === 'learner' ? collegeSchoolName : '',
+      school_name: schoolName,
       registrationNumber: data.registration_number || '',
       enrollmentNumber: data.enrollmentNumber || '',
       currentCgpa: data.currentCgpa || '',
@@ -175,6 +176,7 @@ export const updatelearnerSettings = async (email, updates) => {
       branch: 'branch_field',
       program: 'branch_field',
       college: 'college_school_name',
+      school_name: 'school_name',
       courseName: 'course_name',
       registrationNumber: 'registration_number',
       enrollmentNumber: 'enrollmentNumber',
