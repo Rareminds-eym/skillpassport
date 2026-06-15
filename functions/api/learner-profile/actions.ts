@@ -784,7 +784,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('learners').select(`
           id, email, name, age, date_of_birth, dateOfBirth, contact_number, contactNumber, alternate_number,
           district_name, city, state, country, pincode, address, university, branch_field,
-          college_school_name, registration_number, enrollmentNumber, github_link, linkedin_link,
+          college_school_name, school_name, registration_number, enrollmentNumber, github_link, linkedin_link,
           twitter_link, facebook_link, instagram_link, portfolio_link, other_social_links,
           resumeUrl, profilePicture, bio, gender, bloodGroup, guardianName, guardianPhone,
           guardianEmail, guardianRelation, currentCgpa, grade, grade_start_date, universityId,

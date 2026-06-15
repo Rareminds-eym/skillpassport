@@ -24,6 +24,8 @@ import {
 import { LearnerProfileDrawer, AdmissionNoteModal } from '@/features/learner-profile';
 import { AddLearnerModal } from '@/features/college-admin';
 import { useLearners } from '@/entities/learner';
+import { useUser } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
 import { AssessmentReportDrawer } from '@/features/assessment';
 // @ts-ignore - JS file without types
 import { getLatestResult } from '@/features/assessment';
@@ -200,7 +202,25 @@ const LearnerDataAdmission = () => {
     maxScore: 100
   });
 
-  const { learners, loading, error } = useLearners();
+  const user = useUser();
+  const [collegeId, setCollegeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCollegeId = async () => {
+      if (!user?.id && !user?.email) return;
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-org-by-admin-or-email',
+        userId: user.id,
+        email: user.email,
+      });
+      if (res?.data?.id) setCollegeId(res.data.id);
+    };
+    fetchCollegeId();
+  }, [user?.id, user?.email]);
+
+  const { learners, loading, error } = useLearners({
+    collegeId,
+  });
 
   useEffect(() => {
     setCurrentPage(1);
