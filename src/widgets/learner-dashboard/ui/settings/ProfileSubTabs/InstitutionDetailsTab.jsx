@@ -166,8 +166,8 @@ const InstitutionDetailsTab = ({
                 onChange={(e) => {
                   const schoolName = e.target.value;
                   setCustomSchoolName(schoolName);
-                  // Store in college_school_name field
-                  // handleProfileChange("college", schoolName);
+                  // Store in school_name field (for custom school names)
+                  // handleProfileChange("school_name", schoolName);
                 }}
                 placeholder="Enter your school name"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"

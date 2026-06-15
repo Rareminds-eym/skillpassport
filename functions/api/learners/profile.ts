@@ -40,6 +40,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         branch_field,
         university,
         college_school_name,
+        school_name,
         learner_type,
         school_classes:school_class_id(grade, academic_year),
         program:program_id(name, code),
@@ -118,15 +119,18 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
     const updateData: Record<string, any> = {};
 
     if (body.schoolId !== undefined) updateData.school_id = body.schoolId;
+    if (body.schoolClassId !== undefined) updateData.school_class_id = body.schoolClassId;
     if (body.universityId !== undefined) updateData.university_id = body.universityId;
     if (body.universityCollegeId !== undefined) updateData.university_college_id = body.universityCollegeId;
     if (body.programId !== undefined) updateData.program_id = body.programId;
+    if (body.programSectionId !== undefined) updateData.program_section_id = body.programSectionId;
     if (body.grade !== undefined) updateData.grade = body.grade;
     if (body.gradeStartDate !== undefined) updateData.grade_start_date = body.gradeStartDate;
     if (body.semester !== undefined) updateData.semester = body.semester;
     if (body.section !== undefined) updateData.section = body.section;
     if (body.university !== undefined) updateData.university = body.university;
     if (body.college !== undefined) updateData.college_school_name = body.college;
+    if (body.school_name !== undefined) updateData.school_name = body.school_name;
     if (body.branch !== undefined) {
       updateData.branch_field = body.branch;
       updateData.course_name = body.branch;

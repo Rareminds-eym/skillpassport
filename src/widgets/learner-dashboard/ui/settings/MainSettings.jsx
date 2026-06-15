@@ -254,6 +254,7 @@ const MainSettings = () => {
     university: "",
     branch: "",
     college: "",
+    school_name: "",
     registrationNumber: "",
     enrollmentNumber: "",
     currentCgpa: "",
@@ -342,7 +343,7 @@ const MainSettings = () => {
         university: learnerData.university || "",
         branch: learnerData.branch || "",
         college: learnerData.college || "",
-        schoolName: learnerData.schoolName || "",
+        schoolName: learnerData.school_name || "",
         registrationNumber: learnerData.registrationNumber || "",
         enrollmentNumber: learnerData.enrollmentNumber || "",
         currentCgpa: learnerData.currentCgpa || "",
@@ -390,20 +391,20 @@ const MainSettings = () => {
       
       // Check if it's a school path (has schoolId or schoolClassId) vs university path
       // For role-based detection, also consider the role itself
-      const hasSchoolData = learnerData.schoolId || learnerData.schoolClassId || learnerData.schoolName;
+      const hasSchoolData = learnerData.schoolId || learnerData.schoolClassId || learnerData.school_name;
       const hasUniversityData = learnerData.universityId || learnerData.universityCollegeId || learnerData.programId || learnerData.university || learnerData.college;
       const isSchoolPath = hasSchoolData || (isSchoolLearner && !hasUniversityData);
       const isUniversityPath = hasUniversityData || (isCollegeLearner && !hasSchoolData);
       
       // Custom school name (for school learners, stored in schoolName field)
-      if (isSchoolLearner && learnerData.schoolName && (!learnerData.schoolId || learnerData.schoolId === '')) {
+      if (isSchoolLearner && learnerData.school_name && (!learnerData.schoolId || learnerData.schoolId === '')) {
         setShowCustomSchool(true);
-        setCustomSchoolName(learnerData.schoolName);
+        setCustomSchoolName(learnerData.school_name);
       }
-      
+
       // Custom school class - derive from grade field, NOT from section
       // Section field should remain independent for roll numbers
-      if (learnerData.grade && (!learnerData.schoolClassId || learnerData.schoolClassId === '') && (learnerData.schoolId || learnerData.schoolName) && !isUniversityPath) {
+      if (learnerData.grade && (!learnerData.schoolClassId || learnerData.schoolClassId === '') && (learnerData.schoolId || learnerData.school_name) && !isUniversityPath) {
         // Extract numeric grade from grade field (e.g., "Grade 10" -> "10")
         const gradeMatch = learnerData.grade.match(/Grade\s*(\d+)/i);
         if (gradeMatch) {
@@ -528,8 +529,24 @@ const MainSettings = () => {
       toast.success(`Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`);
       return;
     }
-    
-    // Sync School Class with grade field ONLY for school learners
+
+    if (field === 'schoolId') {
+      setShowCustomSchool(false);
+      setCustomSchoolName('');
+      setShowCustomSchoolClass(false);
+      setCustomSchoolClassName('');
+      setProfileData((prev) => ({
+        ...prev,
+        schoolId: value,
+        schoolClassId: '',
+        section: '',
+        school_name: '',
+        schoolName: '',
+      }));
+      return;
+    }
+
+    // Sync School Class with grade and section fields ONLY for school learners
     if (field === 'schoolClassId' && value) {
       // Check if this is a school learner (not university path)
       const isUniversityPath = profileData.universityId || profileData.universityCollegeId || profileData.programId;
@@ -549,9 +566,12 @@ const MainSettings = () => {
           };
           const mappedGrade = gradeMapping[selectedClass.grade] || `Grade ${selectedClass.grade}`;
           handleProfileChange('grade', mappedGrade);
-          
-          // Don't update section field - it should remain independent
-          // The schoolClassId foreign key is sufficient for tracking the class
+        }
+
+        if (selectedClass) {
+          setShowCustomSchoolClass(false);
+          setCustomSchoolClassName('');
+          handleProfileChange('section', selectedClass.section || '');
         }
       }
     }
@@ -983,23 +1003,21 @@ const MainSettings = () => {
         dataToSave.programSectionId = null;
         dataToSave.university = null;
         dataToSave.branch = null;
-        
-        // IMPORTANT: Clear section field for school learners
-        // Section should only be used for university learners (semester/section)
-        // For school learners, class info comes from schoolClassId or grade
-        if (!dataToSave.programSectionId && !showCustomSemester) {
-          dataToSave.section = null;
-        }
+
+        dataToSave.school_name = null;
       }
-      
-      // Clear grade if no program/class is selected
-      if (isUniversityPath && !dataToSave.programId && !showCustomProgram && !customProgramName) {
-        dataToSave.grade = null;
-      }
-      if (isSchoolPath && !dataToSave.schoolClassId && !showCustomSchoolClass && !customSchoolClassName) {
-        dataToSave.grade = null;
-      }
-      
+
+      // DO NOT auto-clear grade - users may have manually set it
+      // Grade should only be cleared if user explicitly removes it
+      // The grade field is independent and can exist without program/class selection
+
+      // REMOVED: Auto-clearing grade logic that was causing data loss
+      // Old logic: Clear grade if no program/class selected
+      // This was problematic because:
+      // 1. Grade can be manually set independent of program/class
+      // 2. Custom entries don't have programId but still have valid grades
+      // 3. Users lost their grade data when saving profile
+
       // Convert empty string IDs to null
       if (dataToSave.programId === '') dataToSave.programId = null;
       if (dataToSave.universityCollegeId === '') dataToSave.universityCollegeId = null;
@@ -1031,12 +1049,13 @@ const MainSettings = () => {
         dataToSave.university = customUniversityName;
         dataToSave.universityId = null;
       }
-      
-      // Custom school name → college field (for school learners)
-      // The college_school_name column is shared between school and college learners
+
+      // Custom school name → school_name field (for school learners)
       if (showCustomSchool && customSchoolName) {
-        dataToSave.college = customSchoolName;
+        dataToSave.school_name = customSchoolName;
         dataToSave.schoolId = null;
+      } else if (dataToSave.schoolId) {
+        dataToSave.school_name = null;
       }
       
       // Custom semester → section field AND sync grade for university learners
@@ -1109,7 +1128,7 @@ const MainSettings = () => {
       // NOTE: We do NOT store custom class in section field - section should remain independent
       if (showCustomSchoolClass && customSchoolClassName) {
         dataToSave.schoolClassId = null;
-        
+        dataToSave.section = customSchoolClassName.trim();
         // Only sync grade for school learners (not university path)
         const isUniversityPath = dataToSave.universityId || dataToSave.universityCollegeId || dataToSave.programId;
         if (!isUniversityPath) {
@@ -1120,14 +1139,14 @@ const MainSettings = () => {
             dataToSave.grade = `Grade ${numericGrade}`;
           }
         }
-        // Store custom class name in a display field if needed, but NOT in section
-        // The section field should remain independent for roll number/section assignment
       }
-      
-      // If schoolClassId is selected from dropdown, clear custom class
+
+      // If schoolClassId is selected from dropdown, persist its display section too.
       if (dataToSave.schoolClassId && dataToSave.schoolClassId !== null) {
-        // Don't override section if it's a valid schoolClassId
-        // The section field should only be used for custom entries
+        const selectedClass = schoolClasses.find(sc => sc.id === dataToSave.schoolClassId);
+        if (selectedClass) {
+          dataToSave.section = selectedClass.section || dataToSave.section || null;
+        }
       }
       
       await updateProfile(dataToSave);
