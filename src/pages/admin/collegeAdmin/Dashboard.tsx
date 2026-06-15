@@ -32,10 +32,10 @@ interface DashboardStats {
   totalFaculty: number;
   totalDepartments: number;
   placementRate: number;
-  learnersChange: number;
-  facultyChange: number;
-  departmentsChange: number;
-  placementRateChange: number;
+  learnersChange: number | null;
+  facultyChange: number | null;
+  departmentsChange: number | null;
+  placementRateChange: number | null;
 }
 
 const Dashboard: React.FC = () => {
@@ -48,10 +48,10 @@ const Dashboard: React.FC = () => {
     totalFaculty: 0,
     totalDepartments: 0,
     placementRate: 0,
-    learnersChange: 0,
-    facultyChange: 0,
-    departmentsChange: 0,
-    placementRateChange: 0,
+    learnersChange: null,
+    facultyChange: null,
+    departmentsChange: null,
+    placementRateChange: null,
   });
 
   // Fetch real data from database
@@ -61,27 +61,29 @@ const Dashboard: React.FC = () => {
       
       setLoading(true);
       try {
-        // Get college_id - try orgId first, then resolve via API
-        let collegeId = user.orgId || null;
+        // Always resolve org from organizations table first (authoritative).
+        // JWT org_id can be stale if the admin has multiple memberships.
+        let collegeId: string | null = null;
+        const orgRes: any = await apiPost('/college-admin/actions', {
+          action: 'get-org-by-admin-or-email',
+          userId: user.id,
+          email: user.email
+        });
+        collegeId = orgRes?.data?.id || null;
 
         if (!collegeId) {
-          // Try resolving from college_lecturers
+          // Fallback: try resolving from college_lecturers (faculty login path)
           const lecturerRes: any = await apiPost('/college-admin/actions', {
             action: 'get-college-lecturer-by-email',
             email: user.email,
             select: 'collegeId'
           });
-          collegeId = lecturerRes?.data?.collegeId;
+          collegeId = lecturerRes?.data?.collegeId || null;
         }
 
         if (!collegeId) {
-          // Try resolving from organizations
-          const orgRes: any = await apiPost('/college-admin/actions', {
-            action: 'get-org-by-admin-or-email',
-            userId: user.id,
-            email: user.email
-          });
-          collegeId = orgRes?.data?.id;
+          // Last resort: use JWT org_id
+          collegeId = user.orgId || null;
         }
 
         if (!collegeId) {
@@ -102,10 +104,10 @@ const Dashboard: React.FC = () => {
             totalFaculty: res.data.totalFaculty || 0,
             totalDepartments: res.data.totalDepartments || 0,
             placementRate: res.data.placementRate || 0,
-            learnersChange: res.data.learnersChange || 0,
-            facultyChange: res.data.facultyChange || 0,
-            departmentsChange: res.data.departmentsChange || 0,
-            placementRateChange: res.data.placementRateChange || 0,
+            learnersChange: res.data.learnersChange ?? null,
+            facultyChange: res.data.facultyChange ?? null,
+            departmentsChange: res.data.departmentsChange ?? null,
+            placementRateChange: res.data.placementRateChange ?? null,
           });
         }
       } catch (error) {
@@ -123,7 +125,9 @@ const Dashboard: React.FC = () => {
     {
       title: "Total Learners",
       value: loading ? "..." : stats.totallearners.toLocaleString(),
-      change: stats.learnersChange,
+      // TODO: learnersChange is null when no learners exist older than 30 days (no baseline period).
+      // Source: learners.created_at via get-dashboard-stats previousPeriod query. Will auto-restore once records age past 30 days.
+      change: stats.learnersChange ?? undefined,
       changeLabel: "enrolled",
       icon: <Users className="h-6 w-6" />,
       color: "blue" as const,
@@ -131,7 +135,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Total Faculty",
       value: loading ? "..." : stats.totalFaculty.toLocaleString(),
-      change: stats.facultyChange,
+      change: stats.facultyChange ?? undefined,
       changeLabel: "active members",
       icon: <Award className="h-6 w-6" />,
       color: "purple" as const,
@@ -139,7 +143,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Departments",
       value: loading ? "..." : stats.totalDepartments.toLocaleString(),
-      change: stats.departmentsChange,
+      change: stats.departmentsChange ?? undefined,
       changeLabel: "across programs",
       icon: <Building2 className="h-6 w-6" />,
       color: "green" as const,
@@ -147,7 +151,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Placement Rate",
       value: loading ? "..." : `${stats.placementRate}%`,
-      change: stats.placementRateChange,
+      change: stats.placementRateChange ?? undefined,
       changeLabel: "this academic year",
       icon: <Briefcase className="h-6 w-6" />,
       color: "yellow" as const,

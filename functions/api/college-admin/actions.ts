@@ -1,5 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
@@ -98,8 +98,24 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-dashboard-stats': {
-        const { college_id } = params;
-        if (!college_id) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
+        const { college_id: requestedCollegeId } = params;
+        if (!requestedCollegeId) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
+
+        // Resolve authoritative org: look up organizations where admin_id = logged-in user.
+        // This bypasses the JWT org_id mismatch when a user has multiple memberships.
+        const user = getContextUser(context);
+        let college_id = requestedCollegeId;
+        if (user?.id) {
+          const { data: orgByAdmin } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('admin_id', user.id)
+            .eq('organization_type', 'college')
+            .maybeSingle();
+          if (orgByAdmin?.id) {
+            college_id = orgByAdmin.id;
+          }
+        }
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -140,7 +156,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           totalPlacedPrev = new Set((placedPrevRes.data || []).map((p: any) => p.learner_id)).size;
         }
 
-        const calcChange = (curr: number, prev: number) => prev > 0 ? Math.round((curr - prev) / prev * 100) : 0;
+        const calcChange = (curr: number, prev: number): number | null => prev > 0 ? Math.round((curr - prev) / prev * 100) : null;
         const placementRate = learnersCount > 0 ? Math.round((totalPlaced / learnersCount) * 1000) / 10 : 0;
         const placementRatePrev = learnersPrev > 0 ? Math.round((totalPlacedPrev / learnersPrev) * 1000) / 10 : 0;
 
@@ -152,7 +168,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           learnersChange: calcChange(learnersCount, learnersPrev),
           facultyChange: calcChange(facultyCount, facultyPrev),
           departmentsChange: calcChange(deptCount, deptPrev),
-          placementRateChange: placementRatePrev > 0 ? Math.round((placementRate - placementRatePrev) * 10) / 10 : 0,
+          placementRateChange: placementRatePrev > 0 ? Math.round((placementRate - placementRatePrev) * 10) / 10 : null,
         }, context.request, { startTime });
       }
 
