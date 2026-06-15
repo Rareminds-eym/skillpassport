@@ -70,7 +70,7 @@ function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useIsAuthenticated();
   const authLoading = useAuthLoading();
 
-  if (authLoading) return (
+  if (authLoading || (isAuthenticated && !user)) return (
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
     </div>
@@ -123,11 +123,6 @@ function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  // Initialize stores on mount
-  useEffect(() => {
-    initializeStores();
-  }, []);
-
   const authLoading = useAuthLoading();
   const isAuthenticated = useIsAuthenticated();
   const queryClient = useQueryClient();
