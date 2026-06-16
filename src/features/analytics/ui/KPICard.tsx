@@ -43,24 +43,20 @@ const KPICard: React.FC<KPICardProps> = ({
           <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
           <p className="text-3xl font-bold text-gray-900 mb-2" data-testid="kpi-value">{value}</p>
           
-          {changeLabel && (
+          {changeLabel && change !== undefined && (
             <div className="flex items-center space-x-1">
-              {change !== undefined && (
-                <>
-                  {change >= 0 ? (
-                    <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />
-                  )}
-                  <span
-                    className={`text-sm font-medium ${
-                      change >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}
-                  >
-                    {change > 0 ? '+' : ''}{change}%
-                  </span>
-                </>
+              {change >= 0 ? (
+                <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />
+              ) : (
+                <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />
               )}
+              <span
+                className={`text-sm font-medium ${
+                  change >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {change > 0 ? '+' : ''}{change}%
+              </span>
               <span className="text-sm text-gray-500 text-nowrap">{changeLabel}</span>
             </div>
           )}

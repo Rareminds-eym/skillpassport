@@ -28,7 +28,7 @@ import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('college-admin-dashboard');
 
 interface DashboardStats {
-  totallearners: number;
+  totalLearners: number;
   totalFaculty: number;
   totalDepartments: number;
   placementRate: number;
@@ -38,13 +38,27 @@ interface DashboardStats {
   placementRateChange: number | null;
 }
 
+interface DashboardStatsResponse {
+  success: boolean;
+  data?: {
+    totalLearners: number;
+    totalFaculty: number;
+    totalDepartments: number;
+    placementRate: number;
+    learnersChange: number | null;
+    facultyChange: number | null;
+    departmentsChange: number | null;
+    placementRateChange: number | null;
+  };
+}
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const user = useUser();
   const [filterOpen, setFilterOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
-    totallearners: 0,
+    totalLearners: 0,
     totalFaculty: 0,
     totalDepartments: 0,
     placementRate: 0,
@@ -64,7 +78,7 @@ const Dashboard: React.FC = () => {
         // Always resolve org from organizations table first (authoritative).
         // JWT org_id can be stale if the admin has multiple memberships.
         let collegeId: string | null = null;
-        const orgRes: any = await apiPost('/college-admin/actions', {
+        const orgRes = await apiPost<{ data?: { id: string } }>('/college-admin/actions', {
           action: 'get-org-by-admin-or-email',
           userId: user.id,
           email: user.email
@@ -73,7 +87,7 @@ const Dashboard: React.FC = () => {
 
         if (!collegeId) {
           // Fallback: try resolving from college_lecturers (faculty login path)
-          const lecturerRes: any = await apiPost('/college-admin/actions', {
+          const lecturerRes = await apiPost<{ data?: { collegeId: string } }>('/college-admin/actions', {
             action: 'get-college-lecturer-by-email',
             email: user.email,
             select: 'collegeId'
@@ -93,14 +107,14 @@ const Dashboard: React.FC = () => {
         }
 
         // Fetch all stats in a single backend call
-        const res: any = await apiPost('/college-admin/actions', {
+        const res = await apiPost<DashboardStatsResponse>('/college-admin/actions', {
           action: 'get-dashboard-stats',
           college_id: collegeId
         });
 
         if (res.success && res.data) {
           setStats({
-            totallearners: res.data.totalLearners || 0,
+            totalLearners: res.data.totalLearners || 0,
             totalFaculty: res.data.totalFaculty || 0,
             totalDepartments: res.data.totalDepartments || 0,
             placementRate: res.data.placementRate || 0,
@@ -124,9 +138,7 @@ const Dashboard: React.FC = () => {
   const kpiData = [
     {
       title: "Total Learners",
-      value: loading ? "..." : stats.totallearners.toLocaleString(),
-      // TODO: learnersChange is null when no learners exist older than 30 days (no baseline period).
-      // Source: learners.created_at via get-dashboard-stats previousPeriod query. Will auto-restore once records age past 30 days.
+      value: loading ? "..." : stats.totalLearners.toLocaleString(),
       change: stats.learnersChange ?? undefined,
       changeLabel: "enrolled",
       icon: <Users className="h-6 w-6" />,
