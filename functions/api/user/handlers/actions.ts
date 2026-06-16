@@ -230,14 +230,32 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { id, email } = params;
         if (!id && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing id or email', context.request, { startTime });
 
-        let query = supabase.from('learners').select('name');
-        if (id) query = query.eq('user_id', id);
-        else query = query.eq('email', email);
+        let learnerQuery = supabase.from('learners').select('name');
+        if (id) learnerQuery = learnerQuery.eq('user_id', id);
+        else learnerQuery = learnerQuery.eq('email', email);
 
-        const { data, error } = await query.maybeSingle();
-        if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
+        const { data: learnerData, error: learnerError } = await learnerQuery.maybeSingle();
+        if (learnerError && learnerError.code !== 'PGRST116') return apiDbError(learnerError, context.request, { startTime });
 
-        return apiSuccess({ name: data?.name || null }, context.request, { startTime });
+        if (learnerData?.name) {
+          return apiSuccess({ name: learnerData.name }, context.request, { startTime });
+        }
+
+        // Fallback: try users table firstName + lastName
+        if (id) {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('"firstName", "lastName"')
+            .eq('id', id)
+            .maybeSingle();
+          if (userError && userError.code !== 'PGRST116') return apiDbError(userError, context.request, { startTime });
+          if (userData?.firstName || userData?.lastName) {
+            const fullName = [userData.firstName, userData.lastName].filter(Boolean).join(' ');
+            return apiSuccess({ name: fullName || null }, context.request, { startTime });
+          }
+        }
+
+        return apiSuccess({ name: null }, context.request, { startTime });
       }
 
       case 'update-learner-name': {
