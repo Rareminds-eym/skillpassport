@@ -3,9 +3,9 @@
  *
  * Focus: Vocational training, diploma programs, skill-based careers, immediate employment.
  */
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../shared/ai-config';
-import type { StudentProfile } from './scoring-service';
-import type { ClusterNarrativeContext } from '../types';
+import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import type { StudentProfile } from '../core/scoring-service';
+import type { ClusterNarrativeContext } from '../../types';
 
 export interface After10Synthesis {
   profileNarrative?: string;

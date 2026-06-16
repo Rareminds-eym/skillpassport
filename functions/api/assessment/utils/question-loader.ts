@@ -222,6 +222,14 @@ async function loadAdaptiveSections(supabase: any, gradeLevel: string): Promise<
         .eq('grade_level', 'after10')
         .eq('name', 'adaptive_aptitude_after10')
         .maybeSingle();
+    } else if (gradeLevel === 'after12') {
+      query = supabase
+        .from('personal_assessment_sections')
+        .select('*')
+        .eq('is_active', true)
+        .eq('grade_level', 'after12')
+        .eq('name', 'adaptive_aptitude_after12')
+        .maybeSingle();
     }
 
     if (query) {

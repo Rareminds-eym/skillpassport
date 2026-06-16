@@ -5,8 +5,8 @@
  * @module assessment/services/assessment-repository
  */
 
-import { getServiceClient } from '../../../lib/supabase';
-import type { PagesEnv } from '../../../lib/types';
+import { getServiceClient } from '../../../../lib/supabase';
+import type { PagesEnv } from '../../../../lib/types';
 
 type QuestionType = 'aptitude' | 'knowledge';
 type GradeLevel = 'after10' | 'after12' | 'higher_secondary' | 'college' | 'middle' | 'highschool';
@@ -157,7 +157,7 @@ export async function saveAptitudeQuestions(
       learner_id: learnerId,
       stream_id: streamId,
       question_type: 'aptitude' as QuestionType,
-      attempt_id: attemptId || null,
+      attempt_id: null, // not stored: cache is keyed by (learner, stream, type); avoids FK on stale attempts
       questions: questions,
       generated_at: new Date().toISOString(),
       grade_level: gradeLevel,
@@ -242,7 +242,7 @@ export async function saveKnowledgeQuestions(
           learner_id: learnerId,
           stream_id: streamId,
           question_type: 'knowledge' as QuestionType,
-          attempt_id: attemptId || null,
+          attempt_id: null, // not stored: cache is keyed by (learner, stream, type); avoids FK on stale attempts
           questions: questions,
           generated_at: new Date().toISOString(),
           grade_level: gradeLevel,

@@ -1,19 +1,19 @@
 /**
- * Higher Secondary Assessment Analysis (Grades 11-12)
+ * After 10th Assessment Analysis
  *
- * Calculates RIASEC, strengths, learning preferences, aptitude, and introduces
- * career-specific exploration with entrance exam guidance.
+ * For students who have completed 10th grade and are exploring vocational,
+ * diploma, or alternative career paths (not continuing to 11-12).
  * 
  * Scoring: 3-component (Interest + Capability + Personality)
- * Focus: College/career preparation, entrance exams, specialization selection.
+ * Focus: Vocational training, skill-based careers, immediate employment paths.
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../types';
-import { getTopCategories, getTopStrengths } from '../lib/analysis-helpers';
-import { generateMiddleSchoolCareerClusters } from './career-cluster-generator';
-import { generateHigherSecondarySynthesis } from './higher-secondary-analysis-generator';
-import type { StudentProfile } from './scoring-service';
+import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../../types';
+import { getTopCategories, getTopStrengths } from '../../lib/analysis-helpers';
+import { generateMiddleSchoolCareerClusters } from '../core/career-cluster-generator';
+import { generateAfter10Synthesis } from '../generators/synthesis-after10';
+import type { StudentProfile } from '../core/scoring-service';
 
 function flattenAccuracyBySubtag(
   raw: Record<string, any> | null | undefined
@@ -45,7 +45,7 @@ async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
   return { session, results };
 }
 
-export async function analyzeHigherSecondary(
+export async function analyzeAfter10(
   context: AuthenticatedContext,
   supabase: any,
   attemptId: string,
@@ -167,7 +167,7 @@ export async function analyzeHigherSecondary(
         }
       }
 
-      if (sectionName === 'learning_preferences' || sectionName === 'higher_learning_preferences') {
+      if (sectionName === 'learning_preferences' || sectionName === 'after10_learning_preferences') {
         learningPreferences[uuid] = answer;
       }
     }
@@ -200,42 +200,42 @@ export async function analyzeHigherSecondary(
         if (completedSession && completedSession.id !== resolvedSessionId) {
           resolvedSessionId = completedSession.id;
           const fallback = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
-          if (fallback) {
+          if (fallback?.results) {
             adaptiveData = {
               questionsAnswered: fallback.session.questions_answered,
               difficulty: fallback.session.current_difficulty,
-              aptitudeLevel: fallback.results?.aptitude_level ?? null,
-              confidenceTag: fallback.results?.confidence_tag ?? null,
-              tier: fallback.results?.tier ?? null,
-              totalQuestions: fallback.results?.total_questions ?? null,
-              totalCorrect: fallback.results?.total_correct ?? null,
-              overallAccuracy: fallback.results?.overall_accuracy ?? null,
-              accuracyByDifficulty: fallback.results?.accuracy_by_difficulty ?? null,
-              accuracyBySubtag: fallback.results?.accuracy_by_subtag ?? null,
-              pathClassification: fallback.results?.path_classification ?? null,
-              averageResponseTimeMs: fallback.results?.average_response_time_ms ?? null,
+              aptitudeLevel: fallback.results.aptitude_level ?? null,
+              confidenceTag: fallback.results.confidence_tag ?? null,
+              tier: fallback.results.tier ?? null,
+              totalQuestions: fallback.results.total_questions ?? null,
+              totalCorrect: fallback.results.total_correct ?? null,
+              overallAccuracy: fallback.results.overall_accuracy ?? null,
+              accuracyByDifficulty: fallback.results.accuracy_by_difficulty ?? null,
+              accuracyBySubtag: fallback.results.accuracy_by_subtag ?? null,
+              pathClassification: fallback.results.path_classification ?? null,
+              averageResponseTimeMs: fallback.results.average_response_time_ms ?? null,
             };
-            if (fallback.results?.overall_accuracy != null) {
+            if (fallback.results.overall_accuracy != null) {
               aptitudeOverall = parseFloat(fallback.results.overall_accuracy);
             }
           }
         }
-      } else if (fetched) {
+      } else if (fetched?.results) {
         adaptiveData = {
           questionsAnswered: fetched.session.questions_answered,
           difficulty: fetched.session.current_difficulty,
-          aptitudeLevel: fetched.results?.aptitude_level ?? null,
-          confidenceTag: fetched.results?.confidence_tag ?? null,
-          tier: fetched.results?.tier ?? null,
-          totalQuestions: fetched.results?.total_questions ?? null,
-          totalCorrect: fetched.results?.total_correct ?? null,
-          overallAccuracy: fetched.results?.overall_accuracy ?? null,
-          accuracyByDifficulty: fetched.results?.accuracy_by_difficulty ?? null,
-          accuracyBySubtag: fetched.results?.accuracy_by_subtag ?? null,
-          pathClassification: fetched.results?.path_classification ?? null,
-          averageResponseTimeMs: fetched.results?.average_response_time_ms ?? null,
+          aptitudeLevel: fetched.results.aptitude_level ?? null,
+          confidenceTag: fetched.results.confidence_tag ?? null,
+          tier: fetched.results.tier ?? null,
+          totalQuestions: fetched.results.total_questions ?? null,
+          totalCorrect: fetched.results.total_correct ?? null,
+          overallAccuracy: fetched.results.overall_accuracy ?? null,
+          accuracyByDifficulty: fetched.results.accuracy_by_difficulty ?? null,
+          accuracyBySubtag: fetched.results.accuracy_by_subtag ?? null,
+          pathClassification: fetched.results.path_classification ?? null,
+          averageResponseTimeMs: fetched.results.average_response_time_ms ?? null,
         };
-        if (fetched.results?.overall_accuracy != null) {
+        if (fetched.results.overall_accuracy != null) {
           aptitudeOverall = parseFloat(fetched.results.overall_accuracy);
         }
       }
@@ -276,12 +276,11 @@ export async function analyzeHigherSecondary(
       aptitude_overall: aptitudeOverall != null ? aptitudeOverall / 100 : undefined,
       accuracy_by_subtag: flattenAccuracyBySubtag(adaptiveData?.accuracyBySubtag as any),
       learning_preferences: learningPreferences,
-      stream: (attempt.learner_context as any)?.selectedStream || attempt.stream_id,
     };
 
     const narrativeContext = { adaptive: adaptiveData as any, reflections };
 
-    const synthesis = await generateHigherSecondarySynthesis(
+    const synthesis = await generateAfter10Synthesis(
       studentProfile,
       narrativeContext,
       context.env as Record<string, string>
@@ -304,7 +303,7 @@ export async function analyzeHigherSecondary(
           attempt_id: attemptId,
           learner_id: learnerId,
           grade_level: attempt.grade_level,
-          stream_id: attempt.stream_id || 'general',
+          stream_id: attempt.stream_id || 'vocational',
           riasec_scores: riasecScores,
           riasec_code: riasecCode,
           strength_scores: strengthScores,
@@ -360,7 +359,7 @@ export async function analyzeHigherSecondary(
           .eq('attempt_id', attemptId);
       }
     } catch (clusterError) {
-      console.error('[ANALYZE-HIGHER-SEC] Career cluster generation failed (non-fatal):', clusterError);
+      console.error('[ANALYZE-AFTER10] Career cluster generation failed (non-fatal):', clusterError);
     }
 
     return Response.json(
@@ -381,7 +380,7 @@ export async function analyzeHigherSecondary(
   } catch (error) {
     return Response.json(
       {
-        error: 'Higher secondary analysis failed',
+        error: 'After 10th analysis failed',
         message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

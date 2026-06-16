@@ -1,30 +1,28 @@
 /**
- * Middle School Assessment Analysis (Grades 6-8)
+ * Higher Secondary Assessment Analysis (Grades 11-12)
  *
- * Calculates RIASEC scores, strength aggregation, learning preferences,
- * and links adaptive aptitude session data.
+ * Calculates RIASEC, strengths, learning preferences, aptitude, and introduces
+ * career-specific exploration with entrance exam guidance.
+ * 
+ * Scoring: 3-component (Interest + Capability + Personality)
+ * Focus: College/career preparation, entrance exams, specialization selection.
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../types';
-import { getTopCategories, getTopStrengths } from '../lib/analysis-helpers';
-import { generateMiddleSchoolCareerClusters } from './career-cluster-generator';
-import type { StudentProfile } from './scoring-service';
+import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../../types';
+import { getTopCategories, getTopStrengths } from '../../lib/analysis-helpers';
+import { generateMiddleSchoolCareerClusters } from '../core/career-cluster-generator';
+import { generateHigherSecondarySynthesis } from '../generators/synthesis-higher-secondary';
+import type { StudentProfile } from '../core/scoring-service';
 
-/**
- * Flatten the adaptive `accuracy_by_subtag` shape ({ subtag: { total, correct, accuracy } })
- * into the { subtag: number } form the scoring service expects. Accuracy stays on the 0-100 scale.
- */
 function flattenAccuracyBySubtag(
   raw: Record<string, any> | null | undefined
 ): Record<string, number> | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const out: Record<string, number> = {};
-  for (const [subtag, value] of Object.entries(raw)) {
-    if (typeof value === 'number') out[subtag] = value;
-    else if (value && typeof value === 'object' && typeof value.accuracy === 'number') {
-      out[subtag] = value.accuracy;
-    }
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === 'number') out[k] = v;
+    else if (v && typeof v === 'object' && typeof v.accuracy === 'number') out[k] = v.accuracy;
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }
@@ -47,17 +45,16 @@ async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
   return { session, results };
 }
 
-export async function analyzeMiddleSchool(
+export async function analyzeHigherSecondary(
   context: AuthenticatedContext,
   supabase: any,
   attemptId: string,
   learnerId: string
 ) {
   try {
-    // Step 1: Fetch attempt with all_responses
     const { data: attempt, error: attemptError } = await supabase
       .from('personal_assessment_attempts')
-      .select('id, all_responses, grade_level, stream_id, started_at, adaptive_aptitude_session_id')
+      .select('id, all_responses, grade_level, stream_id, learner_context, started_at, adaptive_aptitude_session_id')
       .eq('id', attemptId)
       .eq('learner_id', learnerId)
       .single();
@@ -73,7 +70,6 @@ export async function analyzeMiddleSchool(
       return Response.json({ error: 'No responses found in attempt' }, { status: 400 });
     }
 
-    // Step 2: Fetch all question metadata (BATCH QUERY - optimized)
     const { data: questions, error: questionsError } = await supabase
       .from('personal_assessment_questions')
       .select('id, section_id, category_mapping, metadata, question_type, question_text')
@@ -93,24 +89,16 @@ export async function analyzeMiddleSchool(
       );
     }
 
-    // Index questions by UUID for O(1) lookup
     const questionMap = new Map(questions.map((q) => [q.id, q]));
 
-    // Step 2b: Look up section names to identify learning preference questions
     const sectionIds = [...new Set(questions.map((q: any) => q.section_id).filter(Boolean))];
-    let learningPrefSectionId: string | null = null;
-    if (sectionIds.length > 0) {
-      const { data: sections } = await supabase
-        .from('personal_assessment_sections')
-        .select('id, name')
-        .in('id', sectionIds);
-      if (sections) {
-        const lpSection = sections.find((s: any) => s.name === 'middle_learning_preferences');
-        learningPrefSectionId = lpSection?.id ?? null;
-      }
-    }
+    const { data: sections } = await supabase
+      .from('personal_assessment_sections')
+      .select('id, name')
+      .in('id', sectionIds);
 
-    // Step 3: Calculate RIASEC scores from database metadata
+    const sectionMap = new Map((sections || []).map((s: any) => [s.id, s.name]));
+
     const riasecScores: RIASECScores = {
       realistic: 0,
       investigative: 0,
@@ -120,7 +108,6 @@ export async function analyzeMiddleSchool(
       conventional: 0,
     };
 
-    // DB category_mapping format: {"option text": "R"} where letter maps to full category name
     const RIASEC_LETTER_MAP: Record<string, keyof RIASECScores> = {
       R: 'realistic',
       I: 'investigative',
@@ -130,28 +117,46 @@ export async function analyzeMiddleSchool(
       C: 'conventional',
     };
 
+    const riasecCounts: RIASECScores = {
+      realistic: 0,
+      investigative: 0,
+      artistic: 0,
+      social: 0,
+      enterprising: 0,
+      conventional: 0,
+    };
+
     const strengthsByDimension = new Map<string, number[]>();
+    const learningPreferences: Record<string, any> = {};
 
     for (const [uuid, answer] of Object.entries(allResponses)) {
       const question = questionMap.get(uuid);
       if (!question) continue;
 
-      // Process RIASEC category mapping (format: {"option text": "R/I/A/S/E/C"})
-      if (question.category_mapping && typeof question.category_mapping === 'object') {
-        const mapping = question.category_mapping as Record<string, string>;
-        const answerArray = Array.isArray(answer) ? answer : [answer];
+      const sectionName = sectionMap.get(question.section_id);
 
-        for (const selectedOption of answerArray) {
-          if (selectedOption && typeof selectedOption === 'string') {
-            const letter = mapping[selectedOption];
-            if (letter && RIASEC_LETTER_MAP[letter]) {
-              riasecScores[RIASEC_LETTER_MAP[letter]] += 1;
+      if (sectionName === 'riasec' && question.category_mapping && typeof question.category_mapping === 'object') {
+        const mapping = question.category_mapping as Record<string, string>;
+        
+        if (typeof mapping.type === 'string' && typeof answer === 'number') {
+          const key = RIASEC_LETTER_MAP[mapping.type];
+          if (key) {
+            riasecScores[key] += answer;
+            riasecCounts[key] += 1;
+          }
+        } else {
+          const answerArray = Array.isArray(answer) ? answer : [answer];
+          for (const selectedOption of answerArray) {
+            if (selectedOption && typeof selectedOption === 'string') {
+              const letter = mapping[selectedOption];
+              if (letter && RIASEC_LETTER_MAP[letter]) {
+                riasecScores[RIASEC_LETTER_MAP[letter]] += 1;
+              }
             }
           }
         }
       }
 
-      // Process strength dimensions from metadata
       if (question.metadata && typeof answer === 'number') {
         const strengthType = (question.metadata as any).strength_type;
         if (strengthType) {
@@ -161,9 +166,12 @@ export async function analyzeMiddleSchool(
           strengthsByDimension.get(strengthType)!.push(answer);
         }
       }
+
+      if (sectionName === 'learning_preferences' || sectionName === 'higher_learning_preferences') {
+        learningPreferences[uuid] = answer;
+      }
     }
 
-    // Step 4: Aggregate strength scores
     const strengthScores: StrengthScore[] = Array.from(strengthsByDimension.entries()).map(
       ([dimension, ratings]) => ({
         dimension,
@@ -172,21 +180,6 @@ export async function analyzeMiddleSchool(
       })
     );
 
-    // Step 5: Extract learning preferences — questions in the middle_learning_preferences section
-    const learningPreferences = Object.entries(allResponses)
-      .filter(([uuid]) => {
-        const q = questionMap.get(uuid);
-        return q && learningPrefSectionId && q.section_id === learningPrefSectionId;
-      })
-      .reduce(
-        (acc, [uuid, answer]) => {
-          acc[uuid] = answer;
-          return acc;
-        },
-        {} as Record<string, any>
-      );
-
-    // Step 6: Link adaptive aptitude session if exists
     let adaptiveData: AdaptiveAptitudeData | null = null;
     let aptitudeOverall: number | null = null;
     let resolvedSessionId: string | null = attempt.adaptive_aptitude_session_id ?? null;
@@ -194,7 +187,6 @@ export async function analyzeMiddleSchool(
     if (resolvedSessionId) {
       const fetched = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
 
-      // If linked session has no results, find the latest completed session for this learner
       if (fetched && !fetched.results) {
         const { data: completedSession } = await supabase
           .from('adaptive_aptitude_sessions')
@@ -249,11 +241,9 @@ export async function analyzeMiddleSchool(
       }
     }
 
-    // Step 7: Build profile snapshot
     const topCategories = getTopCategories(riasecScores);
     const riasecCode = topCategories.map((c) => c[0]).join('');
 
-    // Collect free-text reflections (type='text' questions)
     const reflections: Array<{ question: string; answer: string }> = [];
     for (const [uuid, answer] of Object.entries(allResponses)) {
       const q = questionMap.get(uuid) as any;
@@ -262,9 +252,16 @@ export async function analyzeMiddleSchool(
       }
     }
 
+    const riasecPercentages: Record<string, number> = {};
+    for (const key of Object.keys(riasecScores) as Array<keyof RIASECScores>) {
+      const count = riasecCounts[key];
+      riasecPercentages[key] = count > 0 ? Math.round((riasecScores[key] / (count * 5)) * 100) : riasecScores[key];
+    }
+
     const profileSnapshot = {
       grade_level: attempt.grade_level,
       stream_id: attempt.stream_id,
+      learner_context: attempt.learner_context,
       started_at: attempt.started_at,
       completed_at: new Date().toISOString(),
       riasec_profile: topCategories,
@@ -272,7 +269,24 @@ export async function analyzeMiddleSchool(
       reflections,
     };
 
-    // Step 8: Validate results before storing - prevent empty data insertion
+    const studentProfile: StudentProfile = {
+      riasec_scores: riasecPercentages,
+      riasec_code: riasecCode,
+      strength_scores: strengthScores,
+      aptitude_overall: aptitudeOverall != null ? aptitudeOverall / 100 : undefined,
+      accuracy_by_subtag: flattenAccuracyBySubtag(adaptiveData?.accuracyBySubtag as any),
+      learning_preferences: learningPreferences,
+      stream: (attempt.learner_context as any)?.selectedStream || attempt.stream_id,
+    };
+
+    const narrativeContext = { adaptive: adaptiveData as any, reflections };
+
+    const synthesis = await generateHigherSecondarySynthesis(
+      studentProfile,
+      narrativeContext,
+      context.env as Record<string, string>
+    );
+
     const hasValidRIASEC = Object.values(riasecScores).some(score => score > 0);
     const hasValidStrengths = strengthScores.length > 0;
 
@@ -283,7 +297,6 @@ export async function analyzeMiddleSchool(
       );
     }
 
-    // Step 9: Store results — upsert so re-running analyze on the same attempt updates rather than errors
     const { error: insertError } = await supabase
       .from('personal_assessment_results')
       .upsert(
@@ -300,6 +313,10 @@ export async function analyzeMiddleSchool(
           aptitude_overall: aptitudeOverall,
           adaptive_aptitude_session_id: resolvedSessionId,
           profile_snapshot: profileSnapshot,
+          skill_gap: synthesis?.skillGap ?? null,
+          roadmap: synthesis?.roadmap ?? null,
+          final_note: synthesis?.finalNote ?? null,
+          overall_summary: synthesis?.overallSummary ?? null,
           created_at: new Date().toISOString(),
         },
         { onConflict: 'attempt_id' }
@@ -312,11 +329,8 @@ export async function analyzeMiddleSchool(
       );
     }
 
-    // Step 10: Follow-up UPDATE to guarantee adaptive aptitude data is correct.
-    // The calculate_assessment_scores BEFORE INSERT trigger zeros aptitude_scores on fresh INSERTs;
-    // a plain UPDATE bypasses BEFORE INSERT triggers and always wins.
     if (adaptiveData !== null || aptitudeOverall !== null) {
-      const { error: aptitudeUpdateError } = await supabase
+      await supabase
         .from('personal_assessment_results')
         .update({
           aptitude_scores: adaptiveData,
@@ -324,54 +338,29 @@ export async function analyzeMiddleSchool(
           adaptive_aptitude_session_id: resolvedSessionId,
         })
         .eq('attempt_id', attemptId);
-
-      if (aptitudeUpdateError) {
-        // Non-fatal — main upsert succeeded; continue
-      }
     }
 
-    // Step 11: Generate career clusters (deterministic retrieval/scoring + OpenRouter narrative)
-    // and merge them into gemini_results.careerFit. Non-fatal: analysis succeeds regardless.
     let careerFit: { clusters: unknown[] } | null = null;
     try {
-      const student: StudentProfile = {
-        riasec_scores: riasecScores as unknown as Record<string, number>,
-        riasec_code: riasecCode,
-        strength_scores: strengthScores,
-        // Adaptive overall_accuracy is 0-100; the scorer expects a 0-1 fraction.
-        aptitude_overall: aptitudeOverall != null ? aptitudeOverall / 100 : undefined,
-        accuracy_by_subtag: flattenAccuracyBySubtag(adaptiveData?.accuracyBySubtag as any),
-        learning_preferences: learningPreferences,
-      };
-
       careerFit = await generateMiddleSchoolCareerClusters(
         supabase,
-        student,
+        studentProfile,
         context.env as Record<string, string>,
-        { adaptive: adaptiveData as any, reflections }
+        { ...narrativeContext, profileNarrative: synthesis?.profileNarrative }
       );
 
       if (careerFit) {
-        // Preserve existing gemini_results fields; only merge/overwrite the careerFit key.
-        const { data: existing } = await supabase
-          .from('personal_assessment_results')
-          .select('gemini_results')
-          .eq('attempt_id', attemptId)
-          .single();
+        const mergedGemini: Record<string, unknown> = {};
+        if (synthesis?.profileNarrative) mergedGemini.profileNarrative = synthesis.profileNarrative;
+        if (careerFit) mergedGemini.careerFit = careerFit;
 
-        const mergedGemini = { ...(existing?.gemini_results || {}), careerFit };
-
-        const { error: geminiUpdateError } = await supabase
+        await supabase
           .from('personal_assessment_results')
           .update({ gemini_results: mergedGemini })
           .eq('attempt_id', attemptId);
-
-        if (geminiUpdateError) {
-          console.error('[ANALYZE-MIDDLE] Failed to store careerFit:', geminiUpdateError.message);
-        }
       }
     } catch (clusterError) {
-      console.error('[ANALYZE-MIDDLE] Career cluster generation failed (non-fatal):', clusterError);
+      console.error('[ANALYZE-HIGHER-SEC] Career cluster generation failed (non-fatal):', clusterError);
     }
 
     return Response.json(
@@ -392,7 +381,7 @@ export async function analyzeMiddleSchool(
   } catch (error) {
     return Response.json(
       {
-        error: 'Middle school analysis failed',
+        error: 'Higher secondary analysis failed',
         message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

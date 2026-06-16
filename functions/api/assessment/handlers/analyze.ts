@@ -16,12 +16,12 @@
 import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import type { AnalyzeRequest } from '../types';
-import { analyzeMiddleSchool } from '../services/analysis-middle-school';
-import { analyzeHighSchool } from '../services/analysis-highschool';
-import { analyzeHigherSecondary } from '../services/analysis-higher-secondary';
-import { analyzeAfter10 } from '../services/analysis-after10';
-import { analyzeAfter12 } from '../services/analysis-after12';
-import { analyzeCollege } from '../services/analysis-college';
+import { analyzeMiddleSchool } from '../services/analyzers/analysis-middle-school';
+import { analyzeHighSchool } from '../services/analyzers/analysis-highschool';
+import { analyzeHigherSecondary } from '../services/analyzers/analysis-higher-secondary';
+import { analyzeAfter10 } from '../services/analyzers/analysis-after10';
+import { analyzeAfter12 } from '../services/analyzers/analysis-after12';
+import { analyzeCollege } from '../services/analyzers/analysis-college';
 
 export async function analyzeHandler(context: AuthenticatedContext) {
   const user = context.data.user;

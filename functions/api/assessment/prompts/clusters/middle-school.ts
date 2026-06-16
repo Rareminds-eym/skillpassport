@@ -6,8 +6,8 @@
  * Tone is driven by the learner's profile (RIASEC, strengths, learning style) — NOT by any
  * assumed age or grade.
  */
-import type { StudentProfile } from '../services/scoring-service';
-import type { PromptOccupation, ClusterNarrativeContext, ClusterPrompt } from '../types';
+import type { StudentProfile } from '../../services/core/scoring-service';
+import type { PromptOccupation, ClusterNarrativeContext, ClusterPrompt } from '../../types';
 
 export function buildMiddleSchoolClusterPrompt(
   student: StudentProfile,

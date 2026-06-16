@@ -1,20 +1,33 @@
 /**
- * Comprehensive Assessment Analysis
+ * Middle School Assessment Analysis (Grades 6-8)
  *
- * Handles: higher_secondary (Grades 11-12), after10 (Grade 11), after12 (Grade 12+)
- *
- * Comprehensive assessments include:
- * - RIASEC interests
- * - Big Five personality
- * - Work Values
- * - Employability skills
- * - Knowledge/Stream expertise
- * - Career recommendations
+ * Calculates RIASEC scores, strength aggregation, learning preferences,
+ * and links adaptive aptitude session data.
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../types';
-import { getTopCategories, getTopStrengths } from '../lib/analysis-helpers';
+import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../../types';
+import { getTopCategories, getTopStrengths } from '../../lib/analysis-helpers';
+import { generateMiddleSchoolCareerClusters } from '../core/career-cluster-generator';
+import type { StudentProfile } from '../core/scoring-service';
+
+/**
+ * Flatten the adaptive `accuracy_by_subtag` shape ({ subtag: { total, correct, accuracy } })
+ * into the { subtag: number } form the scoring service expects. Accuracy stays on the 0-100 scale.
+ */
+function flattenAccuracyBySubtag(
+  raw: Record<string, any> | null | undefined
+): Record<string, number> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const out: Record<string, number> = {};
+  for (const [subtag, value] of Object.entries(raw)) {
+    if (typeof value === 'number') out[subtag] = value;
+    else if (value && typeof value === 'object' && typeof value.accuracy === 'number') {
+      out[subtag] = value.accuracy;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
   const { data: session } = await supabase
@@ -34,12 +47,11 @@ async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
   return { session, results };
 }
 
-export async function analyzeComprehensive(
+export async function analyzeMiddleSchool(
   context: AuthenticatedContext,
   supabase: any,
   attemptId: string,
-  learnerId: string,
-  gradeLevel: string
+  learnerId: string
 ) {
   try {
     // Step 1: Fetch attempt with all_responses
@@ -61,7 +73,7 @@ export async function analyzeComprehensive(
       return Response.json({ error: 'No responses found in attempt' }, { status: 400 });
     }
 
-    // Step 2: Fetch all question metadata
+    // Step 2: Fetch all question metadata (BATCH QUERY - optimized)
     const { data: questions, error: questionsError } = await supabase
       .from('personal_assessment_questions')
       .select('id, section_id, category_mapping, metadata, question_type, question_text')
@@ -81,23 +93,24 @@ export async function analyzeComprehensive(
       );
     }
 
+    // Index questions by UUID for O(1) lookup
     const questionMap = new Map(questions.map((q) => [q.id, q]));
 
-    // Step 2b: Look up section names
+    // Step 2b: Look up section names to identify learning preference questions
     const sectionIds = [...new Set(questions.map((q: any) => q.section_id).filter(Boolean))];
-    const sectionMap = new Map<string, string>();
-
+    let learningPrefSectionId: string | null = null;
     if (sectionIds.length > 0) {
       const { data: sections } = await supabase
         .from('personal_assessment_sections')
         .select('id, name')
         .in('id', sectionIds);
       if (sections) {
-        sections.forEach((s: any) => sectionMap.set(s.id, s.name));
+        const lpSection = sections.find((s: any) => s.name === 'middle_learning_preferences');
+        learningPrefSectionId = lpSection?.id ?? null;
       }
     }
 
-    // Step 3: Calculate RIASEC scores
+    // Step 3: Calculate RIASEC scores from database metadata
     const riasecScores: RIASECScores = {
       realistic: 0,
       investigative: 0,
@@ -107,6 +120,7 @@ export async function analyzeComprehensive(
       conventional: 0,
     };
 
+    // DB category_mapping format: {"option text": "R"} where letter maps to full category name
     const RIASEC_LETTER_MAP: Record<string, keyof RIASECScores> = {
       R: 'realistic',
       I: 'investigative',
@@ -117,15 +131,12 @@ export async function analyzeComprehensive(
     };
 
     const strengthsByDimension = new Map<string, number[]>();
-    let bigFiveScores: Record<string, number> = {};
-    let workValuesScores: Record<string, number> = {};
-    let employabilityScores: Record<string, number> = {};
 
     for (const [uuid, answer] of Object.entries(allResponses)) {
       const question = questionMap.get(uuid);
       if (!question) continue;
 
-      // RIASEC
+      // Process RIASEC category mapping (format: {"option text": "R/I/A/S/E/C"})
       if (question.category_mapping && typeof question.category_mapping === 'object') {
         const mapping = question.category_mapping as Record<string, string>;
         const answerArray = Array.isArray(answer) ? answer : [answer];
@@ -140,7 +151,7 @@ export async function analyzeComprehensive(
         }
       }
 
-      // Strengths
+      // Process strength dimensions from metadata
       if (question.metadata && typeof answer === 'number') {
         const strengthType = (question.metadata as any).strength_type;
         if (strengthType) {
@@ -148,21 +159,6 @@ export async function analyzeComprehensive(
             strengthsByDimension.set(strengthType, []);
           }
           strengthsByDimension.get(strengthType)!.push(answer);
-        }
-      }
-
-      // Big Five, Work Values, Employability (numeric scores from metadata)
-      if (question.metadata && typeof answer === 'number') {
-        const metadata = question.metadata as any;
-
-        if (metadata.big_five_trait) {
-          bigFiveScores[metadata.big_five_trait] = (bigFiveScores[metadata.big_five_trait] || 0) + answer;
-        }
-        if (metadata.work_value_trait) {
-          workValuesScores[metadata.work_value_trait] = (workValuesScores[metadata.work_value_trait] || 0) + answer;
-        }
-        if (metadata.employability_skill) {
-          employabilityScores[metadata.employability_skill] = (employabilityScores[metadata.employability_skill] || 0) + answer;
         }
       }
     }
@@ -176,12 +172,11 @@ export async function analyzeComprehensive(
       })
     );
 
-    // Step 5: Extract learning preferences
+    // Step 5: Extract learning preferences — questions in the middle_learning_preferences section
     const learningPreferences = Object.entries(allResponses)
       .filter(([uuid]) => {
         const q = questionMap.get(uuid);
-        const sectionName = q && q.section_id ? sectionMap.get(q.section_id) : null;
-        return sectionName && (sectionName.includes('learning_preference') || sectionName.includes('learning_style'));
+        return q && learningPrefSectionId && q.section_id === learningPrefSectionId;
       })
       .reduce(
         (acc, [uuid, answer]) => {
@@ -191,7 +186,7 @@ export async function analyzeComprehensive(
         {} as Record<string, any>
       );
 
-    // Step 6: Link adaptive aptitude
+    // Step 6: Link adaptive aptitude session if exists
     let adaptiveData: AdaptiveAptitudeData | null = null;
     let aptitudeOverall: number | null = null;
     let resolvedSessionId: string | null = attempt.adaptive_aptitude_session_id ?? null;
@@ -199,6 +194,7 @@ export async function analyzeComprehensive(
     if (resolvedSessionId) {
       const fetched = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
 
+      // If linked session has no results, find the latest completed session for this learner
       if (fetched && !fetched.results) {
         const { data: completedSession } = await supabase
           .from('adaptive_aptitude_sessions')
@@ -257,6 +253,7 @@ export async function analyzeComprehensive(
     const topCategories = getTopCategories(riasecScores);
     const riasecCode = topCategories.map((c) => c[0]).join('');
 
+    // Collect free-text reflections (type='text' questions)
     const reflections: Array<{ question: string; answer: string }> = [];
     for (const [uuid, answer] of Object.entries(allResponses)) {
       const q = questionMap.get(uuid) as any;
@@ -275,7 +272,7 @@ export async function analyzeComprehensive(
       reflections,
     };
 
-    // Step 8: Validate results
+    // Step 8: Validate results before storing - prevent empty data insertion
     const hasValidRIASEC = Object.values(riasecScores).some(score => score > 0);
     const hasValidStrengths = strengthScores.length > 0;
 
@@ -286,7 +283,7 @@ export async function analyzeComprehensive(
       );
     }
 
-    // Step 9: Store results
+    // Step 9: Store results — upsert so re-running analyze on the same attempt updates rather than errors
     const { error: insertError } = await supabase
       .from('personal_assessment_results')
       .upsert(
@@ -299,9 +296,6 @@ export async function analyzeComprehensive(
           riasec_code: riasecCode,
           strength_scores: strengthScores,
           learning_preferences: learningPreferences,
-          bigfive_scores: Object.keys(bigFiveScores).length > 0 ? bigFiveScores : null,
-          work_values_scores: Object.keys(workValuesScores).length > 0 ? workValuesScores : null,
-          employability_scores: Object.keys(employabilityScores).length > 0 ? employabilityScores : null,
           aptitude_scores: adaptiveData,
           aptitude_overall: aptitudeOverall,
           adaptive_aptitude_session_id: resolvedSessionId,
@@ -318,7 +312,9 @@ export async function analyzeComprehensive(
       );
     }
 
-    // Step 10: Follow-up UPDATE for aptitude data
+    // Step 10: Follow-up UPDATE to guarantee adaptive aptitude data is correct.
+    // The calculate_assessment_scores BEFORE INSERT trigger zeros aptitude_scores on fresh INSERTs;
+    // a plain UPDATE bypasses BEFORE INSERT triggers and always wins.
     if (adaptiveData !== null || aptitudeOverall !== null) {
       const { error: aptitudeUpdateError } = await supabase
         .from('personal_assessment_results')
@@ -330,8 +326,52 @@ export async function analyzeComprehensive(
         .eq('attempt_id', attemptId);
 
       if (aptitudeUpdateError) {
-        // Non-fatal
+        // Non-fatal — main upsert succeeded; continue
       }
+    }
+
+    // Step 11: Generate career clusters (deterministic retrieval/scoring + OpenRouter narrative)
+    // and merge them into gemini_results.careerFit. Non-fatal: analysis succeeds regardless.
+    let careerFit: { clusters: unknown[] } | null = null;
+    try {
+      const student: StudentProfile = {
+        riasec_scores: riasecScores as unknown as Record<string, number>,
+        riasec_code: riasecCode,
+        strength_scores: strengthScores,
+        // Adaptive overall_accuracy is 0-100; the scorer expects a 0-1 fraction.
+        aptitude_overall: aptitudeOverall != null ? aptitudeOverall / 100 : undefined,
+        accuracy_by_subtag: flattenAccuracyBySubtag(adaptiveData?.accuracyBySubtag as any),
+        learning_preferences: learningPreferences,
+      };
+
+      careerFit = await generateMiddleSchoolCareerClusters(
+        supabase,
+        student,
+        context.env as Record<string, string>,
+        { adaptive: adaptiveData as any, reflections }
+      );
+
+      if (careerFit) {
+        // Preserve existing gemini_results fields; only merge/overwrite the careerFit key.
+        const { data: existing } = await supabase
+          .from('personal_assessment_results')
+          .select('gemini_results')
+          .eq('attempt_id', attemptId)
+          .single();
+
+        const mergedGemini = { ...(existing?.gemini_results || {}), careerFit };
+
+        const { error: geminiUpdateError } = await supabase
+          .from('personal_assessment_results')
+          .update({ gemini_results: mergedGemini })
+          .eq('attempt_id', attemptId);
+
+        if (geminiUpdateError) {
+          console.error('[ANALYZE-MIDDLE] Failed to store careerFit:', geminiUpdateError.message);
+        }
+      }
+    } catch (clusterError) {
+      console.error('[ANALYZE-MIDDLE] Career cluster generation failed (non-fatal):', clusterError);
     }
 
     return Response.json(
@@ -341,12 +381,10 @@ export async function analyzeComprehensive(
         riasecCode,
         strengthScores,
         learningPreferences,
-        bigFiveScores,
-        workValuesScores,
-        employabilityScores,
         adaptiveData,
         aptitudeOverall,
         adaptiveSessionId: resolvedSessionId,
+        careerFit,
         profileSnapshot,
       },
       { status: 200 }
@@ -354,7 +392,7 @@ export async function analyzeComprehensive(
   } catch (error) {
     return Response.json(
       {
-        error: 'Comprehensive analysis failed',
+        error: 'Middle school analysis failed',
         message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

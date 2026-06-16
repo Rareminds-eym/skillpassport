@@ -3,9 +3,9 @@
  *
  * Focus: College entrance preparation, career specialization, competitive exam guidance.
  */
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../shared/ai-config';
-import type { StudentProfile } from './scoring-service';
-import type { ClusterNarrativeContext } from '../types';
+import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import type { StudentProfile } from '../core/scoring-service';
+import type { ClusterNarrativeContext } from '../../types';
 
 export interface HigherSecondarySynthesis {
   profileNarrative?: string;

@@ -1,20 +1,24 @@
 /**
- * After 10th Assessment Analysis
+ * High School Assessment Analysis (Grades 9-10)
  *
- * For students who have completed 10th grade and are exploring vocational,
- * diploma, or alternative career paths (not continuing to 11-12).
+ * Calculates RIASEC, character strengths, learning preferences, aptitude,
+ * and introduces basic career exploration dimensions.
  * 
  * Scoring: 3-component (Interest + Capability + Personality)
- * Focus: Vocational training, skill-based careers, immediate employment paths.
+ * More sophisticated than middle school with career readiness focus.
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../types';
-import { getTopCategories, getTopStrengths } from '../lib/analysis-helpers';
-import { generateMiddleSchoolCareerClusters } from './career-cluster-generator';
-import { generateAfter10Synthesis } from './after10-analysis-generator';
-import type { StudentProfile } from './scoring-service';
+import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../../types';
+import { getTopCategories, getTopStrengths } from '../../lib/analysis-helpers';
+import { generateMiddleSchoolCareerClusters } from '../core/career-cluster-generator';
+import { generateHighSchoolSynthesis } from '../generators/synthesis-highschool';
+import type { StudentProfile } from '../core/scoring-service';
 
+/**
+ * Flatten adaptive `accuracy_by_subtag` ({ subtag: { accuracy } }) into { subtag: number }
+ * (0-100) for the scoring service.
+ */
 function flattenAccuracyBySubtag(
   raw: Record<string, any> | null | undefined
 ): Record<string, number> | undefined {
@@ -45,13 +49,14 @@ async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
   return { session, results };
 }
 
-export async function analyzeAfter10(
+export async function analyzeHighSchool(
   context: AuthenticatedContext,
   supabase: any,
   attemptId: string,
   learnerId: string
 ) {
   try {
+    // Step 1: Fetch attempt with all_responses
     const { data: attempt, error: attemptError } = await supabase
       .from('personal_assessment_attempts')
       .select('id, all_responses, grade_level, stream_id, learner_context, started_at, adaptive_aptitude_session_id')
@@ -70,6 +75,7 @@ export async function analyzeAfter10(
       return Response.json({ error: 'No responses found in attempt' }, { status: 400 });
     }
 
+    // Step 2: Fetch all question metadata (BATCH QUERY - optimized)
     const { data: questions, error: questionsError } = await supabase
       .from('personal_assessment_questions')
       .select('id, section_id, category_mapping, metadata, question_type, question_text')
@@ -89,8 +95,10 @@ export async function analyzeAfter10(
       );
     }
 
+    // Index questions by UUID for O(1) lookup
     const questionMap = new Map(questions.map((q) => [q.id, q]));
 
+    // Step 2b: Look up section names
     const sectionIds = [...new Set(questions.map((q: any) => q.section_id).filter(Boolean))];
     const { data: sections } = await supabase
       .from('personal_assessment_sections')
@@ -99,6 +107,7 @@ export async function analyzeAfter10(
 
     const sectionMap = new Map((sections || []).map((s: any) => [s.id, s.name]));
 
+    // Step 3: Calculate RIASEC scores
     const riasecScores: RIASECScores = {
       realistic: 0,
       investigative: 0,
@@ -117,6 +126,7 @@ export async function analyzeAfter10(
       C: 'conventional',
     };
 
+    // Track counts for Likert-style RIASEC (if used)
     const riasecCounts: RIASECScores = {
       realistic: 0,
       investigative: 0,
@@ -126,25 +136,32 @@ export async function analyzeAfter10(
       conventional: 0,
     };
 
+    // Step 4: Calculate strength scores
     const strengthsByDimension = new Map<string, number[]>();
+
+    // Step 5: Extract learning preferences
     const learningPreferences: Record<string, any> = {};
 
+    // Process all responses
     for (const [uuid, answer] of Object.entries(allResponses)) {
       const question = questionMap.get(uuid);
       if (!question) continue;
 
       const sectionName = sectionMap.get(question.section_id);
 
+      // Process RIASEC section (supports both option-mapping and Likert formats)
       if (sectionName === 'riasec' && question.category_mapping && typeof question.category_mapping === 'object') {
         const mapping = question.category_mapping as Record<string, string>;
         
         if (typeof mapping.type === 'string' && typeof answer === 'number') {
+          // Likert format: one tagged letter, rating accumulates
           const key = RIASEC_LETTER_MAP[mapping.type];
           if (key) {
             riasecScores[key] += answer;
             riasecCounts[key] += 1;
           }
         } else {
+          // Option-text → letter format
           const answerArray = Array.isArray(answer) ? answer : [answer];
           for (const selectedOption of answerArray) {
             if (selectedOption && typeof selectedOption === 'string') {
@@ -157,6 +174,7 @@ export async function analyzeAfter10(
         }
       }
 
+      // Process strength dimensions
       if (question.metadata && typeof answer === 'number') {
         const strengthType = (question.metadata as any).strength_type;
         if (strengthType) {
@@ -167,11 +185,13 @@ export async function analyzeAfter10(
         }
       }
 
-      if (sectionName === 'learning_preferences' || sectionName === 'after10_learning_preferences') {
+      // Process learning preferences
+      if (sectionName === 'learning_preferences' || sectionName === 'highschool_learning_preferences') {
         learningPreferences[uuid] = answer;
       }
     }
 
+    // Step 6: Aggregate strength scores
     const strengthScores: StrengthScore[] = Array.from(strengthsByDimension.entries()).map(
       ([dimension, ratings]) => ({
         dimension,
@@ -180,6 +200,7 @@ export async function analyzeAfter10(
       })
     );
 
+    // Step 7: Link adaptive aptitude session if exists
     let adaptiveData: AdaptiveAptitudeData | null = null;
     let aptitudeOverall: number | null = null;
     let resolvedSessionId: string | null = attempt.adaptive_aptitude_session_id ?? null;
@@ -200,50 +221,52 @@ export async function analyzeAfter10(
         if (completedSession && completedSession.id !== resolvedSessionId) {
           resolvedSessionId = completedSession.id;
           const fallback = await tryFetchAdaptiveResults(supabase, resolvedSessionId);
-          if (fallback?.results) {
+          if (fallback) {
             adaptiveData = {
               questionsAnswered: fallback.session.questions_answered,
               difficulty: fallback.session.current_difficulty,
-              aptitudeLevel: fallback.results.aptitude_level ?? null,
-              confidenceTag: fallback.results.confidence_tag ?? null,
-              tier: fallback.results.tier ?? null,
-              totalQuestions: fallback.results.total_questions ?? null,
-              totalCorrect: fallback.results.total_correct ?? null,
-              overallAccuracy: fallback.results.overall_accuracy ?? null,
-              accuracyByDifficulty: fallback.results.accuracy_by_difficulty ?? null,
-              accuracyBySubtag: fallback.results.accuracy_by_subtag ?? null,
-              pathClassification: fallback.results.path_classification ?? null,
-              averageResponseTimeMs: fallback.results.average_response_time_ms ?? null,
+              aptitudeLevel: fallback.results?.aptitude_level ?? null,
+              confidenceTag: fallback.results?.confidence_tag ?? null,
+              tier: fallback.results?.tier ?? null,
+              totalQuestions: fallback.results?.total_questions ?? null,
+              totalCorrect: fallback.results?.total_correct ?? null,
+              overallAccuracy: fallback.results?.overall_accuracy ?? null,
+              accuracyByDifficulty: fallback.results?.accuracy_by_difficulty ?? null,
+              accuracyBySubtag: fallback.results?.accuracy_by_subtag ?? null,
+              pathClassification: fallback.results?.path_classification ?? null,
+              averageResponseTimeMs: fallback.results?.average_response_time_ms ?? null,
             };
-            if (fallback.results.overall_accuracy != null) {
+            if (fallback.results?.overall_accuracy != null) {
               aptitudeOverall = parseFloat(fallback.results.overall_accuracy);
             }
           }
         }
-      } else if (fetched?.results) {
+      } else if (fetched) {
         adaptiveData = {
           questionsAnswered: fetched.session.questions_answered,
           difficulty: fetched.session.current_difficulty,
-          aptitudeLevel: fetched.results.aptitude_level ?? null,
-          confidenceTag: fetched.results.confidence_tag ?? null,
-          tier: fetched.results.tier ?? null,
-          totalQuestions: fetched.results.total_questions ?? null,
-          totalCorrect: fetched.results.total_correct ?? null,
-          overallAccuracy: fetched.results.overall_accuracy ?? null,
-          accuracyByDifficulty: fetched.results.accuracy_by_difficulty ?? null,
-          accuracyBySubtag: fetched.results.accuracy_by_subtag ?? null,
-          pathClassification: fetched.results.path_classification ?? null,
-          averageResponseTimeMs: fetched.results.average_response_time_ms ?? null,
+          aptitudeLevel: fetched.results?.aptitude_level ?? null,
+          confidenceTag: fetched.results?.confidence_tag ?? null,
+          tier: fetched.results?.tier ?? null,
+          totalQuestions: fetched.results?.total_questions ?? null,
+          totalCorrect: fetched.results?.total_correct ?? null,
+          overallAccuracy: fetched.results?.overall_accuracy ?? null,
+          accuracyByDifficulty: fetched.results?.accuracy_by_difficulty ?? null,
+          accuracyBySubtag: fetched.results?.accuracy_by_subtag ?? null,
+          pathClassification: fetched.results?.path_classification ?? null,
+          averageResponseTimeMs: fetched.results?.average_response_time_ms ?? null,
         };
-        if (fetched.results.overall_accuracy != null) {
+        if (fetched.results?.overall_accuracy != null) {
           aptitudeOverall = parseFloat(fetched.results.overall_accuracy);
         }
       }
     }
 
+    // Step 8: Build profile snapshot
     const topCategories = getTopCategories(riasecScores);
     const riasecCode = topCategories.map((c) => c[0]).join('');
 
+    // Collect reflections
     const reflections: Array<{ question: string; answer: string }> = [];
     for (const [uuid, answer] of Object.entries(allResponses)) {
       const q = questionMap.get(uuid) as any;
@@ -252,6 +275,7 @@ export async function analyzeAfter10(
       }
     }
 
+    // Convert Likert sums to 0-100 percentages for scoring
     const riasecPercentages: Record<string, number> = {};
     for (const key of Object.keys(riasecScores) as Array<keyof RIASECScores>) {
       const count = riasecCounts[key];
@@ -261,7 +285,6 @@ export async function analyzeAfter10(
     const profileSnapshot = {
       grade_level: attempt.grade_level,
       stream_id: attempt.stream_id,
-      learner_context: attempt.learner_context,
       started_at: attempt.started_at,
       completed_at: new Date().toISOString(),
       riasec_profile: topCategories,
@@ -269,6 +292,7 @@ export async function analyzeAfter10(
       reflections,
     };
 
+    // Step 9: Build student profile for AI synthesis
     const studentProfile: StudentProfile = {
       riasec_scores: riasecPercentages,
       riasec_code: riasecCode,
@@ -280,12 +304,14 @@ export async function analyzeAfter10(
 
     const narrativeContext = { adaptive: adaptiveData as any, reflections };
 
-    const synthesis = await generateAfter10Synthesis(
+    // Step 10: AI profile synthesis (non-fatal)
+    const synthesis = await generateHighSchoolSynthesis(
       studentProfile,
       narrativeContext,
       context.env as Record<string, string>
     );
 
+    // Step 11: Validate results before storing
     const hasValidRIASEC = Object.values(riasecScores).some(score => score > 0);
     const hasValidStrengths = strengthScores.length > 0;
 
@@ -296,6 +322,7 @@ export async function analyzeAfter10(
       );
     }
 
+    // Step 12: Store results
     const { error: insertError } = await supabase
       .from('personal_assessment_results')
       .upsert(
@@ -303,7 +330,7 @@ export async function analyzeAfter10(
           attempt_id: attemptId,
           learner_id: learnerId,
           grade_level: attempt.grade_level,
-          stream_id: attempt.stream_id || 'vocational',
+          stream_id: attempt.stream_id || 'general',
           riasec_scores: riasecScores,
           riasec_code: riasecCode,
           strength_scores: strengthScores,
@@ -312,6 +339,7 @@ export async function analyzeAfter10(
           aptitude_overall: aptitudeOverall,
           adaptive_aptitude_session_id: resolvedSessionId,
           profile_snapshot: profileSnapshot,
+          // AI synthesis columns
           skill_gap: synthesis?.skillGap ?? null,
           roadmap: synthesis?.roadmap ?? null,
           final_note: synthesis?.finalNote ?? null,
@@ -328,8 +356,9 @@ export async function analyzeAfter10(
       );
     }
 
+    // Step 13: Follow-up UPDATE for adaptive aptitude
     if (adaptiveData !== null || aptitudeOverall !== null) {
-      await supabase
+      const { error: aptitudeUpdateError } = await supabase
         .from('personal_assessment_results')
         .update({
           aptitude_scores: adaptiveData,
@@ -337,8 +366,13 @@ export async function analyzeAfter10(
           adaptive_aptitude_session_id: resolvedSessionId,
         })
         .eq('attempt_id', attemptId);
+
+      if (aptitudeUpdateError) {
+        // Non-fatal
+      }
     }
 
+    // Step 14: Generate career clusters (non-fatal)
     let careerFit: { clusters: unknown[] } | null = null;
     try {
       careerFit = await generateMiddleSchoolCareerClusters(
@@ -353,13 +387,17 @@ export async function analyzeAfter10(
         if (synthesis?.profileNarrative) mergedGemini.profileNarrative = synthesis.profileNarrative;
         if (careerFit) mergedGemini.careerFit = careerFit;
 
-        await supabase
+        const { error: geminiUpdateError } = await supabase
           .from('personal_assessment_results')
           .update({ gemini_results: mergedGemini })
           .eq('attempt_id', attemptId);
+
+        if (geminiUpdateError) {
+          console.error('[ANALYZE-HIGHSCHOOL] Failed to store gemini_results:', geminiUpdateError.message);
+        }
       }
     } catch (clusterError) {
-      console.error('[ANALYZE-AFTER10] Career cluster generation failed (non-fatal):', clusterError);
+      console.error('[ANALYZE-HIGHSCHOOL] Career cluster generation failed (non-fatal):', clusterError);
     }
 
     return Response.json(
@@ -380,7 +418,7 @@ export async function analyzeAfter10(
   } catch (error) {
     return Response.json(
       {
-        error: 'After 10th analysis failed',
+        error: 'High school analysis failed',
         message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }

@@ -4,9 +4,9 @@
  * Generates career exploration guidance and skill development roadmap.
  * Focus: Academic stream selection, early career awareness, foundational skills.
  */
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../shared/ai-config';
-import type { StudentProfile } from './scoring-service';
-import type { ClusterNarrativeContext } from '../types';
+import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import type { StudentProfile } from '../core/scoring-service';
+import type { ClusterNarrativeContext } from '../../types';
 
 export interface HighSchoolSynthesis {
   profileNarrative?: string;

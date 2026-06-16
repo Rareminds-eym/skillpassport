@@ -11,7 +11,7 @@ import {
   saveAptitudeQuestions,
   saveKnowledgeQuestions,
   clearSavedQuestionsForLearner,
-} from '../services/assessment-repository';
+} from '../services/core/assessment-repository';
 
 /**
  * GET /api/assessment/questions/saved

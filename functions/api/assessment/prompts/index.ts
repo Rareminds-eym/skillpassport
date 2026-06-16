@@ -1,11 +1,11 @@
 /**
- * Cluster-generation prompts — per grade level.
+ * Assessment Prompts — Organized by Feature (Synthesis vs Clustering)
  * The generator calls getClusterPrompt(gradeLevel, ...) and stays prompt-agnostic.
  */
-import type { GradeLevel, StudentProfile } from '../services/scoring-service';
+import type { GradeLevel, StudentProfile } from '../services/core/scoring-service';
 import type { PromptOccupation, ClusterNarrativeContext, ClusterPrompt } from '../types';
-import { buildMiddleSchoolClusterPrompt } from './middle-school-clusters';
-import { buildCollegeClusterPrompt } from './college-clusters';
+import { buildMiddleSchoolClusterPrompt } from './clusters/middle-school';
+import { buildCollegeClusterPrompt } from './clusters/college';
 
 /**
  * Return the system + user cluster prompt for the given grade level.

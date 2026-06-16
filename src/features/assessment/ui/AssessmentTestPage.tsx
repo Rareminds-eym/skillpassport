@@ -162,27 +162,22 @@ const AssessmentTestPage: React.FC = () => {
       // This restores the backup-link guarantee that was previously missing; without
       // it a failed startTest link silently caused aptitude to be saved as 0/null.
       const sessionId = results?.sessionId;
-      if (sessionId) {
-        store.saveAnswer('adaptive_aptitude_session_id', sessionId);
-
-        if (store.attemptId) {
-          try {
-            await linkSessionToAttempt(store.attemptId, sessionId);
-            logger.info('[onTestComplete] Adaptive session linked to attempt (backup link)', {
-              attemptId: store.attemptId,
-              sessionId,
-            });
-          } catch (err) {
-            // Non-blocking: store + answers fallback still allow submit-time recovery.
-            logger.warn('[onTestComplete] Backup session link failed (non-blocking)', {
-              error: err instanceof Error ? err.message : String(err),
-              attemptId: store.attemptId,
-              sessionId,
-            });
-          }
+      if (sessionId && store.attemptId) {
+        try {
+          await linkSessionToAttempt(store.attemptId, sessionId);
+          logger.info('[onTestComplete] Adaptive session linked to attempt', {
+            attemptId: store.attemptId,
+            sessionId,
+          });
+        } catch (err) {
+          logger.error('[onTestComplete] Failed to link adaptive session to attempt', {
+            error: err instanceof Error ? err.message : String(err),
+            attemptId: store.attemptId,
+            sessionId,
+          });
         }
       } else {
-        logger.warn('[onTestComplete] Completed adaptive test returned no sessionId');
+        logger.warn('[onTestComplete] Missing sessionId or attemptId for adaptive link');
       }
 
       // Show section-complete screen; user clicks "Submit Assessment" to submit.

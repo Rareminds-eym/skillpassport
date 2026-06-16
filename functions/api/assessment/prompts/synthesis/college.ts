@@ -6,15 +6,14 @@
  * select occupations, rank, or compute match scores, and it does NOT produce careerFit
  * (clusters are deterministic + RAG, generated separately).
  */
-import type { StudentProfile } from '../services/scoring-service';
-import type { ClusterNarrativeContext, ClusterPrompt } from '../types';
+import type { StudentProfile } from '../../services/core/scoring-service';
+import type { ClusterNarrativeContext, ClusterPrompt } from '../../types';
 
 export function buildCollegeSynthesisPrompt(
   student: StudentProfile,
-  context: ClusterNarrativeContext,
-  extras: { employabilityScores?: Record<string, number>; streamAptitude?: any }
+  context: ClusterNarrativeContext
 ): ClusterPrompt {
-  return { system: SYSTEM, user: buildUser(student, context, extras) };
+  return { system: SYSTEM, user: buildUser(student, context) };
 }
 
 const SYSTEM = `You are a career counselor analyzing a college student's completed assessment.
@@ -25,7 +24,7 @@ those are produced separately by a deterministic engine.
 
 Return ONLY valid JSON in this exact shape:
 {
-  "profileNarrative": "<150-220 words: who this student is — interests (RIASEC), personality (Big Five), values, aptitude strengths, knowledge, employability readiness — written as a coherent professional synthesis>",
+  "profileNarrative": "<150-220 words: who this student is — interests (RIASEC), personality (Big Five), values, aptitude strengths, knowledge — written as a coherent professional synthesis>",
   "employability": {
     "overallReadiness": "<High|Medium|Low>",
     "strengthAreas": ["<skill>"],
@@ -61,14 +60,20 @@ Ground every statement in the scores provided. Be specific and professional.`;
 
 function buildUser(
   student: StudentProfile,
-  context: ClusterNarrativeContext,
-  extras: { employabilityScores?: Record<string, number>; streamAptitude?: any }
+  context: ClusterNarrativeContext
 ): string {
   const adaptive = context.adaptive;
   const aptByArea = adaptive?.accuracyBySubtag
     ? Object.entries(adaptive.accuracyBySubtag)
         .map(([k, v]) => `${k}: ${typeof v === 'object' && v ? v.accuracy : v}%`).join(', ')
     : 'n/a';
+
+  const aptitudeInsightsText = context.aptitudeInsights
+    ? `APTITUDE INSIGHTS:
+Strengths: ${context.aptitudeInsights.strengths?.join(', ') || 'n/a'}
+Weaknesses: ${context.aptitudeInsights.weaknesses?.join(', ') || 'n/a'}
+Pattern: ${context.aptitudeInsights.pattern || 'n/a'}`
+    : '';
 
   return `STUDENT COMPUTED SCORES
 
@@ -78,10 +83,10 @@ RIASEC code: ${student.riasec_code}
 RIASEC scores: ${JSON.stringify(student.riasec_scores)}
 Big Five (1-5): ${JSON.stringify(student.big_five_scores || {})}
 Work values (1-5): ${JSON.stringify(student.work_values || {})}
-Employability skills (0-100, includes an SJT situational-judgment score): ${JSON.stringify(extras.employabilityScores || {})}
 Domain knowledge score: ${student.knowledge_score != null ? student.knowledge_score + '%' : 'n/a'}
-Stream aptitude: ${extras.streamAptitude ? JSON.stringify(extras.streamAptitude) : 'n/a'}
 Adaptive aptitude: overall ${adaptive?.overallAccuracy ?? 'n/a'}%, level ${adaptive?.aptitudeLevel ?? 'n/a'}, by area — ${aptByArea}
+
+${aptitudeInsightsText}
 
 Analyze this student and return the JSON exactly as specified.`;
 }

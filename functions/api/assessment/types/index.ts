@@ -420,6 +420,7 @@ export interface PromptOccupation {
   occupation_id: string;
   name: string;
   riasecCodes: string[];
+  description?: string;  // Role description for LLM to understand importance & differences
 }
 
 /**
@@ -437,6 +438,17 @@ export interface ClusterNarrativeContext {
   /** AI profile-synthesis narrative (college). Appended to the structured embedding query
    *  and provided to the cluster prompt for richer, consistent narratives. */
   profileNarrative?: string;
+  /** Aptitude insights from difficulty-based performance (strengths/weaknesses). */
+  aptitudeInsights?: {
+    strengths: string[];
+    weaknesses: string[];
+    pattern: string;
+  } | null;
+  /** Knowledge insights from stream-specific assessment (topic strengths/weaknesses). */
+  knowledgeInsights?: {
+    strengths: string[];
+    weaknesses: string[];
+  } | null;
 }
 
 /** A per-grade prompt builder returns the system + user messages for the cluster LLM call. */

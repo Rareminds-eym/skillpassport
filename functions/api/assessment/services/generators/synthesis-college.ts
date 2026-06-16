@@ -7,10 +7,10 @@
  *
  * Fully non-fatal: returns null on any failure so analysis + clusters still complete.
  */
-import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../shared/ai-config';
-import type { StudentProfile } from './scoring-service';
-import type { ClusterNarrativeContext } from '../types';
-import { buildCollegeSynthesisPrompt } from '../prompts/college-synthesis';
+import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
+import type { StudentProfile } from '../core/scoring-service';
+import type { ClusterNarrativeContext } from '../../types';
+import { buildCollegeSynthesisPrompt } from '../../prompts/synthesis/college';
 
 export interface CollegeSynthesis {
   profileNarrative?: string;
@@ -27,15 +27,14 @@ export interface CollegeSynthesis {
 }
 
 const SYNTHESIS_CONFIG = {
-  models: ['meta-llama/llama-3.3-70b-instruct', 'openai/gpt-4o-mini'],
+  models: ['openai/gpt-4o-mini', 'meta-llama/llama-3.3-70b-instruct'],
   maxTokens: 2500,
-  temperature: 0.3,
+  temperature: 0.1,
 };
 
 export async function generateCollegeSynthesis(
   student: StudentProfile,
   context: ClusterNarrativeContext,
-  extras: { employabilityScores?: Record<string, number>; streamAptitude?: any },
   env: Record<string, string>
 ): Promise<CollegeSynthesis | null> {
   const apiKeys = getAPIKeys(env);
@@ -45,7 +44,7 @@ export async function generateCollegeSynthesis(
   }
 
   try {
-    const { system, user } = buildCollegeSynthesisPrompt(student, context, extras);
+    const { system, user } = buildCollegeSynthesisPrompt(student, context);
     const raw = await callOpenRouterWithRetry(apiKeys.openRouter, [
       { role: 'system', content: system },
       { role: 'user', content: user },
