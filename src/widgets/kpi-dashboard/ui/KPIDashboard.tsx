@@ -23,6 +23,19 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('kpi-dashboard');
 
+interface KPIResponse {
+  data?: {
+    totalLearners: number;
+    attendancePercentage: number;
+    examsScheduled: number;
+    pendingAssessments: number;
+    dailyTotal: number;
+    weeklyTotal: number;
+    monthlyTotal: number;
+    libraryOverdue: number;
+  };
+}
+
 const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({ 
   schoolId,
   refreshInterval = 15 * 60 * 1000 // 15 minutes
@@ -36,12 +49,13 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
       setError(null)
       setLoading(true)
 
-      const resp: any = await apiPost('/kpi-dashboard/actions', {
+      const resp = await apiPost<KPIResponse>('/kpi-dashboard/actions', {
         action: 'get-kpi-data',
         schoolId,
       })
 
-      const data = resp.data ?? resp
+      const data = resp.data
+      if (!data) return
 
       setKpiData({
         totallearners: data.totalLearners || 0,
