@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X, Database } from 'lucide-react';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent } from '@/shared/ui/Card';
-import { Badge } from '@/shared/ui/Badge';
-import { parseResumeWithAI } from '@/features/digital-portfolio';
-import { saveResumeToTables } from '@/features/digital-portfolio';
+import { parseResumeWithAI, saveResumeToTables } from '@/features/digital-portfolio';
 import { apiPost } from '@/shared/api/apiClient';
 import * as pdfjsLib from 'pdfjs-dist';
+// eslint-disable-next-line import/default
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { validateFileSize, getValidationErrorMessage } from '@/shared/lib/file-validation';
 import { getFileSizeLimit } from '@/shared/config/fileSizeLimits';
@@ -23,6 +22,54 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState(null);
   const [editMode, setEditMode] = useState(false);
+
+  const normalizeStringValue = (value) => String(value ?? '').trim().replace(/\s+/g, ' ');
+
+  const normalizeStringArray = (value) => {
+    const rawItems = Array.isArray(value)
+      ? value
+      : typeof value === 'string'
+        ? value.split(/[,;\n]/)
+        : [];
+
+    const seen = new Set();
+    const items = [];
+
+    rawItems.forEach((item) => {
+      const normalized = normalizeStringValue(item);
+      const key = normalized.toLowerCase();
+      if (!normalized || normalized === '[]' || normalized === '{}') return;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push(normalized);
+    });
+
+    return items;
+  };
+
+  const sanitizeExtractedData = (data) => ({
+    ...data,
+    interests: normalizeStringArray(data?.interests),
+    languages: normalizeStringArray(data?.languages),
+    hobbies: normalizeStringArray(data?.hobbies)
+  });
+
+  const renderValue = (value) => normalizeStringValue(value) || '(empty)';
+
+  const profileListFields = [
+    { key: 'interests', label: 'Interests', className: 'bg-blue-100 text-blue-800' },
+    { key: 'languages', label: 'Languages', className: 'bg-green-100 text-green-800' },
+    { key: 'hobbies', label: 'Hobbies', className: 'bg-purple-100 text-purple-800' }
+  ];
+
+  const socialFields = [
+    { key: 'linkedin_link', label: 'LinkedIn' },
+    { key: 'github_link', label: 'GitHub' },
+    { key: 'portfolio_link', label: 'Portfolio' },
+    { key: 'twitter_link', label: 'Twitter' },
+    { key: 'facebook_link', label: 'Facebook' },
+    { key: 'instagram_link', label: 'Instagram' }
+  ];
 
   // Handle editing extracted data
   const handleFieldEdit = (field, value) => {
@@ -48,20 +95,15 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
     }));
   };
 
-  const handleArrayItemAdd = (arrayName, newItem) => {
-    setExtractedData(prev => ({
-      ...prev,
-      [arrayName]: [...(prev[arrayName] || []), newItem]
-    }));
-  };
-
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
+      const fileExtension = getFileExtension(selectedFile.name);
       // Validate file type
-      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-      if (!validTypes.includes(selectedFile.type)) {
-        setError('Please upload a PDF, DOC, DOCX, or TXT file');
+      const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+      const validExtensions = ['pdf', 'docx', 'txt'];
+      if (!validTypes.includes(selectedFile.type) && !validExtensions.includes(fileExtension)) {
+        setError('Please upload a PDF, DOCX, or TXT file');
         return;
       }
 
@@ -76,6 +118,63 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
       setError(null);
       setSuccess(false);
     }
+  };
+
+  const getFileExtension = (fileName = '') => {
+    const parts = fileName.toLowerCase().split('.');
+    return parts.length > 1 ? parts.pop() : '';
+  };
+
+  const isDocxFile = (file) => (
+    file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    getFileExtension(file.name) === 'docx'
+  );
+
+  const isLegacyDocFile = (file) => (
+    file.type === 'application/msword' ||
+    getFileExtension(file.name) === 'doc'
+  );
+
+  const decodeXmlEntities = (value) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = value;
+    return textarea.value;
+  };
+
+  const extractTextFromDOCX = async (arrayBuffer) => {
+    const { default: JSZip } = await import('jszip');
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const documentXml = await zip.file('word/document.xml')?.async('string');
+
+    if (!documentXml) {
+      throw new Error('Could not read text from DOCX file. The document may be corrupted.');
+    }
+
+    const xmlWithInlineBreaks = documentXml
+      .replace(/<w:tab\s*\/>/g, '<w:t>\t</w:t>')
+      .replace(/<w:br\s*\/>/g, '<w:t>\n</w:t>');
+
+    const text = xmlWithInlineBreaks
+      .split(/<\/w:p>/)
+      .map((paragraph) => (
+        paragraph
+          .match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)
+          ?.map((node) => decodeXmlEntities(node.replace(/<\/?w:t[^>]*>/g, '')))
+          .join('') || ''
+      ))
+      .filter((paragraph) => paragraph.trim().length > 0)
+      .join('\n');
+
+    const cleanedText = text
+      .replace(/\r/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    if (!cleanedText) {
+      throw new Error('No text could be extracted from the DOCX file.');
+    }
+
+    return cleanedText;
   };
 
   const extractTextFromFile = async (file) => {
@@ -101,9 +200,17 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
             return;
           }
 
-          // For DOC/DOCX, we'll need to send to backend or use a library
-          // For now, we'll use a simple approach
-          resolve(content);
+          if (isDocxFile(file)) {
+            const text = await extractTextFromDOCX(content);
+            resolve(text);
+            return;
+          }
+
+          if (isLegacyDocFile(file)) {
+            throw new Error('Legacy .doc files are not supported yet. Please save/export the resume as .docx, PDF, or TXT and upload again.');
+          }
+
+          throw new Error('Unsupported resume file type.');
         } catch (err) {
           reject(err);
         }
@@ -151,7 +258,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
             .join(' ');
 
           fullText += pageText + '\n\n';
-        } catch (pageError) {
+        } catch {
           // Continue with other pages
         }
       }
@@ -200,7 +307,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
       }
 
       // Parse resume using AI
-      const parsedData = await parseResumeWithAI(resumeText);
+      const parsedData = sanitizeExtractedData(await parseResumeWithAI(resumeText));
 
       if (!parsedData) {
         throw new Error('Failed to parse resume data');
@@ -326,7 +433,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
             <input
               type="file"
               id="resume-upload"
-              accept=".pdf,.doc,.docx,.txt"
+              accept=".pdf,.docx,.txt"
               onChange={handleFileChange}
               className="hidden"
               disabled={parsing}
@@ -340,7 +447,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                 {file ? file.name : 'Click to upload your resume'}
               </span>
               <span className="text-sm text-gray-500">
-                Supported formats: PDF, DOC, DOCX, TXT (Max {getFileSizeLimit('resume').displaySize})
+                Supported formats: PDF, DOCX, TXT (Max {getFileSizeLimit('resume').displaySize})
               </span>
             </label>
           </div>
@@ -458,15 +565,124 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
                             className="w-full px-2 py-1 border rounded text-xs"
                           />
                         </div>
+                        <div>
+                          <label className="font-medium block mb-1">Address:</label>
+                          <textarea
+                            value={extractedData.address || ''}
+                            onChange={(e) => handleFieldEdit('address', e.target.value)}
+                            className="w-full px-2 py-1 border rounded text-xs"
+                            rows="2"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="font-medium block mb-1">City:</label>
+                            <input
+                              type="text"
+                              value={extractedData.city || ''}
+                              onChange={(e) => handleFieldEdit('city', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="font-medium block mb-1">State:</label>
+                            <input
+                              type="text"
+                              value={extractedData.state || ''}
+                              onChange={(e) => handleFieldEdit('state', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="font-medium block mb-1">Country:</label>
+                            <input
+                              type="text"
+                              value={extractedData.country || ''}
+                              onChange={(e) => handleFieldEdit('country', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="font-medium block mb-1">Pincode:</label>
+                            <input
+                              type="text"
+                              value={extractedData.pincode || ''}
+                              onChange={(e) => handleFieldEdit('pincode', e.target.value)}
+                              className="w-full px-2 py-1 border rounded text-xs"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="font-medium block mb-1">Bio:</label>
+                          <textarea
+                            value={extractedData.bio || ''}
+                            onChange={(e) => handleFieldEdit('bio', e.target.value)}
+                            className="w-full px-2 py-1 border rounded text-xs"
+                            rows="2"
+                          />
+                        </div>
                       </>
                     ) : (
                       <>
-                        <p><span className="font-medium">Name:</span> {extractedData.name || '(empty)'}</p>
-                        <p><span className="font-medium">Email:</span> {extractedData.email || '(empty)'}</p>
-                        <p><span className="font-medium">Phone:</span> {extractedData.contact_number || '(empty)'}</p>
-                        <p><span className="font-medium">University:</span> {extractedData.university || '(empty)'}</p>
+                        <p><span className="font-medium">Name:</span> {renderValue(extractedData.name)}</p>
+                        <p><span className="font-medium">Email:</span> {renderValue(extractedData.email)}</p>
+                        <p><span className="font-medium">Phone:</span> {renderValue(extractedData.contact_number)}</p>
+                        <p><span className="font-medium">Alternate Phone:</span> {renderValue(extractedData.alternate_number)}</p>
+                        <p><span className="font-medium">University:</span> {renderValue(extractedData.university)}</p>
+                        <p><span className="font-medium">College/School:</span> {renderValue(extractedData.college_school_name)}</p>
+                        <p><span className="font-medium">Branch:</span> {renderValue(extractedData.branch_field)}</p>
                       </>
                     )}
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded border">
+                  <h4 className="font-medium text-gray-700 mb-2">Address Information:</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <p className="sm:col-span-2"><span className="font-medium">Address:</span> {renderValue(extractedData.address)}</p>
+                    <p><span className="font-medium">City:</span> {renderValue(extractedData.city)}</p>
+                    <p><span className="font-medium">State:</span> {renderValue(extractedData.state)}</p>
+                    <p><span className="font-medium">Country:</span> {renderValue(extractedData.country)}</p>
+                    <p><span className="font-medium">Pincode:</span> {renderValue(extractedData.pincode)}</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded border">
+                  <h4 className="font-medium text-gray-700 mb-2">Bio and Social Links:</h4>
+                  <div className="space-y-2 text-xs">
+                    <p><span className="font-medium">Bio:</span> {renderValue(extractedData.bio)}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {socialFields.map(({ key, label }) => (
+                        <p key={key} className="break-all">
+                          <span className="font-medium">{label}:</span> {renderValue(extractedData[key])}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded border">
+                  <h4 className="font-medium text-gray-700 mb-2">Interests, Languages and Hobbies:</h4>
+                  <div className="space-y-3 text-xs">
+                    {profileListFields.map(({ key, label, className }) => {
+                      const items = normalizeStringArray(extractedData[key]);
+                      return (
+                        <div key={key}>
+                          <p className="font-medium mb-1">{label} ({items.length}):</p>
+                          {items.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {items.map((item, idx) => (
+                                <span key={`${key}-${idx}`} className={`px-2 py-1 rounded ${className}`}>
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-gray-500">(empty)</p>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

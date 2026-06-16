@@ -17,6 +17,173 @@ function normalizeLevel(level: unknown): number {
   return 3;
 }
 
+function normalizeDate(value: unknown, options: { yearOnlyAsEnd?: boolean; monthOnlyAsEnd?: boolean } = {}): string | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+
+  const rawValue = String(value).trim();
+  if (!rawValue || /^(present|current|ongoing|n\/a|na|-|--)$/i.test(rawValue)) return null;
+
+  const isoDate = rawValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoDate) {
+    const [, year, month, day] = isoDate;
+    return buildIsoDate(Number(year), Number(month), Number(day));
+  }
+
+  const isoMonth = rawValue.match(/^(\d{4})-(\d{1,2})$/);
+  if (isoMonth) {
+    const [, year, month] = isoMonth;
+    const day = options.monthOnlyAsEnd ? getLastDayOfMonth(Number(year), Number(month)) : 1;
+    return buildIsoDate(Number(year), Number(month), day);
+  }
+
+  const yearOnly = rawValue.match(/^(19|20)\d{2}$/);
+  if (yearOnly) return options.yearOnlyAsEnd ? `${rawValue}-12-31` : `${rawValue}-01-01`;
+
+  const monthYear = rawValue.match(/^([A-Za-z]+)\s+((?:19|20)\d{2})$/);
+  if (monthYear) {
+    const [, monthName, year] = monthYear;
+    const monthIndex = monthNameToIndex(monthName);
+    if (monthIndex < 0) return null;
+    const month = monthIndex + 1;
+    const day = options.monthOnlyAsEnd ? getLastDayOfMonth(Number(year), month) : 1;
+    return buildIsoDate(Number(year), month, day);
+  }
+
+  const parsed = new Date(rawValue);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+
+  return null;
+}
+
+function monthNameToIndex(monthName: string): number {
+  const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const normalized = monthName.trim().toLowerCase().slice(0, 3);
+  return months.indexOf(normalized);
+}
+
+function buildIsoDate(year: number, month: number, day: number): string | null {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function getLastDayOfMonth(year: number, month: number): number {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return 1;
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function normalizeSkillName(value: unknown): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return '';
+  return String(value).trim().replace(/\s+/g, ' ');
+}
+
+function normalizeText(value: unknown): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return '';
+  return String(value).trim().replace(/\s+/g, ' ');
+}
+
+function assignText(updateData: Record<string, unknown>, key: string, value: unknown) {
+  const normalized = normalizeText(value);
+  if (normalized) updateData[key] = normalized;
+}
+
+function collectStringItems(value: unknown, output: unknown[]) {
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectStringItems(item, output));
+    return;
+  }
+
+  if (typeof value !== 'string') {
+    if (value !== null && value !== undefined) output.push(value);
+    return;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed !== value) {
+      collectStringItems(parsed, output);
+      return;
+    }
+  } catch {
+    // Non-JSON text is handled below.
+  }
+
+  if (trimmed.includes(',') || trimmed.includes(';') || trimmed.includes('\n')) {
+    trimmed.split(/[,;\n]/).forEach((item) => collectStringItems(item, output));
+    return;
+  }
+
+  output.push(trimmed);
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  const seen = new Set<string>();
+  const items: string[] = [];
+  const rawItems: unknown[] = [];
+
+  collectStringItems(value, rawItems);
+  rawItems.forEach((item) => {
+    const normalized = normalizeText(item)
+      .replace(/\\"/g, '"')
+      .replace(/^[\s"'[\]]+|[\s"'[\]]+$/g, '');
+    const key = normalized.toLowerCase();
+    if (!normalized || normalized === '[]' || normalized === '{}' || seen.has(key)) return;
+    seen.add(key);
+    items.push(normalized);
+  });
+
+  return items;
+}
+
+function getSkillKey(name: unknown, type: unknown): string {
+  return `${normalizeSkillName(name).toLowerCase()}::${String(type || '').trim().toLowerCase()}`;
+}
+
+function parseExperienceDates(experience: any): { startDate: string | null; endDate: string | null } {
+  const explicitStart = normalizeDate(experience.startDate || experience.start_date);
+  const explicitEnd = normalizeDate(experience.endDate || experience.end_date, { yearOnlyAsEnd: true, monthOnlyAsEnd: true });
+
+  if (explicitStart || explicitEnd) {
+    return { startDate: explicitStart, endDate: explicitEnd };
+  }
+
+  if (!experience.duration || typeof experience.duration !== 'string') {
+    return { startDate: null, endDate: null };
+  }
+
+  const duration = experience.duration
+    .replace(/\u2013|\u2014/g, '-')
+    .replace(/\s+(to|until|through)\s+/gi, ' - ')
+    .trim();
+
+  const parts = duration.split(/\s*-\s*/).filter(Boolean);
+  if (parts.length < 2) return { startDate: normalizeDate(duration), endDate: null };
+
+  const [startRaw, endRaw] = parts;
+  const startDate = normalizeDate(startRaw);
+  const isPresent = /^(present|current|ongoing|now)$/i.test(endRaw.trim());
+  const endDate = isPresent ? null : normalizeDate(endRaw, { yearOnlyAsEnd: true, monthOnlyAsEnd: true });
+
+  return { startDate, endDate };
+}
+
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
@@ -77,34 +244,67 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (body.experience?.length) {
-    const records = body.experience.map((e: any) => ({
-      learner_id: learnerId,
-      organization: e.organization || '',
-      role: e.role || '',
-      duration: e.duration || '',
-      verified: e.verified || false,
-      approval_status: 'pending',
-    }));
+    const records = body.experience.map((e: any) => {
+      const { startDate, endDate } = parseExperienceDates(e);
+      return {
+        learner_id: learnerId,
+        organization: e.organization || '',
+        role: e.role || '',
+        start_date: startDate,
+        end_date: endDate,
+        duration: e.duration || '',
+        description: e.description || '',
+        verified: e.verified || false,
+        approval_status: 'pending',
+      };
+    });
     const { data, error } = await supabase.from('experience').insert(records).select();
     if (error) errors.push({ table: 'experience', error: error.message });
     else results.experience = data?.length || 0;
   }
 
   const allSkills: any[] = [];
+  const queuedSkillKeys = new Set<string>();
+  const queueSkill = (skill: any) => {
+    const name = normalizeSkillName(skill.name);
+    if (!name) return;
+
+    const normalizedSkill = { ...skill, name };
+    const key = getSkillKey(normalizedSkill.name, normalizedSkill.type);
+    if (queuedSkillKeys.has(key)) return;
+
+    queuedSkillKeys.add(key);
+    allSkills.push(normalizedSkill);
+  };
+
   if (body.technicalSkills?.length) {
     body.technicalSkills.forEach((s: any) => {
-      allSkills.push({ learner_id: learnerId, name: s.name || '', type: 'technical', level: normalizeLevel(s.level), description: s.category || '', verified: s.verified || false, approval_status: 'pending' });
+      queueSkill({ learner_id: learnerId, name: s.name || '', type: 'technical', level: normalizeLevel(s.level), description: s.category || '', verified: s.verified || false, approval_status: 'pending' });
     });
   }
   if (body.softSkills?.length) {
     body.softSkills.forEach((s: any) => {
-      allSkills.push({ learner_id: learnerId, name: s.name || '', type: 'soft', level: normalizeLevel(s.level), description: s.description || s.type || '', verified: false, approval_status: 'pending' });
+      queueSkill({ learner_id: learnerId, name: s.name || '', type: 'soft', level: normalizeLevel(s.level), description: s.description || s.type || '', verified: false, approval_status: 'pending' });
     });
   }
   if (allSkills.length > 0) {
-    const { data, error } = await supabase.from('skills').insert(allSkills).select();
-    if (error) errors.push({ table: 'skills', error: error.message });
-    else results.skills = data?.length || 0;
+    const { data: existingSkills, error: existingSkillsError } = await supabase
+      .from('skills')
+      .select('name, type')
+      .eq('learner_id', learnerId);
+
+    if (existingSkillsError) {
+      errors.push({ table: 'skills', error: existingSkillsError.message });
+    } else {
+      const existingSkillKeys = new Set((existingSkills || []).map((s: any) => getSkillKey(s.name, s.type)));
+      const newSkills = allSkills.filter((s) => !existingSkillKeys.has(getSkillKey(s.name, s.type)));
+
+      if (newSkills.length > 0) {
+        const { data, error } = await supabase.from('skills').insert(newSkills).select();
+        if (error) errors.push({ table: 'skills', error: error.message });
+        else results.skills = data?.length || 0;
+      }
+    }
   }
 
   if (body.certificates?.length) {
@@ -115,7 +315,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       level: c.level || 'Professional',
       credential_id: c.credentialId || '',
       link: c.link || '',
-      issued_on: c.issuedOn || null,
+      issued_on: normalizeDate(c.issuedOn || c.issued_on),
+      expiry_date: normalizeDate(c.expiryDate || c.expiry_date),
       description: c.description || '',
       status: c.status || 'pending',
       approval_status: 'pending',
@@ -158,16 +359,36 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   const updateData: any = {};
-  if (body.name) updateData.name = body.name;
-  if (body.contact_number) updateData.contact_number = body.contact_number;
-  if (body.alternate_number) updateData.alternate_number = body.alternate_number;
+  assignText(updateData, 'name', body.name);
+  assignText(updateData, 'contact_number', body.contact_number);
+  assignText(updateData, 'alternate_number', body.alternate_number);
   if (body.age) updateData.age = parseInt(body.age);
-  if (body.date_of_birth) updateData.date_of_birth = body.date_of_birth;
-  if (body.university) updateData.university = body.university;
-  if (body.branch_field) updateData.branch_field = body.branch_field;
-  if (body.college_school_name) updateData.college_school_name = body.college_school_name;
-  if (body.registration_number) updateData.registration_number = body.registration_number;
-  if (body.district_name) updateData.district_name = body.district_name;
+  if (body.date_of_birth) updateData.date_of_birth = normalizeDate(body.date_of_birth);
+  assignText(updateData, 'university', body.university);
+  assignText(updateData, 'branch_field', body.branch_field);
+  assignText(updateData, 'college_school_name', body.college_school_name);
+  assignText(updateData, 'registration_number', body.registration_number);
+  assignText(updateData, 'district_name', body.district_name);
+  assignText(updateData, 'address', body.address);
+  assignText(updateData, 'city', body.city);
+  assignText(updateData, 'state', body.state);
+  assignText(updateData, 'country', body.country);
+  assignText(updateData, 'pincode', body.pincode);
+  assignText(updateData, 'bio', body.bio);
+  assignText(updateData, 'linkedin_link', body.linkedin_link || body.linkedin || body.linkedIn);
+  assignText(updateData, 'github_link', body.github_link || body.github || body.gitHub);
+  assignText(updateData, 'portfolio_link', body.portfolio_link || body.portfolio || body.website);
+  assignText(updateData, 'twitter_link', body.twitter_link || body.twitter);
+  assignText(updateData, 'facebook_link', body.facebook_link || body.facebook);
+  assignText(updateData, 'instagram_link', body.instagram_link || body.instagram);
+
+  const interests = normalizeStringArray(body.interests);
+  const languages = normalizeStringArray(body.languages);
+  const hobbies = normalizeStringArray(body.hobbies);
+  if (Object.prototype.hasOwnProperty.call(body, 'interests')) updateData.interests = interests;
+  if (Object.prototype.hasOwnProperty.call(body, 'languages')) updateData.languages = languages;
+  if (Object.prototype.hasOwnProperty.call(body, 'hobbies')) updateData.hobbies = hobbies;
+
   updateData.resume_imported_at = new Date().toISOString();
 
   if (Object.keys(updateData).length > 0) {
