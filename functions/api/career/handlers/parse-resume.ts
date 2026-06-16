@@ -143,7 +143,7 @@ ${resumeText.slice(0, 50000)}
       return apiError(500, 'INTERNAL_ERROR', 'Failed to parse AI response', request);
     }
 
-    return apiSuccess(parsedData, request);
+    return apiSuccess({ data: parsedData }, request);
 
   } catch (error) {
     console.error('Resume parsing error:', error);

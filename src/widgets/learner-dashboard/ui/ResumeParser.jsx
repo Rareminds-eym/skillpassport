@@ -136,15 +136,23 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, learnerData, user }
   );
 
   const decodeXmlEntities = (value) => {
+    // Use textContent to set the raw text, then read innerHTML to decode entities
+    // This is safe because we're setting text, not HTML
     const textarea = document.createElement('textarea');
-    textarea.innerHTML = value;
-    return textarea.value;
+    textarea.textContent = value;
+    return textarea.innerHTML;
   };
 
   const extractTextFromDOCX = async (arrayBuffer) => {
     const { default: JSZip } = await import('jszip');
     const zip = await JSZip.loadAsync(arrayBuffer);
-    const documentXml = await zip.file('word/document.xml')?.async('string');
+    
+    const documentXmlFile = zip.file('word/document.xml');
+    if (!documentXmlFile) {
+      throw new Error('Could not read text from DOCX file. The document may be corrupted.');
+    }
+    
+    const documentXml = await documentXmlFile.async('string');
 
     if (!documentXml) {
       throw new Error('Could not read text from DOCX file. The document may be corrupted.');

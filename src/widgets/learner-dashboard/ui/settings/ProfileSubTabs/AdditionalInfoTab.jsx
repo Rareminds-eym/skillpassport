@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FileText, Save, AlertCircle, Plus, X } from "lucide-react";
 import { Button } from '@/shared/ui/ButtonNew';
 import { useFormValidation } from '@/shared/lib/hooks';
@@ -102,8 +102,8 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
   const [newLanguage, setNewLanguage] = useState("");
   const [newHobby, setNewHobby] = useState("");
 
-  // Sync state with profileData when it changes (e.g., after refresh)
-  useEffect(() => {
+  // Memoize the sync function to avoid unnecessary re-renders
+  const syncProfileData = useCallback(() => {
     const cleanedInterests = parseJsonField(profileData.interests);
     const cleanedLanguages = parseJsonField(profileData.languages);
     const cleanedHobbies = parseJsonField(profileData.hobbies);
@@ -126,6 +126,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
       }
     });
   }, [profileData.interests, profileData.languages, profileData.hobbies, handleProfileChange]);
+
+  // Sync state with profileData when it changes (e.g., after refresh)
+  useEffect(() => {
+    syncProfileData();
+  }, [syncProfileData]);
 
   const handleFieldChange = (field, value) => {
     handleProfileChange(field, value);

@@ -4,6 +4,77 @@ import { apiError, apiSuccess } from '../../lib/response';
 import { ADMIN_ROLES } from '../../lib/roleCategories';
 import { getServiceClient } from '../../lib/supabase';
 
+// Type definitions for resume data structures
+interface ExperienceInput {
+  startDate?: string | Date | null;
+  start_date?: string | Date | null;
+  endDate?: string | Date | null;
+  end_date?: string | Date | null;
+  duration?: string;
+  organization?: string;
+  role?: string;
+  description?: string;
+  verified?: boolean;
+}
+
+interface SkillRecord {
+  name?: string;
+  level?: number | string;
+  category?: string;
+  type?: string;
+  description?: string;
+  verified?: boolean;
+}
+
+interface EducationRecord {
+  level?: string;
+  degree?: string;
+  department?: string;
+  university?: string;
+  yearOfPassing?: string | number;
+  cgpa?: string | number;
+  status?: string;
+}
+
+interface CertificateRecord {
+  title?: string;
+  issuer?: string;
+  level?: string;
+  credentialId?: string;
+  link?: string;
+  issuedOn?: string | Date | null;
+  issued_on?: string | Date | null;
+  expiryDate?: string | Date | null;
+  expiry_date?: string | Date | null;
+  description?: string;
+  status?: string;
+}
+
+interface ProjectRecord {
+  title?: string;
+  organization?: string;
+  duration?: string;
+  description?: string;
+  status?: string;
+  technologies?: string[];
+  techStack?: string[];
+  tech?: string[];
+  skills?: string[];
+  demoLink?: string;
+  demo?: string;
+  link?: string;
+  url?: string;
+  github?: string;
+}
+
+interface TrainingRecord {
+  course?: string;
+  skill?: string;
+  trainer?: string;
+  status?: string;
+  progress?: number;
+}
+
 const LEVEL_MAP: Record<string, number> = {
   beginner: 1, '1': 1,
   intermediate: 2, '2': 2,
@@ -11,13 +82,13 @@ const LEVEL_MAP: Record<string, number> = {
   expert: 4, '4': 4,
 };
 
-function normalizeLevel(level: unknown): number {
+function normalizeLevel(level: number | string | undefined | null): number {
   if (typeof level === 'number') return level;
   if (typeof level === 'string') return LEVEL_MAP[level.trim().toLowerCase()] || 3;
   return 3;
 }
 
-function normalizeDate(value: unknown, options: { yearOnlyAsEnd?: boolean; monthOnlyAsEnd?: boolean } = {}): string | null {
+function normalizeDate(value: string | Date | number | null | undefined, options: { yearOnlyAsEnd?: boolean; monthOnlyAsEnd?: boolean } = {}): string | null {
   if (value === null || value === undefined) return null;
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString().slice(0, 10);
@@ -86,24 +157,24 @@ function getLastDayOfMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
-function normalizeSkillName(value: unknown): string {
+function normalizeSkillName(value: string | number | null | undefined): string {
   if (typeof value !== 'string' && typeof value !== 'number') return '';
   return String(value).trim().replace(/\s+/g, ' ');
 }
 
-function normalizeText(value: unknown): string {
+function normalizeText(value: string | number | null | undefined): string {
   if (typeof value !== 'string' && typeof value !== 'number') return '';
   return String(value).trim().replace(/\s+/g, ' ');
 }
 
-function assignText(updateData: Record<string, unknown>, key: string, value: unknown) {
+function assignText(updateData: Record<string, any>, key: string, value: string | number | null | undefined) {
   const normalized = normalizeText(value);
   if (normalized) updateData[key] = normalized;
 }
 
-function collectStringItems(value: unknown, output: unknown[]) {
+function collectStringItems(value: any, output: any[]) {
   if (Array.isArray(value)) {
-    value.forEach((item) => collectStringItems(item, output));
+    value.forEach((item: any) => collectStringItems(item, output));
     return;
   }
 
@@ -133,10 +204,10 @@ function collectStringItems(value: unknown, output: unknown[]) {
   output.push(trimmed);
 }
 
-function normalizeStringArray(value: unknown): string[] {
+function normalizeStringArray(value: any): string[] {
   const seen = new Set<string>();
   const items: string[] = [];
-  const rawItems: unknown[] = [];
+  const rawItems: any[] = [];
 
   collectStringItems(value, rawItems);
   rawItems.forEach((item) => {
@@ -152,11 +223,11 @@ function normalizeStringArray(value: unknown): string[] {
   return items;
 }
 
-function getSkillKey(name: unknown, type: unknown): string {
+function getSkillKey(name: string | number | null | undefined, type: string | null | undefined): string {
   return `${normalizeSkillName(name).toLowerCase()}::${String(type || '').trim().toLowerCase()}`;
 }
 
-function parseExperienceDates(experience: any): { startDate: string | null; endDate: string | null } {
+function parseExperienceDates(experience: ExperienceInput): { startDate: string | null; endDate: string | null } {
   const explicitStart = normalizeDate(experience.startDate || experience.start_date);
   const explicitEnd = normalizeDate(experience.endDate || experience.end_date, { yearOnlyAsEnd: true, monthOnlyAsEnd: true });
 
@@ -227,7 +298,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const errors: any[] = [];
 
   if (body.education?.length) {
-    const records = body.education.map((e: any) => ({
+    const records = (body.education as EducationRecord[]).map((e) => ({
       learner_id: learnerId,
       level: e.level || "Bachelor's",
       degree: e.degree || '',
@@ -244,7 +315,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (body.experience?.length) {
-    const records = body.experience.map((e: any) => {
+    const records = (body.experience as ExperienceInput[]).map((e) => {
       const { startDate, endDate } = parseExperienceDates(e);
       return {
         learner_id: learnerId,
@@ -252,7 +323,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         role: e.role || '',
         start_date: startDate,
         end_date: endDate,
-        duration: e.duration || '',
+        duration: typeof e.duration === 'string' ? e.duration : '',
         description: e.description || '',
         verified: e.verified || false,
         approval_status: 'pending',
@@ -265,7 +336,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   const allSkills: any[] = [];
   const queuedSkillKeys = new Set<string>();
-  const queueSkill = (skill: any) => {
+  const queueSkill = (skill: SkillRecord) => {
     const name = normalizeSkillName(skill.name);
     if (!name) return;
 
@@ -278,13 +349,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   };
 
   if (body.technicalSkills?.length) {
-    body.technicalSkills.forEach((s: any) => {
-      queueSkill({ learner_id: learnerId, name: s.name || '', type: 'technical', level: normalizeLevel(s.level), description: s.category || '', verified: s.verified || false, approval_status: 'pending' });
+    (body.technicalSkills as SkillRecord[]).forEach((s) => {
+      queueSkill({ learner_id: learnerId, name: s.name || '', type: 'technical', level: normalizeLevel(s.level), description: s.category || '', verified: s.verified || false, approval_status: 'pending' } as any);
     });
   }
   if (body.softSkills?.length) {
-    body.softSkills.forEach((s: any) => {
-      queueSkill({ learner_id: learnerId, name: s.name || '', type: 'soft', level: normalizeLevel(s.level), description: s.description || s.type || '', verified: false, approval_status: 'pending' });
+    (body.softSkills as SkillRecord[]).forEach((s) => {
+      queueSkill({ learner_id: learnerId, name: s.name || '', type: 'soft', level: normalizeLevel(s.level), description: s.description || s.type || '', verified: false, approval_status: 'pending' } as any);
     });
   }
   if (allSkills.length > 0) {
@@ -308,7 +379,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (body.certificates?.length) {
-    const records = body.certificates.map((c: any) => ({
+    const records = (body.certificates as CertificateRecord[]).map((c) => ({
       learner_id: learnerId,
       title: c.title || '',
       issuer: c.issuer || '',
@@ -327,7 +398,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (body.projects?.length) {
-    const records = body.projects.map((p: any) => ({
+    const records = (body.projects as ProjectRecord[]).map((p) => ({
       learner_id: learnerId,
       title: p.title || '',
       organization: p.organization || '',
@@ -345,7 +416,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   if (body.training?.length) {
-    const records = body.training.map((t: any) => ({
+    const records = (body.training as TrainingRecord[]).map((t) => ({
       learner_id: learnerId,
       title: t.course || t.skill || '',
       organization: t.trainer || '',
