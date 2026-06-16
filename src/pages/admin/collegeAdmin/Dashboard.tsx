@@ -85,8 +85,10 @@ const Dashboard: React.FC = () => {
           userId: user.id,
           email: user.email
         });
-        collegeId = orgRes?.data?.id || null;
-        if (collegeId) logger.info('College ID resolved via organizations table', { collegeId });
+        if (orgRes?.data?.id) {
+          collegeId = orgRes.data.id;
+          logger.info('College ID resolved via organizations table', { collegeId });
+        }
 
         if (!collegeId) {
           // Fallback: try resolving from college_lecturers (faculty login path)
@@ -106,7 +108,7 @@ const Dashboard: React.FC = () => {
         }
 
         if (!collegeId) {
-          logger.info('No college_id found for user');
+          logger.error('No college_id found for user', new Error('College ID resolution failed'));
           setLoading(false);
           return;
         }
