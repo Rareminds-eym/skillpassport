@@ -32,7 +32,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .eq('school_id', schoolId)
             .eq('is_deleted', false)
             .not('user_id', 'is', null);
-          schoolLearnerIds = ((schoolLearners || []) as SchoolLearner[]).map((l) => l.user_id).filter((id): id is string => id !== null && id !== undefined);
+          const safeRows = Array.isArray(schoolLearners) ? schoolLearners : [];
+          schoolLearnerIds = safeRows.map((l: SchoolLearner) => l.user_id).filter((id): id is string => id !== null && id !== undefined);
         }
 
         // Step 2: run all KPI queries in parallel
@@ -121,7 +122,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .eq('school_id', schoolId)
             .eq('is_deleted', false)
             .not('user_id', 'is', null);
-          schoolLearnerIds = ((schoolLearners || []) as SchoolLearner[]).map((l) => l.user_id).filter((id): id is string => id !== null && id !== undefined);
+          const safeRows = Array.isArray(schoolLearners) ? schoolLearners : [];
+          schoolLearnerIds = safeRows.map((l: SchoolLearner) => l.user_id).filter((id): id is string => id !== null && id !== undefined);
         }
 
         // Step 2: run all KPI queries in parallel
@@ -201,8 +203,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       default:
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
     }
-  } catch (error: any) {
-    console.error(`[kpi-dashboard/actions] action=${action}:`, error?.message || error);
-    return apiDbError(error, context.request, { startTime });
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error(`[kpi-dashboard/actions] action=${action}:`, err.message);
+    return apiDbError(err, context.request, { startTime });
   }
 });

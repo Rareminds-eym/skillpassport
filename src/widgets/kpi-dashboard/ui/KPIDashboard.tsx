@@ -54,7 +54,7 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
         schoolId,
       })
 
-      const data = resp.data
+      const data = resp?.data
       if (!data) return
 
       setKpiData({
