@@ -44,6 +44,8 @@ const Header = ({ activeTab }) => {
   const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showFreemiumBanner, setShowFreemiumBanner] = useState(true);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const user = useUser();
@@ -149,6 +151,38 @@ const Header = ({ activeTab }) => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Scroll behavior: Hide on scroll down, show on scroll up or at top
+  useEffect(() => {
+    const controlNavbar = () => {
+      const currentScrollY = window.scrollY;
+
+      // Always show navbar at the top (within 10px threshold)
+      if (currentScrollY < 10) {
+        setIsHeaderVisible(true);
+      } 
+      // Show navbar when scrolling up
+      else if (currentScrollY < lastScrollY) {
+        setIsHeaderVisible(true);
+      } 
+      // Hide navbar when scrolling down (and not at top)
+      else if (currentScrollY > lastScrollY && currentScrollY > 10) {
+        setIsHeaderVisible(false);
+        // Close any open modals when hiding
+        setActiveModal(null);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    // Add scroll event listener
+    window.addEventListener('scroll', controlNavbar);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('scroll', controlNavbar);
+    };
+  }, [lastScrollY]);
+
   // Don't render header on assessment result page
   if (isAssessmentResultRoute) {
     return null;
@@ -180,7 +214,13 @@ const Header = ({ activeTab }) => {
         </div>
       )}
 
-      <header className={`bg-white border-b border-gray-200 shadow-sm sticky z-50 ${isFreemium && showFreemiumBanner ? 'top-[30px]' : 'top-0'}`}>
+      <header 
+        className={`bg-white border-b border-gray-200 shadow-sm sticky z-50 transition-transform duration-300 ease-in-out ${
+          isFreemium && showFreemiumBanner ? 'top-[30px]' : 'top-0'
+        } ${
+          isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
+        }`}
+      >
         <div className="w-full">
           <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 md:px-6 lg:px-8">
 
