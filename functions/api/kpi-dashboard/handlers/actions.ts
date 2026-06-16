@@ -73,26 +73,26 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         ]);
 
         let totalLearners = 0;
-        if (!learnersRes.error) totalLearners = (learnersRes as any).count || 0;
+        if (!learnersRes.error && 'count' in learnersRes) totalLearners = learnersRes.count || 0;
 
         let attendancePercentage = 0;
         if (!attendanceRes.error && attendanceRes.data) {
-          const present = attendanceRes.data.filter((a: any) => a.status === 'present').length;
+          const present = attendanceRes.data.filter((a: { status: string }) => a.status === 'present').length;
           attendancePercentage = Math.round((present / (attendanceRes.data.length || 1)) * 100);
         }
 
         let examsScheduled = 0;
-        if (!examsRes.error) examsScheduled = (examsRes as any).count || 0;
+        if (!examsRes.error && 'count' in examsRes) examsScheduled = examsRes.count || 0;
 
         let pendingAssessments = 0;
-        if (!assessmentsRes.error) pendingAssessments = (assessmentsRes as any).count || 0;
+        if (!assessmentsRes.error && 'count' in assessmentsRes) pendingAssessments = assessmentsRes.count || 0;
 
-        const dailyTotal = !dailyFeesRes.error && dailyFeesRes.data ? dailyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
-        const weeklyTotal = !weeklyFeesRes.error && weeklyFeesRes.data ? weeklyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
-        const monthlyTotal = !monthlyFeesRes.error && monthlyFeesRes.data ? monthlyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
+        const dailyTotal = !dailyFeesRes.error && dailyFeesRes.data ? dailyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
+        const weeklyTotal = !weeklyFeesRes.error && weeklyFeesRes.data ? weeklyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
+        const monthlyTotal = !monthlyFeesRes.error && monthlyFeesRes.data ? monthlyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
 
         let libraryOverdue = 0;
-        if (!libraryRes.error) libraryOverdue = (libraryRes as any).count || 0;
+        if (!libraryRes.error && 'count' in libraryRes) libraryOverdue = libraryRes.count || 0;
 
         return apiSuccess({
           totalLearners,
@@ -166,26 +166,26 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         ]);
 
         let totalLearners = 0;
-        if (!learnersRes.error) totalLearners = (learnersRes as any).count || 0;
+        if (!learnersRes.error && 'count' in learnersRes) totalLearners = learnersRes.count || 0;
 
         let attendancePercentage = 0;
         if (!attendanceRes.error && attendanceRes.data) {
-          const present = attendanceRes.data.filter((a: any) => a.status === 'present').length;
+          const present = attendanceRes.data.filter((a: { status: string }) => a.status === 'present').length;
           attendancePercentage = Math.round((present / (attendanceRes.data.length || 1)) * 100);
         }
 
         let examsScheduled = 0;
-        if (!examsRes.error) examsScheduled = (examsRes as any).count || 0;
+        if (!examsRes.error && 'count' in examsRes) examsScheduled = examsRes.count || 0;
 
         let pendingAssessments = 0;
-        if (!assessmentsRes.error) pendingAssessments = (assessmentsRes as any).count || 0;
+        if (!assessmentsRes.error && 'count' in assessmentsRes) pendingAssessments = assessmentsRes.count || 0;
 
-        const dailyTotal = !dailyFeesRes.error && dailyFeesRes.data ? dailyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
-        const weeklyTotal = !weeklyFeesRes.error && weeklyFeesRes.data ? weeklyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
-        const monthlyTotal = !monthlyFeesRes.error && monthlyFeesRes.data ? monthlyFeesRes.data.reduce((s: number, f: any) => s + (f.amount || 0), 0) : 0;
+        const dailyTotal = !dailyFeesRes.error && dailyFeesRes.data ? dailyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
+        const weeklyTotal = !weeklyFeesRes.error && weeklyFeesRes.data ? weeklyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
+        const monthlyTotal = !monthlyFeesRes.error && monthlyFeesRes.data ? monthlyFeesRes.data.reduce((s: number, f: { amount?: number }) => s + (f.amount || 0), 0) : 0;
 
         let libraryOverdue = 0;
-        if (!libraryRes.error) libraryOverdue = (libraryRes as any).count || 0;
+        if (!libraryRes.error && 'count' in libraryRes) libraryOverdue = libraryRes.count || 0;
 
         return apiSuccess({
           totallearners: totalLearners,
