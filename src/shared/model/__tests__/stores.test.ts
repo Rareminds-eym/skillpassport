@@ -375,24 +375,23 @@ describe('Subscription Store', () => {
     const { useSubscriptionStore } = await import('@/features/subscription/model/subscriptionStore');
     const state = useSubscriptionStore.getState();
     
-    expect(state.hasAccess).toBe(false);
-    expect(state.accessReason).toBe('no_subscription');
-    expect(state.isLoading).toBe(true);
+    // Server state fields removed — moved to React Query useSubscriptionQuery
+    expect(state.hasAccess).toBeUndefined();
+    expect(state.accessReason).toBeUndefined();
+    // Client state retained
     expect(state.userEntitlements).toEqual([]);
+    expect(state.isPurchasing).toBe(false);
+    expect(state.isCancelling).toBe(false);
+    expect(state.purchaseError).toBeNull();
   });
 
-  it('should set access data', async () => {
+  it('should set purchase state', async () => {
     const { useSubscriptionStore } = await import('@/features/subscription/model/subscriptionStore');
     const store = useSubscriptionStore.getState();
     
-    store.setAccessData({
-      hasAccess: true,
-      accessReason: 'active',
-      subscription: { id: '1', status: 'active' }
-    });
+    store.setPurchaseState({ isPurchasing: true, purchaseError: null });
     
-    expect(useSubscriptionStore.getState().hasAccess).toBe(true);
-    expect(useSubscriptionStore.getState().getIsActive()).toBe(true);
+    expect(useSubscriptionStore.getState().isPurchasing).toBe(true);
   });
 });
 

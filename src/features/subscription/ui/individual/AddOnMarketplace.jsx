@@ -23,7 +23,7 @@ import { loadRazorpayScript } from '@/features/subscription/api';
 import { AddOnCard } from '../AddOnCard';
 import { BundleCard } from '../BundleCard';
 
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 /**
  * AddOnMarketplace - Full marketplace for add-ons and bundles
  * 
@@ -56,7 +56,7 @@ export function AddOnMarketplace({
     searchAddOns
   } = useAddOnCatalog({ role });
 
-  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
+  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscription();
   const [purchaseError, setPurchaseError] = useState(null);
 
   // Helper to check if user already owns an add-on (including cancelled but not expired)

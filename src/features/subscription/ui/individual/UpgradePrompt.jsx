@@ -20,7 +20,7 @@ import { clearFeatureAccessCache } from '@/features/subscription';
 import { addOnPaymentService } from '@/features/subscription';
 import { loadRazorpayScript } from '@/features/subscription/api';
 
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 /**
  * Get the base path for subscription routes based on current location
  */
@@ -55,7 +55,7 @@ export function UpgradePrompt({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
+  const { purchaseAddOn, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscription();
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [error, setError] = useState(null);
   

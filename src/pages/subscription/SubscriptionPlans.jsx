@@ -11,7 +11,7 @@ import { ssoClient } from '@/shared/api/ssoClient';
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from "@/shared/lib/getEntityContent";
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription';
 
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 /**
  * Get the subscription manage path based on user role
@@ -751,7 +751,7 @@ function SubscriptionPlans() {
 
   const learnerType = type || 'learner';
 
-  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshAccess } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
 
   // Combined loading state — wait for auth, subscription, AND plans from API.
@@ -915,7 +915,7 @@ function SubscriptionPlans() {
         toast.success('Welcome! Your free account is ready', { id: loadingToast });
 
         // Refresh subscription access
-        await refreshAccess();
+        await refreshSubscription();
 
         // Navigate to appropriate dashboard based on user role
         const targetPath = getDashboardPath(userRole) || `/learner/dashboard`;
@@ -941,7 +941,7 @@ function SubscriptionPlans() {
       }
     });
 
-  }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole, refreshAccess]);
+  }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole, refreshSubscription]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -1044,7 +1044,7 @@ function SubscriptionPlans() {
                 <p className="text-red-700 text-sm">{subscriptionError?.message || 'Please try again.'}</p>
               </div>
             </div>
-            <button onClick={refreshAccess} className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 text-sm font-semibold shadow-lg transition-all hover:scale-105">
+            <button onClick={refreshSubscription} className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 text-sm font-semibold shadow-lg transition-all hover:scale-105">
               Retry
             </button>
           </div>

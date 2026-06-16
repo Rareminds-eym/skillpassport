@@ -25,7 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '@/features/subscription';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
@@ -85,7 +85,7 @@ function MySubscription() {
   const user = useUser();
   const { role } = useUserRole();
   const authLoading = useAuthLoading();
-  const { subscriptionData, loading: subscriptionLoading, refreshAccess } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
 
   // Get settings, dashboard paths, and user type from current URL (more reliable than role)
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
@@ -192,7 +192,7 @@ function MySubscription() {
         alert(`Subscription cancelled successfully. You'll have access until ${formatDate(subscriptionData.endDate)}`);
 
         // Refresh subscription data
-        await refreshAccess();
+        await refreshSubscription();
 
         setShowCancelModal(false);
         setCancelReason('');
@@ -223,7 +223,7 @@ function MySubscription() {
 
       if (result.success) {
         alert(`Subscription paused for ${pauseMonths} month(s). It will automatically resume after this period.`);
-        await refreshAccess();
+        await refreshSubscription();
         setShowPauseModal(false);
         setShowCancelModal(false);
       } else {
@@ -251,7 +251,7 @@ function MySubscription() {
 
       if (result.success) {
         alert('Subscription resumed successfully!');
-        await refreshAccess();
+        await refreshSubscription();
       } else {
         alert(`Failed to resume subscription: ${result.error}`);
       }
