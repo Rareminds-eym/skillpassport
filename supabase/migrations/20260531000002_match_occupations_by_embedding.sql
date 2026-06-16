@@ -5,7 +5,7 @@
 --   Pure semantic retrieval: given a student query embedding, return the top-K
 --   occupations by cosine similarity over their stored embeddings.
 --
---   C-Index is NOT used anywhere. The function returns each occupation's RIASEC profile
+--   The function returns each occupation's RIASEC profile
 --   codes (occupation_codes) so the backend computes Interest Fit via the Holland hexagon.
 --   query_embedding is passed as text and cast to vector so it works cleanly over
 --   PostgREST / supabase-js rpc().
@@ -25,9 +25,6 @@ RETURNS TABLE (
 LANGUAGE sql
 STABLE
 AS $$
-  -- v2 schema: roles carry a single RIASEC code string (e.g. 'ESC') instead of the
-  -- dropped riasec_profiles table. occupation_codes is returned as a 1-element array to
-  -- preserve the function's output contract for the Holland-hexagon Interest Fit calc.
   SELECT
     o.id,
     o.code,

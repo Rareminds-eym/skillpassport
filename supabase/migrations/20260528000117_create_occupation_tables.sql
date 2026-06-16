@@ -16,6 +16,25 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "vector";
 
+-- Enum for capability status (Core / Important / Supporting).
+DO $$ BEGIN
+  CREATE TYPE public.capability_status_enum AS ENUM ('Core', 'Important', 'Supporting');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- ============================================================================
+-- TABLE 0: industries  (parent of domains: HTT, DAI, HR, FIN, MME)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.industries (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code        VARCHAR(16) UNIQUE NOT NULL,
+  name        VARCHAR(255) UNIQUE NOT NULL,
+  description TEXT,
+  created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_industries_code ON public.industries(code);
+
 -- ============================================================================
 -- TABLE 1: domains  (7 HTT domains, D01..D07)
 -- ============================================================================
@@ -24,10 +43,13 @@ CREATE TABLE IF NOT EXISTS public.domains (
   code        VARCHAR(16) UNIQUE NOT NULL,   -- e.g. 'D01' (HTT) or 'HR-D01' (industry-prefixed)
   name        VARCHAR(255) UNIQUE NOT NULL,
   description TEXT,
-  created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  industry_id UUID REFERENCES public.industries(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_domains_code ON public.domains(code);
+CREATE INDEX idx_domains_industry_id ON public.domains(industry_id);
 COMMENT ON TABLE public.domains IS '7 HTT domains (D01..D07): Customer Service, Accommodation, Food & Beverage, Transport, Travel Booking, Destination, Safety & Compliance';
 
 -- ============================================================================
@@ -41,11 +63,12 @@ CREATE TABLE IF NOT EXISTS public.capability_master (
   name               TEXT NOT NULL,
   description        TEXT NOT NULL,
   master_sequence    INTEGER UNIQUE,                       -- canonical catalog sort key 1..27; NOT learner order
-  capability_status  VARCHAR(20),                          -- Core / Important / Supporting
+  capability_status  public.capability_status_enum,        -- Core / Important / Supporting
   primary_riasec     TEXT[],                               -- explanatory only; does NOT feed match score
   secondary_riasec   TEXT[],
   work_style_demands TEXT,
-  created_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  created_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at         TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_capability_master_code ON public.capability_master(code);
@@ -60,7 +83,7 @@ COMMENT ON COLUMN public.capability_master.master_sequence IS 'Canonical catalog
 CREATE TABLE IF NOT EXISTS public.occupations (
   id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code                  VARCHAR(24) UNIQUE NOT NULL,   -- e.g. 'HTT-ROLE-001', 'HR-ROLE-001'
-  name                  VARCHAR(255) NOT NULL,
+  name                  VARCHAR(255) UNIQUE NOT NULL,
   description           TEXT,
   primary_riasec        CHAR(1),                            -- R/I/A/S/E/C
   secondary_riasec      CHAR(1),
@@ -68,7 +91,11 @@ CREATE TABLE IF NOT EXISTS public.occupations (
   riasec_code_string    VARCHAR(3),                         -- e.g. 'ESC'
   riasec_reason         TEXT,                               -- EMBEDDING SOURCE (unique per role)
   observable_behaviours TEXT,
+  aptitude_profile      JSONB DEFAULT '{}'::jsonb,
+  big_five_profile      JSONB DEFAULT '{}'::jsonb,
+  work_values_profile   JSONB DEFAULT '{}'::jsonb,
   is_active             BOOLEAN DEFAULT TRUE,
+  metadata              JSONB DEFAULT '{}'::jsonb,
   created_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT chk_primary_riasec   CHECK (primary_riasec   IN ('R','I','A','S','E','C')),
@@ -78,6 +105,9 @@ CREATE TABLE IF NOT EXISTS public.occupations (
 
 CREATE INDEX idx_occupations_code ON public.occupations(code);
 CREATE INDEX idx_occupations_riasec ON public.occupations(primary_riasec, secondary_riasec, tertiary_riasec);
+CREATE INDEX idx_occupations_aptitude_profile ON public.occupations USING GIN (aptitude_profile);
+CREATE INDEX idx_occupations_big_five_profile ON public.occupations USING GIN (big_five_profile);
+CREATE INDEX idx_occupations_work_values_profile ON public.occupations USING GIN (work_values_profile);
 COMMENT ON TABLE public.occupations IS '86 HTT roles (table named occupations to avoid collision with RBAC public.roles). riasec_code_string drives the Holland-hexagon match score; riasec_reason is the embedding source.';
 COMMENT ON COLUMN public.occupations.riasec_reason IS 'Per-row unique text (86/86) used as the embedding source for RAG.';
 
@@ -93,7 +123,8 @@ CREATE TABLE IF NOT EXISTS public.capability_skills (
   name          TEXT NOT NULL,
   description   TEXT,
   skill_type    VARCHAR(50),                                -- Documentation / Coordination / ...
-  created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_capability_skills_code ON public.capability_skills(code);
@@ -130,7 +161,6 @@ CREATE TABLE IF NOT EXISTS public.role_capability_sequence (
   required_level      VARCHAR(4),                           -- L1 / L2 / L3
   duration_weeks      INTEGER,
   cumulative_weeks    INTEGER,
-  plan_phase          VARCHAR(40),                          -- Month 1-2 / 3-4 / 5-6
   created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT unique_context_step       UNIQUE(role_domain_id, sequence_step),
   CONSTRAINT unique_context_capability UNIQUE(role_domain_id, capability_id),
@@ -151,8 +181,11 @@ CREATE TABLE IF NOT EXISTS public.embeddings (
   entity_type VARCHAR(50) NOT NULL,                         -- 'occupation' (extensible)
   entity_id   UUID NOT NULL,
   embedding   vector(1536),
+  metadata    JSONB DEFAULT '{}'::jsonb,
   created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_entity_embedding UNIQUE(entity_type, entity_id)
+  updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_entity_embedding UNIQUE(entity_type, entity_id),
+  CONSTRAINT chk_entity_type CHECK (entity_type IN ('occupation'))
 );
 
 CREATE INDEX idx_embeddings_entity ON public.embeddings(entity_type, entity_id);
