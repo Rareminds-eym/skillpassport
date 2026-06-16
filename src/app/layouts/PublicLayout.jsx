@@ -15,14 +15,14 @@ import { SubscriptionPurchaseHeader } from '@/features/subscription';
 import { useState } from 'react';
 
 import { useAssessmentPromotional, useCurrentPromotional } from '@/features/promotional/model/promotionalStore';
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { useIsAuthenticated, useUserRole, useUser } from '@/shared/model/authStore';
 const PublicLayoutContent = () => {
   const location = useLocation();
   const isAuthenticated = useIsAuthenticated();
   const { role: userRole } = useUserRole();
   const user = useUser();
-  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('subscription');
 

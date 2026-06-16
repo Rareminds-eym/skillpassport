@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Clock, AlertCircle, TrendingUp } from 'lucide-react';
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 
 /**
  * Get the base path for subscription routes based on current location
@@ -35,7 +35,7 @@ function getUserTypeFromPath(pathname) {
 const SubscriptionStatusWidget = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { subscriptionData, loading } = useSubscriptionAccess();
+  const { subscriptionData, loading } = useSubscriptionQuery();
   const basePath = getSubscriptionBasePath(location.pathname);
   const userType = getUserTypeFromPath(location.pathname);
 

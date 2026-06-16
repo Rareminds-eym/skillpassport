@@ -15,7 +15,7 @@ import {
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SubscriptionRouteGuard } from '@/features/subscription';
-import { useSubscription } from '@/features/subscription/model';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 
 import { apiPost } from '@/shared/api/apiClient';
 import { initiateRazorpayPayment } from '@/features/subscription/api';
@@ -227,7 +227,7 @@ function PaymentCompletion() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [userDetails, setUserDetails] = useState({ name: '', email: '', phone: '' });
 
-  const { subscriptionData, loading: subscriptionLoading } = useSubscription();
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
 
   const plansUrl = useMemo(() => {
     return learnerType ? `/subscription/plans/${learnerType}` : '/subscription/plans/learner';

@@ -47,7 +47,7 @@ import { factoryVisitsService } from '@/features/college-admin';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { getLogger } from '@/shared/config/logging';
 import { useUser } from '@/shared/model/authStore';
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 
@@ -276,9 +276,8 @@ const Opportunities = () => {
 
   // Feature gating for job applications
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
-  const subscriptionContext = useSubscriptionContext();
-  const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
+  const { subscriptionData } = useSubscriptionQuery();
+  const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
 
   // Check feature access for job applications
   const accessResult = checkFeatureAccess(userPlan, 'opportunities_access', [], {}, user?.id);

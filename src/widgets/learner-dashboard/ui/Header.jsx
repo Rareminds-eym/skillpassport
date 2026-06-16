@@ -29,7 +29,7 @@ import NavButton from "./NavButton";
 import { PROFILE_MENU_ITEMS } from "../config/profileMenuItems";
 
 import { useUser, useAuthActions } from '@/shared/model/authStore';
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 const ICON_MAP = {
@@ -64,9 +64,8 @@ const Header = ({ activeTab }) => {
   const isPartOfSchoolOrCollege = !learnerDataLoading && (learnerData?.school_id || learnerData?.university_college_id) && !isLearner(learnerData);
 
   // Get subscription data for feature gating
-  const subscriptionContext = useSubscriptionContext();
-  const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan || PLAN_IDS.FREEMIUM;
+  const { subscriptionData } = useSubscriptionQuery();
+  const userPlan = subscriptionData?.plan || PLAN_IDS.FREEMIUM;
   const isFreemium = userPlan === PLAN_IDS.FREEMIUM;
 
   // Map navigation items to feature keys
