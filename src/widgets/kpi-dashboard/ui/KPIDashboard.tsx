@@ -36,10 +36,12 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
       setError(null)
       setLoading(true)
 
-      const data: any = await apiPost('/kpi-dashboard/actions', {
+      const resp: any = await apiPost('/kpi-dashboard/actions', {
         action: 'get-kpi-data',
         schoolId,
       })
+
+      const data = resp.data ?? resp
 
       setKpiData({
         totallearners: data.totalLearners || 0,
@@ -180,6 +182,6 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = (props) => (
     fallback={null}
     onUpgradeClick={() => {}}
   >
-    <KPIDashboardComponent {...props} />
+  <KPIDashboardComponent {...props} />
   </FeatureGate>
 )
