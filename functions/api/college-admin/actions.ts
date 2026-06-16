@@ -104,7 +104,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         // Resolve authoritative org: look up organizations where admin_id = logged-in user.
         // This bypasses the JWT org_id mismatch when a user has multiple memberships.
         const user = getContextUser(context);
-        if (!user || !user.id) return apiError(401, 'UNAUTHORIZED', 'User not found', context.request, { startTime });
+        if (!user?.id) return apiError(401, 'UNAUTHORIZED', 'User not found', context.request, { startTime });
 
         // Verify the logged-in user is actually the admin of the requested college
         const { data: orgByAdmin, error: authError } = await supabase

@@ -55,7 +55,6 @@ interface DashboardStatsResponse {
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const user = useUser();
-  const [filterOpen, setFilterOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     totalLearners: 0,
@@ -85,7 +84,6 @@ const Dashboard: React.FC = () => {
 
         if (!collegeId) {
           logger.error('No college_id found for user', new Error('College ID resolution failed'));
-          setLoading(false);
           return;
         }
 

@@ -43,7 +43,7 @@ const KPICard: React.FC<KPICardProps> = ({
           <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
           <p className="text-3xl font-bold text-gray-900 mb-2" data-testid="kpi-value">{value}</p>
           
-          {changeLabel && change != null && (
+          {changeLabel && change != null && change !== 0 && (
             <div className="flex items-center space-x-1">
               {change >= 0 ? (
                 <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />
