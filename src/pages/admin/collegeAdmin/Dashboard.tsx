@@ -75,43 +75,21 @@ const Dashboard: React.FC = () => {
       
       setLoading(true);
       try {
-        // College ID resolution precedence (in order):
-        // 1. organizations table — authoritative source for admin logins (admin_id match)
-        // 2. college_lecturers table — fallback for faculty logins (email match)
-        // 3. JWT org_id — last resort, may be stale if user has multiple memberships
-        let collegeId: string | null = null;
+        // Resolve college ID from organizations table (authoritative source for admin logins)
         const orgRes = await apiPost<{ data?: { id: string } }>('/college-admin/actions', {
           action: 'get-org-by-admin-or-email',
           userId: user.id,
           email: user.email
         });
-        if (orgRes?.data?.id) {
-          collegeId = orgRes.data.id;
-          logger.info('College ID resolved via organizations table', { collegeId });
-        }
-
-        if (!collegeId) {
-          // Fallback: try resolving from college_lecturers (faculty login path)
-          const lecturerRes = await apiPost<{ data?: { collegeId: string } }>('/college-admin/actions', {
-            action: 'get-college-lecturer-by-email',
-            email: user.email,
-            select: 'collegeId'
-          });
-          collegeId = lecturerRes?.data?.collegeId || null;
-          if (collegeId) logger.info('College ID resolved via college_lecturers table', { collegeId });
-        }
-
-        if (!collegeId) {
-          // Last resort: use JWT org_id
-          collegeId = user.orgId || null;
-          if (collegeId) logger.info('College ID resolved via JWT org_id', { collegeId });
-        }
+        const collegeId = orgRes?.data?.id || null;
 
         if (!collegeId) {
           logger.error('No college_id found for user', new Error('College ID resolution failed'));
           setLoading(false);
           return;
         }
+
+        logger.info('College ID resolved via organizations table', { collegeId });
 
         // Fetch all stats in a single backend call
         const res = await apiPost<DashboardStatsResponse>('/college-admin/actions', {

@@ -105,18 +105,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         // This bypasses the JWT org_id mismatch when a user has multiple memberships.
         const user = getContextUser(context);
         if (!user || !user.id) return apiError(401, 'UNAUTHORIZED', 'User not found', context.request, { startTime });
-        let college_id = requestedCollegeId;
-        if (user.id) {
-          const { data: orgByAdmin } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('admin_id', user.id)
-            .eq('organization_type', 'college')
-            .maybeSingle();
-          if (orgByAdmin?.id) {
-            college_id = orgByAdmin.id;
-          }
+
+        // Verify the logged-in user is actually the admin of the requested college
+        const { data: orgByAdmin } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('organization_type', 'college')
+          .maybeSingle();
+
+        if (!orgByAdmin?.id || orgByAdmin.id !== requestedCollegeId) {
+          return apiError(403, 'FORBIDDEN', 'Access denied to this college', context.request, { startTime });
         }
+
+        const college_id = requestedCollegeId;
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
