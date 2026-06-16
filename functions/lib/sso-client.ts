@@ -46,6 +46,8 @@ interface SsoTransactionData {
   status: string;
   transaction_type?: string;
   payment_method?: string;
+  failure_reason?: string;
+  product_id?: string;
   organization_id?: string;
   organization_type?: string;
   seat_count?: number;

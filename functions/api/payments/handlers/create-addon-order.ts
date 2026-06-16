@@ -65,10 +65,12 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
       amount,
       currency: (body.currency as string) || undefined,
       notes: {
+        feature_key: body.feature_key as string,
         addon_id: addon.id,
         addon_name: addon.feature_name,
         user_id: user.id,
         user_email: (body.user_email as string) || user.email || '',
+        billing_period: body.billing_period as string,
         type: 'addon',
       },
     });

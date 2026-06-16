@@ -47,6 +47,21 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
       return apiError(400, 'VALIDATION_ERROR', 'plan_name is required', context.request);
     }
 
+    const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
+
+    // Guard: Verify user is an admin or owner of the organization
+    const { data: membership } = await supabase
+      .from('license_assignments')
+      .select('id, role')
+      .eq('user_id', user.id)
+      .eq('organization_id', body.org_id as string)
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
+      return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
+    }
+
     // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
     const worker = getPaymentWorker(env);
     const verifyResult = await worker.verifyPaymentSignature(
@@ -55,15 +70,28 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
       body.razorpay_signature as string
     );
 
-    // Step 2: Signature valid — create org subscription in auth DB
-    const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
+    // Step 1.5: Verify payment was actually captured (Amount Spoofing Prevention)
+    const payment = await worker.getPayment(body.razorpay_payment_id as string);
+    if (payment.status !== 'captured' || payment.order_id !== body.razorpay_order_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'Payment not captured or order ID mismatch', context.request);
+    }
 
+    // Parameter Tampering Prevention
+    if (payment.notes?.org_id && payment.notes.org_id !== body.org_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'Org ID mismatch with original order', context.request);
+    }
+    if (payment.notes?.seat_count && payment.notes.seat_count !== String(body.seat_count || 1)) {
+      return apiError(400, 'VALIDATION_ERROR', 'Seat count mismatch with original order', context.request);
+    }
+
+    // Step 2: Signature valid — create org subscription in auth DB
+    
     if (!body.billing_cycle || typeof body.billing_cycle !== 'string') {
       return apiError(400, 'VALIDATION_ERROR', 'billing_cycle is required', context.request);
     }
 
     const seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
-    const planAmount = typeof body.amount === 'number' ? body.amount : 0;
+    const planAmount = payment.amount;
     const billingCycle = body.billing_cycle as string;
 
     const now = new Date();
@@ -94,6 +122,10 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         purchased_by: user.id,
       });
     } catch (createError: any) {
+      if (createError.message?.includes('duplicate key') || createError.message?.includes('23505') || createError.status === 409) {
+        console.log('[VerifyOrgPayment] Org subscription already created by webhook (duplicate caught).');
+        return apiSuccess({ ...verifyResult, subscription_created: true, already_fulfilled: true }, context.request);
+      }
       console.error('[VerifyOrgPayment] Subscription creation failed:', createError.message);
       return apiSuccess({
         ...verifyResult,
@@ -113,8 +145,10 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
         user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
+        razorpay_signature: body.razorpay_signature as string,
         amount: planAmount / 100,
         currency: (body.currency as string) || 'INR',
+        payment_method: payment.method,
         status: 'completed',
         transaction_type: 'subscription',
         organization_id: body.org_id as string,

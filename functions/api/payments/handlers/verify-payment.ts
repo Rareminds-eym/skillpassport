@@ -55,6 +55,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       body.razorpay_signature as string
     );
 
+    // Step 1.5: Verify payment was actually captured (Amount Spoofing Prevention)
+    const payment = await worker.getPayment(body.razorpay_payment_id as string);
+    if (payment.status !== 'captured' || payment.order_id !== body.razorpay_order_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'Payment not captured or order ID mismatch', context.request);
+    }
+
     // Step 2: Signature valid — prepare subscription data
     const plan = body.plan as Record<string, unknown> | undefined;
     if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
@@ -95,6 +101,13 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     if (typeof planPrice !== 'number') {
       console.error('[VerifyPayment] Plan price mismatch or no yearly price found:', { planId: plan.id, clientPrice, pricingMatrix });
       return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing matching the request', context.request);
+    }
+
+    // Step 2.6: Cross-verify authoritative Razorpay captured amount
+    const expectedPaise = Math.round(planPrice * 100);
+    if (payment.amount !== expectedPaise) {
+      console.error('[VerifyPayment] Amount mismatch:', { captured: payment.amount, expected: expectedPaise, planId: plan.id });
+      return apiError(400, 'VALIDATION_ERROR', `Amount mismatch: captured ${payment.amount} paise, expected ${expectedPaise}`, context.request);
     }
 
     // Calculate subscription dates
@@ -167,9 +180,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             user_id: user.id,
             razorpay_order_id: body.razorpay_order_id as string,
             razorpay_payment_id: body.razorpay_payment_id as string,
+            razorpay_signature: body.razorpay_signature as string,
             amount: planPrice,
             status: 'failed',
             transaction_type: 'upgrade',
+            payment_method: payment.method,
+            failure_reason: upgradeError.message,
             metadata: {
               original_subscription_id: existingCache.id,
               original_plan_id: existingCache.plan_id,
@@ -211,6 +227,17 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           razorpay_payment_id: body.razorpay_payment_id as string,
         });
       } catch (createError: any) {
+        // Handle race condition: Webhook or other synchronous flow already created the subscription
+        if (createError.message?.includes('duplicate key') || createError.message?.includes('23505') || createError.status === 409) {
+          console.log('[VerifyPayment] Subscription already created (duplicate caught). Order fulfilled asynchronously.');
+          return apiSuccess({
+            payment_verified: true,
+            subscription_created: true,
+            already_fulfilled: true,
+            ...verifyResult,
+          }, context.request);
+        }
+
         console.error('[VerifyPayment] Subscription creation failed:', createError.message);
 
         return apiSuccess({
@@ -233,13 +260,19 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
+        razorpay_signature: body.razorpay_signature as string,
         amount: planPrice,
         currency: 'INR',
         status: 'completed',
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
+        payment_method: payment.method,
       });
-    } catch (txError) {
-      console.error('[VerifyPayment] Transaction recording failed (non-critical):', txError);
+    } catch (txError: any) {
+        if (txError.message?.includes('duplicate key') || txError.message?.includes('23505') || txError.status === 409) {
+          console.log('[VerifyPayment] Transaction already recorded (duplicate caught). Skipping further duplicate handling.');
+        } else {
+          console.error('[VerifyPayment] Transaction recording failed (non-critical):', txError);
+        }
     }
 
     // Step 3.5: Sync shadow table in app DB
