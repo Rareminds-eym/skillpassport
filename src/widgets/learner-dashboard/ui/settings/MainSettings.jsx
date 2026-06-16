@@ -60,6 +60,7 @@ const MainSettings = () => {
     error: learnerError,
     updateProfile,
     updatePassword,
+    refreshData,
   } = useLearnerSettings(userEmail);
 
   // Get education data from the same source as Dashboard
@@ -1504,21 +1505,58 @@ const MainSettings = () => {
 
   // Show error state
   if (learnerError) {
+    const isAuthError = learnerError.includes('Unauthorized') || learnerError.includes('no valid token');
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-20">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Error Loading Settings
+              {isAuthError ? 'Session Expired' : 'Error Loading Settings'}
             </h2>
-            <p className="text-gray-600 mb-4">{learnerError}</p>
-            <Button
-              onClick={() => window.location.reload()}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Retry
-            </Button>
+            <p className="text-gray-600 mb-4">
+              {isAuthError 
+                ? 'Your session has expired. Please log in again to continue.' 
+                : learnerError
+              }
+            </p>
+            <div className="flex gap-3 justify-center">
+              {isAuthError ? (
+                <>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        // Try to refresh the session first
+                        const { initialize } = await import('@/shared/model/authStore');
+                        await initialize();
+                        // If successful, retry fetching data
+                        refreshData();
+                      } catch (e) {
+                        // If refresh fails, redirect to login
+                        window.location.href = '/login';
+                      }
+                    }}
+                    className="bg-gray-600 hover:bg-gray-700 text-white"
+                  >
+                    Retry
+                  </Button>
+                  <Button
+                    onClick={() => window.location.href = '/login'}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Log In
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Retry
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>

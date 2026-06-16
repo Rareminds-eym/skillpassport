@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getLogger } from '@/shared/config';
+import type { ReceiptData } from '../types/receipt';
 
 const logger = getLogger('pdfReceiptGenerator');
 
@@ -11,19 +12,21 @@ const logger = getLogger('pdfReceiptGenerator');
 
 /**
  * Convert image to base64 for PDF embedding
- * @param {string} imagePath - Path to the image
- * @returns {Promise<string>} Base64 encoded image
  */
-async function imageToBase64(imagePath) {
+async function imageToBase64(imagePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = function() {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      canvas.width = this.naturalWidth;
-      canvas.height = this.naturalHeight;
-      ctx.drawImage(this, 0, 0);
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
       resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = reject;
@@ -31,16 +34,18 @@ async function imageToBase64(imagePath) {
   });
 }
 
+interface AddTextOptions {
+  fontSize?: number;
+  fontStyle?: 'normal' | 'bold';
+  align?: 'left' | 'center' | 'right';
+  maxWidth?: number;
+  color?: [number, number, number];
+}
+
 /**
  * Generate a PDF receipt from receipt data
- * @param {Object} receiptData - The receipt data
- * @param {Object} receiptData.transaction - Transaction details
- * @param {Object} receiptData.subscription - Subscription details
- * @param {Object} receiptData.user - User details
- * @param {Object} receiptData.company - Company information
- * @returns {Promise<Blob>} PDF blob
  */
-export async function generateReceipt(receiptData) {
+export async function generateReceipt(receiptData: ReceiptData): Promise<Blob> {
   const { transaction, subscription, user, company } = receiptData;
   
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -81,7 +86,7 @@ export async function generateReceipt(receiptData) {
   }
 
   // Helper function to add text
-  const addText = (text, x, y, options = {}) => {
+  const addText = (text: string, x: number, y: number, options: AddTextOptions = {}) => {
     const { fontSize = 10, fontStyle = 'normal', align = 'left', maxWidth, color = [0, 0, 0] } = options;
     pdf.setFontSize(fontSize);
     pdf.setFont('helvetica', fontStyle);
@@ -407,10 +412,8 @@ export async function generateReceipt(receiptData) {
 
 /**
  * Generate a PDF receipt and return as base64 string
- * @param {Object} receiptData - The receipt data
- * @returns {Promise<string>} Base64 encoded PDF
  */
-export async function generateReceiptBase64(receiptData) {
+export async function generateReceiptBase64(receiptData: ReceiptData): Promise<string> {
   const { transaction, subscription, user, company } = receiptData;
   
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -420,7 +423,7 @@ export async function generateReceiptBase64(receiptData) {
   let yPosition = margin;
 
   // Helper function to add text
-  const addText = (text, x, y, options = {}) => {
+  const addText = (text: string, x: number, y: number, options: AddTextOptions = {}) => {
     const { fontSize = 10, fontStyle = 'normal', align = 'left', maxWidth } = options;
     pdf.setFontSize(fontSize);
     pdf.setFont('helvetica', fontStyle);
@@ -597,11 +600,8 @@ export async function generateReceiptBase64(receiptData) {
 
 /**
  * Download a PDF receipt
- * @param {Object} receiptData - The receipt data
- * @param {string} filename - Optional custom filename
- * @returns {Promise<void>}
  */
-export async function downloadReceipt(receiptData, filename) {
+export async function downloadReceipt(receiptData: ReceiptData, filename?: string): Promise<void> {
   try {
     const blob = await generateReceipt(receiptData);
     
@@ -626,11 +626,8 @@ export async function downloadReceipt(receiptData, filename) {
 
 /**
  * Generate PDF from HTML element (alternative method)
- * @param {string} elementId - ID of the HTML element to convert
- * @param {string} filename - Filename for the PDF
- * @returns {Promise<void>}
  */
-export async function generatePDFFromHTML(elementId, filename = `receipt-${Date.now()}.pdf`) {
+export async function generatePDFFromHTML(elementId: string, filename: string = `receipt-${Date.now()}.pdf`): Promise<void> {
   try {
     const element = document.getElementById(elementId);
     if (!element) {

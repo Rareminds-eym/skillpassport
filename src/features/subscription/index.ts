@@ -144,6 +144,15 @@ export {
 
 export { default as entitlementService, EntitlementService } from './api/entitlementService';
 
+// Receipt Services
+export {
+  fetchReceiptData,
+  downloadReceiptByOrderId,
+  downloadReceiptByPaymentId,
+  downloadReceiptById,
+  getReceiptErrorMessage
+} from './api/receiptService';
+
 // Utilities
 export {
   isActiveOrPaused,

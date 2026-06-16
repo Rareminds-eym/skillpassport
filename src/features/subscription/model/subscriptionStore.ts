@@ -169,6 +169,7 @@ function formatSubscriptionData(data: any): Subscription {
     plan: planId,
     plan_type: planId,
     status: data.status,
+    paymentStatus: data.status === 'active' ? 'success' : 'pending',
     startDate: data.subscription_start_date,
     endDate: data.subscription_end_date,
     end_date: data.subscription_end_date,

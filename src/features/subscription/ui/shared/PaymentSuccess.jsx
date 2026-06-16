@@ -28,7 +28,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { downloadReceipt } from '@/features/subscription/lib';
+import { usePaymentSuccessReceipt } from '@/features/subscription/hooks/useReceiptDownload';
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 
 import { useQueryClient } from '@tanstack/react-query';
@@ -440,6 +440,9 @@ function PaymentSuccess() {
   const [receiptKey, setReceiptKey] = useState(null); // R2 key — preferred over URL for downloads
   const verificationError = null;
 
+  // Receipt download hook
+  const { downloadByOrderId: downloadReceiptHook, isDownloading: isDownloadingReceipt } = usePaymentSuccessReceipt();
+
   // Refs for cleanup
   const mountedRef = useRef(true);
   const confettiTimeoutRef = useRef(null);
@@ -686,25 +689,59 @@ function PaymentSuccess() {
     }
   }, [verificationError, user, navigate]);
 
-  // Handle receipt download using presigned URL
+  // Handle receipt download using new service
   const handleDownloadReceipt = useCallback(async () => {
     try {
-      // Prefer the R2 key directly — avoids URL parsing ambiguity in the backend.
-      // Fall back to the public URL if the key wasn't returned by the server.
+      // Priority order for receipt download:
+      // 1. Use order ID from payment params (most reliable)
+      // 2. Use receipt key if available
+      // 3. Use receipt URL as fallback
+      
+      const orderId = paymentParams.razorpay_order_id;
+      if (orderId) {
+        await downloadReceiptHook(orderId);
+        return;
+      }
+
+      // Fallback to presigned URL method
       const fileIdentifier = receiptKey || receiptUrl;
       if (fileIdentifier) {
         const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
         window.open(presignedUrl, '_blank');
-        toast.success('Receipt downloading!');
         return;
       }
-      // Receipt not yet available (server may still be processing)
-      toast('Receipt is being prepared. Please try again in a moment.', { icon: '⏳', duration: 4000 });
+
+      // No receipt available - show more helpful message based on error type
+      const errorMsg = 'Receipt is being prepared. Please try again in a moment.';
+      toast(errorMsg, { 
+        icon: '⏳', 
+        duration: 4000 
+      });
+      
+      // Log for debugging
+      console.log('Receipt download - no data available:', {
+        orderId: paymentParams.razorpay_order_id,
+        receiptKey,
+        receiptUrl,
+        paymentParams
+      });
+      
     } catch (error) {
-      log.error('Receipt download failed:', error);
-      toast.error('Failed to download receipt. Please try again.');
+      console.error('Receipt download failed:', error);
+      
+      // Handle specific error types
+      if (error?.message?.includes('Unauthorized') || error?.message?.includes('no valid token')) {
+        toast.error('Session expired. Please refresh the page and try again.');
+      } else if (error?.message?.includes('not found')) {
+        toast('Receipt not ready yet. Please try again in a few minutes.', { 
+          icon: '⏳', 
+          duration: 4000 
+        });
+      } else {
+        toast.error('Failed to download receipt. Please try again or contact support.');
+      }
     }
-  }, [receiptKey, receiptUrl]);
+  }, [paymentParams.razorpay_order_id, receiptKey, receiptUrl, downloadReceiptHook]);
 
   // ============================================================================
   // RENDER
@@ -818,11 +855,20 @@ function PaymentSuccess() {
             </button>
             <button
               onClick={handleDownloadReceipt}
-              disabled={navigation.isNavigating}
+              disabled={navigation.isNavigating || isDownloadingReceipt}
               className="py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
-              <Download className="w-4 h-4" />
-              Receipt
+              {isDownloadingReceipt ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Preparing...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Receipt
+                </>
+              )}
             </button>
           </div>
         </div>

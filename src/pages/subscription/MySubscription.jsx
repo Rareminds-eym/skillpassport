@@ -13,6 +13,7 @@ import {
   Download,
   HelpCircle,
   LayoutDashboard,
+  Loader2,
   Mail,
   Receipt,
   RefreshCw,
@@ -27,6 +28,7 @@ import { SubscriptionDashboard } from '@/features/subscription';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
 import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
 
+import { useSubscriptionDashboardReceipt } from '@/features/subscription/hooks/useReceiptDownload';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';
@@ -112,6 +114,9 @@ function MySubscription() {
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showBillingHistory, setShowBillingHistory] = useState(false);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
+  
+  // Receipt download hook
+  const { downloadById: downloadReceiptById, isDownloading: isDownloadingReceipt } = useSubscriptionDashboardReceipt();
   const [cancelReason, setCancelReason] = useState('');
   const [additionalFeedback, setAdditionalFeedback] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
@@ -273,14 +278,23 @@ function MySubscription() {
     }
   };
 
-  const handleDownloadInvoice = async () => {
-    setIsDownloadingInvoice(true);
+  const handleDownloadInvoice = async (receiptId = null) => {
     try {
-      // Simulate download - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Actual implementation would call API to generate/download invoice
-    } finally {
-      setIsDownloadingInvoice(false);
+      // Ignore React SyntheticEvent if passed directly to onClick
+      const idToUse = (receiptId && typeof receiptId === 'string') ? receiptId : null;
+      
+      // Use the provided receipt ID or fallback to current subscription ID
+      const targetId = idToUse || subscriptionData?.id;
+      
+      if (!targetId) {
+        console.warn('No receipt ID available for download');
+        return;
+      }
+
+      await downloadReceiptById(targetId);
+    } catch (error) {
+      // Error handling is done by the hook
+      console.error('Invoice download failed:', error);
     }
   };
 
@@ -955,8 +969,9 @@ function MySubscription() {
                                   {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
                                 </span>
                                 <button
-                                  onClick={handleDownloadInvoice}
-                                  className="p-2 hover:bg-slate-100 rounded-2xl transition-colors"
+                                  onClick={() => handleDownloadInvoice(invoice.id)}
+                                  disabled={isDownloadingReceipt}
+                                  className="p-2 hover:bg-slate-100 rounded-2xl transition-colors disabled:opacity-50"
                                   title="Download Invoice"
                                 >
                                   <Download className="w-4 h-4 text-slate-600" />
@@ -1093,14 +1108,14 @@ function MySubscription() {
                       </div>
                       <div className="pt-3 border-t border-slate-200">
                         <button
-                          onClick={handleDownloadInvoice}
-                          disabled={isDownloadingInvoice}
+                          onClick={() => handleDownloadInvoice()}
+                          disabled={isDownloadingReceipt}
                           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200"
                         >
-                          {isDownloadingInvoice ? (
+                          {isDownloadingReceipt ? (
                             <>
-                              <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-900 rounded-full animate-spin" />
-                              Downloading...
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Preparing Receipt...
                             </>
                           ) : (
                             <>

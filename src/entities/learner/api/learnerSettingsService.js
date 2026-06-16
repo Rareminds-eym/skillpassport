@@ -7,6 +7,7 @@
 
 import { PASSWORD_MIN } from '@/shared/constants';
 import { apiPost } from '@/shared/api/apiClient';
+import { AuthRecoveryService } from '@/shared/services/authRecoveryService';
 
 /**
  * Fetch learner data by email for settings page
@@ -136,6 +137,22 @@ export const getlearnerSettingsByEmail = async (email) => {
     return { success: true, data: settingsData };
   } catch (err) {
     console.error('❌ getlearnerSettingsByEmail exception:', err);
+    
+    // Try auth recovery for auth errors
+    if (AuthRecoveryService.isAuthError(err)) {
+      console.log('🔄 Attempting auth recovery...');
+      const recovered = await AuthRecoveryService.attemptRecovery();
+      if (recovered) {
+        // Retry the request after successful recovery
+        try {
+          return await getlearnerSettingsByEmail(email);
+        } catch (retryErr) {
+          console.error('❌ Retry after auth recovery failed:', retryErr);
+          return { success: false, error: retryErr.message };
+        }
+      }
+    }
+    
     return { success: false, error: err.message };
   }
 };
