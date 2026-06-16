@@ -12,6 +12,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
+import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 
 const logger = createLogger('payments:create-org-order');
@@ -46,16 +47,36 @@ export async function handleCreateOrgOrder(context: AuthenticatedContext): Promi
       return apiError(400, 'VALIDATION_ERROR', 'seat_count is required and must be a number', context.request);
     }
 
+    const supabase = getServiceClient(env as unknown as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
+
+    // Guard: Verify user is an admin or owner of the organization
+    const { data: membership } = await supabase
+      .from('license_assignments')
+      .select('id, role')
+      .eq('user_id', user.id)
+      .eq('organization_id', body.org_id as string)
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
+      return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
+    }
+
     // Call payment-worker via Service Binding RPC
     const worker = getPaymentWorker(env);
     const order = await worker.createOrder({
       amount: body.amount as number,
       currency: (body.currency as string) || undefined,
+      receipt: `org_${body.org_id}_${Date.now()}`.substring(0, 40),
       notes: {
         org_id: body.org_id as string,
         plan_name: body.plan_name as string,
+        plan_id: (body.plan_id as string) || '',
+        plan_code: (body.plan_code as string) || body.plan_name as string,
+        billing_cycle: (body.billing_cycle as string) || 'annual',
         seat_count: String(body.seat_count),
         user_id: user.id,
+        user_email: user.email || '',
         type: 'org',
       },
     });

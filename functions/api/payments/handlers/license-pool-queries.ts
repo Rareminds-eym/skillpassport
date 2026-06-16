@@ -12,8 +12,22 @@ export async function handleLicensePoolQueries(context: AuthenticatedContext): P
 
   try {
     const supabase = getServiceClient(env);
+    const user = getContextUser(context);
+
+    // Helper for auth
+    const authorizeOrg = async (checkOrgId: string) => {
+      const { data: membership } = await supabase
+        .from('license_assignments')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('organization_id', checkOrgId)
+        .limit(1)
+        .maybeSingle();
+      return !!membership;
+    };
 
     if (action === 'getLicensePools' && orgId) {
+      if (!(await authorizeOrg(orgId))) return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
       const { data, error } = await supabase
         .from('license_pools')
         .select('*')
@@ -25,6 +39,8 @@ export async function handleLicensePoolQueries(context: AuthenticatedContext): P
     }
 
     if (action === 'getLicensePoolById' && poolId) {
+      const { data: poolAuth } = await supabase.from('license_pools').select('organization_id').eq('id', poolId).single();
+      if (!poolAuth || !(await authorizeOrg(poolAuth.organization_id))) return apiError(403, 'FORBIDDEN', 'Not authorized', context.request);
       const { data, error } = await supabase
         .from('license_pools')
         .select('*')
@@ -36,6 +52,8 @@ export async function handleLicensePoolQueries(context: AuthenticatedContext): P
     }
 
     if (action === 'getPoolAssignments' && poolId) {
+      const { data: poolAuth } = await supabase.from('license_pools').select('organization_id').eq('id', poolId).single();
+      if (!poolAuth || !(await authorizeOrg(poolAuth.organization_id))) return apiError(403, 'FORBIDDEN', 'Not authorized', context.request);
       const { data, error } = await supabase
         .from('license_assignments')
         .select(`*, users (id, email, full_name)`)
