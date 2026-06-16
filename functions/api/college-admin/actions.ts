@@ -107,12 +107,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!user || !user.id) return apiError(401, 'UNAUTHORIZED', 'User not found', context.request, { startTime });
 
         // Verify the logged-in user is actually the admin of the requested college
-        const { data: orgByAdmin } = await supabase
+        const { data: orgByAdmin, error: authError } = await supabase
           .from('organizations')
           .select('id')
           .eq('admin_id', user.id)
           .eq('organization_type', 'college')
           .maybeSingle();
+        if (authError) return apiDbError(authError, context.request, { startTime });
 
         if (!orgByAdmin?.id || orgByAdmin.id !== requestedCollegeId) {
           return apiError(403, 'FORBIDDEN', 'Access denied to this college', context.request, { startTime });
