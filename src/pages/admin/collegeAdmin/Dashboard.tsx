@@ -75,8 +75,10 @@ const Dashboard: React.FC = () => {
       
       setLoading(true);
       try {
-        // Always resolve org from organizations table first (authoritative).
-        // JWT org_id can be stale if the admin has multiple memberships.
+        // College ID resolution precedence (in order):
+        // 1. organizations table — authoritative source for admin logins (admin_id match)
+        // 2. college_lecturers table — fallback for faculty logins (email match)
+        // 3. JWT org_id — last resort, may be stale if user has multiple memberships
         let collegeId: string | null = null;
         const orgRes = await apiPost<{ data?: { id: string } }>('/college-admin/actions', {
           action: 'get-org-by-admin-or-email',
@@ -84,6 +86,7 @@ const Dashboard: React.FC = () => {
           email: user.email
         });
         collegeId = orgRes?.data?.id || null;
+        if (collegeId) logger.info('College ID resolved via organizations table', { collegeId });
 
         if (!collegeId) {
           // Fallback: try resolving from college_lecturers (faculty login path)
@@ -93,11 +96,13 @@ const Dashboard: React.FC = () => {
             select: 'collegeId'
           });
           collegeId = lecturerRes?.data?.collegeId || null;
+          if (collegeId) logger.info('College ID resolved via college_lecturers table', { collegeId });
         }
 
         if (!collegeId) {
           // Last resort: use JWT org_id
           collegeId = user.orgId || null;
+          if (collegeId) logger.info('College ID resolved via JWT org_id', { collegeId });
         }
 
         if (!collegeId) {
@@ -139,7 +144,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Total Learners",
       value: loading ? "..." : stats.totalLearners.toLocaleString(),
-      change: stats.learnersChange ?? undefined,
+      change: stats.learnersChange,
       changeLabel: "enrolled",
       icon: <Users className="h-6 w-6" />,
       color: "blue" as const,
@@ -147,7 +152,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Total Faculty",
       value: loading ? "..." : stats.totalFaculty.toLocaleString(),
-      change: stats.facultyChange ?? undefined,
+      change: stats.facultyChange,
       changeLabel: "active members",
       icon: <Award className="h-6 w-6" />,
       color: "purple" as const,
@@ -155,7 +160,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Departments",
       value: loading ? "..." : stats.totalDepartments.toLocaleString(),
-      change: stats.departmentsChange ?? undefined,
+      change: stats.departmentsChange,
       changeLabel: "across programs",
       icon: <Building2 className="h-6 w-6" />,
       color: "green" as const,
@@ -163,7 +168,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Placement Rate",
       value: loading ? "..." : `${stats.placementRate}%`,
-      change: stats.placementRateChange ?? undefined,
+      change: stats.placementRateChange,
       changeLabel: "this academic year",
       icon: <Briefcase className="h-6 w-6" />,
       color: "yellow" as const,

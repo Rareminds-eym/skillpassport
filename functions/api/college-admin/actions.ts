@@ -104,7 +104,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         // Resolve authoritative org: look up organizations where admin_id = logged-in user.
         // This bypasses the JWT org_id mismatch when a user has multiple memberships.
         const user = getContextUser(context);
-        if (!user) return apiError(401, 'UNAUTHORIZED', 'User not found', context.request, { startTime });
+        if (!user || !user.id) return apiError(401, 'UNAUTHORIZED', 'User not found', context.request, { startTime });
         let college_id = requestedCollegeId;
         if (user.id) {
           const { data: orgByAdmin } = await supabase
@@ -166,9 +166,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           totalFaculty: facultyCount,
           totalDepartments: deptCount,
           placementRate,
-          learnersChange: calcChange(learnersCount, learnersPrev) ?? null,
-          facultyChange: calcChange(facultyCount, facultyPrev) ?? null,
-          departmentsChange: calcChange(deptCount, deptPrev) ?? null,
+          learnersChange: calcChange(learnersCount, learnersPrev),
+          facultyChange: calcChange(facultyCount, facultyPrev),
+          departmentsChange: calcChange(deptCount, deptPrev),
           placementRateChange: placementRatePrev > 0 ? Math.round((placementRate - placementRatePrev) * 10) / 10 : null,
         }, context.request, { startTime });
       }
