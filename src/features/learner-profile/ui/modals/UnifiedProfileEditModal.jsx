@@ -1182,7 +1182,7 @@ const UnifiedProfileEditModal = ({
   if (singleEditMode) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+        <DialogContent className="max-w-2xl max-h-screen flex flex-col p-0">
           <DialogHeader className="flex-shrink-0 px-6 pt-5 pb-4 border-b border-gray-100 pr-12">
             <div className="flex flex-wrap items-center justify-between gap-2 pr-6 sm:pr-10">
             <DialogTitle className="flex items-center gap-2 text-lg">
@@ -1271,7 +1271,7 @@ const UnifiedProfileEditModal = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
+        <DialogContent className="max-w-3xl max-h-screen flex flex-col p-0">
           <DialogHeader className="flex-shrink-0 px-6 pt-5 pb-4 border-b border-gray-100">
             <div className="flex flex-wrap items-center justify-between gap-2 pr-6 sm:pr-1">
               <DialogTitle className="flex items-center gap-2 min-w-0">

@@ -630,7 +630,7 @@ const ProfileItemModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-full h-[92vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-2xl w-full h-screen flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-100">
           <DialogTitle className="flex items-center gap-2 text-lg">
             {Icon && <Icon className="w-5 h-5 text-blue-600" />}
@@ -688,7 +688,7 @@ const ProfileItemModal = ({
         </div>
 
         {/* Fixed Action Buttons at Bottom */}
-        <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2 px-4 py-4 border-t border-gray-200 bg-white shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+        <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2 px-4 py-4 border-t border-gray-200 bg-white shadow-md">
           <Button
             onClick={handleSave}
             disabled={isSaving}
