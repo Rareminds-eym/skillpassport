@@ -1,5 +1,4 @@
-import { useAuthStore } from '@/shared/model/authStore';
-import { ssoClient } from '@/shared/api/ssoClient';
+import { apiPost } from '@/shared/api/apiClient';
 /**
  * Resume Parser Service
  * Handles parsing resumes using Claude AI
@@ -8,6 +7,46 @@ import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('resume-parser');
+
+type ResumeParserApiResponse = {
+  success: boolean;
+  data?: ResumeParsedData | { data?: ResumeParsedData };
+};
+
+type ResumeParsedData = {
+  name?: string;
+  email?: string;
+  contact_number?: string;
+  alternate_number?: string;
+  date_of_birth?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  college_school_name?: string;
+  university?: string;
+  branch_field?: string;
+  registration_number?: string;
+  bio?: string;
+  linkedin_link?: string;
+  github_link?: string;
+  portfolio_link?: string;
+  twitter_link?: string;
+  facebook_link?: string;
+  instagram_link?: string;
+  interests?: string[] | string;
+  languages?: string[] | string;
+  hobbies?: string[] | string;
+  education?: Array<Record<string, unknown>>;
+  experience?: Array<Record<string, unknown>>;
+  projects?: Array<Record<string, unknown>>;
+  technicalSkills?: Array<Record<string, unknown>>;
+  softSkills?: Array<Record<string, unknown>>;
+  certificates?: Array<Record<string, unknown>>;
+  training?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+};
 
 export const parseResumeWithAI = async (resumeText) => {
   try {
@@ -47,30 +86,7 @@ export const parseResumeWithAI = async (resumeText) => {
  */
 const parseWithClaude = async (resumeText) => {
   try {
-    const { getApiUrl } = await import('@/shared/api/apiUtils');
-    const API_URL = getApiUrl('career');
-
-    const user = useAuthStore.getState().user;
-    const token = ssoClient.getAccessToken();
-
-    if (!token) {
-      throw new Error('Authentication required for resume parsing');
-    }
-
-    const response = await ssoClient.fetch(`${API_URL}/parse-resume`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        },
-      body: JSON.stringify({ resumeText })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Server error: ${response.status}`);
-    }
-
-    const result = await response.json();
+    const result = await apiPost<ResumeParserApiResponse>('/career/parse-resume', { resumeText });
 
     if (!result.success || !result.data) {
       throw new Error('Invalid response from server');
@@ -78,7 +94,9 @@ const parseWithClaude = async (resumeText) => {
 
     logger.info('Resume parsing successful via backend');
 
-    let parsedData = result.data;
+    const parsedData = 'data' in result.data && result.data.data
+      ? result.data.data
+      : result.data;
 
     if (parsedData.name && parsedData.name.length > 100) {
       parsedData.name = extractNameFromText(parsedData.name);
@@ -178,6 +196,59 @@ const parseFallback = (resumeText) => {
   return addMetadata(result);
 };
 
+const collectStringItems = (value, output) => {
+  if (Array.isArray(value)) {
+    value.forEach(item => collectStringItems(item, output));
+    return;
+  }
+
+  if (typeof value !== 'string') {
+    if (value !== null && value !== undefined) output.push(value);
+    return;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed !== value) {
+      collectStringItems(parsed, output);
+      return;
+    }
+  } catch {
+    // Non-JSON text is handled below.
+  }
+
+  if (trimmed.includes(',') || trimmed.includes(';') || trimmed.includes('\n')) {
+    trimmed.split(/[,;\n]/).forEach(item => collectStringItems(item, output));
+    return;
+  }
+
+  output.push(trimmed);
+};
+
+const normalizeStringArray = (value) => {
+  const seen = new Set();
+  const items = [];
+  const rawItems = [];
+
+  collectStringItems(value, rawItems);
+  rawItems.forEach(item => {
+    const normalized = String(item ?? '')
+      .trim()
+      .replace(/\\"/g, '"')
+      .replace(/^[\s"'[\]]+|[\s"'[\]]+$/g, '')
+      .replace(/\s+/g, ' ');
+    const key = normalized.toLowerCase();
+    if (!normalized || normalized === '[]' || normalized === '{}' || seen.has(key)) return;
+    seen.add(key);
+    items.push(normalized);
+  });
+
+  return items;
+};
+
 /**
  * Merge parsed resume data with existing profile data
  * @param {Object} existingData - Current profile data
@@ -191,10 +262,54 @@ export const mergeResumeData = (existingData, parsedData) => {
   const merged = { ...existingData };
 
   // Merge simple string fields (only if existing is empty)
-  const stringFields = ['name', 'email', 'contact_number', 'college_school_name', 'university', 'branch_field'];
+  const stringFields = [
+    'name',
+    'email',
+    'phone',
+    'contact_number',
+    'alternatePhone',
+    'alternate_number',
+    'dateOfBirth',
+    'date_of_birth',
+    'college_school_name',
+    'university',
+    'branch_field',
+    'registrationNumber',
+    'registration_number',
+    'address',
+    'location',
+    'city',
+    'state',
+    'country',
+    'pincode',
+    'bio',
+    'linkedIn',
+    'linkedin_link',
+    'github',
+    'github_link',
+    'portfolio',
+    'portfolio_link',
+    'twitter',
+    'twitter_link',
+    'facebook',
+    'facebook_link',
+    'instagram',
+    'instagram_link'
+  ];
   stringFields.forEach(field => {
     if (parsedData[field] && (!existingData[field] || existingData[field].trim() === '')) {
       merged[field] = parsedData[field];
+    }
+  });
+
+  ['interests', 'languages', 'hobbies'].forEach(field => {
+    const existing = normalizeStringArray(existingData[field]);
+    const parsed = normalizeStringArray(parsedData[field]);
+    const existingKeys = new Set(existing.map(item => item.toLowerCase()));
+    const newItems = parsed.filter(item => !existingKeys.has(item.toLowerCase()));
+
+    if (existing.length || newItems.length) {
+      merged[field] = [...existing, ...newItems];
     }
   });
 

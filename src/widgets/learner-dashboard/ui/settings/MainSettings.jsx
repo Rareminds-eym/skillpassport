@@ -48,6 +48,31 @@ import NotificationsTab from "./NotificationsTab";
 import PrivacyTab from "./PrivacyTab";
 
 import { useUser } from '@/shared/model/authStore';
+
+const firstFilled = (...values) => {
+  for (const value of values) {
+    if (value === null || value === undefined) continue;
+    const normalized = String(value).trim();
+    if (normalized) return normalized;
+  }
+  return '';
+};
+
+const normalizeResumeDataForSettings = (parsedData = {}) => ({
+  ...parsedData,
+  phone: firstFilled(parsedData.phone, parsedData.contact_number),
+  alternatePhone: firstFilled(parsedData.alternatePhone, parsedData.alternate_number),
+  dateOfBirth: firstFilled(parsedData.dateOfBirth, parsedData.date_of_birth),
+  location: firstFilled(parsedData.location, parsedData.city),
+  registrationNumber: firstFilled(parsedData.registrationNumber, parsedData.registration_number),
+  linkedIn: firstFilled(parsedData.linkedIn, parsedData.linkedin_link, parsedData.linkedin),
+  github: firstFilled(parsedData.github, parsedData.github_link),
+  portfolio: firstFilled(parsedData.portfolio, parsedData.portfolio_link, parsedData.website),
+  twitter: firstFilled(parsedData.twitter, parsedData.twitter_link),
+  facebook: firstFilled(parsedData.facebook, parsedData.facebook_link),
+  instagram: firstFilled(parsedData.instagram, parsedData.instagram_link),
+});
+
 const MainSettings = () => {
   const user = useUser();
   const location = useLocation();
@@ -1452,23 +1477,24 @@ const MainSettings = () => {
   const handleResumeDataExtracted = async (parsedData) => {
     try {
       const currentProfile = profileData;
-      const mergedData = mergeResumeData(currentProfile, parsedData);
-      
+      const normalizedParsedData = normalizeResumeDataForSettings(parsedData);
+      const mergedData = mergeResumeData(currentProfile, normalizedParsedData);
+
       setProfileData(mergedData);
-      
+
       await updateProfile(mergedData);
-      
-      if (parsedData.education && parsedData.education.length > 0) {
+
+      if (normalizedParsedData.education && normalizedParsedData.education.length > 0) {
         // Education data will be automatically updated by the hook
         if (updateEducation) {
-          await updateEducation(parsedData.education);
+          await updateEducation(normalizedParsedData.education);
         }
       }
-      
+
       toast.success("Profile auto-filled from resume successfully!");
-      
+
       setShowResumeParser(false);
-      
+
       try {
         if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
           await refreshRecentUpdates();
@@ -1476,7 +1502,7 @@ const MainSettings = () => {
       } catch (refreshError) {
         console.warn('Could not refresh recent updates:', refreshError);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to auto-fill profile from resume. Please try again.");
     }
   };
