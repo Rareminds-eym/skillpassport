@@ -55,7 +55,10 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
       })
 
       const data = resp?.data
-      if (!data) return
+      if (!data) {
+        setLoading(false)
+        return
+      }
 
       setKpiData({
         totallearners: data.totalLearners || 0,
