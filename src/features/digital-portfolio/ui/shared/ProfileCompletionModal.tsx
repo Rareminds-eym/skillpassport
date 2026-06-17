@@ -532,6 +532,11 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       // Refresh portfolio data after save to update Digital Passport immediately
       if (hasUpdates) {
         try {
+          // Validate learner email exists before API call
+          if (!learner?.email) {
+            throw new Error('Learner email is required for portfolio refresh');
+          }
+
           const refreshResponse = await apiPost<PortfolioRefreshResponse>('/college-admin/digital-portfolio', {
             action: 'get-portfolio-by-email',
             email: learner.email,
@@ -552,11 +557,15 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
               throw new Error('Invalid learner data in refresh response');
             }
 
+            // Validate profile is an object before spreading
+            const existingProfile = refreshResponse.data.learner.profile;
+            const baseProfile = existingProfile && typeof existingProfile === 'object' ? existingProfile : {};
+
             // Transform the response to match the expected format
             const portfolioData = {
               ...refreshResponse.data.learner,
               profile: {
-                ...(refreshResponse.data.learner.profile as Record<string, unknown> || {}),
+                ...baseProfile,
                 education: [...(refreshResponse.data.education || []), ...(refreshResponse.data.pendingEducation || [])],
                 skills: [...(refreshResponse.data.skills || []), ...(refreshResponse.data.pendingSkills || [])],
                 projects: [...(refreshResponse.data.projects || []), ...(refreshResponse.data.pendingProjects || [])],
@@ -1184,7 +1193,12 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
+        onClick={(e) => {
+          // Only close if clicking the backdrop, not the modal content
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
