@@ -13,6 +13,25 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('ProfileCompletionModal2');
 
+// Type for portfolio refresh API response
+interface PortfolioRefreshResponse {
+  success: boolean;
+  data: {
+    learner: any;
+    education?: any[];
+    pendingEducation?: any[];
+    skills?: any[];
+    pendingSkills?: any[];
+    projects?: any[];
+    pendingProjects?: any[];
+    achievements?: any[];
+    pendingAchievements?: any[];
+    certificates?: any[];
+    experience?: any[];
+    trainings?: any[];
+  };
+}
+
 // Helper function to map skill level to number
 const mapLevelToNumber = (level: string): number => {
   const levelMap: Record<string, number> = {
@@ -447,7 +466,7 @@ const ProfileCompletionModal2: React.FC<ProfileCompletionModal2Props> = ({
       // Refresh portfolio data after save to update Digital Passport immediately
       if (hasUpdates) {
         try {
-          const refreshResponse: any = await apiPost('/college-admin/digital-portfolio', {
+          const refreshResponse = await apiPost<PortfolioRefreshResponse>('/college-admin/digital-portfolio', {
             action: 'get-portfolio-by-email',
             email: learner.email,
           });
