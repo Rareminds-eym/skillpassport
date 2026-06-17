@@ -11,7 +11,7 @@ import { usePortfolio } from '@/features/digital-portfolio';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 
-const logger = getLogger('ProfileCompletionModal2');
+const logger = getLogger('ProfileCompletionModal');
 
 // Type for portfolio refresh API response
 interface PortfolioRefreshResponse {
@@ -43,7 +43,7 @@ const mapLevelToNumber = (level: string): number => {
   return levelMap[level] || 2;
 };
 
-export interface ProfileCompletionModal2Props {
+export interface ProfileCompletionModalProps {
   isOpen: boolean;
   incompleteSections: string[];
   onComplete: () => void;
@@ -120,7 +120,7 @@ const SECTION_CONFIGS: Record<string, SectionConfig> = {
   }
 };
 
-const ProfileCompletionModal2: React.FC<ProfileCompletionModal2Props> = ({
+const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   isOpen,
   incompleteSections,
   onComplete,
@@ -1265,6 +1265,6 @@ const ProfileCompletionModal2: React.FC<ProfileCompletionModal2Props> = ({
   );
 };
 
-ProfileCompletionModal2.displayName = 'ProfileCompletionModal2';
+ProfileCompletionModal.displayName = 'ProfileCompletionModal';
 
-export default ProfileCompletionModal2;
+export default ProfileCompletionModal;
