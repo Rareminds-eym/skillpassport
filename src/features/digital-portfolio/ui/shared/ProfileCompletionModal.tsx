@@ -17,18 +17,18 @@ const logger = getLogger('ProfileCompletionModal');
 interface PortfolioRefreshResponse {
   success: boolean;
   data: {
-    learner: any;
-    education?: any[];
-    pendingEducation?: any[];
-    skills?: any[];
-    pendingSkills?: any[];
-    projects?: any[];
-    pendingProjects?: any[];
-    achievements?: any[];
-    pendingAchievements?: any[];
-    certificates?: any[];
-    experience?: any[];
-    trainings?: any[];
+    learner: Record<string, unknown>;
+    education?: Array<Record<string, unknown>>;
+    pendingEducation?: Array<Record<string, unknown>>;
+    skills?: Array<Record<string, unknown>>;
+    pendingSkills?: Array<Record<string, unknown>>;
+    projects?: Array<Record<string, unknown>>;
+    pendingProjects?: Array<Record<string, unknown>>;
+    achievements?: Array<Record<string, unknown>>;
+    pendingAchievements?: Array<Record<string, unknown>>;
+    certificates?: Array<Record<string, unknown>>;
+    experience?: Array<Record<string, unknown>>;
+    trainings?: Array<Record<string, unknown>>;
   };
 }
 
