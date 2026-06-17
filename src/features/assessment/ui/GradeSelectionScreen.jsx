@@ -398,6 +398,7 @@ export const GradeSelectionScreen = ({
         incompleteSections={[]}
         onComplete={handleProfileComplete}
         onSkip={() => setShowProfileModal(false)}
+        onNeverShow={() => setShowProfileModal(false)}
         onClose={() => setShowProfileModal(false)}
       />
     </div>

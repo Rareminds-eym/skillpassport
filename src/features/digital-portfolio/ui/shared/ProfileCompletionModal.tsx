@@ -17,7 +17,11 @@ const logger = getLogger('ProfileCompletionModal');
 interface PortfolioRefreshResponse {
   success: boolean;
   data: {
-    learner: Record<string, unknown>;
+    learner: {
+      id: string;
+      email: string;
+      [key: string]: unknown;
+    };
     education?: Array<Record<string, unknown>>;
     pendingEducation?: Array<Record<string, unknown>>;
     skills?: Array<Record<string, unknown>>;
@@ -40,7 +44,7 @@ const mapLevelToNumber = (level: string): number => {
     'Advanced': 3,
     'Expert': 4
   };
-  return levelMap[level] || 2;
+  return levelMap[level] ?? 2;
 };
 
 export interface ProfileCompletionModalProps {
@@ -281,7 +285,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       }
 
       // Save other sections to learners table
-      const learnerUpdates: any = {};
+      const learnerUpdates: Record<string, unknown> = {};
 
       // Personal Details
       if (currentSectionName === 'Personal Details') {
@@ -459,7 +463,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             localStorage.setItem(`profile-sections-completed-${learner.id}`, JSON.stringify(completedSections));
           }
         } catch (error) {
-          logger.error('Failed to mark section as completed', error);
+          logger.error('Failed to mark section as completed', error instanceof Error ? error : new Error(String(error)));
         }
       }
 
@@ -476,7 +480,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             const portfolioData = {
               ...refreshResponse.data.learner,
               profile: {
-                ...refreshResponse.data.learner.profile,
+                ...(refreshResponse.data.learner.profile as Record<string, unknown> || {}),
                 education: [...(refreshResponse.data.education || []), ...(refreshResponse.data.pendingEducation || [])],
                 skills: [...(refreshResponse.data.skills || []), ...(refreshResponse.data.pendingSkills || [])],
                 projects: [...(refreshResponse.data.projects || []), ...(refreshResponse.data.pendingProjects || [])],
@@ -486,10 +490,10 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                 trainings: refreshResponse.data.trainings || [],
               }
             };
-            setLearner(portfolioData as any);
+            setLearner(portfolioData);
           }
         } catch (refreshError) {
-          logger.error('Failed to refresh portfolio data', refreshError);
+          logger.error('Failed to refresh portfolio data', refreshError instanceof Error ? refreshError : new Error(String(refreshError)));
           // Don't block the user flow if refresh fails
         }
       }
@@ -510,9 +514,10 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         );
         onComplete();
       }
-    } catch (error: any) {
-      logger.error('Failed to save profile data', error);
-      toast.error(`Failed to save: ${error.message || 'Unknown error'}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to save profile data', error instanceof Error ? error : new Error(String(error)));
+      toast.error(`Failed to save: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
@@ -530,7 +535,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     setFormData(prev => ({ ...prev, projects: prev.projects.filter((_, i) => i !== index) }));
   };
 
-  const updateProject = (index: number, field: string, value: any) => {
+  const updateProject = (index: number, field: string, value: string | string[]) => {
     setFormData(prev => ({
       ...prev,
       projects: prev.projects.map((proj, i) =>
@@ -1033,7 +1038,14 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       case 'Hobbies':
       case 'Interests':
       case 'Languages': {
-        const dataKey = currentSection.toLowerCase() as 'hobbies' | 'interests' | 'languages';
+        const sectionKeyMap: Record<string, 'hobbies' | 'interests' | 'languages'> = {
+          'Hobbies': 'hobbies',
+          'Interests': 'interests',
+          'Languages': 'languages'
+        };
+        const dataKey = sectionKeyMap[currentSection];
+        if (!dataKey) return null;
+        
         const addFn = currentSection === 'Hobbies' ? addHobby : currentSection === 'Interests' ? addInterest : addLanguage;
         const removeFn = currentSection === 'Hobbies' ? removeHobby : currentSection === 'Interests' ? removeInterest : removeLanguage;
         const updateFn = currentSection === 'Hobbies' ? updateHobby : currentSection === 'Interests' ? updateInterest : updateLanguage;
