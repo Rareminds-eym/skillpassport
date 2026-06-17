@@ -36,6 +36,26 @@ interface PortfolioRefreshResponse {
   };
 }
 
+// Type for standard API response
+interface ApiResponse {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+}
+
+// Type for learner updates
+interface LearnerUpdates {
+  university?: string;
+  branch_field?: string;
+  contact_number?: string;
+  city?: string;
+  state?: string;
+  district_name?: string;
+  hobbies?: string[];
+  interests?: string[];
+  languages?: string[];
+}
+
 // Helper function to map skill level to number
 const mapLevelToNumber = (level: string): number => {
   const levelMap: Record<string, number> = {
@@ -202,8 +222,13 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     }
     return () => {
       document.body.style.overflow = 'unset';
-      if (previousActiveElementRef.current) {
-        previousActiveElementRef.current.focus();
+      if (previousActiveElementRef.current && previousActiveElementRef.current instanceof HTMLElement) {
+        try {
+          previousActiveElementRef.current.focus();
+        } catch (error) {
+          // Focus may fail if element is no longer in DOM
+          logger.warn('Failed to restore focus', { error: error instanceof Error ? error.message : String(error) });
+        }
       }
     };
   }, [isOpen]);
@@ -277,16 +302,20 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             approval_authority: learner.school_id ? 'school_admin' : 'college_admin'
           }));
 
-          await apiPost('/college-admin/digital-portfolio', {
+          const projectsResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
             action: 'insert-projects',
             records: projectRecords,
           });
+          
+          if (!projectsResponse?.success) {
+            throw new Error('Failed to save projects');
+          }
           hasUpdates = true;
         }
       }
 
       // Save other sections to learners table
-      const learnerUpdates: Record<string, unknown> = {};
+      const learnerUpdates: LearnerUpdates = {};
 
       // Personal Details
       if (currentSectionName === 'Personal Details') {
@@ -360,10 +389,14 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             };
           });
 
-          await apiPost('/college-admin/digital-portfolio', {
+          const educationResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
             action: 'insert-education',
             records: educationRecords,
           });
+          
+          if (!educationResponse?.success) {
+            throw new Error('Failed to save education');
+          }
           hasUpdates = true;
         }
       }
@@ -396,10 +429,14 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             enabled: true
           }));
 
-          await apiPost('/college-admin/digital-portfolio', {
+          const skillsResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
             action: 'insert-skills',
             records: skillRecords,
           });
+          
+          if (!skillsResponse?.success) {
+            throw new Error('Failed to save skills');
+          }
           hasUpdates = true;
         }
       }
@@ -432,10 +469,14 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             enabled: true
           }));
 
-          await apiPost('/college-admin/digital-portfolio', {
+          const achievementsResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
             action: 'insert-achievements',
             records: achievementRecords,
           });
+          
+          if (!achievementsResponse?.success) {
+            throw new Error('Failed to save achievements');
+          }
           hasUpdates = true;
         }
       }
@@ -462,11 +503,15 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       }
 
       if (Object.keys(learnerUpdates).length > 0) {
-        await apiPost('/college-admin/digital-portfolio', {
+        const updateResponse = await apiPost<ApiResponse>('/college-admin/digital-portfolio', {
           action: 'update-learner',
           id: learner.id,
           ...learnerUpdates,
         });
+        
+        if (!updateResponse?.success) {
+          throw new Error('Failed to update learner profile');
+        }
         hasUpdates = true;
       }
 
@@ -496,7 +541,17 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             throw new Error('Invalid response from portfolio refresh');
           }
 
-          if (refreshResponse?.success && refreshResponse?.data?.learner) {
+          // Validate response structure
+          if (!('success' in refreshResponse) || !('data' in refreshResponse)) {
+            throw new Error('Invalid response structure from portfolio refresh');
+          }
+
+          if (refreshResponse.success && refreshResponse.data?.learner) {
+            // Validate learner data has required fields
+            if (!refreshResponse.data.learner.id || !refreshResponse.data.learner.email) {
+              throw new Error('Invalid learner data in refresh response');
+            }
+
             // Transform the response to match the expected format
             const portfolioData = {
               ...refreshResponse.data.learner,
