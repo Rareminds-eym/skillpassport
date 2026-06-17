@@ -2,16 +2,24 @@ import { withAuth } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 
 interface SchoolLearner { user_id: string | null; }
 
+interface KPIRequestBody {
+  action: string;
+  schoolId?: string;
+  grade?: string;
+  section?: string;
+}
+
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const env = context.env as PagesEnv;
+  const supabase = getServiceClient(env);
   const startTime = Date.now();
 
-  let body: Record<string, any>;
-  try { body = await context.request.json() as any; } catch { return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', context.request); }
+  let body: KPIRequestBody;
+  try { body = await context.request.json() as KPIRequestBody; } catch { return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON', context.request); }
 
   const { action, schoolId } = body;
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action', context.request);
