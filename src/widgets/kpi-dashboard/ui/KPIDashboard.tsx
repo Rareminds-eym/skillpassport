@@ -72,8 +72,9 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
       })
 
       setLoading(false)
-    } catch (err: any) {
-      logger.error('Unexpected error fetching KPI data', err);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      logger.error('Unexpected error fetching KPI data', error);
       setError('An unexpected error occurred. Please check the logs for details.')
       setLoading(false)
     }

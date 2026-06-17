@@ -152,7 +152,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           })(),
           // fee_payments has no school_id — filter via learner_id instead
           schoolLearnerIds.length > 0
-            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).gte('payment_date', today)
+            ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).eq('payment_date', today)
             : { data: [], error: null },
           schoolLearnerIds.length > 0
             ? supabase.from('fee_payments').select('amount').eq('status', 'completed').in('learner_id', schoolLearnerIds).gte('payment_date', weekAgo)
