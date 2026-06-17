@@ -191,7 +191,8 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         languages: learner.profile.languages || [],
       });
     }
-  }, [learner]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [learner?.id, learner?.profile]);
 
   // Focus management
   useEffect(() => {
@@ -331,18 +332,33 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         }
         
         if (validEducation.length > 0) {
-          const educationRecords = validEducation.map(e => ({
-            learner_id: learner.id,
-            level: "Bachelor's", // Default level
-            degree: e.degree,
-            department: e.field || '',
-            university: e.institution,
-            year_of_passing: e.endDate || '',
-            cgpa: e.grade || '',
-            status: 'completed',
-            approval_status: 'pending',
-            enabled: true
-          }));
+          const educationRecords = validEducation.map(e => {
+            // Infer education level from degree name
+            const degreeLower = e.degree.toLowerCase();
+            let level = "Bachelor's"; // Default
+            if (degreeLower.includes('phd') || degreeLower.includes('doctorate')) {
+              level = 'PhD';
+            } else if (degreeLower.includes('master') || degreeLower.includes('mba') || degreeLower.includes('m.tech') || degreeLower.includes('m.sc')) {
+              level = "Master's";
+            } else if (degreeLower.includes('bachelor') || degreeLower.includes('b.tech') || degreeLower.includes('b.sc') || degreeLower.includes('b.e')) {
+              level = "Bachelor's";
+            } else if (degreeLower.includes('diploma') || degreeLower.includes('associate')) {
+              level = 'Diploma';
+            }
+            
+            return {
+              learner_id: learner.id,
+              level: level,
+              degree: e.degree,
+              department: e.field || '',
+              university: e.institution,
+              year_of_passing: e.endDate || '',
+              cgpa: e.grade || '',
+              status: 'completed',
+              approval_status: 'pending',
+              enabled: true
+            };
+          });
 
           await apiPost('/college-admin/digital-portfolio', {
             action: 'insert-education',
@@ -463,7 +479,8 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             localStorage.setItem(`profile-sections-completed-${learner.id}`, JSON.stringify(completedSections));
           }
         } catch (error) {
-          logger.error('Failed to mark section as completed', error instanceof Error ? error : new Error(String(error)));
+          const errorObj = error instanceof Error ? error : new Error(String(error));
+          logger.warn('localStorage unavailable; section completion not persisted', { error: errorObj.message, stack: errorObj.stack });
         }
       }
 
@@ -474,6 +491,10 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
             action: 'get-portfolio-by-email',
             email: learner.email,
           });
+
+          if (!refreshResponse || typeof refreshResponse !== 'object') {
+            throw new Error('Invalid response from portfolio refresh');
+          }
 
           if (refreshResponse?.success && refreshResponse?.data?.learner) {
             // Transform the response to match the expected format
@@ -494,6 +515,7 @@ const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
           }
         } catch (refreshError) {
           logger.error('Failed to refresh portfolio data', refreshError instanceof Error ? refreshError : new Error(String(refreshError)));
+          toast.error('Warning: Could not refresh portfolio data. Changes may not appear immediately.');
           // Don't block the user flow if refresh fails
         }
       }

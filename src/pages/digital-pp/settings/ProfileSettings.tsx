@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 import { ProfileCompletionModal, ProfileCompletionErrorBoundary } from '@/features/digital-portfolio';
-import { useProfileCompletionPrompt } from '@/features/learner-profile';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('profile-settings');

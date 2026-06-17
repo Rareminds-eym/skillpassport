@@ -64,10 +64,12 @@ export function checkProfileCompleteness(learner: Learner | null): ProfileComple
   try {
     // Get sections that user has completed (even if pending approval)
     let completedSections: string[] = [];
-    try {
-      completedSections = JSON.parse(localStorage.getItem(`profile-sections-completed-${learner.id}`) || '[]');
-    } catch {
-      completedSections = [];
+    if (typeof window !== 'undefined') {
+      try {
+        completedSections = JSON.parse(localStorage.getItem(`profile-sections-completed-${learner.id}`) || '[]');
+      } catch {
+        completedSections = [];
+      }
     }
 
     // Check Personal Info
