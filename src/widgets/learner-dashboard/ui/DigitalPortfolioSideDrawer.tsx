@@ -10,7 +10,8 @@ import {
     Share2,
     Sun,
     User,
-    Video
+    Video,
+    FileEdit
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -37,6 +38,7 @@ const mainMenuItems: SideDrawerMenuItem[] = [
 
 // Settings menu items
 const settingsMenuItems: SideDrawerMenuItem[] = [
+  { id: 'profile', label: 'Profile Settings', icon: User, path: '/learner/digital-portfolio/settings/profile' },
   { id: 'theme', label: 'Theme Settings', icon: Palette, path: '/learner/digital-portfolio/settings/theme' },
   { id: 'layout', label: 'Portfolio Layout', icon: Layout, path: '/learner/digital-portfolio/settings/layout' },
   { id: 'export', label: 'Export', icon: Download, path: '/learner/digital-portfolio/settings/export' },
