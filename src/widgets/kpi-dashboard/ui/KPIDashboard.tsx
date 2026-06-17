@@ -15,7 +15,6 @@ import {
 } from '@heroicons/react/24/outline'
 import { useEffect, useState } from 'react'
 import { apiPost } from '@/shared/api/apiClient'
-import { FeatureGate } from '@/features/subscription'
 import { KPICard } from '@/features/analytics'
 import type { KPIDashboardProps, KPIData } from '..'
 
@@ -190,16 +189,6 @@ const KPIDashboardComponent: React.FC<KPIDashboardProps> = ({
   )
 }
 
-/**
- * Wrapped KPIDashboard with FeatureGate for kpi_dashboard add-on
- */
 export const KPIDashboard: React.FC<KPIDashboardProps> = (props) => (
-  <FeatureGate 
-    featureKey="kpi_dashboard" 
-    showUpgradePrompt={true}
-    fallback={null}
-    onUpgradeClick={() => {}}
-  >
   <KPIDashboardComponent {...props} />
-  </FeatureGate>
 )
