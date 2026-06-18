@@ -62,6 +62,16 @@ export function checkProfileCompleteness(learner: Learner | null): ProfileComple
   const incompleteSections: string[] = [];
 
   try {
+    // Get sections that user has completed (even if pending approval)
+    let completedSections: string[] = [];
+    if (typeof window !== 'undefined') {
+      try {
+        completedSections = JSON.parse(localStorage.getItem(`profile-sections-completed-${learner.id}`) || '[]');
+      } catch {
+        completedSections = [];
+      }
+    }
+
     // Check Personal Info
     // Required fields: name, email, contact_number, and location (city/state/country)
     const hasPersonalInfo = Boolean(
@@ -71,27 +81,27 @@ export function checkProfileCompleteness(learner: Learner | null): ProfileComple
       (learner.city || learner.state || learner.country || learner.district_name)
     );
     
-    if (!hasPersonalInfo) {
+    if (!hasPersonalInfo && !completedSections.includes('Personal Details')) {
       incompleteSections.push('Personal Info');
     }
 
-    // Check Education
+    // Check Education (approved items OR completed by user)
     const hasEducation = Boolean(
       learner.profile?.education &&
       Array.isArray(learner.profile.education) &&
       learner.profile.education.length > 0
-    );
+    ) || completedSections.includes('Education');
     
     if (!hasEducation) {
       incompleteSections.push('Education');
     }
 
-    // Check Skills
+    // Check Skills (approved items OR completed by user)
     const hasSkills = Boolean(
       learner.profile?.skills &&
       Array.isArray(learner.profile.skills) &&
       learner.profile.skills.length > 0
-    );
+    ) || completedSections.includes('Skills');
     
     if (!hasSkills) {
       incompleteSections.push('Skills');
@@ -104,30 +114,31 @@ export function checkProfileCompleteness(learner: Learner | null): ProfileComple
       learner.profile.languages.length > 0) ||
       (learner.languages &&
       Array.isArray(learner.languages) &&
-      learner.languages.length > 0)
+      learner.languages.length > 0) ||
+      completedSections.includes('Languages')
     );
     
     if (!hasLanguages) {
       incompleteSections.push('Languages');
     }
 
-    // Check Projects
+    // Check Projects (approved items OR completed by user)
     const hasProjects = Boolean(
       learner.profile?.projects &&
       Array.isArray(learner.profile.projects) &&
       learner.profile.projects.length > 0
-    );
+    ) || completedSections.includes('Projects');
     
     if (!hasProjects) {
       incompleteSections.push('Projects');
     }
 
-    // Check Achievements
+    // Check Achievements (approved items OR completed by user)
     const hasAchievements = Boolean(
       learner.profile?.achievements &&
       Array.isArray(learner.profile.achievements) &&
       learner.profile.achievements.length > 0
-    );
+    ) || completedSections.includes('Achievements');
     
     if (!hasAchievements) {
       incompleteSections.push('Achievements');
@@ -140,7 +151,8 @@ export function checkProfileCompleteness(learner: Learner | null): ProfileComple
       learner.profile.hobbies.length > 0) ||
       (learner.hobbies &&
       Array.isArray(learner.hobbies) &&
-      learner.hobbies.length > 0)
+      learner.hobbies.length > 0) ||
+      completedSections.includes('Hobbies')
     );
     
     if (!hasHobbies) {
@@ -154,7 +166,8 @@ export function checkProfileCompleteness(learner: Learner | null): ProfileComple
       learner.profile.interests.length > 0) ||
       (learner.interests &&
       Array.isArray(learner.interests) &&
-      learner.interests.length > 0)
+      learner.interests.length > 0) ||
+      completedSections.includes('Interests')
     );
     
     if (!hasInterests) {
