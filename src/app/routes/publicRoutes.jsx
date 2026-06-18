@@ -3,6 +3,7 @@ import { Navigate, Route } from "react-router-dom";
 import ProtectedRoute from "@/app/components/ProtectedRoute";
 import PublicLayout from "../layouts/PublicLayout";
 import PortfolioLayout from "../layouts/PortfolioLayout";
+import { DigitalPortfolioThemeProvider } from "@/features/digital-portfolio/providers/DigitalPortfolioThemeProvider";
 
 // Digital Passport imports - lazy loaded
 const HomePage = lazy(() => import('@/pages/digital-pp/HomePage'));
@@ -198,15 +199,15 @@ export const publicRoutes = [
     <Route path="/learner/profile/:learnerId" element={<LearnerPublicViewer />} />
   </Route>,
 
-  // Digital Portfolio routes with PortfolioLayout
+  // Digital Portfolio routes with PortfolioLayout - wrapped with scoped theme provider
   <Route key="portfolio-layout" path="/" element={<PortfolioLayout />}>
-    <Route path="/portfolio" element={<DigitalPortfolioPage />} />
-    <Route path="/digital-pp/homepage" element={<HomePage />} />
-    <Route path="/passport" element={<DigitalPassportPage />} />
-    <Route path="/video-portfolio" element={<DigitalVideoPortfolioPage />} />
-    <Route path="/settings/theme" element={<DigitalThemeSettings />} />
-    <Route path="/settings/layout" element={<DigitalLayoutSettings />} />
-    <Route path="/settings/export" element={<DigitalExportSettings />} />
-    <Route path="/settings/sharing" element={<DigitalSharingSettings />} />
+    <Route path="/portfolio" element={<DigitalPortfolioThemeProvider><DigitalPortfolioPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="/digital-pp/homepage" element={<DigitalPortfolioThemeProvider><HomePage /></DigitalPortfolioThemeProvider>} />
+    <Route path="/passport" element={<DigitalPortfolioThemeProvider><DigitalPassportPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="/video-portfolio" element={<DigitalPortfolioThemeProvider><DigitalVideoPortfolioPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="/settings/theme" element={<DigitalPortfolioThemeProvider><DigitalThemeSettings /></DigitalPortfolioThemeProvider>} />
+    <Route path="/settings/layout" element={<DigitalPortfolioThemeProvider><DigitalLayoutSettings /></DigitalPortfolioThemeProvider>} />
+    <Route path="/settings/export" element={<DigitalPortfolioThemeProvider><DigitalExportSettings /></DigitalPortfolioThemeProvider>} />
+    <Route path="/settings/sharing" element={<DigitalPortfolioThemeProvider><DigitalSharingSettings /></DigitalPortfolioThemeProvider>} />
   </Route>,
 ];
