@@ -30,6 +30,7 @@ export const DigitalPortfolioThemeProvider: React.FC<DigitalPortfolioThemeProvid
   // The initSystemThemeListener function is the same reference across renders
   useEffect(() => {
     const cleanup = initSystemThemeListener();
+    // Return cleanup function (can be undefined for SSR, which React handles gracefully)
     return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
