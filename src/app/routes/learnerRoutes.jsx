@@ -2,6 +2,7 @@ import { lazy, Outlet } from "react";
 import { Navigate, Route } from "react-router-dom";
 import { SubscriptionProtectedRoute } from "@/features/subscription";
 import LearnerLayout from "../layouts/LearnerLayout";
+import { DigitalPortfolioThemeProvider } from "@/features/digital-portfolio/providers/DigitalPortfolioThemeProvider";
 
 // Digital Passport imports - lazy loaded
 const HomePage = lazy(() => import('@/pages/digital-pp/HomePage'));
@@ -98,16 +99,16 @@ export const learnerRoutes = (
     <Route path="assessment/start" element={<AssessmentTestPage />} />
     <Route path="assessment/results" element={<AssessmentResults />} />
 
-    {/* Digital Portfolio routes */}
-    <Route path="digital-portfolio" element={<div><HomePage /></div>} />
-    <Route path="digital-portfolio/portfolio" element={<div><DigitalPortfolioPage /></div>} />
-    <Route path="digital-portfolio/passport" element={<div><DigitalPassportPage /></div>} />
-    <Route path="digital-portfolio/video" element={<div><DigitalVideoPortfolioPage /></div>} />
-    <Route path="digital-portfolio/settings/theme" element={<div><DigitalThemeSettings /></div>} />
-    <Route path="digital-portfolio/settings/layout" element={<div><DigitalLayoutSettings /></div>} />
-    <Route path="digital-portfolio/settings/export" element={<div><DigitalExportSettings /></div>} />
-    <Route path="digital-portfolio/settings/sharing" element={<div className="-mx-6 -my-8"><DigitalSharingSettings /></div>} />
-    <Route path="digital-portfolio/settings/profile" element={<div className="-mx-6 -my-8"><DigitalProfileSettings /></div>} />
+    {/* Digital Portfolio routes - wrapped with scoped theme provider */}
+    <Route path="digital-portfolio" element={<DigitalPortfolioThemeProvider><HomePage /></DigitalPortfolioThemeProvider>} />
+    <Route path="digital-portfolio/portfolio" element={<DigitalPortfolioThemeProvider><DigitalPortfolioPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="digital-portfolio/passport" element={<DigitalPortfolioThemeProvider><DigitalPassportPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="digital-portfolio/video" element={<DigitalPortfolioThemeProvider><DigitalVideoPortfolioPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="digital-portfolio/settings/theme" element={<DigitalPortfolioThemeProvider><DigitalThemeSettings /></DigitalPortfolioThemeProvider>} />
+    <Route path="digital-portfolio/settings/layout" element={<DigitalPortfolioThemeProvider><DigitalLayoutSettings /></DigitalPortfolioThemeProvider>} />
+    <Route path="digital-portfolio/settings/export" element={<DigitalPortfolioThemeProvider><DigitalExportSettings /></DigitalPortfolioThemeProvider>} />
+    <Route path="digital-portfolio/settings/sharing" element={<DigitalPortfolioThemeProvider><div className="-mx-6 -my-8"><DigitalSharingSettings /></div></DigitalPortfolioThemeProvider>} />
+    <Route path="digital-portfolio/settings/profile" element={<DigitalPortfolioThemeProvider><div className="-mx-6 -my-8"><DigitalProfileSettings /></div></DigitalPortfolioThemeProvider>} />
 
     <Route path="" element={<Navigate to="/learner/dashboard" replace />} />
   </Route>
