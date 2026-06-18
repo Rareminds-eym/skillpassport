@@ -25,15 +25,14 @@ export const DigitalPortfolioThemeProvider: React.FC<DigitalPortfolioThemeProvid
   const resolvedTheme = useScopedThemeStore((state) => state.resolvedTheme);
   const initSystemThemeListener = useScopedThemeStore((state) => state.initSystemThemeListener);
 
-  // Initialize system theme listener on mount
-  // Note: Empty dependency array is correct here because Zustand store selectors are stable references
-  // The initSystemThemeListener function is the same reference across renders
+  // Initialize system theme listener on mount and cleanup on unmount
+  // Including initSystemThemeListener in deps to satisfy exhaustive-deps rule
+  // The function reference is stable from Zustand store, so this only runs once
   useEffect(() => {
     const cleanup = initSystemThemeListener();
     // Return cleanup function (can be undefined for SSR, which React handles gracefully)
     return cleanup;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initSystemThemeListener]);
 
   return (
     <div 
