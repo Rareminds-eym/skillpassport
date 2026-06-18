@@ -62,7 +62,7 @@ export const useScopedThemeStore = create<ScopedThemeState>()(
 
           // Initialize system theme listener
           initSystemThemeListener: () => {
-            if (typeof window === 'undefined') return;
+            if (typeof window === 'undefined') return undefined;
             
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
             const handleChange = (e: MediaQueryListEvent) => {
