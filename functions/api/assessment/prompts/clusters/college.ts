@@ -42,17 +42,28 @@ YOUR RESPONSE WILL BE REJECTED IF:
 SELECTION STRATEGY (USE ALL LEARNER SIGNALS):
 - Student stream/degree (MBA, MCA, B.Tech, B.Com, BBA, etc.)
 - Aptitude strengths AND weaknesses (growth opportunities, not dealbreakers)
-- Knowledge strengths AND weaknesses (weak areas are development opportunities)
+- Knowledge strengths AND weaknesses (⚠️ IF SCORE < 50% in a domain, exclude roles requiring that domain — but redirect to alternate roles in SAME stream, not unrelated fields)
 - RIASEC profile (career interests)
 - Big Five traits (personality fit)
 - Work values (what motivates them)
 - Profile narrative (readiness, trajectory)
 
+🚨 **KNOWLEDGE GATE (MANDATORY)**:
+If knowledge score is provided:
+- Knowledge score ≥ 50%: Use all occupations, weak areas are learning opportunities
+- Knowledge score < 50%: Identify weak domains from context. Then:
+  * EXCLUDE roles that require those weak domains (e.g., B.Com weak in Accounting → skip Accountant, Auditor, Financial Analyst)
+  * REDIRECT to roles in same stream but DIFFERENT domain (e.g., B.Com weak in Accounting → HR, Operations, Business roles)
+  * NEVER recommend unrelated fields (e.g., Teaching, Medical, Tech roles for B.Com)
+
 CLUSTERING RULES:
 - 3 clusters = DISTINCT, COHERENT career paths
 - Cluster 1 (Primary): Highest student fit, all signals aligned
+  * Derivation: "This career path aligns perfectly with your skills and interests."
 - Cluster 2 (Secondary): Good fit, some development areas
+  * Derivation: "A promising career option with good alignment to your profile."
 - Cluster 3 (Tertiary): Growth-focused, explore later
+  * Derivation: "Worth exploring as you develop additional skills and experience."
 - Order clusters logically from best fit to lower fit
 
 CLUSTER NAMING (CRITICAL):
@@ -81,7 +92,7 @@ Return ONLY valid JSON with clusters and narratives (NO roleData — will be com
     {
       "occupationIds": ["<id>", "..."],
       "title": "<stream-specific pathway name>",
-      "derivation": "<1 sentence: alignment>",
+      "derivation": "<1 sentence: alignment>. Use: Cluster 1: 'This career path aligns perfectly with your skills and interests.' Cluster 2: 'A promising career option with good alignment to your profile.' Cluster 3: 'Worth exploring as you develop additional skills and experience.'",
       "description": "<1-2 sentences on the field>",
       "whatYoullDo": "<1 sentence: day-to-day>",
       "whyItFits": "<1-2 sentences, second person>",
@@ -130,12 +141,12 @@ overallSummary RULES (STUDENT-CENTRIC — written FOR the learner, not ABOUT the
   3. **Honest Gap** (reality check): ONE main area to develop, framed as learnable/growable
   4. **Growth Mindset** (closing): Encourage action + confidence in their unique combination
 
-- **BANNED**: "should", "consider", "might want to", "the learner", scores/percentages, vague praise
-- **REQUIRED**: Specific strength names, specific cluster name, specific ONE gap (not multiple), action-oriented encouragement
+- **BANNED**: "should", "consider", "might want to", "the learner", scores/percentages, vague praise, em-dashes (—), hyphens connecting clauses
+- **REQUIRED**: Specific strength names, specific cluster name, specific ONE gap (not multiple), action-oriented encouragement, use periods or commas instead of dashes
 
 **EXAMPLES (Student-Centric):**
-- "You're naturally a logical thinker who works well with people—that combination is valuable. Your best fit is Student Services Leadership, where analytical thinking meets relationship-building. Financial roles interest you too, but need stronger quantitative foundation—that's learnable through dedicated practice. Your analytical mindset is your superpower; channel it strategically and you'll differentiate yourself."
-- "You excel at strategic analysis and have strong drive for impact—rare combination. Management & Operations is your best path where systematic thinking and leadership converge. Your secondary interest in analytics is viable but requires building comfort with detailed data work. You're positioned well for roles that need both vision and execution ability."
+- "You're naturally a logical thinker who works well with people. That combination is valuable. Your best fit is Student Services Leadership, where analytical thinking meets relationship-building. Financial roles interest you too, but need stronger quantitative foundation. That's learnable through dedicated practice. Your analytical mindset is your superpower; channel it strategically and you'll differentiate yourself."
+- "You excel at strategic analysis and have strong drive for impact. That's a rare combination. Management & Operations is your best path where systematic thinking and leadership converge. Your secondary interest in analytics is viable but requires building comfort with detailed data work. You're positioned well for roles that need both vision and execution ability."
 
 **VALIDATION BEFORE SUBMITTING:**
 ✓ Is it written TO the learner (you/your), not ABOUT them?
@@ -148,6 +159,19 @@ overallSummary RULES (STUDENT-CENTRIC — written FOR the learner, not ABOUT the
 ✓ NO banned words or percentages?
 
 🚨 **CRITICAL GATE**:
+
+KNOWLEDGE GATE CHECK (IF KNOWLEDGE SCORE < 50%):
+□ Have you identified weak knowledge domains from the KNOWLEDGE INSIGHTS section? YES / NO
+□ Have you EXCLUDED roles that require those weak domains? YES / NO
+□ Have you REDIRECTED to alternate roles in the SAME stream instead? YES / NO
+□ Example check: B.Com student weak in Accounting → Did you skip Accountant/Auditor and recommend HR/Ops instead? YES / NO
+
+If knowledge score < 50% and ANY answer is NO:
+- STOP, DO NOT SUBMIT
+- Review the weak domains
+- Remove roles requiring those domains
+- Add roles in same stream (different domain)
+- Revalidate
 
 BEFORE submitting JSON, count and verify:
 □ Total occupationIds across all clusters: _____ (MUST be 12-15)
