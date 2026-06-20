@@ -122,7 +122,7 @@ export function getPaymentWorker(env: PaymentWorkerEnv): PaymentWorkerBinding {
   if (!env.PAYMENT_WORKER) {
     throw new Error(
       'PAYMENT_WORKER binding is not configured. ' +
-      'Add [[services]] to wrangler.toml or use --service PAYMENT_WORKER=razorpay-api in local dev.'
+      'Add [[services]] to wrangler.toml or use --service PAYMENT_WORKER=razorpay-api-dev in local dev.'
     );
   }
 

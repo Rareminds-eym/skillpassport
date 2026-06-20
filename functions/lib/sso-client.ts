@@ -87,7 +87,7 @@ function getSsoService(env: SsoClientEnv): SsoFetcher {
   if (!env.SSO_SERVICE) {
     throw new Error(
       'SSO_SERVICE binding is not configured. ' +
-      'Add [[services]] to wrangler.toml or use --service SSO_SERVICE=sso-api in local dev.'
+      'Add [[services]] to wrangler.toml or use --service SSO_SERVICE=sso-api-dev in local dev.'
     );
   }
   return env.SSO_SERVICE as SsoFetcher;
