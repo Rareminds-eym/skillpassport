@@ -19,7 +19,7 @@ import type { AnalyzeRequest } from '../types';
 import { analyzeMiddleSchool } from '../services/analysis-middle-school';
 import { analyzeHighSchool } from '../services/analysis-highschool';
 import { analyzeComprehensive } from '../services/analysis-comprehensive';
-import { analyzeCollege } from '../services/analysis-college';
+import { analyzeCollege } from '../services/analyzers/analysis-college';
 
 export async function analyzeHandler(context: AuthenticatedContext) {
   console.log('[ANALYZE] ========== HANDLER START ==========');
