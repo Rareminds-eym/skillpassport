@@ -35,7 +35,15 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AdvancedFilters, OpportunityCard, OpportunityListItem, OpportunityPreview, RecommendedJobs, IndustrialVisitPreview } from '@/widgets/learner-dashboard';
-import { Pagination } from '@/shared/ui';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious
+} from '@/shared/ui';
 
 import { useOpportunities } from '@/features/opportunities';
 import { useLearnerProfile } from '@/features/learner-profile';
@@ -794,7 +802,7 @@ const Opportunities = () => {
 
   const handleToggleSave = async (opportunity) => {
     if (!learnerId) {
-      alert('Please log in to save jobs');
+      toast.error('Please log in to save jobs');
       return;
     }
 
@@ -804,16 +812,22 @@ const Opportunities = () => {
       if (result.success) {
         if (result.isSaved) {
           setSavedJobs(prev => new Set([...prev, opportunity.id]));
+          toast.success('Job saved successfully!');
         } else {
           setSavedJobs(prev => {
             const newSet = new Set(prev);
             newSet.delete(opportunity.id);
             return newSet;
           });
+          toast.success('Job removed from saved');
         }
+      } else {
+        toast.error(result.message || 'Failed to toggle save status');
+        logger.error('Toggle save failed:', result.error);
       }
     } catch (error) {
       logger.error('Error toggling save:', error);
+      toast.error('An error occurred while saving the job');
     }
   };
 
@@ -1072,33 +1086,33 @@ const Opportunities = () => {
         {/* Tab Switcher - Show different tabs based on learner level */}
         {!isLoading && (
           <div className="mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 overflow-x-auto">
               <div className={`grid ${learnerType.isMiddleSchool
-                ? 'grid-cols-2'
+                ? 'grid-cols-2 md:grid-cols-2'
                 : learnerType.isHighSchool
-                  ? 'grid-cols-3'
+                  ? 'grid-cols-2 md:grid-cols-3'
                   : learnerType.isLearner
-                    ? 'grid-cols-3'
-                    : 'grid-cols-3'
-                } gap-2`}>
+                    ? 'grid-cols-2 md:grid-cols-3'
+                    : 'grid-cols-2 md:grid-cols-3'
+                } gap-2 min-w-max md:min-w-full`}>
                 {/* Industrial Visits Tab - Hide for learners */}
                 {!learnerType.isLearner && (
                   <button
                     onClick={() => setActiveTab('industrial-visits')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'industrial-visits'
+                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'industrial-visits'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'hover:bg-gray-50'
                       }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <Factory className={`w-6 h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Factory className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
-                      <div className="flex-1">
-                        <h1 className={`font-bold text-lg ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          Industrial Visits
+                      <div className="flex-1 min-w-0">
+                        <h1 className={`font-bold text-sm md:text-lg ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          Visits
                         </h1>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="hidden md:block text-sm text-gray-600 mt-1">
                           Explore factory visits and learning opportunities
                         </p>
                       </div>
@@ -1110,20 +1124,20 @@ const Opportunities = () => {
                 {learnerType.isMiddleSchool && (
                   <button
                     onClick={() => setActiveTab('history')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'history'
+                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'history'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'hover:bg-gray-50'
                       }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${activeTab === 'history' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <Clock className={`w-6 h-6 ${activeTab === 'history' ? 'text-white' : 'text-gray-600'}`} />
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'history' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Clock className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'history' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
-                      <div className="flex-1">
-                        <h1 className={`font-bold text-lg ${activeTab === 'history' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                      <div className="flex-1 min-w-0">
+                        <h1 className={`font-bold text-sm md:text-lg ${activeTab === 'history' ? 'text-indigo-600' : 'text-gray-700'}`}>
                           History
                         </h1>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="hidden md:block text-sm text-gray-600 mt-1">
                           View your past activities and visits
                         </p>
                       </div>
@@ -1135,20 +1149,20 @@ const Opportunities = () => {
                 {(learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-jobs')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-jobs'
+                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'my-jobs'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'hover:bg-gray-50'
                       }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <Briefcase className={`w-6 h-6 ${activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'}`} />
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Briefcase className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
-                      <div className="flex-1">
-                        <h1 className={`font-bold text-lg ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          My Jobs
+                      <div className="flex-1 min-w-0">
+                        <h1 className={`font-bold text-sm md:text-lg ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          Jobs
                         </h1>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="hidden md:block text-sm text-gray-600 mt-1">
                           {learnerType.isUniversityLearner
                             ? 'Browse internships and full-time opportunities'
                             : learnerType.isLearner
@@ -1164,20 +1178,20 @@ const Opportunities = () => {
                 {(learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-applications')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-applications'
+                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'my-applications'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'hover:bg-gray-50'
                       }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <FileText className={`w-6 h-6 ${activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'}`} />
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <FileText className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
-                      <div className="flex-1">
-                        <h1 className={`font-bold text-lg ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          My Applications
+                      <div className="flex-1 min-w-0">
+                        <h1 className={`font-bold text-sm md:text-lg ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          Applications
                         </h1>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="hidden md:block text-sm text-gray-600 mt-1">
                           Track your application status and progress
                         </p>
                       </div>
@@ -1510,9 +1524,26 @@ const Opportunities = () => {
                       <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 grid-flow-dense">
+                      {/* Right: Fixed Preview Panel - Visible on all devices - REORDERED FOR MOBILE */}
+                      <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start order-first lg:order-last">
+                        {selectedIndustrialVisit ? (
+                          <IndustrialVisitPreview
+                            visit={selectedIndustrialVisit}
+                            onRegister={handleRegisterForVisit}
+                            isRegistered={selectedIndustrialVisit && registeredVisits.has(selectedIndustrialVisit.id)}
+                            isRegistering={isRegistering}
+                          />
+                        ) : (
+                          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
+                            <Factory className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                            <p className="text-gray-600 font-medium">Select a visit to view details</p>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Left: Cards Grid (2 columns, 6 cards) */}
-                      <div className="lg:col-span-2">
+                      <div className="col-span-1 lg:col-span-2 order-last lg:order-first">
                         {ivViewMode === 'grid' ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {paginatedVisits.map((visit) => (
@@ -1599,34 +1630,74 @@ const Opportunities = () => {
                           </div>
                         )}
                       </div>
-
-                      {/* Right: Fixed Preview Panel */}
-                      <div className="hidden lg:block lg:sticky lg:top-16 lg:self-start">
-                        <IndustrialVisitPreview
-                          visit={selectedIndustrialVisit}
-                          onRegister={handleRegisterForVisit}
-                          isRegistered={selectedIndustrialVisit && registeredVisits.has(selectedIndustrialVisit.id)}
-                          isRegistering={isRegistering}
-                        />
-                      </div>
                     </div>
                   )}
 
                   {/* Pagination */}
                   {filteredVisits.length > ivItemsPerPage && (
-                    <div className="bg-white rounded-xl md:rounded-2xl border border-gray-200 shadow-sm">
-                      <Pagination
-                        currentPage={ivCurrentPage}
-                        totalPages={totalPages}
-                        totalItems={filteredVisits.length}
-                        itemsPerPage={ivItemsPerPage}
-                        onPageChange={(page) => {
-                          const validPage = Math.max(1, Math.min(page, totalPages));
-                          setIvCurrentPage(validPage);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      />
-                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="bg-white rounded-xl md:rounded-2xl border border-gray-200 shadow-sm p-4 md:p-6">
+                        <Pagination>
+                          <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
+                            <PaginationItem>
+                              <PaginationPrevious
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (ivCurrentPage > 1) {
+                                    setIvCurrentPage(ivCurrentPage - 1);
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }
+                                }}
+                                className={`${ivCurrentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9`}
+                              />
+                            </PaginationItem>
+
+                            {getPageNumbers(ivCurrentPage, totalPages).map((pageNum, index) => (
+                              <PaginationItem key={index}>
+                                {pageNum === '...' ? (
+                                  <PaginationEllipsis className="text-xs md:text-sm" />
+                                ) : (
+                                  <PaginationLink
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setIvCurrentPage(pageNum);
+                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }}
+                                    isActive={ivCurrentPage === pageNum}
+                                    className={`cursor-pointer text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center`}
+                                  >
+                                    {pageNum}
+                                  </PaginationLink>
+                                )}
+                              </PaginationItem>
+                            ))}
+
+                            <PaginationItem>
+                              <PaginationNext
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (ivCurrentPage < totalPages) {
+                                    setIvCurrentPage(ivCurrentPage + 1);
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }
+                                }}
+                                className={`${ivCurrentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9`}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                        <div className="text-center text-sm text-gray-600 mt-4">
+                          Page {ivCurrentPage} of {totalPages} • {filteredVisits.length} total visits
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
                 </div>
               );
@@ -1672,6 +1743,49 @@ const Opportunities = () => {
       </div>
     </div>
   );
+};
+
+// Helper function to generate page numbers for pagination
+const getPageNumbers = (currentPage, totalPages) => {
+  const pages = [];
+
+  // If total pages is small, show all
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
+    }
+    return pages;
+  }
+
+  // Always show first 3 pages
+  pages.push(1, 2, 3);
+
+  // Add ellipsis if there's a gap between page 3 and current page
+  if (currentPage > 5) {
+    pages.push('...');
+  }
+
+  // Show current page if it's not already shown (i.e., not 1, 2, or 3)
+  if (currentPage > 3 && currentPage < totalPages - 2) {
+    pages.push(currentPage);
+  }
+
+  // Add ellipsis before last pages if needed
+  if (currentPage < totalPages - 4) {
+    pages.push('...');
+  }
+
+  // Always show last 3 pages
+  if (totalPages > 3) {
+    const lastPageStart = Math.max(4, totalPages - 2);
+    for (let i = lastPageStart; i <= totalPages; i++) {
+      if (!pages.includes(i)) {
+        pages.push(i);
+      }
+    }
+  }
+
+  return pages;
 };
 
 // My Jobs Content Component
@@ -1956,8 +2070,34 @@ const MyJobsContent = ({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 grid-flow-dense">
+            {/* Preview Panel - Reordered to top on mobile */}
+            <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start order-first lg:order-last">
+              {selectedOpportunity ? (
+                <OpportunityPreview
+                  opportunity={selectedOpportunity}
+                  onApply={handleApply}
+                  onToggleSave={handleToggleSave}
+                  isApplied={appliedJobs.has(selectedOpportunity?.id)}
+                  isSaved={savedJobs.has(selectedOpportunity?.id)}
+                  isApplying={isApplying}
+                  canApplyToJobs={canApplyToJobs}
+                  needsProfileCompletion={needsProfileCompletion}
+                  navigate={navigate}
+                  learnerData={learnerData}
+                  canAccessOpportunities={canAccessOpportunities}
+                  onShowUpgradePrompt={() => setShowUpgradePrompt(true)}
+                />
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center sticky top-16">
+                  <Briefcase className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-600 font-medium">Select a job to view details</p>
+                </div>
+              )}
+            </div>
+
+            {/* Opportunities List - Reordered to bottom on mobile */}
+            <div className="col-span-1 lg:col-span-2 order-last lg:order-first">
               {opportunities.length > 0 ? (
                 <>
                   {viewMode === 'grid' ? (
@@ -1999,41 +2139,74 @@ const MyJobsContent = ({
                 />
               )}
             </div>
-
-            <div className="hidden lg:block lg:sticky lg:top-16 lg:self-start">
-              <OpportunityPreview
-                opportunity={selectedOpportunity}
-                onApply={handleApply}
-                onToggleSave={handleToggleSave}
-                isApplied={appliedJobs.has(selectedOpportunity?.id)}
-                isSaved={savedJobs.has(selectedOpportunity?.id)}
-                isApplying={isApplying}
-                canApplyToJobs={canApplyToJobs}
-                needsProfileCompletion={needsProfileCompletion}
-                navigate={navigate}
-                learnerData={learnerData}
-                canAccessOpportunities={canAccessOpportunities}
-                onShowUpgradePrompt={() => setShowUpgradePrompt(true)}
-              />
-            </div>
           </div>
 
           {/* Pagination */}
-          {displayCount > 0 && totalPages > 1 && (
-            <div className="mt-8">
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalItems={displayCount}
-                  itemsPerPage={opportunitiesPerPage}
-                  onPageChange={(page) => {
-                    const validPage = Math.max(1, Math.min(page, totalPages));
-                    setCurrentPage(validPage);
-                  }}
-                />
+          {totalPages > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-10 pt-6 border-t border-gray-200"
+            >
+              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 md:p-6">
+                <Pagination>
+                  <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (currentPage > 1) {
+                            setCurrentPage(currentPage - 1);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }}
+                        className={`${currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9`}
+                      />
+                    </PaginationItem>
+
+                    {getPageNumbers(currentPage, totalPages).map((pageNum, index) => (
+                      <PaginationItem key={index}>
+                        {pageNum === '...' ? (
+                          <PaginationEllipsis className="text-xs md:text-sm" />
+                        ) : (
+                          <PaginationLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setCurrentPage(pageNum);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            isActive={currentPage === pageNum}
+                            className={`cursor-pointer text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center`}
+                          >
+                            {pageNum}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (currentPage < totalPages) {
+                            setCurrentPage(currentPage + 1);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }}
+                        className={`${currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9`}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+                <div className="text-center text-sm text-gray-600 mt-4">
+                  Page {currentPage} of {totalPages} • {displayCount} total opportunities
+                </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </>
       )}

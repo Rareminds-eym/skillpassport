@@ -45,27 +45,32 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
   useEffect(() => {
     const loadSavedJobs = async () => {
       if (!learnerId) {
+        logger.warn('⚠️ No learnerId provided');
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        
+        logger.info('📥 Loading saved jobs for learnerId:', learnerId);
+
         const jobs = await SavedJobsService.getSavedJobsWithAppliedStatus(learnerId);
-        
-        setSavedJobs(jobs);
-        
+
+        logger.info('✅ Saved jobs loaded:', { count: jobs?.length || 0, jobs });
+
+        setSavedJobs(jobs || []);
+
         // Set applied jobs
         const appliedSet = new Set(
-          jobs.filter((job: any) => job.has_applied).map((job: any) => job.id)
+          (jobs || []).filter((job: any) => job.has_applied).map((job: any) => job.id)
         );
         setAppliedJobs(appliedSet);
-        
+
         setError(null);
       } catch (err: any) {
         logger.error('❌ Error loading saved jobs', err);
         setError(err.message || 'Failed to load saved jobs');
+        setSavedJobs([]);
       } finally {
         setLoading(false);
       }
