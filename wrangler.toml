@@ -66,6 +66,12 @@ binding = "EMAIL_SERVICE"
 service = "shared-email-api"
 entrypoint = "EmailService"
 
+# Embedding worker — vector generation for RAG, zero-latency internal routing
+# Handles profileNarrative → 1536-dim vector conversion for similarity search
+[[services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api"
+
 # ============================================================================
 # ENVIRONMENT VARIABLES
 # ============================================================================

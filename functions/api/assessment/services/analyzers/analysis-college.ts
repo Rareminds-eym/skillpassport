@@ -735,6 +735,31 @@ export async function analyzeCollege(
       console.error('[ANALYZE-COLLEGE] Career cluster generation failed (non-fatal):', clusterError);
     }
 
+    // Step 14: Queue embedding generation for RAG (non-blocking, fire-and-forget)
+    if (synthesis?.profileNarrative) {
+      try {
+        console.log('[ANALYZE-COLLEGE] Queuing embedding generation for profileNarrative');
+
+        // Fire-and-forget: don't await, don't block response
+        const embeddingUrl = `${new URL(context.request.url).origin}/api/embedding/generate-embedding`;
+        fetch(embeddingUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: synthesis.profileNarrative,
+            table: 'personal_assessment_results',
+            id: attemptId,
+            skipDatabaseUpdate: false
+          })
+        }).catch(err => {
+          console.error('[ANALYZE-COLLEGE] Embedding queue failed (non-blocking):', err);
+        });
+
+      } catch (embeddingErr) {
+        console.error('[ANALYZE-COLLEGE] Error queueing embedding (non-fatal):', embeddingErr);
+      }
+    }
+
     return Response.json(
       {
         success: true,
