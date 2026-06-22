@@ -32,21 +32,38 @@ export class AuthRecoveryService {
       
       const store = useAuthStore.getState();
       
-      // Try to initialize/refresh the session
-      await store.initialize();
+      // Try to initialize/refresh the session with granular error handling
+      try {
+        await store.initialize();
+      } catch (initError) {
+        const errorInstance = initError instanceof Error ? initError : new Error(String(initError));
+        logger.warn('Store initialization failed during auth recovery', { 
+          error: errorInstance.message,
+          stack: errorInstance.stack 
+        });
+        // Continue to try refresh session as fallback
+      }
       
       // Check if we're now authenticated
       const newState = useAuthStore.getState();
       if (newState.isAuthenticated && newState.user) {
-        logger.info('Auth recovery successful');
+        logger.info('Auth recovery successful via initialization');
         return true;
       }
       
       // Try refresh session if initialize didn't work
-      const refreshSuccess = await store.refreshSession();
-      if (refreshSuccess) {
-        logger.info('Auth recovery via refresh successful');
-        return true;
+      try {
+        const refreshSuccess = await store.refreshSession();
+        if (refreshSuccess) {
+          logger.info('Auth recovery successful via refresh');
+          return true;
+        }
+      } catch (refreshError) {
+        const errorInstance = refreshError instanceof Error ? refreshError : new Error(String(refreshError));
+        logger.warn('Session refresh failed during auth recovery', { 
+          error: errorInstance.message,
+          stack: errorInstance.stack 
+        });
       }
       
       logger.warn('Auth recovery failed - session could not be restored');
@@ -54,7 +71,7 @@ export class AuthRecoveryService {
       
     } catch (error) {
       const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Auth recovery failed with error', errorInstance);
+      logger.error('Auth recovery failed with unexpected error', errorInstance);
       return false;
     }
   }
@@ -115,10 +132,22 @@ export class AuthRecoveryService {
 
   /**
    * Redirect to login with current page as return URL
+   * Sanitizes the current URL to prevent injection attacks
    */
   static redirectToLogin(): void {
-    const currentUrl = encodeURIComponent(window.location.href);
-    window.location.href = `/login?redirect=${currentUrl}`;
+    // Sanitize current URL - only include pathname and search, exclude hash
+    const { pathname, search } = window.location;
+    const sanitizedUrl = `${pathname}${search}`;
+    const encodedUrl = encodeURIComponent(sanitizedUrl);
+    
+    // Validate that we're not redirecting to external sites
+    if (pathname.startsWith('http://') || pathname.startsWith('https://') || pathname.includes('//')) {
+      logger.warn('Unsafe redirect URL detected, using root path', { pathname });
+      window.location.href = '/login?redirect=/';
+      return;
+    }
+    
+    window.location.href = `/login?redirect=${encodedUrl}`;
   }
 }
 

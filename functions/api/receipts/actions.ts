@@ -58,6 +58,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string | Fetcher>;
   const supabase = getServiceClient(env);
 
+  // Type-safe SSO environment extraction
+  const ssoEnv = { SSO_SERVICE: env.SSO_SERVICE as Fetcher };
+
   let body: RequestBody;
   try {
     body = await context.request.json() as RequestBody;
@@ -74,8 +77,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       throw new Error('Invalid user ID');
     }
     
-    // UUID validation pattern
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    // UUID validation pattern - accepts all valid UUID formats (any version)
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidPattern.test(user.id)) {
       throw new Error('Invalid user ID format');
     }
@@ -118,7 +121,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   const getSsoReceiptData = async (filterFn: (tx: Transaction) => boolean): Promise<ReceiptData | null> => {
     try {
-      const rawTransactions = await ssoGetUserTransactions(env as unknown as { SSO_SERVICE: Fetcher }, user.id);
+      // Fetch transactions with explicit error handling
+      let rawTransactions: Record<string, unknown>[];
+      try {
+        rawTransactions = await ssoGetUserTransactions(ssoEnv, user.id);
+      } catch (ssoError) {
+        const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
+        console.error('[receipts] Failed to fetch transactions from SSO', errorInstance);
+        throw new Error(`SSO transaction fetch failed: ${errorInstance.message}`);
+      }
       
       // Validate and map transactions data
       const transactions: Transaction[] = rawTransactions
@@ -136,8 +147,23 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const tx = transactions.find(filterFn);
       if (!tx) return null;
 
-      const ssoResponse = await ssoGetUserSubscription(env as unknown as { SSO_SERVICE: Fetcher }, user.id);
+      // Fetch subscription with explicit error handling
+      let ssoResponse;
+      try {
+        ssoResponse = await ssoGetUserSubscription(ssoEnv, user.id);
+      } catch (ssoError) {
+        const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
+        console.error('[receipts] Failed to fetch subscription from SSO', errorInstance);
+        throw new Error(`SSO subscription fetch failed: ${errorInstance.message}`);
+      }
+      
+      // Validate subscription structure before accessing properties
       const subscription = ssoResponse.subscription as Subscription | null;
+      if (subscription && typeof subscription !== 'object') {
+        console.warn('[receipts] Invalid subscription structure:', subscription);
+        throw new Error('Invalid subscription data structure');
+      }
+      
       const userDetails = await getUserDetails();
 
       return {
@@ -174,7 +200,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       console.warn('[receipts] SSO lookup failed for order ID, trying fallback:', error);
     }
 
-    // Fallback to pre_registrations for older data
+    // Fallback to pre_registrations for older data (legacy source)
     const { data: preRegData, error: preRegError } = await supabase
       .from('pre_registrations')
       .select('*')
@@ -182,7 +208,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       .maybeSingle();
     
     if (preRegError) return apiDbError(preRegError, context.request);
-    return apiSuccess(preRegData, context.request);
+    
+    // Mark legacy data source
+    if (preRegData) {
+      return apiSuccess({ ...preRegData, _legacy_source: true }, context.request);
+    }
+    
+    return apiSuccess(null, context.request);
   }
 
   if (action === 'get-receipt-by-payment-id') {
@@ -201,7 +233,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       console.warn('[receipts] SSO lookup failed for payment ID, trying fallback:', error);
     }
 
-    // Fallback to pre_registrations
+    // Fallback to pre_registrations (legacy source)
     const { data: preRegData, error: preRegError } = await supabase
       .from('pre_registrations')
       .select('*')
@@ -209,7 +241,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       .maybeSingle();
     
     if (preRegError) return apiDbError(preRegError, context.request);
-    return apiSuccess(preRegData, context.request);
+    
+    // Mark legacy data source
+    if (preRegData) {
+      return apiSuccess({ ...preRegData, _legacy_source: true }, context.request);
+    }
+    
+    return apiSuccess(null, context.request);
   }
 
   if (action === 'get-receipt-by-id') {
@@ -227,7 +265,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       console.warn('[receipts] SSO lookup failed for ID, trying fallback:', error);
     }
 
-    // Fallback to pre_registrations
+    // Fallback to pre_registrations (legacy source)
     const { data: preRegData, error: preRegError } = await supabase
       .from('pre_registrations')
       .select('*')
@@ -235,7 +273,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       .maybeSingle();
     
     if (preRegError) return apiDbError(preRegError, context.request);
-    return apiSuccess(preRegData, context.request);
+    
+    // Mark legacy data source
+    if (preRegData) {
+      return apiSuccess({ ...preRegData, _legacy_source: true }, context.request);
+    }
+    
+    return apiSuccess(null, context.request);
   }
 
   return apiError(400, 'BAD_REQUEST', `Unknown action: ${action}`, context.request);

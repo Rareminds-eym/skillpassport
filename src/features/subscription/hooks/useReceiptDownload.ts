@@ -42,12 +42,20 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<ReceiptDownloadError | null>(null);
 
-  // Remove isDownloading from dependency array to prevent infinite loop
   const downloadReceipt = useCallback(async (identifier: string, type: ReceiptIdentifierType) => {
-    // Check state directly instead of from closure to avoid stale closure
-    if (isDownloading) return;
+    // Use functional state update to avoid stale closure and prevent concurrent downloads
+    let shouldProceed = false;
+    setIsDownloading(prev => {
+      if (prev) return prev; // Already downloading, don't proceed
+      shouldProceed = true;
+      return true; // Start downloading
+    });
     
-    setIsDownloading(true);
+    if (!shouldProceed) {
+      logger.warn('Download already in progress, skipping duplicate request', { identifier, type });
+      return;
+    }
+    
     setError(null);
 
     try {
@@ -78,15 +86,21 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
       logger.info('Receipt download completed successfully', { identifier, type });
       
     } catch (err) {
-      // Proper type narrowing and error handling
+      // Proper type narrowing with type guard
       const errorInstance = err instanceof Error ? err : new Error(String(err));
       
+      // Safely construct ReceiptDownloadError with proper type checking
       const receiptError: ReceiptDownloadError = Object.assign(
         errorInstance,
         { 
-          code: (err instanceof Error && 'code' in err 
-            ? (err as ReceiptDownloadError).code
-            : 'UNKNOWN_ERROR') as ReceiptDownloadError['code']
+          code: (
+            err instanceof Error && 
+            'code' in err && 
+            typeof (err as { code: unknown }).code === 'string' &&
+            ['RECEIPT_NOT_FOUND', 'RECEIPT_GENERATING', 'NETWORK_ERROR', 'UNKNOWN_ERROR'].includes((err as { code: string }).code)
+              ? (err as ReceiptDownloadError).code
+              : 'UNKNOWN_ERROR'
+          ) as ReceiptDownloadError['code']
         }
       );
       

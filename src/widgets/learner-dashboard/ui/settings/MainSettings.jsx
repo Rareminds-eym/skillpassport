@@ -15,19 +15,34 @@ import {
   User
 } from "lucide-react";
 
-// Safe logger initialization with error handling
-let logger;
-try {
-  logger = getLogger('MainSettings');
-} catch (error) {
-  // Fallback logger if getLogger fails
-  logger = {
-    info: (...args) => console.log('[MainSettings]', ...args),
-    error: (...args) => console.error('[MainSettings]', ...args),
-    warn: (...args) => console.warn('[MainSettings]', ...args),
+/**
+ * Lazy logger initialization to avoid module-level side effects
+ */
+const getLoggerInstance = (() => {
+  let loggerInstance = null;
+  
+  return () => {
+    if (!loggerInstance) {
+      try {
+        loggerInstance = getLogger('MainSettings');
+      } catch (error) {
+        console.error('Failed to initialize logger for MainSettings:', error);
+        // Fallback logger implementation
+        loggerInstance = {
+          info: (...args) => console.log('[MainSettings]', ...args),
+          error: (...args) => console.error('[MainSettings]', ...args),
+          warn: (...args) => console.warn('[MainSettings]', ...args),
+          debug: (...args) => console.debug('[MainSettings]', ...args),
+          timed: (message, fn) => fn(),
+        };
+      }
+    }
+    return loggerInstance;
   };
-  console.error('Failed to initialize logger for MainSettings:', error);
-}
+})();
+
+// Access logger through getter to ensure lazy initialization
+const logger = getLoggerInstance();
 
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
@@ -1549,27 +1564,28 @@ const MainSettings = () => {
                         // Try to refresh the session first
                         await initializeAuthStore();
                         
-                        // Check if refreshData exists and is a function before calling
-                        // Also verify it comes from the hook to ensure it's not undefined
-                        if (typeof refreshData === 'function') {
+                        // Type-safe check for refreshData function
+                        // refreshData may be undefined if hook hasn't loaded yet
+                        if (refreshData && typeof refreshData === 'function') {
                           await refreshData();
-                          toast.success('Session recovered. Reloading...');
+                          toast.success('Session recovered successfully!');
+                          // Wait for toast to show before reloading
+                          await new Promise(resolve => setTimeout(resolve, 1500));
                         } else {
                           // If refreshData is not available, just reload the page
                           logger.warn('refreshData not available from hook, reloading page');
                           toast.success('Session recovered. Reloading page...');
-                          setTimeout(() => window.location.reload(), 500);
+                          // Wait for toast to show before reloading
+                          await new Promise(resolve => setTimeout(resolve, 1500));
                         }
-                      } catch (e) {
-                        // Log the error for debugging
-                        const errorInstance = e instanceof Error ? e : new Error(String(e));
-                        logger.error('Session recovery failed', errorInstance);
-                        // Provide user feedback before redirecting
-                        toast.error('Session recovery failed. Redirecting to login...');
-                        // Small delay to allow toast to be seen
-                        setTimeout(() => {
-                          window.location.href = '/login';
-                        }, 1000);
+                        window.location.reload();
+                      } catch (refreshError) {
+                        const errorInstance = refreshError instanceof Error ? refreshError : new Error(String(refreshError));
+                        logger.error('Failed to refresh session', errorInstance);
+                        toast.error('Failed to refresh session. Please log in again.');
+                        // Wait before redirect
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        window.location.href = '/login';
                       }
                     }}
                     className="bg-gray-600 hover:bg-gray-700 text-white"

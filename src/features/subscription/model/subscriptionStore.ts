@@ -6,7 +6,8 @@ import { addOnPaymentService } from '@/features/subscription';
 import { entitlementService } from '@/features/subscription';
 import { clearFeatureAccessCache } from '@/features/subscription/';
 
-// =====================================================================// Types
+// =====================================================================
+// Types
 // =====================================================================
 export const WARNING_TYPES = {
   EXPIRING_SOON: 'expiring_soon' as const,
@@ -36,7 +37,8 @@ export interface SubscriptionCost {
   annual: number;
 }
 
-// =====================================================================// Store State Interface
+// =====================================================================
+// Store State Interface
 // =====================================================================
 interface SubscriptionState {
   userEntitlements: Entitlement[];
@@ -170,7 +172,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
   }))
 );
 
-// =====================================================================// Convenience Hooks
+// =====================================================================
+// Convenience Hooks
 // =====================================================================
 export const useUserEntitlements = () => {
   const userEntitlements = useSubscriptionStore((s) => s.userEntitlements);

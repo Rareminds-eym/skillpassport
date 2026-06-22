@@ -436,6 +436,20 @@ function MySubscription() {
     }
   };
 
+  // Memoize payment status calculation for use in JSX
+  const paymentStatusDisplay = useMemo(() => {
+    const paymentStatus = getPaymentStatus(subscriptionData?.status);
+    const isSuccess = paymentStatus === 'success';
+    return {
+      isSuccess,
+      statusText: isSuccess ? 'Paid' : 'Pending',
+      className: isSuccess
+        ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
+        : 'bg-slate-200 text-slate-700',
+      dotClass: isSuccess ? 'fill-white animate-pulse' : 'fill-slate-600'
+    };
+  }, [subscriptionData?.status]);
+
   // Memoize status checks for better performance using optimized helper
   // Must be called before any conditional returns (Rules of Hooks)
   const statusChecks = useMemo(() =>
@@ -1074,19 +1088,10 @@ function MySubscription() {
                       <div>
                         <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Payment Status</dt>
                         <dd>
-                          {(() => {
-                            const paymentStatus = getPaymentStatus(subscriptionData.status);
-                            const isSuccess = paymentStatus === 'success';
-                            return (
-                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${isSuccess
-                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
-                                : 'bg-slate-200 text-slate-700'
-                                }`}>
-                                <Circle className={`w-1.5 h-1.5 ${isSuccess ? 'fill-white animate-pulse' : 'fill-slate-600'}`} />
-                                {isSuccess ? 'Paid' : 'Pending'}
-                              </span>
-                            );
-                          })()}
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${paymentStatusDisplay.className}`}>
+                            <Circle className={`w-1.5 h-1.5 ${paymentStatusDisplay.dotClass}`} />
+                            {paymentStatusDisplay.statusText}
+                          </span>
                         </dd>
                       </div>
                       <div>

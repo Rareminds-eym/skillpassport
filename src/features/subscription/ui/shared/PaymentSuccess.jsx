@@ -119,9 +119,9 @@ const MANAGE_ROUTES = {
 const logger = getLogger('PaymentSuccess');
 
 const log = {
-  info: (...args) => DEBUG && logger.info(args.join(' ')),
-  warn: (...args) => DEBUG && logger.warn(args.join(' ')),
-  error: (...args) => logger.error(args.join(' ')),
+  info: (...args) => DEBUG && logger.info(args.length === 1 ? args[0] : args),
+  warn: (...args) => DEBUG && logger.warn(args.length === 1 ? args[0] : args),
+  error: (...args) => logger.error(args.length === 1 ? args[0] : args),
 };
 
 /** Format date for display */
@@ -678,8 +678,15 @@ function PaymentSuccess() {
       
       const orderId = paymentParams.razorpay_order_id;
       if (orderId) {
-        await downloadReceiptHook(orderId);
-        return;
+        // Properly handle downloadReceiptHook errors
+        try {
+          await downloadReceiptHook(orderId);
+          return;
+        } catch (hookError) {
+          // If hook fails, fall through to fallback methods
+          const errorInstance = hookError instanceof Error ? hookError : new Error(String(hookError));
+          logger.warn('Primary receipt download failed, trying fallback', errorInstance);
+        }
       }
 
       // Fallback to presigned URL method
@@ -697,12 +704,12 @@ function PaymentSuccess() {
         duration: 4000 
       });
       
-      // Log for debugging
+      // Log for debugging - sanitize sensitive data
       logger.info('Receipt download - no data available', {
-        orderId: paymentParams.razorpay_order_id,
-        receiptKey,
-        receiptUrl,
-        paymentParams
+        hasOrderId: !!paymentParams.razorpay_order_id,
+        hasReceiptKey: !!receiptKey,
+        hasReceiptUrl: !!receiptUrl,
+        // Don't log full payment params (contains sensitive data)
       });
       
     } catch (error) {
@@ -724,7 +731,7 @@ function PaymentSuccess() {
         toast.error('Failed to download receipt. Please try again or contact support.');
       }
     }
-  }, [paymentParams, receiptKey, receiptUrl, downloadReceiptHook]);
+  }, [paymentParams.razorpay_order_id, receiptKey, receiptUrl, downloadReceiptHook]);
 
   // ============================================================================
   // RENDER

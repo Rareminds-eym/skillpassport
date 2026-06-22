@@ -26,6 +26,35 @@ const COMPANY_INFO: ReceiptCompanyInfo = {
   taxId: '29ABCDE1234L1Z5'
 };
 
+/**
+ * Valid receipt error codes
+ */
+const VALID_ERROR_CODES: ReadonlyArray<ReceiptDownloadError['code']> = [
+  'RECEIPT_NOT_FOUND',
+  'RECEIPT_GENERATING',
+  'NETWORK_ERROR',
+  'UNKNOWN_ERROR'
+] as const;
+
+/**
+ * Safely extracts and validates error code from an error object
+ * @param error - The error object to extract code from
+ * @returns A valid ReceiptDownloadError code
+ */
+function extractErrorCode(error: unknown): ReceiptDownloadError['code'] {
+  // Check if error is an Error instance with a code property
+  if (error instanceof Error && 'code' in error) {
+    const errorCode = (error as { code: unknown }).code;
+    
+    // Validate that code is a string and matches valid codes
+    if (typeof errorCode === 'string' && VALID_ERROR_CODES.includes(errorCode as ReceiptDownloadError['code'])) {
+      return errorCode as ReceiptDownloadError['code'];
+    }
+  }
+  
+  return 'UNKNOWN_ERROR';
+}
+
 // Define the expected API response type from the backend
 interface ReceiptBackendResponse {
   success: boolean;
@@ -122,7 +151,7 @@ function transformToReceiptData(data: NonNullable<ReceiptApiResponse['data']>): 
   return {
     transaction: {
       payment_id: data.payment_id || data.id,
-      payment_method: data.payment_method || 'Card', // Use API data or fallback to Card
+      payment_method: data.payment_method || 'Online Payment', // Generic fallback instead of 'Card'
       payment_timestamp: data.created_at,
       amount: data.amount,
       currency: 'INR',
@@ -194,11 +223,7 @@ export async function downloadReceiptByOrderId(orderId: string): Promise<void> {
     
     const receiptError: ReceiptDownloadError = Object.assign(
       new Error(errorInstance.message),
-      { 
-        code: (error instanceof Error && 'code' in error 
-          ? error.code as ReceiptDownloadError['code']
-          : 'UNKNOWN_ERROR') as ReceiptDownloadError['code']
-      }
+      { code: extractErrorCode(error) }
     );
     
     throw receiptError;
@@ -237,11 +262,7 @@ export async function downloadReceiptByPaymentId(paymentId: string): Promise<voi
     
     const receiptError: ReceiptDownloadError = Object.assign(
       new Error(errorInstance.message),
-      { 
-        code: (error instanceof Error && 'code' in error 
-          ? error.code as ReceiptDownloadError['code']
-          : 'UNKNOWN_ERROR') as ReceiptDownloadError['code']
-      }
+      { code: extractErrorCode(error) }
     );
     
     throw receiptError;
@@ -280,11 +301,7 @@ export async function downloadReceiptById(receiptId: string): Promise<void> {
     
     const receiptError: ReceiptDownloadError = Object.assign(
       new Error(errorInstance.message),
-      { 
-        code: (error instanceof Error && 'code' in error 
-          ? error.code as ReceiptDownloadError['code']
-          : 'UNKNOWN_ERROR') as ReceiptDownloadError['code']
-      }
+      { code: extractErrorCode(error) }
     );
     
     throw receiptError;

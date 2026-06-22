@@ -90,7 +90,7 @@ export async function generateReceipt(receiptData: ReceiptData): Promise<Blob> {
   }
 
   // Helper function to add text
-  const addText = (text: string, x: number, y: number, options: AddTextOptions = {}) => {
+  const addText = (text: string, x: number, y: number, options: AddTextOptions = {}): void => {
     const { fontSize = 10, fontStyle = 'normal', align = 'left', maxWidth, color = [0, 0, 0] } = options;
     pdf.setFontSize(fontSize);
     pdf.setFont('helvetica', fontStyle);
@@ -427,7 +427,7 @@ export async function generateReceiptBase64(receiptData: ReceiptData): Promise<s
   let yPosition = margin;
 
   // Helper function to add text
-  const addText = (text: string, x: number, y: number, options: AddTextOptions = {}) => {
+  const addText = (text: string, x: number, y: number, options: AddTextOptions = {}): void => {
     const { fontSize = 10, fontStyle = 'normal', align = 'left', maxWidth } = options;
     pdf.setFontSize(fontSize);
     pdf.setFont('helvetica', fontStyle);

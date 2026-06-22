@@ -65,5 +65,5 @@ export interface ReceiptApiResponse {
 }
 
 export interface ReceiptDownloadError extends Error {
-  code?: 'RECEIPT_NOT_FOUND' | 'RECEIPT_GENERATING' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
+  code: 'RECEIPT_NOT_FOUND' | 'RECEIPT_GENERATING' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
 }

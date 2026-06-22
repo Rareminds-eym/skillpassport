@@ -40,6 +40,45 @@ import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('MySubscription');
+
+/**
+ * Safe toast wrapper to prevent toast errors from crashing the component
+ */
+const safeToast = {
+  success: (message, options) => {
+    try {
+      return toast.success(message, options);
+    } catch (error) {
+      logger.error('Toast error (success)', error instanceof Error ? error : new Error(String(error)));
+      console.log(message); // Fallback to console
+    }
+  },
+  error: (message, options) => {
+    try {
+      return toast.error(message, options);
+    } catch (error) {
+      logger.error('Toast error (error)', error instanceof Error ? error : new Error(String(error)));
+      console.error(message); // Fallback to console
+    }
+  },
+  loading: (message, options) => {
+    try {
+      return toast.loading(message, options);
+    } catch (error) {
+      logger.error('Toast error (loading)', error instanceof Error ? error : new Error(String(error)));
+      console.log(message); // Fallback to console
+    }
+  },
+  custom: (message, options) => {
+    try {
+      return toast(message, options);
+    } catch (error) {
+      logger.error('Toast error (custom)', error instanceof Error ? error : new Error(String(error)));
+      console.log(message); // Fallback to console
+    }
+  }
+};
+
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
@@ -281,9 +320,9 @@ function MySubscription() {
     }
   };
 
-  const handleDownloadInvoice = async (receiptId = null) => {
+  const handleDownloadInvoice = useCallback(async (receiptId = null) => {
     try {
-      // Ignore React SyntheticEvent if passed directly to onClick
+      // Type-safe ID extraction - only accept string IDs
       const idToUse = (receiptId && typeof receiptId === 'string') ? receiptId : null;
       
       // Use the provided receipt ID or fallback to current subscription ID
@@ -291,19 +330,16 @@ function MySubscription() {
       
       if (!targetId) {
         logger.warn('No receipt ID available for download');
-        toast.error('Receipt not available for download');
+        safeToast.error('Receipt not available for download');
         return;
       }
 
       await downloadReceiptById(targetId);
     } catch (error) {
-      // Provide user feedback in addition to hook error handling
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      const errorMessage = errorInstance.message;
-      toast.error(errorMessage);
-      logger.error('Invoice download failed', errorInstance);
+      // Hook already handles error display, just log for debugging
+      logger.error('Receipt download failed', error instanceof Error ? error : new Error(String(error)));
     }
-  };
+  }, [subscriptionData?.id, downloadReceiptById]);
 
   const handleToggleAutoRenew = async () => {
     if (isTogglingAutoRenew) return; // Prevent double clicks
@@ -454,6 +490,20 @@ function MySubscription() {
       await fetchAllFeatures();
     }
   };
+
+  // Memoize payment status calculation for use in JSX
+  const paymentStatusDisplay = useMemo(() => {
+    const paymentStatus = getPaymentStatus(subscriptionData?.status);
+    const isSuccess = paymentStatus === 'success';
+    return {
+      isSuccess,
+      statusText: isSuccess ? 'Paid' : 'Pending',
+      className: isSuccess
+        ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
+        : 'bg-slate-200 text-slate-700',
+      dotClass: isSuccess ? 'fill-white animate-pulse' : 'fill-slate-600'
+    };
+  }, [subscriptionData?.status]);
 
   // Memoize status checks for better performance using optimized helper
   // Must be called before any conditional returns (Rules of Hooks)
@@ -1092,19 +1142,10 @@ function MySubscription() {
                       <div>
                         <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Payment Status</dt>
                         <dd>
-                          {(() => {
-                            const paymentStatus = getPaymentStatus(subscriptionData.status);
-                            const isSuccess = paymentStatus === 'success';
-                            return (
-                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${isSuccess
-                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
-                                : 'bg-slate-200 text-slate-700'
-                                }`}>
-                                <Circle className={`w-1.5 h-1.5 ${isSuccess ? 'fill-white animate-pulse' : 'fill-slate-600'}`} />
-                                {isSuccess ? 'Paid' : 'Pending'}
-                              </span>
-                            );
-                          })()}
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${paymentStatusDisplay.className}`}>
+                            <Circle className={`w-1.5 h-1.5 ${paymentStatusDisplay.dotClass}`} />
+                            {paymentStatusDisplay.statusText}
+                          </span>
                         </dd>
                       </div>
                       <div>

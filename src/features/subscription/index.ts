@@ -144,6 +144,15 @@ export {
 export { default as entitlementService, EntitlementService } from './api/entitlementService';
 
 // Receipt Services
+/**
+ * Receipt data fetching and downloading utilities
+ * 
+ * - fetchReceiptData: Fetches receipt data from backend API by order ID, payment ID, or receipt ID
+ * - downloadReceiptByOrderId: Downloads receipt PDF using order ID (primary method for payment success)
+ * - downloadReceiptByPaymentId: Downloads receipt PDF using payment ID (alternative method)
+ * - downloadReceiptById: Downloads receipt PDF using internal receipt ID (for subscription dashboard)
+ * - getReceiptErrorMessage: Converts receipt errors into user-friendly messages
+ */
 export {
   fetchReceiptData,
   downloadReceiptByOrderId,

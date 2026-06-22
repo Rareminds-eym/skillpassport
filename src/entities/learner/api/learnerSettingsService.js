@@ -123,7 +123,7 @@ const transformSettingsData = (data, userSettings = null) => {
  * @param {string} email - Learner email
  * @returns {Promise<Object>} Learner data
  */
-export const getlearnerSettingsByEmail = async (email) => {
+export const getlearnerSettingsByEmail = async (email, recoveryAttempted = false) => {
   try {
     const learnerResult = await apiPost('/learner-profile/actions', {
       action: 'fetch-learner-settings-by-email', email,
@@ -151,13 +151,13 @@ export const getlearnerSettingsByEmail = async (email) => {
   } catch (err) {
     logger.error('getlearnerSettingsByEmail exception', err instanceof Error ? err : new Error(String(err)));
     
-    // Try auth recovery for auth errors
-    if (AuthRecoveryService.isAuthError(err)) {
-      logger.info('Attempting auth recovery');
+    // Try auth recovery for auth errors - only if not already attempted
+    if (AuthRecoveryService.isAuthError(err) && !recoveryAttempted) {
+      logger.info('Attempting auth recovery (first attempt)');
       const recovered = await AuthRecoveryService.attemptRecovery();
       // Validate recovery result is a boolean
       if (typeof recovered === 'boolean' && recovered === true) {
-        // Make direct API call after recovery instead of recursive call
+        // Make direct API call after recovery with flag to prevent recursive recovery
         try {
           logger.info('Making direct API call after auth recovery');
           // Direct API call without recursion to prevent stack overflow
@@ -169,11 +169,9 @@ export const getlearnerSettingsByEmail = async (email) => {
             return { success: false, error: directResult.error || 'Failed to fetch learner after recovery' };
           }
           
-          // Process the direct result using the same transformation logic
-          const data = directResult.data;
-          
-          // Fetch user settings separately (same as main function)
+          // Fetch user settings separately
           let userSettings = null;
+          const data = directResult.data;
           if (data.user_id) {
             try {
               const settingsResult = await apiPost('/learner-profile/actions', {
@@ -188,7 +186,7 @@ export const getlearnerSettingsByEmail = async (email) => {
             }
           }
           
-          // Use the same transformation helper
+          // Use the shared transformation helper
           const settingsData = transformSettingsData(data, userSettings);
           
           return { success: true, data: settingsData };
@@ -196,9 +194,18 @@ export const getlearnerSettingsByEmail = async (email) => {
           // Ensure retryErr is treated as an Error instance with proper type checking
           const retryError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
           logger.error('Direct API call after auth recovery failed', retryError);
+          
+          // Check if this is another auth error - if so, don't attempt recovery again
+          if (AuthRecoveryService.isAuthError(retryError)) {
+            logger.warn('Auth error persists after recovery attempt, giving up to prevent infinite loop');
+            return { success: false, error: 'Authentication failed. Please log in again.' };
+          }
+          
           return { success: false, error: retryError.message };
         }
       }
+    } else if (recoveryAttempted) {
+      logger.warn('Auth error but recovery already attempted, preventing infinite loop');
     }
     
     return { success: false, error: err.message };
