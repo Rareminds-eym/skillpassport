@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '@/features/subscription';
 import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { getPaymentStatus } from '@/features/subscription/model/subscriptionStore';
 
 
 import { getUserSubscriptions } from '@/features/subscription/api';
@@ -1073,13 +1074,13 @@ function MySubscription() {
                       <div>
                         <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Payment Status</dt>
                         <dd>
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${subscriptionData.paymentStatus === 'success'
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${getPaymentStatus(subscriptionData.status) === 'success'
                             ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
                             : 'bg-slate-200 text-slate-700'
                             }`}>
-                            <Circle className={`w-1.5 h-1.5 ${subscriptionData.paymentStatus === 'success' ? 'fill-white animate-pulse' : 'fill-slate-600'
+                            <Circle className={`w-1.5 h-1.5 ${getPaymentStatus(subscriptionData.status) === 'success' ? 'fill-white animate-pulse' : 'fill-slate-600'
                               }`} />
-                            {subscriptionData.paymentStatus === 'success' ? 'Paid' : 'Pending'}
+                            {getPaymentStatus(subscriptionData.status) === 'success' ? 'Paid' : 'Pending'}
                           </span>
                         </dd>
                       </div>

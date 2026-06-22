@@ -50,11 +50,13 @@ export interface ReceiptApiResponse {
     id: string;
     razorpay_order_id: string;
     payment_id?: string;
+    payment_method?: string;
     amount: number;
     status: string;
     created_at: string;
     plan_type?: string;
     billing_cycle?: string;
+    subscription_end_date?: string;
     user_name?: string;
     user_email?: string;
     user_phone?: string;

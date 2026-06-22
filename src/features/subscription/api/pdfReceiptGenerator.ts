@@ -17,7 +17,7 @@ async function imageToBase64(imagePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = function() {
+    img.onload = () => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) {
@@ -29,17 +29,19 @@ async function imageToBase64(imagePath: string): Promise<string> {
       ctx.drawImage(img, 0, 0);
       resolve(canvas.toDataURL('image/png'));
     };
-    img.onerror = reject;
+    img.onerror = () => {
+      reject(new Error(`Failed to load image: ${imagePath}`));
+    };
     img.src = imagePath;
   });
 }
 
 interface AddTextOptions {
-  fontSize?: number;
-  fontStyle?: 'normal' | 'bold';
-  align?: 'left' | 'center' | 'right';
-  maxWidth?: number;
-  color?: [number, number, number];
+  readonly fontSize?: number;
+  readonly fontStyle?: 'normal' | 'bold';
+  readonly align?: 'left' | 'center' | 'right';
+  readonly maxWidth?: number;
+  readonly color?: readonly [number, number, number];
 }
 
 /**
@@ -61,15 +63,17 @@ export async function generateReceipt(receiptData: ReceiptData): Promise<Blob> {
   try {
     // Load company logo (top left)
     companyLogo = await imageToBase64('/RareMinds.webp');
-  } catch (error: any) {
-    logger.warn('Error loading company logo', error);
+  } catch (error) {
+    const errorInstance = error instanceof Error ? error : new Error(String(error));
+    logger.warn('Error loading company logo', { error: errorInstance.message });
   }
   
   try {
     // Load watermark logo
     watermarkLogo = await imageToBase64('/RMLogo.webp');
-  } catch (error: any) {
-    logger.warn('Error loading watermark logo', error);
+  } catch (error) {
+    const errorInstance = error instanceof Error ? error : new Error(String(error));
+    logger.warn('Error loading watermark logo', { error: errorInstance.message });
   }
 
   // Add watermark (behind all content)
@@ -620,6 +624,7 @@ export async function downloadReceipt(receiptData: ReceiptData, filename?: strin
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   } catch (error) {
+    logger.error('Failed to download receipt', error instanceof Error ? error : new Error(String(error)));
     throw new Error('Failed to download receipt. Please try again.');
   }
 }
@@ -650,6 +655,7 @@ export async function generatePDFFromHTML(elementId: string, filename: string = 
     pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
     pdf.save(filename);
   } catch (error) {
+    logger.error('Failed to generate PDF from HTML', error instanceof Error ? error : new Error(String(error)));
     throw new Error('Failed to generate PDF. Please try again.');
   }
 }

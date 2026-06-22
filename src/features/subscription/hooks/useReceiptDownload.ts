@@ -76,7 +76,18 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
       logger.info('Receipt download completed successfully', { identifier, type });
       
     } catch (err) {
-      const receiptError = err as ReceiptDownloadError;
+      // Proper type narrowing and error handling
+      const errorInstance = err instanceof Error ? err : new Error(String(err));
+      
+      const receiptError: ReceiptDownloadError = Object.assign(
+        errorInstance,
+        { 
+          code: (err instanceof Error && 'code' in err 
+            ? (err as ReceiptDownloadError).code
+            : 'UNKNOWN_ERROR') as ReceiptDownloadError['code']
+        }
+      );
+      
       setError(receiptError);
       
       const errorMessage = getReceiptErrorMessage(receiptError);

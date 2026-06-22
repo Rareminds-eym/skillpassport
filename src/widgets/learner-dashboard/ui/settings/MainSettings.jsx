@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { apiPost } from '@/shared/api/apiClient';
+import { getLogger } from '@/shared/config/logging';
+import { initialize as initializeAuthStore } from '@/shared/model/authStore';
 import {
   AlertCircle,
   Bell,
@@ -11,6 +13,8 @@ import {
   Shield,
   User
 } from "lucide-react";
+
+const logger = getLogger('MainSettings');
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
@@ -1505,7 +1509,11 @@ const MainSettings = () => {
 
   // Show error state
   if (learnerError) {
-    const isAuthError = learnerError.includes('Unauthorized') || learnerError.includes('no valid token');
+    const isAuthError = learnerError.includes('Unauthorized') || 
+                       learnerError.includes('no valid token') ||
+                       learnerError.includes('401') ||
+                       learnerError.includes('Session') ||
+                       learnerError.includes('Authentication required');
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -1528,11 +1536,15 @@ const MainSettings = () => {
                     onClick={async () => {
                       try {
                         // Try to refresh the session first
-                        const { initialize } = await import('@/shared/model/authStore');
-                        await initialize();
+                        await initializeAuthStore();
                         // If successful, retry fetching data
-                        refreshData();
+                        if (refreshData && typeof refreshData === 'function') {
+                          await refreshData();
+                        }
                       } catch (e) {
+                        // Log the error for debugging
+                        const errorInstance = e instanceof Error ? e : new Error(String(e));
+                        logger.error('Session recovery failed', errorInstance);
                         // If refresh fails, redirect to login
                         window.location.href = '/login';
                       }

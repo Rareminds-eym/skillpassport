@@ -8,6 +8,9 @@
 import { PASSWORD_MIN } from '@/shared/constants';
 import { apiPost } from '@/shared/api/apiClient';
 import { AuthRecoveryService } from '@/shared/services/authRecoveryService';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('learnerSettingsService');
 
 /**
  * Fetch learner data by email for settings page
@@ -136,18 +139,47 @@ export const getlearnerSettingsByEmail = async (email) => {
 
     return { success: true, data: settingsData };
   } catch (err) {
-    console.error('❌ getlearnerSettingsByEmail exception:', err);
+    logger.error('getlearnerSettingsByEmail exception', err instanceof Error ? err : new Error(String(err)));
     
     // Try auth recovery for auth errors
     if (AuthRecoveryService.isAuthError(err)) {
-      console.log('🔄 Attempting auth recovery...');
+      logger.info('Attempting auth recovery');
       const recovered = await AuthRecoveryService.attemptRecovery();
       if (recovered) {
-        // Retry the request after successful recovery
+        // Make direct API call after recovery instead of recursive call
         try {
-          return await getlearnerSettingsByEmail(email);
+          logger.info('Making direct API call after auth recovery');
+          // Direct API call without recursion to prevent stack overflow
+          const directResult = await apiPost('/learner-profile/actions', {
+            action: 'fetch-learner-by-email', email,
+          });
+          
+          if (!directResult.success) {
+            return { success: false, error: directResult.error || 'Failed to fetch learner after recovery' };
+          }
+          
+          // Process the direct result same as main function
+          const data = directResult.data;
+          const settingsData = {
+            id: data.id,
+            userId: data.user_id,
+            email: data.email,
+            name: data.name,
+            phone: data.phone,
+            profileImage: data.profile_image,
+            totalApplications: data.application_count || 0,
+            totalSkills: data.skill_count || 0,
+            completionPercentage: data.completion_percentage || 0,
+            createdAt: data.created_at,
+            updatedAt: data.updated_at,
+            schoolOrganization: data.school || null,
+            collegeOrganization: data.college || data.universityOrganization || null,
+            userRole: data.user_role || null,
+          };
+          
+          return { success: true, data: settingsData };
         } catch (retryErr) {
-          console.error('❌ Retry after auth recovery failed:', retryErr);
+          logger.error('Direct API call after auth recovery failed', retryErr instanceof Error ? retryErr : new Error(String(retryErr)));
           return { success: false, error: retryErr.message };
         }
       }
@@ -332,12 +364,12 @@ export const updatelearnerSettings = async (email, updates) => {
         return { success: false, error: 'Failed to update learner settings' };
       }
     } else {
-      console.log('⚠️ No column updates to save (only timestamp)');
+      logger.info('No column updates to save (only timestamp)');
     }
 
     return await getlearnerSettingsByEmail(email);
   } catch (err) {
-    console.error('❌ updatelearnerSettings exception:', err);
+    logger.error('updatelearnerSettings exception', err instanceof Error ? err : new Error(String(err)));
     return { success: false, error: err.message };
   }
 };

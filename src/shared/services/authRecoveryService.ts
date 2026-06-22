@@ -9,6 +9,19 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('auth-recovery');
 
+// Define proper error interfaces
+interface AuthError {
+  message: string;
+  status?: number;
+  error?: string;
+}
+
+interface ApiErrorResponse {
+  status: number;
+  message?: string;
+  error?: string;
+}
+
 export class AuthRecoveryService {
   /**
    * Attempt to recover from authentication failures
@@ -48,7 +61,7 @@ export class AuthRecoveryService {
   /**
    * Handle auth errors in API responses
    */
-  static async handleAuthError(error: any): Promise<boolean> {
+  static async handleAuthError(error: unknown): Promise<boolean> {
     if (this.isAuthError(error)) {
       logger.info('Auth error detected, attempting recovery');
       return await this.attemptRecovery();
@@ -59,17 +72,44 @@ export class AuthRecoveryService {
   /**
    * Check if an error is authentication related
    */
-  static isAuthError(error: any): boolean {
+  static isAuthError(error: unknown): boolean {
     if (!error) return false;
     
-    const message = error.message || error.error || String(error);
+    // Handle Error objects
+    if (error instanceof Error) {
+      const message = error.message;
+      return this.hasAuthKeywords(message) || this.hasAuthStatus(error);
+    }
     
+    // Handle string errors
+    if (typeof error === 'string') {
+      return this.hasAuthKeywords(error);
+    }
+    
+    // Handle structured error objects
+    if (typeof error === 'object' && error !== null) {
+      const errorObj = error as AuthError | ApiErrorResponse;
+      const message = errorObj.message || errorObj.error || '';
+      return this.hasAuthKeywords(message) || this.hasAuthStatus(errorObj);
+    }
+    
+    return false;
+  }
+
+  private static hasAuthKeywords(message: string): boolean {
     return message.includes('Unauthorized') ||
            message.includes('no valid token') ||
            message.includes('Authentication required') ||
            message.includes('Session expired') ||
            message.includes('Invalid token') ||
-           error.status === 401;
+           message.includes('401');
+  }
+
+  private static hasAuthStatus(errorObj: unknown): boolean {
+    return typeof errorObj === 'object' && 
+           errorObj !== null && 
+           'status' in errorObj && 
+           (errorObj as { status: unknown }).status === 401;
   }
 
   /**
@@ -85,7 +125,7 @@ export class AuthRecoveryService {
  * Hook for components to use auth recovery
  */
 export function useAuthRecovery() {
-  const handleAuthError = async (error: any) => {
+  const handleAuthError = async (error: unknown): Promise<boolean> => {
     const recovered = await AuthRecoveryService.handleAuthError(error);
     if (!recovered && AuthRecoveryService.isAuthError(error)) {
       // If recovery failed, redirect to login

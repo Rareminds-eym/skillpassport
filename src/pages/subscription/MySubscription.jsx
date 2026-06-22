@@ -24,9 +24,10 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { SubscriptionDashboard } from '@/features/subscription';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionAccess, getPaymentStatus } from '@/features/subscription/model/subscriptionStore';
 
 import { useSubscriptionDashboardReceipt } from '@/features/subscription/hooks/useReceiptDownload';
 import { getUserSubscriptions } from '@/features/subscription/api';
@@ -34,8 +35,10 @@ import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
 
-
 import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('MySubscription');
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
@@ -113,7 +116,6 @@ function MySubscription() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showBillingHistory, setShowBillingHistory] = useState(false);
-  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   
   // Receipt download hook
   const { downloadById: downloadReceiptById, isDownloading: isDownloadingReceipt } = useSubscriptionDashboardReceipt();
@@ -287,14 +289,18 @@ function MySubscription() {
       const targetId = idToUse || subscriptionData?.id;
       
       if (!targetId) {
-        console.warn('No receipt ID available for download');
+        logger.warn('No receipt ID available for download');
+        toast.error('Receipt not available for download');
         return;
       }
 
       await downloadReceiptById(targetId);
     } catch (error) {
-      // Error handling is done by the hook
-      console.error('Invoice download failed:', error);
+      // Provide user feedback in addition to hook error handling
+      const errorInstance = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = errorInstance.message;
+      toast.error(errorMessage);
+      logger.error('Invoice download failed', errorInstance);
     }
   };
 
@@ -1085,13 +1091,13 @@ function MySubscription() {
                       <div>
                         <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Payment Status</dt>
                         <dd>
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${subscriptionData.paymentStatus === 'success'
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${getPaymentStatus(subscriptionData.status) === 'success'
                             ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
                             : 'bg-slate-200 text-slate-700'
                             }`}>
-                            <Circle className={`w-1.5 h-1.5 ${subscriptionData.paymentStatus === 'success' ? 'fill-white animate-pulse' : 'fill-slate-600'
+                            <Circle className={`w-1.5 h-1.5 ${getPaymentStatus(subscriptionData.status) === 'success' ? 'fill-white animate-pulse' : 'fill-slate-600'
                               }`} />
-                            {subscriptionData.paymentStatus === 'success' ? 'Paid' : 'Pending'}
+                            {getPaymentStatus(subscriptionData.status) === 'success' ? 'Paid' : 'Pending'}
                           </span>
                         </dd>
                       </div>

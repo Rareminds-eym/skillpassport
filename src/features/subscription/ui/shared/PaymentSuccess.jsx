@@ -30,6 +30,7 @@ import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePaymentSuccessReceipt } from '@/features/subscription/hooks/useReceiptDownload';
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import { getLogger } from '@/shared/config/logging';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { useSubscription, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
@@ -114,10 +115,12 @@ const MANAGE_ROUTES = {
 // ============================================================================
 
 /** Debug logger */
+const logger = getLogger('PaymentSuccess');
+
 const log = {
-  info: (...args) => DEBUG && console.log('[PaymentSuccess]', ...args),
-  warn: (...args) => DEBUG && console.warn('[PaymentSuccess]', ...args),
-  error: (...args) => console.error('[PaymentSuccess]', ...args),
+  info: (...args) => DEBUG && logger.info(args.join(' ')),
+  warn: (...args) => DEBUG && logger.warn(args.join(' ')),
+  error: (...args) => logger.error(args.join(' ')),
 };
 
 /** Format date for display */
@@ -719,7 +722,7 @@ function PaymentSuccess() {
       });
       
       // Log for debugging
-      console.log('Receipt download - no data available:', {
+      logger.info('Receipt download - no data available', {
         orderId: paymentParams.razorpay_order_id,
         receiptKey,
         receiptUrl,
@@ -727,7 +730,8 @@ function PaymentSuccess() {
       });
       
     } catch (error) {
-      console.error('Receipt download failed:', error);
+      const errorInstance = error instanceof Error ? error : new Error(String(error));
+      logger.error('Receipt download failed', errorInstance);
       
       // Handle specific error types
       if (error?.message?.includes('Unauthorized') || error?.message?.includes('no valid token')) {

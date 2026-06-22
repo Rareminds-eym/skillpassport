@@ -153,6 +153,17 @@ export {
   getReceiptErrorMessage
 } from './api/receiptService';
 
+// Receipt Types
+export type {
+  ReceiptData,
+  ReceiptApiResponse,
+  ReceiptDownloadError,
+  ReceiptCompanyInfo,
+  ReceiptTransactionDetails,
+  ReceiptUserDetails,
+  ReceiptSubscriptionDetails
+} from './types/receipt';
+
 // Utilities
 export {
   isActiveOrPaused,
