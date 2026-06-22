@@ -9,8 +9,9 @@ import {
     Search,
     Trash2
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useEffect } from 'react';
 import { OpportunityCard, OpportunityListItem, OpportunityPreview } from '@/widgets/learner-dashboard';
 
 import { useSavedJobs } from '@/features/opportunities';
@@ -22,6 +23,7 @@ import { useUser } from '@/shared/model/authStore';
 const logger = getLogger('SavedJobs');
 
 const SavedJobs = () => {
+  const navigate = useNavigate();
   const user = useUser();
   const learnerId = user?.id;
 
@@ -45,6 +47,11 @@ const SavedJobs = () => {
     handleUnsave,
     handleApply,
   } = useSavedJobs({ learnerId });
+
+  // Log page state when data changes
+  useEffect(() => {
+    logger.info('SavedJobs page state updated', { learnerId, savedJobsCount: savedJobs?.length, loading, error });
+  }, [learnerId, savedJobs?.length, loading, error]);
 
   // Handle clearing inactive jobs
   const handleClearInactive = async () => {
@@ -70,8 +77,6 @@ const SavedJobs = () => {
       toast.error('Error clearing inactive jobs');
     }
   };
-
-  logger.info('SavedJobs page rendered', { learnerId, savedJobsCount: savedJobs?.length, loading, error });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -211,12 +216,12 @@ const SavedJobs = () => {
             <p className="text-gray-500 mb-6">
               Start saving jobs from the Opportunities page to keep track of interesting positions
             </p>
-            <Link
-              to="/learner/opportunities"
+            <button
+              onClick={() => navigate('/learner/opportunities')}
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Browse Opportunities
-            </Link>
+            </button>
           </div>
         )}
 

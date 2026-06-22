@@ -32,7 +32,7 @@ import {
   X,
   XCircle
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AdvancedFilters, OpportunityCard, OpportunityListItem, OpportunityPreview, RecommendedJobs, IndustrialVisitPreview } from '@/widgets/learner-dashboard';
 import {
@@ -40,7 +40,6 @@ import {
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-  PaginationLink,
   PaginationNext,
   PaginationPrevious
 } from '@/shared/ui';
@@ -48,6 +47,7 @@ import {
 import { useOpportunities } from '@/features/opportunities';
 import { useLearnerProfile } from '@/features/learner-profile';
 import { useLearnerDataByEmail } from '@/entities/learner';
+import { getPageNumbers } from '@/shared/lib/pagination';
 import { useProfileCompletion } from '@/features/learner-profile';
 import { AppliedJobsService, SavedJobsService } from '@/features/opportunities';
 import offerManagementService from '@/features/opportunities/api/offerManagementService';
@@ -765,6 +765,28 @@ const Opportunities = () => {
 
     fetchIndustrialVisits();
   }, [activeTab, learnerType.isMiddleSchool, learnerType.isHighSchool, learnerId]);
+
+  // Pagination handlers with proper state management
+  const handleIvPageChange = useCallback((pageNum) => {
+    setIvCurrentPage(pageNum);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }, []);
+
+  const handleIvPreviousPage = useCallback(() => {
+    setIvCurrentPage(prev => Math.max(1, prev - 1));
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }, []);
+
+  const handleIvNextPage = useCallback((totalPages) => {
+    setIvCurrentPage(prev => Math.min(totalPages, prev + 1));
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }, []);
 
   const formatLastUpdate = (dateString) => {
     if (!dateString) return 'Recently';
@@ -1644,52 +1666,61 @@ const Opportunities = () => {
                         <Pagination>
                           <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
                             <PaginationItem>
-                              <PaginationPrevious
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
+                              <button
+                                onClick={() => {
                                   if (ivCurrentPage > 1) {
-                                    setIvCurrentPage(ivCurrentPage - 1);
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    handleIvPreviousPage();
                                   }
                                 }}
-                                className={`${ivCurrentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9`}
-                              />
+                                disabled={ivCurrentPage === 1}
+                                aria-label="Previous page"
+                                className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors ${
+                                  ivCurrentPage === 1
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
+                                }`}
+                              >
+                                ← Previous
+                              </button>
                             </PaginationItem>
 
-                            {getPageNumbers(ivCurrentPage, totalPages).map((pageNum, index) => (
-                              <PaginationItem key={index}>
+                            {getPageNumbers(ivCurrentPage, totalPages).map((pageNum) => (
+                              <PaginationItem key={`page-${pageNum}`}>
                                 {pageNum === '...' ? (
                                   <PaginationEllipsis className="text-xs md:text-sm" />
                                 ) : (
-                                  <PaginationLink
-                                    href="#"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setIvCurrentPage(pageNum);
-                                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                                    }}
-                                    isActive={ivCurrentPage === pageNum}
-                                    className={`cursor-pointer text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center`}
+                                  <button
+                                    onClick={() => handleIvPageChange(pageNum)}
+                                    aria-current={ivCurrentPage === pageNum ? 'page' : undefined}
+                                    className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center rounded-md transition-colors ${
+                                      ivCurrentPage === pageNum
+                                        ? 'bg-blue-500 text-white font-medium'
+                                        : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
+                                    }`}
                                   >
                                     {pageNum}
-                                  </PaginationLink>
+                                  </button>
                                 )}
                               </PaginationItem>
                             ))}
 
                             <PaginationItem>
-                              <PaginationNext
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
+                              <button
+                                onClick={() => {
                                   if (ivCurrentPage < totalPages) {
-                                    setIvCurrentPage(ivCurrentPage + 1);
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    handleIvNextPage(totalPages);
                                   }
                                 }}
-                                className={`${ivCurrentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9`}
-                              />
+                                disabled={ivCurrentPage === totalPages}
+                                aria-label="Next page"
+                                className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors ${
+                                  ivCurrentPage === totalPages
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
+                                }`}
+                              >
+                                Next →
+                              </button>
                             </PaginationItem>
                           </PaginationContent>
                         </Pagination>
@@ -1745,48 +1776,6 @@ const Opportunities = () => {
   );
 };
 
-// Helper function to generate page numbers for pagination
-const getPageNumbers = (currentPage, totalPages) => {
-  const pages = [];
-
-  // If total pages is small, show all
-  if (totalPages <= 5) {
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-    return pages;
-  }
-
-  // Always show first 3 pages
-  pages.push(1, 2, 3);
-
-  // Add ellipsis if there's a gap between page 3 and current page
-  if (currentPage > 5) {
-    pages.push('...');
-  }
-
-  // Show current page if it's not already shown (i.e., not 1, 2, or 3)
-  if (currentPage > 3 && currentPage < totalPages - 2) {
-    pages.push(currentPage);
-  }
-
-  // Add ellipsis before last pages if needed
-  if (currentPage < totalPages - 4) {
-    pages.push('...');
-  }
-
-  // Always show last 3 pages
-  if (totalPages > 3) {
-    const lastPageStart = Math.max(4, totalPages - 2);
-    for (let i = lastPageStart; i <= totalPages; i++) {
-      if (!pages.includes(i)) {
-        pages.push(i);
-      }
-    }
-  }
-
-  return pages;
-};
 
 // My Jobs Content Component
 const MyJobsContent = ({
@@ -2142,7 +2131,7 @@ const MyJobsContent = ({
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {displayedOpportunities.length > 0 && totalPages > 1 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2166,23 +2155,25 @@ const MyJobsContent = ({
                       />
                     </PaginationItem>
 
-                    {getPageNumbers(currentPage, totalPages).map((pageNum, index) => (
-                      <PaginationItem key={index}>
+                    {getPageNumbers(currentPage, totalPages).map((pageNum) => (
+                      <PaginationItem key={`page-${pageNum}`}>
                         {pageNum === '...' ? (
                           <PaginationEllipsis className="text-xs md:text-sm" />
                         ) : (
-                          <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
+                          <button
+                            onClick={() => {
                               setCurrentPage(pageNum);
                               window.scrollTo({ top: 0, behavior: 'smooth' });
                             }}
-                            isActive={currentPage === pageNum}
-                            className={`cursor-pointer text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center`}
+                            aria-current={currentPage === pageNum ? 'page' : undefined}
+                            className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center rounded-md transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-blue-500 text-white font-medium'
+                                : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
+                            }`}
                           >
                             {pageNum}
-                          </PaginationLink>
+                          </button>
                         )}
                       </PaginationItem>
                     ))}
