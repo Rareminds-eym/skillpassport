@@ -1123,7 +1123,7 @@ const Opportunities = () => {
                         <Factory className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h1 className={`font-bold text-sm md:text-lg ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
                           Visits
                         </h1>
                         <p className="hidden md:block text-sm text-gray-600 mt-1">
@@ -1148,7 +1148,7 @@ const Opportunities = () => {
                         <Clock className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'history' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h1 className={`font-bold text-sm md:text-lg ${activeTab === 'history' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'history' ? 'text-indigo-600' : 'text-gray-700'}`}>
                           History
                         </h1>
                         <p className="hidden md:block text-sm text-gray-600 mt-1">
@@ -1173,7 +1173,7 @@ const Opportunities = () => {
                         <Briefcase className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h1 className={`font-bold text-sm md:text-lg ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-700'}`}>
                           Jobs
                         </h1>
                         <p className="hidden md:block text-sm text-gray-600 mt-1">
@@ -1202,7 +1202,7 @@ const Opportunities = () => {
                         <FileText className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h1 className={`font-bold text-sm md:text-lg ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-700'}`}>
                           Applications
                         </h1>
                         <p className="hidden md:block text-sm text-gray-600 mt-1">
@@ -1539,25 +1539,8 @@ const Opportunities = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      {/* Right: Fixed Preview Panel - Visible on all devices */}
-                      <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start lg:order-last">
-                        {selectedIndustrialVisit ? (
-                          <IndustrialVisitPreview
-                            visit={selectedIndustrialVisit}
-                            onRegister={handleRegisterForVisit}
-                            isRegistered={selectedIndustrialVisit && registeredVisits.has(selectedIndustrialVisit.id)}
-                            isRegistering={isRegistering}
-                          />
-                        ) : (
-                          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
-                            <Factory className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                            <p className="text-gray-600 font-medium">Select a visit to view details</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Left: Cards Grid (2 columns, 6 cards) */}
-                      <div className="col-span-1 lg:col-span-2 lg:order-first">
+                      {/* Left: Cards Grid (2 columns, 6 cards) - First in DOM and visually */}
+                      <div className="col-span-1 lg:col-span-2">
                         {ivViewMode === 'grid' ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {paginatedVisits.map((visit) => (
@@ -1641,6 +1624,23 @@ const Opportunities = () => {
                                 </div>
                               </div>
                             ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Fixed Preview Panel - Last in DOM and visually */}
+                      <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
+                        {selectedIndustrialVisit ? (
+                          <IndustrialVisitPreview
+                            visit={selectedIndustrialVisit}
+                            onRegister={handleRegisterForVisit}
+                            isRegistered={selectedIndustrialVisit && registeredVisits.has(selectedIndustrialVisit.id)}
+                            isRegistering={isRegistering}
+                          />
+                        ) : (
+                          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
+                            <Factory className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                            <p className="text-gray-600 font-medium">Select a visit to view details</p>
                           </div>
                         )}
                       </div>
@@ -2052,33 +2052,8 @@ const MyJobsContent = ({
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Preview Panel - Visible on desktop */}
-            <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start lg:order-last">
-              {selectedOpportunity ? (
-                <OpportunityPreview
-                  opportunity={selectedOpportunity}
-                  onApply={handleApply}
-                  onToggleSave={handleToggleSave}
-                  isApplied={appliedJobs.has(selectedOpportunity?.id)}
-                  isSaved={savedJobs.has(selectedOpportunity?.id)}
-                  isApplying={isApplying}
-                  canApplyToJobs={canApplyToJobs}
-                  needsProfileCompletion={needsProfileCompletion}
-                  navigate={navigate}
-                  learnerData={learnerData}
-                  canAccessOpportunities={canAccessOpportunities}
-                  onShowUpgradePrompt={() => setShowUpgradePrompt(true)}
-                />
-              ) : (
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center sticky top-16">
-                  <Briefcase className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                  <p className="text-gray-600 font-medium">Select a job to view details</p>
-                </div>
-              )}
-            </div>
-
-            {/* Opportunities List */}
-            <div className="col-span-1 lg:col-span-2 lg:order-first">
+            {/* Opportunities List - First in DOM and visually */}
+            <div className="col-span-1 lg:col-span-2">
               {opportunities.length > 0 ? (
                 <>
                   {viewMode === 'grid' ? (
@@ -2118,6 +2093,31 @@ const MyJobsContent = ({
                   learnerData={learnerData}
                   navigate={navigate}
                 />
+              )}
+            </div>
+
+            {/* Preview Panel - Last in DOM and visually */}
+            <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
+              {selectedOpportunity ? (
+                <OpportunityPreview
+                  opportunity={selectedOpportunity}
+                  onApply={handleApply}
+                  onToggleSave={handleToggleSave}
+                  isApplied={appliedJobs.has(selectedOpportunity?.id)}
+                  isSaved={savedJobs.has(selectedOpportunity?.id)}
+                  isApplying={isApplying}
+                  canApplyToJobs={canApplyToJobs}
+                  needsProfileCompletion={needsProfileCompletion}
+                  navigate={navigate}
+                  learnerData={learnerData}
+                  canAccessOpportunities={canAccessOpportunities}
+                  onShowUpgradePrompt={() => setShowUpgradePrompt(true)}
+                />
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center sticky top-16">
+                  <Briefcase className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-600 font-medium">Select a job to view details</p>
+                </div>
               )}
             </div>
           </div>
