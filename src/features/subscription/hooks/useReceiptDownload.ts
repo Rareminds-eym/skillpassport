@@ -4,7 +4,7 @@
  * Custom hook for handling receipt downloads with loading states and error handling
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { 
   downloadReceiptByOrderId, 
@@ -41,21 +41,20 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
   const { onSuccess, onError, showToast = true } = options;
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<ReceiptDownloadError | null>(null);
+  
+  // Use a ref to track in-flight requests to prevent race conditions
+  const inFlightRef = useRef(false);
 
   const downloadReceipt = useCallback(async (identifier: string, type: ReceiptIdentifierType) => {
-    // Use functional state update to avoid stale closure and prevent concurrent downloads
-    let shouldProceed = false;
-    setIsDownloading(prev => {
-      if (prev) return prev; // Already downloading, don't proceed
-      shouldProceed = true;
-      return true; // Start downloading
-    });
-    
-    if (!shouldProceed) {
+    // Check if a download is already in progress using ref
+    if (inFlightRef.current) {
       logger.warn('Download already in progress, skipping duplicate request', { identifier, type });
       return;
     }
     
+    // Mark as in-flight
+    inFlightRef.current = true;
+    setIsDownloading(true);
     setError(null);
 
     try {
@@ -122,9 +121,11 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
       onError?.(receiptError);
       logger.error('Receipt download failed', receiptError, { identifier, type });
     } finally {
+      // Always reset both ref and state
+      inFlightRef.current = false;
       setIsDownloading(false);
     }
-  }, [onSuccess, onError, showToast]); // Removed isDownloading to prevent infinite loop
+  }, [onSuccess, onError, showToast]);
 
   const downloadByOrderId = useCallback(
     (orderId: string) => downloadReceipt(orderId, 'order_id'),
@@ -155,28 +156,32 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
  * Hook specifically for payment success page
  */
 export function usePaymentSuccessReceipt() {
-  return useReceiptDownload({
+  const options = useMemo(() => ({
     showToast: true,
     onSuccess: () => {
       logger.info('Payment success receipt downloaded');
     },
-    onError: (error) => {
+    onError: (error: ReceiptDownloadError) => {
       logger.error('Payment success receipt download failed', error);
     }
-  });
+  }), []);
+  
+  return useReceiptDownload(options);
 }
 
 /**
  * Hook specifically for subscription dashboard
  */
 export function useSubscriptionDashboardReceipt() {
-  return useReceiptDownload({
+  const options = useMemo(() => ({
     showToast: true,
     onSuccess: () => {
       logger.info('Dashboard receipt downloaded');
     },
-    onError: (error) => {
+    onError: (error: ReceiptDownloadError) => {
       logger.error('Dashboard receipt download failed', error);
     }
-  });
+  }), []);
+  
+  return useReceiptDownload(options);
 }

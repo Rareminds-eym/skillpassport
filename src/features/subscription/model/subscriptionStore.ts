@@ -264,6 +264,15 @@ export const useSubscriptionContext = useSubscription;
 // =====================================================================
 /**
  * Compute payment status from subscription status
+ * 
+ * @param status - The subscription status string (e.g., 'active', 'expired', 'cancelled', 'paused')
+ * @returns 'success' if status is 'active', otherwise 'pending'
+ * 
+ * @example
+ * getPaymentStatus('active') // returns 'success'
+ * getPaymentStatus('expired') // returns 'pending'
+ * getPaymentStatus(undefined) // returns 'pending'
+ * 
  * Derived value - not stored in state
  */
 export const getPaymentStatus = (status: string | undefined): 'success' | 'pending' => {

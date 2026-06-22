@@ -50,7 +50,6 @@ const safeToast = {
       return toast.success(message, options);
     } catch (error) {
       logger.error('Toast error (success)', error instanceof Error ? error : new Error(String(error)));
-      console.log(message); // Fallback to console
     }
   },
   error: (message, options) => {
@@ -58,7 +57,6 @@ const safeToast = {
       return toast.error(message, options);
     } catch (error) {
       logger.error('Toast error (error)', error instanceof Error ? error : new Error(String(error)));
-      console.error(message); // Fallback to console
     }
   },
   loading: (message, options) => {
@@ -66,7 +64,6 @@ const safeToast = {
       return toast.loading(message, options);
     } catch (error) {
       logger.error('Toast error (loading)', error instanceof Error ? error : new Error(String(error)));
-      console.log(message); // Fallback to console
     }
   },
   custom: (message, options) => {
@@ -74,7 +71,6 @@ const safeToast = {
       return toast(message, options);
     } catch (error) {
       logger.error('Toast error (custom)', error instanceof Error ? error : new Error(String(error)));
-      console.log(message); // Fallback to console
     }
   }
 };

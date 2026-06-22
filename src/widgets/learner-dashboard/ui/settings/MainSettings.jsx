@@ -26,13 +26,12 @@ const getLoggerInstance = (() => {
       try {
         loggerInstance = getLogger('MainSettings');
       } catch (error) {
-        console.error('Failed to initialize logger for MainSettings:', error);
-        // Fallback logger implementation
+        // Fallback no-op logger implementation if getLogger fails
         loggerInstance = {
-          info: (...args) => console.log('[MainSettings]', ...args),
-          error: (...args) => console.error('[MainSettings]', ...args),
-          warn: (...args) => console.warn('[MainSettings]', ...args),
-          debug: (...args) => console.debug('[MainSettings]', ...args),
+          info: () => {},
+          error: () => {},
+          warn: () => {},
+          debug: () => {},
           timed: (message, fn) => fn(),
         };
       }
@@ -40,9 +39,6 @@ const getLoggerInstance = (() => {
     return loggerInstance;
   };
 })();
-
-// Access logger through getter to ensure lazy initialization
-const logger = getLoggerInstance();
 
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
@@ -1573,7 +1569,7 @@ const MainSettings = () => {
                           await new Promise(resolve => setTimeout(resolve, 1500));
                         } else {
                           // If refreshData is not available, just reload the page
-                          logger.warn('refreshData not available from hook, reloading page');
+                          getLoggerInstance().warn('refreshData not available from hook, reloading page');
                           toast.success('Session recovered. Reloading page...');
                           // Wait for toast to show before reloading
                           await new Promise(resolve => setTimeout(resolve, 1500));
@@ -1581,7 +1577,7 @@ const MainSettings = () => {
                         window.location.reload();
                       } catch (refreshError) {
                         const errorInstance = refreshError instanceof Error ? refreshError : new Error(String(refreshError));
-                        logger.error('Failed to refresh session', errorInstance);
+                        getLoggerInstance().error('Failed to refresh session', errorInstance);
                         toast.error('Failed to refresh session. Please log in again.');
                         // Wait before redirect
                         await new Promise(resolve => setTimeout(resolve, 1500));

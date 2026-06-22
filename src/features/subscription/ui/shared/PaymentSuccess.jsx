@@ -685,7 +685,7 @@ function PaymentSuccess() {
         } catch (hookError) {
           // If hook fails, fall through to fallback methods
           const errorInstance = hookError instanceof Error ? hookError : new Error(String(hookError));
-          logger.warn('Primary receipt download failed, trying fallback', errorInstance);
+          log.warn('Primary receipt download failed, trying fallback', errorInstance);
         }
       }
 
@@ -705,7 +705,7 @@ function PaymentSuccess() {
       });
       
       // Log for debugging - sanitize sensitive data
-      logger.info('Receipt download - no data available', {
+      log.info('Receipt download - no data available', {
         hasOrderId: !!paymentParams.razorpay_order_id,
         hasReceiptKey: !!receiptKey,
         hasReceiptUrl: !!receiptUrl,
@@ -714,7 +714,7 @@ function PaymentSuccess() {
       
     } catch (error) {
       const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Receipt download failed', errorInstance);
+      log.error('Receipt download failed', errorInstance);
       
       // Safely check error message with proper type checking
       const errorMessage = errorInstance.message || '';

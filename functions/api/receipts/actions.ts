@@ -1,4 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { Fetcher } from '@cloudflare/workers-types';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
@@ -127,7 +128,6 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         rawTransactions = await ssoGetUserTransactions(ssoEnv, user.id);
       } catch (ssoError) {
         const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
-        console.error('[receipts] Failed to fetch transactions from SSO', errorInstance);
         throw new Error(`SSO transaction fetch failed: ${errorInstance.message}`);
       }
       
@@ -137,8 +137,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           try {
             return validateTransaction(tx);
           } catch (validationError) {
-            // Log validation error but continue processing other transactions
-            console.error('[receipts] Invalid transaction data:', validationError, { tx });
+            // Skip invalid transactions and continue processing others
             return null;
           }
         })
@@ -148,19 +147,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (!tx) return null;
 
       // Fetch subscription with explicit error handling
-      let ssoResponse;
+      let ssoResponse: { subscription?: unknown } | null = null;
       try {
         ssoResponse = await ssoGetUserSubscription(ssoEnv, user.id);
       } catch (ssoError) {
         const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
-        console.error('[receipts] Failed to fetch subscription from SSO', errorInstance);
         throw new Error(`SSO subscription fetch failed: ${errorInstance.message}`);
+      }
+      
+      if (!ssoResponse) {
+        throw new Error('SSO subscription response is null');
       }
       
       // Validate subscription structure before accessing properties
       const subscription = ssoResponse.subscription as Subscription | null;
       if (subscription && typeof subscription !== 'object') {
-        console.warn('[receipts] Invalid subscription structure:', subscription);
         throw new Error('Invalid subscription data structure');
       }
       
@@ -180,7 +181,6 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         user_phone: userDetails.phone
       };
     } catch (error) {
-      console.error('[receipts] SSO fetch failed:', error);
       // Return specific error information instead of null
       throw new Error(`Failed to fetch SSO receipt data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -197,7 +197,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const ssoData = await getSsoReceiptData(tx => tx.razorpay_order_id === orderId);
       if (ssoData) return apiSuccess(ssoData, context.request);
     } catch (error) {
-      console.warn('[receipts] SSO lookup failed for order ID, trying fallback:', error);
+      // SSO lookup failed, try fallback
     }
 
     // Fallback to pre_registrations for older data (legacy source)
@@ -230,7 +230,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       );
       if (ssoData) return apiSuccess(ssoData, context.request);
     } catch (error) {
-      console.warn('[receipts] SSO lookup failed for payment ID, trying fallback:', error);
+      // SSO lookup failed, try fallback
     }
 
     // Fallback to pre_registrations (legacy source)
@@ -262,7 +262,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const ssoData = await getSsoReceiptData(tx => tx.id === id || tx.subscription_id === id);
       if (ssoData) return apiSuccess(ssoData, context.request);
     } catch (error) {
-      console.warn('[receipts] SSO lookup failed for ID, trying fallback:', error);
+      // SSO lookup failed, try fallback
     }
 
     // Fallback to pre_registrations (legacy source)

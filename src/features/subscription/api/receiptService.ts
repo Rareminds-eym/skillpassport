@@ -44,7 +44,7 @@ const VALID_ERROR_CODES: ReadonlyArray<ReceiptDownloadError['code']> = [
 function extractErrorCode(error: unknown): ReceiptDownloadError['code'] {
   // Check if error is an Error instance with a code property
   if (error instanceof Error && 'code' in error) {
-    const errorCode = (error as { code: unknown }).code;
+    const errorCode = 'code' in error ? (error as Record<string, unknown>).code : undefined;
     
     // Validate that code is a string and matches valid codes
     if (typeof errorCode === 'string' && VALID_ERROR_CODES.includes(errorCode as ReceiptDownloadError['code'])) {
