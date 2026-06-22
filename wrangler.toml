@@ -51,6 +51,14 @@ service = "realtime-worker"
 binding = "REALTIME_EVENTS_QUEUE"
 queue = "realtime-events-queue"
 
+# ============================================================================
+# QUEUE PRODUCER — SSO Reverse Metadata Sync
+# ============================================================================
+# Sends profile update events to the sso-worker for bidirectional metadata sync.
+[[queues.producers]]
+binding = "SSO_REVERSE_SYNC_QUEUE"
+queue = "sso-reverse-sync-queue"
+
 # Email worker — centralized email service, zero-latency internal routing
 # RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]

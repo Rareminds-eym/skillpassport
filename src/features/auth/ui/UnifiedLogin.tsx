@@ -1,5 +1,5 @@
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
-import { ChangeEvent, FormEvent, useRef, useState } from 'react';
+import { AlertCircle, CheckCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { UserRole } from '@/features/auth/api';
@@ -50,6 +50,17 @@ const UnifiedLogin = () => {
     searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
   const invitationEmail = searchParams.get('email') || sessionStorage.getItem('invitation_email');
   const invitationToken = sessionStorage.getItem('invitation_token');
+  const justVerified = searchParams.get('verified') === '1';
+  const hasCleanedVerifiedRef = useRef(false);
+
+  useEffect(() => {
+    if (justVerified && !hasCleanedVerifiedRef.current) {
+      hasCleanedVerifiedRef.current = true;
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('verified');
+      navigate({ search: params.toString() }, { replace: true });
+    }
+  }, [justVerified, navigate]);
 
   const [state, setState] = useState<LoginState>({
     email: invitationEmail || '',
@@ -365,6 +376,15 @@ const UnifiedLogin = () => {
             </div>
 
             <div className="rounded-2xl bg-transparent lg:bg-white/95 lg:shadow-xl lg:ring-1 lg:ring-black/5 p-5 sm:p-6 lg:p-8">
+              {justVerified && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-green-800">
+                    Your email has been verified successfully. Please sign in to continue.
+                  </p>
+                </div>
+              )}
+
               {state.error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />

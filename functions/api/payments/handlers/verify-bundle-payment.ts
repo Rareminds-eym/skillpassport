@@ -51,11 +51,22 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
       body.razorpay_signature as string
     );
 
+    // Step 1.5: Verify payment was actually captured (Amount Spoofing Prevention)
+    const payment = await worker.getPayment(body.razorpay_payment_id as string);
+    if (payment.status !== 'captured' || payment.order_id !== body.razorpay_order_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'Payment not captured or order ID mismatch', context.request);
+    }
+
+    // Parameter Tampering Prevention
+    if (payment.notes?.bundle_id && payment.notes.bundle_id !== body.bundle_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'Bundle ID mismatch with original order', context.request);
+    }
+
     if (!body.billing_period || typeof body.billing_period !== 'string') {
       return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
-    const priceAtPurchase = typeof body.amount === 'number' ? body.amount / 100 : 0;
+    const priceAtPurchase = payment.amount / 100;
     const billingPeriod = body.billing_period as string;
 
     // Step 2: Record purchase in Auth DB via SSO Worker RPC
@@ -70,6 +81,10 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
         razorpay_signature: body.razorpay_signature as string,
       });
     } catch (rpcError: any) {
+      if (rpcError.message?.includes('duplicate key') || rpcError.message?.includes('23505') || rpcError.status === 409) {
+        console.log('[VerifyBundlePayment] Bundle purchase already recorded by webhook (duplicate caught).');
+        return apiSuccess({ verified: true, purchase_created: true, already_fulfilled: true }, context.request);
+      }
       console.error('[VerifyBundlePayment] SSO Worker failed to record purchase:', rpcError.message);
     }
 
@@ -79,19 +94,44 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
     if (billingPeriod === 'annual') endDate.setFullYear(endDate.getFullYear() + 1);
     else endDate.setMonth(endDate.getMonth() + 1);
 
-    const { data: entitlement, error: entError } = await supabase.from('user_entitlements').insert({
-      user_id: user.id,
-      bundle_id: body.bundle_id as string,
-      status: 'active',
-      billing_period: billingPeriod,
-      price_at_purchase: priceAtPurchase,
-      razorpay_subscription_id: body.razorpay_order_id as string,
-      start_date: new Date().toISOString(),
-      end_date: endDate.toISOString()
-    }).select().single();
+    // Fetch bundle features to explode into individual entitlements
+    const { data: features } = await supabase
+      .from('bundle_features')
+      .select('feature_key')
+      .eq('bundle_id', body.bundle_id as string);
+
+    let entitlementToReturn = null;
+    let entError = null;
+
+    if (features && features.length > 0) {
+      const entitlementsToInsert = features.map(f => ({
+        user_id: user.id,
+        feature_key: f.feature_key,
+        bundle_id: body.bundle_id as string,
+        status: 'active',
+        billing_period: billingPeriod,
+        price_at_purchase: priceAtPurchase,
+        razorpay_subscription_id: body.razorpay_order_id as string,
+        start_date: new Date().toISOString(),
+        end_date: endDate.toISOString()
+      }));
+
+      // Use upsert on unique constraint (user_id, feature_key) to prevent duplicate row explosions
+      const { data: inserted, error } = await supabase
+        .from('user_entitlements')
+        .upsert(entitlementsToInsert, { onConflict: 'user_id, feature_key' })
+        .select();
+        
+      entError = error;
+      if (inserted && inserted.length > 0) {
+        entitlementToReturn = inserted[0];
+      }
+    } else {
+      console.warn('[VerifyBundlePayment] Bundle has no features defined', { bundle_id: body.bundle_id });
+    }
 
     if (entError) {
-      console.error('[VerifyBundlePayment] Failed to create user entitlement:', entError);
+      console.error('[VerifyBundlePayment] Failed to create user entitlements:', entError);
     }
 
     // Record transaction in auth DB (non-blocking)
@@ -100,17 +140,19 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
         user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
+        razorpay_signature: body.razorpay_signature as string,
         amount: priceAtPurchase,
         currency: (body.currency as string) || 'INR',
         status: 'completed',
         transaction_type: 'bundle',
+        payment_method: payment.method,
         metadata: { bundle_id: body.bundle_id },
       });
     } catch (txError) {
       console.error('[VerifyBundlePayment] Transaction recording in auth DB failed:', txError);
     }
 
-    return apiSuccess({ ...verifyResult, purchase_created: true, purchase: entitlement ? { id: entitlement.id, bundle_id: entitlement.bundle_id, status: entitlement.status } : null }, context.request);
+    return apiSuccess({ ...verifyResult, purchase_created: true, purchase: entitlementToReturn ? { id: entitlementToReturn.id, bundle_id: entitlementToReturn.bundle_id, status: entitlementToReturn.status } : null }, context.request);
   } catch (error) {
     console.error('[VerifyBundlePayment] Error:', error);
     return rpcErrorResponse(error, context.request);

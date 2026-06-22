@@ -13,6 +13,17 @@ export async function handleAddonAnalytics(context: AuthenticatedContext): Promi
     const { action } = body;
     const supabase = getServiceClient(env);
 
+    const checkIsAdmin = async () => {
+      const { data } = await supabase.from('admin_users').select('id').eq('user_id', userId).maybeSingle();
+      return !!data;
+    };
+
+    if (action !== 'trackEvent') {
+      if (!(await checkIsAdmin())) {
+        return apiError(403, 'FORBIDDEN', 'Admin access required for analytics', context.request);
+      }
+    }
+
     if (action === 'trackEvent') {
       const { eventType, featureKey, metadata } = body;
       const validEventTypes = ['view', 'purchase', 'activation', 'cancellation', 'renewal', 'expiry', 'upgrade_prompt', 'bundle_view', 'bundle_purchase', 'discount_applied', 'payment_failed', 'grace_period_started', 'grace_period_ended', 'migration_opted_out', 'notification_scheduled'];

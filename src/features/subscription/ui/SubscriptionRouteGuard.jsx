@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { isActiveOrPaused, isManageable } from '../lib/subscriptionHelpers';
 
 /**
@@ -52,7 +52,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
   const { role } = useUserRole();
   const user = useUser();
   const authLoading = useAuthLoading();
-  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
   const [redirecting, setRedirecting] = useState(false);
   const managePath = useMemo(() => getManagePath(role), [role]);
 

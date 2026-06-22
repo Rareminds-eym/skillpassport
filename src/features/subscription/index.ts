@@ -51,7 +51,6 @@ export {
   SubscriptionStatusWidget,
   FeatureGate,
   SubscriptionBanner,
-  SubscriptionPrefetch,
   SubscriptionRouteGuard,
   PaymentSuccess,
   PaymentFailure,

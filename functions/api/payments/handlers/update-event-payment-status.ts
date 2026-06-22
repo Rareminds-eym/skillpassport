@@ -9,7 +9,9 @@
  */
 
 
+import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getPaymentWorker, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 
@@ -24,7 +26,8 @@ const PLAN_TABLE_MAP: Record<string, string> = {
 };
 
 export async function handleUpdateEventPaymentStatus(context: AuthenticatedContext): Promise<Response> {
-  const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+  const env = context.env as unknown as PaymentWorkerEnv & { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
+  const user = getContextUser(context);
 
   try {
     // Parse request body
@@ -44,6 +47,22 @@ export async function handleUpdateEventPaymentStatus(context: AuthenticatedConte
 
     if (!registrationId || !status) {
       return apiError(400, 'VALIDATION_ERROR', 'registrationId and status are required', context.request);
+    }
+
+    // Verify Razorpay signature if payment is marked as completed
+    if (status === 'completed') {
+      const razorpaySignature = body.razorpay_signature as string;
+      if (!razorpaySignature || !orderId || !paymentId) {
+        return apiError(400, 'VALIDATION_ERROR', 'razorpay_signature, orderId, and paymentId are required for completed status', context.request);
+      }
+
+      const worker = getPaymentWorker(env);
+      try {
+        await worker.verifyPaymentSignature(orderId, paymentId, razorpaySignature);
+      } catch (verifyError) {
+        console.error('[UpdateEventPaymentStatus] Signature verification failed:', verifyError);
+        return apiError(400, 'VALIDATION_ERROR', 'Invalid payment signature', context.request);
+      }
     }
 
     // Determine target table from planName
@@ -71,7 +90,8 @@ export async function handleUpdateEventPaymentStatus(context: AuthenticatedConte
     const { error: updateError } = await supabase
       .from(tableName)
       .update(updatePayload)
-      .eq('id', registrationId);
+      .eq('id', registrationId)
+      .eq('user_id', user.id);
 
     if (updateError) {
       console.error('[UpdateEventPaymentStatus] Update error:', updateError);

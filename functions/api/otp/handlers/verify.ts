@@ -93,7 +93,7 @@ export async function verifyOtpHandler(
     // Return response in the format expected by frontend
     return apiSuccess({
       message: result.message ?? 'Phone number verified successfully',
-      data,
+      ...data,
     }, undefined);
   } catch (error) {
     if (error instanceof EmailWorkerError) {

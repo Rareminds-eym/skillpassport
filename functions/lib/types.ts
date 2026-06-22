@@ -26,6 +26,7 @@ export interface PagesEnv {
   VITE_PAYMENTS_API_URL?: string;
   RAZORPAY_SERVICE_SECRET?: string;
   RAZORPAY_KEY_ID?: string;
+  INTERNAL_WEBHOOK_SECRET?: string;
 
   // Embedding Worker configuration
   EMBEDDING_API_URL?: string;

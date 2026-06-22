@@ -84,3 +84,6 @@ cloudflare-workers/streak-api
 cloudflare-workers/payments-worker
 
 .agents/
+
+# Graphify knowledge graph output
+graphify-out/
