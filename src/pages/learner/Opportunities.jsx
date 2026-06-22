@@ -39,9 +39,7 @@ import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious
+  PaginationItem
 } from '@/shared/ui';
 
 import { useOpportunities } from '@/features/opportunities';
@@ -769,23 +767,17 @@ const Opportunities = () => {
   // Pagination handlers with proper state management
   const handleIvPageChange = useCallback((pageNum) => {
     setIvCurrentPage(pageNum);
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const handleIvPreviousPage = useCallback(() => {
     setIvCurrentPage(prev => Math.max(1, prev - 1));
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const handleIvNextPage = useCallback((totalPages) => {
     setIvCurrentPage(prev => Math.min(totalPages, prev + 1));
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const formatLastUpdate = (dateString) => {
@@ -1116,7 +1108,7 @@ const Opportunities = () => {
                   : learnerType.isLearner
                     ? 'grid-cols-2 md:grid-cols-3'
                     : 'grid-cols-2 md:grid-cols-3'
-                } gap-2 min-w-max md:min-w-full`}>
+                } gap-2 min-w-0`}>
                 {/* Industrial Visits Tab - Hide for learners */}
                 {!learnerType.isLearner && (
                   <button
@@ -1546,9 +1538,9 @@ const Opportunities = () => {
                       <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 grid-flow-dense">
-                      {/* Right: Fixed Preview Panel - Visible on all devices - REORDERED FOR MOBILE */}
-                      <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start order-first lg:order-last">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Right: Fixed Preview Panel - Visible on all devices */}
+                      <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start lg:order-last">
                         {selectedIndustrialVisit ? (
                           <IndustrialVisitPreview
                             visit={selectedIndustrialVisit}
@@ -1565,7 +1557,7 @@ const Opportunities = () => {
                       </div>
 
                       {/* Left: Cards Grid (2 columns, 6 cards) */}
-                      <div className="col-span-1 lg:col-span-2 order-last lg:order-first">
+                      <div className="col-span-1 lg:col-span-2 lg:order-first">
                         {ivViewMode === 'grid' ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {paginatedVisits.map((visit) => (
@@ -2059,9 +2051,9 @@ const MyJobsContent = ({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 grid-flow-dense">
-            {/* Preview Panel - Reordered to top on mobile */}
-            <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start order-first lg:order-last">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Preview Panel - Visible on desktop */}
+            <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start lg:order-last">
               {selectedOpportunity ? (
                 <OpportunityPreview
                   opportunity={selectedOpportunity}
@@ -2085,8 +2077,8 @@ const MyJobsContent = ({
               )}
             </div>
 
-            {/* Opportunities List - Reordered to bottom on mobile */}
-            <div className="col-span-1 lg:col-span-2 order-last lg:order-first">
+            {/* Opportunities List */}
+            <div className="col-span-1 lg:col-span-2 lg:order-first">
               {opportunities.length > 0 ? (
                 <>
                   {viewMode === 'grid' ? (
@@ -2131,7 +2123,7 @@ const MyJobsContent = ({
           </div>
 
           {/* Pagination */}
-          {displayedOpportunities.length > 0 && totalPages > 1 && (
+          {opportunities.length > 0 && totalPages > 1 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2142,17 +2134,19 @@ const MyJobsContent = ({
                 <Pagination>
                   <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
                     <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
+                      <button
+                        onClick={() => {
                           if (currentPage > 1) {
                             setCurrentPage(currentPage - 1);
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }
                         }}
-                        className={`${currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9`}
-                      />
+                        disabled={currentPage === 1}
+                        aria-label="Previous page"
+                        className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-700"
+                      >
+                        ← Previous
+                      </button>
                     </PaginationItem>
 
                     {getPageNumbers(currentPage, totalPages).map((pageNum) => (
@@ -2179,17 +2173,19 @@ const MyJobsContent = ({
                     ))}
 
                     <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
+                      <button
+                        onClick={() => {
                           if (currentPage < totalPages) {
                             setCurrentPage(currentPage + 1);
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }
                         }}
-                        className={`${currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9`}
-                      />
+                        disabled={currentPage === totalPages}
+                        aria-label="Next page"
+                        className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-700"
+                      >
+                        Next →
+                      </button>
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>

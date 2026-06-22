@@ -95,6 +95,8 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
 
   // Filter and sort saved jobs
   const filteredAndSortedJobs = useMemo(() => {
+    if (!savedJobs || savedJobs.length === 0) return [];
+
     // First filter
     let filtered = savedJobs.filter(job => {
       const matchesSearch = 

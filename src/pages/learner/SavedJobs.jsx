@@ -72,9 +72,10 @@ const SavedJobs = () => {
         logger.error('Failed to clear inactive jobs', { message: result.message });
         toast.error(result.message || 'Failed to remove inactive jobs');
       }
-    } catch (error) {
-      logger.error('Error clearing inactive jobs', error);
-      toast.error('Error clearing inactive jobs');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Error clearing inactive jobs';
+      logger.error('Error clearing inactive jobs', err);
+      toast.error(errorMessage);
     }
   };
 

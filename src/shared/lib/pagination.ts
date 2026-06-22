@@ -40,7 +40,8 @@ export const getPageNumbers = (currentPage: number, totalPages: number): (number
   addPage(3);
 
   // Add ellipsis if there's a gap between page 3 and current page
-  if (currentPage > PAGES_TO_SHOW) {
+  const needsLeftEllipsis = currentPage > PAGES_TO_SHOW;
+  if (needsLeftEllipsis) {
     pages.push('...');
   }
 
@@ -49,8 +50,9 @@ export const getPageNumbers = (currentPage: number, totalPages: number): (number
     addPage(currentPage);
   }
 
-  // Add ellipsis before last pages if needed
-  if (currentPage < totalPages - 4) {
+  // Add ellipsis before last pages if needed (only if we haven't already added one)
+  const needsRightEllipsis = currentPage < totalPages - 4;
+  if (needsRightEllipsis && pages[pages.length - 1] !== '...') {
     pages.push('...');
   }
 

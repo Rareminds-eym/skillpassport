@@ -80,7 +80,7 @@ const OpportunityCard = ({
       
       {/* Applied Badge */}
       {isApplied && (
-        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+        <div className="absolute top-2 right-2 z-10 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
           ✓ Applied
         </div>
       )}
