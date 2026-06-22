@@ -6,12 +6,11 @@
 import { withAuth } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { verifyOrgAccess, PERMISSIONS } from '../../../lib/permissions';
-import { ssoCreateMembership, ssoAssignMembershipRole, ssoUpdateMembershipStatus } from '../../../lib/sso-client';
+import { ssoCreateMembership, ssoAssignMembershipRole, ssoUpdateMembershipStatus, ssoGetUserByEmail, ssoGetUserMemberships, ssoListRoles } from '../../../lib/sso-client';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 interface AcceptInvitationRequest {
     token: string;
-    userId: string;
     password?: string;
 }
 
@@ -187,7 +186,6 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
         body = await context.request.json();
         console.log('[accept-invitation] Request body parsed:', {
             token: body.token ? `${body.token.substring(0, 8)}...` : 'missing',
-            userId: body.userId || 'missing',
             hasPassword: !!body.password
         });
     } catch (parseError) {
@@ -195,11 +193,11 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
         return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { token, userId } = body;
+    const { token } = body;
 
-    if (!token || !userId) {
-        console.error('[accept-invitation] Missing required fields:', { hasToken: !!token, hasUserId: !!userId });
-        return Response.json({ error: 'token and userId are required' }, { status: 400 });
+    if (!token) {
+        console.error('[accept-invitation] Missing required fields:', { hasToken: !!token });
+        return Response.json({ error: 'token is required' }, { status: 400 });
     }
 
     try {
@@ -243,68 +241,23 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
 
         console.log('[accept-invitation] ✓ Invitation is valid and pending');
 
-        // 2. FIXED: Look up user by invitation email, not by userId from request
+        // 2. Look up user by invitation email via SSO_SERVICE RPC (source of truth)
         // This prevents using wrong user when JWT contains stale user ID
-        console.log('[accept-invitation] Step 3: Looking up user by invitation email (not trusting userId from request)');
+        console.log('[accept-invitation] Step 3: Looking up user by invitation email via SSO_SERVICE');
         console.log('[accept-invitation] Invitation email:', invitation.invitee_email);
-        console.log('[accept-invitation] Provided userId (will verify):', userId);
 
-        let ssoUser: any = null;
-        let ssoUserError: any = null;
-        let actualUserId: string | null = null;
-        const maxRetries = 5;
-        const delays = [500, 1000, 2000, 3000, 4000]; // Total: 10.5 seconds
+        const ssoUser = await ssoGetUserByEmail(env as any, invitation.invitee_email);
 
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-            console.log(`[accept-invitation] Attempt ${attempt + 1}/${maxRetries} to fetch SSO user by email`);
-
-            // CRITICAL FIX: Look up user by EMAIL from invitation, not by userId from request
-            // This ensures we always use the correct user for the invited email
-            const { data: userByEmail, error: userError } = await supabase.rpc('get_sso_user_by_email', {
-                p_email: invitation.invitee_email
-            });
-
-            if (!userError && userByEmail && userByEmail.length > 0) {
-                const foundUser = userByEmail[0];
-                ssoUser = {
-                    id: foundUser.id,
-                    email: foundUser.email
-                };
-                actualUserId = foundUser.id;
-                ssoUserError = null;
-                console.log(`[accept-invitation] ✓ SSO user found by email on attempt ${attempt + 1}`);
-                console.log(`[accept-invitation] Found user ID: ${actualUserId}`);
-
-                // Verify the userId from request matches (if not, log warning)
-                if (userId !== actualUserId) {
-                    console.warn('[accept-invitation] ⚠️ WARNING: Provided userId does not match actual user for this email!');
-                    console.warn('[accept-invitation] Provided userId:', userId);
-                    console.warn('[accept-invitation] Actual userId:', actualUserId);
-                    console.warn('[accept-invitation] This indicates stale JWT or wrong user logged in.');
-                    console.warn('[accept-invitation] Using actual userId from email lookup to prevent verification email going to wrong user.');
-                }
-                break;
-            }
-
-            ssoUserError = userError;
-
-            if (attempt < maxRetries - 1) {
-                const delay = delays[attempt];
-                console.log(`[accept-invitation] User not found by email, waiting ${delay}ms before retry...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
-
-        if (ssoUserError || !ssoUser || !actualUserId) {
-            console.error('[accept-invitation] ✗ SSO user not found after retries:', ssoUserError);
-            console.error('[accept-invitation] Attempted email:', invitation.invitee_email);
-            console.error('[accept-invitation] Total wait time: ~10.5 seconds');
+        if (!ssoUser) {
+            console.error('[accept-invitation] ✗ SSO user not found by email:', invitation.invitee_email);
             return Response.json({
                 error: 'User account not found. Please sign up with the invited email address first.'
             }, { status: 404 });
         }
 
+        const actualUserId = ssoUser.id;
         console.log('[accept-invitation] ✓ SSO user found:', ssoUser.email);
+        console.log('[accept-invitation] Found user ID:', actualUserId);
         console.log('[accept-invitation] ✓ Email matches invitation automatically (looked up by email)');
 
         // 3. Map recruitment role to SSO role
@@ -318,26 +271,10 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
         const ssoRoleName = roleMapping[invitation.invitee_role] || 'member';
         console.log('[accept-invitation] Mapped role:', invitation.invitee_role, '->', ssoRoleName);
 
-        // 4. Check for existing membership using RPC (foreign tables not accessible via REST)
-        // FIXED: Use actualUserId (from email lookup) instead of userId from request
-        console.log('[accept-invitation] Step 6: Checking for existing membership');
-        const { data: existingMemberships, error: membershipCheckError } = await supabase
-            .rpc('check_membership', {
-                p_user_id: actualUserId,  // FIXED: Use actualUserId from email lookup
-                p_org_id: invitation.organization_id
-            });
-
-        if (membershipCheckError) {
-            console.error('[accept-invitation] ✗ Error checking membership:', membershipCheckError);
-            return Response.json({
-                error: 'Failed to check existing membership',
-                details: membershipCheckError.message
-            }, { status: 500 });
-        }
-
-        const existingMembership = existingMemberships && existingMemberships.length > 0
-            ? existingMemberships[0]
-            : null;
+        // 4. Check for existing membership via SSO_SERVICE (source of truth)
+        console.log('[accept-invitation] Step 6: Checking for existing membership via SSO_SERVICE');
+        const { memberships: userMemberships } = await ssoGetUserMemberships(env as any, actualUserId);
+        const existingMembership = userMemberships.find(m => m.org_id === invitation.organization_id) ?? null;
 
         let membershipId: string;
 
@@ -364,13 +301,9 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
             }
         } else {
             console.log('[accept-invitation] No existing membership, creating new one via SSO service');
-
-            // CRITICAL: Use ssoCreateMembership which writes directly to SSO-Worker DB
-            // Cannot use RPC on foreign tables (they are read-only)
-            // FIXED: Use actualUserId from email lookup
             try {
                 const membershipData = await ssoCreateMembership(env as any, {
-                    user_id: actualUserId,  // FIXED: Use actualUserId from email lookup
+                    user_id: actualUserId,
                     org_id: invitation.organization_id,
                     status: 'active'
                 });
@@ -386,22 +319,20 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
             }
         }
 
-        // 5. Get role ID from SSO-Worker using RPC (foreign tables not accessible via REST)
+        // 5. Get role ID from SSO-Worker via ssoListRoles RPC
         console.log('[accept-invitation] Step 7: Getting role ID from SSO');
-        const { data: roleResults, error: roleError } = await supabase
-            .rpc('get_role_by_name', {
-                p_role_name: ssoRoleName
-            });
+        const { roles: allRoles } = await ssoListRoles(env as any);
+        const roleResult = allRoles.find(r => r.name === ssoRoleName);
 
-        if (roleError || !roleResults || roleResults.length === 0) {
-            console.error('[accept-invitation] ✗ Failed to get role:', roleError);
+        if (!roleResult) {
+            console.error('[accept-invitation] ✗ Role not found:', ssoRoleName);
             return Response.json({
                 error: 'Failed to get role information',
-                details: roleError?.message || 'Role not found'
+                details: `Role "${ssoRoleName}" not found`
             }, { status: 500 });
         }
 
-        const roleId = roleResults[0].id;
+        const roleId = roleResult.id;
         console.log('[accept-invitation] ✓ Role ID found:', roleId);
 
         // 6. Assign role to membership using SSO service
@@ -418,14 +349,13 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
         }
 
         // 7. Update invitation status
-        // FIXED: Use actualUserId from email lookup
         console.log('[accept-invitation] Step 9: Updating invitation status');
         const { error: updateError } = await supabase
             .from('organization_invitations')
             .update({
                 status: 'accepted',
                 accepted_at: new Date().toISOString(),
-                accepted_by_user_id: actualUserId,  // FIXED: Use actualUserId from email lookup
+                accepted_by_user_id: actualUserId,
                 updated_at: new Date().toISOString(),
             })
             .eq('id', invitation.id);
