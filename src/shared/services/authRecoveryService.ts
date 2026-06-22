@@ -33,20 +33,22 @@ export class AuthRecoveryService {
       const store = useAuthStore.getState();
       
       // Try to initialize/refresh the session with granular error handling
+      let initSucceeded = false;
       try {
         await store.initialize();
+        // Check state after initialization to determine success
+        const stateAfterInit = useAuthStore.getState();
+        initSucceeded = stateAfterInit.isAuthenticated && !!stateAfterInit.user;
       } catch (initError) {
         const errorInstance = initError instanceof Error ? initError : new Error(String(initError));
         logger.warn('Store initialization failed during auth recovery', { 
           error: errorInstance.message,
           stack: errorInstance.stack 
         });
-        // Continue to try refresh session as fallback
       }
       
-      // Check if we're now authenticated
-      const newState = useAuthStore.getState();
-      if (newState.isAuthenticated && newState.user) {
+      // Check if we're now authenticated after initialization
+      if (initSucceeded) {
         logger.info('Auth recovery successful via initialization');
         return true;
       }

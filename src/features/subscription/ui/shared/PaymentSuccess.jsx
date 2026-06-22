@@ -30,6 +30,7 @@ import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePaymentSuccessReceipt } from '@/features/subscription/hooks/useReceiptDownload';
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import { isValidPresignedUrl } from '@/features/subscription/api/receiptService';
 import { getLogger } from '@/shared/config/logging';
 
 import { useQueryClient } from '@tanstack/react-query';
@@ -693,8 +694,13 @@ function PaymentSuccess() {
       const fileIdentifier = receiptKey || receiptUrl;
       if (fileIdentifier) {
         const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
-        window.open(presignedUrl, '_blank');
-        return;
+        if (presignedUrl && isValidPresignedUrl(presignedUrl)) {
+          window.open(presignedUrl, '_blank');
+          return;
+        } else if (presignedUrl) {
+          log.warn('Presigned URL failed validation');
+          throw new Error('Invalid presigned URL domain');
+        }
       }
 
       // No receipt available - show more helpful message based on error type

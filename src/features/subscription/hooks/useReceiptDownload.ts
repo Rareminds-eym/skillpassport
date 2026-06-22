@@ -4,7 +4,7 @@
  * Custom hook for handling receipt downloads with loading states and error handling
  */
 
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { 
   downloadReceiptByOrderId, 
@@ -44,6 +44,15 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
   
   // Use a ref to track in-flight requests to prevent race conditions
   const inFlightRef = useRef(false);
+
+  // Cleanup effect to reset state on unmount
+  useEffect(() => {
+    return () => {
+      // Reset both ref and state on unmount to prevent stale state
+      inFlightRef.current = false;
+      setIsDownloading(false);
+    };
+  }, []);
 
   const downloadReceipt = useCallback(async (identifier: string, type: ReceiptIdentifierType) => {
     // Check if a download is already in progress using ref

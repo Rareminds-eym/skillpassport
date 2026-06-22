@@ -27,6 +27,31 @@ const COMPANY_INFO: ReceiptCompanyInfo = {
 };
 
 /**
+ * Validates that a presigned URL is from a trusted domain
+ * @param url - The URL to validate
+ * @returns true if the URL is from a trusted domain, false otherwise
+ */
+export function isValidPresignedUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    // Allow Cloudflare R2 storage domains and API domains
+    const trustedDomains = [
+      'r2.cloudflarestorage.com',
+      'cloudflare.com',
+      'workers.dev',
+      // Add your custom domain if applicable
+    ];
+    
+    return trustedDomains.some(domain => 
+      urlObj.hostname.includes(domain) || urlObj.hostname.endsWith(domain)
+    );
+  } catch {
+    // Invalid URL format
+    return false;
+  }
+}
+
+/**
  * Valid receipt error codes
  */
 const VALID_ERROR_CODES: ReadonlyArray<ReceiptDownloadError['code']> = [
@@ -44,7 +69,7 @@ const VALID_ERROR_CODES: ReadonlyArray<ReceiptDownloadError['code']> = [
 function extractErrorCode(error: unknown): ReceiptDownloadError['code'] {
   // Check if error is an Error instance with a code property
   if (error instanceof Error && 'code' in error) {
-    const errorCode = 'code' in error ? (error as Record<string, unknown>).code : undefined;
+    const errorCode = (error as Record<string, unknown>).code;
     
     // Validate that code is a string and matches valid codes
     if (typeof errorCode === 'string' && VALID_ERROR_CODES.includes(errorCode as ReceiptDownloadError['code'])) {
@@ -187,9 +212,12 @@ export async function downloadReceiptByOrderId(orderId: string): Promise<void> {
     if (orderId.startsWith('payment_pdf/') || orderId.endsWith('.pdf')) {
       try {
         const presignedUrl = await getPaymentReceiptPresignedUrl(orderId, 3600);
-        if (presignedUrl) {
+        if (presignedUrl && isValidPresignedUrl(presignedUrl)) {
           window.open(presignedUrl, '_blank');
           return;
+        } else if (presignedUrl) {
+          logger.warn('Presigned URL failed validation', { orderId });
+          throw new Error('Invalid presigned URL domain');
         }
       } catch (presignedError) {
         const errorInstance = presignedError instanceof Error ? presignedError : new Error(String(presignedError));

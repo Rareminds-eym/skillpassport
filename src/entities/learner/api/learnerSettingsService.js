@@ -160,7 +160,10 @@ export const getlearnerSettingsByEmail = async (email, recoveryAttempted = false
         // Make direct API call after recovery with flag to prevent recursive recovery
         try {
           logger.info('Making direct API call after auth recovery');
-          // Direct API call without recursion to prevent stack overflow
+          
+          // Direct API call without recursion - already protected by recoveryAttempted flag
+          // Note: This is intentionally not calling getlearnerSettingsByEmail to prevent recursion
+          // The recoveryAttempted flag in the outer scope ensures we won't retry auth recovery again
           const directResult = await apiPost('/learner-profile/actions', {
             action: 'fetch-learner-settings-by-email', email,
           });

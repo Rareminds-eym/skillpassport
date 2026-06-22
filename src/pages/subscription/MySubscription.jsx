@@ -50,6 +50,7 @@ const safeToast = {
       return toast.success(message, options);
     } catch (error) {
       logger.error('Toast error (success)', error instanceof Error ? error : new Error(String(error)));
+      return undefined;
     }
   },
   error: (message, options) => {
@@ -57,6 +58,7 @@ const safeToast = {
       return toast.error(message, options);
     } catch (error) {
       logger.error('Toast error (error)', error instanceof Error ? error : new Error(String(error)));
+      return undefined;
     }
   },
   loading: (message, options) => {
@@ -64,6 +66,7 @@ const safeToast = {
       return toast.loading(message, options);
     } catch (error) {
       logger.error('Toast error (loading)', error instanceof Error ? error : new Error(String(error)));
+      return undefined;
     }
   },
   custom: (message, options) => {
@@ -71,6 +74,7 @@ const safeToast = {
       return toast(message, options);
     } catch (error) {
       logger.error('Toast error (custom)', error instanceof Error ? error : new Error(String(error)));
+      return undefined;
     }
   }
 };
