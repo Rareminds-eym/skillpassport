@@ -14,7 +14,6 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 
 # ==================== PAYMENT WORKER CONFIGURATION ====================
 # URL of the payment-worker (standalone Cloudflare Worker on port 9003)
-# Note: Razorpay keys are managed by the payment worker and returned in API responses
 PAYMENTS_API_URL=http://localhost:9003
 
 
@@ -26,10 +25,6 @@ EMBEDDING_API_KEY=your_embedding_api_key_here
 
 
 # ==================== EMAIL WORKER CONFIGURATION ====================
-# URL of the email worker (standalone Cloudflare Worker on port 9001)
-EMAIL_WORKER_URL=http://localhost:9001
-# API key for authenticating requests to the email worker
-EMAIL_API_KEY=your_email_api_key_here
 # Admin email for event registration notifications
 ADMIN_EMAIL=admin@rareminds.in
 
@@ -43,7 +38,6 @@ SIGNING_SECRET=your_signing_secret_here
 
 # ==================== AI SERVICE API KEYS ====================
 OPENROUTER_API_KEY=your_openrouter_api_key_here
-CLAUDE_API_KEY=your_claude_api_key_here
 GEMINI_API_KEY=your_gemini_api_key_here
 
 # ==================== AWS CONFIGURATION (for OTP SMS) ====================

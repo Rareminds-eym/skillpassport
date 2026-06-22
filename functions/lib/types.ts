@@ -11,21 +11,15 @@ import type { R2Bucket } from '@cloudflare/workers-types';
 export interface PagesEnv {
   // SSO / Auth configuration
   SSO_DOMAIN?: string;
-  VITE_SSO_URL?: string;
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: Fetcher;
 
   // Supabase configuration
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
-  VITE_SUPABASE_URL?: string;
-  VITE_SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 
   // Payment Worker configuration
-  VITE_PAYMENTS_API_URL?: string;
-  RAZORPAY_SERVICE_SECRET?: string;
-  RAZORPAY_KEY_ID?: string;
   INTERNAL_WEBHOOK_SECRET?: string;
 
   // Embedding Worker configuration
@@ -33,8 +27,6 @@ export interface PagesEnv {
   EMBEDDING_API_KEY?: string;
 
   // Email Worker configuration
-  EMAIL_WORKER_URL?: string;
-  EMAIL_API_KEY?: string;
   /** Cloudflare Service Binding to the Email worker */
   EMAIL_SERVICE?: {
     sendEmail(payload: {
@@ -61,12 +53,6 @@ export interface PagesEnv {
     }>;
   };
   ADMIN_EMAIL?: string;
-  FROM_EMAIL?: string;
-  FROM_NAME?: string;
-  SMTP_HOST?: string;
-  SMTP_PORT?: string;
-  SMTP_USER?: string;
-  SMTP_PASS?: string;
 
   // App configuration
   APP_URL?: string;
@@ -75,8 +61,6 @@ export interface PagesEnv {
   SIGNING_SECRET?: string;
 
   // AI API keys
-  CLAUDE_API_KEY?: string;
-  VITE_CLAUDE_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   GEMINI_API_KEY?: string;
 
