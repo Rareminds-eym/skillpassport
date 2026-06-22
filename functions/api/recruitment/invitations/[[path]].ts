@@ -11,6 +11,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
 interface AcceptInvitationRequest {
     token: string;
+    /** Reserved: invitee-set initial password if the user doesn't exist yet */
     password?: string;
 }
 
