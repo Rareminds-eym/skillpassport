@@ -8,18 +8,21 @@ import { apiPost } from '@/shared/api/apiClient';
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 import { downloadReceipt } from '@/features/subscription/api/pdfReceiptGenerator';
 import { getLogger } from '@/shared/config';
-import type { 
-  ReceiptData, 
-  ReceiptApiResponse, 
+import type {
+  ReceiptData,
+  ReceiptApiResponse,
   ReceiptDownloadError,
-  ReceiptCompanyInfo 
+  ReceiptCompanyInfo
 } from '../types/receipt';
 
 const logger = getLogger('receiptService');
 
+// Presigned URL validity duration (1 hour)
+const PRESIGNED_URL_EXPIRY_SECONDS = 3600;
+
 // Company information for receipts
 const COMPANY_INFO: ReceiptCompanyInfo = {
-  name: 'RareMinds',
+  name: 'Rareminds',
   address: '231, 2nd Stage, 13th Cross Road\nIndiranagar, Bangalore, Karnataka 560038',
   phone: '+91 8050226031',
   email: 'marketing@rareminds.in',
@@ -28,6 +31,7 @@ const COMPANY_INFO: ReceiptCompanyInfo = {
 
 /**
  * Validates that a presigned URL is from a trusted domain
+ * Prevents subdomain injection attacks by using strict equality and exact suffix matching
  * @param url - The URL to validate
  * @returns true if the URL is from a trusted domain, false otherwise
  */
@@ -41,9 +45,11 @@ export function isValidPresignedUrl(url: string): boolean {
       'workers.dev',
       // Add your custom domain if applicable
     ];
-    
-    return trustedDomains.some(domain => 
-      urlObj.hostname.includes(domain) || urlObj.hostname.endsWith(domain)
+
+    // Exact domain match OR valid subdomain match (e.g., account.r2.cloudflarestorage.com)
+    // Prevents: evil.r2.cloudflarestorage.com.attacker.com
+    return trustedDomains.some(domain =>
+      urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
     );
   } catch {
     // Invalid URL format
@@ -211,7 +217,7 @@ export async function downloadReceiptByOrderId(orderId: string): Promise<void> {
     // Only attempt if the string looks like an R2 file key
     if (orderId.startsWith('payment_pdf/') || orderId.endsWith('.pdf')) {
       try {
-        const presignedUrl = await getPaymentReceiptPresignedUrl(orderId, 3600);
+        const presignedUrl = await getPaymentReceiptPresignedUrl(orderId, PRESIGNED_URL_EXPIRY_SECONDS);
         if (presignedUrl && isValidPresignedUrl(presignedUrl)) {
           window.open(presignedUrl, '_blank');
           return;

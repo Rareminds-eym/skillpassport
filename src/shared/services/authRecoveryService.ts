@@ -141,9 +141,10 @@ export class AuthRecoveryService {
     const { pathname, search } = window.location;
     const sanitizedUrl = `${pathname}${search}`;
     const encodedUrl = encodeURIComponent(sanitizedUrl);
-    
+
     // Validate that we're not redirecting to external sites
-    if (pathname.startsWith('http://') || pathname.startsWith('https://') || pathname.includes('//')) {
+    // Reject: protocol-relative URLs (//evil.com), absolute URLs (http://evil.com)
+    if (sanitizedUrl.startsWith('//') || sanitizedUrl.startsWith('http://') || sanitizedUrl.startsWith('https://')) {
       logger.warn('Unsafe redirect URL detected, using root path', { pathname });
       window.location.href = '/login?redirect=/';
       return;

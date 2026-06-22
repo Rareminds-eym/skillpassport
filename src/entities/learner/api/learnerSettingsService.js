@@ -157,19 +157,43 @@ export const getlearnerSettingsByEmail = async (email, recoveryAttempted = false
       const recovered = await AuthRecoveryService.attemptRecovery();
       // Validate recovery result is a boolean
       if (typeof recovered === 'boolean' && recovered === true) {
-        // Make direct API call after recovery with flag to prevent recursive recovery
+        // Make direct API call after recovery with explicit retry protection
         try {
           logger.info('Making direct API call after auth recovery');
-          
-          // Direct API call without recursion - already protected by recoveryAttempted flag
-          // Note: This is intentionally not calling getlearnerSettingsByEmail to prevent recursion
-          // The recoveryAttempted flag in the outer scope ensures we won't retry auth recovery again
-          const directResult = await apiPost('/learner-profile/actions', {
-            action: 'fetch-learner-settings-by-email', email,
-          });
-          
-          if (!directResult.success) {
-            return { success: false, error: directResult.error || 'Failed to fetch learner after recovery' };
+
+          // Add explicit retry guard to prevent infinite loops
+          let retryCount = 0;
+          const maxRetries = 1;
+          let directResult = null;
+          let lastError = null;
+
+          // Single retry attempt with explicit loop counter
+          do {
+            try {
+              directResult = await apiPost('/learner-profile/actions', {
+                action: 'fetch-learner-settings-by-email', email,
+              });
+
+              // Success - exit loop
+              if (directResult?.success) {
+                break;
+              }
+            } catch (apiError) {
+              // Capture error for logging
+              lastError = apiError instanceof Error ? apiError : new Error(String(apiError));
+
+              // Check if this is an auth error persisting after recovery
+              if (AuthRecoveryService.isAuthError(lastError)) {
+                logger.warn('Auth error persists after recovery attempt, preventing infinite loop', { retryCount });
+                return { success: false, error: 'Authentication failed. Please log in again.' };
+              }
+            }
+
+            retryCount++;
+          } while (retryCount < maxRetries);
+
+          if (!directResult?.success) {
+            return { success: false, error: directResult?.error || lastError?.message || 'Failed to fetch learner after recovery' };
           }
           
           // Fetch user settings separately
@@ -193,18 +217,11 @@ export const getlearnerSettingsByEmail = async (email, recoveryAttempted = false
           const settingsData = transformSettingsData(data, userSettings);
           
           return { success: true, data: settingsData };
-        } catch (retryErr) {
-          // Ensure retryErr is treated as an Error instance with proper type checking
-          const retryError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
-          logger.error('Direct API call after auth recovery failed', retryError);
-          
-          // Check if this is another auth error - if so, don't attempt recovery again
-          if (AuthRecoveryService.isAuthError(retryError)) {
-            logger.warn('Auth error persists after recovery attempt, giving up to prevent infinite loop');
-            return { success: false, error: 'Authentication failed. Please log in again.' };
-          }
-          
-          return { success: false, error: retryError.message };
+        } catch (outerErr) {
+          // Unexpected error in recovery flow
+          const outerError = outerErr instanceof Error ? outerErr : new Error(String(outerErr));
+          logger.error('Unexpected error during auth recovery flow', outerError);
+          return { success: false, error: outerError.message || 'Failed to recover authentication' };
         }
       }
     } else if (recoveryAttempted) {

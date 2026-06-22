@@ -158,12 +158,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (!ssoResponse) {
         throw new Error('SSO subscription response is null');
       }
-      
-      // Validate subscription structure before accessing properties
-      const subscription = ssoResponse.subscription as Subscription | null;
-      if (subscription && typeof subscription !== 'object') {
-        throw new Error('Invalid subscription data structure');
+
+      // Validate subscription structure before type assertion
+      const subscription = ssoResponse.subscription;
+      if (subscription !== null && subscription !== undefined && typeof subscription !== 'object') {
+        throw new Error('Invalid subscription data structure: expected object or null');
       }
+
+      // Only assert type after validating structure
+      const typedSubscription = subscription as Subscription | null;
       
       const userDetails = await getUserDetails();
 
@@ -174,8 +177,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         amount: tx.amount,
         status: tx.status,
         created_at: tx.created_at,
-        plan_type: subscription?.plan_type || 'Subscription',
-        billing_cycle: subscription?.billing_cycle || 'Annual',
+        plan_type: typedSubscription?.plan_type || 'Subscription',
+        billing_cycle: typedSubscription?.billing_cycle || 'Annual',
         user_name: userDetails.name,
         user_email: userDetails.email,
         user_phone: userDetails.phone
@@ -196,8 +199,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // First try SSO worker for payment transactions
       const ssoData = await getSsoReceiptData(tx => tx.razorpay_order_id === orderId);
       if (ssoData) return apiSuccess(ssoData, context.request);
-    } catch (error) {
-      // SSO lookup failed, try fallback
+    } catch (ssoError) {
+      // Log SSO lookup failure for debugging; will fallback to legacy source
+      const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
+      console.warn(`[receipts] SSO lookup failed for order ${orderId}`, { error: errorInstance.message });
     }
 
     // Fallback to pre_registrations for older data (legacy source)
@@ -225,12 +230,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     
     try {
       // First try SSO worker
-      const ssoData = await getSsoReceiptData(tx => 
+      const ssoData = await getSsoReceiptData(tx =>
         tx.razorpay_payment_id === paymentId || tx.payment_id === paymentId
       );
       if (ssoData) return apiSuccess(ssoData, context.request);
-    } catch (error) {
-      // SSO lookup failed, try fallback
+    } catch (ssoError) {
+      // Log SSO lookup failure for debugging; will fallback to legacy source
+      const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
+      console.warn(`[receipts] SSO lookup failed for payment ${paymentId}`, { error: errorInstance.message });
     }
 
     // Fallback to pre_registrations (legacy source)
@@ -261,8 +268,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // The frontend may pass either a transaction ID or a subscription ID
       const ssoData = await getSsoReceiptData(tx => tx.id === id || tx.subscription_id === id);
       if (ssoData) return apiSuccess(ssoData, context.request);
-    } catch (error) {
-      // SSO lookup failed, try fallback
+    } catch (ssoError) {
+      // Log SSO lookup failure for debugging; will fallback to legacy source
+      const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
+      console.warn(`[receipts] SSO lookup failed for ID ${id}`, { error: errorInstance.message });
     }
 
     // Fallback to pre_registrations (legacy source)

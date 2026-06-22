@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
-import { initialize as initializeAuthStore } from '@/shared/model/authStore';
+import { initializeStores } from '@/shared/model/authStore';
 import { AuthRecoveryService } from '@/shared/services/authRecoveryService';
 import {
   AlertCircle,
@@ -15,30 +15,8 @@ import {
   User
 } from "lucide-react";
 
-/**
- * Lazy logger initialization to avoid module-level side effects
- */
-const getLoggerInstance = (() => {
-  let loggerInstance = null;
-  
-  return () => {
-    if (!loggerInstance) {
-      try {
-        loggerInstance = getLogger('MainSettings');
-      } catch (error) {
-        // Fallback no-op logger implementation if getLogger fails
-        loggerInstance = {
-          info: () => {},
-          error: () => {},
-          warn: () => {},
-          debug: () => {},
-          timed: (message, fn) => fn(),
-        };
-      }
-    }
-    return loggerInstance;
-  };
-})();
+// Initialize logger - getLogger is already available from shared config
+const logger = getLogger('MainSettings');
 
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
@@ -1535,7 +1513,9 @@ const MainSettings = () => {
   // Show error state
   if (learnerError) {
     // Use AuthRecoveryService for robust error detection instead of fragile string matching
-    const isAuthError = AuthRecoveryService.isAuthError(learnerError);
+    const isAuthError = AuthRecoveryService && typeof AuthRecoveryService.isAuthError === 'function'
+      ? AuthRecoveryService.isAuthError(learnerError)
+      : false;
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -1558,7 +1538,7 @@ const MainSettings = () => {
                     onClick={async () => {
                       try {
                         // Try to refresh the session first
-                        await initializeAuthStore();
+                        await initializeStores();
                         
                         // Type-safe check for refreshData function
                         // refreshData may be undefined if hook hasn't loaded yet
@@ -1569,7 +1549,7 @@ const MainSettings = () => {
                           await new Promise(resolve => setTimeout(resolve, 1500));
                         } else {
                           // If refreshData is not available, just reload the page
-                          getLoggerInstance().warn('refreshData not available from hook, reloading page');
+                          logger.warn('refreshData not available from hook, reloading page');
                           toast.success('Session recovered. Reloading page...');
                           // Wait for toast to show before reloading
                           await new Promise(resolve => setTimeout(resolve, 1500));
@@ -1577,7 +1557,7 @@ const MainSettings = () => {
                         window.location.reload();
                       } catch (refreshError) {
                         const errorInstance = refreshError instanceof Error ? refreshError : new Error(String(refreshError));
-                        getLoggerInstance().error('Failed to refresh session', errorInstance);
+                        logger.error('Failed to refresh session', errorInstance);
                         toast.error('Failed to refresh session. Please log in again.');
                         // Wait before redirect
                         await new Promise(resolve => setTimeout(resolve, 1500));
