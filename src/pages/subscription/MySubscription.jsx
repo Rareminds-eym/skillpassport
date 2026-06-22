@@ -27,7 +27,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { SubscriptionDashboard } from '@/features/subscription';
 import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { useSubscriptionAccess, getPaymentStatus } from '@/features/subscription/model/subscriptionStore';
+import { getPaymentStatus } from '@/features/subscription/model/subscriptionStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 
 import { useSubscriptionDashboardReceipt } from '@/features/subscription/hooks/useReceiptDownload';
@@ -1092,14 +1092,19 @@ function MySubscription() {
                       <div>
                         <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Payment Status</dt>
                         <dd>
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${getPaymentStatus(subscriptionData.status) === 'success'
-                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
-                            : 'bg-slate-200 text-slate-700'
-                            }`}>
-                            <Circle className={`w-1.5 h-1.5 ${getPaymentStatus(subscriptionData.status) === 'success' ? 'fill-white animate-pulse' : 'fill-slate-600'
-                              }`} />
-                            {getPaymentStatus(subscriptionData.status) === 'success' ? 'Paid' : 'Pending'}
-                          </span>
+                          {(() => {
+                            const paymentStatus = getPaymentStatus(subscriptionData.status);
+                            const isSuccess = paymentStatus === 'success';
+                            return (
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${isSuccess
+                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
+                                : 'bg-slate-200 text-slate-700'
+                                }`}>
+                                <Circle className={`w-1.5 h-1.5 ${isSuccess ? 'fill-white animate-pulse' : 'fill-slate-600'}`} />
+                                {isSuccess ? 'Paid' : 'Pending'}
+                              </span>
+                            );
+                          })()}
                         </dd>
                       </div>
                       <div>

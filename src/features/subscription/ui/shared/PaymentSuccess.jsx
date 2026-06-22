@@ -709,10 +709,13 @@ function PaymentSuccess() {
       const errorInstance = error instanceof Error ? error : new Error(String(error));
       logger.error('Receipt download failed', errorInstance);
       
+      // Safely check error message with proper type checking
+      const errorMessage = errorInstance.message || '';
+      
       // Handle specific error types
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('no valid token')) {
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('no valid token')) {
         toast.error('Session expired. Please refresh the page and try again.');
-      } else if (error?.message?.includes('not found')) {
+      } else if (errorMessage.includes('not found')) {
         toast('Receipt not ready yet. Please try again in a few minutes.', { 
           icon: '⏳', 
           duration: 4000 
@@ -721,7 +724,7 @@ function PaymentSuccess() {
         toast.error('Failed to download receipt. Please try again or contact support.');
       }
     }
-  }, [paymentParams.razorpay_order_id, receiptKey, receiptUrl, downloadReceiptHook]);
+  }, [paymentParams, receiptKey, receiptUrl, downloadReceiptHook]);
 
   // ============================================================================
   // RENDER

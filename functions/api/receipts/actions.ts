@@ -67,8 +67,19 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   const { action } = body;
 
-  // Helper to fetch user details
+  // Helper to fetch user details with input validation
   const getUserDetails = async (): Promise<UserDetails> => {
+    // Validate user.id is a valid UUID and non-empty
+    if (!user.id || typeof user.id !== 'string' || user.id.trim() === '') {
+      throw new Error('Invalid user ID');
+    }
+    
+    // UUID validation pattern
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(user.id)) {
+      throw new Error('Invalid user ID format');
+    }
+    
     const { data } = await supabase.from('users_shadow').select('email').eq('id', user.id).maybeSingle();
     const { data: learner } = await supabase.from('learners').select('name, phone').eq('user_id', user.id).maybeSingle();
     return {
@@ -78,21 +89,49 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     };
   };
 
+  // Validation function for transaction data
+  const validateTransaction = (tx: Record<string, unknown>): Transaction => {
+    // Validate required field
+    if (!tx.razorpay_order_id) {
+      throw new Error('Invalid transaction: missing razorpay_order_id');
+    }
+
+    // Validate and transform with type checking
+    const transaction: Transaction = {
+      id: String(tx.id || ''),
+      subscription_id: tx.subscription_id ? String(tx.subscription_id) : undefined,
+      razorpay_payment_id: tx.razorpay_payment_id ? String(tx.razorpay_payment_id) : undefined,
+      payment_id: tx.payment_id ? String(tx.payment_id) : undefined,
+      razorpay_order_id: String(tx.razorpay_order_id),
+      amount: typeof tx.amount === 'number' ? tx.amount : Number(tx.amount || 0),
+      status: String(tx.status || 'pending'),
+      created_at: String(tx.created_at || new Date().toISOString())
+    };
+
+    // Additional validation for critical fields
+    if (isNaN(transaction.amount) || transaction.amount < 0) {
+      throw new Error('Invalid transaction: invalid amount');
+    }
+
+    return transaction;
+  };
+
   const getSsoReceiptData = async (filterFn: (tx: Transaction) => boolean): Promise<ReceiptData | null> => {
     try {
       const rawTransactions = await ssoGetUserTransactions(env as unknown as { SSO_SERVICE: Fetcher }, user.id);
       
-      // Type cast and validate the transactions data
-      const transactions: Transaction[] = rawTransactions.map((tx: Record<string, unknown>) => ({
-        id: String(tx.id || ''),
-        subscription_id: tx.subscription_id ? String(tx.subscription_id) : undefined,
-        razorpay_payment_id: tx.razorpay_payment_id ? String(tx.razorpay_payment_id) : undefined,
-        payment_id: tx.payment_id ? String(tx.payment_id) : undefined,
-        razorpay_order_id: String(tx.razorpay_order_id || ''),
-        amount: Number(tx.amount || 0),
-        status: String(tx.status || ''),
-        created_at: String(tx.created_at || new Date().toISOString())
-      }));
+      // Validate and map transactions data
+      const transactions: Transaction[] = rawTransactions
+        .map((tx: Record<string, unknown>) => {
+          try {
+            return validateTransaction(tx);
+          } catch (validationError) {
+            // Log validation error but continue processing other transactions
+            console.error('[receipts] Invalid transaction data:', validationError, { tx });
+            return null;
+          }
+        })
+        .filter((tx): tx is Transaction => tx !== null);
       
       const tx = transactions.find(filterFn);
       if (!tx) return null;

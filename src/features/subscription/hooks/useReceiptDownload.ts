@@ -42,7 +42,9 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<ReceiptDownloadError | null>(null);
 
+  // Remove isDownloading from dependency array to prevent infinite loop
   const downloadReceipt = useCallback(async (identifier: string, type: ReceiptIdentifierType) => {
+    // Check state directly instead of from closure to avoid stale closure
     if (isDownloading) return;
     
     setIsDownloading(true);
@@ -108,7 +110,7 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
     } finally {
       setIsDownloading(false);
     }
-  }, [isDownloading, onSuccess, onError, showToast]);
+  }, [onSuccess, onError, showToast]); // Removed isDownloading to prevent infinite loop
 
   const downloadByOrderId = useCallback(
     (orderId: string) => downloadReceipt(orderId, 'order_id'),

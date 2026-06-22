@@ -59,121 +59,8 @@ interface SubscriptionState {
   hasAddOnAccessSync: (featureKey: string) => boolean;
 }
 
-// =====================================================================// Stale time (2 minutes)
 // =====================================================================
-const STALE_TIME = 2 * 60 * 1000;
-
-// Manual override TTL (30 seconds)
-// After setAccessData({ hasAccess: true }), fetchSubscription will refuse to
-// downgrade access for this duration. Gives the database time to propagate
-// newly-created subscriptions.
-const MANUAL_OVERRIDE_TTL = 30 * 1000;
-
-// =====================================================================// Format raw subscription data from Supabase into normalized shape
-// =====================================================================
-function formatSubscriptionData(data: any): Subscription {
-  const planId = data.subscription_plans?.plan_code || data.plan_type || data.plan_code;
-  const planName = data.subscription_plans?.name || data.plan_type;
-
-  return {
-    id: data.id,
-    plan: planId,
-    plan_type: planId,
-    status: data.status,
-    startDate: data.subscription_start_date,
-    endDate: data.subscription_end_date,
-    end_date: data.subscription_end_date,
-    features: data.features || [],
-    autoRenew: data.auto_renew !== false,
-    planName,
-    planPrice: data.plan_amount,
-    fullName: data.full_name,
-    email: data.email,
-    phone: data.phone,
-    billingCycle: data.billing_cycle,
-    razorpaySubscriptionId: data.razorpay_subscription_id,
-    cancelledAt: data.cancelled_at,
-    cancellationReason: data.cancellation_reason,
-    userRole: data.users?.role || null,
-    isOrganizationLicense: data.is_organization_license || false,
-    organizationId: data.organization_id || null,
-    organizationType: data.organization_type || null,
-    licenseAssignmentId: data.license_assignment_id || null,
-    was_revoked: false,
-  };
-}
-
-// =====================================================================// Compute access, warning, and reason from subscription data
-// =====================================================================
-function computeAccessState(sub: Subscription | null) {
-  if (!sub) {
-    return {
-      hasAccess: false,
-      accessReason: 'no_subscription' as AccessReason,
-      showWarning: false,
-      warningType: null as WarningType | null,
-      warningMessage: null as string | null,
-      daysUntilExpiry: null as number | null,
-    };
-  }
-
-  const status = sub.status;
-  let accessReason: AccessReason = 'no_subscription';
-  let hasAccess = false;
-  let showWarning = false;
-  let warningType: WarningType | null = null;
-  let warningMessage: string | null = null;
-  let daysUntilExpiry: number | null = null;
-
-  if (status === 'active') {
-    accessReason = 'active';
-    hasAccess = true;
-  } else if (status === 'paused') {
-    accessReason = 'paused';
-    hasAccess = true;
-    showWarning = true;
-    warningType = 'paused';
-    warningMessage = 'Your subscription is paused. Some features may be limited.';
-  } else if (status === 'grace_period') {
-    accessReason = 'grace_period';
-    hasAccess = true;
-    showWarning = true;
-    warningType = 'grace_period';
-    const endDate = sub.endDate || sub.end_date;
-    const daysLeft = endDate
-      ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-      : null;
-    warningMessage = daysLeft != null && daysLeft > 0
-      ? `Your subscription is in a grace period. Renew within ${daysLeft} day${daysLeft !== 1 ? 's' : ''} to avoid losing access.`
-      : 'Your subscription is in a grace period. Please renew to continue access.';
-  } else if (status === 'cancelled') {
-    accessReason = 'cancelled';
-    // Cancelled but not expired – user keeps access until end date
-    const endDate = sub.endDate || sub.end_date;
-    if (endDate && new Date(endDate) >= new Date()) {
-      hasAccess = true;
-    }
-  }
-
-  // Check expiry warning (for active/paused)
-  if (hasAccess) {
-    const endDate = sub.endDate || sub.end_date;
-    if (endDate) {
-      const msUntilExpiry = new Date(endDate).getTime() - Date.now();
-      daysUntilExpiry = Math.ceil(msUntilExpiry / (1000 * 60 * 60 * 24));
-
-      if (daysUntilExpiry <= 7 && daysUntilExpiry > 0 && status === 'active') {
-        showWarning = true;
-        warningType = 'expiring_soon';
-        warningMessage = `Your subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}. Renew now to avoid interruption.`;
-      }
-    }
-  }
-
-  return { hasAccess, accessReason, showWarning, warningType, warningMessage, daysUntilExpiry };
-}
-
-// =====================================================================// Store
+// Store
 // =====================================================================
 export const useSubscriptionStore = create<SubscriptionState>()(
   immer((set, get) => ({
@@ -189,12 +76,15 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
     _fetchEntitlementsPromise: null,
 
-    fetchUserEntitlements: async (explicitUserId?: string) => {
+    fetchUserEntitlements: async (explicitUserId?: string): Promise<void> => {
       const userId = explicitUserId || useAuthStore.getState().user?.id;
-      if (!userId) return;
+      if (!userId) {
+        return;
+      }
 
-      if (get()._fetchEntitlementsPromise) {
-        return get()._fetchEntitlementsPromise;
+      const existingPromise = get()._fetchEntitlementsPromise;
+      if (existingPromise) {
+        return existingPromise;
       }
 
       const fetchPromise = (async () => {
@@ -315,8 +205,9 @@ export const useSubscriptionPurchase = () => {
       });
       setPurchaseState({ isPurchasing: false });
       return result;
-    } catch (err: any) {
-      setPurchaseState({ isPurchasing: false, purchaseError: err.message });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setPurchaseState({ isPurchasing: false, purchaseError: errorMessage });
       throw err;
     }
   };
@@ -335,8 +226,9 @@ export const useSubscriptionPurchase = () => {
       });
       setPurchaseState({ isPurchasing: false });
       return result;
-    } catch (err: any) {
-      setPurchaseState({ isPurchasing: false, purchaseError: err.message });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setPurchaseState({ isPurchasing: false, purchaseError: errorMessage });
       throw err;
     }
   };

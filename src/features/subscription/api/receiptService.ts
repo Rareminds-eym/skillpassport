@@ -172,9 +172,11 @@ export async function downloadReceiptByOrderId(orderId: string): Promise<void> {
     const receiptResponse = await fetchReceiptData(orderId, 'order_id');
     
     if (!receiptResponse.success || !receiptResponse.data) {
-      const error = new Error(receiptResponse.error || 'Receipt not found') as ReceiptDownloadError;
-      error.code = 'RECEIPT_NOT_FOUND';
-      throw error;
+      const receiptError: ReceiptDownloadError = Object.assign(
+        new Error(receiptResponse.error || 'Receipt not found'),
+        { code: 'RECEIPT_NOT_FOUND' as const }
+      );
+      throw receiptError;
     }
 
     const receiptData = transformToReceiptData(receiptResponse.data);
@@ -213,9 +215,11 @@ export async function downloadReceiptByPaymentId(paymentId: string): Promise<voi
     const receiptResponse = await fetchReceiptData(paymentId, 'payment_id');
     
     if (!receiptResponse.success || !receiptResponse.data) {
-      const error = new Error(receiptResponse.error || 'Receipt not found') as ReceiptDownloadError;
-      error.code = 'RECEIPT_NOT_FOUND';
-      throw error;
+      const receiptError: ReceiptDownloadError = Object.assign(
+        new Error(receiptResponse.error || 'Receipt not found'),
+        { code: 'RECEIPT_NOT_FOUND' as const }
+      );
+      throw receiptError;
     }
 
     const receiptData = transformToReceiptData(receiptResponse.data);
@@ -254,9 +258,11 @@ export async function downloadReceiptById(receiptId: string): Promise<void> {
     const receiptResponse = await fetchReceiptData(receiptId, 'id');
     
     if (!receiptResponse.success || !receiptResponse.data) {
-      const error = new Error(receiptResponse.error || 'Receipt not found') as ReceiptDownloadError;
-      error.code = 'RECEIPT_NOT_FOUND';
-      throw error;
+      const receiptError: ReceiptDownloadError = Object.assign(
+        new Error(receiptResponse.error || 'Receipt not found'),
+        { code: 'RECEIPT_NOT_FOUND' as const }
+      );
+      throw receiptError;
     }
 
     const receiptData = transformToReceiptData(receiptResponse.data);

@@ -53,7 +53,8 @@ export class AuthRecoveryService {
       return false;
       
     } catch (error) {
-      logger.error('Auth recovery failed with error', error as Error);
+      const errorInstance = error instanceof Error ? error : new Error(String(error));
+      logger.error('Auth recovery failed with error', errorInstance);
       return false;
     }
   }

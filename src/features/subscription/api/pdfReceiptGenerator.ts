@@ -41,7 +41,7 @@ interface AddTextOptions {
   readonly fontStyle?: 'normal' | 'bold';
   readonly align?: 'left' | 'center' | 'right';
   readonly maxWidth?: number;
-  readonly color?: readonly [number, number, number];
+  readonly color?: [number, number, number];
 }
 
 /**

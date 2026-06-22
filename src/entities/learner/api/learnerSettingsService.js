@@ -13,6 +13,112 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('learnerSettingsService');
 
 /**
+ * Transform raw learner data to settings format
+ * @param {Object} data - Raw learner data from API
+ * @param {Object} userSettings - User settings data (optional)
+ * @returns {Object} Transformed settings data
+ */
+const transformSettingsData = (data, userSettings = null) => {
+  const userRole = Array.isArray(data.users) && data.users.length > 0
+    ? data.users[0]?.role
+    : data.users?.role;
+
+  const collegeSchoolName = data.college_school_name || '';
+  const schoolName = data.school_name || '';
+
+  return {
+    id: data.id,
+    learner_type: data.learner_type || null,
+    name: data.name || '',
+    email: data.email || '',
+    phone: data.contactNumber || data.contact_number || '',
+    alternatePhone: data.alternate_number || '',
+    location: data.city || data.district_name || '',
+    address: data.address || '',
+    state: data.state || '',
+    country: data.country || 'India',
+    pincode: data.pincode || '',
+    dateOfBirth: data.dateOfBirth || data.date_of_birth || '',
+    age: data.age || '',
+    gender: data.gender || '',
+    bloodGroup: data.bloodGroup || '',
+    university: data.university || '',
+    branch: data.branch_field || '',
+    college: userRole === 'learner' ? collegeSchoolName : '',
+    school_name: schoolName,
+    registrationNumber: data.registration_number || '',
+    enrollmentNumber: data.enrollmentNumber || '',
+    currentCgpa: data.currentCgpa || '',
+    grade: data.grade || '',
+    gradeStartDate: data.grade_start_date || '',
+    universityId: data.universityId || '',
+    universityCollegeId: data.university_college_id || '',
+    university_college_id: data.university_college_id || '',
+    schoolId: data.school_id || '',
+    school_id: data.school_id || '',
+    schoolClassId: data.school_class_id || '',
+    school_class_id: data.school_class_id || '',
+    collegeId: data.college_id || '',
+    college_id: data.college_id || '',
+    programId: data.program_id || '',
+    program_id: data.program_id || '',
+    programSectionId: data.program_section_id || '',
+    program_section_id: data.program_section_id || '',
+    semester: data.semester || '',
+    section: data.section || '',
+    enrollmentDate: data.enrollmentDate || '',
+    expectedGraduationDate: data.expectedGraduationDate || '',
+    guardianName: data.guardianName || '',
+    guardianPhone: data.guardianPhone || '',
+    guardianEmail: data.guardianEmail || '',
+    guardianRelation: data.guardianRelation || '',
+    linkedIn: data.linkedin_link || '',
+    github: data.github_link || '',
+    twitter: data.twitter_link || '',
+    facebook: data.facebook_link || '',
+    instagram: data.instagram_link || '',
+    portfolio: data.portfolio_link || '',
+    otherSocialLinks: data.other_social_links || [],
+    resumeUrl: data.resumeUrl || '',
+    profilePicture: data.profilePicture || '',
+    bio: data.bio || '',
+    gapInStudies: data.gap_in_studies || false,
+    gapYears: data.gap_years || 0,
+    gapReason: data.gap_reason || '',
+    workExperience: data.work_experience || '',
+    aadharNumber: data.aadhar_number || '',
+    backlogsHistory: data.backlogs_history || '',
+    currentBacklogs: data.current_backlogs || 0,
+    interests: typeof data.interests === 'string' ? data.interests : JSON.stringify(data.interests || []),
+    languages: typeof data.languages === 'string' ? data.languages : JSON.stringify(data.languages || []),
+    hobbies: typeof data.hobbies === 'string' ? data.hobbies : JSON.stringify(data.hobbies || []),
+    notificationSettings: userSettings?.notification_preferences || {
+      emailNotifications: true,
+      pushNotifications: true,
+      applicationUpdates: true,
+      newOpportunities: true,
+      recruitingMessages: true,
+      weeklyDigest: false,
+      monthlyReport: false,
+    },
+    privacySettings: userSettings?.privacy_settings || {
+      profileVisibility: 'public',
+      showEmail: false,
+      showPhone: false,
+      showLocation: true,
+      allowRecruiterContact: true,
+      showInTalentPool: true,
+    },
+    approvalStatus: data.approval_status || 'pending',
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+    schoolOrganization: data.school || null,
+    collegeOrganization: data.college || data.universityOrganization || null,
+    userRole: userRole || null,
+  };
+};
+
+/**
  * Fetch learner data by email for settings page
  * @param {string} email - Learner email
  * @returns {Promise<Object>} Learner data
@@ -39,103 +145,7 @@ export const getlearnerSettingsByEmail = async (email) => {
       }
     }
 
-    const userRole = Array.isArray(data.users) && data.users.length > 0
-      ? data.users[0]?.role
-      : data.users?.role;
-
-    const collegeSchoolName = data.college_school_name || '';
-    const schoolName = data.school_name || '';
-
-    const settingsData = {
-      id: data.id,
-      learner_type: data.learner_type || null,
-      name: data.name || '',
-      email: data.email || '',
-      phone: data.contactNumber || data.contact_number || '',
-      alternatePhone: data.alternate_number || '',
-      location: data.city || data.district_name || '',
-      address: data.address || '',
-      state: data.state || '',
-      country: data.country || 'India',
-      pincode: data.pincode || '',
-      dateOfBirth: data.dateOfBirth || data.date_of_birth || '',
-      age: data.age || '',
-      gender: data.gender || '',
-      bloodGroup: data.bloodGroup || '',
-      university: data.university || '',
-      branch: data.branch_field || '',
-      college: userRole === 'learner' ? collegeSchoolName : '',
-      school_name: schoolName,
-      registrationNumber: data.registration_number || '',
-      enrollmentNumber: data.enrollmentNumber || '',
-      currentCgpa: data.currentCgpa || '',
-      grade: data.grade || '',
-      gradeStartDate: data.grade_start_date || '',
-      universityId: data.universityId || '',
-      universityCollegeId: data.university_college_id || '',
-      university_college_id: data.university_college_id || '',
-      schoolId: data.school_id || '',
-      school_id: data.school_id || '',
-      schoolClassId: data.school_class_id || '',
-      school_class_id: data.school_class_id || '',
-      collegeId: data.college_id || '',
-      college_id: data.college_id || '',
-      programId: data.program_id || '',
-      program_id: data.program_id || '',
-      programSectionId: data.program_section_id || '',
-      program_section_id: data.program_section_id || '',
-      semester: data.semester || '',
-      section: data.section || '',
-      enrollmentDate: data.enrollmentDate || '',
-      expectedGraduationDate: data.expectedGraduationDate || '',
-      guardianName: data.guardianName || '',
-      guardianPhone: data.guardianPhone || '',
-      guardianEmail: data.guardianEmail || '',
-      guardianRelation: data.guardianRelation || '',
-      linkedIn: data.linkedin_link || '',
-      github: data.github_link || '',
-      twitter: data.twitter_link || '',
-      facebook: data.facebook_link || '',
-      instagram: data.instagram_link || '',
-      portfolio: data.portfolio_link || '',
-      otherSocialLinks: data.other_social_links || [],
-      resumeUrl: data.resumeUrl || '',
-      profilePicture: data.profilePicture || '',
-      bio: data.bio || '',
-      gapInStudies: data.gap_in_studies || false,
-      gapYears: data.gap_years || 0,
-      gapReason: data.gap_reason || '',
-      workExperience: data.work_experience || '',
-      aadharNumber: data.aadhar_number || '',
-      backlogsHistory: data.backlogs_history || '',
-      currentBacklogs: data.current_backlogs || 0,
-      interests: typeof data.interests === 'string' ? data.interests : JSON.stringify(data.interests || []),
-      languages: typeof data.languages === 'string' ? data.languages : JSON.stringify(data.languages || []),
-      hobbies: typeof data.hobbies === 'string' ? data.hobbies : JSON.stringify(data.hobbies || []),
-      notificationSettings: userSettings?.notification_preferences || {
-        emailNotifications: true,
-        pushNotifications: true,
-        applicationUpdates: true,
-        newOpportunities: true,
-        recruitingMessages: true,
-        weeklyDigest: false,
-        monthlyReport: false,
-      },
-      privacySettings: userSettings?.privacy_settings || {
-        profileVisibility: 'public',
-        showEmail: false,
-        showPhone: false,
-        showLocation: true,
-        allowRecruiterContact: true,
-        showInTalentPool: true,
-      },
-      approvalStatus: data.approval_status || 'pending',
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      schoolOrganization: data.school || null,
-      collegeOrganization: data.college || data.universityOrganization || null,
-      userRole: userRole || null,
-    };
+    const settingsData = transformSettingsData(data, userSettings);
 
     return { success: true, data: settingsData };
   } catch (err) {
@@ -145,42 +155,48 @@ export const getlearnerSettingsByEmail = async (email) => {
     if (AuthRecoveryService.isAuthError(err)) {
       logger.info('Attempting auth recovery');
       const recovered = await AuthRecoveryService.attemptRecovery();
-      if (recovered) {
+      // Validate recovery result is a boolean
+      if (typeof recovered === 'boolean' && recovered === true) {
         // Make direct API call after recovery instead of recursive call
         try {
           logger.info('Making direct API call after auth recovery');
           // Direct API call without recursion to prevent stack overflow
           const directResult = await apiPost('/learner-profile/actions', {
-            action: 'fetch-learner-by-email', email,
+            action: 'fetch-learner-settings-by-email', email,
           });
           
           if (!directResult.success) {
             return { success: false, error: directResult.error || 'Failed to fetch learner after recovery' };
           }
           
-          // Process the direct result same as main function
+          // Process the direct result using the same transformation logic
           const data = directResult.data;
-          const settingsData = {
-            id: data.id,
-            userId: data.user_id,
-            email: data.email,
-            name: data.name,
-            phone: data.phone,
-            profileImage: data.profile_image,
-            totalApplications: data.application_count || 0,
-            totalSkills: data.skill_count || 0,
-            completionPercentage: data.completion_percentage || 0,
-            createdAt: data.created_at,
-            updatedAt: data.updated_at,
-            schoolOrganization: data.school || null,
-            collegeOrganization: data.college || data.universityOrganization || null,
-            userRole: data.user_role || null,
-          };
+          
+          // Fetch user settings separately (same as main function)
+          let userSettings = null;
+          if (data.user_id) {
+            try {
+              const settingsResult = await apiPost('/learner-profile/actions', {
+                action: 'fetch-user-settings', userId: data.user_id,
+              });
+              if (settingsResult?.data) {
+                userSettings = settingsResult.data;
+              }
+            } catch (settingsErr) {
+              // Log but don't fail if settings fetch fails
+              logger.warn('Failed to fetch user settings after auth recovery', { error: String(settingsErr) });
+            }
+          }
+          
+          // Use the same transformation helper
+          const settingsData = transformSettingsData(data, userSettings);
           
           return { success: true, data: settingsData };
         } catch (retryErr) {
-          logger.error('Direct API call after auth recovery failed', retryErr instanceof Error ? retryErr : new Error(String(retryErr)));
-          return { success: false, error: retryErr.message };
+          // Ensure retryErr is treated as an Error instance with proper type checking
+          const retryError = retryErr instanceof Error ? retryErr : new Error(String(retryErr));
+          logger.error('Direct API call after auth recovery failed', retryError);
+          return { success: false, error: retryError.message };
         }
       }
     }

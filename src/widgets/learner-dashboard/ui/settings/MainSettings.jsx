@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { initialize as initializeAuthStore } from '@/shared/model/authStore';
+import { AuthRecoveryService } from '@/shared/services/authRecoveryService';
 import {
   AlertCircle,
   Bell,
@@ -14,7 +15,20 @@ import {
   User
 } from "lucide-react";
 
-const logger = getLogger('MainSettings');
+// Safe logger initialization with error handling
+let logger;
+try {
+  logger = getLogger('MainSettings');
+} catch (error) {
+  // Fallback logger if getLogger fails
+  logger = {
+    info: (...args) => console.log('[MainSettings]', ...args),
+    error: (...args) => console.error('[MainSettings]', ...args),
+    warn: (...args) => console.warn('[MainSettings]', ...args),
+  };
+  console.error('Failed to initialize logger for MainSettings:', error);
+}
+
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
@@ -1509,11 +1523,8 @@ const MainSettings = () => {
 
   // Show error state
   if (learnerError) {
-    const isAuthError = learnerError.includes('Unauthorized') || 
-                       learnerError.includes('no valid token') ||
-                       learnerError.includes('401') ||
-                       learnerError.includes('Session') ||
-                       learnerError.includes('Authentication required');
+    // Use AuthRecoveryService for robust error detection instead of fragile string matching
+    const isAuthError = AuthRecoveryService.isAuthError(learnerError);
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -1537,16 +1548,28 @@ const MainSettings = () => {
                       try {
                         // Try to refresh the session first
                         await initializeAuthStore();
-                        // If successful, retry fetching data
-                        if (refreshData && typeof refreshData === 'function') {
+                        
+                        // Check if refreshData exists and is a function before calling
+                        // Also verify it comes from the hook to ensure it's not undefined
+                        if (typeof refreshData === 'function') {
                           await refreshData();
+                          toast.success('Session recovered. Reloading...');
+                        } else {
+                          // If refreshData is not available, just reload the page
+                          logger.warn('refreshData not available from hook, reloading page');
+                          toast.success('Session recovered. Reloading page...');
+                          setTimeout(() => window.location.reload(), 500);
                         }
                       } catch (e) {
                         // Log the error for debugging
                         const errorInstance = e instanceof Error ? e : new Error(String(e));
                         logger.error('Session recovery failed', errorInstance);
-                        // If refresh fails, redirect to login
-                        window.location.href = '/login';
+                        // Provide user feedback before redirecting
+                        toast.error('Session recovery failed. Redirecting to login...');
+                        // Small delay to allow toast to be seen
+                        setTimeout(() => {
+                          window.location.href = '/login';
+                        }, 1000);
                       }
                     }}
                     className="bg-gray-600 hover:bg-gray-700 text-white"
