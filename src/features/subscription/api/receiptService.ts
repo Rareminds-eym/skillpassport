@@ -39,11 +39,11 @@ export function isValidPresignedUrl(url: string): boolean {
   try {
     const urlObj = new URL(url);
     // Cloudflare R2 storage domains only — exact matches only
+    // OWASP: Use allowlist of specific trusted domains, not broad wildcards
     const trustedDomains = [
       'r2.cloudflarestorage.com',
-      'cloudflare.com',
-      'workers.dev',
-      // Add your custom domain if applicable
+      // Note: Removed 'cloudflare.com' and 'workers.dev' — too broad
+      // Only include specific, narrow domains to prevent subdomain injection
     ];
 
     // Exact hostname match only — prevents subdomain injection

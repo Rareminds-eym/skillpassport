@@ -59,12 +59,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string | Fetcher>;
   const supabase = getServiceClient(env);
 
-  // Type-safe SSO environment extraction
-  const ssoEnv = { SSO_SERVICE: env.SSO_SERVICE as Fetcher };
+  // Type-safe SSO environment extraction with validation
+  const ssoService = env.SSO_SERVICE;
+  if (typeof ssoService !== 'function') {
+    return apiError(500, 'CONFIGURATION_ERROR', 'SSO_SERVICE binding is not configured', context.request);
+  }
+  const ssoEnv = { SSO_SERVICE: ssoService as Fetcher };
 
   let body: RequestBody;
   try {
-    body = await context.request.json() as RequestBody;
+    const parsedBody = await context.request.json() as Record<string, unknown>;
+    // Validate required 'action' field exists and is a string
+    if (typeof parsedBody.action !== 'string') {
+      return apiError(400, 'VALIDATION_ERROR', 'Missing required field: action', context.request);
+    }
+    body = parsedBody as unknown as RequestBody;
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
@@ -79,7 +88,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
     
     // UUID validation pattern - accepts all valid UUID formats (any version)
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (!uuidPattern.test(user.id)) {
       throw new Error('Invalid user ID format');
     }
