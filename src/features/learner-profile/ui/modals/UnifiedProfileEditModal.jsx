@@ -1182,16 +1182,18 @@ const UnifiedProfileEditModal = ({
   if (singleEditMode) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              {Icon && <Icon className="w-5 h-5 text-blue-600" />}
-              Edit {config.title}
-            </DialogTitle>
+        <DialogContent className="max-w-2xl max-h-screen flex flex-col p-0">
+          <DialogHeader className="flex-shrink-0 px-6 pt-5 pb-4 border-b border-gray-100 pr-12">
+            <div className="flex flex-wrap items-center justify-between gap-2 pr-6 sm:pr-10">
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                {Icon && <Icon className="w-5 h-5 text-blue-600" />}
+                Edit {config.title}
+              </DialogTitle>
+            </div>
           </DialogHeader>
 
           {/* Scrollable Content Area */}
-          <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+          <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
             <div className="space-y-5 pt-2">
               {/* Form Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1233,11 +1235,11 @@ const UnifiedProfileEditModal = ({
           </div>
 
           {/* Fixed Action Buttons at Bottom */}
-          <div className="flex-shrink-0 flex gap-3 pt-4 border-t border-gray-200 bg-white">
+          <div className="flex-shrink-0 flex gap-2 px-6 py-4 border-t border-gray-200 bg-white">
             <Button
               onClick={saveAndClose}
               disabled={isSaving}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-11"
+              className="flex-1 min-w-0 bg-blue-600 hover:bg-blue-700 text-white h-11 text-sm"
             >
               {isSaving ? (
                 <>
@@ -1255,7 +1257,7 @@ const UnifiedProfileEditModal = ({
               variant="outline"
               onClick={onClose}
               disabled={isSaving}
-              className="px-6 h-11"
+              className="flex-shrink-0 px-4 h-11 text-sm"
             >
               Cancel
             </Button>
@@ -1269,12 +1271,12 @@ const UnifiedProfileEditModal = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2">
-                {Icon && <Icon className="w-5 h-5" />}
-                Edit {config.title}
+        <DialogContent className="max-w-3xl max-h-screen flex flex-col p-0">
+          <DialogHeader className="flex-shrink-0 pl-3 sm:pl-6 pt-5 pb-4 border-b border-gray-100">
+            <div className="flex flex-1 items-center justify-between gap-2 pr-2 sm:pr-5">
+              <DialogTitle className="flex items-center gap-2 min-w-0">
+                {Icon && <Icon className="w-5 h-5 flex-shrink-0" />}
+                <span className="truncate">Edit {config.title}</span>
               </DialogTitle>
               {(() => {
                 const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
@@ -1283,10 +1285,11 @@ const UnifiedProfileEditModal = ({
                     <Button
                       onClick={handleAddItem}
                       size="sm"
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      className="hidden sm:flex bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
                     >
-                      <Plus className="w-4 h-4 mr-2" />
-                      {config.addButtonText}
+                      <Plus className="w-4 h-4 mr-1" />
+                      <span className="hidden sm:inline whitespace-nowrap">{config.addButtonText}</span>
+                      <span className="sm:hidden">Add</span>
                     </Button>
                   );
                 }
@@ -1296,7 +1299,7 @@ const UnifiedProfileEditModal = ({
           </DialogHeader>
 
           {/* Scrollable Content Area */}
-          <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+          <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
             <div className="space-y-4">
               {/* Item List */}
               {items.length > 0 ? (
@@ -1348,8 +1351,18 @@ const UnifiedProfileEditModal = ({
           </div>
 
           {/* Fixed Footer with Save All */}
-          <div className="flex-shrink-0 flex justify-end gap-3 pt-4 border-t bg-white">
-            <Button variant="outline" onClick={onClose} disabled={isSaving}>
+          <div className="flex-shrink-0 flex justify-end gap-2 px-6 py-4 border-t bg-white">
+            {['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'].includes(type) && (
+              <Button
+                onClick={handleAddItem}
+                size="sm"
+                className="sm:hidden mr-auto bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="w-4 h-4" />
+                Add
+              </Button>
+            )}
+            <Button variant="outline" onClick={onClose} disabled={isSaving} className="px-4 text-sm">
               Cancel
             </Button>
             {/* COMMENTED OUT: Save All Changes button - redundant with auto-save in "Update Certificates" button

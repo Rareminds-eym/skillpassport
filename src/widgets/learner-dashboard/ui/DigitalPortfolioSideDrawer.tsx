@@ -5,14 +5,13 @@ import {
     Download,
     Layout,
     Menu,
-    Moon,
     Palette,
     Share2,
-    Sun,
     User,
-    Video
+    Video,
+    FileEdit
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -37,6 +36,7 @@ const mainMenuItems: SideDrawerMenuItem[] = [
 
 // Settings menu items
 const settingsMenuItems: SideDrawerMenuItem[] = [
+  { id: 'profile', label: 'Profile Settings', icon: User, path: '/learner/digital-portfolio/settings/profile' },
   { id: 'theme', label: 'Theme Settings', icon: Palette, path: '/learner/digital-portfolio/settings/theme' },
   { id: 'layout', label: 'Portfolio Layout', icon: Layout, path: '/learner/digital-portfolio/settings/layout' },
   { id: 'export', label: 'Export', icon: Download, path: '/learner/digital-portfolio/settings/export' },
@@ -71,27 +71,6 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
     }
     return true;
   });
-  
-  // Local dark mode state (synced with document class)
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark');
-    }
-    return false;
-  });
-
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    if (newMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
 
 
   // Check if a path is active
@@ -209,34 +188,7 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
               </div>
             </div>
 
-            {/* Dark Mode Toggle */}
-            <div className="border-t border-gray-100 px-4 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  {isDarkMode ? (
-                    <Moon className="w-5 h-5 mr-3 text-indigo-500" />
-                  ) : (
-                    <Sun className="w-5 h-5 mr-3 text-yellow-500" />
-                  )}
-                  <span className="text-sm font-medium text-gray-700">
-                    {isDarkMode ? 'Dark Mode' : 'Light Mode'}
-                  </span>
-                </div>
-                <button
-                  onClick={toggleDarkMode}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isDarkMode ? 'bg-indigo-600' : 'bg-gray-200'
-                  }`}
-                  aria-label="Toggle dark mode"
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isDarkMode ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
+            {/* Removed Dark Mode Toggle - Now scoped to Digital Portfolio feature only */}
           </motion.div>
         )}
       </AnimatePresence>

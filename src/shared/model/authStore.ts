@@ -490,6 +490,18 @@ if (typeof window !== 'undefined') {
       stopTokenRefresh();
       store.setUser(null);
     } else if (event === 'LOGIN' || event === 'REFRESH') {
+      // Defensive: skip if store already has up-to-date email verification.
+      // Prevents the event handler from overwriting the store with stale data
+      // when refreshSession() has already fetched fresh data concurrently.
+      const currentState = useAuthStore.getState();
+      if (
+        event === 'REFRESH' &&
+        currentState.isAuthenticated &&
+        currentState.user?.isEmailVerified
+      ) {
+        return;
+      }
+
       try {
         const me = await ssoClient.getMe();
         const user = mapMeToUser(me);

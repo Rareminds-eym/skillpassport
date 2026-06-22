@@ -22,6 +22,11 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
     const { action } = body;
     const supabase = getServiceClient(env);
 
+    const checkIsAdmin = async () => {
+      const { data } = await supabase.from('admin_users').select('id').eq('user_id', userId).maybeSingle();
+      return !!data;
+    };
+
     if (action === 'getMigrationMapping') {
       const { planCode } = body;
       const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name, base_features').eq('plan_code', planCode).single();
@@ -77,7 +82,12 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
 
     if (action === 'migrateUser') {
       const { targetUserId, preservePricing = false } = body;
-      const migrateId = targetUserId || userId;
+      
+      let migrateId = userId;
+      if (targetUserId && targetUserId !== userId) {
+        if (!(await checkIsAdmin())) return apiError(403, 'FORBIDDEN', 'Admin access required to migrate other users', context.request);
+        migrateId = targetUserId;
+      }
 
       const { data: subscription, error: subError } = await supabase.from('subscription_cache').select('id, plan_id, plan_code, status, subscription_end_date, plan_amount').eq('user_id', migrateId).in('status', ['active', 'pending']).single();
       if (subError) {
@@ -140,7 +150,12 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
 
     if (action === 'scheduleMigrationNotification') {
       const { targetUserId, migrationDate } = body;
-      const notifyId = targetUserId || userId;
+      
+      let notifyId = userId;
+      if (targetUserId && targetUserId !== userId) {
+        if (!(await checkIsAdmin())) return apiError(403, 'FORBIDDEN', 'Admin access required', context.request);
+        notifyId = targetUserId;
+      }
 
       if (!migrationDate) return apiError(400, 'VALIDATION_ERROR', 'Migration date is required', context.request);
 
@@ -187,6 +202,8 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
     }
 
     if (action === 'getPendingMigrations') {
+      if (!(await checkIsAdmin())) return apiError(403, 'FORBIDDEN', 'Admin access required', context.request);
+      
       const { limit = 100 } = body;
       const { data, error } = await supabase.from('subscription_migrations').select('*').eq('migration_status', 'pending').lte('migration_date', new Date().toISOString()).order('migration_date', { ascending: true }).limit(limit);
       if (error) throw error;

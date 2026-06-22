@@ -276,6 +276,25 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
           const { error: userError } = await supabase.from('users').update({ firstName, lastName }).eq('id', id);
           if (userError) return apiDbError(userError, context.request, { startTime });
+
+          // Publish to reverse sync queue for SSO bidirectional update
+          try {
+            const envVars = env as any;
+            if (envVars.SSO_REVERSE_SYNC_QUEUE) {
+              await envVars.SSO_REVERSE_SYNC_QUEUE.send({
+                event_id: crypto.randomUUID(),
+                event_type: 'user_metadata.updated',
+                user_id: id,
+                payload: { first_name: firstName, last_name: lastName },
+                timestamp: new Date().toISOString()
+              });
+              console.log(`[user/actions] Emitted user_metadata.updated event for user ${id}`);
+            } else {
+              console.warn(`[user/actions] SSO_REVERSE_SYNC_QUEUE is not bound. Name update will not sync to SSO.`);
+            }
+          } catch (syncErr) {
+            console.error(`[user/actions] Failed to emit reverse sync event for user ${id}:`, syncErr);
+          }
         }
 
         return apiSuccess({ success: true }, context.request, { startTime });

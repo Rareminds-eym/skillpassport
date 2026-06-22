@@ -100,11 +100,9 @@ export async function resendOtpHandler(
     
     return apiSuccess({
       message: result.message || 'OTP resent successfully',
-      data: {
-        phone: masked,
-        expiresIn: parseTimeoutSeconds(result.timeout),
-        verificationId: result.verificationId,
-      },
+      phone: masked,
+      expiresIn: parseTimeoutSeconds(result.timeout),
+      verificationId: result.verificationId,
     }, undefined);
   } catch (error) {
     if (error instanceof EmailWorkerError) {

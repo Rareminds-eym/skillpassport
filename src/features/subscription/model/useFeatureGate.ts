@@ -33,7 +33,8 @@ import { addOnCatalogService, entitlementService } from '@/features/subscription
 import { createFeatureAccessErrorLog, logError } from '@/shared/lib/error-logging';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useSubscriptionAccess, useUserEntitlements } from '@/features/subscription/model/subscriptionStore';
+import { useUserEntitlements } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { useUser } from '@/shared/model/authStore';
 // Cache for feature access checks
 const accessCache = new Map();
@@ -53,7 +54,7 @@ accessCache.clear();
 export function useFeatureGate(featureKey) {
   const user = useUser();
   const { activeEntitlements, hasAddOnAccessSync } = useUserEntitlements();
-  const { subscription } = useSubscriptionAccess();
+  const { subscriptionData: subscription } = useSubscriptionQuery();
 
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);

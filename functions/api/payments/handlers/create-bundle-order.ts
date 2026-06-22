@@ -71,6 +71,7 @@ export async function handleCreateBundleOrder(context: AuthenticatedContext): Pr
         bundle_id: body.bundle_id as string,
         bundle_name: bundle.name,
         user_id: user.id,
+        billing_period: body.billing_period as string,
         type: 'bundle',
       },
     });
