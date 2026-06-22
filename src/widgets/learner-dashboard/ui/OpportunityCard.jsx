@@ -60,7 +60,7 @@ const OpportunityCard = ({
 
   return (
     <div 
-      className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 cursor-pointer transition-all duration-200 relative shadow-sm hover:shadow-md border border-gray-100"
+      className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md border border-gray-100"
       onClick={onClick}
     >
       {/* Bookmark Button */}
