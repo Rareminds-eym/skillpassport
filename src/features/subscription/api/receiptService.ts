@@ -31,14 +31,14 @@ const COMPANY_INFO: ReceiptCompanyInfo = {
 
 /**
  * Validates that a presigned URL is from a trusted domain
- * Prevents subdomain injection attacks by using strict equality and exact suffix matching
+ * Only allows exact domain matches — no subdomains accepted
  * @param url - The URL to validate
  * @returns true if the URL is from a trusted domain, false otherwise
  */
 export function isValidPresignedUrl(url: string): boolean {
   try {
     const urlObj = new URL(url);
-    // Allow Cloudflare R2 storage domains and API domains
+    // Cloudflare R2 storage domains only — exact matches only
     const trustedDomains = [
       'r2.cloudflarestorage.com',
       'cloudflare.com',
@@ -46,11 +46,9 @@ export function isValidPresignedUrl(url: string): boolean {
       // Add your custom domain if applicable
     ];
 
-    // Exact domain match OR valid subdomain match (e.g., account.r2.cloudflarestorage.com)
-    // Prevents: evil.r2.cloudflarestorage.com.attacker.com
-    return trustedDomains.some(domain =>
-      urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
-    );
+    // Exact hostname match only — prevents subdomain injection
+    // Rejects: evil.r2.cloudflarestorage.com, r2.cloudflarestorage.com.attacker.com
+    return trustedDomains.includes(urlObj.hostname);
   } catch {
     // Invalid URL format
     return false;

@@ -131,6 +131,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         throw new Error(`SSO transaction fetch failed: ${errorInstance.message}`);
       }
       
+      // Validate transactions is an array before processing
+      if (!Array.isArray(rawTransactions)) {
+        throw new Error('SSO transactions response is not an array');
+      }
+
       // Validate and map transactions data
       const transactions: Transaction[] = rawTransactions
         .map((tx: Record<string, unknown>) => {

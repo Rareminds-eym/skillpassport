@@ -64,6 +64,15 @@ export interface ReceiptApiResponse {
   error?: string;
 }
 
-export interface ReceiptDownloadError extends Error {
-  code: 'RECEIPT_NOT_FOUND' | 'RECEIPT_GENERATING' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
+export type ReceiptDownloadErrorCode = 'RECEIPT_NOT_FOUND' | 'RECEIPT_GENERATING' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
+
+export class ReceiptDownloadError extends Error {
+  code: ReceiptDownloadErrorCode;
+
+  constructor(message: string, code: ReceiptDownloadErrorCode) {
+    super(message);
+    this.code = code;
+    // Maintain proper prototype chain for instanceof checks
+    Object.setPrototypeOf(this, ReceiptDownloadError.prototype);
+  }
 }

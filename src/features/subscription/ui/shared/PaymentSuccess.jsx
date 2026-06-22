@@ -13,7 +13,6 @@
  */
 
 import {
-  AlertCircle,
   ArrowRight,
   Calendar,
   Check,

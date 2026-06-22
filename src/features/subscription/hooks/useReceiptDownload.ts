@@ -12,7 +12,7 @@ import {
   downloadReceiptById,
   getReceiptErrorMessage 
 } from '../api/receiptService';
-import type { ReceiptDownloadError } from '../types/receipt';
+import { ReceiptDownloadError, type ReceiptDownloadErrorCode } from '../types/receipt';
 import { getLogger } from '@/shared/config';
 
 const logger = getLogger('useReceiptDownload');
@@ -94,26 +94,22 @@ export function useReceiptDownload(options: UseReceiptDownloadOptions = {}): Use
       logger.info('Receipt download completed successfully', { identifier, type });
       
     } catch (err) {
-      // Proper type narrowing with type guard
-      const errorInstance = err instanceof Error ? err : new Error(String(err));
-      
-      // Safely construct ReceiptDownloadError with proper type checking
-      const receiptError: ReceiptDownloadError = Object.assign(
-        errorInstance,
-        { 
-          code: (
-            err instanceof Error && 
-            'code' in err && 
-            typeof (err as { code: unknown }).code === 'string' &&
-            ['RECEIPT_NOT_FOUND', 'RECEIPT_GENERATING', 'NETWORK_ERROR', 'UNKNOWN_ERROR'].includes((err as { code: string }).code)
-              ? (err as ReceiptDownloadError).code
-              : 'UNKNOWN_ERROR'
-          ) as ReceiptDownloadError['code']
+      // Extract error code from caught error if available
+      let errorCode: ReceiptDownloadErrorCode = 'UNKNOWN_ERROR';
+
+      if (err instanceof Error && 'code' in err) {
+        const code = (err as { code: unknown }).code;
+        if (typeof code === 'string' && ['RECEIPT_NOT_FOUND', 'RECEIPT_GENERATING', 'NETWORK_ERROR', 'UNKNOWN_ERROR'].includes(code)) {
+          errorCode = code as ReceiptDownloadErrorCode;
         }
-      );
-      
+      }
+
+      // Create proper ReceiptDownloadError instance
+      const rawErrorMessage = err instanceof Error ? err.message : String(err);
+      const receiptError = new ReceiptDownloadError(rawErrorMessage, errorCode);
+
       setError(receiptError);
-      
+
       const errorMessage = getReceiptErrorMessage(receiptError);
       
       if (showToast) {
