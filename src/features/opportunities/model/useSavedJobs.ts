@@ -4,39 +4,52 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('useSavedJobs');
 
+interface SavedJob {
+  id: string;
+  job_title?: string;
+  title?: string;
+  company_name?: string;
+  is_active: boolean;
+  has_applied: boolean;
+  saved_at: string;
+  deadline?: string;
+  employment_type?: string;
+  application_link?: string;
+}
+
 interface UseSavedJobsProps {
   learnerId: string | undefined;
 }
 
 interface UseSavedJobsReturn {
-  savedJobs: any[];
+  savedJobs: SavedJob[];
   loading: boolean;
   error: string | null;
   searchTerm: string;
   sortBy: string;
   viewMode: 'grid' | 'list';
-  selectedOpportunity: any | null;
+  selectedOpportunity: SavedJob | null;
   appliedJobs: Set<string>;
   isApplying: boolean;
   showActiveOnly: boolean;
-  filteredAndSortedJobs: any[];
+  filteredAndSortedJobs: SavedJob[];
   setSearchTerm: (term: string) => void;
   setSortBy: (sort: string) => void;
   setViewMode: (mode: 'grid' | 'list') => void;
-  setSelectedOpportunity: (opportunity: any | null) => void;
+  setSelectedOpportunity: (opportunity: SavedJob | null) => void;
   setShowActiveOnly: (show: boolean) => void;
-  handleUnsave: (opportunity: any) => Promise<void>;
-  handleApply: (opportunity: any) => Promise<void>;
+  handleUnsave: (opportunity: SavedJob) => Promise<void>;
+  handleApply: (opportunity: SavedJob) => Promise<void>;
 }
 
 export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsReturn => {
-  const [savedJobs, setSavedJobs] = useState<any[]>([]);
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedOpportunity, setSelectedOpportunity] = useState<any | null>(null);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<SavedJob | null>(null);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
   const [isApplying, setIsApplying] = useState(false);
   const [showActiveOnly, setShowActiveOnly] = useState(true);
@@ -45,27 +58,33 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
   useEffect(() => {
     const loadSavedJobs = async () => {
       if (!learnerId) {
+        logger.warn('⚠️ No learnerId provided');
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        
+        logger.info('📥 Loading saved jobs for learnerId:', learnerId);
+
         const jobs = await SavedJobsService.getSavedJobsWithAppliedStatus(learnerId);
-        
-        setSavedJobs(jobs);
-        
+
+        logger.info('✅ Saved jobs loaded:', { count: jobs?.length || 0, jobs });
+
+        setSavedJobs(jobs || []);
+
         // Set applied jobs
         const appliedSet = new Set(
-          jobs.filter((job: any) => job.has_applied).map((job: any) => job.id)
+          (jobs || []).filter((job: SavedJob) => job.has_applied).map((job: SavedJob) => job.id)
         );
         setAppliedJobs(appliedSet);
-        
+
         setError(null);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load saved jobs';
         logger.error('❌ Error loading saved jobs', err);
-        setError(err.message || 'Failed to load saved jobs');
+        setError(errorMessage);
+        setSavedJobs([]);
       } finally {
         setLoading(false);
       }
@@ -76,6 +95,8 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
 
   // Filter and sort saved jobs
   const filteredAndSortedJobs = useMemo(() => {
+    if (!savedJobs || savedJobs.length === 0) return [];
+
     // First filter
     let filtered = savedJobs.filter(job => {
       const matchesSearch = 
@@ -108,7 +129,7 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
   }, [savedJobs, searchTerm, sortBy, showActiveOnly]);
 
   // Handle unsave
-  const handleUnsave = async (opportunity: any) => {
+  const handleUnsave = async (opportunity: SavedJob) => {
     if (!learnerId) {
       alert('Please log in to unsave jobs');
       return;
@@ -122,7 +143,7 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
 
     try {
       const result = await SavedJobsService.unsaveJob(learnerId, opportunity.id);
-      
+
       if (result.success) {
         // Remove from local state
         setSavedJobs(prev => prev.filter(job => job.id !== opportunity.id));
@@ -130,14 +151,15 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
       } else {
         alert(result.message);
       }
-    } catch (error) {
-      logger.error('Error unsaving job', error as Error);
-      alert('Failed to unsave job');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to unsave job';
+      logger.error('Error unsaving job', err);
+      alert(errorMessage);
     }
   };
 
   // Handle apply
-  const handleApply = async (opportunity: any) => {
+  const handleApply = async (opportunity: SavedJob) => {
     if (!learnerId) {
       alert('Please log in to apply for jobs');
       return;
@@ -156,13 +178,13 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
 
       if (confirmExternal) {
         window.open(opportunity.application_link, '_blank');
-        
+
         // Still record the application
         try {
           await AppliedJobsService.applyToJob(learnerId, opportunity.id);
           setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-        } catch (error) {
-          logger.error('Error recording external application', error as Error);
+        } catch (err: unknown) {
+          logger.error('Error recording external application', err);
         }
       }
       return;
@@ -172,15 +194,15 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
     setIsApplying(true);
     try {
       const result = await AppliedJobsService.applyToJob(learnerId, opportunity.id);
-      
+
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));
         alert('Application submitted successfully!');
       } else {
         alert(result.message || 'Failed to submit application');
       }
-    } catch (error) {
-      logger.error('Error applying to job', error as Error);
+    } catch (err: unknown) {
+      logger.error('Error applying to job', err);
       alert('Failed to submit application');
     } finally {
       setIsApplying(false);

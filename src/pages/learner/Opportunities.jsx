@@ -32,14 +32,20 @@ import {
   X,
   XCircle
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AdvancedFilters, OpportunityCard, OpportunityListItem, OpportunityPreview, RecommendedJobs, IndustrialVisitPreview } from '@/widgets/learner-dashboard';
-import { Pagination } from '@/shared/ui';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem
+} from '@/shared/ui';
 
 import { useOpportunities } from '@/features/opportunities';
 import { useLearnerProfile } from '@/features/learner-profile';
 import { useLearnerDataByEmail } from '@/entities/learner';
+import { getPageNumbers } from '@/shared/lib/pagination';
 import { useProfileCompletion } from '@/features/learner-profile';
 import { AppliedJobsService, SavedJobsService } from '@/features/opportunities';
 import offerManagementService from '@/features/opportunities/api/offerManagementService';
@@ -758,6 +764,22 @@ const Opportunities = () => {
     fetchIndustrialVisits();
   }, [activeTab, learnerType.isMiddleSchool, learnerType.isHighSchool, learnerId]);
 
+  // Pagination handlers with proper state management
+  const handleIvPageChange = useCallback((pageNum) => {
+    setIvCurrentPage(pageNum);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleIvPreviousPage = useCallback(() => {
+    setIvCurrentPage(prev => Math.max(1, prev - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleIvNextPage = useCallback((totalPages) => {
+    setIvCurrentPage(prev => Math.min(totalPages, prev + 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const formatLastUpdate = (dateString) => {
     if (!dateString) return 'Recently';
     const diffDays = Math.ceil(Math.abs(new Date() - new Date(dateString)) / (1000 * 60 * 60 * 24));
@@ -794,7 +816,7 @@ const Opportunities = () => {
 
   const handleToggleSave = async (opportunity) => {
     if (!learnerId) {
-      alert('Please log in to save jobs');
+      toast.error('Please log in to save jobs');
       return;
     }
 
@@ -804,16 +826,22 @@ const Opportunities = () => {
       if (result.success) {
         if (result.isSaved) {
           setSavedJobs(prev => new Set([...prev, opportunity.id]));
+          toast.success('Job saved successfully!');
         } else {
           setSavedJobs(prev => {
             const newSet = new Set(prev);
             newSet.delete(opportunity.id);
             return newSet;
           });
+          toast.success('Job removed from saved');
         }
+      } else {
+        toast.error(result.message || 'Failed to toggle save status');
+        logger.error('Toggle save failed:', result.error);
       }
     } catch (error) {
       logger.error('Error toggling save:', error);
+      toast.error('An error occurred while saving the job');
     }
   };
 
@@ -1072,33 +1100,33 @@ const Opportunities = () => {
         {/* Tab Switcher - Show different tabs based on learner level */}
         {!isLoading && (
           <div className="mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2 overflow-x-auto">
               <div className={`grid ${learnerType.isMiddleSchool
-                ? 'grid-cols-2'
+                ? 'grid-cols-2 md:grid-cols-2'
                 : learnerType.isHighSchool
-                  ? 'grid-cols-3'
+                  ? 'grid-cols-2 md:grid-cols-3'
                   : learnerType.isLearner
-                    ? 'grid-cols-3'
-                    : 'grid-cols-3'
-                } gap-2`}>
+                    ? 'grid-cols-2 md:grid-cols-3'
+                    : 'grid-cols-2 md:grid-cols-3'
+                } gap-2 min-w-0`}>
                 {/* Industrial Visits Tab - Hide for learners */}
                 {!learnerType.isLearner && (
                   <button
                     onClick={() => setActiveTab('industrial-visits')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'industrial-visits'
+                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'industrial-visits'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'hover:bg-gray-50'
                       }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <Factory className={`w-6 h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Factory className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
-                      <div className="flex-1">
-                        <h1 className={`font-bold text-lg ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          Industrial Visits
+                      <div className="flex-1 min-w-0">
+                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          Visits
                         </h1>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="hidden md:block text-sm text-gray-600 mt-1">
                           Explore factory visits and learning opportunities
                         </p>
                       </div>
@@ -1110,20 +1138,20 @@ const Opportunities = () => {
                 {learnerType.isMiddleSchool && (
                   <button
                     onClick={() => setActiveTab('history')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'history'
+                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'history'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'hover:bg-gray-50'
                       }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${activeTab === 'history' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <Clock className={`w-6 h-6 ${activeTab === 'history' ? 'text-white' : 'text-gray-600'}`} />
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'history' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Clock className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'history' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
-                      <div className="flex-1">
-                        <h1 className={`font-bold text-lg ${activeTab === 'history' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                      <div className="flex-1 min-w-0">
+                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'history' ? 'text-indigo-600' : 'text-gray-700'}`}>
                           History
                         </h1>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="hidden md:block text-sm text-gray-600 mt-1">
                           View your past activities and visits
                         </p>
                       </div>
@@ -1135,20 +1163,20 @@ const Opportunities = () => {
                 {(learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-jobs')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-jobs'
+                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'my-jobs'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'hover:bg-gray-50'
                       }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <Briefcase className={`w-6 h-6 ${activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'}`} />
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Briefcase className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
-                      <div className="flex-1">
-                        <h1 className={`font-bold text-lg ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          My Jobs
+                      <div className="flex-1 min-w-0">
+                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          Jobs
                         </h1>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="hidden md:block text-sm text-gray-600 mt-1">
                           {learnerType.isUniversityLearner
                             ? 'Browse internships and full-time opportunities'
                             : learnerType.isLearner
@@ -1164,20 +1192,20 @@ const Opportunities = () => {
                 {(learnerType.isHighSchool || learnerType.isUniversityLearner || learnerType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-applications')}
-                    className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-applications'
+                    className={`relative text-left p-2 md:p-4 rounded-lg transition-all ${activeTab === 'my-applications'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'hover:bg-gray-50'
                       }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                        <FileText className={`w-6 h-6 ${activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'}`} />
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className={`p-2 rounded-lg flex-shrink-0 ${activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <FileText className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'}`} />
                       </div>
-                      <div className="flex-1">
-                        <h1 className={`font-bold text-lg ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                          My Applications
+                      <div className="flex-1 min-w-0">
+                        <h1 className={`font-bold text-sm md:text-lg truncate ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          Applications
                         </h1>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="hidden md:block text-sm text-gray-600 mt-1">
                           Track your application status and progress
                         </p>
                       </div>
@@ -1511,8 +1539,8 @@ const Opportunities = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      {/* Left: Cards Grid (2 columns, 6 cards) */}
-                      <div className="lg:col-span-2">
+                      {/* Left: Cards Grid (2 columns, 6 cards) - First in DOM and visually */}
+                      <div className="col-span-1 lg:col-span-2">
                         {ivViewMode === 'grid' ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {paginatedVisits.map((visit) => (
@@ -1600,33 +1628,99 @@ const Opportunities = () => {
                         )}
                       </div>
 
-                      {/* Right: Fixed Preview Panel */}
-                      <div className="hidden lg:block lg:sticky lg:top-16 lg:self-start">
-                        <IndustrialVisitPreview
-                          visit={selectedIndustrialVisit}
-                          onRegister={handleRegisterForVisit}
-                          isRegistered={selectedIndustrialVisit && registeredVisits.has(selectedIndustrialVisit.id)}
-                          isRegistering={isRegistering}
-                        />
+                      {/* Right: Fixed Preview Panel - Last in DOM and visually */}
+                      <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
+                        {selectedIndustrialVisit ? (
+                          <IndustrialVisitPreview
+                            visit={selectedIndustrialVisit}
+                            onRegister={handleRegisterForVisit}
+                            isRegistered={selectedIndustrialVisit && registeredVisits.has(selectedIndustrialVisit.id)}
+                            isRegistering={isRegistering}
+                          />
+                        ) : (
+                          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
+                            <Factory className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                            <p className="text-gray-600 font-medium">Select a visit to view details</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
                   {/* Pagination */}
                   {filteredVisits.length > ivItemsPerPage && (
-                    <div className="bg-white rounded-xl md:rounded-2xl border border-gray-200 shadow-sm">
-                      <Pagination
-                        currentPage={ivCurrentPage}
-                        totalPages={totalPages}
-                        totalItems={filteredVisits.length}
-                        itemsPerPage={ivItemsPerPage}
-                        onPageChange={(page) => {
-                          const validPage = Math.max(1, Math.min(page, totalPages));
-                          setIvCurrentPage(validPage);
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      />
-                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="bg-white rounded-xl md:rounded-2xl border border-gray-200 shadow-sm p-4 md:p-6">
+                        <Pagination>
+                          <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
+                            <PaginationItem>
+                              <button
+                                onClick={() => {
+                                  if (ivCurrentPage > 1) {
+                                    handleIvPreviousPage();
+                                  }
+                                }}
+                                disabled={ivCurrentPage === 1}
+                                aria-label="Previous page"
+                                className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors ${
+                                  ivCurrentPage === 1
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
+                                }`}
+                              >
+                                ← Previous
+                              </button>
+                            </PaginationItem>
+
+                            {getPageNumbers(ivCurrentPage, totalPages).map((pageNum) => (
+                              <PaginationItem key={`page-${pageNum}`}>
+                                {pageNum === '...' ? (
+                                  <PaginationEllipsis className="text-xs md:text-sm" />
+                                ) : (
+                                  <button
+                                    onClick={() => handleIvPageChange(pageNum)}
+                                    aria-current={ivCurrentPage === pageNum ? 'page' : undefined}
+                                    className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center rounded-md transition-colors ${
+                                      ivCurrentPage === pageNum
+                                        ? 'bg-blue-500 text-white font-medium'
+                                        : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
+                                    }`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                )}
+                              </PaginationItem>
+                            ))}
+
+                            <PaginationItem>
+                              <button
+                                onClick={() => {
+                                  if (ivCurrentPage < totalPages) {
+                                    handleIvNextPage(totalPages);
+                                  }
+                                }}
+                                disabled={ivCurrentPage === totalPages}
+                                aria-label="Next page"
+                                className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors ${
+                                  ivCurrentPage === totalPages
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
+                                }`}
+                              >
+                                Next →
+                              </button>
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                        <div className="text-center text-sm text-gray-600 mt-4">
+                          Page {ivCurrentPage} of {totalPages} • {filteredVisits.length} total visits
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
                 </div>
               );
@@ -1673,6 +1767,7 @@ const Opportunities = () => {
     </div>
   );
 };
+
 
 // My Jobs Content Component
 const MyJobsContent = ({
@@ -1957,7 +2052,8 @@ const MyJobsContent = ({
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
+            {/* Opportunities List - First in DOM and visually */}
+            <div className="col-span-1 lg:col-span-2">
               {opportunities.length > 0 ? (
                 <>
                   {viewMode === 'grid' ? (
@@ -2000,40 +2096,104 @@ const MyJobsContent = ({
               )}
             </div>
 
-            <div className="hidden lg:block lg:sticky lg:top-16 lg:self-start">
-              <OpportunityPreview
-                opportunity={selectedOpportunity}
-                onApply={handleApply}
-                onToggleSave={handleToggleSave}
-                isApplied={appliedJobs.has(selectedOpportunity?.id)}
-                isSaved={savedJobs.has(selectedOpportunity?.id)}
-                isApplying={isApplying}
-                canApplyToJobs={canApplyToJobs}
-                needsProfileCompletion={needsProfileCompletion}
-                navigate={navigate}
-                learnerData={learnerData}
-                canAccessOpportunities={canAccessOpportunities}
-                onShowUpgradePrompt={() => setShowUpgradePrompt(true)}
-              />
+            {/* Preview Panel - Last in DOM and visually */}
+            <div className="col-span-1 lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
+              {selectedOpportunity ? (
+                <OpportunityPreview
+                  opportunity={selectedOpportunity}
+                  onApply={handleApply}
+                  onToggleSave={handleToggleSave}
+                  isApplied={appliedJobs.has(selectedOpportunity?.id)}
+                  isSaved={savedJobs.has(selectedOpportunity?.id)}
+                  isApplying={isApplying}
+                  canApplyToJobs={canApplyToJobs}
+                  needsProfileCompletion={needsProfileCompletion}
+                  navigate={navigate}
+                  learnerData={learnerData}
+                  canAccessOpportunities={canAccessOpportunities}
+                  onShowUpgradePrompt={() => setShowUpgradePrompt(true)}
+                />
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 text-center sticky top-16">
+                  <Briefcase className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-600 font-medium">Select a job to view details</p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Pagination */}
-          {displayCount > 0 && totalPages > 1 && (
-            <div className="mt-8">
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalItems={displayCount}
-                  itemsPerPage={opportunitiesPerPage}
-                  onPageChange={(page) => {
-                    const validPage = Math.max(1, Math.min(page, totalPages));
-                    setCurrentPage(validPage);
-                  }}
-                />
+          {opportunities.length > 0 && totalPages > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-10 pt-6 border-t border-gray-200"
+            >
+              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 md:p-6">
+                <Pagination>
+                  <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
+                    <PaginationItem>
+                      <button
+                        onClick={() => {
+                          if (currentPage > 1) {
+                            setCurrentPage(currentPage - 1);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }}
+                        disabled={currentPage === 1}
+                        aria-label="Previous page"
+                        className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-700"
+                      >
+                        ← Previous
+                      </button>
+                    </PaginationItem>
+
+                    {getPageNumbers(currentPage, totalPages).map((pageNum) => (
+                      <PaginationItem key={`page-${pageNum}`}>
+                        {pageNum === '...' ? (
+                          <PaginationEllipsis className="text-xs md:text-sm" />
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setCurrentPage(pageNum);
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            aria-current={currentPage === pageNum ? 'page' : undefined}
+                            className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center rounded-md transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-blue-500 text-white font-medium'
+                                : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        )}
+                      </PaginationItem>
+                    ))}
+
+                    <PaginationItem>
+                      <button
+                        onClick={() => {
+                          if (currentPage < totalPages) {
+                            setCurrentPage(currentPage + 1);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }}
+                        disabled={currentPage === totalPages}
+                        aria-label="Next page"
+                        className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:text-gray-700"
+                      >
+                        Next →
+                      </button>
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+                <div className="text-center text-sm text-gray-600 mt-4">
+                  Page {currentPage} of {totalPages} • {displayCount} total opportunities
+                </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </>
       )}

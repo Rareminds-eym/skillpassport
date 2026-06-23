@@ -1,7 +1,7 @@
 import { PASSWORD_MIN } from '@/shared/constants';
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import learnerIllustration from "@/assets/images/auth/Learner-illustration.jpg";
 
 
