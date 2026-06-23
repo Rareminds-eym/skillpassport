@@ -18,6 +18,10 @@ import {
 // Initialize logger - getLogger is already available from shared config
 const logger = getLogger('MainSettings');
 
+// Toast timing constants
+const TOAST_DURATION = 4000; // Match react-hot-toast default
+const TOAST_DISPLAY_DELAY = TOAST_DURATION + 500; // Give extra time for user to read
+
 import { Badge } from '@/shared/ui/Badge';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/Card';
@@ -1544,23 +1548,23 @@ const MainSettings = () => {
                         // refreshData may be undefined if hook hasn't loaded yet
                         if (refreshData && typeof refreshData === 'function') {
                           await refreshData();
-                          toast.success('Session recovered successfully!');
-                          // Wait for toast to show before reloading
-                          await new Promise(resolve => setTimeout(resolve, 1500));
+                          toast.success('Session recovered successfully!', { duration: TOAST_DURATION });
+                          // Wait for toast to be read before reloading
+                          await new Promise(resolve => setTimeout(resolve, TOAST_DISPLAY_DELAY));
                         } else {
                           // If refreshData is not available, just reload the page
                           logger.warn('refreshData not available from hook, reloading page');
-                          toast.success('Session recovered. Reloading page...');
-                          // Wait for toast to show before reloading
-                          await new Promise(resolve => setTimeout(resolve, 1500));
+                          toast.success('Session recovered. Reloading page...', { duration: TOAST_DURATION });
+                          // Wait for toast to be read before reloading
+                          await new Promise(resolve => setTimeout(resolve, TOAST_DISPLAY_DELAY));
                         }
                         window.location.reload();
                       } catch (refreshError) {
                         const errorInstance = refreshError instanceof Error ? refreshError : new Error(String(refreshError));
                         logger.error('Failed to refresh session', errorInstance);
-                        toast.error('Failed to refresh session. Please log in again.');
-                        // Wait before redirect
-                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        toast.error('Failed to refresh session. Please log in again.', { duration: TOAST_DURATION });
+                        // Wait for toast to be read before redirect
+                        await new Promise(resolve => setTimeout(resolve, TOAST_DISPLAY_DELAY));
                         window.location.href = '/login';
                       }
                     }}

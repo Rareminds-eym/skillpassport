@@ -12,11 +12,14 @@ const logger = getLogger('pdfReceiptGenerator');
 
 /**
  * Convert image to base64 for PDF embedding
+ * Uses arrow function for onload callback - accesses img variable from closure
+ * rather than 'this' context, which is more explicit and safer
  */
 async function imageToBase64(imagePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    // Arrow function intentionally used to access img from closure
     img.onload = () => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -65,7 +68,10 @@ export async function generateReceipt(receiptData: ReceiptData): Promise<Blob> {
     companyLogo = await imageToBase64('/RareMinds.webp');
   } catch (error) {
     const errorInstance = error instanceof Error ? error : new Error(String(error));
-    logger.warn('Error loading company logo', { error: errorInstance.message });
+    logger.warn('Error loading company logo', { 
+      error: errorInstance.message,
+      stack: errorInstance.stack 
+    });
   }
   
   try {
@@ -73,7 +79,10 @@ export async function generateReceipt(receiptData: ReceiptData): Promise<Blob> {
     watermarkLogo = await imageToBase64('/RMLogo.webp');
   } catch (error) {
     const errorInstance = error instanceof Error ? error : new Error(String(error));
-    logger.warn('Error loading watermark logo', { error: errorInstance.message });
+    logger.warn('Error loading watermark logo', { 
+      error: errorInstance.message,
+      stack: errorInstance.stack 
+    });
   }
 
   // Add watermark (behind all content)
@@ -624,7 +633,8 @@ export async function downloadReceipt(receiptData: ReceiptData, filename?: strin
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   } catch (error) {
-    logger.error('Failed to download receipt', error instanceof Error ? error : new Error(String(error)));
+    const errorInstance = error instanceof Error ? error : new Error(String(error));
+    logger.error('Failed to download receipt', errorInstance);
     throw new Error('Failed to download receipt. Please try again.');
   }
 }
@@ -655,7 +665,8 @@ export async function generatePDFFromHTML(elementId: string, filename: string = 
     pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
     pdf.save(filename);
   } catch (error) {
-    logger.error('Failed to generate PDF from HTML', error instanceof Error ? error : new Error(String(error)));
+    const errorInstance = error instanceof Error ? error : new Error(String(error));
+    logger.error('Failed to generate PDF from HTML', errorInstance);
     throw new Error('Failed to generate PDF. Please try again.');
   }
 }

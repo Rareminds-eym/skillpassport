@@ -109,9 +109,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       throw new Error('Invalid transaction: missing razorpay_order_id');
     }
 
+    // Validate ID - must have either id or subscription_id
+    if (!tx.id && !tx.subscription_id) {
+      throw new Error('Invalid transaction: missing both id and subscription_id');
+    }
+
     // Validate and transform with type checking
     const transaction: Transaction = {
-      id: String(tx.id || ''),
+      id: String(tx.id || tx.subscription_id || ''),
       subscription_id: tx.subscription_id ? String(tx.subscription_id) : undefined,
       razorpay_payment_id: tx.razorpay_payment_id ? String(tx.razorpay_payment_id) : undefined,
       payment_id: tx.payment_id ? String(tx.payment_id) : undefined,
@@ -184,8 +189,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       
       const userDetails = await getUserDetails();
 
+      // Ensure we have a valid ID for the receipt
+      const receiptId = tx.id || tx.subscription_id;
+      if (!receiptId) {
+        throw new Error('Transaction missing valid ID');
+      }
+
       return {
-        id: tx.id || tx.subscription_id || '',
+        id: receiptId,
         payment_id: tx.razorpay_payment_id || tx.payment_id,
         razorpay_order_id: tx.razorpay_order_id,
         amount: tx.amount,
@@ -214,9 +225,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const ssoData = await getSsoReceiptData(tx => tx.razorpay_order_id === orderId);
       if (ssoData) return apiSuccess(ssoData, context.request);
     } catch (ssoError) {
-      // Log SSO lookup failure for debugging; will fallback to legacy source
-      const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
-      console.warn(`[receipts] SSO lookup failed for order ${orderId}`, { error: errorInstance.message });
+      // SSO lookup failed, fall through to legacy source
     }
 
     // Fallback to pre_registrations for older data (legacy source)
@@ -249,9 +258,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       );
       if (ssoData) return apiSuccess(ssoData, context.request);
     } catch (ssoError) {
-      // Log SSO lookup failure for debugging; will fallback to legacy source
-      const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
-      console.warn(`[receipts] SSO lookup failed for payment ${paymentId}`, { error: errorInstance.message });
+      // SSO lookup failed, fall through to legacy source
     }
 
     // Fallback to pre_registrations (legacy source)
@@ -283,9 +290,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const ssoData = await getSsoReceiptData(tx => tx.id === id || tx.subscription_id === id);
       if (ssoData) return apiSuccess(ssoData, context.request);
     } catch (ssoError) {
-      // Log SSO lookup failure for debugging; will fallback to legacy source
-      const errorInstance = ssoError instanceof Error ? ssoError : new Error(String(ssoError));
-      console.warn(`[receipts] SSO lookup failed for ID ${id}`, { error: errorInstance.message });
+      // SSO lookup failed, fall through to legacy source
     }
 
     // Fallback to pre_registrations (legacy source)

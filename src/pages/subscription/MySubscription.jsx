@@ -336,8 +336,8 @@ function MySubscription() {
 
       await downloadReceiptById(targetId);
     } catch (error) {
-      // Hook already handles error display, just log for debugging
-      logger.error('Receipt download failed', error instanceof Error ? error : new Error(String(error)));
+      // Hook handles error display via toast, this catch is for additional logging
+      logger.error('Receipt download failed', error);
     }
   }, [subscriptionData?.id, downloadReceiptById]);
 
@@ -1026,8 +1026,8 @@ function MySubscription() {
                                   {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
                                 </span>
                                 <button
-                                  onClick={() => handleDownloadInvoice(invoice.id)}
-                                  disabled={isDownloadingReceipt}
+                                  onClick={() => invoice.id && typeof invoice.id === 'string' && handleDownloadInvoice(invoice.id)}
+                                  disabled={isDownloadingReceipt || !invoice.id}
                                   className="p-2 hover:bg-slate-100 rounded-2xl transition-colors disabled:opacity-50"
                                   title="Download Invoice"
                                 >

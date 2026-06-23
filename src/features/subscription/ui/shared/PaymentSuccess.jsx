@@ -681,11 +681,11 @@ function PaymentSuccess() {
         // Properly handle downloadReceiptHook errors
         try {
           await downloadReceiptHook(orderId);
+          toast.success('Receipt downloading!');
           return;
         } catch (hookError) {
           // If hook fails, fall through to fallback methods
-          const errorInstance = hookError instanceof Error ? hookError : new Error(String(hookError));
-          log.warn('Primary receipt download failed, trying fallback', errorInstance);
+          log.warn('Primary receipt download failed, trying fallback', hookError);
         }
       }
 
@@ -718,11 +718,10 @@ function PaymentSuccess() {
       });
       
     } catch (error) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      log.error('Receipt download failed', errorInstance);
+      log.error('Receipt download failed', error);
       
       // Safely check error message with proper type checking
-      const errorMessage = errorInstance.message || '';
+      const errorMessage = error instanceof Error ? error.message : String(error);
       
       // Handle specific error types
       if (errorMessage.includes('Unauthorized') || errorMessage.includes('no valid token')) {
