@@ -8,10 +8,10 @@ import { apiPost } from '@/shared/api/apiClient';
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 import { downloadReceipt } from '@/features/subscription/api/pdfReceiptGenerator';
 import { getLogger } from '@/shared/config';
+import { ReceiptDownloadError } from '../types/receipt';
 import type {
   ReceiptData,
   ReceiptApiResponse,
-  ReceiptDownloadError,
   ReceiptCompanyInfo
 } from '../types/receipt';
 
@@ -233,11 +233,10 @@ export async function downloadReceiptByOrderId(orderId: string): Promise<void> {
     const receiptResponse = await fetchReceiptData(orderId, 'order_id');
     
     if (!receiptResponse.success || !receiptResponse.data) {
-      const receiptError: ReceiptDownloadError = Object.assign(
-        new Error(receiptResponse.error || 'Receipt not found'),
-        { code: 'RECEIPT_NOT_FOUND' as const }
+      throw new ReceiptDownloadError(
+        receiptResponse.error || 'Receipt not found',
+        'RECEIPT_NOT_FOUND'
       );
-      throw receiptError;
     }
 
     const receiptData = transformToReceiptData(receiptResponse.data);
@@ -253,12 +252,15 @@ export async function downloadReceiptByOrderId(orderId: string): Promise<void> {
       stack: errorInstance.stack 
     });
     
-    const receiptError: ReceiptDownloadError = Object.assign(
-      new Error(errorInstance.message),
-      { code: extractErrorCode(error) }
-    );
+    // Re-throw if already a ReceiptDownloadError
+    if (error instanceof ReceiptDownloadError) {
+      throw error;
+    }
     
-    throw receiptError;
+    throw new ReceiptDownloadError(
+      errorInstance.message,
+      extractErrorCode(error)
+    );
   }
 }
 
@@ -272,11 +274,10 @@ export async function downloadReceiptByPaymentId(paymentId: string): Promise<voi
     const receiptResponse = await fetchReceiptData(paymentId, 'payment_id');
     
     if (!receiptResponse.success || !receiptResponse.data) {
-      const receiptError: ReceiptDownloadError = Object.assign(
-        new Error(receiptResponse.error || 'Receipt not found'),
-        { code: 'RECEIPT_NOT_FOUND' as const }
+      throw new ReceiptDownloadError(
+        receiptResponse.error || 'Receipt not found',
+        'RECEIPT_NOT_FOUND'
       );
-      throw receiptError;
     }
 
     const receiptData = transformToReceiptData(receiptResponse.data);
@@ -292,12 +293,15 @@ export async function downloadReceiptByPaymentId(paymentId: string): Promise<voi
       stack: errorInstance.stack 
     });
     
-    const receiptError: ReceiptDownloadError = Object.assign(
-      new Error(errorInstance.message),
-      { code: extractErrorCode(error) }
-    );
+    // Re-throw if already a ReceiptDownloadError
+    if (error instanceof ReceiptDownloadError) {
+      throw error;
+    }
     
-    throw receiptError;
+    throw new ReceiptDownloadError(
+      errorInstance.message,
+      extractErrorCode(error)
+    );
   }
 }
 
@@ -311,11 +315,10 @@ export async function downloadReceiptById(receiptId: string): Promise<void> {
     const receiptResponse = await fetchReceiptData(receiptId, 'id');
     
     if (!receiptResponse.success || !receiptResponse.data) {
-      const receiptError: ReceiptDownloadError = Object.assign(
-        new Error(receiptResponse.error || 'Receipt not found'),
-        { code: 'RECEIPT_NOT_FOUND' as const }
+      throw new ReceiptDownloadError(
+        receiptResponse.error || 'Receipt not found',
+        'RECEIPT_NOT_FOUND'
       );
-      throw receiptError;
     }
 
     const receiptData = transformToReceiptData(receiptResponse.data);
@@ -331,12 +334,15 @@ export async function downloadReceiptById(receiptId: string): Promise<void> {
       stack: errorInstance.stack 
     });
     
-    const receiptError: ReceiptDownloadError = Object.assign(
-      new Error(errorInstance.message),
-      { code: extractErrorCode(error) }
-    );
+    // Re-throw if already a ReceiptDownloadError
+    if (error instanceof ReceiptDownloadError) {
+      throw error;
+    }
     
-    throw receiptError;
+    throw new ReceiptDownloadError(
+      errorInstance.message,
+      extractErrorCode(error)
+    );
   }
 }
 

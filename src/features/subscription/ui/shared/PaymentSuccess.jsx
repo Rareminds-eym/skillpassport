@@ -115,13 +115,24 @@ const MANAGE_ROUTES = {
 // UTILITIES
 // ============================================================================
 
-/** Debug logger */
+/** Debug logger - info/warn suppressed in production, errors always logged */
 const logger = getLogger('PaymentSuccess');
 
 const log = {
-  info: (...args) => DEBUG && logger.info(args.length === 1 ? args[0] : args),
-  warn: (...args) => DEBUG && logger.warn(args.length === 1 ? args[0] : args),
-  error: (...args) => logger.error(args.length === 1 ? args[0] : args),
+  info: (...args) => {
+    if (DEBUG) {
+      logger.info(args.length === 1 ? args[0] : args);
+    }
+  },
+  warn: (...args) => {
+    if (DEBUG) {
+      logger.warn(args.length === 1 ? args[0] : args);
+    }
+  },
+  error: (...args) => {
+    // Errors are always logged, regardless of DEBUG mode
+    logger.error(args.length === 1 ? args[0] : args);
+  },
 };
 
 /** Format date for display */

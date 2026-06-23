@@ -43,10 +43,16 @@ const logger = getLogger('MySubscription');
 
 /**
  * Safe toast wrapper to prevent toast errors from crashing the component
+ * Handles both library import failures and runtime errors
  */
 const safeToast = {
   success: (message, options) => {
     try {
+      // Check if toast is available (handles import failures)
+      if (typeof toast === 'undefined' || !toast.success) {
+        logger.warn('Toast library not available (success)');
+        return undefined;
+      }
       return toast.success(message, options);
     } catch (error) {
       logger.error('Toast error (success)', error instanceof Error ? error : new Error(String(error)));
@@ -55,6 +61,11 @@ const safeToast = {
   },
   error: (message, options) => {
     try {
+      // Check if toast is available (handles import failures)
+      if (typeof toast === 'undefined' || !toast.error) {
+        logger.warn('Toast library not available (error)');
+        return undefined;
+      }
       return toast.error(message, options);
     } catch (error) {
       logger.error('Toast error (error)', error instanceof Error ? error : new Error(String(error)));
@@ -63,6 +74,11 @@ const safeToast = {
   },
   loading: (message, options) => {
     try {
+      // Check if toast is available (handles import failures)
+      if (typeof toast === 'undefined' || !toast.loading) {
+        logger.warn('Toast library not available (loading)');
+        return undefined;
+      }
       return toast.loading(message, options);
     } catch (error) {
       logger.error('Toast error (loading)', error instanceof Error ? error : new Error(String(error)));
@@ -71,6 +87,11 @@ const safeToast = {
   },
   custom: (message, options) => {
     try {
+      // Check if toast is available (handles import failures)
+      if (typeof toast === 'undefined' || typeof toast !== 'function') {
+        logger.warn('Toast library not available (custom)');
+        return undefined;
+      }
       return toast(message, options);
     } catch (error) {
       logger.error('Toast error (custom)', error instanceof Error ? error : new Error(String(error)));
