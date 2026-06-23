@@ -342,13 +342,9 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { authenticated } = await ssoClient.initSession();
           if (authenticated) {
-            // Guard against concurrent getMe() calls during initialization
-            const currentState = get();
-            if (currentState.isAuthenticated && currentState.user) {
-              set((state) => { state.loading = false; });
-              startTokenRefresh();
-              return;
-            }
+            // Even if the store was rehydrated from localStorage, we MUST
+            // fetch fresh data from the newly refreshed session to ensure
+            // role changes and membership statuses are accurately reflected.
 
             const me = await ssoClient.getMe();
             const user = mapMeToUser(me);
@@ -480,11 +476,16 @@ if (typeof window !== 'undefined') {
     store.setUser(null);
   });
 
-  ssoClient.onAuthStateChange(async (event) => {
+  const pendingAuthEvents: Array<'LOGIN' | 'LOGOUT' | 'REFRESH'> = [];
+
+  const handleAuthEvent = async (event: 'LOGIN' | 'LOGOUT' | 'REFRESH') => {
     const store = useAuthStore.getState();
 
-    // Skip handling if auth is still initializing to prevent race conditions
-    if (store.loading) return;
+    // Queue events if auth is still initializing to prevent race conditions
+    if (store.loading) {
+      pendingAuthEvents.push(event);
+      return;
+    }
 
     if (event === 'LOGOUT') {
       stopTokenRefresh();
@@ -518,6 +519,27 @@ if (typeof window !== 'undefined') {
       } catch {
         // Session expired during rehydration — ignore
       }
+    }
+  };
+
+  ssoClient.onAuthStateChange(handleAuthEvent);
+
+  // Subscribe to store changes to process pending events when loading finishes
+  useAuthStore.subscribe((state, prevState) => {
+    if (prevState.loading && !state.loading && pendingAuthEvents.length > 0) {
+      const eventsToProcess = [...pendingAuthEvents];
+      pendingAuthEvents.length = 0;
+      
+      // Process events sequentially and catch errors so one failure doesn't block others
+      (async () => {
+        for (const event of eventsToProcess) {
+          try {
+            await handleAuthEvent(event);
+          } catch (err) {
+            console.error(`[authStore] Failed to handle queued event ${event}:`, err);
+          }
+        }
+      })();
     }
   });
 }
