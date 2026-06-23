@@ -9,13 +9,21 @@ import {
     Search,
     Trash2
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useEffect } from 'react';
 import { OpportunityCard, OpportunityListItem, OpportunityPreview } from '@/widgets/learner-dashboard';
 
 import { useSavedJobs } from '@/features/opportunities';
+import { SavedJobsService } from '@/features/opportunities';
+import { getLogger } from '@/shared/config/logging';
 
 import { useUser } from '@/shared/model/authStore';
+
+const logger = getLogger('SavedJobs');
+
 const SavedJobs = () => {
+  const navigate = useNavigate();
   const user = useUser();
   const learnerId = user?.id;
 
@@ -40,6 +48,37 @@ const SavedJobs = () => {
     handleApply,
   } = useSavedJobs({ learnerId });
 
+  // Log page state when data changes
+  useEffect(() => {
+    logger.info('SavedJobs page state updated', { learnerId, savedJobsCount: savedJobs?.length, loading, error });
+  }, [learnerId, savedJobs?.length, loading, error]);
+
+  // Handle clearing inactive jobs
+  const handleClearInactive = async () => {
+    try {
+      if (!learnerId) {
+        logger.warn('Cannot clear inactive jobs - no learnerId');
+        toast.error('Please log in first');
+        return;
+      }
+      logger.info('Clearing inactive jobs', { learnerId });
+      const result = await SavedJobsService.removeInactiveSavedJobs(learnerId);
+      if (result.success) {
+        logger.info('Inactive jobs cleared successfully', { count: result.count, learnerId });
+        toast.success(`Removed ${result.count || 0} inactive jobs`);
+        // Reload saved jobs
+        window.location.reload();
+      } else {
+        logger.error('Failed to clear inactive jobs', { message: result.message });
+        toast.error(result.message || 'Failed to remove inactive jobs');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error clearing inactive jobs';
+      logger.error('Error clearing inactive jobs', err);
+      toast.error(errorMessage);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
@@ -55,9 +94,9 @@ const SavedJobs = () => {
                 <p className="text-gray-600 mt-1">Jobs you've bookmarked for later</p>
               </div>
             </div>
-            
+
             {/* Clear inactive button */}
-            {savedJobs.some(job => !job.is_active) && (
+            {!loading && savedJobs && savedJobs.length > 0 && savedJobs.some(job => !job.is_active) && (
               <button
                 onClick={handleClearInactive}
                 className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
@@ -92,9 +131,9 @@ const SavedJobs = () => {
           <div className="flex flex-col gap-3 sm:gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
               <p className="text-xs sm:text-sm font-semibold text-gray-900">
-                Showing {filteredAndSortedJobs.length} of {savedJobs.length} Saved Jobs
+                Showing {filteredAndSortedJobs?.length || 0} of {savedJobs?.length || 0} Saved Jobs
               </p>
-              {savedJobs.filter(job => job.has_applied).length > 0 && (
+              {savedJobs && savedJobs.filter(job => job.has_applied).length > 0 && (
                 <span className="text-xs sm:text-sm text-green-600 flex items-center gap-1">
                   <CheckCircle className="w-4 h-4" />
                   {savedJobs.filter(job => job.has_applied).length} already applied
@@ -178,12 +217,12 @@ const SavedJobs = () => {
             <p className="text-gray-500 mb-6">
               Start saving jobs from the Opportunities page to keep track of interesting positions
             </p>
-            <Link
-              to="/learner/opportunities"
+            <button
+              onClick={() => navigate('/learner/opportunities')}
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Browse Opportunities
-            </Link>
+            </button>
           </div>
         )}
 

@@ -161,7 +161,6 @@ export default function AcceptInvitationPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             token: token!,
-            userId: user.id,
           }),
         });
 
