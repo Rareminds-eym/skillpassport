@@ -29,15 +29,16 @@ export const defaultHeaders = {
  * Create authenticated headers with token
  */
 export async function createAuthHeaders(customHeaders: Record<string, string> = {}): Promise<Record<string, string>> {
-  const user = useAuthStore.getState().user;
   
-  const headers = {
+  const headers: Record<string, string> = {
     ...defaultHeaders,
     ...customHeaders,
   };
 
-  if (ssoClient.getAccessToken()) {
-      }
+  const token = ssoClient.getAccessToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   return headers;
 }
