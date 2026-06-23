@@ -10,7 +10,6 @@ import type { R2Bucket } from '@cloudflare/workers-types';
  */
 export interface PagesEnv {
   // SSO / Auth configuration
-  SSO_DOMAIN?: string;
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: Fetcher;
 
@@ -54,15 +53,10 @@ export interface PagesEnv {
   };
   ADMIN_EMAIL?: string;
 
-  // App configuration
-  APP_URL?: string;
-
-  // Storage / Media configuration
-  SIGNING_SECRET?: string;
-
   // AI API keys
+
   OPENROUTER_API_KEY?: string;
-  GEMINI_API_KEY?: string;
+ 
 
   // R2 Storage configuration
   CLOUDFLARE_ACCOUNT_ID?: string;

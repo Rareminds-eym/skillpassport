@@ -1,6 +1,6 @@
 /**
  * Centralized AI Configuration for Cloudflare Functions
- * 
+ *
  * This module provides:
  * - Unified AI model configurations for all use cases
  * - Centralized API calling utilities with retry logic
@@ -9,6 +9,9 @@
  */
 
 import { PagesEnv } from '../../lib/types';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger('ai-config');
 
 // ============================================================================
 // Types & Interfaces
@@ -16,7 +19,7 @@ import { PagesEnv } from '../../lib/types';
 
 export interface AIModel {
     id: string;
-    provider: 'openrouter' | 'claude';
+    provider: 'openrouter';
     endpoint?: string;
     maxTokens?: number;
     temperature?: number;
@@ -60,10 +63,6 @@ export const AI_MODELS = {
     GEMINI_FLASH_1_5_8B: 'google/gemini-flash-1.5-8b',
     // XIAOMI_MIMO: 'xiaomi/mimo-v2-flash:free',  // DEPRECATED: Free period ended
 
-    // Other Paid Models
-    CLAUDE_HAIKU: 'claude-3-haiku-20240307',
-    CLAUDE_SONNET: 'anthropic/claude-3.5-sonnet',
-
     // Specialized Models
     EMBEDDING_SMALL: 'openai/text-embedding-3-small',
 } as const;
@@ -78,8 +77,7 @@ const STANDARD_MODELS = {
     primary: 'openai/gpt-3.5-turbo',                 // Reliable and affordable
     fallbacks: [
         'openai/gpt-4o-mini',                        // Backup OpenAI model
-        'anthropic/claude-3-haiku',                  // Anthropic fallback
-        'google/gemini-pro',                         // Google fallback
+        'google/gemini-2.0-flash-001',               // Google fallback
     ],
 };
 
@@ -129,13 +127,6 @@ export const API_CONFIG = {
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://skillpassport.pages.dev',
             'X-Title': 'SkillPassport Assessment',
-        },
-    },
-    CLAUDE: {
-        endpoint: 'https://api.anthropic.com/v1/messages',
-        headers: {
-            'Content-Type': 'application/json',
-            'anthropic-version': '2023-06-01',
         },
     },
     RETRY: {
@@ -418,11 +409,20 @@ export function repairAndParseJSON(text: string, preferObject: boolean = false):
 }
 
 /**
- * Get API keys from environment
+ * Get API keys from environment with validation
  */
 export function getAPIKeys(env: PagesEnv | Record<string, string>) {
+    const openRouter = env.OPENROUTER_API_KEY;
+
+    if (!openRouter) {
+        logger.error('Missing OPENROUTER_API_KEY environment variable - AI services will not work');
+        throw new Error('OPENROUTER_API_KEY is not configured. Set it in your environment variables.');
+    }
+
+    logger.debug('API keys validated', { hasOpenRouter: !!openRouter });
+
     return {
-        openRouter: env.OPENROUTER_API_KEY,
+        openRouter,
     };
 }
 
@@ -455,23 +455,33 @@ export async function callOpenRouterWithRetry(
         temperature = 0.7,
     } = options;
 
-    console.log(`🚀 [AI-Config] Starting OpenRouter API call`);
-    console.log(`📋 [AI-Config] Models to try: ${models.join(', ')}`);
-    console.log(`⚙️ [AI-Config] Config: maxTokens=${maxTokens}, temperature=${temperature}, maxRetries=${maxRetries}`);
-    console.log(`💬 [AI-Config] Messages count: ${messages.length}`);
-    console.log(`📝 [AI-Config] First message preview: ${messages[0]?.content?.substring(0, 100)}...`);
+    logger.info('Starting OpenRouter API call', {
+        modelsCount: models.length,
+        maxTokens,
+        temperature,
+        maxRetries,
+        messagesCount: messages.length,
+    });
 
     let lastError: Error | null = null;
     const startTime = Date.now();
 
     for (let modelIndex = 0; modelIndex < models.length; modelIndex++) {
         const model = models[modelIndex];
-        console.log(`\n🎯 [AI-Config] Trying model ${modelIndex + 1}/${models.length}: ${model}`);
-        
+        logger.debug('Trying model', {
+            modelIndex: modelIndex + 1,
+            totalModels: models.length,
+            model,
+        });
+
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             const attemptStartTime = Date.now();
             try {
-                console.log(`🔄 [AI-Config] ${model} - Attempt ${attempt + 1}/${maxRetries}`);
+                logger.debug('Model attempt', {
+                    model,
+                    attempt: attempt + 1,
+                    maxRetries,
+                });
 
                 const requestBody = {
                     model: model,
@@ -480,7 +490,8 @@ export async function callOpenRouterWithRetry(
                     messages: messages,
                 };
 
-                console.log(`📤 [AI-Config] Sending request to OpenRouter...`);
+                logger.debug('Sending request to OpenRouter');
+
                 const response = await fetch(API_CONFIG.OPENROUTER.endpoint, {
                     method: 'POST',
                     headers: {
@@ -491,113 +502,77 @@ export async function callOpenRouterWithRetry(
                 });
 
                 const attemptDuration = Date.now() - attemptStartTime;
-                console.log(`⏱️ [AI-Config] Request completed in ${attemptDuration}ms`);
-                console.log(`📊 [AI-Config] Response status: ${response.status} ${response.statusText}`);
+                logger.debug('Request completed', { duration: attemptDuration, status: response.status });
 
                 if (response.status === 429) {
                     const waitTime = Math.pow(2, attempt) * API_CONFIG.RETRY.rateLimit429Delay;
-                    console.log(`⏳ [AI-Config] Rate limited (429), waiting ${waitTime}ms before retry...`);
+                    logger.warn('Rate limited, waiting for retry', { model, waitTime, attempt });
                     await delay(waitTime);
                     continue;
                 }
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error(`❌ [AI-Config] ${model} failed (${response.status}):`, errorText.substring(0, 200));
+                    logger.error('Model request failed', new Error(`${model} failed with status ${response.status}`), {
+                        model,
+                        status: response.status,
+                        errorPreview: errorText.substring(0, 100),
+                    });
                     lastError = new Error(`${model} failed: ${response.status} - ${errorText.substring(0, 100)}`);
                     break; // Move to next model
                 }
 
                 const data = await response.json() as any;
-                console.log(`📥 [AI-Config] Response received, parsing...`);
-                
+                logger.debug('Response received and parsed');
+
                 const content = data.choices?.[0]?.message?.content;
                 if (content) {
                     const totalDuration = Date.now() - startTime;
-                    console.log(`✅ [AI-Config] ${model} succeeded!`);
-                    console.log(`📊 [AI-Config] Response length: ${content.length} characters`);
-                    console.log(`⏱️ [AI-Config] Total duration: ${totalDuration}ms`);
-                    console.log(`🎉 [AI-Config] Content preview: ${content.substring(0, 150)}...`);
-                    
-                    // Log usage stats if available
-                    if (data.usage) {
-                        console.log(`📈 [AI-Config] Token usage:`, {
-                            prompt_tokens: data.usage.prompt_tokens,
-                            completion_tokens: data.usage.completion_tokens,
-                            total_tokens: data.usage.total_tokens
-                        });
-                    }
-                    
+                    logger.info('Model request succeeded', {
+                        model,
+                        totalDuration,
+                        contentLength: content.length,
+                        promptTokens: data.usage?.prompt_tokens,
+                        completionTokens: data.usage?.completion_tokens,
+                        totalTokens: data.usage?.total_tokens,
+                    });
+
                     return content;
                 }
 
-                console.warn(`⚠️ [AI-Config] Empty response from ${model}`);
+                logger.warn('Empty response from model', { model });
                 lastError = new Error(`Empty response from ${model}`);
                 break; // Move to next model
             } catch (e: any) {
                 const attemptDuration = Date.now() - attemptStartTime;
-                console.error(`❌ [AI-Config] ${model} error (attempt ${attempt + 1}, ${attemptDuration}ms):`, e.message);
+                logger.error('Model request error', e, {
+                    model,
+                    attempt: attempt + 1,
+                    maxRetries,
+                    duration: attemptDuration,
+                });
                 lastError = e;
                 if (attempt < maxRetries - 1) {
                     const retryDelay = API_CONFIG.RETRY.baseDelay * (attempt + 1);
-                    console.log(`⏳ [AI-Config] Waiting ${retryDelay}ms before retry...`);
+                    logger.debug('Scheduling retry', { model, retryDelay });
                     await delay(retryDelay);
                 }
             }
         }
-        
-        console.log(`💔 [AI-Config] ${model} exhausted all ${maxRetries} attempts, moving to next model...`);
+
+        logger.warn('Model exhausted all attempts', { model, maxRetries });
     }
 
     const totalDuration = Date.now() - startTime;
-    console.error(`💥 [AI-Config] All models failed after ${totalDuration}ms`);
-    console.error(`🔍 [AI-Config] Last error:`, lastError?.message);
+    logger.error('All models failed', lastError || new Error('Unknown error'), {
+        totalDuration,
+        modelsAttempted: models.length,
+        lastErrorMessage: lastError?.message,
+    });
     
     throw lastError || new Error('All models failed');
 }
 
-/**
- * Call Claude API directly
- */
-export async function callClaudeAPI(
-    claudeKey: string,
-    messages: Array<{ role: string, content: string }>,
-    options: {
-        model?: string;
-        maxTokens?: number;
-        temperature?: number;
-        systemPrompt?: string;
-    } = {}
-): Promise<string> {
-    const {
-        model = AI_MODELS.CLAUDE_HAIKU,
-        maxTokens = 1500,  // Reduced from 3000 to fit within credit limits
-        temperature = 0.7,
-        systemPrompt,
-    } = options;
-
-    const response = await fetch(API_CONFIG.CLAUDE.endpoint, {
-        method: 'POST',
-        headers: {
-            ...API_CONFIG.CLAUDE.headers,
-            'x-api-key': claudeKey,
-        },
-        body: JSON.stringify({
-            model: model,
-            max_tokens: maxTokens,
-            temperature: temperature,
-            ...(systemPrompt && { system: systemPrompt }),
-            messages: messages,
-        }),
-    });
-
-    if (!response.ok) {
-        throw new Error(`Claude API failed: ${response.status}`);
-    }
-
-    const data = await response.json() as any;
-    return data.content[0].text;
-}
 
 /**
  * Call AI with automatic fallback from Claude to OpenRouter
@@ -608,32 +583,13 @@ export async function callAIWithFallback(
     options: {
         useCase?: ModelUseCase;
         systemPrompt?: string;
-        preferClaude?: boolean;
     } = {}
 ): Promise<string> {
-    const { openRouter, claude } = getAPIKeys(env);
-    const { useCase = 'question_generation', systemPrompt, preferClaude = false } = options;
+    const { openRouter } = getAPIKeys(env);
+    const { useCase = 'question_generation' } = options;
 
     const profile = MODEL_PROFILES[useCase];
     const models = [profile.primary, ...profile.fallbacks];
-
-    // Try Claude first if preferred and key is available
-    if (preferClaude && claude) {
-        try {
-            console.log('🔑 Using Claude API');
-            return await callClaudeAPI(claude, messages, {
-                maxTokens: profile.maxTokens,
-                temperature: profile.temperature,
-                systemPrompt,
-            });
-        } catch (claudeError: any) {
-            console.error('Claude error:', claudeError.message);
-            if (!openRouter) {
-                throw claudeError;
-            }
-            console.log('🔑 Claude failed, trying OpenRouter with retry');
-        }
-    }
 
     // Use OpenRouter with model fallback
     if (openRouter) {
@@ -644,7 +600,7 @@ export async function callAIWithFallback(
         });
     }
 
-    throw new Error('No API key configured (OpenRouter or Claude)');
+    throw new Error('No API key configured (OpenRouter)');
 }
 
 /**

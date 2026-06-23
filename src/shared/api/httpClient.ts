@@ -14,15 +14,6 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('http-client');
 
-// HTTP client configuration
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Validate required environment variables
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing required Supabase environment variables');
-}
-
 // Common request timeout
 export const DEFAULT_TIMEOUT = 30000; // 30 seconds
 

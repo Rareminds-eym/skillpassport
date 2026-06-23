@@ -80,14 +80,11 @@ entrypoint = "EmailService"
 # ──────────────────────────────────────────────────────────────────────────
 ENVIRONMENT = "production"
 
-# SSO / Auth Configuration (Pages Functions)
-SSO_DOMAIN = "https://sso-api.dark-mode-d021.workers.dev/"
 
 # Supabase Configuration (Pages Functions)
 SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Pages Functions)
-EMAIL_WORKER_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
 EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 
 # Cloudflare R2 Configuration (Pages Functions)
@@ -106,9 +103,7 @@ VITE_SSO_URL = "https://sso-api.dark-mode-d021.workers.dev/"
 VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Frontend)
-VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
-VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
-VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
+
 # Analytics 
 VITE_GTM_ID = "GTM-M2N3952J"
 

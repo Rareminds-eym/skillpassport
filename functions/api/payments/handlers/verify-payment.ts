@@ -19,6 +19,7 @@ import { getServiceClient } from '../../../lib/supabase';
 import { R2Client } from '../../storage/utils/r2-client';
 import { generateReceiptPDF, fetchImageBytes, type ReceiptData } from '../../storage/utils/pdf-generator';
 import type { PagesEnv } from '../../../lib/types';
+import { APP_URL } from '../../email/types';
 import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
 import type { EventConfirmationTemplateData } from '../../email/types';
 import { sendEmailSafe } from '../../../lib/email-service';
@@ -325,11 +326,6 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     let receiptKey: string | null = null;
     try {
       const pagesEnv = env as unknown as PagesEnv;
-      const appUrl = pagesEnv.APP_URL;
-
-      if (!appUrl) {
-        console.warn('[VerifyPayment] APP_URL not configured — receipt will render without images');
-      }
 
       const { data: learner } = await supabase
         .from('learners')
@@ -338,10 +334,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         .maybeSingle();
 
       let logoBytes: Uint8Array | undefined;
-      if (appUrl) {
-        const logoUrl = `${appUrl}/RareMinds ISO Logo-01.png`;
-        logoBytes = await fetchImageBytes(logoUrl);
-      }
+      const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
+      logoBytes = await fetchImageBytes(logoUrl);
       const watermarkBytes = logoBytes;
 
       const receiptData: ReceiptData = {
