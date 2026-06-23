@@ -172,6 +172,27 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           status: 'active',
         });
       } catch (upgradeError: any) {
+        if (upgradeError.message?.includes('duplicate key') || upgradeError.message?.includes('23505') || upgradeError.status === 409) {
+          console.log('[VerifyPayment] Subscription already updated by webhook (duplicate caught). Syncing shadow cache before return.');
+          
+          try {
+            await syncUserShadow(supabase, user.id, body.email || (user as any).email);
+            const syncData = await ssoSyncSubscription(env, user.id);
+            if (syncData.subscription) {
+              await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+            }
+          } catch (syncError) {
+            console.error('[VerifyPayment] Shadow sync failed during upgrade duplicate handling:', syncError);
+          }
+
+          return apiSuccess({
+            payment_verified: true,
+            subscription_upgraded: true,
+            already_fulfilled: true,
+            ...verifyResult,
+          }, context.request);
+        }
+
         console.error('[VerifyPayment] Upgrade failed:', upgradeError.message);
 
         // Record failed upgrade as an event in auth DB
@@ -229,7 +250,18 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       } catch (createError: any) {
         // Handle race condition: Webhook or other synchronous flow already created the subscription
         if (createError.message?.includes('duplicate key') || createError.message?.includes('23505') || createError.status === 409) {
-          console.log('[VerifyPayment] Subscription already created (duplicate caught). Order fulfilled asynchronously.');
+          console.log('[VerifyPayment] Subscription already created (duplicate caught). Order fulfilled asynchronously. Syncing shadow cache before return.');
+          
+          try {
+            await syncUserShadow(supabase, user.id, body.email || (user as any).email);
+            const syncData = await ssoSyncSubscription(env, user.id);
+            if (syncData.subscription) {
+              await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+            }
+          } catch (syncError) {
+            console.error('[VerifyPayment] Shadow sync failed during duplicate handling:', syncError);
+          }
+
           return apiSuccess({
             payment_verified: true,
             subscription_created: true,

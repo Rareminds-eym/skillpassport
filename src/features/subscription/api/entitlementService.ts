@@ -27,7 +27,7 @@ class EntitlementService {
   async getUserEntitlements(userId) {
     try {
       const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
-        '/payments/get-user-entitlements'
+        `/payments/get-user-entitlements?_t=${Date.now()}`
       );
       
       return { success: result.success ?? true, data: result.data ?? [], error: result.error };
@@ -53,7 +53,7 @@ class EntitlementService {
       }
 
       const result = await apiGet<{ success: boolean; data: any; error: string | null }>(
-        `/payments/has-feature-access?featureKey=${encodeURIComponent(featureKey)}`
+        `/payments/has-feature-access?featureKey=${encodeURIComponent(featureKey)}&_t=${Date.now()}`
       );
       
       return { success: result.success ?? true, data: result.data, error: result.error };
