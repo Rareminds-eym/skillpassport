@@ -123,7 +123,18 @@ export async function handleVerifyOrgPayment(context: AuthenticatedContext): Pro
       });
     } catch (createError: any) {
       if (createError.message?.includes('duplicate key') || createError.message?.includes('23505') || createError.status === 409) {
-        console.log('[VerifyOrgPayment] Org subscription already created by webhook (duplicate caught).');
+        console.log('[VerifyOrgPayment] Org subscription already created by webhook (duplicate caught). Syncing shadow cache before return.');
+        
+        try {
+          await syncUserShadow(supabase, user.id, (user as any).email);
+          const syncData = await ssoSyncSubscription(env, user.id);
+          if (syncData.subscription) {
+            await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+          }
+        } catch (syncError) {
+          console.error('[VerifyOrgPayment] Shadow sync failed during duplicate handling:', syncError);
+        }
+
         return apiSuccess({ ...verifyResult, subscription_created: true, already_fulfilled: true }, context.request);
       }
       console.error('[VerifyOrgPayment] Subscription creation failed:', createError.message);

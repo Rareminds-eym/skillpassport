@@ -47,9 +47,8 @@ export async function fulfillAddonPurchase(
     }
   }
 
-  if (duplicateCaught) {
-    return { success: true, already_fulfilled: true };
-  }
+  // If SSO duplicate caught, continue to ensure local App DB entitlement exists
+  // (the previous attempt may have failed to create it)
 
   // 2. Grant App DB entitlement locally
   const supabase = getServiceClient(env);
@@ -63,13 +62,14 @@ export async function fulfillAddonPurchase(
     status: 'active',
     billing_period: payload.billing_period,
     price_at_purchase: payload.price_at_purchase,
-    razorpay_subscription_id: payload.razorpay_order_id,
+    razorpay_subscription_id: `${payload.razorpay_order_id}_${payload.feature_key}`,
     start_date: new Date().toISOString(),
     end_date: endDate.toISOString()
-  }, { onConflict: 'user_id, feature_key' }).select().single();
+  }, { onConflict: 'razorpay_subscription_id' }).select().single();
 
   if (entError) {
     console.error('[FulfillmentCore] Failed to create user entitlement:', entError);
+    throw new Error('Failed to create user entitlement');
   }
 
   // 3. Record transaction in auth DB
@@ -94,7 +94,7 @@ export async function fulfillAddonPurchase(
     }
   }
 
-  return { success: true, entitlement, already_fulfilled: false };
+  return { success: true, entitlement, already_fulfilled: duplicateCaught };
 }
 
 export async function fulfillBundlePurchase(
@@ -135,9 +135,8 @@ export async function fulfillBundlePurchase(
     }
   }
 
-  if (duplicateCaught) {
-    return { success: true, already_fulfilled: true };
-  }
+  // If SSO duplicate caught, continue to ensure local App DB entitlements exist
+  // (the previous attempt may have failed to create them)
 
   // 2. Grant App DB entitlements locally
   const supabase = getServiceClient(env);
@@ -159,18 +158,19 @@ export async function fulfillBundlePurchase(
       status: 'active',
       billing_period: payload.billing_period,
       price_at_purchase: payload.price_at_purchase,
-      razorpay_subscription_id: payload.razorpay_order_id,
+      razorpay_subscription_id: `${payload.razorpay_order_id}_${f.feature_key}`,
       start_date: new Date().toISOString(),
       end_date: endDate.toISOString()
     }));
 
     const { data: inserted, error } = await supabase
       .from('user_entitlements')
-      .upsert(entitlementsToInsert, { onConflict: 'user_id, feature_key' })
+      .upsert(entitlementsToInsert, { onConflict: 'razorpay_subscription_id' })
       .select();
       
     if (error) {
       console.error('[FulfillmentCore] Failed to create user entitlements:', error);
+      throw new Error('Failed to create user entitlements');
     } else if (inserted && inserted.length > 0) {
       entitlementToReturn = inserted[0];
     }
@@ -198,7 +198,7 @@ export async function fulfillBundlePurchase(
     }
   }
 
-  return { success: true, entitlement: entitlementToReturn, already_fulfilled: false };
+  return { success: true, entitlement: entitlementToReturn, already_fulfilled: duplicateCaught };
 }
 
 export async function fulfillOrgSubscription(
@@ -254,9 +254,8 @@ export async function fulfillOrgSubscription(
     }
   }
 
-  if (duplicateCaught) {
-    return { success: true, already_fulfilled: true };
-  }
+  // If SSO duplicate caught, continue to ensure local shadow sync happens
+  // (the webhook might not have finished syncing the App DB yet)
 
   // Record transaction
   try {
@@ -292,7 +291,7 @@ export async function fulfillOrgSubscription(
     console.error('[FulfillmentCore] Shadow sync failed:', syncError);
   }
 
-  return { success: true, subscription, already_fulfilled: false };
+  return { success: true, subscription, already_fulfilled: duplicateCaught };
 }
 
 export async function fulfillEventRegistration(
@@ -458,9 +457,8 @@ export async function fulfillLearnerSubscription(
     }
   }
 
-  if (duplicateCaught) {
-    return { success: true, already_fulfilled: true, isUpgrade };
-  }
+  // If SSO duplicate caught, continue to ensure local shadow sync happens
+  // (the webhook might not have finished syncing the App DB yet)
 
   try {
     await ssoRecordTransaction(ssoEnv, {
@@ -491,5 +489,5 @@ export async function fulfillLearnerSubscription(
     console.error('[FulfillmentCore] Shadow sync failed:', syncError);
   }
 
-  return { success: true, subscription, isUpgrade, already_fulfilled: false };
+  return { success: true, subscription, isUpgrade, already_fulfilled: duplicateCaught };
 }

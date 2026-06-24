@@ -83,10 +83,11 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       });
     } catch (rpcError: any) {
       if (rpcError.message?.includes('duplicate key') || rpcError.message?.includes('23505') || rpcError.status === 409) {
-        console.log('[VerifyAddonPayment] Addon purchase already recorded by webhook (duplicate caught).');
-        return apiSuccess({ verified: true, purchase_created: true, already_fulfilled: true }, context.request);
+        console.log('[VerifyAddonPayment] Addon purchase already recorded by webhook (duplicate caught). Continuing to ensure local entitlement exists.');
+      } else {
+        console.error('[VerifyAddonPayment] SSO Worker failed to record purchase:', rpcError.message);
+        return apiError(500, 'SSO_ERROR', 'Failed to record addon purchase in auth DB', context.request);
       }
-      console.error('[VerifyAddonPayment] SSO Worker failed to record purchase:', rpcError.message);
     }
 
     // Step 3: Grant App DB entitlement locally for immediate access
@@ -101,13 +102,14 @@ export async function handleVerifyAddonPayment(context: AuthenticatedContext): P
       status: 'active',
       billing_period: billingPeriod,
       price_at_purchase: priceAtPurchase,
-      razorpay_subscription_id: body.razorpay_order_id as string,
+      razorpay_subscription_id: `${body.razorpay_order_id}_${body.feature_key}`,
       start_date: new Date().toISOString(),
       end_date: endDate.toISOString()
-    }, { onConflict: 'user_id, feature_key' }).select().single();
+    }, { onConflict: 'razorpay_subscription_id' }).select().single();
 
     if (entError) {
       console.error('[VerifyAddonPayment] Failed to create user entitlement:', entError);
+      return apiError(500, 'DATABASE_ERROR', 'Failed to create user entitlement', context.request);
     }
 
     // Record transaction in auth DB (non-blocking)

@@ -753,7 +753,6 @@ const UnifiedSignup = () => {
         console.log('[UnifiedSignup] ✓ Invitation token found, attempting auto-accept');
         console.log('[UnifiedSignup] Request payload:', {
           token: freshInvitationToken,
-          userId: ssoUserId,
         });
 
         try {
@@ -768,7 +767,6 @@ const UnifiedSignup = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               token: freshInvitationToken,
-              userId: ssoUserId,
             }),
           });
 

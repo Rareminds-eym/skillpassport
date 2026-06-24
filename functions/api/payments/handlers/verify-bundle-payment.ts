@@ -82,10 +82,11 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
       });
     } catch (rpcError: any) {
       if (rpcError.message?.includes('duplicate key') || rpcError.message?.includes('23505') || rpcError.status === 409) {
-        console.log('[VerifyBundlePayment] Bundle purchase already recorded by webhook (duplicate caught).');
-        return apiSuccess({ verified: true, purchase_created: true, already_fulfilled: true }, context.request);
+        console.log('[VerifyBundlePayment] Bundle purchase already recorded by webhook (duplicate caught). Continuing to ensure local entitlements exist.');
+      } else {
+        console.error('[VerifyBundlePayment] SSO Worker failed to record purchase:', rpcError.message);
+        return apiError(500, 'SSO_ERROR', 'Failed to record bundle purchase in auth DB', context.request);
       }
-      console.error('[VerifyBundlePayment] SSO Worker failed to record purchase:', rpcError.message);
     }
 
     // Step 3: Grant App DB entitlement locally for immediate access
@@ -111,15 +112,15 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
         status: 'active',
         billing_period: billingPeriod,
         price_at_purchase: priceAtPurchase,
-        razorpay_subscription_id: body.razorpay_order_id as string,
+        razorpay_subscription_id: `${body.razorpay_order_id}_${f.feature_key}`,
         start_date: new Date().toISOString(),
         end_date: endDate.toISOString()
       }));
 
-      // Use upsert on unique constraint (user_id, feature_key) to prevent duplicate row explosions
+      // Use upsert on razorpay_subscription_id unique constraint for idempotency
       const { data: inserted, error } = await supabase
         .from('user_entitlements')
-        .upsert(entitlementsToInsert, { onConflict: 'user_id, feature_key' })
+        .upsert(entitlementsToInsert, { onConflict: 'razorpay_subscription_id' })
         .select();
         
       entError = error;
@@ -132,6 +133,7 @@ export async function handleVerifyBundlePayment(context: AuthenticatedContext): 
 
     if (entError) {
       console.error('[VerifyBundlePayment] Failed to create user entitlements:', entError);
+      return apiError(500, 'DATABASE_ERROR', 'Failed to create user entitlements', context.request);
     }
 
     // Record transaction in auth DB (non-blocking)
