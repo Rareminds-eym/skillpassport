@@ -13,7 +13,6 @@ import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 // @ts-ignore - JS hook without types
 import { useLearnerSettings } from '@/features/learner-profile';
-// @ts-ignore - JS hook without types
 import { useInstitutions } from '@/entities/institution/model/useInstitutions';
 import { isCollegeLearner as checkIsCollegeLearner, isSchoolLearner as checkIsSchoolLearner } from '@/entities/learner/lib/learnerType';
 

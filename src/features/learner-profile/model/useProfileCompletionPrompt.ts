@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '@/features/digital-portfolio';
 import { useTheme } from "@/shared/model/themeStore";
+import { useUserRole } from '@/shared/model/authStore';
 import { checkProfileCompleteness } from '@/features/learner-profile';
 import { getPromptDismissed, setPromptDismissed } from '@/features/learner-profile';
 import { getLogger } from '@/shared/config/logging';
@@ -36,8 +37,19 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
   const navigate = useNavigate();
   const { learner, isLoading } = usePortfolio();
   const { theme } = useTheme();
+  const { role } = useUserRole();
   const [showModal, setShowModal] = useState(false);
   const [hasError, setHasError] = useState(false);
+
+  // Check if user is a learner (not admin, educator, etc.)
+  const isLearner = useMemo(() => {
+    if (!role) return false;
+    // Role can be a string or array of strings
+    const roles = Array.isArray(role) ? role : [role];
+    // Check if user has learner role and NOT admin/educator roles
+    return roles.some(r => r === 'learner' || r === 'student') && 
+           !roles.some(r => r.includes('admin') || r.includes('educator') || r.includes('teacher'));
+  }, [role]);
 
   // Memoize profile completeness check results to avoid recalculation
   const profileCompletenessResult = useMemo(() => {
@@ -77,6 +89,12 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
       return;
     }
 
+    // IMPORTANT: Only show modal for learners, not for admins or educators
+    if (!isLearner) {
+      setShowModal(false);
+      return;
+    }
+
     // Handle missing learner data gracefully
     if (!learner) {
       setShowModal(false);
@@ -105,7 +123,7 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
       setHasError(true);
       setShowModal(false);
     }
-  }, [learner, isLoading, isDismissed, profileCompletenessResult, theme]);
+  }, [learner, isLoading, isDismissed, profileCompletenessResult, theme, isLearner]);
 
   /**
    * Handle "Complete Now" button click
