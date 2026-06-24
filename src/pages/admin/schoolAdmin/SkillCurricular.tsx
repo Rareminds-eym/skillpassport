@@ -26,25 +26,24 @@ import * as clubsService from "@/features/college-admin";
 import * as competitionsService from "@/features/college-admin";
 import { getLogger } from '@/shared/config/logging';
 import { useAuthStore } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
 
 
 const logger = getLogger('school-admin-skill-curricular');
 
 import 'react-datepicker/dist/react-datepicker.css';
 
-// Helper function to get school_id from logged-in user (uses organizations table)
+// Helper function to get school_id from logged-in user via API
 async function getSchoolId() {
-    const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail"));
-    if (!userEmail) return null;
-    
-    const { data } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('organization_type', 'school')
-        .eq('email', userEmail)
-        .maybeSingle();
-    
-    return data?.id || null;
+    try {
+        const response = await apiPost<{ schoolId: string }>('/school-admin/actions', {
+            action: 'fetchCommunicationSchoolData'
+        });
+        return response?.schoolId || null;
+    } catch (error) {
+        logger.error('Error getting school ID', error);
+        return null;
+    }
 }
 
 const categories = [
@@ -412,36 +411,24 @@ export default function ClubsActivitiesPage() {
                     }
                 }
                 
-                // 2. Check school_educators table
+                // 2-3. Check school_educators and organizations via API
                 if (!schoolId) {
-                    const { data: educatorData, error: educatorError } = await supabase
-                        .from('school_educators')
-                        .select('school_id')
-                        .eq('email', userEmail)
-                        .maybeSingle();
+                    try {
+                        const { educator, school } = await apiPost<{
+                            educator: any;
+                            school: any;
+                        }>('/school-admin/actions', {
+                            action: 'getEducatorAndSchool',
+                            educatorId: null,
+                            schoolId: null
+                        });
 
-                    if (educatorError) {
-                        logger.error('Error fetching educator data', educatorError);
-                    } else if (educatorData?.school_id) {
-                        schoolId = educatorData.school_id;
-                        logger.info('Found school_id from school_educators', { schoolId });
-                    }
-                }
-                
-                // 3. Check organizations table (for principal/admin)
-                if (!schoolId) {
-                    const { data: orgData, error: orgError } = await supabase
-                        .from('organizations')
-                        .select('id')
-                        .eq('organization_type', 'school')
-                        .eq('email', userEmail)
-                        .maybeSingle();
-
-                    if (orgError) {
-                        logger.error('Error fetching organization data', orgError);
-                    } else if (orgData?.id) {
-                        schoolId = orgData.id;
-                        logger.info('Found school_id from organizations table', { schoolId });
+                        if (school?.id) {
+                            schoolId = school.id;
+                            logger.info('Found school_id from API', { schoolId });
+                        }
+                    } catch (apiErr) {
+                        logger.error('Error fetching educator/school from API', apiErr);
                     }
                 }
 
@@ -454,20 +441,11 @@ export default function ClubsActivitiesPage() {
 
                 logger.info('Fetching learners for school_id', { schoolId });
 
-                // Fetch learners from this school only
-                const { data, error } = await supabase
-                    .from('learners')
-                    .select('id, email, name, grade, section, roll_number, school_id')
-                    .eq('school_id', schoolId)
-                    .eq('is_deleted', false)
-                    .order('name');
-
-                if (error) {
-                    logger.error('Error fetching learners', error);
-                    setAlllearners([]);
-                    setLoadinglearners(false);
-                    return;
-                }
+                // Fetch learners from API
+                const data = await apiPost<any[]>('/school-admin/actions', {
+                    action: 'getCurricularLearners',
+                    schoolId
+                });
 
                 if (!data || data.length === 0) {
                     logger.info('No learners found for school_id', { schoolId });
@@ -477,7 +455,7 @@ export default function ClubsActivitiesPage() {
                 }
 
                 // Map learners to the format we need (using email as ID)
-                const mappedlearners = data.map(learner => ({
+                const mappedlearners = data.map((learner: any) => ({
                     id: learner.email,
                     email: learner.email,
                     name: learner.name || learner.email,
@@ -721,13 +699,13 @@ const handlelearnerLeave = async (learnerId, club) => {
 
     const buildClubParticipationRows = async () => {
         try {
-            // Fetch from Supabase using the club_participation_report view
-            const { data, error } = await supabase
-                .from('club_participation_report')
-                .select('*');
-            
-            if (error) {
-                logger.error('Error fetching club report', error);
+            // Fetch club report from API
+            const data = await apiPost<any[]>('/school-admin/actions', {
+                action: 'get-club-participation-report'
+            });
+
+            if (!data || data.length === 0) {
+                logger.info('No club report data from API, using local data');
                 // Fallback to localStorage data
                 return clubs.map((c) => ({
                     "Club Name": c.name,
@@ -737,8 +715,8 @@ const handlelearnerLeave = async (learnerId, club) => {
                     "Participation score": Math.round((c.members.length / c.capacity) * 100) + '%',
                 }));
             }
-            
-            return data.map(row => ({
+
+            return data.map((row: any) => ({
                 "Club Name": row.club_name,
                 "Learner Count": row.learner_count,
                 "Average attendance": row.avg_attendance ? row.avg_attendance + '%' : '--',
@@ -760,13 +738,13 @@ const handlelearnerLeave = async (learnerId, club) => {
 
     const buildCompetitionPerformanceRows = async () => {
         try {
-            // Fetch from Supabase using the competition_performance_report view
-            const { data, error } = await supabase
-                .from('competition_performance_report')
-                .select('*');
-            
-            if (error) {
-                logger.error('Error fetching competition report', error);
+            // Fetch competition report from API
+            const data = await apiPost<any[]>('/school-admin/actions', {
+                action: 'get-competition-performance-report'
+            });
+
+            if (!data || data.length === 0) {
+                logger.info('No competition report data from API, using local data');
                 // Fallback to localStorage data
                 return competitions.map((t) => ({
                     "Competition Name": t.name,
@@ -775,8 +753,8 @@ const handlelearnerLeave = async (learnerId, club) => {
                     "Awards": '--',
                 }));
             }
-            
-            return data.map(row => ({
+
+            return data.map((row: any) => ({
                 "Competition Name": row.competition_name,
                 "Level": row.level,
                 "Date": row.competition_date,

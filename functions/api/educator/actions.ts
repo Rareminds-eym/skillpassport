@@ -1,4 +1,4 @@
-import { withAuth } from '../../lib/auth';
+import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError } from '../../lib/response';
@@ -504,6 +504,454 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('learners').select('id, name').order('name', { ascending: true });
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || [], context.request, { startTime });
+      }
+
+      // ──────────────────────────────────────────────
+      // COLLEGE ASSIGNMENTS & TASKS
+      // ──────────────────────────────────────────────
+
+      case 'get-learners-by-emails': {
+        const { emails } = params;
+        if (!emails || !Array.isArray(emails) || emails.length === 0) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing emails array', context.request, { startTime });
+        }
+        const { data, error } = await supabase
+          .from('learners')
+          .select('id, user_id, email')
+          .in('email', emails);
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess(data || [], context.request, { startTime });
+      }
+
+      case 'update-college-assignment': {
+        const { assignmentId, updateData } = params;
+        if (!assignmentId || !updateData) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing assignmentId or updateData', context.request, { startTime });
+        }
+        const { error } = await supabase
+          .from('college_assignments')
+          .update(updateData)
+          .eq('assignment_id', assignmentId);
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ updated: true }, context.request, { startTime });
+      }
+
+      case 'delete-college-assignment': {
+        const { assignmentId } = params;
+        if (!assignmentId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing assignmentId', context.request, { startTime });
+        }
+        const { error } = await supabase
+          .from('college_assignments')
+          .delete()
+          .eq('assignment_id', assignmentId);
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ deleted: true }, context.request, { startTime });
+      }
+
+      case 'get-assigned-learners': {
+        const { assignmentId } = params;
+        if (!assignmentId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing assignmentId', context.request, { startTime });
+        }
+        const { data, error } = await supabase
+          .from('college_learner_assignments')
+          .select('learner_id')
+          .eq('assignment_id', assignmentId);
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess((data || []).map((a: any) => a.learner_id), context.request, { startTime });
+      }
+
+      // ──────────────────────────────────────────────
+      // ATTENDANCE
+      // ──────────────────────────────────────────────
+
+      case 'get-educator-info': {
+        const user = getContextUser(context);
+        if (!user?.id) {
+          return apiError(401, 'UNAUTHORIZED', 'User not authenticated', context.request, { startTime });
+        }
+
+        // Check if school educator
+        const { data: schoolEducator } = await supabase
+          .from('school_educators')
+          .select('id, school_id, user_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (schoolEducator) {
+          return apiSuccess({
+            educatorId: schoolEducator.id,
+            educatorUserId: schoolEducator.user_id,
+            schoolId: schoolEducator.school_id,
+            educatorType: 'school'
+          }, context.request, { startTime });
+        }
+
+        // Check if college lecturer
+        const { data: collegeLecturer } = await supabase
+          .from('college_lecturers')
+          .select('id, collegeId, user_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (collegeLecturer) {
+          return apiSuccess({
+            educatorId: collegeLecturer.id,
+            educatorUserId: collegeLecturer.user_id,
+            collegeId: collegeLecturer.collegeId,
+            educatorType: 'college'
+          }, context.request, { startTime });
+        }
+
+        return apiError(404, 'NOT_FOUND', 'No educator record found', context.request, { startTime });
+      }
+
+      case 'get-school-timetable-slots': {
+        const { schoolId, educatorId, selectedDate } = params;
+        if (!schoolId || !educatorId || !selectedDate) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        const date = new Date(selectedDate);
+        const dayOfWeek = date.getDay();
+        const currentYear = new Date().getFullYear();
+
+        const { data: timetables } = await supabase
+          .from('timetables')
+          .select('id')
+          .eq('school_id', schoolId)
+          .eq('academic_year', `${currentYear}-${currentYear + 1}`)
+          .eq('status', 'published')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const timetable = timetables?.[0];
+        if (!timetable) {
+          return apiSuccess({ slots: [] }, context.request, { startTime });
+        }
+
+        const { data: slots, error } = await supabase
+          .from('timetable_slots')
+          .select(`
+            id,
+            day_of_week,
+            period_number,
+            start_time,
+            end_time,
+            subject_name,
+            room_number,
+            class_id,
+            school_classes (
+              name,
+              grade,
+              section,
+              current_learners
+            )
+          `)
+          .eq('timetable_id', timetable.id)
+          .eq('educator_id', educatorId)
+          .eq('day_of_week', dayOfWeek)
+          .order('period_number');
+
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ slots: slots || [] }, context.request, { startTime });
+      }
+
+      case 'get-college-attendance-sessions': {
+        const { collegeId, educatorId, selectedDate } = params;
+        if (!collegeId || !educatorId || !selectedDate) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        const { data: existingSessions, error: sessionsError } = await supabase
+          .from('college_attendance_sessions')
+          .select(`
+            id,
+            date,
+            start_time,
+            end_time,
+            subject_name,
+            subject_code,
+            course_type,
+            department_name,
+            program_name,
+            semester,
+            section,
+            academic_year,
+            room_number,
+            total_learners,
+            present_count,
+            absent_count,
+            status
+          `)
+          .eq('faculty_id', educatorId)
+          .eq('date', selectedDate)
+          .eq('college_id', collegeId)
+          .order('start_time');
+
+        if (sessionsError) return apiDbError(sessionsError, context.request, { startTime });
+        return apiSuccess({ sessions: existingSessions || [] }, context.request, { startTime });
+      }
+
+      case 'get-school-attendance-data': {
+        const { schoolId, selectedDate, classIds } = params;
+        if (!schoolId || !selectedDate || !classIds || !Array.isArray(classIds)) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        // Fetch all learners for these classes
+        const { data: alllearners } = await supabase
+          .from('learners')
+          .select('id, school_class_id')
+          .in('school_class_id', classIds)
+          .eq('is_deleted', false);
+
+        // Fetch all attendance records for today
+        const allLearnerIds = alllearners?.map(s => s.id) || [];
+        const { data: attendanceRecords } = allLearnerIds.length > 0 ? await supabase
+          .from('attendance_records')
+          .select('learner_id, slot_id')
+          .eq('school_id', schoolId)
+          .eq('date', selectedDate)
+          .in('learner_id', allLearnerIds)
+          .not('slot_id', 'is', null) : { data: [] };
+
+        return apiSuccess({
+          learners: alllearners || [],
+          attendanceRecords: attendanceRecords || []
+        }, context.request, { startTime });
+      }
+
+      case 'get-class-learners-for-attendance': {
+        const { classId } = params;
+        if (!classId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing classId', context.request, { startTime });
+        }
+
+        const { data: learners, error } = await supabase
+          .from('learners')
+          .select('id, name, roll_number, grade, section, profilePicture')
+          .eq('school_class_id', classId)
+          .eq('is_deleted', false)
+          .order('roll_number');
+
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ learners: learners || [] }, context.request, { startTime });
+      }
+
+      case 'get-existing-attendance-records': {
+        const { schoolId, selectedDate, slotId, classId } = params;
+        if (!schoolId || !selectedDate || !slotId || !classId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        // First get all learners in this class
+        const { data: classlearners } = await supabase
+          .from('learners')
+          .select('id')
+          .eq('school_class_id', classId)
+          .eq('is_deleted', false);
+
+        const classLearnerIds = classlearners?.map(s => s.id) || [];
+
+        // Check if attendance already exists
+        const { data: existingRecords } = await supabase
+          .from('attendance_records')
+          .select('*')
+          .eq('school_id', schoolId)
+          .eq('date', selectedDate)
+          .eq('slot_id', slotId)
+          .in('learner_id', classLearnerIds);
+
+        return apiSuccess({ records: existingRecords || [] }, context.request, { startTime });
+      }
+
+      case 'get-college-attendance-records': {
+        const { sessionId, selectedDate } = params;
+        if (!sessionId || !selectedDate) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        const { data: existingRecords } = await supabase
+          .from('college_attendance_records')
+          .select('*')
+          .eq('session_id', sessionId)
+          .eq('date', selectedDate);
+
+        return apiSuccess({ records: existingRecords || [] }, context.request, { startTime });
+      }
+
+      case 'get-program-by-name': {
+        const { programName } = params;
+        if (!programName) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing programName', context.request, { startTime });
+        }
+
+        const { data: programData, error: programError } = await supabase
+          .from('programs')
+          .select('id, name, departments(name)')
+          .eq('name', programName)
+          .maybeSingle();
+
+        if (programError) return apiDbError(programError, context.request, { startTime });
+        return apiSuccess(programData, context.request, { startTime });
+      }
+
+      case 'get-program-sections-by-criteria': {
+        const { programId, semester, section } = params;
+        if (!programId || semester === undefined || !section) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        const { data: programSections, error: programError } = await supabase
+          .from('program_sections')
+          .select('program_id, id, programs(name, departments(name))')
+          .eq('program_id', programId)
+          .eq('semester', semester)
+          .eq('section', section);
+
+        if (programError) return apiDbError(programError, context.request, { startTime });
+        return apiSuccess({ programSections: programSections || [] }, context.request, { startTime });
+      }
+
+      case 'get-learners-by-program-section': {
+        const { programId, semester, section } = params;
+        if (!programId || semester === undefined || !section) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        const { data: learners, error } = await supabase
+          .from('learners')
+          .select('id, name, roll_number, grade, section, profilePicture, program_id')
+          .eq('is_deleted', false)
+          .eq('program_id', programId)
+          .eq('semester', semester)
+          .eq('section', section)
+          .order('roll_number');
+
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ learners: learners || [] }, context.request, { startTime });
+      }
+
+      case 'submit-school-attendance': {
+        const { schoolId, educatorUserId, selectedDate, slotId, records } = params;
+        if (!schoolId || !educatorUserId || !selectedDate || !slotId || !records || !Array.isArray(records)) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        // Delete existing records first
+        await supabase
+          .from('attendance_records')
+          .delete()
+          .eq('school_id', schoolId)
+          .eq('date', selectedDate)
+          .eq('slot_id', slotId);
+
+        // Insert new records
+        const recordsToInsert = records.map((record: any) => ({
+          learner_id: record.learner_id,
+          school_id: schoolId,
+          date: selectedDate,
+          status: record.status,
+          time_in: record.time_in || null,
+          time_out: null,
+          marked_by: educatorUserId,
+          remarks: record.remarks || null,
+          mode: 'manual',
+          otp_verified: false,
+          slot_id: slotId,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('attendance_records')
+          .insert(recordsToInsert);
+
+        if (insertError) return apiDbError(insertError, context.request, { startTime });
+        return apiSuccess({ submitted: true }, context.request, { startTime });
+      }
+
+      case 'get-program-details': {
+        const { programId } = params;
+        if (!programId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing programId', context.request, { startTime });
+        }
+
+        const { data: programData } = await supabase
+          .from('programs')
+          .select('name, department_id, departments(name)')
+          .eq('id', programId)
+          .single();
+
+        return apiSuccess(programData, context.request, { startTime });
+      }
+
+      case 'get-faculty-name': {
+        const { educatorId } = params;
+        if (!educatorId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing educatorId', context.request, { startTime });
+        }
+
+        const { data: facultyData, error: facultyError } = await supabase
+          .from('college_lecturers')
+          .select('first_name, last_name')
+          .eq('id', educatorId)
+          .single();
+
+        if (facultyError) return apiDbError(facultyError, context.request, { startTime });
+        return apiSuccess(facultyData, context.request, { startTime });
+      }
+
+      case 'submit-college-attendance': {
+        const { sessionId, selectedDate, records, sessionUpdateData } = params;
+        if (!sessionId || !selectedDate || !records || !Array.isArray(records)) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        // Delete existing records first
+        await supabase
+          .from('college_attendance_records')
+          .delete()
+          .eq('session_id', sessionId)
+          .eq('date', selectedDate);
+
+        // Insert new records
+        const { error: recordsError } = await supabase
+          .from('college_attendance_records')
+          .insert(records);
+
+        if (recordsError) return apiDbError(recordsError, context.request, { startTime });
+
+        // Update session status
+        if (sessionUpdateData) {
+          const { error: sessionUpdateError } = await supabase
+            .from('college_attendance_sessions')
+            .update(sessionUpdateData)
+            .eq('id', sessionId);
+
+          if (sessionUpdateError) return apiDbError(sessionUpdateError, context.request, { startTime });
+        }
+
+        return apiSuccess({ submitted: true }, context.request, { startTime });
+      }
+
+      case 'get-timetable-slot-id': {
+        const { educatorId, periodNumber, dayOfWeek, subjectName, classId } = params;
+        if (!educatorId || periodNumber === undefined || dayOfWeek === undefined || !subjectName || !classId) {
+          return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+        }
+
+        const { data: slotData } = await supabase
+          .from('timetable_slots')
+          .select('id')
+          .eq('educator_id', educatorId)
+          .eq('period_number', periodNumber)
+          .eq('day_of_week', dayOfWeek)
+          .eq('subject_name', subjectName)
+          .eq('class_id', classId)
+          .maybeSingle();
+
+        return apiSuccess({ slotId: slotData?.id || null }, context.request, { startTime });
       }
 
       case 'get-mentor-notes': {
@@ -1040,6 +1488,592 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from(table).update({ ...values, [tsField]: new Date().toISOString() }).eq(idField, id).select().maybeSingle();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess(data || null, context.request, { startTime });
+      }
+
+      // --- Assessment Results ---
+      case 'fetch-educator-assessment-results': {
+        const user = getContextUser(context);
+        const userEmail = user.email;
+        const userId = user.id;
+
+        if (!userEmail || !userId) {
+          return apiError(401, 'UNAUTHORIZED', 'User not authenticated', context.request, { startTime });
+        }
+
+        try {
+          // Check if school educator
+          let schoolEducatorData = null;
+
+          const { data: educatorByUserId } = await supabase
+            .from('school_educators')
+            .select('id, school_id, role')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (educatorByUserId) {
+            schoolEducatorData = educatorByUserId;
+          } else {
+            const { data: educatorByEmail } = await supabase
+              .from('school_educators')
+              .select('id, school_id, role')
+              .eq('email', userEmail)
+              .maybeSingle();
+
+            if (educatorByEmail) {
+              schoolEducatorData = educatorByEmail;
+            }
+          }
+
+          let learnersQuery = supabase
+            .from('learners')
+            .select(`
+              user_id,
+              name,
+              email,
+              enrollmentNumber,
+              grade,
+              program_id,
+              programs (
+                id,
+                name
+              )
+            `)
+            .eq('is_deleted', false);
+
+          let schoolId: string | null = null;
+          let schoolName = '';
+
+          if (schoolEducatorData?.school_id) {
+            schoolId = schoolEducatorData.school_id;
+
+            if (schoolEducatorData.role === 'admin' || schoolEducatorData.role === 'school_admin') {
+              learnersQuery = learnersQuery.eq('school_id', schoolId);
+            } else {
+              const { data: classAssignments } = await supabase
+                .from('school_educator_class_assignments')
+                .select('class_id')
+                .eq('educator_id', schoolEducatorData.id);
+
+              if (classAssignments && classAssignments.length > 0) {
+                const assignedClassIds = classAssignments.map(assignment => assignment.class_id);
+                learnersQuery = learnersQuery
+                  .eq('school_id', schoolId)
+                  .in('school_class_id', assignedClassIds);
+              } else {
+                return apiSuccess({ results: [], schoolName: '' }, context.request, { startTime });
+              }
+            }
+
+            const { data: schoolData } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', schoolId)
+              .maybeSingle();
+
+            schoolName = schoolData?.name || '';
+          }
+
+          const { data: learners } = await learnersQuery;
+
+          if (!learners || learners.length === 0) {
+            return apiSuccess({ results: [], schoolName }, context.request, { startTime });
+          }
+
+          const userIds = learners.map(l => l.user_id).filter(Boolean);
+          const { data: results } = await supabase
+            .from('assessment_results')
+            .select(`
+              id,
+              learner_id,
+              stream_id,
+              riasec_code,
+              aptitude_overall,
+              employability_readiness,
+              knowledge_score,
+              status,
+              created_at,
+              career_fit,
+              skill_gap,
+              gemini_results,
+              overall_summary,
+              platform_courses,
+              roadmap,
+              riasec_scores,
+              aptitude_scores,
+              profile_snapshot
+            `)
+            .in('learner_id', userIds)
+            .order('created_at', { ascending: false });
+
+          const enrichedResults = (results || []).map(result => {
+            const learner = learners.find(l => l.user_id === result.learner_id);
+            return {
+              ...result,
+              learner_name: learner?.name,
+              learner_email: learner?.email,
+              college_id: schoolId,
+              college_name: schoolName,
+              enrollmentNumber: learner?.enrollmentNumber,
+              learner_grade: learner?.grade,
+              program_id: learner?.program_id,
+              program_name: learner?.programs?.[0]?.name
+            };
+          });
+
+          return apiSuccess({ results: enrichedResults, schoolName }, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-educator-by-user-id': {
+        const user = getContextUser(context);
+        const userId = user.id;
+
+        if (!userId) {
+          return apiError(401, 'UNAUTHORIZED', 'User not authenticated', context.request, { startTime });
+        }
+
+        try {
+          const { data, error } = await supabase
+            .from('school_educators')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (error) return apiDbError(error, context.request, { startTime });
+          return apiSuccess(data || {}, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-educator-school-and-classes': {
+        const { educatorId } = params;
+        if (!educatorId) return apiError(400, 'VALIDATION_ERROR', 'Missing educatorId', context.request, { startTime });
+
+        try {
+          const { data: educatorData, error: educatorError } = await supabase
+            .from('school_educators')
+            .select('school_id')
+            .eq('id', educatorId)
+            .maybeSingle();
+
+          if (educatorError) return apiDbError(educatorError, context.request, { startTime });
+
+          if (!educatorData?.school_id) {
+            return apiSuccess({ school_id: null, classes: [] }, context.request, { startTime });
+          }
+
+          const { data: classesData, error: classesError } = await supabase
+            .from('school_classes')
+            .select('id, name, grade, section')
+            .eq('school_id', educatorData.school_id)
+            .eq('account_status', 'active')
+            .order('grade', { ascending: true })
+            .order('section', { ascending: true });
+
+          if (classesError) return apiDbError(classesError, context.request, { startTime });
+
+          return apiSuccess({
+            school_id: educatorData.school_id,
+            classes: classesData || []
+          }, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-curriculum-subjects': {
+        const { schoolId } = params;
+        if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'Missing schoolId', context.request, { startTime });
+
+        try {
+          const { data, error } = await supabase
+            .from('curriculum_subjects')
+            .select('id, name, subject_code')
+            .eq('school_id', schoolId)
+            .eq('is_active', true)
+            .order('display_order', { ascending: true });
+
+          if (error) return apiDbError(error, context.request, { startTime });
+          return apiSuccess(data || [], context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-assignment-with-attachments': {
+        const { assignmentId } = params;
+        if (!assignmentId) return apiError(400, 'VALIDATION_ERROR', 'Missing assignmentId', context.request, { startTime });
+
+        try {
+          const { data, error } = await supabase
+            .from('assignments')
+            .select(`
+              *,
+              assignment_attachments (*)
+            `)
+            .eq('assignment_id', assignmentId)
+            .single();
+
+          if (error) return apiDbError(error, context.request, { startTime });
+          return apiSuccess(data || {}, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-educator-type-by-user-id': {
+        const user = getContextUser(context);
+        const userId = user.id;
+
+        if (!userId) {
+          return apiError(401, 'UNAUTHORIZED', 'User not authenticated', context.request, { startTime });
+        }
+
+        try {
+          const { data: schoolEducator } = await supabase
+            .from('school_educators')
+            .select('id, school_id, user_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (schoolEducator) {
+            return apiSuccess({
+              type: 'school',
+              schoolEducator
+            }, context.request, { startTime });
+          }
+
+          const { data: collegeLecturer } = await supabase
+            .from('college_lecturers')
+            .select('id, collegeId, user_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (collegeLecturer) {
+            return apiSuccess({
+              type: 'college',
+              collegeLecturer
+            }, context.request, { startTime });
+          }
+
+          return apiSuccess({ type: null }, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-school-schedule': {
+        const { educatorId, schoolId, dayOfWeek, selectedDate } = params;
+        if (!educatorId || !schoolId) return apiError(400, 'VALIDATION_ERROR', 'Missing educatorId or schoolId', context.request, { startTime });
+
+        try {
+          const currentYear = new Date().getFullYear();
+          const { data: timetables } = await supabase
+            .from('timetables')
+            .select('id')
+            .eq('school_id', schoolId)
+            .eq('academic_year', `${currentYear}-${currentYear + 1}`)
+            .eq('status', 'published')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (!timetables || timetables.length === 0) {
+            return apiSuccess({ slots: [] }, context.request, { startTime });
+          }
+
+          const { data: slots, error } = await supabase
+            .from('timetable_slots')
+            .select(`
+              id,
+              day_of_week,
+              period_number,
+              start_time,
+              end_time,
+              subject_name,
+              room_number,
+              class_id,
+              school_classes (
+                name,
+                grade,
+                section,
+                current_learners
+              )
+            `)
+            .eq('timetable_id', timetables[0].id)
+            .eq('educator_id', educatorId)
+            .eq('day_of_week', dayOfWeek)
+            .order('period_number');
+
+          if (error) return apiDbError(error, context.request, { startTime });
+          return apiSuccess({ slots: slots || [] }, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-college-schedule': {
+        const { educatorId, collegeId, selectedDate } = params;
+        if (!educatorId || !collegeId) return apiError(400, 'VALIDATION_ERROR', 'Missing educatorId or collegeId', context.request, { startTime });
+
+        try {
+          const { data: existingSessions, error: sessionsError } = await supabase
+            .from('college_attendance_sessions')
+            .select(`
+              id,
+              date,
+              start_time,
+              end_time,
+              subject_name,
+              subject_code,
+              course_type,
+              department_name,
+              program_name,
+              semester,
+              section,
+              academic_year,
+              room_number,
+              total_learners,
+              present_count,
+              absent_count,
+              status
+            `)
+            .eq('faculty_id', educatorId)
+            .eq('date', selectedDate)
+            .eq('college_id', collegeId)
+            .order('start_time');
+
+          if (sessionsError) return apiDbError(sessionsError, context.request, { startTime });
+          return apiSuccess({ sessions: existingSessions || [] }, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'process-school-slots': {
+        const { schoolId, classIds, selectedDate } = params;
+        if (!schoolId || !classIds?.length) return apiError(400, 'VALIDATION_ERROR', 'Missing schoolId or classIds', context.request, { startTime });
+
+        try {
+          const { data: allLearners } = await supabase
+            .from('learners')
+            .select('id, school_class_id')
+            .in('school_class_id', classIds)
+            .eq('is_deleted', false);
+
+          const learnersByClass: Record<string, string[]> = {};
+          allLearners?.forEach(learner => {
+            if (!learnersByClass[learner.school_class_id]) {
+              learnersByClass[learner.school_class_id] = [];
+            }
+            learnersByClass[learner.school_class_id].push(learner.id);
+          });
+
+          const allLearnerIds = allLearners?.map(s => s.id) || [];
+          const { data: attendanceRecords } = allLearnerIds.length > 0 ? await supabase
+            .from('attendance_records')
+            .select('learner_id, slot_id')
+            .eq('school_id', schoolId)
+            .eq('date', selectedDate)
+            .in('learner_id', allLearnerIds)
+            .not('slot_id', 'is', null) : { data: [] };
+
+          return apiSuccess({
+            learnersByClass,
+            attendanceRecords: attendanceRecords || []
+          }, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'start-school-attendance-session': {
+        const { schoolId, slotId, classId, selectedDate } = params;
+        if (!schoolId || !slotId || !classId) return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+
+        try {
+          const { data: classlearners } = await supabase
+            .from('learners')
+            .select('id')
+            .eq('school_class_id', classId)
+            .eq('is_deleted', false);
+
+          const classLearnerIds = classlearners?.map(s => s.id) || [];
+
+          const { data: existingRecords } = await supabase
+            .from('attendance_records')
+            .select('*')
+            .eq('school_id', schoolId)
+            .eq('date', selectedDate)
+            .eq('slot_id', slotId)
+            .in('learner_id', classLearnerIds);
+
+          const { data: learners, error } = await supabase
+            .from('learners')
+            .select('id, name, roll_number, grade, section, profilePicture')
+            .eq('school_class_id', classId)
+            .eq('is_deleted', false)
+            .order('roll_number');
+
+          if (error) return apiDbError(error, context.request, { startTime });
+
+          return apiSuccess({
+            learners: learners || [],
+            existingRecords: existingRecords || [],
+            isSubmitted: (existingRecords && existingRecords.length > 0)
+          }, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'start-college-attendance-session': {
+        const { sessionId, selectedDate, classId, semester } = params;
+        if (!sessionId || !classId) return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+
+        try {
+          const { data: existingRecords } = await supabase
+            .from('college_attendance_records')
+            .select('*')
+            .eq('session_id', sessionId)
+            .eq('date', selectedDate);
+
+          const classParts = classId.split('-');
+          const secondToLast = classParts[classParts.length - 2];
+          const isOldFormat = !isNaN(parseInt(secondToLast)) && secondToLast.length <= 2;
+
+          let program_id: string;
+          const section = classParts[classParts.length - 1];
+          const semesterValue = parseInt(classParts[classParts.length - 2]);
+
+          if (isOldFormat) {
+            const programNameParts = classParts.slice(1, classParts.length - 2);
+            const programName = programNameParts.join('-');
+            const { data: programData } = await supabase
+              .from('programs')
+              .select('id')
+              .eq('name', programName)
+              .maybeSingle();
+            if (!programData) return apiError(400, 'NOT_FOUND', `Program not found: ${programName}`, context.request, { startTime });
+            program_id = programData.id;
+          } else {
+            const programIdParts = classParts.slice(classParts.length - 7, classParts.length - 2);
+            program_id = programIdParts.join('-');
+          }
+
+          const { data: learners, error: learnersError } = await supabase
+            .from('learners')
+            .select('id, name, roll_number, grade, section, profilePicture')
+            .eq('is_deleted', false)
+            .eq('program_id', program_id)
+            .eq('semester', semesterValue)
+            .eq('section', section)
+            .order('roll_number');
+
+          if (learnersError) return apiDbError(learnersError, context.request, { startTime });
+
+          return apiSuccess({
+            existingRecords: existingRecords || [],
+            isSubmitted: (existingRecords && existingRecords.length > 0),
+            learners: (learners || []).map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              roll_number: s.roll_number || 'N/A',
+              grade: `Semester ${semesterValue}`,
+              section: s.section || section,
+              profilePicture: s.profilePicture
+            }))
+          }, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-educator-learners': {
+        const { educatorType, schoolId, collegeId, assignedClassIds } = params;
+        if (!educatorType) return apiError(400, 'VALIDATION_ERROR', 'Missing educatorType', context.request, { startTime });
+
+        try {
+          let query = supabase.from('learners').select('id, user_id, email, name, grade, section, roll_number, school_id, school_class_id, college_id').eq('is_deleted', false);
+
+          if (educatorType === 'school') {
+            if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'Missing schoolId for school educator', context.request, { startTime });
+            query = query.eq('school_id', schoolId);
+            if (assignedClassIds && assignedClassIds.length > 0) {
+              query = query.in('school_class_id', assignedClassIds);
+            }
+          } else if (educatorType === 'college') {
+            if (!collegeId) return apiError(400, 'VALIDATION_ERROR', 'Missing collegeId for college educator', context.request, { startTime });
+            query = query.eq('college_id', collegeId);
+          }
+
+          const { data: learners, error } = await query.order('name');
+          if (error) return apiDbError(error, context.request, { startTime });
+
+          const mapped = (learners || []).map((l: any) => ({
+            id: l.user_id || l.id,
+            user_id: l.user_id,
+            email: l.email,
+            name: l.name || l.email,
+            grade: l.grade || 'N/A',
+            section: l.section || '',
+            rollNumber: l.roll_number || '',
+            school_id: l.school_id || l.college_id || '',
+            school_class_id: l.school_class_id
+          }));
+
+          return apiSuccess(mapped, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'check-club-membership': {
+        const { clubId, learnerEmail } = params;
+        if (!clubId || !learnerEmail) return apiError(400, 'VALIDATION_ERROR', 'Missing required parameters', context.request, { startTime });
+
+        try {
+          const { data, error } = await supabase
+            .from('club_memberships')
+            .select('*')
+            .eq('club_id', clubId)
+            .eq('learner_email', learnerEmail)
+            .eq('status', 'active')
+            .single();
+
+          if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
+          return apiSuccess(data || null, context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-club-participation-report': {
+        try {
+          const { data, error } = await supabase
+            .from('club_participation_report')
+            .select('*');
+
+          if (error) return apiDbError(error, context.request, { startTime });
+          return apiSuccess(data || [], context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
+      }
+
+      case 'get-competition-performance-report': {
+        try {
+          const { data, error } = await supabase
+            .from('competition_performance_report')
+            .select('*');
+
+          if (error) return apiDbError(error, context.request, { startTime });
+          return apiSuccess(data || [], context.request, { startTime });
+        } catch (error) {
+          return apiDbError(error, context.request, { startTime });
+        }
       }
 
       default:
