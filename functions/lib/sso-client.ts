@@ -77,6 +77,9 @@ type SsoFetcher = Fetcher & {
   assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean }>;
   recordAddonPurchase(data: unknown): Promise<Record<string, unknown>>;
   recordBundlePurchase(data: unknown): Promise<Record<string, unknown>>;
+  listAddonCatalog(): Promise<any>;
+  getAddonByFeatureKey(featureKey: string): Promise<any>;
+  listBundles(): Promise<any>;
 };
 
 // ─── Binding Guard ─────────────────────────────────────────────
@@ -227,13 +230,16 @@ export async function ssoRecordBundlePurchase(
   return getSsoService(env).recordBundlePurchase(data);
 }
 
-export async function ssoFetch(
-  env: SsoClientEnv,
-  path: string,
-  init?: RequestInit,
-): Promise<Response> {
-  const url = new URL(path, "http://sso-worker").toString();
-  return getSsoService(env).fetch(new Request(url, init));
+export async function ssoListAddonCatalog(env: SsoClientEnv): Promise<any> {
+  return getSsoService(env).listAddonCatalog();
+}
+
+export async function ssoGetAddonByFeatureKey(env: SsoClientEnv, featureKey: string): Promise<any> {
+  return getSsoService(env).getAddonByFeatureKey(featureKey);
+}
+
+export async function ssoListBundles(env: SsoClientEnv): Promise<any> {
+  return getSsoService(env).listBundles();
 }
 
 /**

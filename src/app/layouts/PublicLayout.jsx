@@ -33,9 +33,8 @@ const PublicLayoutContent = () => {
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotional();
 
-  // Don't show assessment banner for learners
-  const isLearner = userRole === 'learner';
-  const shouldShowAssessmentBanner = showAssessmentBanner && !isLearner;
+  // Don't show assessment banner for authenticated users (they're already registered)
+  const shouldShowAssessmentBanner = showAssessmentBanner && !isAuthenticated;
 
   // Show assessment banner if assessment modal was dismissed, otherwise show promo banner
   const hasAnyBanner = shouldShowAssessmentBanner || showBanner;

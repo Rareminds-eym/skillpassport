@@ -9,8 +9,6 @@
 
 import type { PagesEnv } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { getEmailWorkerConfig } from '../config/emailWorkerConfig';
-import { sendOtpSms, EmailWorkerError } from '../utils/emailWorkerClient';
 import { formatPhoneNumber } from '../utils/formatPhone';
 
 interface ResendOtpBody {
@@ -25,33 +23,27 @@ interface ResendOtpBody {
  * @returns Parsed timeout in seconds, or fallback if invalid
  */
 function parseTimeoutSeconds(value: string | undefined, fallback = 60): number {
-  // undefined is expected when field is missing - use fallback silently
   if (value === undefined) {
     return fallback;
   }
   
-  // Empty string should use fallback with warning
   if (value === '') {
     console.warn('OTP timeout is empty string, using fallback:', fallback);
     return fallback;
   }
   
-  // Try to parse the value
   const parsed = parseInt(value, 10);
   
-  // Check for NaN (non-numeric strings like "abc")
   if (isNaN(parsed)) {
     console.warn('OTP timeout is non-numeric, using fallback:', { received: value, fallback });
     return fallback;
   }
   
-  // Check for zero or negative values
   if (parsed <= 0) {
     console.warn('OTP timeout is zero or negative, using fallback:', { received: value, fallback });
     return fallback;
   }
   
-  // Valid positive number
   return parsed;
 }
 
@@ -62,12 +54,10 @@ export async function resendOtpHandler(
   try {
     const { phone, countryCode = '+91' } = body;
     
-    // Validate phone
     if (!phone) {
       return apiError(400, 'VALIDATION_ERROR', 'Phone number is required', undefined);
     }
     
-    // Format phone number
     let formattedPhone: string;
     try {
       formattedPhone = formatPhoneNumber(phone, countryCode);
@@ -78,23 +68,25 @@ export async function resendOtpHandler(
       return apiError(400, 'VALIDATION_ERROR', 'Failed to format phone number', undefined);
     }
 
-    // Validate phone length
     if (formattedPhone.length < 7 || formattedPhone.length > 15) {
       return apiError(400, 'VALIDATION_ERROR', 'Invalid phone number. Must be 7-15 digits.', undefined);
     }
     
-    // Get and validate email worker configuration
-    const emailWorkerConfig = getEmailWorkerConfig(env);
+    if (!env.EMAIL_SERVICE) {
+      return apiError(500, 'INTERNAL_ERROR', 'EMAIL_SERVICE binding is missing', undefined);
+    }
     
-    // Forward request to email-worker (resend = send again)
     const cleanCountryCode = countryCode.replace('+', '');
-    const result = await sendOtpSms(emailWorkerConfig, {
+    const result = await env.EMAIL_SERVICE.sendOTP({
       mobileNumber: formattedPhone,
       countryCode: cleanCountryCode,
       flowType: 'SMS',
     });
     
-    // Return response in the format expected by frontend
+    if (!result.success) {
+      return apiError(400, 'ERROR', result.error || 'Failed to resend OTP', undefined);
+    }
+    
     const full = `${countryCode}${formattedPhone}`;
     const masked = full.length > 4 ? full.slice(0, -4) + '****' : '****';
     
@@ -105,17 +97,10 @@ export async function resendOtpHandler(
       verificationId: result.verificationId,
     }, undefined);
   } catch (error) {
-    if (error instanceof EmailWorkerError) {
-      // Downstream service error
-      return apiError(502, 'ERROR', error.message, undefined);
-    }
-    
     if (error instanceof Error) {
-      // Unexpected error
       return apiError(500, 'INTERNAL_ERROR', error.message, undefined);
     }
     
-    // Unknown error type
     return apiError(500, 'INTERNAL_ERROR', 'An unexpected error occurred', undefined);
   }
 }
