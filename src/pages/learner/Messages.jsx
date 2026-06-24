@@ -81,7 +81,12 @@ const Messages = () => {
   const user = useUser();
   const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
   const { learnerData, loading: loadinglearnerData } = useLearnerDataByEmail(userEmail);
-  const learnerId = learnerData?.id || user?.id;
+  // Use learner's primary ID for fetching school/college data (learners.id)
+  const learnerIdForSchool = learnerData?.id || user?.id;
+  // Use learner's user_id for creating conversations (references learners.user_id in FK)
+  const learnerIdForConversations = learnerData?.users?.id || user?.id;
+  // Default learnerId for backward compatibility with existing code
+  const learnerId = learnerIdForConversations;
   const learnerName = learnerData?.profile?.name || user?.name || 'Learner';
 
   // Check if user is a learner using the utility function
@@ -2014,7 +2019,7 @@ const Messages = () => {
       <NewAdminConversationModal
         isOpen={showNewAdminConversationModal}
         onClose={() => setShowNewAdminConversationModal(false)}
-        learnerId={learnerId}
+        learnerId={learnerIdForSchool}
         onConversationCreated={async ({ schoolId, subject, initialMessage }) => {
           try {
             logger.info('Creating admin conversation', { schoolId, subject });
@@ -2027,29 +2032,36 @@ const Messages = () => {
 
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
-              // Get a school admin from the school to send the message to
-              const schoolAdminRes = await apiPost('/learner-pages/actions', {
-                action: 'fetch-school-admin-educator',
-                schoolId,
-              });
+              try {
+                // Get a school admin from the school to send the message to
+                const schoolAdminRes = await apiPost('/learner-pages/actions', {
+                  action: 'fetch-school-admin-educator',
+                  schoolId,
+                });
 
-              const schoolAdmin = schoolAdminRes?.data;
-              if (schoolAdmin) {
-                await MessageService.sendMessage(
-                  conversation.id,
-                  learnerId,
-                  'learner',
-                  schoolAdmin.user_id, // Send to the school admin's user_id
-                  'school_admin',
-                  initialMessage.trim(),
-                  null, // applicationId
-                  null, // opportunityId
-                  null, // classId
-                  subject
-                );
-                logger.info('Initial admin message sent');
-              } else {
-                logger.warn('No school admin found for school', { schoolId });
+                const schoolAdmin = schoolAdminRes?.data;
+                if (schoolAdmin) {
+                  await MessageService.sendMessage(
+                    conversation.id,
+                    learnerId,
+                    'learner',
+                    schoolAdmin.user_id, // Send to the school admin's user_id
+                    'school_admin',
+                    initialMessage.trim(),
+                    null, // applicationId
+                    null, // opportunityId
+                    null, // classId
+                    subject
+                  );
+                  logger.info('Initial admin message sent');
+                } else {
+                  logger.warn('No school admin found for school', { schoolId });
+                  // Still send the message to the conversation (will appear as system message)
+                  // The school admins can read it when they access the conversation
+                }
+              } catch (messageError) {
+                logger.warn('Failed to send initial message, but conversation was created', messageError);
+                // Don't throw - conversation was created successfully
               }
             }
 
@@ -2092,7 +2104,7 @@ const Messages = () => {
       <NewCollegeAdminConversationModal
         isOpen={showNewCollegeAdminConversationModal}
         onClose={() => setShowNewCollegeAdminConversationModal(false)}
-        learnerId={learnerId}
+        learnerId={learnerIdForSchool}
         onConversationCreated={async ({ collegeId, subject, initialMessage }) => {
           try {
             logger.info('Creating college admin conversation', { collegeId, subject });
@@ -2105,45 +2117,51 @@ const Messages = () => {
 
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
-              // Get a college admin from the college to send the message to
-              const collegeAdminRes = await apiPost('/learner-pages/actions', {
-                action: 'fetch-college-admin',
-                collegeId,
-              });
-
-              let adminUserId = null;
-              const collegeAdmin = collegeAdminRes?.data;
-              if (collegeAdmin) {
-                adminUserId = collegeAdmin.user_id || collegeAdmin.userId;
-              } else {
-                // Fallback: check if user is college owner in organizations table
-                const ownerRes = await apiPost('/learner-pages/actions', {
-                  action: 'fetch-college-org-admin',
+              try {
+                // Get a college admin from the college to send the message to
+                const collegeAdminRes = await apiPost('/learner-pages/actions', {
+                  action: 'fetch-college-admin',
                   collegeId,
                 });
 
-                const ownerData = ownerRes?.data;
-                if (ownerData) {
-                  adminUserId = ownerData.admin_id;
-                }
-              }
+                let adminUserId = null;
+                const collegeAdmin = collegeAdminRes?.data;
+                if (collegeAdmin) {
+                  adminUserId = collegeAdmin.user_id || collegeAdmin.userId;
+                } else {
+                  // Fallback: check if user is college owner in organizations table
+                  const ownerRes = await apiPost('/learner-pages/actions', {
+                    action: 'fetch-college-org-admin',
+                    collegeId,
+                  });
 
-              if (adminUserId) {
-                await MessageService.sendMessage(
-                  conversation.id,
-                  learnerId,
-                  'learner',
-                  adminUserId,
-                  'college_admin',
-                  initialMessage.trim(),
-                  null, // applicationId
-                  null, // opportunityId
-                  null, // classId
-                  subject
-                );
-                logger.info('Initial college admin message sent');
-              } else {
-                logger.warn('No college admin found for college', { collegeId });
+                  const ownerData = ownerRes?.data;
+                  if (ownerData) {
+                    adminUserId = ownerData.admin_id;
+                  }
+                }
+
+                if (adminUserId) {
+                  await MessageService.sendMessage(
+                    conversation.id,
+                    learnerId,
+                    'learner',
+                    adminUserId,
+                    'college_admin',
+                    initialMessage.trim(),
+                    null, // applicationId
+                    null, // opportunityId
+                    null, // classId
+                    subject
+                  );
+                  logger.info('Initial college admin message sent');
+                } else {
+                  logger.warn('No college admin found for college', { collegeId });
+                  // Conversation created successfully; admins can view it
+                }
+              } catch (messageError) {
+                logger.warn('Failed to send initial message, but conversation was created', messageError);
+                // Don't throw - conversation was created successfully
               }
             }
 
