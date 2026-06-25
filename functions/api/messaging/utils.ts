@@ -35,15 +35,15 @@ async function convertOpportunityId(supabase: SupabaseClient, opportunityId: num
 
 async function fetchEducatorDetailsForConversations(supabase: SupabaseClient, conversations: Conversation[]): Promise<Conversation[]> {
   if (!conversations || conversations.length === 0) return conversations;
-  const schoolEducatorConvs = conversations.filter((c: Conversation) => c.conversation_type === 'learner_educator');
-  const collegeEducatorConvs = conversations.filter((c: Conversation) => c.conversation_type === 'learner_college_educator');
+  const schoolEducatorConvs = conversations.filter((c: Conversation): c is Conversation => c.conversation_type === 'learner_educator');
+  const collegeEducatorConvs = conversations.filter((c: Conversation): c is Conversation => c.conversation_type === 'learner_college_educator');
 
   if (schoolEducatorConvs.length > 0) {
     const ids = schoolEducatorConvs.map((c: Conversation) => c.educator_id).filter(Boolean);
     if (ids.length > 0) {
       const { data: educators } = await supabase.from('school_educators').select('id, user_id, first_name, last_name, email, phone_number, photo_url').in('id', ids);
       if (educators) {
-        schoolEducatorConvs.forEach((conv: Conversation) => { const e = educators.find((x) => x.id === conv.educator_id); if (e) conv.educator = e; });
+        schoolEducatorConvs.forEach((conv: Conversation) => { const e = educators?.find((x) => x.id === conv.educator_id); if (e) conv.educator = e; });
       }
     }
   }
@@ -53,7 +53,7 @@ async function fetchEducatorDetailsForConversations(supabase: SupabaseClient, co
     if (ids.length > 0) {
       const { data: lecturers } = await supabase.from('college_lecturers').select('id, user_id, first_name, last_name, email, phone, department, specialization').in('id', ids);
       if (lecturers) {
-        collegeEducatorConvs.forEach((conv: Conversation) => { const e = lecturers.find((x) => x.id === conv.educator_id); if (e) conv.educator = e; });
+        collegeEducatorConvs.forEach((conv: Conversation) => { const e = lecturers?.find((x) => x.id === conv.educator_id); if (e) conv.educator = e; });
       }
     }
   }

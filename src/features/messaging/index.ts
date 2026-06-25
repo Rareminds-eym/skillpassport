@@ -46,6 +46,7 @@ export type {
 
 export { useMessageNotifications } from './model/useMessageNotifications';
 export { default as useTypingIndicator } from './model/useTypingIndicator';
+export { useConversationMutations } from './model/useConversationMutations';
 
 // Store - Re-export from shared
 export { useMessageStore } from '@/shared/model/useMessageStore';
@@ -54,9 +55,11 @@ export { useMessageStore } from '@/shared/model/useMessageStore';
 export { useUnreadMessagesCount } from './model/useUnreadMessagesCount';
 
 // ============================================================================
-// Services
+// Services - Split into Query and Mutation layers
 // ============================================================================
 export { default as MessageService } from '../../shared/api/messageService';
+export { MessageQueryService } from '@/shared/api/messageQueryService';
+export { MessageMutationService } from '@/shared/api/messageMutationService';
 
 // ============================================================================
 // Types

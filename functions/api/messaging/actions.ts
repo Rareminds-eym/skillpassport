@@ -164,7 +164,7 @@ async function handleGetUserConversations(supabase: SupabaseClient, params: any)
     let retryQuery = supabase
       .from('conversations')
       .select(`id, learner_id, recruiter_id, educator_id, application_id, opportunity_id, class_id, subject, status, conversation_type, last_message_at, last_message_preview, last_message_sender, learner_unread_count, recruiter_unread_count, educator_unread_count, created_at, updated_at, learner:learners(id, name, email, contact_number, university, branch_field), recruiter:recruiters(id, name, email, phone), opportunity:opportunities(id, title, company_name, location, employment_type), application:applied_jobs(id, application_status), school_class:school_classes(id, name, grade, section)`)
-      .eq(column, userId);
+      .eq(column, usrId);
     if (conversationType) retryQuery = retryQuery.eq('conversation_type', conversationType);
     if (!includeArchived) retryQuery = retryQuery.neq('status', 'archived');
     retryQuery = retryQuery.order('last_message_at', { ascending: false, nullsFirst: false }).limit(100);
