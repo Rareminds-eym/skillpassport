@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { MessageMutationService, MessageQueryService } from '../api';
+import { MessageMutationService } from '@/shared/api/messageMutationService';
+import { MessageQueryService } from '@/shared/api/messageQueryService';
 import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('use-conversation-mutations');

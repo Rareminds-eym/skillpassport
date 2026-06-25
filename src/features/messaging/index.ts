@@ -55,28 +55,34 @@ export { useMessageStore } from '@/shared/model/useMessageStore';
 export { useUnreadMessagesCount } from './model/useUnreadMessagesCount';
 
 // ============================================================================
-// Services - API Layer (re-exported from shared via ./api)
+// Types - SINGLE SOURCE
 // ============================================================================
-// ⚠️ RECOMMENDATION: Use hooks instead of services directly
-// Prefer: import { useConversationMutations, useMessages } from '@/features/messaging';
-// Avoid: import { MessageQueryService } from '@/features/messaging';
-
-// Legacy - for backward compatibility only
-export { default as MessageService } from '../../shared/api/messageService';
-
-// For explicit service access (not recommended - use hooks instead)
-export type { Message, Conversation } from './api';
-
-// ============================================================================
-// Types - from feature types.ts
-// ============================================================================
+// Export types from feature types.ts (canonical location)
 export type {
   UserRole,
   AdminRole,
   CollegeLecturer,
   ConversationType,
+  Message,
+  Conversation,
   SendMessageParams,
   MessageMetadata,
   CreateConversationParams,
   ConversationMetadata,
 } from './api/types';
+
+// ============================================================================
+// Services - DEPRECATED (for backward compatibility only)
+// ============================================================================
+// ⚠️ RECOMMENDATION: Import services from @/shared/api directly
+// DO NOT import services from this layer (they're in shared)
+//
+// For hooks (recommended):
+//   import { useConversationMutations, useMessages } from '@/features/messaging/model';
+//
+// For services (if needed):
+//   import { MessageQueryService } from '@/shared/api/messageQueryService';
+//   import { MessageMutationService } from '@/shared/api/messageMutationService';
+
+// Legacy MessageService - deprecated
+export { default as MessageService } from '../../shared/api/messageService';

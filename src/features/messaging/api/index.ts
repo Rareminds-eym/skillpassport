@@ -1,27 +1,27 @@
 // ============================================================================
-// MESSAGING FEATURE API - Internal Use Only
+// MESSAGING FEATURE API TYPES ONLY
 // ============================================================================
-// WARNING: This file is internal to the messaging feature.
+// This file exports only TYPE definitions from the feature layer.
+// All business services remain in their original locations:
+//   - @/shared/api/messageQueryService.ts
+//   - @/shared/api/messageMutationService.ts
+//   - @/shared/api/messageService.ts (legacy)
 //
-// EXTERNAL IMPORTS SHOULD ONLY USE:
-//   import { useConversationMutations, useMessages } from '@/features/messaging';
+// PROPER IMPORT PATHS:
+// ✅ For types:
+//    import type { Message, Conversation } from '@/features/messaging';
 //
-// DO NOT import directly from this file:
-//   ❌ import { MessageQueryService } from '@/features/messaging/api';
-//   ❌ import { MessageMutationService } from '@/features/messaging/api';
+// ✅ For hooks:
+//    import { useConversationMutations } from '@/features/messaging/model';
 //
-// These low-level services are re-exported here for feature-internal use ONLY.
+// ✅ For services (if absolutely necessary):
+//    import { MessageQueryService } from '@/shared/api/messageQueryService';
+//
+// ❌ DO NOT:
+//    import { MessageQueryService } from '@/features/messaging/api';
 // ============================================================================
 
-// Export query and mutation services from shared layer (single source of truth)
-// INTERNAL USE ONLY - See warning above
-export { MessageQueryService } from '../../../shared/api/messageQueryService';
-export { MessageMutationService } from '../../../shared/api/messageMutationService';
-
-// Export legacy MessageService (deprecated)
-export { default as MessageService } from '../../../shared/api/messageService';
-
-// Export types (these are safe to import)
+// Export TYPES ONLY (these are safe to re-export from feature)
 export type {
     UserRole,
     AdminRole,
