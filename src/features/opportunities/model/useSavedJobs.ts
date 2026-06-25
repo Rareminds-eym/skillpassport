@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { SavedJobsService, AppliedJobsService } from '../api';
 import { getLogger } from '@/shared/config/logging';
 
@@ -131,61 +132,46 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
   // Handle unsave
   const handleUnsave = async (opportunity: SavedJob) => {
     if (!learnerId) {
-      alert('Please log in to unsave jobs');
+      toast.error('Please log in to unsave jobs');
       return;
     }
-
-    const confirmUnsave = window.confirm(
-      `Remove "${opportunity.job_title || opportunity.title}" from saved jobs?`
-    );
-
-    if (!confirmUnsave) return;
 
     try {
       const result = await SavedJobsService.unsaveJob(learnerId, opportunity.id);
 
       if (result.success) {
-        // Remove from local state
         setSavedJobs(prev => prev.filter(job => job.id !== opportunity.id));
-        alert('Job removed from saved list');
+        toast.success('Job removed from saved list');
       } else {
-        alert(result.message);
+        toast.error(result.message || 'Failed to remove job');
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to unsave job';
       logger.error('Error unsaving job', err);
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
   // Handle apply
   const handleApply = async (opportunity: SavedJob) => {
     if (!learnerId) {
-      alert('Please log in to apply for jobs');
+      toast.error('Please log in to apply for jobs');
       return;
     }
 
     if (appliedJobs.has(opportunity.id)) {
-      alert('You have already applied to this job');
+      toast.error('You have already applied to this job');
       return;
     }
 
     // If there's an external application link
     if (opportunity.application_link) {
-      const confirmExternal = window.confirm(
-        'This job requires external application. You will be redirected to the company website. Continue?'
-      );
-
-      if (confirmExternal) {
-        window.open(opportunity.application_link, '_blank');
-
-        // Still record the application
-        try {
-          await AppliedJobsService.applyToJob(learnerId, opportunity.id);
-          setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-        } catch (err: unknown) {
-          logger.error('Error recording external application', err);
-        }
+      window.open(opportunity.application_link, '_blank');
+      try {
+        await AppliedJobsService.applyToJob(learnerId, opportunity.id);
+        setAppliedJobs(prev => new Set([...prev, opportunity.id]));
+      } catch (err: unknown) {
+        logger.error('Error recording external application', err);
       }
       return;
     }
@@ -197,13 +183,13 @@ export const useSavedJobs = ({ learnerId }: UseSavedJobsProps): UseSavedJobsRetu
 
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));
-        alert('Application submitted successfully!');
+        toast.success('Application submitted successfully!');
       } else {
-        alert(result.message || 'Failed to submit application');
+        toast.error(result.message || 'Failed to submit application');
       }
     } catch (err: unknown) {
       logger.error('Error applying to job', err);
-      alert('Failed to submit application');
+      toast.error('Failed to submit application');
     } finally {
       setIsApplying(false);
     }
