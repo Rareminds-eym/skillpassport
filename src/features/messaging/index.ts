@@ -55,11 +55,10 @@ export { useMessageStore } from '@/shared/model/useMessageStore';
 export { useUnreadMessagesCount } from './model/useUnreadMessagesCount';
 
 // ============================================================================
-// Services - Split into Query and Mutation layers
+// Services - Split into Query and Mutation layers (Features Layer)
 // ============================================================================
 export { default as MessageService } from '../../shared/api/messageService';
-export { MessageQueryService } from '@/shared/api/messageQueryService';
-export { MessageMutationService } from '@/shared/api/messageMutationService';
+export { MessageQueryService, MessageMutationService } from './api';
 
 // ============================================================================
 // Types
