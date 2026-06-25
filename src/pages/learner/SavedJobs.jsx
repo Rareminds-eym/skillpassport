@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { OpportunityCard, OpportunityListItem, OpportunityPreview } from '@/widgets/learner-dashboard';
 
 import { useSavedJobs } from '@/features/opportunities';
@@ -36,8 +36,9 @@ const ITEMS_PER_PAGE = 8;
 const SavedJobs = () => {
   const navigate = useNavigate();
   const user = useUser();
-  const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
-  const { learnerData } = useLearnerDataByEmail(userEmail);
+  const authUser = useAuthStore((state) => state.user);
+  const userEmail = authUser?.email || localStorage.getItem("userEmail") || user?.email;
+  const { learnerData } = useLearnerDataByEmail(userEmail || '');
   const learnerId = learnerData?.id;
 
   const {
@@ -67,9 +68,24 @@ const SavedJobs = () => {
   // Reset to page 1 when filters/sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortBy, showActiveOnly]);
+  }, [searchTerm, sortBy, showActiveOnly, filteredAndSortedJobs]);
 
   const totalPages = Math.max(1, Math.ceil((filteredAndSortedJobs?.length || 0) / ITEMS_PER_PAGE));
+
+  const handlePrevPage = useCallback(() => {
+    setCurrentPage(p => Math.max(1, p - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(p => Math.min(totalPages, p + 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [totalPages]);
+
+  const handlePageClick = useCallback((pageNum) => {
+    setCurrentPage(pageNum);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const paginatedJobs = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -296,7 +312,7 @@ const SavedJobs = () => {
                     <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
                       <PaginationItem>
                         <button
-                          onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          onClick={handlePrevPage}
                           disabled={currentPage === 1}
                           className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -310,7 +326,7 @@ const SavedJobs = () => {
                             <PaginationEllipsis className="text-xs md:text-sm" />
                           ) : (
                             <button
-                              onClick={() => { setCurrentPage(pageNum); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                              onClick={() => handlePageClick(pageNum)}
                               aria-current={currentPage === pageNum ? 'page' : undefined}
                               className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center rounded-md transition-colors ${
                                 currentPage === pageNum
@@ -326,7 +342,7 @@ const SavedJobs = () => {
 
                       <PaginationItem>
                         <button
-                          onClick={() => { setCurrentPage(p => Math.min(totalPages, p + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                          onClick={handleNextPage}
                           disabled={currentPage === totalPages}
                           className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
