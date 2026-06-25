@@ -11,10 +11,9 @@ import { ssoCreateMember } from '../../../lib/sso-client';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
 import {
   calculateAge,
-  deleteAuthUser,
   generatePassword,
   splitName,
-  validateEmail,
+  validateEmail
 } from '../utils/helpers';
 
 /**
@@ -123,51 +122,88 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     return apiError(400, 'VALIDATION_ERROR', 'School/College ID not found', request);
   }
 
-  // Check if email already exists
-  const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
-  const emailExists = existingAuthUsers?.users?.some(
-    (u: any) => u.email === learner.email.toLowerCase()
-  );
-  if (emailExists) {
-    return apiError(400, 'VALIDATION_ERROR', `Learner with email ${learner.email} already exists`, request);
-  }
+  // Get SSO org_id for the admin creating this learner
+  // This is needed to create the learner in the SSO database
+  console.log('🔍 Looking up organization with:');
+  console.log('  userId:', userId);
+  console.log('  userEmail:', userEmail);
+  console.log('  institutionType:', institutionType);
+  console.log('  organization_type:', institutionType === 'college' ? 'college' : 'school');
+  console.log('  OR filter: admin_id.eq.${userId},email.ilike.${userEmail}');
 
-  const { data: existingLearner } = await supabaseAdmin
-    .from('learners')
+  const { data: adminOrgData } = await supabaseAdmin
+    .from('organizations')
     .select('id')
-    .eq('email', learner.email.toLowerCase())
+    .eq('organization_type', institutionType === 'college' ? 'college' : 'school')
+    .or(`admin_id.eq.${userId},email.ilike.${userEmail}`)
     .maybeSingle();
-  if (existingLearner) {
-    return apiError(400, 'VALIDATION_ERROR', `Learner with email ${learner.email} already exists`, request);
+
+  console.log('📊 Organization lookup result:', adminOrgData);
+  console.log('Full response:', { data: adminOrgData });
+
+  const ssoOrgId = adminOrgData?.id;
+  if (!ssoOrgId) {
+    console.error('❌ Admin organization not found');
+    console.error('  Expected to find org where:');
+    console.error('    organization_type = ', institutionType === 'college' ? 'college' : 'school');
+    console.error('    AND (admin_id = ${userId} OR email ILIKE ${userEmail})');
+    return apiError(400, 'VALIDATION_ERROR', 'Admin organization not found', request);
   }
+  console.log('✅ Found ssoOrgId:', ssoOrgId);
 
   const learnerPassword = generatePassword();
-  const learnerRole = institutionType === 'college' ? 'learner' : 'learner';
+  const learnerRole = 'learner';
 
-  // Create auth user
-  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: learner.email.toLowerCase(),
-    password: learnerPassword,
-    email_confirm: true,
-    user_metadata: {
-      name: learner.name,
-      role: learnerRole,
-      phone: learner.contactNumber,
+  // ── Create the AUTH user in the SSO worker (never Supabase Auth) ──
+  // This makes the learner a real, active SSO member of the school's org with
+  // the learner role, so they can log in via SSO.
+  let ssoUserId: string;
+  try {
+    console.log('📍 STEP 1: Calling ssoCreateMember()...');
+    console.log('  email:', learner.email.toLowerCase());
+    console.log('  role:', 'learner');
+    console.log('  org_id:', ssoOrgId);
+
+    const ssoMember = await ssoCreateMember(env, {
+      email: learner.email.toLowerCase(),
       password: learnerPassword,
-      added_by: userId,
-    },
-  });
+      role: 'learner',
+      org_id: ssoOrgId,
+      learner_metadata: {
+        email: learner.email,
+        name: learner.name,
+        schoolId: learner.school_id,
+        collegeId: learner.college_id,
+        institutionType,
+      },
+    });
 
-  if (authError || !authUser.user) {
-    return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
+    console.log('✅ STEP 1 SUCCESS: ssoCreateMember() returned');
+    console.log('  ssoMember:', ssoMember);
+
+    // Extract user_id from the response (could be at top level or nested in user object)
+    ssoUserId = ssoMember?.user_id || ssoMember?.user?.id;
+    if (!ssoUserId) {
+      throw new Error('SSO member creation returned invalid user_id. Response: ' + JSON.stringify(ssoMember));
+    }
+    console.log('✅ Extracted ssoUserId:', ssoUserId);
+  } catch (ssoErr) {
+    console.error('❌ STEP 1 FAILED: ssoCreateMember() error');
+    console.error('  error:', ssoErr);
+    console.error('  error.message:', (ssoErr as Error).message);
+    return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create learner account', request);
   }
 
   try {
+    console.log('📍 STEP 2: Creating users record...');
+    console.log('  id:', ssoUserId);
+    console.log('  email:', learner.email.toLowerCase());
+
     // Create public.users record
     const { firstName, lastName } = splitName(learner.name);
 
-    await supabaseAdmin.from('users').insert({
-      id: authUser.user.id,
+    const usersInsertResult = await supabaseAdmin.from('users').insert({
+      id: ssoUserId,
       email: learner.email.toLowerCase(),
       firstName,
       lastName,
@@ -183,48 +219,17 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
       },
     });
 
-    // Create learners record
-    const age = calculateAge(learner.dateOfBirth || '');
+    console.log('✅ STEP 2 SUCCESS: users record created');
+    console.log('  result:', usersInsertResult);
 
-    const { data: learnerRecord, error: learnerError } = await supabaseAdmin
-      .from('learners')
-      .insert({
-        user_id: authUser.user.id,
-        email: learner.email.toLowerCase(),
-        name: learner.name,
-        contactNumber: learner.contactNumber,
-        contact_number: learner.contactNumber,
-        dateOfBirth: learner.dateOfBirth || null,
-        date_of_birth: learner.dateOfBirth || null,
-        age,
-        gender: learner.gender || null,
-        enrollmentNumber: learner.enrollmentNumber || null,
-        grade: learner.grade || null,
-        section: learner.section || null,
-        guardianName: learner.guardianName || null,
-        guardianPhone: learner.guardianPhone || null,
-        school_id: schoolId,
-        college_id: collegeId,
-        learner_type: institutionType === 'college' ? 'direct' : 'learner',
-        approval_status: 'approved',
-        metadata: {
-          source: `${institutionType}_admin_added`,
-          addedBy: userId,
-          password: learnerPassword,
-        },
-      })
-      .select()
-      .single();
-
-    if (learnerError) {
-      throw new Error(`Failed to create learner profile: ${learnerError.message}`);
-    }
-
+    // PHASE 2A: Learner creation via queue sync (removed manual insert)
+    // The learner will be created by auth-sync-consumer when it processes
+    // the membership.created event from the queue.
+    console.log('📍 STEP 3: Returning success response (learner will be created via queue)...');
     return apiSuccess({
-      message: `Learner ${learner.name} created successfully`,
+      message: `Learner ${learner.name} created successfully. Profile will be synced via queue.`,
       data: {
-        authUserId: authUser.user.id,
-        learnerId: learnerRecord.id,
+        authUserId: ssoUserId,
         email: learner.email,
         name: learner.name,
         password: learnerPassword,
@@ -234,8 +239,22 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
       },
     }, request);
   } catch (error) {
-    // Rollback auth user
-    await deleteAuthUser(supabaseAdmin, authUser.user.id);
+    console.error('❌ CATCH BLOCK TRIGGERED');
+    console.error('  error:', error);
+    console.error('  error.message:', (error as Error).message);
+    console.error('  error.stack:', (error as Error).stack);
+
+    // Best-effort rollback of the app-DB profile row. The SSO user already
+    // exists; it is reused on a corrected retry (duplicate email is rejected).
+    if (ssoUserId) {
+      console.log('🔄 Attempting rollback: deleting users record with id:', ssoUserId);
+      try {
+        await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+        console.log('✅ Rollback successful');
+      } catch (rollbackErr) {
+        console.error('❌ Rollback failed:', rollbackErr);
+      }
+     }
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }

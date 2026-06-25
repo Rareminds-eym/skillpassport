@@ -60,7 +60,7 @@ interface SsoTransactionData {
 type SsoFetcher = Fetcher & {
   createSubscription(data: unknown): Promise<Record<string, unknown>>;
   createFreemiumSubscription(data: unknown): Promise<Record<string, unknown>>;
-  createMember(data: { email: string; password: string; role: string; org_id: string }):
+  createMember(data: { email: string; password: string; role: string; org_id: string; learner_metadata?: Record<string, unknown>; user_type?: string }):
     Promise<{ user_id: string; org_id: string; membership_id: string }>;
   updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
@@ -84,12 +84,7 @@ type SsoFetcher = Fetcher & {
  * @throws Error if SSO_SERVICE binding is not configured
  */
 function getSsoService(env: SsoClientEnv): SsoFetcher {
-  if (!env.SSO_SERVICE) {
-    throw new Error(
-      'SSO_SERVICE binding is not configured. ' +
-      'Add [[services]] to wrangler.toml or use --service SSO_SERVICE=sso-api in local dev.'
-    );
-  }
+  // Use service binding (RPC) — works because both services are in same account
   return env.SSO_SERVICE as SsoFetcher;
 }
 
@@ -117,7 +112,7 @@ export async function ssoCreateFreemiumSubscription(
  */
 export async function ssoCreateMember(
   env: SsoClientEnv,
-  data: { email: string; password: string; role: string; org_id: string },
+  data: { email: string; password: string; role: string; org_id: string; learner_metadata?: Record<string, unknown> },
 ): Promise<{ user_id: string; org_id: string; membership_id: string }> {
   return getSsoService(env).createMember(data);
 }
