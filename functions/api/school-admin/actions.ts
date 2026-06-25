@@ -4,7 +4,7 @@ import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
-  const supabase = getServiceClient(context.env as any);
+  const supabase = getServiceClient(context.env);
   let body: any;
   try {
     body = await context.request.json();
@@ -58,9 +58,27 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // --- Library ---
       case 'fetchLibraryData': return handleFetchLibraryData(supabase, context, body);
+      case 'getLibraryCategories': return handleGetLibraryCategories(supabase, context, body);
+      case 'addLibraryBook': return handleAddLibraryBook(supabase, context, body);
+      case 'updateLibraryBook': return handleUpdateLibraryBook(supabase, context, body);
+      case 'deleteLibraryBook': return handleDeleteLibraryBook(supabase, context, body);
+      case 'getLibraryHistory': return handleGetLibraryHistory(supabase, context, body);
+      case 'getOverdueBooks': return handleGetOverdueBooks(supabase, context, body);
+      case 'issueBook': return handleIssueBook(supabase, context, body);
+      case 'renewBook': return handleRenewBook(supabase, context, body);
+      case 'returnBook': return handleReturnBook(supabase, context, body);
+      case 'markBookOverdue': return handleMarkBookOverdue(supabase, context, body);
 
       // --- Skill Badges ---
       case 'fetchSkillBadges': return handleFetchSkillBadges(supabase, context, body);
+      case 'getCompetitionRegistrations': return handleGetCompetitionRegistrations(supabase, context, body);
+      case 'getCompetitionResults': return handleGetCompetitionResults(supabase, context, body);
+      case 'saveCompetitionResults': return handleSaveCompetitionResults(supabase, context, body);
+      case 'updateCompetitionStatus': return handleUpdateCompetitionStatus(supabase, context, body);
+      case 'saveCertificates': return handleSaveCertificates(supabase, context, body);
+      case 'deleteCertificate': return handleDeleteCertificate(supabase, context, body);
+      case 'getEducatorAndSchool': return handleGetEducatorAndSchool(supabase, context, body);
+      case 'getCurricularLearners': return handleGetCurricularLearners(supabase, context, body);
       case 'saveSkillBadgeCerts': return handleSaveSkillBadgeCerts(supabase, context, body);
 
       // --- Skill Curricular ---
@@ -68,6 +86,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // --- Educator / Learner Communication (school_id lookup) ---
       case 'fetchCommunicationSchoolData': return handleFetchCommunicationSchoolData(supabase, context, body);
+      case 'fetchActiveLearnerConversations': return handleFetchActiveLearnerConversations(supabase, context, body);
+      case 'fetchArchivedLearnerConversations': return handleFetchArchivedLearnerConversations(supabase, context, body);
+      case 'fetchActiveEducatorConversations': return handleFetchActiveEducatorConversations(supabase, context, body);
+      case 'fetchArchivedEducatorConversations': return handleFetchArchivedEducatorConversations(supabase, context, body);
+      case 'getEducatorUserId': return handleGetEducatorUserId(supabase, context, body);
 
       default:
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request);
@@ -531,4 +554,440 @@ async function handleFetchCommunicationSchoolData(supabase: any, context: Authen
   }
 
   return apiSuccess({ schoolId }, context.request);
+}
+
+// ──────────────────────────────────────────────
+// Learner / Educator Conversations
+// ──────────────────────────────────────────────
+
+async function handleFetchActiveLearnerConversations(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .select(`
+      *,
+      learner:learners(id, name, email, school_id, university, branch_field)
+    `)
+    .eq('school_id', schoolId)
+    .eq('conversation_type', 'learner_admin')
+    .eq('deleted_by_admin', false)
+    .order('last_message_at', { ascending: false, nullsFirst: false });
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
+}
+
+async function handleFetchArchivedLearnerConversations(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .select(`
+      *,
+      learner:learners(id, name, email, school_id, university, branch_field)
+    `)
+    .eq('school_id', schoolId)
+    .eq('conversation_type', 'learner_admin')
+    .eq('status', 'archived')
+    .order('last_message_at', { ascending: false, nullsFirst: false });
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
+}
+
+async function handleFetchActiveEducatorConversations(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  // Get conversations
+  const { data: conversations, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('school_id', schoolId)
+    .eq('conversation_type', 'educator_admin')
+    .eq('deleted_by_admin', false)
+    .order('last_message_at', { ascending: false, nullsFirst: false });
+
+  if (error) throw error;
+  if (!conversations || conversations.length === 0) {
+    return apiSuccess([], context.request);
+  }
+
+  // Get educator IDs and fetch their details
+  const educatorIds = conversations.map((c: any) => c.educator_id).filter(Boolean);
+  if (educatorIds.length === 0) {
+    return apiSuccess(conversations, context.request);
+  }
+
+  const { data: educators, error: educatorError } = await supabase
+    .from('school_educators')
+    .select('id, first_name, last_name, email, phone_number, photo_url, user_id')
+    .in('id', educatorIds);
+
+  if (educatorError) throw educatorError;
+
+  // Merge the data
+  const conversationsWithEducators = conversations.map((conv: any) => ({
+    ...conv,
+    school_educators: educators?.find((edu: any) => edu.id === conv.educator_id) || null
+  }));
+
+  return apiSuccess(conversationsWithEducators, context.request);
+}
+
+async function handleFetchArchivedEducatorConversations(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  // Get conversations
+  const { data: conversations, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('school_id', schoolId)
+    .eq('conversation_type', 'educator_admin')
+    .eq('status', 'archived')
+    .order('last_message_at', { ascending: false, nullsFirst: false });
+
+  if (error) throw error;
+  if (!conversations || conversations.length === 0) {
+    return apiSuccess([], context.request);
+  }
+
+  // Get educator IDs and fetch their details
+  const educatorIds = conversations.map((c: any) => c.educator_id).filter(Boolean);
+  if (educatorIds.length === 0) {
+    return apiSuccess(conversations, context.request);
+  }
+
+  const { data: educators, error: educatorError } = await supabase
+    .from('school_educators')
+    .select('id, first_name, last_name, email, phone_number, photo_url, user_id')
+    .in('id', educatorIds);
+
+  if (educatorError) throw educatorError;
+
+  // Merge the data
+  const conversationsWithEducators = conversations.map((conv: any) => ({
+    ...conv,
+    school_educators: educators?.find((edu: any) => edu.id === conv.educator_id) || null
+  }));
+
+  return apiSuccess(conversationsWithEducators, context.request);
+}
+
+async function handleGetEducatorUserId(supabase: any, context: AuthenticatedContext, body: any) {
+  const { educatorId } = body;
+  if (!educatorId) return apiError(400, 'VALIDATION_ERROR', 'educatorId is required', context.request);
+
+  const { data: educator, error } = await supabase
+    .from('school_educators')
+    .select('user_id')
+    .eq('id', educatorId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return apiSuccess({ user_id: educator?.user_id || null }, context.request);
+}
+
+// ──────────────────────────────────────────────
+// Library Management
+// ──────────────────────────────────────────────
+
+async function handleGetLibraryCategories(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  const { data, error } = await supabase
+    .from('library_categories_school')
+    .select('*')
+    .eq('school_id', schoolId)
+    .order('name');
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
+}
+
+async function handleAddLibraryBook(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId, bookData } = body;
+  if (!schoolId || !bookData) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { data, error } = await supabase
+    .from('library_books_school')
+    .insert({
+      ...bookData,
+      school_id: schoolId,
+      available_copies: bookData.total_copies
+    })
+    .select();
+
+  if (error) throw error;
+  return apiSuccess(data?.[0] || {}, context.request);
+}
+
+async function handleUpdateLibraryBook(supabase: any, context: AuthenticatedContext, body: any) {
+  const { bookId, schoolId, bookData } = body;
+  if (!bookId || !schoolId || !bookData) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { data, error } = await supabase
+    .from('library_books_school')
+    .update(bookData)
+    .eq('id', bookId)
+    .eq('school_id', schoolId)
+    .select();
+
+  if (error) throw error;
+  return apiSuccess(data?.[0] || {}, context.request);
+}
+
+async function handleDeleteLibraryBook(supabase: any, context: AuthenticatedContext, body: any) {
+  const { bookId, schoolId } = body;
+  if (!bookId || !schoolId) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { error } = await supabase
+    .from('library_books_school')
+    .delete()
+    .eq('id', bookId)
+    .eq('school_id', schoolId);
+
+  if (error) throw error;
+  return apiSuccess({ success: true }, context.request);
+}
+
+async function handleGetLibraryHistory(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  const { data, error } = await supabase
+    .from('library_book_issues_school')
+    .select('*')
+    .eq('school_id', schoolId)
+    .order('issued_date', { ascending: false });
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
+}
+
+async function handleGetOverdueBooks(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  const { data, error } = await supabase
+    .from('library_book_issues_school')
+    .select('*')
+    .eq('school_id', schoolId)
+    .lt('due_date', new Date().toISOString())
+    .is('return_date', null)
+    .order('due_date');
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
+}
+
+async function handleIssueBook(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId, issueData } = body;
+  if (!schoolId || !issueData) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { data, error } = await supabase
+    .from('library_book_issues_school')
+    .insert({
+      ...issueData,
+      school_id: schoolId
+    })
+    .select();
+
+  if (error) throw error;
+  return apiSuccess(data?.[0] || {}, context.request);
+}
+
+async function handleRenewBook(supabase: any, context: AuthenticatedContext, body: any) {
+  const { issueId, schoolId, newDueDate } = body;
+  if (!issueId || !schoolId || !newDueDate) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { data, error } = await supabase
+    .from('library_book_issues_school')
+    .update({ due_date: newDueDate })
+    .eq('id', issueId)
+    .eq('school_id', schoolId)
+    .select();
+
+  if (error) throw error;
+  return apiSuccess(data?.[0] || {}, context.request);
+}
+
+async function handleReturnBook(supabase: any, context: AuthenticatedContext, body: any) {
+  const { issueId, schoolId, returnDate } = body;
+  if (!issueId || !schoolId || !returnDate) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { data, error } = await supabase
+    .from('library_book_issues_school')
+    .update({
+      return_date: returnDate,
+      status: 'returned'
+    })
+    .eq('id', issueId)
+    .eq('school_id', schoolId)
+    .select();
+
+  if (error) throw error;
+  return apiSuccess(data?.[0] || {}, context.request);
+}
+
+async function handleMarkBookOverdue(supabase: any, context: AuthenticatedContext, body: any) {
+  const { issueId, schoolId, fineAmount } = body;
+  if (!issueId || !schoolId) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { data, error } = await supabase
+    .from('library_book_issues_school')
+    .update({
+      status: 'overdue',
+      fine_amount: fineAmount || 0
+    })
+    .eq('id', issueId)
+    .eq('school_id', schoolId)
+    .select();
+
+  if (error) throw error;
+  return apiSuccess(data?.[0] || {}, context.request);
+}
+
+// ──────────────────────────────────────────────
+// Skill Badges - Competition Management
+// ──────────────────────────────────────────────
+
+async function handleGetCompetitionRegistrations(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId, competitionId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  const { data, error } = await supabase
+    .from('competition_registrations')
+    .select('*')
+    .eq('school_id', schoolId)
+    .eq('competition_id', competitionId || null)
+    .order('registered_at', { ascending: false });
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
+}
+
+async function handleGetCompetitionResults(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId, competitionId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  const { data, error } = await supabase
+    .from('competition_results')
+    .select('*')
+    .eq('school_id', schoolId)
+    .eq('competition_id', competitionId || null)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
+}
+
+async function handleSaveCompetitionResults(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId, competitionId, results } = body;
+  if (!schoolId || !competitionId || !results) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const resultsData = results.map((r: any) => ({
+    ...r,
+    school_id: schoolId,
+    competition_id: competitionId
+  }));
+
+  const { data, error } = await supabase
+    .from('competition_results')
+    .upsert(resultsData, { onConflict: 'id' })
+    .select();
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
+}
+
+async function handleUpdateCompetitionStatus(supabase: any, context: AuthenticatedContext, body: any) {
+  const { competitionId, schoolId, status } = body;
+  if (!competitionId || !schoolId || !status) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { data, error } = await supabase
+    .from('competitions')
+    .update({ status })
+    .eq('id', competitionId)
+    .eq('school_id', schoolId)
+    .select();
+
+  if (error) throw error;
+  return apiSuccess(data?.[0] || {}, context.request);
+}
+
+async function handleSaveCertificates(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId, certs } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  const certsData = (certs || []).map((c: any) => ({
+    ...c,
+    school_id: schoolId
+  }));
+
+  const { data, error } = await supabase
+    .from('club_certificates')
+    .upsert(certsData, { onConflict: 'id' })
+    .select();
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
+}
+
+async function handleDeleteCertificate(supabase: any, context: AuthenticatedContext, body: any) {
+  const { certId, schoolId } = body;
+  if (!certId || !schoolId) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { error } = await supabase
+    .from('club_certificates')
+    .delete()
+    .eq('id', certId)
+    .eq('school_id', schoolId);
+
+  if (error) throw error;
+  return apiSuccess({ success: true }, context.request);
+}
+
+// ──────────────────────────────────────────────
+// Skill Curricular - Additional handlers
+// ──────────────────────────────────────────────
+
+async function handleGetEducatorAndSchool(supabase: any, context: AuthenticatedContext, body: any) {
+  const { educatorId, schoolId } = body;
+  if (!educatorId || !schoolId) return apiError(400, 'VALIDATION_ERROR', 'Missing required fields', context.request);
+
+  const { data: educatorData } = await supabase
+    .from('school_educators')
+    .select('*')
+    .eq('id', educatorId)
+    .eq('school_id', schoolId)
+    .single();
+
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('*')
+    .eq('id', schoolId)
+    .single();
+
+  return apiSuccess({ educator: educatorData, school: orgData }, context.request);
+}
+
+async function handleGetCurricularLearners(supabase: any, context: AuthenticatedContext, body: any) {
+  const { schoolId } = body;
+  if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'schoolId is required', context.request);
+
+  const { data, error } = await supabase
+    .from('learners')
+    .select('*')
+    .eq('school_id', schoolId)
+    .eq('is_deleted', false)
+    .order('name');
+
+  if (error) throw error;
+  return apiSuccess(data || [], context.request);
 }

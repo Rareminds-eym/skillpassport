@@ -1,7 +1,7 @@
-import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
+import { apiError, apiSuccess } from '../../../lib/response';
 import { getServiceClient } from '../../../lib/supabase';
-import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleAddonAnalytics(context: AuthenticatedContext): Promise<Response> {
   const env = context.env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string };
@@ -45,7 +45,7 @@ export async function handleAddonAnalytics(context: AuthenticatedContext): Promi
       const { data: entitlements, error: entError } = await supabase.from('user_entitlements').select('feature_key, price_at_purchase, billing_period, created_at, bundle_id').gte('created_at', start).lte('created_at', end);
       if (entError) throw entError;
 
-      const totalRevenue = (entitlements || []).reduce((sum, ent) => sum + (parseFloat(ent.price_at_purchase) ?? 0), 0);
+      const totalRevenue = (entitlements || []).reduce((sum, ent) => sum + safeParseFloat(ent.price_at_purchase, 0), 0);
       return apiSuccess({ period: { startDate: start, endDate: end }, totalRevenue, totalTransactions: entitlements?.length || 0 }, context.request);
     }
 

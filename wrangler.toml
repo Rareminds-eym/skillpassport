@@ -42,6 +42,13 @@ entrypoint = "SsoWorker"
 binding = "REALTIME_WORKER"
 service = "realtime-worker"
 
+# Embedding worker — ML model execution, zero-latency internal routing
+# RPC-style binding (WorkerEntrypoint) for typed method calls
+[[services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-worker"
+entrypoint = "EmbeddingWorker"
+
 # ============================================================================
 # QUEUE PRODUCER — Realtime Events
 # ============================================================================
@@ -88,7 +95,6 @@ SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Pages Functions)
 EMAIL_WORKER_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
-EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 
 # Cloudflare R2 Configuration (Pages Functions)
 CLOUDFLARE_R2_BUCKET_NAME = "skill-echosystem"
@@ -107,7 +113,6 @@ VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # API URLs (Frontend)
 VITE_EMAIL_API_URL = "https://shared-email-api.dark-mode-d021.workers.dev"
-VITE_EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
 VITE_PAYMENTS_API_URL = "https://razorpay-api.dark-mode-d021.workers.dev/"
 # Analytics 
 VITE_GTM_ID = "GTM-M2N3952J"
@@ -125,7 +130,6 @@ VITE_GTM_ID = "GTM-M2N3952J"
 # - SUPABASE_SERVICE_ROLE_KEY
 # - CLOUDFLARE_R2_SECRET_ACCESS_KEY
 # - EMAIL_API_KEY
-# - EMBEDDING_API_KEY
 # - SIGNING_SECRET (for media access tokens)
 #
 # Required plain vars (set via dashboard):

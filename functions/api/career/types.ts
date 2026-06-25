@@ -192,6 +192,5 @@ export interface Env {
   VITE_OPENROUTER_API_KEY?: string;
   VITE_SUPABASE_URL?: string;
   VITE_SUPABASE_ANON_KEY?: string;
-  EMBEDDING_API_URL?: string;
-  VITE_EMBEDDING_API_URL?: string;
+  VITE_EMAIL_API_URL?: string;
 }
