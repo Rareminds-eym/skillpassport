@@ -1,6 +1,21 @@
 // Utility functions for messaging
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-async function convertApplicationId(supabase: any, applicationId: number | string | undefined): Promise<number | undefined> {
+interface Conversation {
+  id: string;
+  learner_id: string;
+  educator_id?: string;
+  recruiter_id?: string;
+  school_id?: string;
+  college_id?: string;
+  conversation_type?: string;
+  subject?: string;
+  created_at: string;
+  updated_at: string;
+  [key: string]: any;
+}
+
+async function convertApplicationId(supabase: SupabaseClient<any>, applicationId: number | string | undefined): Promise<number | undefined> {
   if (!applicationId) return undefined;
   if (typeof applicationId === 'string' && applicationId.includes('-')) {
     const { data } = await supabase.from('applied_jobs').select('id_old').eq('id', applicationId).maybeSingle();
@@ -9,7 +24,7 @@ async function convertApplicationId(supabase: any, applicationId: number | strin
   return typeof applicationId === 'string' ? parseInt(applicationId) : applicationId;
 }
 
-async function convertOpportunityId(supabase: any, opportunityId: number | string | undefined): Promise<number | undefined> {
+async function convertOpportunityId(supabase: SupabaseClient<any>, opportunityId: number | string | undefined): Promise<number | undefined> {
   if (!opportunityId) return undefined;
   if (typeof opportunityId === 'string' && opportunityId.includes('-')) {
     const { data } = await supabase.from('opportunities').select('id_old').eq('id', opportunityId).maybeSingle();
@@ -18,7 +33,7 @@ async function convertOpportunityId(supabase: any, opportunityId: number | strin
   return typeof opportunityId === 'string' ? parseInt(opportunityId) : opportunityId;
 }
 
-async function fetchEducatorDetailsForConversations(supabase: any, conversations: any[]): Promise<any[]> {
+async function fetchEducatorDetailsForConversations(supabase: SupabaseClient<any>, conversations: Conversation[]): Promise<Conversation[]> {
   if (!conversations || conversations.length === 0) return conversations;
   const schoolEducatorConvs = conversations.filter((c: any) => c.conversation_type === 'learner_educator');
   const collegeEducatorConvs = conversations.filter((c: any) => c.conversation_type === 'learner_college_educator');
