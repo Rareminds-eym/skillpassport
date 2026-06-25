@@ -24,7 +24,54 @@ interface GetOrCreateConversationParams {
   subject?: string;
 }
 
-async function handleGetOrCreateConversation(supabase: SupabaseClient<any>, params: GetOrCreateConversationParams): Promise<Conversation> {
+interface LearnerEducatorParams {
+  learnerId: string;
+  educatorId: string;
+  classId?: string;
+  subject?: string;
+}
+
+interface CollegeLecturerParams {
+  learnerId: string;
+  collegeLecturerId: string;
+  collegeId?: string;
+  programSectionId?: string;
+  subject?: string;
+}
+
+interface LearnerAdminParams {
+  learnerId: string;
+  schoolId: string;
+  subject?: string;
+}
+
+interface LearnerCollegeAdminParams {
+  learnerId: string;
+  collegeId: string;
+  subject?: string;
+}
+
+interface EducatorAdminParams {
+  educatorId: string;
+  schoolId: string;
+  subject?: string;
+}
+
+interface CollegeEducatorAdminParams {
+  educatorId: string;
+  collegeId: string;
+  subject?: string;
+}
+
+interface ArchiveParams {
+  conversationId: string;
+}
+
+interface UnarchiveParams {
+  conversationId: string;
+}
+
+async function handleGetOrCreateConversation(supabase: SupabaseClient, params: GetOrCreateConversationParams): Promise<Conversation> {
   const { learnerId, recruiterId, applicationId, opportunityId, subject } = params;
   const applicationIdOld = await convertApplicationId(supabase, applicationId);
   const opportunityIdOld = await convertOpportunityId(supabase, opportunityId);
@@ -50,7 +97,7 @@ async function handleGetOrCreateConversation(supabase: SupabaseClient<any>, para
   return data;
 }
 
-async function handleGetOrCreateLearnerEducatorConversation(supabase: SupabaseClient<any>, params: any): Promise<Conversation> {
+async function handleGetOrCreateLearnerEducatorConversation(supabase: SupabaseClient, params: LearnerEducatorParams): Promise<Conversation> {
   const { learnerId, educatorId, classId, subject } = params;
   let query = supabase.from('conversations').select('id, status, deleted_by_learner, deleted_by_educator, learner_id, educator_id, class_id, subject, created_at, updated_at').eq('learner_id', learnerId).eq('educator_id', educatorId).eq('conversation_type', 'learner_educator').limit(1);
   if (classId) query = query.eq('class_id', classId);
@@ -73,7 +120,7 @@ async function handleGetOrCreateLearnerEducatorConversation(supabase: SupabaseCl
   return data;
 }
 
-async function handleGetOrCreateLearnerCollegeLecturerConversation(supabase: SupabaseClient<any>, params: any): Promise<Conversation> {
+async function handleGetOrCreateLearnerCollegeLecturerConversation(supabase: SupabaseClient, params: CollegeLecturerParams): Promise<Conversation> {
   const { learnerId, collegeLecturerId, collegeId, programSectionId, subject } = params;
   let query = supabase.from('conversations').select('id, status, deleted_by_learner, deleted_by_educator, learner_id, educator_id, subject, created_at, updated_at').eq('learner_id', learnerId).eq('educator_id', collegeLecturerId).eq('conversation_type', 'learner_college_educator').limit(1);
   if (subject) query = query.eq('subject', subject);
@@ -95,7 +142,7 @@ async function handleGetOrCreateLearnerCollegeLecturerConversation(supabase: Sup
   return data;
 }
 
-async function handleGetOrCreateLearnerAdminConversation(supabase: SupabaseClient<any>, params: any): Promise<Conversation> {
+async function handleGetOrCreateLearnerAdminConversation(supabase: SupabaseClient, params: LearnerAdminParams): Promise<Conversation> {
   const { learnerId, schoolId, subject } = params;
 
   // Ensure IDs are strings
@@ -137,7 +184,7 @@ async function handleGetOrCreateLearnerAdminConversation(supabase: SupabaseClien
   return data;
 }
 
-async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: SupabaseClient<any>, params: any): Promise<Conversation> {
+async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: SupabaseClient, params: LearnerCollegeAdminParams): Promise<Conversation> {
   const { learnerId, collegeId, subject } = params;
 
   // Ensure IDs are strings
@@ -179,7 +226,7 @@ async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: Supaba
   return data;
 }
 
-async function handleGetOrCreateEducatorAdminConversation(supabase: SupabaseClient<any>, params: any): Promise<Conversation> {
+async function handleGetOrCreateEducatorAdminConversation(supabase: SupabaseClient, params: EducatorAdminParams): Promise<Conversation> {
   const { educatorId, schoolId, subject } = params;
 
   // Ensure IDs are strings
@@ -221,7 +268,7 @@ async function handleGetOrCreateEducatorAdminConversation(supabase: SupabaseClie
   return data;
 }
 
-async function handleGetOrCreateCollegeEducatorAdminConversation(supabase: SupabaseClient<any>, params: any): Promise<Conversation> {
+async function handleGetOrCreateCollegeEducatorAdminConversation(supabase: SupabaseClient, params: CollegeEducatorAdminParams): Promise<Conversation> {
   const { educatorId, collegeId, subject } = params;
 
   // Ensure IDs are strings
@@ -263,13 +310,13 @@ async function handleGetOrCreateCollegeEducatorAdminConversation(supabase: Supab
   return data;
 }
 
-async function handleArchiveConversation(supabase: SupabaseClient<any>, params: any): Promise<void> {
+async function handleArchiveConversation(supabase: SupabaseClient, params: ArchiveParams): Promise<void> {
   const { conversationId } = params;
   const { error } = await supabase.from('conversations').update({ status: 'archived', updated_at: new Date().toISOString() }).eq('id', conversationId);
   if (error) throw error;
 }
 
-async function handleUnarchiveConversation(supabase: SupabaseClient<any>, params: any): Promise<void> {
+async function handleUnarchiveConversation(supabase: SupabaseClient, params: UnarchiveParams): Promise<void> {
   const { conversationId } = params;
   const { error } = await supabase.from('conversations').update({ status: 'active', updated_at: new Date().toISOString() }).eq('id', conversationId);
   if (error) throw error;

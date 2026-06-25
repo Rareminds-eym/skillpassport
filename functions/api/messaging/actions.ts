@@ -1,4 +1,5 @@
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { notifyRealtime } from '../../lib/realtime';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
@@ -16,7 +17,50 @@ import {
   handleUnarchiveConversation
 } from './handlers/conversation';
 
-async function handleSendMessage(supabase: any, params: any): Promise<any> {
+interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  sender_type: string;
+  receiver_id: string;
+  receiver_type: string;
+  message_text: string;
+  is_read: boolean;
+  read_at?: string;
+  created_at: string;
+  updated_at: string;
+  [key: string]: any;
+}
+
+interface MessageInsert {
+  conversation_id: string;
+  sender_id: string;
+  sender_type: string;
+  receiver_id: string;
+  receiver_type: string;
+  message_text: string;
+  application_id?: number;
+  opportunity_id?: number;
+  class_id?: string;
+  subject?: string;
+  attachments?: any[];
+}
+
+interface SendMessageParams {
+  conversationId: string;
+  senderId: string;
+  senderType: string;
+  receiverId: string;
+  receiverType: string;
+  messageText: string;
+  applicationId?: number | string;
+  opportunityId?: number | string;
+  classId?: string;
+  subject?: string;
+  attachments?: any[];
+}
+
+async function handleSendMessage(supabase: SupabaseClient, params: SendMessageParams): Promise<Message> {
   const { conversationId, senderId, senderType, receiverId, receiverType, messageText, applicationId, opportunityId, classId, subject, attachments } = params;
 
   if (!conversationId || !senderId || !receiverId || !messageText?.trim()) {
@@ -31,7 +75,7 @@ async function handleSendMessage(supabase: any, params: any): Promise<any> {
   const applicationIdOld = await convertApplicationId(supabase, applicationId);
   const opportunityIdOld = await convertOpportunityId(supabase, opportunityId);
 
-  const messageData: any = { conversation_id: convId, sender_id: sendId, sender_type: senderType, receiver_id: recvId, receiver_type: receiverType, message_text: messageText.trim() };
+  const messageData: MessageInsert = { conversation_id: convId, sender_id: sendId, sender_type: senderType, receiver_id: recvId, receiver_type: receiverType, message_text: messageText.trim() };
   if (applicationIdOld) messageData.application_id = applicationIdOld;
   if (opportunityIdOld) messageData.opportunity_id = opportunityIdOld;
   if (classId) messageData.class_id = classId;
@@ -43,7 +87,7 @@ async function handleSendMessage(supabase: any, params: any): Promise<any> {
   return data;
 }
 
-async function handleGetConversationMessages(supabase: any, params: any): Promise<any[]> {
+async function handleGetConversationMessages(supabase: SupabaseClient, params: any): Promise<Message[]> {
   const { conversationId, limit, offset = 0 } = params;
   const convId = String(conversationId);
   let query = supabase.from('messages').select('id, conversation_id, sender_id, sender_type, receiver_id, receiver_type, message_text, is_read, read_at, created_at, updated_at').eq('conversation_id', convId).order('created_at', { ascending: true });
@@ -53,7 +97,7 @@ async function handleGetConversationMessages(supabase: any, params: any): Promis
   return data || [];
 }
 
-async function handleGetUnreadCount(supabase: any, params: any): Promise<number> {
+async function handleGetUnreadCount(supabase: SupabaseClient, params: any): Promise<number> {
   const { userId, userType } = params;
   const usrId = String(userId);
   const { count, error } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('receiver_id', usrId).eq('receiver_type', userType).eq('is_read', false);
@@ -61,7 +105,7 @@ async function handleGetUnreadCount(supabase: any, params: any): Promise<number>
   return count || 0;
 }
 
-async function handleGetConversationWithLearner(supabase: any, params: any): Promise<any | null> {
+async function handleGetConversationWithLearner(supabase: SupabaseClient, params: any): Promise<any> {
   const { conversationId } = params;
   const convId = String(conversationId);
   const { data, error } = await supabase
@@ -73,7 +117,7 @@ async function handleGetConversationWithLearner(supabase: any, params: any): Pro
   return data;
 }
 
-async function handleGetUserConversations(supabase: any, params: any): Promise<any[]> {
+async function handleGetUserConversations(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { userId, userType, includeArchived, conversationType } = params;
   const usrId = String(userId);
   const column = userType === 'learner' ? 'learner_id' : userType === 'recruiter' ? 'recruiter_id' : 'educator_id';
@@ -142,7 +186,7 @@ async function handleGetUserConversations(supabase: any, params: any): Promise<a
   return conversations;
 }
 
-async function handleMarkConversationAsRead(supabase: any, params: any): Promise<void> {
+async function handleMarkConversationAsRead(supabase: SupabaseClient, params: any): Promise<void> {
   const { conversationId, userId } = params;
   const convId = String(conversationId);
   const usrId = String(userId);
@@ -224,7 +268,7 @@ async function handleMarkConversationAsRead(supabase: any, params: any): Promise
   }
 }
 
-async function handleDeleteConversationForUser(supabase: any, params: any): Promise<void> {
+async function handleDeleteConversationForUser(supabase: SupabaseClient, params: any): Promise<void> {
   const { conversationId, userId, userType } = params;
   const convId = String(conversationId);
   let deletedColumn: string, deletedAtColumn: string;
@@ -240,7 +284,7 @@ async function handleDeleteConversationForUser(supabase: any, params: any): Prom
   if (error) throw error;
 }
 
-async function handleRestoreConversation(supabase: any, params: any): Promise<void> {
+async function handleRestoreConversation(supabase: SupabaseClient, params: any): Promise<void> {
   const { conversationId, userId, userType } = params;
   const convId = String(conversationId);
   let deletedColumn: string, deletedAtColumn: string;
@@ -256,14 +300,14 @@ async function handleRestoreConversation(supabase: any, params: any): Promise<vo
   if (error) throw error;
 }
 
-async function handlePermanentlyDeleteConversation(supabase: any, params: any): Promise<void> {
+async function handlePermanentlyDeleteConversation(supabase: SupabaseClient, params: any): Promise<void> {
   const { conversationId } = params;
   const convId = String(conversationId);
   const { error } = await supabase.from('conversations').delete().eq('id', convId);
   if (error) throw error;
 }
 
-async function handleSendLearnerEducatorMessage(supabase: any, params: any): Promise<any> {
+async function handleSendLearnerEducatorMessage(supabase: SupabaseClient, params: any): Promise<any> {
   const { conversationId, learnerId, messageText, classId, subject, attachments } = params;
   const convId = String(conversationId);
   const { data: conversation, error: convError } = await supabase.from('conversations').select('educator_id, class_id, subject').eq('id', convId).maybeSingle();
@@ -276,7 +320,7 @@ async function handleSendLearnerEducatorMessage(supabase: any, params: any): Pro
   });
 }
 
-async function handleSendLearnerAdminMessage(supabase: any, params: any): Promise<any> {
+async function handleSendLearnerAdminMessage(supabase: SupabaseClient, params: any): Promise<any> {
   const { conversationId, learnerId, messageText, subject, attachments } = params;
   const convId = String(conversationId);
   const { data: conversation, error: convError } = await supabase.from('conversations').select('school_id, subject').eq('id', convId).maybeSingle();
@@ -295,7 +339,7 @@ async function handleSendLearnerAdminMessage(supabase: any, params: any): Promis
   });
 }
 
-async function handleSendLearnerCollegeAdminMessage(supabase: any, params: any): Promise<any> {
+async function handleSendLearnerCollegeAdminMessage(supabase: SupabaseClient, params: any): Promise<any> {
   const { conversationId, learnerId, messageText, subject, attachments } = params;
   const convId = String(conversationId);
   const { data: conversation, error: convError } = await supabase.from('conversations').select('college_id, subject').eq('id', convId).maybeSingle();
@@ -314,7 +358,7 @@ async function handleSendLearnerCollegeAdminMessage(supabase: any, params: any):
   });
 }
 
-async function handleSendEducatorAdminMessage(supabase: any, params: any): Promise<any> {
+async function handleSendEducatorAdminMessage(supabase: SupabaseClient, params: any): Promise<any> {
   const { conversationId, educatorId, messageText, subject, attachments } = params;
   const convId = String(conversationId);
   const { data: conversation, error: convError } = await supabase.from('conversations').select('school_id, subject').eq('id', convId).maybeSingle();
@@ -333,7 +377,7 @@ async function handleSendEducatorAdminMessage(supabase: any, params: any): Promi
   });
 }
 
-async function handleSendCollegeEducatorAdminMessage(supabase: any, params: any): Promise<any> {
+async function handleSendCollegeEducatorAdminMessage(supabase: SupabaseClient, params: any): Promise<any> {
   const { conversationId, educatorId, messageText, subject, attachments } = params;
   const convId = String(conversationId);
   const { data: conversation, error: convError } = await supabase.from('conversations').select('college_id, subject').eq('id', convId).maybeSingle();
@@ -352,19 +396,19 @@ async function handleSendCollegeEducatorAdminMessage(supabase: any, params: any)
   });
 }
 
-async function handleMarkAsRead(supabase: any, params: any): Promise<void> {
+async function handleMarkAsRead(supabase: SupabaseClient, params: any): Promise<void> {
   const { messageId } = params;
   const msgId = String(messageId);
   const { error } = await supabase.from('messages').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', msgId);
   if (error) throw error;
 }
 
-async function handleFetchEducatorDetails(supabase: any, params: any): Promise<any[]> {
+async function handleFetchEducatorDetails(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { conversations } = params;
   return fetchEducatorDetailsForConversations(supabase, conversations);
 }
 
-async function handleArchiveConversationForUser(supabase: any, params: any): Promise<void> {
+async function handleArchiveConversationForUser(supabase: SupabaseClient, params: any): Promise<void> {
   const { conversationId, userId, userType } = params;
   const convId = String(conversationId);
   let archiveColumn: string;
@@ -380,7 +424,7 @@ async function handleArchiveConversationForUser(supabase: any, params: any): Pro
   if (error) throw error;
 }
 
-async function handleUnarchiveConversationForUser(supabase: any, params: any): Promise<void> {
+async function handleUnarchiveConversationForUser(supabase: SupabaseClient, params: any): Promise<void> {
   const { conversationId, userId, userType } = params;
   const convId = String(conversationId);
   let archiveColumn: string;
@@ -396,7 +440,7 @@ async function handleUnarchiveConversationForUser(supabase: any, params: any): P
   if (error) throw error;
 }
 
-async function handleSearchRecipients(supabase: any, params: any): Promise<any[]> {
+async function handleSearchRecipients(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { query, type, contextId, contextField } = params;
   if (!query || !type) return [];
 
@@ -422,7 +466,7 @@ async function handleSearchRecipients(supabase: any, params: any): Promise<any[]
   return [];
 }
 
-async function handleResolveUserContext(supabase: any, params: any): Promise<any> {
+async function handleResolveUserContext(supabase: SupabaseClient, params: any): Promise<any> {
   const { userId, type } = params;
   if (!userId) return null;
   const usrId = String(userId);
@@ -440,7 +484,7 @@ async function handleResolveUserContext(supabase: any, params: any): Promise<any
   return null;
 }
 
-async function handleFetchLearnerSchool(supabase: any, params: any): Promise<any> {
+async function handleFetchLearnerSchool(supabase: SupabaseClient, params: any): Promise<any> {
   const { learnerId } = params;
   if (!learnerId) return null;
   const lrnId = String(learnerId);
@@ -451,7 +495,7 @@ async function handleFetchLearnerSchool(supabase: any, params: any): Promise<any
   return { school_id: learner.school_id, school: org };
 }
 
-async function handleFetchLearnerCollege(supabase: any, params: any): Promise<any> {
+async function handleFetchLearnerCollege(supabase: SupabaseClient, params: any): Promise<any> {
   const { learnerId } = params;
   if (!learnerId) return null;
   const lrnId = String(learnerId);
@@ -464,7 +508,7 @@ async function handleFetchLearnerCollege(supabase: any, params: any): Promise<an
   return { college_id: collegeId, college: org };
 }
 
-async function handleFetchOrganization(supabase: any, params: any): Promise<any> {
+async function handleFetchOrganization(supabase: SupabaseClient, params: any): Promise<any> {
   const { id } = params;
   if (!id) return null;
   const orgId = String(id);
@@ -472,14 +516,14 @@ async function handleFetchOrganization(supabase: any, params: any): Promise<any>
   return data;
 }
 
-async function handleResolveEducatorByEmail(supabase: any, params: any): Promise<any> {
+async function handleResolveEducatorByEmail(supabase: SupabaseClient, params: any): Promise<any> {
   const { email } = params;
   if (!email) return null;
   const { data } = await supabase.from('school_educators').select('id, school_id, user_id, email, first_name, last_name, role, phone_number').eq('email', email).maybeSingle();
   return data;
 }
 
-async function handleResolveEducatorById(supabase: any, params: any): Promise<any> {
+async function handleResolveEducatorById(supabase: SupabaseClient, params: any): Promise<any> {
   const { educatorId } = params;
   if (!educatorId) return null;
   const eduId = String(educatorId);
@@ -487,7 +531,7 @@ async function handleResolveEducatorById(supabase: any, params: any): Promise<an
   return data;
 }
 
-async function handleFetchLearnerContext(supabase: any, params: any): Promise<any> {
+async function handleFetchLearnerContext(supabase: SupabaseClient, params: any): Promise<any> {
   const { learnerId, userId } = params;
   if (learnerId) {
     const lrnId = String(learnerId);
@@ -502,7 +546,7 @@ async function handleFetchLearnerContext(supabase: any, params: any): Promise<an
   return null;
 }
 
-async function handleFetchDepartmentsByCollege(supabase: any, params: any): Promise<any[]> {
+async function handleFetchDepartmentsByCollege(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { collegeId } = params;
   if (!collegeId) return [];
   const collId = String(collegeId);
@@ -510,7 +554,7 @@ async function handleFetchDepartmentsByCollege(supabase: any, params: any): Prom
   return data || [];
 }
 
-async function handleFetchProgramsByDepartments(supabase: any, params: any): Promise<any[]> {
+async function handleFetchProgramsByDepartments(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { departmentIds, collegeId } = params;
   let query = supabase.from('programs').select('id, name, department_id');
   if (departmentIds?.length) query = query.in('department_id', departmentIds.map((id: any) => String(id)));
@@ -519,7 +563,7 @@ async function handleFetchProgramsByDepartments(supabase: any, params: any): Pro
   return data || [];
 }
 
-async function handleFetchLearnersByPrograms(supabase: any, params: any): Promise<any[]> {
+async function handleFetchLearnersByPrograms(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { programIds, collegeId, limit = 200 } = params;
   let query = supabase.from('learners').select('id, name, email, university, branch_field, program_id, program_section_id');
   if (programIds?.length) query = query.in('program_id', programIds.map((id: any) => String(id)));
@@ -528,7 +572,7 @@ async function handleFetchLearnersByPrograms(supabase: any, params: any): Promis
   return data || [];
 }
 
-async function handleFetchRecipients(supabase: any, params: any): Promise<any[]> {
+async function handleFetchRecipients(supabase: SupabaseClient, params: any): Promise<any[]> {
   const { conversationType, contextId } = params;
   let data: any[] = [];
 
