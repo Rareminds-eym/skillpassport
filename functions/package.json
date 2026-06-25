@@ -4,7 +4,7 @@
   "type": "module",
   "dependencies": {
     "@rareminds-eym/auth-core": "2.1.1",
-    "@rareminds-eym/supabase-typegen": "file:../../supabase-typegen",
+    "@rareminds-eym/supabase-typegen": "^1.0.0",
     "@supabase/supabase-js": "2.57.4",
     "aws4fetch": "1.0.20",
     "pdf-lib": "1.17.1",
