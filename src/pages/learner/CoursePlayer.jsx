@@ -26,7 +26,6 @@ import { apiPost } from '@/shared/api/apiClient';
 import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
 import { courseProgressService } from '@/features/courses';
-import { fileService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api';
 import { getLogger } from '@/shared/config/logging';
 import { useCertificateModal } from '@/features/certificate-generation';

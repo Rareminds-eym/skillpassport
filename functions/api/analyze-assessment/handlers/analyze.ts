@@ -929,8 +929,8 @@ export async function handleAnalyzeAssessment(
   }
 
   // Check for development mode
-  const isDevelopment = 
-    env.VITE_SUPABASE_URL?.includes('localhost') || 
+  const isDevelopment =
+    env.SUPABASE_URL?.includes('localhost') ||
     request.headers.get('X-Dev-Mode') === 'true';
 
   console.log('[ASSESSMENT-API] Development mode:', isDevelopment);
@@ -1109,8 +1109,6 @@ export async function handleAnalyzeAssessment(
   console.log('[ASSESSMENT-API] === ENVIRONMENT CHECK ===');
   console.log('[ASSESSMENT-API] OPENROUTER_API_KEY exists:', !!env.OPENROUTER_API_KEY);
   console.log('[ASSESSMENT-API] OPENROUTER_API_KEY length:', env.OPENROUTER_API_KEY?.length || 0);
-  console.log('[ASSESSMENT-API] GEMINI_API_KEY exists:', !!env.GEMINI_API_KEY);
-  console.log('[ASSESSMENT-API] CLAUDE_API_KEY exists:', !!env.CLAUDE_API_KEY);
 
   try {
     console.log('[ASSESSMENT-API] === STARTING AI ANALYSIS ===');

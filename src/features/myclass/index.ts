@@ -53,8 +53,6 @@ export type { Assignment } from './ui/AssignmentCard';
 
 export type { SchoolActivity } from './ui/tabs/CoCurricularsTab';
 
-export { validateStorageConfig } from './lib/supabaseHelpers';
-
 export { getClassTimetable } from '@/features/learner-profile/api/learnerClassService';
 
 export type { AssignmentStats } from './ui/tabs/OverviewTab';

@@ -6,7 +6,6 @@
  */
 
 export interface AnalyticsConfig {
-  ga4MeasurementId: string | undefined;
   gtmId: string | undefined;
   isEnabled: boolean;
   debugMode: boolean;
@@ -16,12 +15,10 @@ export interface AnalyticsConfig {
  * Get analytics configuration from environment variables
  */
 export function getAnalyticsConfig(): AnalyticsConfig {
-  const ga4MeasurementId = import.meta.env.VITE_GA4_MEASUREMENT_ID;
   const gtmId = import.meta.env.VITE_GTM_ID;
   const isDev = import.meta.env.DEV;
 
   return {
-    ga4MeasurementId,
     gtmId,
     isEnabled: !!gtmId, // Enable if GTM ID is provided (GTM-based architecture)
     debugMode: isDev,
