@@ -18,6 +18,7 @@ import * as collegeAssignmentService from "@/features/college-admin";
 import { getDocumentUrl, uploadMultipleFiles } from '@/shared/api';
 import { deleteFile } from '@/shared/api/storageApiService';
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('CollegeSkillTasks');
 
@@ -737,19 +738,13 @@ export default function CollegeSkillTasks() {
                 return;
             }
 
-            // Query learners table to get user IDs by email
-            const { data: learners, error: learnersError } = await supabase
-                .from('learners')
-                .select('id, user_id, email')
-                .in('email', selectedEmails);
+            // Query learners table to get user IDs by email via API
+            const learners = await apiPost<Array<{ id: string; user_id: string; email: string }>>('/educator/actions', {
+                action: 'get-learners-by-emails',
+                emails: selectedEmails
+            });
 
             logger.info('Learners query result', { learners });
-
-            if (learnersError) {
-                logger.error('Error fetching learners', learnersError);
-                toast.error('Failed to fetch learner accounts');
-                return;
-            }
 
             if (!learners || learners.length === 0) {
                 toast.error("No matching learner accounts found for selected learners");
@@ -963,15 +958,11 @@ export default function CollegeSkillTasks() {
 
             logger.info('Updating assignment with data', { updateData });
 
-            const { error } = await supabase
-                .from('college_assignments')
-                .update(updateData)
-                .eq('assignment_id', selectedAssignment.assignment_id);
-
-            if (error) {
-                logger.error('Supabase update error', error);
-                throw error;
-            }
+            await apiPost('/educator/actions', {
+                action: 'update-college-assignment',
+                assignmentId: selectedAssignment.assignment_id,
+                updateData
+            });
 
             toast.success('Task updated successfully');
             setEditTaskModal(false);
@@ -1015,12 +1006,10 @@ export default function CollegeSkillTasks() {
         try {
             if (!selectedAssignment) return;
 
-            const { error } = await supabase
-                .from('college_assignments')
-                .delete()
-                .eq('assignment_id', selectedAssignment.assignment_id);
-
-            if (error) throw error;
+            await apiPost('/educator/actions', {
+                action: 'delete-college-assignment',
+                assignmentId: selectedAssignment.assignment_id
+            });
 
             toast.success('Task deleted successfully');
             setDeleteConfirmModal(false);
@@ -1330,19 +1319,12 @@ export default function CollegeSkillTasks() {
                                                         
                                                         // Fetch already assigned learners
                                                         try {
-                                                            const { data: assignedlearners, error } = await supabase
-                                                                .from('college_learner_assignments')
-                                                                .select('learner_id')
-                                                                .eq('assignment_id', assignment.assignment_id)
-                                                                .eq('is_deleted', false);
+                                                            const assignedIds = await apiPost<string[]>('/educator/actions', {
+                                                                action: 'get-assigned-learners',
+                                                                assignmentId: assignment.assignment_id
+                                                            });
                                                             
-                                                            if (error) {
-                                                                logger.error('Error fetching assigned learners', error);
-                                                                setAssignedLearnerIds([]);
-                                                            } else {
-                                                                const assignedIds = (assignedlearners || []).map(sa => sa.learner_id);
-                                                                setAssignedLearnerIds(assignedIds);
-                                                            }
+                                                            setAssignedLearnerIds(assignedIds || []);
                                                         } catch (error) {
                                                             logger.error('Error fetching assigned learners', error);
                                                             setAssignedLearnerIds([]);

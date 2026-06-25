@@ -57,13 +57,17 @@ export default function AcceptInvitationPage() {
 
       setInvitation(inv);
 
-      // CRITICAL FIX: For recruitment invitations, redirect to signup immediately
+      // Check if user is logged in
+      const { data: { user: currentUser } } = { data: { user: useAuthStore.getState().user } };
+      setUser(currentUser);
+
+      // CRITICAL FIX: For recruitment invitations, redirect to signup immediately IF NOT LOGGED IN
       const isRecruitmentInvitation = inv.memberType?.includes('company_admin') ||
         inv.memberType?.includes('recruiter') ||
         inv.memberType?.includes('viewer');
 
-      if (isRecruitmentInvitation) {
-        console.log('[AcceptInvitationPage] Recruitment invitation detected, redirecting to signup');
+      if (!currentUser && isRecruitmentInvitation) {
+        console.log('[AcceptInvitationPage] Recruitment invitation detected for guest, redirecting to signup');
         console.log('[AcceptInvitationPage] Token:', token);
         console.log('[AcceptInvitationPage] Email:', inv.email);
 
@@ -78,11 +82,6 @@ export default function AcceptInvitationPage() {
         navigate(signupUrl, { replace: true });
         return;
       }
-
-      // For non-recruitment invitations, continue with normal flow
-      // Check if user is logged in
-      const { data: { user: currentUser } } = { data: { user: useAuthStore.getState().user } };
-      setUser(currentUser);
 
       // Check invitation status
       if (inv.status === 'accepted') {

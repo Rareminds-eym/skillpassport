@@ -23,7 +23,7 @@ const logger = createLogger('embedding-client');
  */
 export async function callEmbeddingWorker(
   text: string,
-  env: Record<string, string>,
+  env: any,
   taskType: string = EMBEDDING_TASK_TYPES.RETRIEVAL_DOCUMENT
 ): Promise<number[]> {
   // Validate input
@@ -41,9 +41,9 @@ export async function callEmbeddingWorker(
   if (!embeddingApiUrl) {
     logger.error('Missing EMBEDDING_API_URL environment variable - embeddings cannot be generated');
     throw new EmbeddingError(
-      'EMBEDDING_API_URL environment variable is required',
+      'EMBEDDING_SERVICE binding is required',
       'API_ERROR',
-      { missingVar: 'EMBEDDING_API_URL' }
+      { missingVar: 'EMBEDDING_SERVICE' }
     );
   }
 
@@ -128,7 +128,7 @@ export async function callEmbeddingWorker(
       throw new EmbeddingError(
         'Invalid embedding response from worker',
         'INVALID_RESPONSE',
-        { response: data }
+        { response: embedding }
       );
     }
 
@@ -138,7 +138,7 @@ export async function callEmbeddingWorker(
       taskType,
     });
     
-    return data.embedding;
+    return embedding;
 
   } catch (error) {
     // Re-throw EmbeddingError as-is
@@ -159,19 +159,5 @@ export async function callEmbeddingWorker(
       { originalError: error }
     );
   }
-}
 
-/**
- * Get embedding API configuration from environment
- * Helper function for consistent config extraction
- * Only uses backend environment variables (no VITE_ prefix)
- */
-export function getEmbeddingConfig(env: Record<string, string>): {
-  apiUrl: string | undefined;
-  apiKey: string | undefined;
-} {
-  return {
-    apiUrl: env.EMBEDDING_API_URL,
-    apiKey: env.EMBEDDING_API_KEY,
-  };
 }

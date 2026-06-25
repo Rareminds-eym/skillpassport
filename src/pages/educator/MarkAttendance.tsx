@@ -17,6 +17,7 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
 import { getLogger } from '@/shared/config/logging';
+import { apiPost } from '@/shared/api/apiClient';
 
 const logger = getLogger('MarkAttendance');
 
@@ -117,49 +118,45 @@ const MarkAttendance: React.FC = () => {
 
         logger.info('Fetching educator info', { userId: user.id });
 
-        // First check if they are a school educator
-        const { data: schoolEducator } = await supabase
-          .from("school_educators")
-          .select("id, school_id, user_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (schoolEducator) {
-          logger.info('Found school educator', { schoolEducator });
-          setEducatorId(schoolEducator.id);
-          setEducatorUserId(schoolEducator.user_id);
-          setSchoolId(schoolEducator.school_id);
-          setEducatorType('school');
-          return;
-        }
-
-        // If not school educator, check if they are a college lecturer
-        const { data: collegeLecturer } = await supabase
-          .from("college_lecturers")
-          .select("id, collegeId, user_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        logger.info('College lecturer query result', { collegeLecturer });
-
-        if (collegeLecturer) {
-          logger.info('Found college lecturer', { collegeLecturer });
-          logger.info('Setting state', {
-            educatorId: collegeLecturer.id,
-            educatorUserId: collegeLecturer.user_id,
-            collegeId: collegeLecturer.collegeId,
-            educatorType: 'college'
+        try {
+          const educatorData = await apiPost<{
+            type: 'school' | 'college' | null;
+            schoolEducator?: { id: string; school_id: string; user_id: string };
+            collegeLecturer?: { id: string; collegeId: string; user_id: string };
+          }>('/educator/actions', {
+            action: 'get-educator-type-by-user-id'
           });
-          setEducatorId(collegeLecturer.id);
-          setEducatorUserId(collegeLecturer.user_id);
-          setCollegeId(collegeLecturer.collegeId);
-          setEducatorType('college');
-          return;
-        }
 
-        logger.info('No educator record found', { userId: user.id });
+          if (educatorData?.type === 'school' && educatorData.schoolEducator) {
+            logger.info('Found school educator', { schoolEducator: educatorData.schoolEducator });
+            setEducatorId(educatorData.schoolEducator.id);
+            setEducatorUserId(educatorData.schoolEducator.user_id);
+            setSchoolId(educatorData.schoolEducator.school_id);
+            setEducatorType('school');
+            return;
+          }
+
+          if (educatorData?.type === 'college' && educatorData.collegeLecturer) {
+            logger.info('Found college lecturer', { collegeLecturer: educatorData.collegeLecturer });
+            logger.info('Setting state', {
+              educatorId: educatorData.collegeLecturer.id,
+              educatorUserId: educatorData.collegeLecturer.user_id,
+              collegeId: educatorData.collegeLecturer.collegeId,
+              educatorType: 'college'
+            });
+            setEducatorId(educatorData.collegeLecturer.id);
+            setEducatorUserId(educatorData.collegeLecturer.user_id);
+            setCollegeId(educatorData.collegeLecturer.collegeId);
+            setEducatorType('college');
+            return;
+          }
+
+          logger.info('No educator record found', { userId: user.id });
+        } catch (error) {
+          logger.error('Error fetching educator info', error);
+        }
       } catch (error) {
-        logger.error('Error fetching educator info', error);
+        logger.error('Unexpected error fetching educator info', error);
       }
     };
 
@@ -207,156 +204,100 @@ const MarkAttendance: React.FC = () => {
   };
 
   const loadSchoolSchedule = async () => {
-    const date = new Date(selectedDate);
-    const dayOfWeek = date.getDay();
+    try {
+      const date = new Date(selectedDate);
+      const dayOfWeek = date.getDay();
 
-    const currentYear = new Date().getFullYear();
-    const { data: timetables } = await supabase
-      .from("timetables")
-      .select("id")
-      .eq("school_id", schoolId)
-      .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-      .eq("status", "published")
-      .order("created_at", { ascending: false })
-      .limit(1);
+      const response = await apiPost<{ slots: any[] }>('/educator/actions', {
+        action: 'get-school-schedule',
+        educatorId,
+        schoolId,
+        dayOfWeek,
+        selectedDate
+      });
 
-    const timetable = timetables?.[0];
-
-    if (!timetable) {
+      await processSchoolSlots(response?.slots || []);
+    } catch (error) {
+      logger.error('Error loading school schedule', error);
       setTodaySlots([]);
-      return;
     }
-
-    const { data: slots, error } = await supabase
-      .from("timetable_slots")
-      .select(`
-        id,
-        day_of_week,
-        period_number,
-        start_time,
-        end_time,
-        subject_name,
-        room_number,
-        class_id,
-        school_classes (
-          name,
-          grade,
-          section,
-          current_learners
-        )
-      `)
-      .eq("timetable_id", timetable.id)
-      .eq("educator_id", educatorId)
-      .eq("day_of_week", dayOfWeek)
-      .order("period_number");
-
-    if (error) throw error;
-
-    // Process school slots (existing logic)
-    await processSchoolSlots(slots || []);
   };
 
   const loadCollegeSchedule = async () => {
-    logger.info('Loading college schedule', {
-      educatorId,
-      selectedDate,
-      collegeId
-    });
+    try {
+      logger.info('Loading college schedule', {
+        educatorId,
+        selectedDate,
+        collegeId
+      });
 
-    // Check if there are existing college attendance sessions for today
-    const { data: existingSessions, error: sessionsError } = await supabase
-      .from("college_attendance_sessions")
-      .select(`
-        id,
-        date,
-        start_time,
-        end_time,
-        subject_name,
-        subject_code,
-        course_type,
-        department_name,
-        program_name,
-        semester,
-        section,
-        academic_year,
-        room_number,
-        total_learners,
-        present_count,
-        absent_count,
-        status
-      `)
-      .eq("faculty_id", educatorId)
-      .eq("date", selectedDate)
-      .eq("college_id", collegeId)
-      .order("start_time");
+      const response = await apiPost<{ sessions: any[] }>('/educator/actions', {
+        action: 'get-college-schedule',
+        educatorId,
+        collegeId,
+        selectedDate
+      });
 
-    logger.info('College sessions query result', {
-      data: existingSessions,
-      error: sessionsError,
-      query: {
-        faculty_id: educatorId,
-        date: selectedDate,
-        college_id: collegeId
-      }
-    });
+      const existingSessions = response?.sessions || [];
 
-    if (sessionsError) {
-      logger.error('Error loading college sessions', sessionsError);
-      throw sessionsError;
+      logger.info('College sessions query result', {
+        data: existingSessions,
+        query: {
+          faculty_id: educatorId,
+          date: selectedDate,
+          college_id: collegeId
+        }
+      });
+
+      // Convert college sessions to TimetableSlot format
+      const collegeSlots: TimetableSlot[] = existingSessions.map((session: any, index: number) => ({
+        id: session.id,
+        day_of_week: new Date(selectedDate).getDay(),
+        period_number: index + 1,
+        start_time: session.start_time,
+        end_time: session.end_time,
+        subject_name: session.subject_name,
+        room_number: session.room_number || '',
+        class_id: `${session.department_name}-${session.program_name}-${session.semester}-${session.section}`,
+        class_name: `${session.program_name} - Sem ${session.semester} ${session.section}`,
+        class_grade: `Semester ${session.semester}`,
+        class_section: session.section,
+        total_learners: session.total_learners || 0,
+        attendance_marked: session.status === 'completed',
+        is_locked: isSlotLocked(selectedDate)
+      }));
+
+      logger.info('Converted college slots', { collegeSlots });
+
+      setTodaySlots(collegeSlots);
+    } catch (error) {
+      logger.error('Error loading college schedule', error);
+      setTodaySlots([]);
     }
-
-    // Convert college sessions to TimetableSlot format
-    const collegeSlots: TimetableSlot[] = (existingSessions || []).map((session: any, index: number) => ({
-      id: session.id,
-      day_of_week: new Date(selectedDate).getDay(),
-      period_number: index + 1,
-      start_time: session.start_time,
-      end_time: session.end_time,
-      subject_name: session.subject_name,
-      room_number: session.room_number || '',
-      class_id: `${session.department_name}-${session.program_name}-${session.semester}-${session.section}`,
-      class_name: `${session.program_name} - Sem ${session.semester} ${session.section}`,
-      class_grade: `Semester ${session.semester}`,
-      class_section: session.section,
-      total_learners: session.total_learners || 0,
-      attendance_marked: session.status === 'completed',
-      is_locked: isSlotLocked(selectedDate)
-    }));
-
-    logger.info('Converted college slots', { collegeSlots });
-
-    setTodaySlots(collegeSlots);
   };
 
   const processSchoolSlots = async (slots: any[]) => {
     try {
       // Optimize: Fetch all class IDs at once
       const classIds = slots?.map((slot: any) => slot.class_id) || [];
-      
-      // Fetch all learners for these classes in one query
-      const { data: alllearners } = await supabase
-        .from("learners")
-        .select("id, school_class_id")
-        .in("school_class_id", classIds)
-        .eq("is_deleted", false);
 
-      // Group learners by class_id
-      const learnersByClass = new Map<string, string[]>();
-      alllearners?.forEach(learner => {
-        const classlearners = learnersByClass.get(learner.school_class_id) || [];
-        classlearners.push(learner.id);
-        learnersByClass.set(learner.school_class_id, classlearners);
+      const response = await apiPost<{
+        learnersByClass: Record<string, string[]>;
+        attendanceRecords: Array<{ learner_id: string; slot_id: string }>;
+      }>('/educator/actions', {
+        action: 'process-school-slots',
+        schoolId,
+        classIds,
+        selectedDate,
+        allLearnerIds: classIds
       });
 
-      // Fetch all attendance records for today with valid slot_id
-      const allLearnerIds = alllearners?.map(s => s.id) || [];
-      const { data: attendanceRecords } = allLearnerIds.length > 0 ? await supabase
-        .from("attendance_records")
-        .select("learner_id, slot_id")
-        .eq("school_id", schoolId)
-        .eq("date", selectedDate)
-        .in("learner_id", allLearnerIds)
-        .not("slot_id", "is", null) : { data: [] };
+      const learnersByClass = new Map<string, string[]>();
+      Object.entries(response?.learnersByClass || {}).forEach(([classId, learnerIds]) => {
+        learnersByClass.set(classId, learnerIds);
+      });
+
+      const attendanceRecords = response?.attendanceRecords || [];
 
       // Create a map of slot_id -> Set of learner IDs with attendance marked
       const attendanceBySlot = new Map();
@@ -426,251 +367,120 @@ const MarkAttendance: React.FC = () => {
   };
 
   const startSchoolAttendanceSession = async (slot: TimetableSlot) => {
-    // First get all learners in this class
-    const { data: classlearners } = await supabase
-      .from("learners")
-      .select("id")
-      .eq("school_class_id", slot.class_id)
-      .eq("is_deleted", false);
-
-    const classLearnerIds = classlearners?.map(s => s.id) || [];
-
-    // Check if attendance already exists for these learners on this date and slot
-    const { data: existingRecords } = await supabase
-      .from("attendance_records")
-      .select("*")
-      .eq("school_id", schoolId)
-      .eq("date", selectedDate)
-      .eq("slot_id", slot.id)
-      .in("learner_id", classLearnerIds);
-
-    const existingForThisSlot = existingRecords || [];
-    const isSubmitted = !!(existingForThisSlot.length > 0);
-
-    const { data: learners, error } = await supabase
-      .from("learners")
-      .select("id, name, roll_number, grade, section, profilePicture")
-      .eq("school_class_id", slot.class_id)
-      .eq("is_deleted", false)
-      .order("roll_number");
-
-    if (error) throw error;
-
-    const formattedlearners: Learner[] = (learners || []).map((s: any) => ({
-      id: s.id,
-      name: s.name,
-      roll_number: s.roll_number || "N/A",
-      grade: s.grade || slot.class_grade,
-      section: s.section || slot.class_section,
-      profile_picture: s.profilePicture,
-    }));
-
-    const recordsMap = new Map<string, AttendanceRecord>();
-    
-    if (isSubmitted) {
-      existingForThisSlot.forEach((record: any) => {
-        recordsMap.set(record.learner_id, {
-          learner_id: record.learner_id,
-          status: record.status,
-          time_in: record.time_in,
-          remarks: record.remarks,
-        });
+    try {
+      const response = await apiPost<{
+        learners: Array<{ id: string; name: string; roll_number: string; grade: string; section: string; profilePicture?: string }>;
+        existingRecords: any[];
+        isSubmitted: boolean;
+      }>('/educator/actions', {
+        action: 'start-school-attendance-session',
+        schoolId,
+        slotId: slot.id,
+        classId: slot.class_id,
+        selectedDate
       });
-    } else {
-      formattedlearners.forEach((learner) => {
-        recordsMap.set(learner.id, {
-          learner_id: learner.id,
-          status: "present",
-          time_in: undefined,
-          remarks: "",
+
+      const formattedlearners: Learner[] = (response?.learners || []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        roll_number: s.roll_number || "N/A",
+        grade: s.grade || slot.class_grade,
+        section: s.section || slot.class_section,
+        profile_picture: s.profilePicture,
+      }));
+
+      const recordsMap = new Map<string, AttendanceRecord>();
+      const existingForThisSlot = response?.existingRecords || [];
+      const isSubmitted = response?.isSubmitted || false;
+
+      if (isSubmitted) {
+        existingForThisSlot.forEach((record: any) => {
+          recordsMap.set(record.learner_id, {
+            learner_id: record.learner_id,
+            status: record.status,
+            time_in: record.time_in,
+            remarks: record.remarks,
+          });
         });
+      } else {
+        formattedlearners.forEach((learner) => {
+          recordsMap.set(learner.id, {
+            learner_id: learner.id,
+            status: "present",
+            time_in: undefined,
+            remarks: "",
+          });
+        });
+      }
+
+      setActiveSession({
+        slot,
+        learners: formattedlearners,
+        records: recordsMap,
+        isSubmitted,
+        submittedAt: isSubmitted ? existingForThisSlot[0]?.created_at : undefined,
       });
+
+      setViewMode("marking");
+    } catch (error) {
+      logger.error('Error starting school attendance session', error);
+      alert("Failed to load learners. Please try again.");
     }
-
-    setActiveSession({
-      slot,
-      learners: formattedlearners,
-      records: recordsMap,
-      isSubmitted,
-      submittedAt: isSubmitted ? existingForThisSlot[0]?.created_at : undefined,
-    });
-
-    setViewMode("marking");
   };
 
   const startCollegeAttendanceSession = async (slot: TimetableSlot) => {
-    // Check if attendance already exists for this session
-    const { data: existingRecords } = await supabase
-      .from("college_attendance_records")
-      .select("*")
-      .eq("session_id", slot.id)
-      .eq("date", selectedDate);
-
-    const isSubmitted = !!(existingRecords && existingRecords.length > 0);
-
-    // Parse class_id - handle both old format (names) and new format (UUIDs)
-    const classParts = slot.class_id.split('-');
-    
-    let semester: number;
-    let section: string;
-    let program_id: string;
-    
-    // Check if this is the old format (names) or new format (UUIDs)
-    // Old format: "Department Name-Program Name-1-A" (4 parts)
-    // New format: "college_id-department_id-program_id-semester-section" (multiple UUID parts)
-    
-    // Simple heuristic: if the second-to-last part is a number, it's likely old format
-    const secondToLast = classParts[classParts.length - 2];
-    const isOldFormat = !isNaN(parseInt(secondToLast)) && secondToLast.length <= 2;
-    
-    if (isOldFormat) {
-      // Old format: "Department Name-Program Name-1-A"
-      logger.info('Detected OLD format (names)');
-      section = classParts[classParts.length - 1];
-      semester = parseInt(classParts[classParts.length - 2]);
-      
-      // Program name is everything except the last 2 parts and first part (department)
-      const programNameParts = classParts.slice(1, classParts.length - 2);
-      const programName = programNameParts.join('-');
-      
-      logger.info('Parsed OLD format', {
-        programName,
-        semester,
-        section,
-        originalClassId: slot.class_id
+    try {
+      const response = await apiPost<{
+        existingRecords: any[];
+        isSubmitted: boolean;
+        learners: Array<{ id: string; name: string; roll_number: string; grade: string; section: string; profilePicture?: string }>;
+      }>('/educator/actions', {
+        action: 'start-college-attendance-session',
+        sessionId: slot.id,
+        selectedDate,
+        classId: slot.class_id,
+        semester: parseInt(slot.class_grade?.replace(/\D/g, '') || '1')
       });
-      
-      // Look up program by name instead of ID
-      const { data: programData, error: programError } = await supabase
-        .from("programs")
-        .select("id, name, departments(name)")
-        .eq("name", programName)
-        .maybeSingle();
-      
-      if (programError || !programData) {
-        logger.error('Failed to find program by name', programError);
-        throw new Error(`Failed to find program: ${programName}`);
-      }
-      
-      program_id = programData.id;
-      
-      logger.info('Found program ID', { program_id });
-    } else {
-      // New format: UUID-based
-      logger.info('Detected NEW format (UUIDs)');
-      section = classParts[classParts.length - 1];
-      semester = parseInt(classParts[classParts.length - 2]);
-      
-      // Extract program_id (5 parts before semester-section)
-      const programIdParts = classParts.slice(classParts.length - 7, classParts.length - 2);
-      program_id = programIdParts.join('-');
-      
-      logger.info('Parsed NEW format', {
-        program_id,
-        semester,
-        section,
-        originalClassId: slot.class_id
-      });
-    }
 
-    // Get program and department names from program_sections
-    logger.info('Looking up program details...');
-    
-    const { data: programSections, error: programError } = await supabase
-      .from("program_sections")
-      .select("program_id, id, programs(name, departments(name))")
-      .eq("program_id", program_id)
-      .eq("semester", semester)
-      .eq("section", section);
+      const existingRecords = response?.existingRecords || [];
+      const isSubmitted = response?.isSubmitted || false;
+      const formattedlearners = response?.learners || [];
 
-    logger.info('Program section lookup result', {
-      programSections,
-      error: programError,
-      query: {
-        program_id,
-        semester,
-        section
-      }
-    });
+      const recordsMap = new Map<string, AttendanceRecord>();
 
-    if (programError) {
-      logger.error('Failed to get program details', programError);
-      throw new Error('Failed to find program information for this session');
-    }
-
-    if (!programSections || programSections.length === 0) {
-      throw new Error('No program found for this semester and section');
-    }
-
-    // Use the first program section if multiple exist
-    const programSection = programSections[0];
-    logger.info('Using program section', { programSection });
-
-    if (!programSection?.program_id) {
-      throw new Error('No program_id found in program section');
-    }
-
-    // Now find learners using the correct program_id
-    logger.info('Searching learners', { program_id: programSection.program_id });
-    
-    const { data: learners, error } = await supabase
-      .from("learners")
-      .select("id, name, roll_number, grade, section, profilePicture, program_id")
-      .eq("is_deleted", false)
-      .eq("program_id", programSection.program_id)
-      .eq("semester", semester)
-      .eq("section", section)
-      .order("roll_number");
-
-    logger.info('Learners query result', {
-      learnersFound: learners?.length || 0,
-      error,
-      queryType: 'program_id_lookup',
-      program_id: programSection.program_id
-    });
-
-    if (error) throw error;
-
-    const formattedlearners: Learner[] = (learners || []).map((s: any) => ({
-      id: s.id,
-      name: s.name,
-      roll_number: s.roll_number || "N/A",
-      grade: `Semester ${semester}`,
-      section: s.section || section,
-      profile_picture: s.profilePicture,
-    }));
-
-    const recordsMap = new Map<string, AttendanceRecord>();
-    
-    if (isSubmitted) {
-      existingRecords.forEach((record: any) => {
-        recordsMap.set(record.learner_id, {
-          learner_id: record.learner_id,
-          status: record.status,
-          time_in: record.time_in,
-          remarks: record.remarks,
+      if (isSubmitted) {
+        existingRecords.forEach((record: any) => {
+          recordsMap.set(record.learner_id, {
+            learner_id: record.learner_id,
+            status: record.status,
+            time_in: record.time_in,
+            remarks: record.remarks,
+          });
         });
-      });
-    } else {
-      formattedlearners.forEach((learner) => {
-        recordsMap.set(learner.id, {
-          learner_id: learner.id,
-          status: "present",
-          time_in: undefined,
-          remarks: "",
+      } else {
+        formattedlearners.forEach((learner: any) => {
+          recordsMap.set(learner.id, {
+            learner_id: learner.id,
+            status: "present",
+            time_in: undefined,
+            remarks: "",
+          });
         });
+      }
+
+      setActiveSession({
+        slot,
+        learners: formattedlearners as Learner[],
+        records: recordsMap,
+        isSubmitted,
+        submittedAt: isSubmitted ? existingRecords[0]?.marked_at : undefined,
       });
+
+      setViewMode("marking");
+    } catch (error) {
+      logger.error('Error starting college attendance session', error);
+      alert("Failed to load learners. Please try again.");
     }
-
-    setActiveSession({
-      slot,
-      learners: formattedlearners,
-      records: recordsMap,
-      isSubmitted,
-      submittedAt: isSubmitted ? existingRecords[0]?.marked_at : undefined,
-    });
-
-    setViewMode("marking");
   };
 
   const updateAttendanceRecord = (
@@ -773,190 +583,87 @@ const MarkAttendance: React.FC = () => {
   const submitSchoolAttendance = async () => {
     if (!activeSession || !educatorUserId || !schoolId) return;
 
-    if (activeSession.isSubmitted) {
-      await supabase
-        .from("attendance_records")
-        .delete()
-        .eq("school_id", schoolId)
-        .eq("date", selectedDate)
-        .eq("slot_id", activeSession.slot.id);
+    try {
+      const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
+        learner_id: record.learner_id,
+        school_id: schoolId,
+        date: selectedDate,
+        status: record.status,
+        time_in: record.time_in || null,
+        time_out: null,
+        marked_by: educatorUserId,
+        remarks: record.remarks || null,
+        mode: "manual",
+        otp_verified: false,
+        slot_id: activeSession.slot.id,
+      }));
+
+      await apiPost('/educator/actions', {
+        action: 'submit-school-attendance',
+        schoolId,
+        selectedDate,
+        slotId: activeSession.slot.id,
+        educatorId,
+        records: recordsToInsert,
+        isResubmit: activeSession.isSubmitted
+      });
+
+      setActiveSession({
+        ...activeSession,
+        isSubmitted: true,
+        submittedAt: new Date().toISOString(),
+      });
+      setViewMode("schedule");
+      loadTodaySchedule();
+    } catch (error) {
+      logger.error('Error submitting school attendance', error);
+      throw error;
     }
-
-    let slotId = activeSession.slot.id;
-    
-    // If slot_id is missing, query it from database
-    if (!slotId && educatorId && schoolId) {
-      try {
-        const dayOfWeek = new Date(selectedDate).getDay();
-        
-        const { data: slotData } = await supabase
-          .from("timetable_slots")
-          .select("id")
-          .eq("educator_id", educatorId)
-          .eq("period_number", activeSession.slot.period_number)
-          .eq("day_of_week", dayOfWeek)
-          .eq("subject_name", activeSession.slot.subject_name)
-          .eq("class_id", activeSession.slot.class_id)
-          .maybeSingle();
-          
-        if (slotData?.id) {
-          slotId = slotData.id;
-        }
-      } catch (error) {
-        logger.error('Failed to retrieve slot_id from database', error);
-      }
-    }
-    
-    // Final fallback: try to find slot from current slots
-    if (!slotId) {
-      const matchingSlot = todaySlots.find(s => 
-        s.period_number === activeSession.slot.period_number &&
-        s.subject_name === activeSession.slot.subject_name &&
-        s.class_id === activeSession.slot.class_id
-      );
-      
-      if (matchingSlot?.id) {
-        slotId = matchingSlot.id;
-      } else {
-        throw new Error("Unable to determine slot information. Please refresh the page and try again.");
-      }
-    }
-
-    const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
-      learner_id: record.learner_id,
-      school_id: schoolId,
-      date: selectedDate,
-      status: record.status,
-      time_in: record.time_in || null,
-      time_out: null,
-      marked_by: educatorUserId,
-      remarks: record.remarks || null,
-      mode: "manual",
-      otp_verified: false,
-      slot_id: slotId,
-    }));
-
-    // Validate that all records have slot_id before inserting
-    const invalidRecords = recordsToInsert.filter(record => !record.slot_id);
-    if (invalidRecords.length > 0) {
-      throw new Error("Invalid slot information detected. Please refresh and try again.");
-    }
-
-    const { error: insertError } = await supabase
-      .from("attendance_records")
-      .insert(recordsToInsert);
-
-    if (insertError) throw insertError;
-
-    // alert(activeSession.isSubmitted ? "Attendance updated successfully!" : "Attendance submitted successfully!");
-    setActiveSession({
-      ...activeSession,
-      isSubmitted: true,
-      submittedAt: new Date().toISOString(),
-    });
-    setViewMode("schedule");
-    loadTodaySchedule();
   };
 
   const submitCollegeAttendance = async () => {
     if (!activeSession || !educatorUserId || !collegeId) return;
 
-    // Delete existing records if resubmitting
-    if (activeSession.isSubmitted) {
-      await supabase
-        .from("college_attendance_records")
-        .delete()
-        .eq("session_id", activeSession.slot.id)
-        .eq("date", selectedDate);
+    try {
+      const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
+        session_id: activeSession.slot.id,
+        learner_id: record.learner_id,
+        learner_name: activeSession.learners.find(s => s.id === record.learner_id)?.name || "Unknown",
+        roll_number: activeSession.learners.find(s => s.id === record.learner_id)?.roll_number || "N/A",
+        date: selectedDate,
+        status: record.status,
+        time_in: record.time_in || null,
+        time_out: null,
+        subject_name: activeSession.slot.subject_name,
+        faculty_id: educatorId,
+        location: activeSession.slot.room_number,
+        remarks: record.remarks || null,
+        marked_by: educatorUserId,
+        marked_at: new Date().toISOString(),
+        college_id: collegeId,
+      }));
+
+      await apiPost('/educator/actions', {
+        action: 'submit-college-attendance',
+        sessionId: activeSession.slot.id,
+        selectedDate,
+        classId: activeSession.slot.class_id,
+        educatorId,
+        records: recordsToInsert,
+        isResubmit: activeSession.isSubmitted
+      });
+
+      setActiveSession({
+        ...activeSession,
+        isSubmitted: true,
+        submittedAt: new Date().toISOString(),
+      });
+      setViewMode("schedule");
+      loadTodaySchedule();
+    } catch (error) {
+      logger.error('Error submitting college attendance', error);
+      throw error;
     }
-
-    // Parse class_id format: "college_id-department_id-program_id-semester-section"
-    const classParts = activeSession.slot.class_id.split('-');
-    
-    // Extract the last two parts (semester and section)
-    const section = classParts[classParts.length - 1];
-    const semester = parseInt(classParts[classParts.length - 2]);
-    
-    // Extract program_id (5 parts before semester-section)
-    const programIdParts = classParts.slice(classParts.length - 7, classParts.length - 2);
-    const program_id = programIdParts.join('-');
-
-    // Get program and department names
-    const { data: programData } = await supabase
-      .from("programs")
-      .select("name, department_id, departments(name)")
-      .eq("id", program_id)
-      .single();
-
-    const programName = programData?.name || "Unknown Program";
-    const departmentName = (programData?.departments as any)?.name || "Unknown Department";
-
-    // Get faculty name
-    const { data: facultyData, error: facultyError } = await supabase
-      .from("college_lecturers")
-      .select("first_name, last_name")
-      .eq("id", educatorId)
-      .single();
-
-    if (facultyError) {
-      logger.error('Failed to get faculty name', facultyError);
-    }
-
-    const facultyName = facultyData ? `${facultyData.first_name} ${facultyData.last_name}` : "Unknown Faculty";
-
-    // Prepare attendance records
-    const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
-      session_id: activeSession.slot.id,
-      learner_id: record.learner_id,
-      learner_name: activeSession.learners.find(s => s.id === record.learner_id)?.name || "Unknown",
-      roll_number: activeSession.learners.find(s => s.id === record.learner_id)?.roll_number || "N/A",
-      department_name: departmentName,
-      program_name: programName,
-      semester: semester,
-      section: section,
-      date: selectedDate,
-      status: record.status,
-      time_in: record.time_in || null,
-      time_out: null,
-      subject_name: activeSession.slot.subject_name,
-      subject_code: activeSession.slot.subject_name, // You might want to get actual subject code
-      faculty_id: educatorId,
-      faculty_name: facultyName,
-      location: activeSession.slot.room_number,
-      remarks: record.remarks || null,
-      marked_by: educatorUserId,
-      marked_at: new Date().toISOString(),
-      college_id: collegeId,
-    }));
-
-    // Insert attendance records
-    const { error: recordsError } = await supabase
-      .from("college_attendance_records")
-      .insert(recordsToInsert);
-
-    if (recordsError) throw recordsError;
-
-    // Update session status to completed
-    const { error: sessionUpdateError } = await supabase
-      .from("college_attendance_sessions")
-      .update({
-        status: 'completed',
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", activeSession.slot.id);
-
-    if (sessionUpdateError) {
-      logger.error('Failed to update session status', sessionUpdateError);
-    }
-
-    // alert(activeSession.isSubmitted ? "Attendance updated successfully!" : "Attendance submitted successfully!");
-    setActiveSession({
-      ...activeSession,
-      isSubmitted: true,
-      submittedAt: new Date().toISOString(),
-    });
-    setViewMode("schedule");
-    loadTodaySchedule();
   };
 
   const filteredlearners = useMemo(() => {

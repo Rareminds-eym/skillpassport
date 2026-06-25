@@ -1,4 +1,3 @@
-import { useAuthStore } from '@/shared/model/authStore';
 import { ssoClient } from '@/shared/api/ssoClient';
 /**
  * Shared HTTP Client utilities
@@ -29,7 +28,9 @@ export const defaultHeaders = {
  * Create authenticated headers with token
  */
 export async function createAuthHeaders(customHeaders: Record<string, string> = {}): Promise<Record<string, string>> {
-  
+  // Validate environment variables on first API call
+  validateEnvironment();
+
   const headers: Record<string, string> = {
     ...defaultHeaders,
     ...customHeaders,
@@ -50,6 +51,9 @@ export async function makeRequest<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // Validate environment variables on first API call
+  validateEnvironment();
+
   const response = await ssoClient.fetch(url, {
     ...options,
     headers: {
@@ -73,7 +77,7 @@ export async function makeAuthenticatedRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const authHeaders = await createAuthHeaders(options.headers as Record<string, string>);
-  
+
   return makeRequest<T>(url, {
     ...options,
     headers: authHeaders,

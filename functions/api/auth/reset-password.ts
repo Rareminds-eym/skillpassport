@@ -61,62 +61,30 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       }, 500);
     }
 
-    // Call SSO Worker via service binding
-    const ssoResponse = await env.SSO_SERVICE.fetch(
-      new Request('https://internal/auth/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: body.token,
-          password: body.password
-        }),
-      })
-    );
+    // Call SSO Worker via service binding using True RPC
+    try {
+      const result = await env.SSO_SERVICE.resetPassword({
+        token: body.token,
+        password: body.password
+      }, request.headers.get("CF-Connecting-IP") ?? undefined, request.headers.get("User-Agent") ?? undefined);
 
-    if (!ssoResponse.ok) {
-      let errorText = 'Unknown error';
-      try {
-        errorText = await ssoResponse.text();
-      } catch (e) {
-        apiLogger.error('Failed to read error response', e as Error);
-      }
-      apiLogger.error('SSO Worker reset password failed', new Error(errorText));
+      apiLogger.info('Password reset completed successfully');
 
-      // Parse error message from SSO Worker
-      let errorMessage = 'Failed to reset password';
-      try {
-        const errorData: { error?: string } = JSON.parse(errorText);
-        errorMessage = errorData.error || errorMessage;
-      } catch {
-        // Use default error message
-      }
+      return jsonResponse({
+        success: true,
+        reset: result.reset ?? true,
+        message: 'Password reset successfully'
+      });
+    } catch (ssoError: any) {
+      apiLogger.error('SSO Worker reset password failed', ssoError);
 
       return jsonResponse({
         success: false,
-        error: errorMessage
-      }, ssoResponse.status);
+        error: ssoError.message || 'Failed to reset password'
+      }, 400);
     }
 
-    const ssoData = await ssoResponse.json();
 
-    // Validate SSO response using Zod
-    let validatedData: z.infer<typeof ssoResponseSchema>;
-    try {
-      validatedData = ssoResponseSchema.parse(ssoData);
-    } catch (parseError) {
-      apiLogger.error('Invalid SSO response format', parseError as Error);
-      throw new Error('Invalid SSO response');
-    }
-
-    apiLogger.info('Password reset completed successfully');
-
-    return jsonResponse({
-      success: true,
-      reset: validatedData.reset ?? true,
-      message: 'Password reset successfully'
-    });
 
   } catch (error) {
     apiLogger.error('Error processing reset password request', error as Error);

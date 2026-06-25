@@ -42,6 +42,13 @@ entrypoint = "SsoWorker"
 binding = "REALTIME_WORKER"
 service = "realtime-worker"
 
+# Embedding worker — ML model execution, zero-latency internal routing
+# RPC-style binding (WorkerEntrypoint) for typed method calls
+[[services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-worker"
+entrypoint = "EmbeddingWorker"
+
 # ============================================================================
 # QUEUE PRODUCER — Realtime Events
 # ============================================================================
@@ -120,7 +127,6 @@ VITE_GTM_ID = "GTM-M2N3952J"
 # - SUPABASE_SERVICE_ROLE_KEY
 # - CLOUDFLARE_R2_SECRET_ACCESS_KEY
 # - EMAIL_API_KEY
-# - EMBEDDING_API_KEY
 # - SIGNING_SECRET (for media access tokens)
 #
 # Required plain vars (set via dashboard):

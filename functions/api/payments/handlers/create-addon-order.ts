@@ -12,10 +12,10 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
-import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 import { createLogger } from '../../../lib/logger';
-import { ssoFetch } from '../../../lib/sso-client';
-import { apiSuccess, apiError } from '../../../lib/response';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { ssoGetAddonByFeatureKey } from '../../../lib/sso-client';
+import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
 const logger = createLogger('payments:create-addon-order');
 
@@ -39,21 +39,19 @@ export async function handleCreateAddonOrder(context: AuthenticatedContext): Pro
       return apiError(400, 'VALIDATION_ERROR', 'billing_period is required', context.request);
     }
 
-    // Look up addon from SSO Auth DB to get server-side price
-    const ssoUrl = new URL(`http://sso-worker/api/addon-catalog/${encodeURIComponent(body.feature_key as string)}`);
-    const ssoResponse = await ssoFetch(env as any, ssoUrl.toString(), { method: 'GET' });
-
-    if (!ssoResponse.ok) {
-      logger.error('Addon lookup failed', { feature_key: body.feature_key, status: ssoResponse.status });
+    // Look up addon from SSO Auth DB to get server-side price using True RPC
+    let addon: Record<string, any>;
+    try {
+      addon = await ssoGetAddonByFeatureKey(env as any, body.feature_key as string);
+    } catch (err: any) {
+      logger.error('Addon lookup failed', { feature_key: body.feature_key, error: err });
       return apiError(404, 'NOT_FOUND', 'Addon not found or inactive', context.request);
     }
 
-    const addon = await ssoResponse.json() as Record<string, any>;
-
     // DB stores prices in rupees (1999.00 = ₹1,999); Razorpay expects paise
     const amount = Math.round((body.billing_period === 'annual'
-      ? parseFloat(addon.price_annual)
-      : parseFloat(addon.price_monthly)) * 100);
+      ? safeParseFloat(addon.price_annual, 0)
+      : safeParseFloat(addon.price_monthly, 0)) * 100);
 
     if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
       logger.error('Invalid addon price', { feature_key: body.feature_key, amount });

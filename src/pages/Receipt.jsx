@@ -9,6 +9,7 @@ import { Loader2, Download, CheckCircle2, AlertCircle } from 'lucide-react';
 import Header from '../shared/ui/Header';
 import { Footer } from '@/shared/ui';
 import { jsPDF } from 'jspdf';
+import { apiPost } from '@/shared/api/apiClient';
 
 export default function Receipt() {
   const { orderId } = useParams();
@@ -34,33 +35,11 @@ export default function Receipt() {
 
       console.log('[Receipt] Fetching data for order ID:', orderId);
 
-      // Try to fetch by razorpay_order_id first
-      let { data, error: fetchError } = await supabase
-        .from('pre_registrations')
-        .select('*')
-        .eq('razorpay_order_id', orderId)
-        .maybeSingle();
-
-      console.log('[Receipt] Query by razorpay_order_id result:', { data, error: fetchError });
-
-      // If not found, try by id (UUID) in case the link uses the registration ID
-      if (!data && !fetchError) {
-        console.log('[Receipt] Trying to fetch by id (UUID)...');
-        const uuidResult = await supabase
-          .from('pre_registrations')
-          .select('*')
-          .eq('id', orderId)
-          .maybeSingle();
-
-        data = uuidResult.data;
-        fetchError = uuidResult.error;
-        console.log('[Receipt] Query by id result:', { data, error: fetchError });
-      }
-
-      if (fetchError) {
-        console.error('[Receipt] Supabase error:', fetchError);
-        throw fetchError;
-      }
+      // Try to fetch receipt from API
+      const data = await apiPost('/receipts/actions', {
+        action: 'get-receipt',
+        orderId
+      });
 
       if (!data) {
         console.error('[Receipt] No data found for order ID:', orderId);
