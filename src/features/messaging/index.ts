@@ -55,16 +55,28 @@ export { useMessageStore } from '@/shared/model/useMessageStore';
 export { useUnreadMessagesCount } from './model/useUnreadMessagesCount';
 
 // ============================================================================
-// Services - API Layer (re-exported from shared)
+// Services - API Layer (re-exported from shared via ./api)
 // ============================================================================
-// Note: Services are defined in @/shared/api and re-exported here for convenience.
-// This provides a single import path from the feature layer.
+// ⚠️ RECOMMENDATION: Use hooks instead of services directly
+// Prefer: import { useConversationMutations, useMessages } from '@/features/messaging';
+// Avoid: import { MessageQueryService } from '@/features/messaging';
+
+// Legacy - for backward compatibility only
 export { default as MessageService } from '../../shared/api/messageService';
-export { MessageQueryService, MessageMutationService } from './api';
+
+// For explicit service access (not recommended - use hooks instead)
+export type { Message, Conversation } from './api';
 
 // ============================================================================
-// Types
+// Types - from feature types.ts
 // ============================================================================
-
-// API & Data Access
-export * from './api';
+export type {
+  UserRole,
+  AdminRole,
+  CollegeLecturer,
+  ConversationType,
+  SendMessageParams,
+  MessageMetadata,
+  CreateConversationParams,
+  ConversationMetadata,
+} from './api/types';
