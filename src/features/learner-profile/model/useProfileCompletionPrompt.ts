@@ -47,8 +47,9 @@ export function useProfileCompletionPrompt(): UseProfileCompletionPromptReturn {
     // Role can be a string or array of strings
     const roles = Array.isArray(role) ? role : [role];
     // Check if user has learner role and NOT admin/educator roles
+    // Use exact equality checks to prevent partial string matches
     return roles.some(r => r === 'learner' || r === 'student') && 
-           !roles.some(r => r.includes('admin') || r.includes('educator') || r.includes('teacher'));
+           !roles.some(r => r === 'admin' || r === 'educator' || r === 'teacher');
   }, [role]);
 
   // Memoize profile completeness check results to avoid recalculation

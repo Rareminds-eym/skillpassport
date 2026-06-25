@@ -364,10 +364,11 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       // IMPORTANT: Only send the fields that are being edited in this modal
       // Don't send the entire profileData object as it may have empty strings
       // for fields that weren't loaded (like name, phone, etc.)
-      const dataToSave = {};
+      const dataToSave: Record<string, string> = {};
       
       // Map custom entries to correct database columns
-      // Based on learnerSettingsService.js field mapping:
+      // Based on learnerSettingsService.js field mapping
+      // NOTE: Only institution-related fields are mapped in this modal
       
       // Custom school name -> college_school_name (via 'college' field)
       if (customSchoolName) {
