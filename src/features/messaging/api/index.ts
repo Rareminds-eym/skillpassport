@@ -1,11 +1,11 @@
 // Export MessageService (legacy, from shared API)
 export { default as MessageService } from '../../../shared/api/messageService';
 
-// Export query and mutation services (primary entry point)
-export { MessageQueryService } from './services/messageQueryService';
-export { MessageMutationService } from './services/messageMutationService';
+// Export query and mutation services from shared layer (single source of truth)
+export { MessageQueryService } from '../../../shared/api/messageQueryService';
+export { MessageMutationService } from '../../../shared/api/messageMutationService';
 
-// Export all types from types.ts
+// Export all types from types.ts (single source of truth)
 export type {
     UserRole,
     AdminRole,
@@ -18,9 +18,6 @@ export type {
     CreateConversationParams,
     ConversationMetadata,
 } from './types';
-
-// Re-export types from services
-export type { Message, Conversation } from './services/messageQueryService';
 
 // Re-export everything from messageService for backward compatibility
 export * from '../../../shared/api/messageService';

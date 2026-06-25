@@ -21,7 +21,7 @@ export { useLearnerCollegeLecturerMessages } from './useLearnerCollegeLecturerMe
 export { useLearnerCollegeAdminMessages, useLearnerCollegeAdminConversations, useCreateLearnerCollegeAdminConversation } from './useLearnerCollegeAdminMessages';
 export { useLearnerCertificates } from './useLearnerCertificates';
 export { useLearnerAdminMessages, useLearnerAdminConversations, useCreateLearnerAdminConversation } from './useLearnerAdminMessages';
-export { useConversationMessages, useLearnerAdminMessages as useLearnerAdminMessagesConsolidated, useLearnerEducatorMessages as useLearnerEducatorMessagesConsolidated, useLearnerCollegeAdminMessages as useLearnerCollegeAdminMessagesConsolidated } from './useConversationMessages';
+export { useConversationMessages } from './useConversationMessages';
 export { useLearnerAchievements } from './useLearnerAchievements';
 export { useConversationLearners } from './useConversationLearners';
 export { useAuthenticatedLearner } from './useAuthenticatedLearner';

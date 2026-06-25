@@ -55,8 +55,10 @@ export { useMessageStore } from '@/shared/model/useMessageStore';
 export { useUnreadMessagesCount } from './model/useUnreadMessagesCount';
 
 // ============================================================================
-// Services - Split into Query and Mutation layers (Features Layer)
+// Services - API Layer (re-exported from shared)
 // ============================================================================
+// Note: Services are defined in @/shared/api and re-exported here for convenience.
+// This provides a single import path from the feature layer.
 export { default as MessageService } from '../../shared/api/messageService';
 export { MessageQueryService, MessageMutationService } from './api';
 
