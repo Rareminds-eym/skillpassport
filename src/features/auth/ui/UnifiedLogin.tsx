@@ -47,7 +47,7 @@ const UnifiedLogin = () => {
   const { login } = useAuthActions();
 
   const returnUrl =
-    searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
+    searchParams.get('returnUrl') || searchParams.get('redirect') || sessionStorage.getItem('invitation_return_url');
   const invitationEmail = searchParams.get('email') || sessionStorage.getItem('invitation_email');
   const invitationToken = sessionStorage.getItem('invitation_token');
   const justVerified = searchParams.get('verified') === '1';
