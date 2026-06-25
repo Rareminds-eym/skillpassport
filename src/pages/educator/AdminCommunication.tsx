@@ -70,12 +70,18 @@ const AdminCommunication = () => {
       });
 
       if (!result?.data) return null;
-      return result.data;
+      // Ensure IDs are strings
+      return {
+        ...result.data,
+        id: String(result.data.id),
+        school_id: String(result.data.school_id),
+        user_id: result.data.user_id ? String(result.data.user_id) : undefined
+      };
     },
   });
 
-  const schoolId = educatorData?.school_id;
-  const educatorRecordId = educatorData?.id;
+  const schoolId = educatorData?.school_id ? String(educatorData.school_id) : undefined;
+  const educatorRecordId = educatorData?.id ? String(educatorData.id) : undefined;
 
   // Fetch active conversations with school admins
   const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({

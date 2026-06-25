@@ -191,7 +191,14 @@ export const useLearnerEducatorConversations = (learnerId, enabled = true) => {
     queryKey: queryKeys.learner.conversations.byLearner(learnerId, 'learner_educator'),
     queryFn: async () => {
       if (!learnerId) return [];
-      return await MessageService.getConversationsByLearner(learnerId, 'learner_educator');
+      // Use getUserConversations with learner userType and filter by conversation type
+      return await MessageService.getUserConversations(
+        learnerId,
+        'learner',
+        false, // includeArchived
+        true, // useCache
+        'learner_educator' // conversationType filter - This ensures we only get educator conversations
+      );
     },
     enabled: !!learnerId && enabled,
     staleTime: 30000,

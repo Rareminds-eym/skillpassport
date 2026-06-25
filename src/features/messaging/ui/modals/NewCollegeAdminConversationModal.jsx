@@ -2,7 +2,7 @@ import { Building2, MessageCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiPost } from '@/shared/api/apiClient';
 
-const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationCreated }) => {
+const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, collegeId, onConversationCreated }) => {
   const [college, setCollege] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -32,43 +32,37 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, onConver
     if (isOpen && learnerId) {
       fetchlearnerCollege();
     }
-  }, [isOpen, learnerId]);
+  }, [isOpen, learnerId, collegeId]);
 
   const fetchlearnerCollege = async () => {
     setLoading(true);
     try {
-      const { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-college', learnerId });
+      // If collegeId is provided, use it; otherwise fetch it
+      let collegeIdToUse = collegeId;
 
-      let collegeData = null;
-
-      // Check college_id first (direct organization link)
-      if (learnerData?.college) {
-        collegeData = {
-          id: learnerData.college.id,
-          name: learnerData.college.name,
-          address: learnerData.college.city && learnerData.college.state 
-            ? `${learnerData.college.city}, ${learnerData.college.state}` 
-            : null,
-          phone: null,
-          email: null
-        };
-      }
-      // Fallback to university_college_id (university_colleges table)
-      else if (learnerData?.university_colleges) {
-        const universityCollege = learnerData.university_colleges;
-        collegeData = {
-          id: universityCollege.id,
-          name: universityCollege.name,
-          address: universityCollege.university?.city && universityCollege.university?.state 
-            ? `${universityCollege.university.city}, ${universityCollege.university.state}` 
-            : null,
-          phone: null,
-          email: null
-        };
+      if (!collegeIdToUse) {
+        const { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-college', learnerId });
+        collegeIdToUse = learnerData?.college_id;
       }
 
-      if (collegeData) {
-        setCollege(collegeData);
+      if (collegeIdToUse) {
+        // Fetch college organization data
+        const { data: collegeOrgData } = await apiPost('/messaging/actions', { action: 'fetch-organization', id: collegeIdToUse });
+
+        if (collegeOrgData) {
+          const collegeData = {
+            id: collegeOrgData.id,
+            name: collegeOrgData.name,
+            address: collegeOrgData.city && collegeOrgData.state
+              ? `${collegeOrgData.city}, ${collegeOrgData.state}`
+              : null,
+            phone: null,
+            email: null
+          };
+          setCollege(collegeData);
+        } else {
+          console.error('College not found');
+        }
       } else {
         console.error('Learner has no associated college');
       }
@@ -81,11 +75,11 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, onConver
 
   const handleCreateConversation = () => {
     const finalSubject = selectedSubject === 'Other' ? customSubject : selectedSubject;
-    if (college && finalSubject && initialMessage.trim()) {
+    if (college && finalSubject) {
       onConversationCreated({
         collegeId: college.id,
         subject: finalSubject,
-        initialMessage: initialMessage.trim()
+        initialMessage: initialMessage.trim() || '' // Allow empty initial message for direct chat
       });
       handleClose();
     }
@@ -131,8 +125,16 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, onConver
           ) : !college ? (
             <div className="text-center py-12 px-6">
               <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-sm">No college information found</p>
-              <p className="text-gray-400 text-xs mt-2">Please contact support if this is an error</p>
+              <p className="text-gray-500 text-sm font-medium">No college linked to your account</p>
+              <p className="text-gray-400 text-xs mt-2 mb-4">To message your college administrator, please ensure your college is linked to your profile.</p>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-left">
+                <p className="text-xs text-purple-800 font-medium mb-2">To fix this:</p>
+                <ol className="text-xs text-purple-700 space-y-1 list-decimal list-inside">
+                  <li>Go to your Profile settings</li>
+                  <li>Add or update your college information</li>
+                  <li>Refresh this page</li>
+                </ol>
+              </div>
             </div>
           ) : (
             <div className="p-6 space-y-6">
@@ -191,16 +193,16 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, onConver
                 </div>
               )}
 
-              {/* Message Input */}
+              {/* Message Input - Optional */}
               {selectedSubject && (selectedSubject !== 'Other' || customSubject.trim()) && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Your message
+                    Your message <span className="text-gray-500 font-normal">(optional)</span>
                   </label>
                   <textarea
                     value={initialMessage}
                     onChange={(e) => setInitialMessage(e.target.value)}
-                    placeholder="Type your message here..."
+                    placeholder="You can type your message here, or start chatting directly..."
                     rows={4}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none text-sm"
                     maxLength={1000}
@@ -231,11 +233,11 @@ const NewCollegeAdminConversationModal = ({ isOpen, onClose, learnerId, onConver
           </button>
           <button
             onClick={handleCreateConversation}
-            disabled={!college || !selectedSubject || (selectedSubject === 'Other' && !customSubject.trim()) || !initialMessage.trim() || initialMessage.length > 1000}
+            disabled={!college || !selectedSubject || (selectedSubject === 'Other' && !customSubject.trim()) || initialMessage.length > 1000}
             className="px-6 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center gap-2"
           >
             <MessageCircle className="w-4 h-4" />
-            Send Message
+            {initialMessage.trim() ? 'Send Message' : 'Start Chat'}
           </button>
         </div>
       </div>

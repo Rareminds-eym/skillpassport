@@ -75,11 +75,15 @@ async function handleGetOrCreateLearnerCollegeLecturerConversation(supabase: any
 async function handleGetOrCreateLearnerAdminConversation(supabase: any, params: any): Promise<any> {
   const { learnerId, schoolId, subject } = params;
 
+  // Ensure IDs are strings
+  const lrnId = String(learnerId);
+  const schId = String(schoolId);
+
   const { data: existing, error: fetchError } = await supabase
     .from('conversations')
     .select('*')
-    .eq('learner_id', learnerId)
-    .eq('school_id', schoolId)
+    .eq('learner_id', lrnId)
+    .eq('school_id', schId)
     .eq('conversation_type', 'learner_admin')
     .eq('deleted_by_learner', false)
     .eq('deleted_by_admin', false)
@@ -93,11 +97,13 @@ async function handleGetOrCreateLearnerAdminConversation(supabase: any, params: 
     .from('conversations')
     .insert({
       id: conversationId,
-      learner_id: learnerId,
-      school_id: schoolId,
+      learner_id: lrnId,
+      school_id: schId,
       subject: subject || 'General Discussion',
       conversation_type: 'learner_admin',
       status: 'active',
+      learner_unread_count: 0,
+      admin_unread_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
@@ -111,11 +117,15 @@ async function handleGetOrCreateLearnerAdminConversation(supabase: any, params: 
 async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: any, params: any): Promise<any> {
   const { learnerId, collegeId, subject } = params;
 
+  // Ensure IDs are strings
+  const lrnId = String(learnerId);
+  const collId = String(collegeId);
+
   const { data: existing, error: fetchError } = await supabase
     .from('conversations')
     .select('*')
-    .eq('learner_id', learnerId)
-    .eq('college_id', collegeId)
+    .eq('learner_id', lrnId)
+    .eq('college_id', collId)
     .eq('conversation_type', 'learner_college_admin')
     .eq('deleted_by_learner', false)
     .eq('deleted_by_college_admin', false)
@@ -129,11 +139,13 @@ async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: any, p
     .from('conversations')
     .insert({
       id: conversationId,
-      learner_id: learnerId,
-      college_id: collegeId,
+      learner_id: lrnId,
+      college_id: collId,
       subject: subject || 'General Discussion',
       conversation_type: 'learner_college_admin',
       status: 'active',
+      learner_unread_count: 0,
+      college_admin_unread_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
@@ -147,11 +159,15 @@ async function handleGetOrCreateLearnerCollegeAdminConversation(supabase: any, p
 async function handleGetOrCreateEducatorAdminConversation(supabase: any, params: any): Promise<any> {
   const { educatorId, schoolId, subject } = params;
 
+  // Ensure IDs are strings
+  const eduId = String(educatorId);
+  const schId = String(schoolId);
+
   const { data: existing, error: fetchError } = await supabase
     .from('conversations')
     .select('*')
-    .eq('educator_id', educatorId)
-    .eq('school_id', schoolId)
+    .eq('educator_id', eduId)
+    .eq('school_id', schId)
     .eq('conversation_type', 'educator_admin')
     .eq('deleted_by_educator', false)
     .eq('deleted_by_admin', false)
@@ -165,11 +181,13 @@ async function handleGetOrCreateEducatorAdminConversation(supabase: any, params:
     .from('conversations')
     .insert({
       id: conversationId,
-      educator_id: educatorId,
-      school_id: schoolId,
+      educator_id: eduId,
+      school_id: schId,
       subject: subject || 'General Discussion',
       conversation_type: 'educator_admin',
       status: 'active',
+      educator_unread_count: 0,
+      admin_unread_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
@@ -183,11 +201,15 @@ async function handleGetOrCreateEducatorAdminConversation(supabase: any, params:
 async function handleGetOrCreateCollegeEducatorAdminConversation(supabase: any, params: any): Promise<any> {
   const { educatorId, collegeId, subject } = params;
 
+  // Ensure IDs are strings
+  const eduId = String(educatorId);
+  const collId = String(collegeId);
+
   const { data: existing, error: fetchError } = await supabase
     .from('conversations')
     .select('*')
-    .eq('educator_id', educatorId)
-    .eq('college_id', collegeId)
+    .eq('educator_id', eduId)
+    .eq('college_id', collId)
     .eq('conversation_type', 'college_educator_admin')
     .eq('deleted_by_college_educator', false)
     .eq('deleted_by_college_admin', false)
@@ -201,11 +223,13 @@ async function handleGetOrCreateCollegeEducatorAdminConversation(supabase: any, 
     .from('conversations')
     .insert({
       id: conversationId,
-      educator_id: educatorId,
-      college_id: collegeId,
+      educator_id: eduId,
+      college_id: collId,
       subject: subject || 'General Discussion',
       conversation_type: 'college_educator_admin',
       status: 'active',
+      educator_unread_count: 0,
+      college_admin_unread_count: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
