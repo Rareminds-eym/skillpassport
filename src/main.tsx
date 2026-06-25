@@ -59,9 +59,11 @@ try {
 
 // Initialize Zustand stores
 import { initializeStores } from '@/shared/model/authStore';
+import { initializeMaintenanceStore } from '@/shared/model/maintenanceStore';
 
 // Initialize stores before rendering
 initializeStores();
+initializeMaintenanceStore();
 
 // Unregister any existing service workers to prevent Workbox warnings
 if ('serviceWorker' in navigator) {
