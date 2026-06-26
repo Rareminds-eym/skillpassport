@@ -1,5 +1,4 @@
 import { ssoClient } from '@/shared/api/ssoClient';
-import { useAuthStore } from '@/shared/model/authStore';
 /**
  * Storage API Service
  * Connects to Cloudflare Pages Function for file storage API calls
@@ -18,17 +17,10 @@ const API_URL = getApiUrl('storage');
  */
 async function getAuthToken(): Promise<string | null> {
   try {
-    const user = useAuthStore.getState().user;
-    const error = null;
-
-    if (error) {
-      logger.error('Failed to get session', error instanceof Error ? error : new Error(String(error)));
-      return null;
-    }
-
     return ssoClient.getAccessToken() || null;
-  } catch (error) {
-    logger.error('Error retrieving auth token', error instanceof Error ? error : new Error(String(error)));
+  } catch (error: unknown) {
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    logger.error('Error retrieving auth token', errorObj);
     return null;
   }
 }
@@ -36,7 +28,8 @@ async function getAuthToken(): Promise<string | null> {
 const getAuthHeaders = (token?: string, isFormData = false): Record<string, string> => {
   const headers: Record<string, string> = {};
   if (!isFormData) headers['Content-Type'] = 'application/json';
-  if (token)   return headers;
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
 };
 
 interface UploadOptions {
@@ -74,9 +67,9 @@ export async function uploadFile(
     });
 
     if (!response.ok) {
-      let errorDetails;
+      let errorDetails: { error?: string } = {};
       try {
-        errorDetails = await response.json();
+        errorDetails = await response.json() as { error?: string };
       } catch (e) {
         errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
       }
@@ -118,7 +111,7 @@ export async function deleteFile(fileUrl: string, token?: string): Promise<any> 
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const error = await response.json().catch(() => ({})) as { error?: string };
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
@@ -146,7 +139,7 @@ export async function extractContent(fileUrl: string, token?: string): Promise<a
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const error = await response.json().catch(() => ({})) as { error?: string };
     throw new Error(error.error || 'Failed to extract content');
   }
 
@@ -182,7 +175,7 @@ export async function getPresignedUrl(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const error = await response.json().catch(() => ({})) as { error?: string };
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
@@ -224,7 +217,7 @@ export async function confirmUpload(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const error = await response.json().catch(() => ({})) as { error?: string };
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
@@ -256,7 +249,7 @@ export async function getFileUrl(fileKey: string, token?: string): Promise<any> 
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const error = await response.json().catch(() => ({})) as { error?: string };
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
@@ -291,7 +284,7 @@ export async function listFiles(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const error = await response.json().catch(() => ({})) as { error?: string };
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
@@ -329,7 +322,7 @@ export async function uploadPaymentReceipt(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const error = await response.json().catch(() => ({})) as { error?: string };
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please refresh the page and log in again.');
@@ -400,7 +393,7 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
   );
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const error = await response.json().catch(() => ({})) as { error?: string };
     
     if (response.status === 401) {
       throw new Error('Authentication failed. Please log in again.');
@@ -413,8 +406,27 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
     throw new Error(error.error || 'Failed to generate receipt download URL');
   }
 
-  const data = await response.json();
-  return data.presignedUrl;
+  interface PresignedUrlResponse {
+    success?: boolean;
+    data?: {
+      presignedUrl?: string;
+    };
+    presignedUrl?: string;
+  }
+
+  const result = await response.json() as PresignedUrlResponse;
+  
+  // The API wraps response in { success: true, data: { presignedUrl, ... } }
+  if (result.success && result.data && result.data.presignedUrl) {
+    return result.data.presignedUrl;
+  }
+  
+  // Fallback for old format
+  if (result.presignedUrl) {
+    return result.presignedUrl;
+  }
+  
+  throw new Error('Invalid API response: presignedUrl not found');
 }
 
 export default {

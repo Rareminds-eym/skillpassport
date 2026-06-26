@@ -90,7 +90,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         expected: 'INR',
         actual: payment.currency,
         paymentId: payment.id,
-        orderId: razorpay_order_id
+        orderId: body.razorpay_order_id
       });
       return apiError(400, 'VALIDATION_ERROR', 'Invalid payment currency. Only INR is supported.', context.request);
     }
@@ -138,6 +138,17 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const endDate = new Date(now);
     const durationMonths = parseDurationMonths(plan.duration as string);
     endDate.setMonth(endDate.getMonth() + durationMonths);
+
+    // Step 2.7: Generate receipt PDF asynchronously (non-blocking)
+    // Create subscription first, then generate receipt in background
+    // This prevents timeout issues during payment verification
+    let receiptKey: string | null = null;
+    
+    // Pre-calculate receipt key for database storage
+    const shortUserId = user.id.substring(0, 8);
+    const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
+    const timestamp = Date.now();
+    receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
 
     // Check for existing active subscription via shadow table
     const { data: existingCache } = await supabase
@@ -193,6 +204,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           subscription_end_date: endDate.toISOString(),
           auto_renew: true,
           status: 'active',
+          receipt_url: receiptKey || undefined,
         });
       } catch (upgradeError: any) {
         if (upgradeError.message?.includes('duplicate key') || upgradeError.message?.includes('23505') || upgradeError.status === 409) {
@@ -269,6 +281,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           phone: (user as any).phone || undefined,
           razorpay_order_id: body.razorpay_order_id as string,
           razorpay_payment_id: body.razorpay_payment_id as string,
+          receipt_url: receiptKey || undefined,
         });
       } catch (createError: any) {
         // Handle race condition: Webhook or other synchronous flow already created the subscription
@@ -321,6 +334,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         status: 'completed',
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
         payment_method: payment.method,
+        receipt_url: receiptKey || undefined,
       });
     } catch (txError: any) {
       if (txError.message?.includes('duplicate key') || txError.message?.includes('23505') || txError.status === 409) {
@@ -343,96 +357,102 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       console.error('[VerifyPayment] Shadow sync failed (non-critical):', syncError);
     }
 
-    // Step 4: Generate receipt PDF and upload to R2 (unchanged)
-    let receiptUrl: string | null = null;
-    let receiptKey: string | null = null;
-    try {
-      const pagesEnv = env as unknown as PagesEnv;
-
-      const { data: learner } = await supabase
-        .from('learners')
-        .select('name')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      let logoBytes: Uint8Array | undefined;
-      const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
-      logoBytes = await fetchImageBytes(logoUrl);
-      const watermarkBytes = logoBytes;
-
-      const receiptData: ReceiptData = {
-        transaction: {
-          payment_id: body.razorpay_payment_id as string,
-          order_id: body.razorpay_order_id as string,
-          amount: planPrice,
-          currency: 'INR',
-          payment_method: payment.method || 'Card',
-          payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-          status: 'Success',
-        },
-        subscription: {
-          plan_name: subscription.plan_type as string,
-          plan_type: subscription.plan_type as string,
-          billing_cycle: subscription.billing_cycle as string,
-          subscription_start_date: subscription.subscription_start_date as string,
-          subscription_end_date: subscription.subscription_end_date as string,
-        },
-        user: {
-          name: learner?.name || (subscription.full_name as string) || '',
-          email: (subscription.email as string) || user.email || '',
-          phone: (subscription.phone as string) || undefined,
-        },
-        company: {
-          name: 'Rareminds',
-          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
-          phone: '+91 9902326951',
-          email: 'marketing@rareminds.in',
-          taxId: 'GSTIN: 29ABCDE1234F1Z5',
-        },
-        generatedAt: new Date().toLocaleString('en-IN'),
-        logoBytes,
-        watermarkBytes,
-      };
-
-      const pdfBytes = await generateReceiptPDF(receiptData);
-
-      const shortUserId = user.id.substring(0, 8);
-      const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
-      const timestamp = Date.now();
-      receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
-      const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
-
-      const r2 = new R2Client(pagesEnv);
-      receiptUrl = await r2.upload(receiptKey, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
-        'Content-Disposition': `attachment; filename="${filename}"`,
-      });
-
-      receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800);
-      console.log('[VerifyPayment] Receipt uploaded:', receiptUrl);
-    } catch (receiptErr) {
-      console.error('[VerifyPayment] Receipt generation failed (non-critical):', receiptErr);
-    }
-
-    // Step 5: Send payment confirmation email (unchanged)
+    // Step 4: Send payment confirmation email
     try {
       await sendPaymentSuccessEmail(env as unknown as PagesEnv, {
-        name: subscription.full_name as string,
-        email: (subscription.email as string) || user.email || '',
-        phone: (subscription.phone as string) || '',
+        name: (user as any).name || user.email || '',
+        email: user.email || '',
+        phone: (user as any).phone || '',
         amount: planPrice,
         orderId: body.razorpay_order_id as string,
-        campaign: subscription.plan_type as string,
-        receiptUrl: receiptUrl || undefined,
+        campaign: plan.name as string,
+        receiptUrl: undefined, // Receipt will be generated asynchronously
       });
     } catch (emailErr) {
       console.error('[VerifyPayment] Email failed (non-critical):', emailErr);
     }
 
+    // Step 5: Generate receipt PDF asynchronously (non-blocking, after response)
+    // Use waitUntil to continue processing after response is sent
+    if (context.waitUntil && receiptKey) {
+      context.waitUntil(
+        (async () => {
+          try {
+            console.log('[VerifyPayment] Starting async receipt generation:', receiptKey);
+            const pagesEnv = env as unknown as PagesEnv;
+
+            const { data: learner } = await supabase
+              .from('learners')
+              .select('name')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            let logoBytes: Uint8Array | undefined;
+            const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
+            try {
+              logoBytes = await fetchImageBytes(logoUrl);
+            } catch (logoErr) {
+              console.warn('[VerifyPayment] Logo fetch failed, continuing without logo:', logoErr);
+            }
+            const watermarkBytes = logoBytes;
+
+            const receiptData: ReceiptData = {
+              transaction: {
+                payment_id: body.razorpay_payment_id as string,
+                order_id: body.razorpay_order_id as string,
+                amount: planPrice,
+                currency: 'INR',
+                payment_method: payment.method || 'Card',
+                payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                status: 'Success',
+              },
+              subscription: {
+                plan_name: subscription.plan_type as string,
+                plan_type: subscription.plan_type as string,
+                billing_cycle: subscription.billing_cycle as string,
+                subscription_start_date: subscription.subscription_start_date as string,
+                subscription_end_date: subscription.subscription_end_date as string,
+              },
+              user: {
+                name: learner?.name || (user as any).name || user.email || '',
+                email: user.email || '',
+                phone: (user as any).phone || undefined,
+              },
+              company: {
+                name: 'Rareminds',
+                address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
+                phone: '+91 9902326951',
+                email: 'marketing@rareminds.in',
+                taxId: 'GSTIN: 29ABCDE1234F1Z5',
+              },
+              generatedAt: new Date().toLocaleString('en-IN'),
+              logoBytes,
+              watermarkBytes,
+            };
+
+            const pdfBytes = await generateReceiptPDF(receiptData);
+            const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+
+            const r2 = new R2Client(pagesEnv);
+            await r2.upload(receiptKey!, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
+              'Content-Disposition': `attachment; filename="${filename}"`,
+            });
+
+            console.log('[VerifyPayment] Receipt generated successfully:', receiptKey);
+          } catch (receiptErr) {
+            console.error('[VerifyPayment] Async receipt generation failed:', receiptErr);
+            // Receipt generation failure is non-critical - user can still access their subscription
+          }
+        })()
+      );
+    }
+
     return apiSuccess({
       ...verifyResult,
       subscription_created: true,
-      receipt_url: receiptUrl,
+      receipt_url: receiptKey, // Return the key immediately, PDF will be generated in background
       receipt_key: receiptKey,
+      receipt_status: 'generating', // Indicate receipt is being generated
       is_upgrade: isUpgrade,
       subscription: {
         id: subscription.id,

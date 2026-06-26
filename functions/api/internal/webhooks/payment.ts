@@ -38,6 +38,9 @@ import { generateReceiptPDF, fetchImageBytes, type ReceiptData } from '../../sto
 import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
 import type { EventConfirmationTemplateData } from '../../email/types';
 import { sendEmailSafe } from '../../../lib/email-service';
+import { createLogger } from '../../../lib/logger';
+
+const logger = createLogger('payment-webhook');
 
 export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -51,21 +54,36 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
     const eventType = request.headers.get('X-Webhook-Event');
     if (eventType !== 'payment.captured' && eventType !== 'order.paid') {
-      console.log(`[InternalWebhook] Ignoring event type: ${eventType}`);
+      logger.info(`Ignoring event type: ${eventType}`);
       return apiSuccess({ ignored: true, reason: 'unhandled_event_type' }, request);
     }
 
-    let payload: any;
+    let payload: unknown;
     try {
       payload = await request.json();
     } catch {
       return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', request);
     }
 
-    // 2. Extract Razorpay entity details
-    const paymentEntity = payload.payment?.entity;
+    // 2. Extract Razorpay entity details with proper typing
+    interface PaymentPayload {
+      payment?: {
+        entity?: {
+          id: string;
+          order_id: string;
+          amount: number;
+          currency?: string;
+          method: string;
+          notes?: Record<string, string>;
+        };
+      };
+    }
+
+    const typedPayload = payload as PaymentPayload;
+    const paymentEntity = typedPayload.payment?.entity;
+    
     if (!paymentEntity) {
-      console.warn('[InternalWebhook] Missing payment entity in payload');
+      logger.warn('Missing payment entity in payload');
       return apiSuccess({ ignored: true, reason: 'missing_payment_entity' }, request);
     }
 
@@ -78,7 +96,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
     const userId = notes.user_id;
     const userEmail = notes.user_email;
 
-    console.log(`[InternalWebhook] Processing order type: ${orderType}, payment: ${razorpay_payment_id}`);
+    logger.info(`Processing order type: ${orderType}`, { payment: razorpay_payment_id });
 
     const fulfillmentEnv: FulfillmentEnv = env as unknown as FulfillmentEnv;
 
@@ -89,7 +107,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
         const planName = notes.plan_name;
 
         if (!userId || !planId) {
-          console.warn('[InternalWebhook] Missing user_id or plan_id for subscription', notes);
+          logger.warn('Missing user_id or plan_id for subscription', notes);
           return apiSuccess({ ignored: true, reason: 'missing_notes_data' }, request);
         }
 
@@ -102,7 +120,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
           .maybeSingle();
 
         if (planError || !validPlan) {
-          console.error('[InternalWebhook] Invalid plan ID:', planId);
+          logger.error('Invalid plan ID', planError || new Error('Plan not found'), { planId });
           return apiError(400, 'VALIDATION_ERROR', 'Plan not found', request);
         }
 
@@ -138,7 +156,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
       case 'addon': {
         if (!userId || !notes.feature_key) {
-          console.warn('[InternalWebhook] Missing user_id or feature_key for addon', notes);
+          logger.warn('Missing user_id or feature_key for addon', notes);
           return apiSuccess({ ignored: true, reason: 'missing_notes_data' }, request);
         }
 
@@ -162,7 +180,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
       case 'bundle': {
         if (!userId || !notes.bundle_id) {
-          console.warn('[InternalWebhook] Missing user_id or bundle_id for bundle', notes);
+          logger.warn('Missing user_id or bundle_id for bundle', notes);
           return apiSuccess({ ignored: true, reason: 'missing_notes_data' }, request);
         }
 
@@ -186,7 +204,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
       case 'org': {
         if (!userId || !notes.org_id) {
-          console.warn('[InternalWebhook] Missing user_id or org_id for org subscription', notes);
+          logger.warn('Missing user_id or org_id for org subscription', notes);
           return apiSuccess({ ignored: true, reason: 'missing_notes_data' }, request);
         }
 
@@ -215,7 +233,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
       case 'event': {
         if (!notes.registration_id) {
-          console.warn('[InternalWebhook] Missing registration_id for event', notes);
+          logger.warn('Missing registration_id for event', notes);
           return apiSuccess({ ignored: true, reason: 'missing_notes_data' }, request);
         }
 
@@ -231,7 +249,7 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
       case 'registration': {
         if (!notes.registration_id) {
-          console.warn('[InternalWebhook] Missing registration_id for registration', notes);
+          logger.warn('Missing registration_id for registration', notes);
           return apiSuccess({ ignored: true, reason: 'missing_notes_data' }, request);
         }
 
@@ -245,12 +263,12 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       }
 
       default: {
-        console.warn(`[InternalWebhook] Unknown order type: ${orderType}`);
+        logger.warn(`Unknown order type: ${orderType}`);
         return apiSuccess({ ignored: true, reason: 'unknown_order_type', type: orderType }, request);
       }
     }
   } catch (error) {
-    console.error('[InternalWebhook] Error processing webhook:', error);
+    logger.error('Error processing webhook', error instanceof Error ? error : new Error(String(error)));
     return apiError(500, 'INTERNAL_ERROR', 'Failed to process webhook fulfillment', request);
   }
 };
@@ -313,6 +331,23 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
     });
     receiptUrl = await r2.generatePresignedGetUrl(receiptKey, 604800);
 
+    // Store receipt key in subscription record
+    try {
+      if (!env.SSO_SERVICE) {
+        logger.warn('SSO_SERVICE not configured, skipping receipt key storage');
+        return;
+      }
+      
+      const ssoEnv = { SSO_SERVICE: env.SSO_SERVICE };
+      const ssoClient = await import('../../../lib/sso-client.js');
+      await ssoClient.ssoUpdateSubscriptionField(ssoEnv, subscription.id, {
+        receipt_url: receiptKey,
+      });
+      logger.info('Receipt key saved to subscription', { receiptKey });
+    } catch (updateErr) {
+      logger.error('Failed to save receipt key (non-critical)', updateErr instanceof Error ? updateErr : new Error(String(updateErr)));
+    }
+
     const emailData: EventConfirmationTemplateData = {
       name: subscription.full_name as string,
       email: (subscription.email as string) || '',
@@ -329,6 +364,6 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
       html: generateUserConfirmationHtml(emailData),
     });
   } catch (err) {
-    console.error('[InternalWebhook] Failed to generate/send receipt:', err);
+    logger.error('Failed to generate/send receipt', err instanceof Error ? err : new Error(String(err)));
   }
 }

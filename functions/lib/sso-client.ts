@@ -27,6 +27,7 @@ interface SsoSubscriptionData {
   phone?: string;
   razorpay_order_id?: string;
   razorpay_payment_id?: string;
+  receipt_url?: string;
   organization_id?: string;
   organization_type?: string;
   seat_count?: number;
@@ -65,6 +66,7 @@ type SsoFetcher = Fetcher & {
   updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   recordTransaction(data: unknown): Promise<Record<string, unknown>>;
+  updateTransaction(transactionId: string, data: unknown): Promise<Record<string, unknown>>;
   getUserSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   syncSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   getUserTransactions(userId: string, subscriptionId?: string): Promise<Record<string, unknown>[]>;
@@ -151,6 +153,14 @@ export async function ssoRecordTransaction(
   data: SsoTransactionData,
 ): Promise<Record<string, unknown>> {
   return getSsoService(env).recordTransaction(data);
+}
+
+export async function ssoUpdateTransaction(
+  env: SsoClientEnv,
+  transactionId: string,
+  data: { receipt_url?: string; status?: string; metadata?: Record<string, unknown> },
+): Promise<Record<string, unknown>> {
+  return getSsoService(env).updateTransaction(transactionId, data);
 }
 
 export async function ssoGetUserSubscription(

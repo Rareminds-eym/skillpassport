@@ -31,9 +31,13 @@ import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
-
+import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
 
 import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
+
+const logger = getLogger('my-subscription');
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
@@ -202,7 +206,7 @@ function MySubscription() {
         alert(`Failed to cancel subscription: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error cancelling subscription:', error);
+      logger.error('Error cancelling subscription', error);
       alert('An unexpected error occurred. Please try again.');
     } finally {
       setIsCancelling(false);
@@ -230,7 +234,7 @@ function MySubscription() {
         alert(`Failed to pause subscription: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error pausing subscription:', error);
+      logger.error('Error pausing subscription', error);
       alert('An unexpected error occurred. Please try again.');
     } finally {
       setIsPausing(false);
@@ -256,7 +260,7 @@ function MySubscription() {
         alert(`Failed to resume subscription: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error resuming subscription:', error);
+      logger.error('Error resuming subscription', error);
       alert('An unexpected error occurred. Please try again.');
     } finally {
       setIsPausing(false);
@@ -273,12 +277,88 @@ function MySubscription() {
     }
   };
 
-  const handleDownloadInvoice = async () => {
+  const handleDownloadInvoice = async (invoiceData = null) => {
     setIsDownloadingInvoice(true);
     try {
-      // Simulate download - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Actual implementation would call API to generate/download invoice
+      // PRIORITY 1: Check if subscription has receipt_url stored in database (R2 key)
+      if (subscriptionData?.receiptUrl) {
+        // receipt_url is the R2 key, not a presigned URL - need to get presigned URL
+        try {
+          const presignedUrl = await getPaymentReceiptPresignedUrl(subscriptionData.receiptUrl, 3600);
+          
+          if (!presignedUrl || presignedUrl === '' || presignedUrl === 'about:blank') {
+            toast.error('Failed to generate download link. Please try again.');
+            return;
+          }
+          
+          // Use hidden link instead of window.open to avoid blank tab
+          const link = document.createElement('a');
+          link.href = presignedUrl;
+          link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          toast.success('Receipt downloading!');
+          return;
+        } catch (urlError) {
+          logger.error('Failed to get presigned URL', urlError);
+          toast.error(`Failed to generate download link: ${urlError?.message || 'Unknown error'}`);
+          return;
+        }
+      }
+      
+      // PRIORITY 2: Determine which payment ID to use for constructing receipt path
+      let paymentId = null;
+      
+      // If invoice data is passed (from billing history), use that
+      if (invoiceData && invoiceData.razorpay_payment_id) {
+        paymentId = invoiceData.razorpay_payment_id;
+      } else if (subscriptionData?.razorpayPaymentId) {
+        // Use current subscription's payment ID
+        paymentId = subscriptionData.razorpayPaymentId;
+      } else if (subscriptionData?.razorpayOrderId) {
+        // Fallback to order ID if payment ID not available
+        paymentId = subscriptionData.razorpayOrderId;
+      } else if (subscriptionData?.razorpaySubscriptionId) {
+        // Last resort: use subscription ID
+        paymentId = subscriptionData.razorpaySubscriptionId;
+      }
+
+      if (!paymentId) {
+        toast.error('Receipt not available. Payment information not found.');
+        return;
+      }
+
+      // Construct the receipt key pattern - matches what the backend generates
+      // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
+      const shortUserId = user?.id?.slice(0, 8) || '';
+      const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9_-]/g, '');
+      
+      // The exact key format may vary by timestamp, so we use the payment ID as identifier
+      // The backend will handle key extraction from payment ID
+      const fileIdentifier = `payment_pdf/user_${shortUserId}/${sanitizedPaymentId}`;
+      
+      // Get presigned URL for the receipt
+      const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
+      
+      if (!presignedUrl || presignedUrl === '' || presignedUrl === 'about:blank') {
+        logger.error('Invalid presigned URL received', new Error('Invalid URL'), { presignedUrl });
+        toast.error('Failed to generate download link. Receipt may not exist.');
+        return;
+      }
+      
+      // Open in new tab to trigger download
+      window.open(presignedUrl, '_blank');
+      toast.success('Receipt downloading!');
+    } catch (error) {
+      logger.error('Receipt download failed', error);
+      const errorMessage = error?.message || 'Failed to download receipt';
+      if (errorMessage.includes('not found')) {
+        toast.error('Receipt not found. It may still be generating. Please try again in a moment.');
+      } else {
+        toast.error('Failed to download receipt. Please contact support if the issue persists.');
+      }
     } finally {
       setIsDownloadingInvoice(false);
     }
@@ -301,7 +381,7 @@ function MySubscription() {
     } catch (error) {
       // Rollback on error
       setAutoRenewEnabled(previousValue);
-      console.error('Failed to toggle auto-renewal:', error);
+      logger.error('Failed to toggle auto-renewal', error);
     } finally {
       setIsTogglingAutoRenew(false);
     }
@@ -353,7 +433,7 @@ function MySubscription() {
         setBillingHistoryFetched(true);
       }
     } catch (error) {
-      console.error('❌ Error fetching billing history:', error);
+      logger.error('Error fetching billing history', error);
     } finally {
       setLoadingBillingHistory(false);
     }
@@ -955,7 +1035,7 @@ function MySubscription() {
                                   {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
                                 </span>
                                 <button
-                                  onClick={handleDownloadInvoice}
+                                  onClick={() => handleDownloadInvoice(invoice)}
                                   className="p-2 hover:bg-slate-100 rounded-2xl transition-colors"
                                   title="Download Invoice"
                                 >
@@ -1093,7 +1173,7 @@ function MySubscription() {
                       </div>
                       <div className="pt-3 border-t border-slate-200">
                         <button
-                          onClick={handleDownloadInvoice}
+                          onClick={() => handleDownloadInvoice(null)}
                           disabled={isDownloadingInvoice}
                           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200"
                         >

@@ -665,22 +665,48 @@ function PaymentSuccess() {
   // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
-      // Prefer the R2 key directly — avoids URL parsing ambiguity in the backend.
-      // Fall back to the public URL if the key wasn't returned by the server.
-      const fileIdentifier = receiptKey || receiptUrl;
+      // Strategy 1: Try using the receipt key/URL from payment response
+      let fileIdentifier = receiptKey || receiptUrl;
+      
+      // Strategy 2: If not available, construct from payment ID
+      if (!fileIdentifier && paymentParams.razorpay_payment_id && user?.id) {
+        const shortUserId = user.id.substring(0, 8);
+        const sanitizedPaymentId = paymentParams.razorpay_payment_id.replace(/[^a-zA-Z0-9_-]/g, '');
+        // Use a wildcard pattern - backend will find the file with any timestamp
+        fileIdentifier = `payment_pdf/user_${shortUserId}/${sanitizedPaymentId}`;
+        log.info('Constructed receipt identifier from payment ID:', fileIdentifier);
+      }
+      
       if (fileIdentifier) {
+        log.info('Requesting presigned URL for:', fileIdentifier);
         const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
-        window.open(presignedUrl, '_blank');
+        
+        // Use hidden link instead of window.open to avoid blank tab
+        const link = document.createElement('a');
+        link.href = presignedUrl;
+        link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
         toast.success('Receipt downloading!');
         return;
       }
+      
       // Receipt not yet available (server may still be processing)
       toast('Receipt is being prepared. Please try again in a moment.', { icon: '⏳', duration: 4000 });
     } catch (error) {
       log.error('Receipt download failed:', error);
-      toast.error('Failed to download receipt. Please try again.');
+      // More helpful error message
+      const errorMessage = error?.message || 'Failed to download receipt';
+      if (errorMessage.includes('not found')) {
+        toast.error('Receipt not found. It may still be generating. Please try again in a moment.');
+      } else {
+        toast.error('Failed to download receipt. Please contact support if the issue persists.');
+      }
     }
-  }, [receiptKey, receiptUrl]);
+  }, [receiptKey, receiptUrl, paymentParams.razorpay_payment_id, user?.id]);
 
   // ============================================================================
   // RENDER
