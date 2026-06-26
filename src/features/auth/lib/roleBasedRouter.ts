@@ -1,32 +1,36 @@
-import { NavigateFunction } from 'react-router-dom';
 import { getOrgContext } from '@/entities/recruitment/api/orgContextService';
+import { NavigateFunction } from 'react-router-dom';
 
 /**
  * Role-based routing configuration
  * Maps user roles to their respective dashboard routes
+ *
+ * This is the single source of truth for role → dashboard URL mapping.
+ * All SPA components and helpers MUST import from here instead of
+ * maintaining their own local copies.
  */
-const ROLE_ROUTES: Record<string, string> = {
+export const ROLE_DASHBOARD_MAP: Record<string, string> = {
   learner: '/learner/dashboard',
-  recruiter: '/recruitment/overview',
   educator: '/educator/dashboard',
   school_educator: '/educator/dashboard',
   college_educator: '/educator/dashboard',
-  school_admin: '/school-admin/dashboard',
   college_admin: '/college-admin/dashboard',
+  school_admin: '/school-admin/dashboard',
   university_admin: '/university-admin/dashboard',
-  admin: '/admin/dashboard',
-  company_admin: '/admin/dashboard',
-  owner: '/admin/dashboard',
+  recruiter: '/recruitment/overview',
+  hr: '/recruitment/overview',
+  company_admin: '/recruitment/overview',
+  admin: '/',
+  owner: '/',
 };
 
 /**
  * Get the dashboard route for a specific role
  * @param role - User role
- * @returns Dashboard route path
+ * @returns Dashboard route path, falling back to '/' for unknown roles
  */
-export const getRouteForRole = (role: string): string => {
-  return ROLE_ROUTES[role] || '/';
-};
+export const getRouteForRole = (role: string): string =>
+  ROLE_DASHBOARD_MAP[role] ?? '/';
 
 /**
  * Redirect user to their role-specific dashboard
@@ -80,6 +84,7 @@ export const redirectToRoleDashboard = async (
  * @returns True if route is valid for role
  */
 export const isValidRouteForRole = (role: string, route: string): boolean => {
-  const validRoute = ROLE_ROUTES[role];
+  const validRoute = ROLE_DASHBOARD_MAP[role];
+  if (!validRoute) return false;
   return route.startsWith(validRoute.split('/')[1]);
 };

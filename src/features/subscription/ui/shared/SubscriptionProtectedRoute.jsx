@@ -63,7 +63,6 @@ const PATH_TO_USER_TYPE = {
   '/college-admin': 'college_admin',
   '/school-admin': 'school_admin',
   '/university-admin': 'university_admin',
-  '/admin': 'admin',
 };
 
 // ============================================================================

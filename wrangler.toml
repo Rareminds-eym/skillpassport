@@ -85,14 +85,16 @@ entrypoint = "EmailService"
 # ──────────────────────────────────────────────────────────────────────────
 # NON-SECRET CONFIGURATION
 # ──────────────────────────────────────────────────────────────────────────
-ENVIRONMENT = "production"
+ENVIRONMENT = "development"
 
+# SSO / Auth Configuration (Pages Functions)
+SSO_DOMAIN = "http://127.0.0.1:8787"
 
 # Supabase Configuration (Pages Functions)
-SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+SUPABASE_URL = "http://127.0.0.1:54321"
 
 # API URLs (Pages Functions)
-EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
+EMAIL_WORKER_URL = "http://127.0.0.1:9001"
 
 # Cloudflare R2 Configuration (Pages Functions)
 CLOUDFLARE_R2_BUCKET_NAME = "skill-echosystem"
@@ -104,15 +106,16 @@ CLOUDFLARE_R2_BUCKET_NAME = "skill-echosystem"
 # Only include non-sensitive configuration here.
 
 # SSO / Auth (Frontend)
-VITE_SSO_URL = "https://sso-api.dark-mode-d021.workers.dev/"
+VITE_SSO_URL = "http://127.0.0.1:8787"
 
 # Supabase (Frontend)
-VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+VITE_SUPABASE_URL = "http://127.0.0.1:54321"
 
 # API URLs (Frontend)
-
-# Analytics 
-VITE_GTM_ID = "GTM-M2N3952J"
+VITE_EMAIL_API_URL = "http://127.0.0.1:9001"
+VITE_PAYMENTS_API_URL = "http://127.0.0.1:9003"
+# Analytics (disabled in dev)
+VITE_GTM_ID = ""
 
 # Note: Razorpay keys are managed by the payment worker and returned in API responses
 
