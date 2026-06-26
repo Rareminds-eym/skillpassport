@@ -35,8 +35,6 @@ export async function handleInvitationEmail(
       to,
       subject,
       html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
     });
 
     if (!result.success) {

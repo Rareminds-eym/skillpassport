@@ -22,6 +22,7 @@
 
 import { apiError, apiSuccess } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
+import { APP_URL } from '../../email/types';
 import {
   fulfillLearnerSubscription,
   fulfillAddonPurchase,
@@ -262,11 +263,8 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
 
     const { data: learner } = await supabase.from('learners').select('name').eq('user_id', userId).maybeSingle();
 
-    const appUrl = env.APP_URL;
     let logoBytes: Uint8Array | undefined;
-    if (appUrl) {
-      logoBytes = await fetchImageBytes(`${appUrl}/RareMinds ISO Logo-01.png`);
-    }
+    logoBytes = await fetchImageBytes(`${APP_URL}/RareMinds ISO Logo-01.png`);
 
     const receiptData: ReceiptData = {
       transaction: {

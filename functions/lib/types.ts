@@ -19,22 +19,15 @@ import type {
  */
 export interface PagesEnv {
   // SSO / Auth configuration
-  SSO_DOMAIN?: string;
-  VITE_SSO_URL?: string;
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: SsoWorkerRpc;
 
   // Supabase configuration
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
-  VITE_SUPABASE_URL?: string;
-  VITE_SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 
   // Payment Worker configuration
-  VITE_PAYMENTS_API_URL?: string;
-  RAZORPAY_SERVICE_SECRET?: string;
-  RAZORPAY_KEY_ID?: string;
   INTERNAL_WEBHOOK_SECRET?: string;
   /** Cloudflare Service Binding to the Payment worker */
   PAYMENT_WORKER?: PaymentWorkerRpc;
@@ -48,35 +41,14 @@ export interface PagesEnv {
   EMBEDDING_SERVICE?: EmbeddingWorkerRpc;
 
   // Email Worker configuration
-  EMAIL_WORKER_URL?: string;
-  EMAIL_API_KEY?: string;
   /** Cloudflare Service Binding to the Email worker */
   EMAIL_SERVICE?: EmailWorkerRpc;
   ADMIN_EMAIL?: string;
-  FROM_EMAIL?: string;
-  FROM_NAME?: string;
-  SMTP_HOST?: string;
-  SMTP_PORT?: string;
-  SMTP_USER?: string;
-  SMTP_PASS?: string;
-
-  // Queue Bindings
-  /** Cloudflare Queue for realtime events */
-  REALTIME_EVENTS_QUEUE?: RealtimeEventsQueue;
-  /** Cloudflare Queue for SSO reverse sync */
-  SSO_REVERSE_SYNC_QUEUE?: SsoReverseSyncQueue;
-
-  // App configuration
-  APP_URL?: string;
-
-  // Storage / Media configuration
-  SIGNING_SECRET?: string;
 
   // AI API keys
-  CLAUDE_API_KEY?: string;
-  VITE_CLAUDE_API_KEY?: string;
+
   OPENROUTER_API_KEY?: string;
-  GEMINI_API_KEY?: string;
+ 
 
   // R2 Storage configuration
   CLOUDFLARE_ACCOUNT_ID?: string;

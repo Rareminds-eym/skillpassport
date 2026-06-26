@@ -8,6 +8,7 @@ import AppRoutes from './app/routes/AppRoutes';
 import { getLogger } from '@/shared/config/logging';
 import { trackPageView } from './shared/lib/analytics';
 import { ssoClient } from '@/shared/api/ssoClient';
+import { MaintenanceGuard } from './app/providers/MaintenanceGuard';
 
 
 const logger = getLogger('app');
@@ -119,8 +120,10 @@ function App() {
       <AnalyticsWrapper>
         <TourWrapper>
           <EmailVerificationGuard>
-            <TokenRefreshErrorNotification />
-            <AppRoutes />
+            <MaintenanceGuard>
+              <TokenRefreshErrorNotification />
+              <AppRoutes />
+            </MaintenanceGuard>
           </EmailVerificationGuard>
           <HotToaster
             position="top-right"

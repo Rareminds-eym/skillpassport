@@ -1,6 +1,5 @@
 export { default as enrollmentService } from './enrollmentService';
 export * from './progressService';
-export { fileService } from './fileService';
 
 // Legacy alias for backward compatibility
 export { enrollmentService as courseEnrollmentService } from './enrollmentService';

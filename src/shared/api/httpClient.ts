@@ -13,31 +13,6 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('http-client');
 
-// HTTP client configuration
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Lazy validation flag to prevent module-level crashes
-let environmentValidated = false;
-
-/**
- * Validates required environment variables
- * Called lazily on first HTTP request instead of at module load
- * This prevents app crashes when .env is missing during development
- */
-function validateEnvironment(): void {
-  if (environmentValidated) return;
-
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error(
-      'Missing required Supabase environment variables. ' +
-      'Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file.'
-    );
-  }
-
-  environmentValidated = true;
-}
-
 // Common request timeout
 export const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
