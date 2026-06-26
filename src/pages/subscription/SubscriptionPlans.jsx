@@ -1,18 +1,19 @@
-import { AlertCircle, Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, RefreshCw, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
+import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { AlertCircle, Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, RefreshCw, Shield, Sparkles, TrendingUp } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
-import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { ssoClient } from '@/shared/api/ssoClient';
 
 
 
-import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from "@/shared/lib/getEntityContent";
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription';
+import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from "@/shared/lib/getEntityContent";
 
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
-import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
+import { useAuthLoading, useIsAuthenticated, useUser, useUserRole } from '@/shared/model/authStore';
 /**
  * Get the subscription manage path based on user role
  */
@@ -20,9 +21,7 @@ function getManagePath(userRole) {
   if (!userRole) return null; // Return null instead of default to prevent wrong redirects
 
   const manageRoutes = {
-    admin: '/admin/subscription/manage',
-    company_admin: '/admin/subscription/manage',
-    owner: '/admin/subscription/manage',
+    company_admin: '/recruitment/subscription/manage',
     school_admin: '/school-admin/subscription/manage',
     college_admin: '/college-admin/subscription/manage',
     university_admin: '/university-admin/subscription/manage',
@@ -36,25 +35,11 @@ function getManagePath(userRole) {
 }
 
 /**
- * Get the dashboard path based on user role
+ * Get the dashboard path based on user role.
+ * Delegates to the canonical getRouteForRole helper in roleBasedRouter.ts.
  */
 function getDashboardPath(userRole) {
-  if (!userRole) return '/learner/dashboard';
-
-  const dashboardRoutes = {
-    learner: '/learner/dashboard',
-    educator: '/educator/dashboard',
-    school_educator: '/educator/dashboard',
-    college_educator: '/educator/dashboard',
-    school_admin: '/school-admin/dashboard',
-    college_admin: '/college-admin/dashboard',
-    university_admin: '/university-admin/dashboard',
-    recruiter: '/recruitment/overview',
-    admin: '/admin/dashboard',
-    company_admin: '/admin/dashboard',
-    owner: '/admin/dashboard',
-  };
-  return dashboardRoutes[userRole] || '/learner/dashboard';
+  return getRouteForRole(userRole ?? '');
 }
 
 /**
@@ -81,8 +66,6 @@ function getManagePathFromType(type) {
     'university-admin': '/university-admin/subscription/manage',
     // Recruiter
     'recruiter': '/recruitment/subscription/manage',
-    // Generic admin
-    'admin': '/admin/subscription/manage',
   };
 
   return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects

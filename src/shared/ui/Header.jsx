@@ -1,31 +1,15 @@
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
+import { useAuthStore } from '@/shared/model/authStore';
+import { SocialMediaLinks } from '@/shared/ui/SocialMediaLinks';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Menu, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { SocialMediaLinks } from '@/shared/ui/SocialMediaLinks';
-import { useAuthStore } from '@/shared/model/authStore';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const getDashboardUrl = (role) => {
-  if (!role) return '/';
-  switch (role) {
-    case 'learner': return '/learner/dashboard';
-    case 'educator':
-    case 'school_educator':
-    case 'college_educator': return '/educator/dashboard';
-    case 'university_admin': return '/university/dashboard';
-    case 'school_admin': return '/school/dashboard';
-    case 'college_admin': return '/college/dashboard';
-    case 'admin':
-    case 'company_admin':
-    case 'owner': return '/admin/dashboard';
-    case 'recruiter':
-    case 'hr': return '/recruiter/dashboard';
-    default: return '/';
-  }
-};
+const getDashboardUrl = (role) => getRouteForRole(role ?? '');
 
 const HIDDEN_PATHS = [
   '/digital-pp',
