@@ -22,12 +22,12 @@ import { useLocation } from 'react-router-dom';
 import { DeleteConversationModal } from '@/features/messaging';
 import { useUser } from '@/shared/model/authStore';
 
-import { useEducatorMessages, useConversationActions } from '@/features/messaging';
+import { useEducatorMessages, useConversationActions, useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { useRealtimePresence } from '@/shared/lib/hooks';
-import { useTypingIndicator } from '@/features/messaging';
 import { apiPost } from '@/shared/api/apiClient';
-import { MessageService, Conversation } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
+import type { Conversation } from '@/features/messaging';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { getLogger } from '@/shared/config/logging';
 

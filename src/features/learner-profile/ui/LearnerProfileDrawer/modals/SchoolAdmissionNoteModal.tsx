@@ -1,5 +1,5 @@
 import { Learner } from '@/features/learner-profile/model';
-import { MessageService } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { useAuthStore } from '@/shared/model/authStore';

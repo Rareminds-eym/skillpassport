@@ -1,12 +1,14 @@
 /**
  * Messaging Feature - Public API
- * 
+ *
  * This is the public interface for the messaging feature.
  * All external imports should go through this file.
- * 
+ *
  * @example
  * ```typescript
- * import { MessageModal, useMessages, MessageService } from '@/features/messaging';
+ * import { MessageModal, useMessages } from '@/features/messaging';
+ * // For MessageService, import from shared layer:
+ * import MessageService from '@/shared/api/messageService';
  * ```
  */
 
@@ -72,17 +74,20 @@ export type {
 } from './api/types';
 
 // ============================================================================
-// Services - DEPRECATED (for backward compatibility only)
+// Services - Use Shared Layer Directly
 // ============================================================================
-// ⚠️ RECOMMENDATION: Import services from @/shared/api directly
-// DO NOT import services from this layer (they're in shared)
+// ⚠️ Services are in the shared layer, NOT in features
+// Import directly from @/shared/api - DO NOT re-export from features
 //
-// For hooks (recommended):
-//   import { useConversationMutations, useMessages } from '@/features/messaging/model';
+// ✅ CORRECT IMPORTS:
+//   For hooks:
+//     import { useConversationMutations, useMessages } from '@/features/messaging/model';
+//   For services (if needed):
+//     import { MessageQueryService } from '@/shared/api/messageQueryService';
+//     import { MessageMutationService } from '@/shared/api/messageMutationService';
 //
-// For services (if needed):
-//   import { MessageQueryService } from '@/shared/api/messageQueryService';
-//   import { MessageMutationService } from '@/shared/api/messageMutationService';
-
-// Legacy MessageService - deprecated
-export { default as MessageService } from '../../shared/api/messageService';
+// ❌ INCORRECT (DO NOT USE):
+//   import { MessageQueryService } from '@/features/messaging';
+//
+// Legacy MessageService (deprecated):
+//   import MessageService from '@/shared/api/messageService';

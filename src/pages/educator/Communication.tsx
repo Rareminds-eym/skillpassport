@@ -22,8 +22,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { MessageService, Conversation, NewLearnerConversationModalEducator } from '@/features/messaging';
-import { useEducatorMessages, useConversationActions } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
+import type { Conversation } from '@/features/messaging';
+import { NewLearnerConversationModalEducator, useEducatorMessages, useConversationActions } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
 
 import { useRealtimePresence } from '@/shared/lib/hooks';

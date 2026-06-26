@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { MessageQueryService } from '@/shared/api/messageQueryService';
+import { MessageQueryService, type Message } from '@/shared/api/messageQueryService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { getLogger } from '@/shared/config/logging';
 
@@ -17,7 +17,7 @@ interface UseConversationMessagesParams {
 }
 
 interface UseConversationMessagesReturn {
-  messages: any[];
+  messages: Message[];
   isLoading: boolean;
   error: Error | null;
   sendMessage: (text: string) => Promise<void>;
@@ -90,15 +90,18 @@ export function useConversationMessages({
       conversationId,
       (newMessage) => {
         // Update message cache optimistically
-        queryClient.setQueryData(queryKeys.learner.messages.conversation(conversationId), (oldMessages: any[] | undefined) => {
-          if (!oldMessages) return [newMessage];
+        queryClient.setQueryData(
+          queryKeys.learner.messages.conversation(conversationId),
+          (oldMessages: Message[] | undefined) => {
+            if (!oldMessages) return [newMessage];
 
-          // Prevent duplicates
-          const exists = oldMessages.some(msg => msg.id === newMessage.id);
-          if (exists) return oldMessages;
+            // Prevent duplicates
+            const exists = oldMessages.some(msg => msg.id === newMessage.id);
+            if (exists) return oldMessages;
 
-          return [...oldMessages, newMessage];
-        });
+            return [...oldMessages, newMessage];
+          }
+        );
 
         // Invalidate conversation list to update last message preview
         queryClient.invalidateQueries({

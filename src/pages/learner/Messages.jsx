@@ -35,7 +35,7 @@ import { useLearnerAdminConversations, useLearnerAdminMessages } from '@/entitie
 import { useLearnerCollegeAdminConversations, useLearnerCollegeAdminMessages } from '@/entities/learner';
 import { useTypingIndicator } from '@/features/messaging';
 import { apiPost } from '@/shared/api/apiClient';
-import { MessageService } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
 
 import { useUser } from '@/shared/model/authStore';
 const Messages = () => {

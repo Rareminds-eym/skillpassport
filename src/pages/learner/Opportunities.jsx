@@ -61,7 +61,7 @@ const logger = getLogger('Opportunities');
 
 // Import Applications component content
 import { useMessageNotifications } from '@/features/messaging';
-import { MessageService } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
 import { learnerPipelineService as LearnerPipelineService } from '@/features/learner-profile/api';
 
 // Helper function to check if institution details are complete
