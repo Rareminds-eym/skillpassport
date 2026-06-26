@@ -46,7 +46,9 @@ const GuestOnlyRoute: React.FC<GuestOnlyRouteProps> = ({ children }) => {
         if (role === 'university_admin') return <Navigate to="/university/dashboard" replace />;
         if (role === 'school_admin') return <Navigate to="/school/dashboard" replace />;
         if (role === 'college_admin') return <Navigate to="/college/dashboard" replace />;
-        return <Navigate to="/admin/dashboard" replace />;
+        // Company owner/admin goes to recruiter dashboard
+        if (role === 'owner' || role === 'company_admin') return <Navigate to="/recruiter/dashboard" replace />;
+        return <Navigate to="/recruiter/dashboard" replace />;
       case 'recruiter':
       case 'hr':
         return <Navigate to="/recruiter/dashboard" replace />;

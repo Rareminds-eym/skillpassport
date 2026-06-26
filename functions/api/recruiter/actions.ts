@@ -184,7 +184,13 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       itemsPerPage = 8,
     } = body;
 
-    let query = supabase.from('opportunities').select('*', { count: 'exact' });
+    // 🔒 SECURITY: Use organization_id from middleware context
+    const organizationId = (context.data as any).organizationId;
+
+    let query = supabase
+      .from('opportunities')
+      .select('*', { count: 'exact' })
+      .eq('organization_id', organizationId); // 🔒 Filter by user's organization
 
     if (searchQuery) {
       query = query.or(`title.ilike.%${searchQuery}%,department.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`);
@@ -436,10 +442,14 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     const { requisitionData } = body;
     if (!requisitionData) return apiError(400, 'VALIDATION_ERROR', 'Missing requisitionData', context.request);
 
+    // 🔒 SECURITY: Use organization_id from middleware context
+    const organizationId = (context.data as any).organizationId;
+
     const { data, error } = await supabase
       .from('opportunities')
       .insert({
         ...requisitionData,
+        organization_id: organizationId, // 🔒 Set organization_id from context
         messages_count: 0,
         views_count: 0,
         posted_date: new Date().toISOString()
@@ -455,6 +465,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     const { id, updates } = body;
     if (!id || !updates) return apiError(400, 'VALIDATION_ERROR', 'Missing id or updates', context.request);
 
+    // 🔒 SECURITY: Use organization_id from middleware context
+    const organizationId = (context.data as any).organizationId;
+
+    // 🔒 SECURITY: Only update if the requisition belongs to user's organization
     const { data, error } = await supabase
       .from('opportunities')
       .update({
@@ -462,10 +476,12 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
+      .eq('organization_id', organizationId) // 🔒 Verify ownership
       .select()
       .single();
 
     if (error) return apiDbError(error, context.request);
+    if (!data) return apiError(404, 'NOT_FOUND', 'Requisition not found or access denied', context.request);
     return apiSuccess(data || {}, context.request);
   }
 
@@ -473,10 +489,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     const { id } = body;
     if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request);
 
+    // 🔒 SECURITY: Use organization_id from middleware context
+    const organizationId = (context.data as any).organizationId;
+
+    // 🔒 SECURITY: Only delete if the requisition belongs to user's organization
     const { error } = await supabase
       .from('opportunities')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('organization_id', organizationId); // 🔒 Verify ownership
 
     if (error) return apiDbError(error, context.request);
     return apiSuccess({ success: true }, context.request);
