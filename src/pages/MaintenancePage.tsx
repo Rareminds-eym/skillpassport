@@ -1,7 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useNavigate } from 'react-router-dom';
+import { useMaintenanceStore } from '@/shared/model/maintenanceStore';
 
 export const MaintenancePage: React.FC = () => {
+  const navigate = useNavigate();
+  const isMaintenanceMode = useMaintenanceStore(s => s.isMaintenanceMode);
+
+  useEffect(() => {
+    if (!isMaintenanceMode) {
+      navigate('/', { replace: true });
+    }
+  }, [isMaintenanceMode, navigate]);
   return (
     <>
       <Helmet>

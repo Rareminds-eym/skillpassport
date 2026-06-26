@@ -1,28 +1,32 @@
-import { supabase } from './supabaseClient';
+import { getLogger } from '@/shared/config/logging';
 
-export const fetchMaintenanceMode = async (): Promise<{ isEnabled: boolean, bypassToken: string | null }> => {
+const logger = getLogger('maintenance');
+
+interface MaintenanceResponse {
+  success: boolean;
+  data: {
+    enabled: boolean;
+    bypassToken: string | null;
+  } | null;
+}
+
+export async function fetchMaintenanceMode(): Promise<{ isEnabled: boolean; bypassToken: string | null }> {
   try {
-    const { data, error } = await supabase
-      .from('app_config')
-      .select('key, value')
-      .in('key', ['maintenance_mode', 'maintenance_bypass_token']);
+    const res = await fetch('/api/system/maintenance', {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    const body = await res.json() as MaintenanceResponse;
 
-    if (error) {
-      if (error.code !== 'PGRST116') {
-        console.error('[MaintenanceService] Error fetching maintenance config:', error);
-      }
-      return { isEnabled: false, bypassToken: null };
+    if (body?.success && body?.data) {
+      return {
+        isEnabled: body.data.enabled === true,
+        bypassToken: body.data.bypassToken ?? null,
+      };
     }
-
-    const modeConfig = data?.find(d => d.key === 'maintenance_mode');
-    const tokenConfig = data?.find(d => d.key === 'maintenance_bypass_token');
-
-    return { 
-      isEnabled: modeConfig?.value === 'true',
-      bypassToken: tokenConfig?.value || null
-    };
+    logger.warn('Maintenance API returned unexpected shape', body as unknown as Record<string, unknown>);
+    return { isEnabled: false, bypassToken: null };
   } catch (err) {
-    console.error('[MaintenanceService] Check failed:', err);
+    logger.error('Failed to fetch maintenance mode', err as Error);
     return { isEnabled: false, bypassToken: null };
   }
-};
+}

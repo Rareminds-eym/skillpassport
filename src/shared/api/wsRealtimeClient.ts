@@ -15,7 +15,7 @@ import { ssoClient } from './ssoClient';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type WSEventType = 'connected' | 'change' | 'broadcast' | 'presence_sync' | 'error';
+export type WSEventType = 'connected' | 'change' | 'broadcast' | 'presence_sync' | 'error' | 'reconnected';
 
 export interface WSChangeEvent {
   type: 'change';
@@ -58,7 +58,11 @@ export interface WSErrorEvent {
   message: string;
 }
 
-export type WSEvent = WSConnectedEvent | WSChangeEvent | WSBroadcastEvent | WSPresenceSyncEvent | WSErrorEvent;
+export interface WSReconnectedEvent {
+  type: 'reconnected';
+}
+
+export type WSEvent = WSConnectedEvent | WSChangeEvent | WSBroadcastEvent | WSPresenceSyncEvent | WSErrorEvent | WSReconnectedEvent;
 export type WSEventHandler = (event: WSEvent) => void;
 
 // ─── Subscription tracking (for re-subscribe after reconnect) ───────────────
@@ -143,10 +147,8 @@ export class WSRealtimeClient {
 
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     let host = location.host;
-    // In local development, bypass the Pages proxy and connect directly to the realtime-worker
-    // to avoid the known Miniflare Service Binding WebSocket crash.
-    if (import.meta.env.DEV || host.includes('localhost:8788')) {
-      host = 'localhost:8790';
+    if (import.meta.env.DEV && import.meta.env.VITE_REALTIME_WS_PORT) {
+      host = `${location.hostname}:${import.meta.env.VITE_REALTIME_WS_PORT}`;
     }
     const wsUrl = `${protocol}//${host}/api/realtime-stream`;
 
@@ -170,6 +172,11 @@ export class WSRealtimeClient {
 
       // Re-subscribe to all tracked subscriptions
       this.resubscribeAll();
+
+      // Emit reconnected event for reconnections (gen > 1 = not first connect)
+      if (gen > 1) {
+        this.dispatchEvent({ type: 'reconnected' } as WSReconnectedEvent);
+      }
     };
 
     this.ws.onmessage = (event) => {
