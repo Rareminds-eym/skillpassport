@@ -8,8 +8,9 @@ const getSub = (context: AuthenticatedContext) => getServiceClient(context.env a
 
 export async function handleGetOrganizationById(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { id, select } = params;
+  let { id, select } = params;
   if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
+  id = String(id);
   const { data, error } = await supabase
     .from('organizations')
     .select(select || 'name')
@@ -21,7 +22,7 @@ export async function handleGetOrganizationById(params: any, context: Authentica
 
 export async function handleFetchEducatorSchoolInfo(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { email, userId } = params;
+  let { email, userId } = params;
   if (!email && !userId) return apiError(400, 'VALIDATION_ERROR', 'Missing email or userId', context.request, { startTime });
 
   const { data: schoolEducator } = await supabase
@@ -41,6 +42,7 @@ export async function handleFetchEducatorSchoolInfo(params: any, context: Authen
   }
 
   if (userId) {
+    userId = String(userId);
     const { data: collegeLecturer } = await supabase.from('college_lecturers').select('id, collegeId').eq('user_id', userId).maybeSingle();
     if (collegeLecturer?.collegeId) {
       const { data: college } = await supabase.from('organizations').select('id, name, code, city, state, country').eq('id', collegeLecturer.collegeId).eq('organization_type', 'college').maybeSingle();
@@ -58,10 +60,11 @@ export async function handleFetchEducatorSchoolInfo(params: any, context: Authen
 
 export async function handleFetchEducatorId(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { userId, email } = params;
+  let { userId, email } = params;
   if (!userId && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing userId or email', context.request, { startTime });
 
   if (userId) {
+    userId = String(userId);
     const { data: school } = await supabase.from('school_educators').select('id').eq('user_id', userId).maybeSingle();
     if (school) return apiSuccess(school.id, context.request, { startTime });
     const { data: college } = await supabase.from('college_lecturers').select('id').eq('user_id', userId).maybeSingle();
@@ -102,8 +105,9 @@ export async function handleGetSchoolEducatorByEmail(params: any, context: Authe
 
 export async function handleGetSchoolEducatorByUserId(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { userId, select } = params;
+  let { userId, select } = params;
   if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
+  userId = String(userId);
   const { data, error } = await supabase.from('school_educators').select(select || 'school_id').eq('user_id', userId).maybeSingle();
   if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
   return apiSuccess(data || null, context.request, { startTime });
@@ -120,8 +124,9 @@ export async function handleGetSchoolEducatorByUserIdIlike(params: any, context:
 
 export async function handleGetSchoolEducatorById(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { id, select } = params;
+  let { id, select } = params;
   if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
+  id = String(id);
   const { data, error } = await supabase.from('school_educators').select(select || '*').eq('id', id).maybeSingle();
   if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
   return apiSuccess(data || null, context.request, { startTime });
@@ -138,8 +143,9 @@ export async function handleCreateSchoolEducator(params: any, context: Authentic
 
 export async function handleUpdateSchoolEducator(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { id, values } = params;
+  let { id, values } = params;
   if (!id || !values) return apiError(400, 'VALIDATION_ERROR', 'Missing id or values', context.request, { startTime });
+  id = String(id);
   const { data, error } = await supabase.from('school_educators').update(values).eq('id', id).select().maybeSingle();
   if (error) return apiDbError(error, context.request, { startTime });
   return apiSuccess(data, context.request, { startTime });
@@ -147,8 +153,9 @@ export async function handleUpdateSchoolEducator(params: any, context: Authentic
 
 export async function handleUpdateSchoolEducatorByEmail(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { email, values } = params;
+  let { email, values } = params;
   if (!email || !values) return apiError(400, 'VALIDATION_ERROR', 'Missing email or values', context.request, { startTime });
+  email = String(email);
   const { data, error } = await supabase.from('school_educators').update(values).eq('email', email).select().maybeSingle();
   if (error) return apiDbError(error, context.request, { startTime });
   return apiSuccess(data, context.request, { startTime });
@@ -156,8 +163,9 @@ export async function handleUpdateSchoolEducatorByEmail(params: any, context: Au
 
 export async function handleDeleteSchoolEducator(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { id } = params;
+  let { id } = params;
   if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
+  id = String(id);
   const { error } = await supabase.from('school_educators').delete().eq('id', id);
   if (error) return apiDbError(error, context.request, { startTime });
   return apiSuccess({ deleted: true }, context.request, { startTime });
@@ -185,8 +193,9 @@ export async function handleGetCollegeLecturerByUserId(params: any, context: Aut
 
 export async function handleGetUniversityEducatorByUserId(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { userId, select } = params;
+  let { userId, select } = params;
   if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
+  userId = String(userId);
   const { data, error } = await supabase.from('college_lecturers').select(select || 'user_id').eq('user_id', userId).maybeSingle();
   if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
   return apiSuccess(data || null, context.request, { startTime });
@@ -204,8 +213,10 @@ export async function handleListOrganizations(params: any, context: Authenticate
 
 export async function handleSaveEducatorProfile(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { userId, email, isCollege, updates } = params;
+  let { userId, email, isCollege, updates } = params;
   if (!userId && !email) return apiError(400, 'VALIDATION_ERROR', 'Missing userId or email', context.request, { startTime });
+  if (userId) userId = String(userId);
+  if (email) email = String(email);
   const table = isCollege ? 'college_lecturers' : 'school_educators';
   const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
   let query = supabase.from(table).update({ ...updates, [tsField]: new Date().toISOString() });
@@ -218,8 +229,9 @@ export async function handleSaveEducatorProfile(params: any, context: Authentica
 
 export async function handleUpdateEducatorMedia(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { userId, table, field, value } = params;
+  let { userId, table, field, value } = params;
   if (!userId || !table || !field) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, table, or field', context.request, { startTime });
+  userId = String(userId);
   if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
   const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
   const { data, error } = await supabase.from(table).update({ [field]: value, [tsField]: new Date().toISOString() }).eq('user_id', userId).select().maybeSingle();
@@ -229,8 +241,9 @@ export async function handleUpdateEducatorMedia(params: any, context: Authentica
 
 export async function handleRemoveEducatorMedia(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { userId, table, field } = params;
+  let { userId, table, field } = params;
   if (!userId || !table || !field) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, table, or field', context.request, { startTime });
+  userId = String(userId);
   if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
   const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
   const { data, error } = await supabase.from(table).update({ [field]: null, [tsField]: new Date().toISOString() }).eq('user_id', userId).select().maybeSingle();
@@ -240,8 +253,10 @@ export async function handleRemoveEducatorMedia(params: any, context: Authentica
 
 export async function handleRemoveExperienceLetter(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { email, userId, index, isCollege } = params;
+  let { email, userId, index, isCollege } = params;
   if ((!email && !userId) || index === undefined) return apiError(400, 'VALIDATION_ERROR', 'Missing email/userId or index', context.request, { startTime });
+  if (userId) userId = String(userId);
+  if (email) email = String(email);
   const table = isCollege ? 'college_lecturers' : 'school_educators';
   const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
   let educatorQuery = supabase.from(table).select('experience_letters_url');
@@ -260,8 +275,9 @@ export async function handleRemoveExperienceLetter(params: any, context: Authent
 
 export async function handleFetchOrganizationByAdminId(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { adminId, organizationType } = params;
+  let { adminId, organizationType } = params;
   if (!adminId) return apiError(400, 'VALIDATION_ERROR', 'Missing adminId', context.request, { startTime });
+  adminId = String(adminId);
   let query = supabase.from('organizations').select('id');
   if (organizationType) query = query.eq('organization_type', organizationType);
   const { data, error } = await query.eq('admin_id', adminId).maybeSingle();
@@ -271,8 +287,9 @@ export async function handleFetchOrganizationByAdminId(params: any, context: Aut
 
 export async function handleFetchOrganizationByEmail(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { email, organizationType } = params;
+  let { email, organizationType } = params;
   if (!email) return apiError(400, 'VALIDATION_ERROR', 'Missing email', context.request, { startTime });
+  email = String(email);
   let query = supabase.from('organizations').select('id').ilike('email', email);
   if (organizationType) query = query.eq('organization_type', organizationType);
   const { data, error } = await query.maybeSingle();
@@ -282,8 +299,9 @@ export async function handleFetchOrganizationByEmail(params: any, context: Authe
 
 export async function handleFetchUserByEmail(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { email } = params;
+  let { email } = params;
   if (!email) return apiError(400, 'VALIDATION_ERROR', 'Missing email', context.request, { startTime });
+  email = String(email);
   const { data, error } = await supabase.from('users').select('organizationId').eq('email', email).maybeSingle();
   if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
   return apiSuccess(data || null, context.request, { startTime });
@@ -291,8 +309,9 @@ export async function handleFetchUserByEmail(params: any, context: Authenticated
 
 export async function handleFetchSchoolClasses(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { schoolId } = params;
+  let { schoolId } = params;
   if (!schoolId) return apiError(400, 'VALIDATION_ERROR', 'Missing schoolId', context.request, { startTime });
+  schoolId = String(schoolId);
   const { data, error } = await supabase
     .from('school_classes')
     .select('id, grade, section, name, academic_year')
@@ -327,8 +346,9 @@ export async function handleGetEducatorByUserId(context: AuthenticatedContext, s
 
 export async function handleGetEducatorSchoolAndClasses(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
-  const { educatorId } = params;
+  let { educatorId } = params;
   if (!educatorId) return apiError(400, 'VALIDATION_ERROR', 'Missing educatorId', context.request, { startTime });
+  educatorId = String(educatorId);
 
   try {
     const { data: educatorData, error: educatorError } = await supabase
