@@ -31,9 +31,7 @@ function getManagePath(userRole) {
   if (!userRole) return null; // Return null to prevent wrong redirects
 
   const manageRoutes = {
-    admin: '/admin/subscription/manage',
-    company_admin: '/admin/subscription/manage',
-    owner: '/admin/subscription/manage',
+    company_admin: '/recruitment/subscription/manage',
     school_admin: '/school-admin/subscription/manage',
     college_admin: '/college-admin/subscription/manage',
     university_admin: '/university-admin/subscription/manage',

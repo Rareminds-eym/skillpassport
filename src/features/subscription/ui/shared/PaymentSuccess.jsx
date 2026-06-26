@@ -12,8 +12,8 @@
  * @module PaymentSuccess
  */
 
+import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 import {
-  AlertCircle,
   ArrowRight,
   Calendar,
   Check,
@@ -23,19 +23,18 @@ import {
   Loader2,
   MailCheck,
   RefreshCw,
-  Sparkles,
+  Sparkles
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { downloadReceipt } from '@/features/subscription/lib';
-import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 
-import { useQueryClient } from '@tanstack/react-query';
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
 import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
-import { useUser, useUserRole, useAuthStore } from '@/shared/model/authStore';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useAuthStore, useUser, useUserRole } from '@/shared/model/authStore';
+import { useQueryClient } from '@tanstack/react-query';
 // ============================================================================
 // CONSTANTS & CONFIGURATION
 // ============================================================================
@@ -74,32 +73,9 @@ const CONFIG = {
   NO_SESSION_REDIRECT_DELAY_MS: 2000,
 };
 
-/** Dashboard routes by role */
-const DASHBOARD_ROUTES = {
-  // Admin roles
-  admin: '/admin/dashboard',
-  company_admin: '/admin/dashboard',
-  // Institution admin roles
-  school_admin: '/school-admin/dashboard',
-  college_admin: '/college-admin/dashboard',
-  university_admin: '/university-admin/dashboard',
-  // Educator roles
-  educator: '/educator/dashboard',
-  school_educator: '/educator/dashboard',
-  college_educator: '/educator/dashboard',
-  // Recruiter role
-  recruiter: '/recruitment/overview',
-  // Admin/owner roles
-  owner: '/admin/dashboard',
-  // Learner roles
-  learner: '/learner/dashboard',
-};
-
 /** Subscription manage routes by role */
 const MANAGE_ROUTES = {
-  admin: '/admin/subscription/manage',
-  company_admin: '/admin/subscription/manage',
-  owner: '/admin/subscription/manage',
+  company_admin: '/recruitment/subscription/manage',
   school_admin: '/school-admin/subscription/manage',
   college_admin: '/college-admin/subscription/manage',
   university_admin: '/university-admin/subscription/manage',
@@ -480,7 +456,7 @@ function PaymentSuccess() {
   const getDashboardUrl = useCallback(() => {
     const userRole = getUserRole(user, role);
     log.info('Getting dashboard URL for role:', userRole);
-    return DASHBOARD_ROUTES[userRole] || '/learner/dashboard';
+    return getRouteForRole(userRole ?? '');
   }, [user, role]);
 
   // Cache refresh hook
@@ -599,7 +575,7 @@ function PaymentSuccess() {
         }
       } else {
         // Existing subscription
-        
+
         setEmailStatus(EMAIL_STATES.SKIPPED);
 
         const storedReceiptUrl = transactionDetails.receipt_url ||
@@ -623,7 +599,7 @@ function PaymentSuccess() {
     } else if (transactionDetails.subscription_error) {
       log.warn('Subscription creation issue:', transactionDetails.subscription_error);
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      
+
       setEmailStatus(EMAIL_STATES.SENT);
       toast('Payment successful! Your subscription will be activated shortly.', { duration: 5000, icon: '⏳' });
     } else {
