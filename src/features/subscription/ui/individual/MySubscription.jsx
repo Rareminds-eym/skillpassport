@@ -342,18 +342,24 @@ function MySubscription() {
       // The backend will handle key extraction from payment ID
       const fileIdentifier = `payment_pdf/user_${shortUserId}/${sanitizedPaymentId}`;
       
-      // Get presigned URL for the receipt
-      const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
-      
-      if (!presignedUrl || presignedUrl === '' || presignedUrl === 'about:blank') {
-        logger.error('Invalid presigned URL received', new Error('Invalid URL'), { presignedUrl });
-        toast.error('Failed to generate download link. Receipt may not exist.');
+      // Get presigned URL for the receipt (with error handling)
+      try {
+        const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
+        
+        if (!presignedUrl || presignedUrl === '' || presignedUrl === 'about:blank') {
+          logger.error('Invalid presigned URL received', new Error('Invalid URL'), { presignedUrl });
+          toast.error('Failed to generate download link. Receipt may not exist.');
+          return;
+        }
+        
+        // Open in new tab to trigger download
+        window.open(presignedUrl, '_blank');
+        toast.success('Receipt downloading!');
+      } catch (urlError) {
+        logger.error('Failed to get presigned URL for legacy payment', urlError);
+        toast.error(`Failed to generate download link: ${urlError?.message || 'Unknown error'}`);
         return;
       }
-      
-      // Open in new tab to trigger download
-      window.open(presignedUrl, '_blank');
-      toast.success('Receipt downloading!');
     } catch (error) {
       logger.error('Receipt download failed', error);
       const errorMessage = error?.message || 'Failed to download receipt';
@@ -1040,7 +1046,7 @@ function MySubscription() {
                                   {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
                                 </span>
                                 <button
-                                  onClick={handleDownloadInvoice}
+                                  onClick={() => handleDownloadInvoice(invoice)}
                                   className="p-2 hover:bg-slate-100 rounded-2xl transition-colors"
                                   title="Download Invoice"
                                 >

@@ -36,6 +36,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
   const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
+  // Safe accessor for optional user properties from JWT
+  const userRecord = user as unknown as Record<string, unknown>;
+  const userName = userRecord.name as string | undefined;
+  const userPhone = userRecord.phone as string | undefined;
+
   try {
     let body: Record<string, unknown>;
     try {
@@ -211,7 +216,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           console.log('[VerifyPayment] Subscription already updated by webhook (duplicate caught). Syncing shadow cache before return.');
 
           try {
-            await syncUserShadow(supabase, user.id, body.email || (user as any).email);
+            await syncUserShadow(supabase, user.id, (body.email as string) || user.email);
             const syncData = await ssoSyncSubscription(env, user.id);
             if (syncData.subscription) {
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
@@ -276,9 +281,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           plan_amount: planPrice,
           billing_cycle: plan.duration as string,
           features: validPlan.base_features || [],
-          full_name: (user as any).name || user.email || '',
+          full_name: userName || user.email || '',
           email: user.email || '',
-          phone: (user as any).phone || undefined,
+          phone: userPhone,
           razorpay_order_id: body.razorpay_order_id as string,
           razorpay_payment_id: body.razorpay_payment_id as string,
           receipt_url: receiptKey || undefined,
@@ -289,7 +294,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           console.log('[VerifyPayment] Subscription already created (duplicate caught). Order fulfilled asynchronously. Syncing shadow cache before return.');
 
           try {
-            await syncUserShadow(supabase, user.id, body.email || (user as any).email);
+            await syncUserShadow(supabase, user.id, (body.email as string) || user.email);
             const syncData = await ssoSyncSubscription(env, user.id);
             if (syncData.subscription) {
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
@@ -347,7 +352,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 3.5: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.id, body.email || (user as any).email);
+      await syncUserShadow(supabase, user.id, (body.email as string) || user.email);
 
       const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {
@@ -360,9 +365,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 4: Send payment confirmation email
     try {
       await sendPaymentSuccessEmail(env as unknown as PagesEnv, {
-        name: (user as any).name || user.email || '',
+        name: userName || user.email || '',
         email: user.email || '',
-        phone: (user as any).phone || '',
+        phone: userPhone || '',
         amount: planPrice,
         orderId: body.razorpay_order_id as string,
         campaign: plan.name as string,
@@ -374,77 +379,95 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     // Step 5: Generate receipt PDF asynchronously (non-blocking, after response)
     // Use waitUntil to continue processing after response is sent
-    if (context.waitUntil && receiptKey) {
-      context.waitUntil(
-        (async () => {
-          try {
-            console.log('[VerifyPayment] Starting async receipt generation:', receiptKey);
-            const pagesEnv = env as unknown as PagesEnv;
+    if (receiptKey) {
+      if (context.waitUntil) {
+        try {
+          context.waitUntil(
+            (async () => {
+              try {
+                // Production logging for async receipt generation monitoring
+                console.log('[VerifyPayment] Starting async receipt generation:', receiptKey);
+                const pagesEnv = env as unknown as PagesEnv;
 
-            const { data: learner } = await supabase
-              .from('learners')
-              .select('name')
-              .eq('user_id', user.id)
-              .maybeSingle();
+                const { data: learner } = await supabase
+                  .from('learners')
+                  .select('name')
+                  .eq('user_id', user.id)
+                  .maybeSingle();
 
-            let logoBytes: Uint8Array | undefined;
-            const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
-            try {
-              logoBytes = await fetchImageBytes(logoUrl);
-            } catch (logoErr) {
-              console.warn('[VerifyPayment] Logo fetch failed, continuing without logo:', logoErr);
-            }
-            const watermarkBytes = logoBytes;
+                let logoBytes: Uint8Array | undefined;
+                const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
+                try {
+                  logoBytes = await fetchImageBytes(logoUrl);
+                } catch (logoErr) {
+                  console.warn('[VerifyPayment] Logo fetch failed, continuing without logo:', logoErr);
+                }
+                const watermarkBytes = logoBytes;
 
-            const receiptData: ReceiptData = {
-              transaction: {
-                payment_id: body.razorpay_payment_id as string,
-                order_id: body.razorpay_order_id as string,
-                amount: planPrice,
-                currency: 'INR',
-                payment_method: payment.method || 'Card',
-                payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-                status: 'Success',
-              },
-              subscription: {
-                plan_name: subscription.plan_type as string,
-                plan_type: subscription.plan_type as string,
-                billing_cycle: subscription.billing_cycle as string,
-                subscription_start_date: subscription.subscription_start_date as string,
-                subscription_end_date: subscription.subscription_end_date as string,
-              },
-              user: {
-                name: learner?.name || (user as any).name || user.email || '',
-                email: user.email || '',
-                phone: (user as any).phone || undefined,
-              },
-              company: {
-                name: 'Rareminds',
-                address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
-                phone: '+91 9902326951',
-                email: 'marketing@rareminds.in',
-                taxId: 'GSTIN: 29ABCDE1234F1Z5',
-              },
-              generatedAt: new Date().toLocaleString('en-IN'),
-              logoBytes,
-              watermarkBytes,
-            };
+                const receiptData: ReceiptData = {
+                  transaction: {
+                    payment_id: body.razorpay_payment_id as string,
+                    order_id: body.razorpay_order_id as string,
+                    amount: planPrice,
+                    currency: 'INR',
+                    payment_method: payment.method || 'Card',
+                    payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                    status: 'Success',
+                  },
+                  subscription: {
+                    plan_name: subscription.plan_type as string,
+                    plan_type: subscription.plan_type as string,
+                    billing_cycle: subscription.billing_cycle as string,
+                    subscription_start_date: subscription.subscription_start_date as string,
+                    subscription_end_date: subscription.subscription_end_date as string,
+                  },
+                  user: {
+                    name: learner?.name || userName || user.email || '',
+                    email: user.email || '',
+                    phone: userPhone,
+                  },
+                  company: {
+                    name: 'Rareminds',
+                    address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
+                    phone: '+91 9902326951',
+                    email: 'marketing@rareminds.in',
+                    taxId: 'GSTIN: 29ABCDE1234F1Z5',
+                  },
+                  generatedAt: new Date().toLocaleString('en-IN'),
+                  logoBytes,
+                  watermarkBytes,
+                };
 
-            const pdfBytes = await generateReceiptPDF(receiptData);
-            const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+                const pdfBytes = await generateReceiptPDF(receiptData);
+                const capturedSanitizedPmtId = sanitizedPmtId; // Capture in closure scope
+                const filename = `Receipt-${capturedSanitizedPmtId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
 
-            const r2 = new R2Client(pagesEnv);
-            await r2.upload(receiptKey!, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
-              'Content-Disposition': `attachment; filename="${filename}"`,
-            });
+                const r2 = new R2Client(pagesEnv);
+                await r2.upload(receiptKey!, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
+                  'Content-Disposition': `attachment; filename="${filename}"`,
+                });
 
-            console.log('[VerifyPayment] Receipt generated successfully:', receiptKey);
-          } catch (receiptErr) {
-            console.error('[VerifyPayment] Async receipt generation failed:', receiptErr);
-            // Receipt generation failure is non-critical - user can still access their subscription
-          }
-        })()
-      );
+                // Production logging for successful async receipt generation
+                console.log('[VerifyPayment] Receipt generated successfully:', receiptKey);
+              } catch (receiptErr) {
+                console.error('[VerifyPayment] Async receipt generation failed:', receiptErr);
+                // Receipt generation failure is non-critical - user can still access their subscription
+                // The receipt_url is already stored in DB, so user can retry download which will show error
+              }
+            })()
+          );
+        } catch (waitErr) {
+          console.error('[VerifyPayment] Failed to register async receipt generation with waitUntil:', waitErr);
+          // If waitUntil registration fails, receipt won't be generated
+          // User will get a "receipt not found" error when trying to download
+          // Consider implementing a fallback queue/webhook mechanism for production
+        }
+      } else {
+        console.warn('[VerifyPayment] context.waitUntil not available - receipt will not be generated automatically');
+        console.warn('[VerifyPayment] Receipt key stored in DB:', receiptKey, '- manual generation may be required');
+        // In production, you might want to push this to a queue (like Cloudflare Queue) or
+        // trigger a webhook to generate the receipt later
+      }
     }
 
     return apiSuccess({
