@@ -251,6 +251,25 @@ export async function handleRemoveEducatorMedia(params: any, context: Authentica
   return apiSuccess(data || null, context.request, { startTime });
 }
 
+
+export async function handleUpdateEducatorMetadata(params: any, context: AuthenticatedContext, startTime: number) {
+  const supabase = getSub(context);
+  const { userId, table, key, value } = params;
+  if (!userId || !table || !key) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, table, or key', context.request, { startTime });
+  if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
+  const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
+
+  // Read current metadata so we merge rather than overwrite sibling keys.
+  const { data: existing, error: readError } = await supabase.from(table).select('metadata').eq('user_id', userId).maybeSingle();
+  if (readError) return apiDbError(readError, context.request, { startTime });
+  if (!existing) return apiError(404, 'NOT_FOUND', 'Educator not found', context.request, { startTime });
+
+  const mergedMetadata = { ...(existing.metadata || {}), [key]: value };
+  const { data, error } = await supabase.from(table).update({ metadata: mergedMetadata, [tsField]: new Date().toISOString() }).eq('user_id', userId).select().maybeSingle();
+  if (error) return apiDbError(error, context.request, { startTime });
+  return apiSuccess(data || null, context.request, { startTime });
+}
+
 export async function handleRemoveExperienceLetter(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
   let { email, userId, index, isCollege } = params;

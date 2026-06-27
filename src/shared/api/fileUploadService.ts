@@ -142,6 +142,30 @@ export const getDocumentUrl = (fileUrl: string, mode: 'inline' | 'download' = 'i
   return `${STORAGE_API_URL}/document-access?url=${encodedUrl}&mode=${mode}`;
 };
 
+
+export const getProfileMediaUrl = async (urlOrKey: string): Promise<string | null> => {
+  if (!urlOrKey) return null;
+
+  try {
+    const response = await ssoClient.fetch(`${STORAGE_API_URL}/profile-media-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: urlOrKey }),
+    });
+
+    if (!response.ok) {
+      logger.error('Failed to get profile media URL', new Error(`HTTP ${response.status}`));
+      return null;
+    }
+
+    const result = await response.json() as { data?: { url?: string } };
+    return result?.data?.url ?? null;
+  } catch (error) {
+    logger.error('Error getting profile media URL', error instanceof Error ? error : new Error(String(error)));
+    return null;
+  }
+};
+
 /**
  * Delete a file from storage
  */

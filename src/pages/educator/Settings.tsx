@@ -23,7 +23,7 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useRef, useState } from 'react';
 
-import { getDocumentUrl, storageService, uploadFile, validateFile } from '@/shared/api';
+import { getDocumentUrl, getProfileMediaUrl, storageService, uploadFile, validateFile } from '@/shared/api';
 // @ts-ignore - JSX file without declaration
 import { SubscriptionSettingsSection } from '@/features/subscription';
 import { apiPost } from '@/shared/api/apiClient';
@@ -534,19 +534,26 @@ const Settings: React.FC = () => {
         throw new Error(uploadResult.error || 'Upload failed');
       }
 
-      // Detect educator type and update appropriate table
+      // Detect educator type and update appropriate table.
+      // School educators have a dedicated `photo_url` column; college_lecturers
+      // has no photo column, so the URL is stored at `metadata.photo_url`.
       const isCollegeEducator = educatorData.collegeId !== undefined;
-      const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
-      const photoField = isCollegeEducator ? 'profile_photo_url' : 'photo_url';
 
-      // Update educator record with photo URL
-      const photoResp = await apiPost('/educator/actions', {
-        action: 'update-educator-media',
-        userId,
-        table: tableName,
-        field: photoField,
-        value: uploadResult.url
-      });
+      const photoResp = isCollegeEducator
+        ? await apiPost('/educator/actions', {
+            action: 'update-educator-metadata',
+            userId,
+            table: 'college_lecturers',
+            key: 'photo_url',
+            value: uploadResult.url
+          })
+        : await apiPost('/educator/actions', {
+            action: 'update-educator-media',
+            userId,
+            table: 'school_educators',
+            field: 'photo_url',
+            value: uploadResult.url
+          });
       if (!photoResp?.data) {
         throw new Error('Failed to save photo URL to database');
       }
@@ -855,18 +862,25 @@ const Settings: React.FC = () => {
     setShowRemovePhotoConfirmation(false);
 
     try {
-      // Detect educator type and update appropriate table
+      // Detect educator type and clear the photo from the appropriate place.
+      // School educators clear the `photo_url` column; college_lecturers clears
+      // `metadata.photo_url` (no dedicated photo column exists on that table).
       const isCollegeEducator = educatorData.collegeId !== undefined;
-      const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
-      const photoField = isCollegeEducator ? 'profile_photo_url' : 'photo_url';
 
-      // Update educator record to remove photo URL
-      const removeResp = await apiPost('/educator/actions', {
-        action: 'remove-educator-media',
-        userId,
-        table: tableName,
-        field: photoField
-      });
+      const removeResp = isCollegeEducator
+        ? await apiPost('/educator/actions', {
+            action: 'update-educator-metadata',
+            userId,
+            table: 'college_lecturers',
+            key: 'photo_url',
+            value: null
+          })
+        : await apiPost('/educator/actions', {
+            action: 'remove-educator-media',
+            userId,
+            table: 'school_educators',
+            field: 'photo_url'
+          });
       if (!removeResp?.data) {
         throw new Error('Failed to remove photo from database');
       }
@@ -938,10 +952,13 @@ const Settings: React.FC = () => {
             address: addressData,
             date_of_birth: settings.dateOfBirth || null,
             gender: settings.gender,
-            role: settings.role || null,
             subject_expertise: formattedSubjectExpertise,
             metadata: {
               ...educatorData.metadata,
+              // `college_lecturers` has no top-level `role` column; the staff
+              // role is persisted inside metadata (consistent with onboarding,
+              // see functions/api/user/handlers/authenticated.ts).
+              role: settings.role || educatorData.metadata?.role || null,
               bio: settings.bio,
               preferences: {
                 ...educatorData.metadata?.preferences,
@@ -1069,12 +1086,39 @@ const Settings: React.FC = () => {
     setSaveStatus('idle');
   };
 
-  // Helper to get photo URL from educator data (handles different column names)
+  // Helper to get the STORED photo reference from educator data (handles
+  // different storage). College lecturers store it at metadata.photo_url (no
+  // photo column exists); school educators use the dedicated photo_url column.
+  // This is the stored R2 url/key — NOT directly renderable; use
+  // resolvedPhotoUrl (a short-lived signed URL) for the <img src>.
   const getPhotoUrl = () => {
     if (!educatorData) return null;
-    // College lecturers use profile_photo_url, school educators use photo_url
-    return educatorData.profile_photo_url || educatorData.photo_url || null;
+    if (educatorData.collegeId !== undefined) {
+      return educatorData.metadata?.photo_url || null;
+    }
+    return educatorData.photo_url || null;
   };
+
+  // Short-lived signed URL resolved from the stored reference, safe for <img src>.
+  // We cannot point <img> at /document-access (it needs an Authorization header
+  // that browsers can't attach to image requests); instead we mint a presigned
+  // GET URL via the authenticated /profile-media-url endpoint.
+  const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedRef = getPhotoUrl();
+    if (!storedRef) {
+      setResolvedPhotoUrl(null);
+      return;
+    }
+    let cancelled = false;
+    getProfileMediaUrl(storedRef).then((signed) => {
+      if (!cancelled) setResolvedPhotoUrl(signed);
+    });
+    return () => { cancelled = true; };
+    // Re-resolve whenever the stored photo reference changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [educatorData?.metadata?.photo_url, educatorData?.photo_url]);
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: UserIcon },
@@ -1252,9 +1296,9 @@ const Settings: React.FC = () => {
                       <div className="relative">
                         {/* Profile Photo Display */}
                         <div className="w-24 h-24 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-2xl border-2 border-slate-200 shadow-lg">
-                          {getPhotoUrl() ? (
+                          {resolvedPhotoUrl ? (
                             <img
-                              src={getDocumentUrl(getPhotoUrl()!, 'inline')}
+                              src={resolvedPhotoUrl}
                               alt={`${settings.fullName || 'Educator'} Profile`}
                               className="w-full h-full object-cover transition-opacity duration-200"
                               onLoad={(e) => {
@@ -1369,12 +1413,6 @@ const Settings: React.FC = () => {
                               <CheckCircleIcon className="w-4 h-4 text-green-600" />
                               <p className="text-sm text-green-700 font-medium">Profile photo active</p>
                             </div>
-                            <p className="text-xs text-green-600 mt-1">
-                              Accessible via: {getDocumentUrl(getPhotoUrl()!, 'inline').length > 50
-                                ? `${getDocumentUrl(getPhotoUrl()!, 'inline').substring(0, 50)}...`
-                                : getDocumentUrl(getPhotoUrl()!, 'inline')
-                              }
-                            </p>
                           </div>
                         )}
 
