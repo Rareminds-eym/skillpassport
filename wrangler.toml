@@ -7,6 +7,15 @@ compatibility_date = "2026-06-08"
 compatibility_flags = ["nodejs_compat"]
 
 # ============================================================================
+# DURABLE OBJECT BINDINGS
+# ============================================================================
+
+[[durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "realtime-worker"
+
+# ============================================================================
 # SERVICE BINDINGS
 # ============================================================================
 
@@ -19,11 +28,6 @@ entrypoint = "PaymentService"
 binding = "SSO_SERVICE"
 service = "sso-api"
 entrypoint = "SsoWorker"
-
-[[services]]
-binding = "REALTIME_WORKER"
-service = "realtime-worker"
-entrypoint = "RealtimeWorker"
 
 [[services]]
 binding = "EMBEDDING_SERVICE"

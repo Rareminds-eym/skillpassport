@@ -1,13 +1,14 @@
-// @public-endpoint: Proxies the WebSocket upgrade to the realtime DO via Capability Passing pattern.
-// Auth verification happens here (SSO RPC), then we get a DO Fetcher from the realtime-worker
-// and call fetcher.fetch() directly — avoiding WebSocket serialization across service bindings.
+// @public-endpoint: Proxies the WebSocket upgrade to the realtime DO via direct binding.
+// Auth verification happens here (SSO RPC), then we call the DO stub directly via REALTIME_HUB binding.
+// This avoids the Fetcher capability serialization issue across service bindings.
 // (RBAC guard-matrix, task 11.1/11.4; CC-2)
 
+import { getPartitionId } from '../../lib/partition';
 import { PagesEnv } from '../../lib/types';
 
 interface RealtimeStreamEnv extends PagesEnv {
   SSO_SERVICE: NonNullable<PagesEnv['SSO_SERVICE']>;
-  REALTIME_WORKER: NonNullable<PagesEnv['REALTIME_WORKER']>;
+  REALTIME_HUB: DurableObjectNamespace;
 }
 
 function jsonError(status: number, error: string, requestId: string): Response {
@@ -57,12 +58,14 @@ export const onRequestGet: PagesFunction<RealtimeStreamEnv> = async (context) =>
       return jsonError(401, 'Authentication failed', requestId);
     }
 
-    // Get DO Fetcher capability via RPC (no WebSocket crossing the binding)
-    const fetcher = await context.env.REALTIME_WORKER.getWebSocketFetcher(userId);
+    // Get DO stub directly via REALTIME_HUB binding
+    const partitionId = getPartitionId(userId);
+    const id = context.env.REALTIME_HUB.idFromName(`partition-${partitionId}`);
+    const stub = context.env.REALTIME_HUB.get(id);
 
     // Forward the request to the DO — headers carry Upgrade + Sec-WebSocket-Protocol
     const doUrl = new URL('http://do/connect');
-    const response = await fetcher.fetch(new Request(doUrl, {
+    const response = await stub.fetch(new Request(doUrl, {
       headers: context.request.headers,
     }));
 
