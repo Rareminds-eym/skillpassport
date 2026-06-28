@@ -170,10 +170,8 @@ export interface PaymentWorkerRpc {
 }
 
 // ─── Realtime Worker RPC Interface ────────────────────────────────────
-
-export interface RealtimeWorkerRpc {
-  getWebSocketFetcher(userId: string): Promise<Fetcher>;
-}
+// NOTE: Realtime Worker is now accessed directly via Durable Object binding
+// (REALTIME_HUB) from Pages Functions. No RPC interface needed.
 
 // ─── Embedding Worker RPC Interface ───────────────────────────────────
 
