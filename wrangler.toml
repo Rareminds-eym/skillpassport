@@ -3,7 +3,7 @@
 # For local dev: wrangler pages dev ./dist
 
 name = "skill-passport-portal"
-compatibility_date = "2026-05-25"
+compatibility_date = "2026-06-08"
 compatibility_flags = ["nodejs_compat"]
 
 # ============================================================================
@@ -23,6 +23,7 @@ entrypoint = "SsoWorker"
 [[services]]
 binding = "REALTIME_WORKER"
 service = "realtime-worker"
+entrypoint = "RealtimeWorker"
 
 [[services]]
 binding = "EMBEDDING_SERVICE"
@@ -45,6 +46,10 @@ entrypoint = "EmailService"
 # ============================================================================
 # VARIABLES
 # ============================================================================
+
+[observability]
+enabled = true
+head_sampling_rate = 1
 
 [vars]
 ENVIRONMENT = "production"

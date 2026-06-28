@@ -6,7 +6,6 @@ import type {
   PaymentWorkerRpc,
   RealtimeEventsQueue,
   RealtimeWorkerRpc,
-  SsoReverseSyncQueue,
   SsoWorkerRpc
 } from './rpc-types';
 
@@ -35,6 +34,8 @@ export interface PagesEnv {
   // Realtime Worker configuration
   /** Cloudflare Service Binding to the Realtime worker */
   REALTIME_WORKER?: RealtimeWorkerRpc;
+  /** Cloudflare Queue producer for realtime events */
+  REALTIME_EVENTS_QUEUE?: RealtimeEventsQueue;
 
   // Embedding Worker configuration
   /** Cloudflare Service Binding to the Embedding worker */

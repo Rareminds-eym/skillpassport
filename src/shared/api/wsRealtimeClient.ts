@@ -146,7 +146,8 @@ export class WSRealtimeClient {
     // In local development, bypass the Pages proxy and connect directly to the realtime-worker
     // to avoid the known Miniflare Service Binding WebSocket crash.
     if (import.meta.env.DEV || host.includes('localhost:8788')) {
-      host = 'localhost:8790';
+      const wsPort = import.meta.env.VITE_REALTIME_WS_PORT || '8790';
+      host = `localhost:${wsPort}`;
     }
     const wsUrl = `${protocol}//${host}/api/realtime-stream`;
 
@@ -178,6 +179,7 @@ export class WSRealtimeClient {
         const data = JSON.parse(event.data as string) as WSEvent;
         if (data.type === 'connected') {
           this.connId = (data as WSConnectedEvent).connId;
+          console.log(`[WS] Connection established | connectionId: ${this.connId}`);
           // Server confirmed the connection — NOW it's safe to reset backoff.
           this.reconnectAttempts = 0;
         }
@@ -223,6 +225,8 @@ export class WSRealtimeClient {
   private send(data: Record<string, unknown>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
+    } else {
+      console.warn('[WS] Dropping message (not connected):', data.action || 'unknown');
     }
   }
 
@@ -256,12 +260,14 @@ export class WSRealtimeClient {
 
     // Send subscribe message to DO
     this.ensureConnected();
-    this.send({
-      action: 'subscribe',
-      table,
-      event: eventType,
-      filter: config.filter || null,
-    });
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.send({
+        action: 'subscribe',
+        table,
+        event: eventType,
+        filter: config.filter || null,
+      });
+    }
 
     return () => {
       const em = this.changeHandlers.get(table);
@@ -300,11 +306,13 @@ export class WSRealtimeClient {
 
     // Send subscribe message
     this.ensureConnected();
-    this.send({
-      action: 'subscribe',
-      table: `__broadcast:${channel}`,
-      event: '*',
-    });
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.send({
+        action: 'subscribe',
+        table: `__broadcast:${channel}`,
+        event: '*',
+      });
+    }
 
     return () => {
       const handlers = this.broadcastHandlers.get(channel);
@@ -339,11 +347,13 @@ export class WSRealtimeClient {
 
     // Subscribe to the presence channel's internal table
     this.ensureConnected();
-    this.send({
-      action: 'subscribe',
-      table: `__presence:${channel}`,
-      event: '*',
-    });
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.send({
+        action: 'subscribe',
+        table: `__presence:${channel}`,
+        event: '*',
+      });
+    }
 
     return () => {
       const handlers = this.presenceHandlers.get(channel);
@@ -402,14 +412,16 @@ export class WSRealtimeClient {
     this.presenceUserInfo.set(channel, { userName, userType, status, conversationId });
 
     this.ensureConnected();
-    this.send({
-      action: 'join-presence',
-      channel,
-      userName,
-      userType,
-      status,
-      conversationId,
-    });
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.send({
+        action: 'join-presence',
+        channel,
+        userName,
+        userType,
+        status,
+        conversationId,
+      });
+    }
 
     // Start heartbeat (30 second interval)
     this.stopHeartbeat(channel);
@@ -433,10 +445,12 @@ export class WSRealtimeClient {
     this.stopHeartbeat(channel);
     this.presenceUserInfo.delete(channel);
 
-    this.send({
-      action: 'leave-presence',
-      channel,
-    });
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.send({
+        action: 'leave-presence',
+        channel,
+      });
+    }
   }
 
   /**
