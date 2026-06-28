@@ -1,8 +1,10 @@
 import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import ProtectedRoute from "@/app/components/ProtectedRoute";
+import GuestOnlyRoute from "@/app/components/GuestOnlyRoute";
 import PublicLayout from "../layouts/PublicLayout";
 import PortfolioLayout from "../layouts/PortfolioLayout";
+import { DigitalPortfolioThemeProvider } from "@/features/digital-portfolio/providers/DigitalPortfolioThemeProvider";
 
 // Digital Passport imports - lazy loaded
 const HomePage = lazy(() => import('@/pages/digital-pp/HomePage'));
@@ -127,11 +129,11 @@ export const publicRoutes = [
   // Skill Passport Pre-Registration
   // Redirect /register/student to /register/learner
   <Route key="register-student-redirect" path="/register/student" element={<Navigate to="/register/learner" replace />} />,
-  <Route key="register-learner" path="/register/learner" element={<SkillPassportPreRegistration />} />,
-  <Route key="register-corporate" path="/register/corporate" element={<SkillPassportPreRegistration />} />,
+  <Route key="register-learner" path="/register/learner" element={<GuestOnlyRoute><SkillPassportPreRegistration /></GuestOnlyRoute>} />,
+  <Route key="register-corporate" path="/register/corporate" element={<GuestOnlyRoute><SkillPassportPreRegistration /></GuestOnlyRoute>} />,
 
   // Internal Testing Registration
-  <Route key="internal-testing" path="/internal-testing" element={<InternalTestingRegistration />} />,
+  <Route key="internal-testing" path="/internal-testing" element={<GuestOnlyRoute><InternalTestingRegistration /></GuestOnlyRoute>} />,
 
   // Receipt Page
   <Route key="receipt" path="/receipt/:orderId" element={<Receipt />} />,
@@ -158,29 +160,21 @@ export const publicRoutes = [
     <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
     {/* Unified Login */}
-    <Route path="/login" element={<UnifiedLogin />} />
-    <Route path="/signup" element={<UnifiedSignup />} />
-    <Route path="/signup/company" element={<CompanySignup />} />
-    <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
+    <Route path="/login" element={<GuestOnlyRoute><UnifiedLogin /></GuestOnlyRoute>} />
+    <Route path="/signup" element={<GuestOnlyRoute><UnifiedSignup /></GuestOnlyRoute>} />
+    <Route path="/signup/company" element={<GuestOnlyRoute><CompanySignup /></GuestOnlyRoute>} />
+    <Route path="/forgot-password" element={<GuestOnlyRoute><UnifiedForgotPassword /></GuestOnlyRoute>} />
     <Route path="/reset-password" element={<TokenPasswordReset />} />
     <Route path="/verify-email" element={<VerifyEmail />} />
     <Route path="/invite/accept" element={<AcceptInvite />} />
 
-    {/* Deprecated login routes */}
-    <Route path="/login/learner" element={<Navigate to="/login" replace />} />
-    <Route path="/login/recruiter" element={<Navigate to="/login" replace />} />
-    <Route path="/login/admin" element={<Navigate to="/login" replace />} />
-    <Route path="/login/educator" element={<Navigate to="/login" replace />} />
-
     {/* Registration routes */}
-    <Route path="/signup/recruitment" element={<Register />} />
-    <Route path="/signup/:type" element={<Register />} />
-    {/* Individual recruiter signup disabled - recruiters must be invited by organization admins */}
-    <Route path="/signup/recruitment-recruiter" element={<Navigate to="/signup" replace />} />
-    <Route path="/signup/recruitment-admin" element={<SignupAdmin />} />
-    <Route path="/signin/school" element={<SignInSchool />} />
-    <Route path="/signin/university" element={<SignInUniversity />} />
-    <Route path="/signup/university-admin" element={<UniversityAdmin />} />
+    <Route path="/signup/recruitment" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />
+    <Route path="/signup/:type" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />
+    <Route path="/signup/recruitment-admin" element={<GuestOnlyRoute><SignupAdmin /></GuestOnlyRoute>} />
+    <Route path="/signin/school" element={<GuestOnlyRoute><SignInSchool /></GuestOnlyRoute>} />
+    <Route path="/signin/university" element={<GuestOnlyRoute><SignInUniversity /></GuestOnlyRoute>} />
+    <Route path="/signup/university-admin" element={<GuestOnlyRoute><UniversityAdmin /></GuestOnlyRoute>} />
 
     <Route path="/subscription/plans" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
     <Route path="/subscription/plans/:type" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
@@ -198,15 +192,15 @@ export const publicRoutes = [
     <Route path="/learner/profile/:learnerId" element={<LearnerPublicViewer />} />
   </Route>,
 
-  // Digital Portfolio routes with PortfolioLayout
+  // Digital Portfolio routes with PortfolioLayout - wrapped with scoped theme provider
   <Route key="portfolio-layout" path="/" element={<PortfolioLayout />}>
-    <Route path="/portfolio" element={<DigitalPortfolioPage />} />
-    <Route path="/digital-pp/homepage" element={<HomePage />} />
-    <Route path="/passport" element={<DigitalPassportPage />} />
-    <Route path="/video-portfolio" element={<DigitalVideoPortfolioPage />} />
-    <Route path="/settings/theme" element={<DigitalThemeSettings />} />
-    <Route path="/settings/layout" element={<DigitalLayoutSettings />} />
-    <Route path="/settings/export" element={<DigitalExportSettings />} />
-    <Route path="/settings/sharing" element={<DigitalSharingSettings />} />
+    <Route path="/portfolio" element={<DigitalPortfolioThemeProvider><DigitalPortfolioPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="/digital-pp/homepage" element={<DigitalPortfolioThemeProvider><HomePage /></DigitalPortfolioThemeProvider>} />
+    <Route path="/passport" element={<DigitalPortfolioThemeProvider><DigitalPassportPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="/video-portfolio" element={<DigitalPortfolioThemeProvider><DigitalVideoPortfolioPage /></DigitalPortfolioThemeProvider>} />
+    <Route path="/settings/theme" element={<DigitalPortfolioThemeProvider><DigitalThemeSettings /></DigitalPortfolioThemeProvider>} />
+    <Route path="/settings/layout" element={<DigitalPortfolioThemeProvider><DigitalLayoutSettings /></DigitalPortfolioThemeProvider>} />
+    <Route path="/settings/export" element={<DigitalPortfolioThemeProvider><DigitalExportSettings /></DigitalPortfolioThemeProvider>} />
+    <Route path="/settings/sharing" element={<DigitalPortfolioThemeProvider><DigitalSharingSettings /></DigitalPortfolioThemeProvider>} />
   </Route>,
 ];

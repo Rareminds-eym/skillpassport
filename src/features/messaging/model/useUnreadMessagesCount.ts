@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { getLogger } from '@/shared/config/logging';
-import { MessageService } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
 import { queryKeys } from '@/shared/lib/queryKeys';
 
 const logger = getLogger('UseUnreadMessagesCount');

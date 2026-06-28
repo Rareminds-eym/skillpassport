@@ -7,57 +7,14 @@ import { TokenRefreshErrorNotification } from './app/providers/token-refresh-not
 import AppRoutes from './app/routes/AppRoutes';
 import { getLogger } from '@/shared/config/logging';
 import { trackPageView } from './shared/lib/analytics';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { MaintenanceGuard } from './app/providers/MaintenanceGuard';
 
 
 const logger = getLogger('app');
 
 // Zustand stores - state management migrated from Context
 import { initializeStores, useUser, useAuthLoading, useIsAuthenticated } from '@/shared/model/authStore';
-import { useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
-import { ssoClient } from '@/shared/api/ssoClient';
-
-/**
- * SubscriptionInitializer
- * 
- * Triggers subscription fetch when user changes.
- * Replaces SubscriptionStoreSync + SubscriptionPrefetch with a single useEffect.
- * 
- * IMPORTANT: Skips fetching for unverified users since backend blocks them.
- */
-function SubscriptionInitializer() {
-  const user = useUser();
-  const fetchSubscription = useSubscriptionStore((s) => s.fetchSubscription);
-  const fetchUserEntitlements = useSubscriptionStore((s) => s.fetchUserEntitlements);
-  const clearAccessCache = useSubscriptionStore((s) => s.clearAccessCache);
-
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // Skip subscription fetch for unverified users (backend will block them)
-    if (user?.id && user.isEmailVerified) {
-      const uid = user.id;
-      fetchSubscription(uid)
-        .then(() => {
-          if (!cancelled) fetchUserEntitlements(uid);
-        })
-        .catch((err) => {
-          if (!cancelled) {
-            logger.error('Error fetching subscription', err as Error);
-          }
-        });
-    } else {
-      clearAccessCache();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, user?.isEmailVerified, fetchSubscription, fetchUserEntitlements, clearAccessCache]);
-
-  return null;
-}
-
 /**
  * EmailVerificationGuard
  * 
@@ -70,7 +27,7 @@ function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useIsAuthenticated();
   const authLoading = useAuthLoading();
 
-  if (authLoading) return (
+  if (authLoading || (isAuthenticated && !user)) return (
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
     </div>
@@ -83,7 +40,6 @@ function EmailVerificationGuard({ children }: { children: React.ReactNode }) {
       '/signup',
       '/logout',
       '/forgot-password',
-      '/password-reset',
       '/reset-password',
       '/invite/accept',
     ];
@@ -124,11 +80,6 @@ function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
-  // Initialize stores on mount
-  useEffect(() => {
-    initializeStores();
-  }, []);
-
   const authLoading = useAuthLoading();
   const isAuthenticated = useIsAuthenticated();
   const queryClient = useQueryClient();
@@ -169,9 +120,10 @@ function App() {
       <AnalyticsWrapper>
         <TourWrapper>
           <EmailVerificationGuard>
-            <SubscriptionInitializer />
-            <TokenRefreshErrorNotification />
-            <AppRoutes />
+            <MaintenanceGuard>
+              <TokenRefreshErrorNotification />
+              <AppRoutes />
+            </MaintenanceGuard>
           </EmailVerificationGuard>
           <HotToaster
             position="top-right"

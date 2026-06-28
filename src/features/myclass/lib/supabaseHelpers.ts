@@ -16,16 +16,6 @@ export const getAuthSession = async () => {
   return session;
 };
 
-export const validateStorageConfig = () => {
-  const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
-  
-  if (!storageApiUrl) {
-    throw new Error('Storage API URL not configured');
-  }
-  
-  return storageApiUrl;
-};
-
 /**
  * Generic function to handle nested Supabase relations
  */

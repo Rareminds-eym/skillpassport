@@ -342,6 +342,10 @@ export const useAuthStore = create<AuthState>()(
         try {
           const { authenticated } = await ssoClient.initSession();
           if (authenticated) {
+            // Even if the store was rehydrated from localStorage, we MUST
+            // fetch fresh data from the newly refreshed session to ensure
+            // role changes and membership statuses are accurately reflected.
+
             const me = await ssoClient.getMe();
             const user = mapMeToUser(me);
             set((state) => {
@@ -465,13 +469,40 @@ export const useAuthStore = create<AuthState>()(
 // ─── Cross-tab sync via auth-client ────────────────────────────
 
 if (typeof window !== 'undefined') {
-  ssoClient.onAuthStateChange(async (event) => {
+  // Handle session expiration without hard reloads
+  window.addEventListener('sso-session-expired', () => {
     const store = useAuthStore.getState();
+    stopTokenRefresh();
+    store.setUser(null);
+  });
+
+  const pendingAuthEvents: Array<'LOGIN' | 'LOGOUT' | 'REFRESH'> = [];
+
+  const handleAuthEvent = async (event: 'LOGIN' | 'LOGOUT' | 'REFRESH') => {
+    const store = useAuthStore.getState();
+
+    // Queue events if auth is still initializing to prevent race conditions
+    if (store.loading) {
+      pendingAuthEvents.push(event);
+      return;
+    }
 
     if (event === 'LOGOUT') {
       stopTokenRefresh();
       store.setUser(null);
     } else if (event === 'LOGIN' || event === 'REFRESH') {
+      // Defensive: skip if store already has up-to-date email verification.
+      // Prevents the event handler from overwriting the store with stale data
+      // when refreshSession() has already fetched fresh data concurrently.
+      const currentState = useAuthStore.getState();
+      if (
+        event === 'REFRESH' &&
+        currentState.isAuthenticated &&
+        currentState.user?.isEmailVerified
+      ) {
+        return;
+      }
+
       try {
         const me = await ssoClient.getMe();
         const user = mapMeToUser(me);
@@ -488,6 +519,27 @@ if (typeof window !== 'undefined') {
       } catch {
         // Session expired during rehydration — ignore
       }
+    }
+  };
+
+  ssoClient.onAuthStateChange(handleAuthEvent);
+
+  // Subscribe to store changes to process pending events when loading finishes
+  useAuthStore.subscribe((state, prevState) => {
+    if (prevState.loading && !state.loading && pendingAuthEvents.length > 0) {
+      const eventsToProcess = [...pendingAuthEvents];
+      pendingAuthEvents.length = 0;
+      
+      // Process events sequentially and catch errors so one failure doesn't block others
+      (async () => {
+        for (const event of eventsToProcess) {
+          try {
+            await handleAuthEvent(event);
+          } catch (err) {
+            console.error(`[authStore] Failed to handle queued event ${event}:`, err);
+          }
+        }
+      })();
     }
   });
 }

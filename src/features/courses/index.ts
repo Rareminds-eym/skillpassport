@@ -65,7 +65,7 @@ export { useCoursePerformance } from './model';
 // API SERVICES
 // ═══════════════════════════════════════════════════════════════════════════
 
-export { enrollmentService, fileService } from './api';
+export { enrollmentService } from './api';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // UTILITIES & RECOMMENDATIONS

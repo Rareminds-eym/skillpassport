@@ -15,14 +15,14 @@ import { SubscriptionPurchaseHeader } from '@/features/subscription';
 import { useState } from 'react';
 
 import { useAssessmentPromotional, useCurrentPromotional } from '@/features/promotional/model/promotionalStore';
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { useIsAuthenticated, useUserRole, useUser } from '@/shared/model/authStore';
 const PublicLayoutContent = () => {
   const location = useLocation();
   const isAuthenticated = useIsAuthenticated();
   const { role: userRole } = useUserRole();
   const user = useUser();
-  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('subscription');
 
@@ -33,9 +33,8 @@ const PublicLayoutContent = () => {
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotional();
 
-  // Don't show assessment banner for learners
-  const isLearner = userRole === 'learner';
-  const shouldShowAssessmentBanner = showAssessmentBanner && !isLearner;
+  // Don't show assessment banner for authenticated users (they're already registered)
+  const shouldShowAssessmentBanner = showAssessmentBanner && !isAuthenticated;
 
   // Show assessment banner if assessment modal was dismissed, otherwise show promo banner
   const hasAnyBanner = shouldShowAssessmentBanner || showBanner;

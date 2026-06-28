@@ -36,7 +36,7 @@ import {
 import { apiPost, apiGet } from '@/shared/api/apiClient';
 import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses';
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPlans';
 import { getLogger } from '@/shared/config/logging';
 import toast from 'react-hot-toast';
@@ -50,9 +50,8 @@ const logger = getLogger('courses-page');
 const Courses = () => {
   const navigate = useNavigate();
   const user = useUser();
-  const subscriptionContext = useSubscriptionContext();
-  const subscription = subscriptionContext?.subscription;
-  const userPlan = subscription?.plan ?? PLAN_IDS.FREEMIUM;
+  const { subscriptionData } = useSubscriptionQuery();
+  const userPlan = subscriptionData?.plan ?? PLAN_IDS.FREEMIUM;
   
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -54,6 +54,77 @@ const formatSubscriptionData = (data) => {
 };
 
 /**
+ * Compute access state from subscription data
+ * Determines whether the user has platform access, why, and any warnings.
+ */
+const computeAccessState = (sub) => {
+  if (!sub) {
+    return {
+      hasAccess: false,
+      accessReason: 'no_subscription',
+      showWarning: false,
+      warningType: null,
+      warningMessage: null,
+      daysUntilExpiry: null,
+    };
+  }
+
+  const status = sub.status;
+  let accessReason = 'no_subscription';
+  let hasAccess = false;
+  let showWarning = false;
+  let warningType = null;
+  let warningMessage = null;
+  let daysUntilExpiry = null;
+
+  if (status === 'active') {
+    accessReason = 'active';
+    hasAccess = true;
+  } else if (status === 'paused') {
+    accessReason = 'paused';
+    hasAccess = true;
+    showWarning = true;
+    warningType = 'paused';
+    warningMessage = 'Your subscription is paused. Some features may be limited.';
+  } else if (status === 'grace_period') {
+    accessReason = 'grace_period';
+    hasAccess = true;
+    showWarning = true;
+    warningType = 'grace_period';
+    const endDate = sub.endDate;
+    const daysLeft = endDate
+      ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : null;
+    warningMessage = daysLeft != null && daysLeft > 0
+      ? `Your subscription is in a grace period. Renew within ${daysLeft} day${daysLeft !== 1 ? 's' : ''} to avoid losing access.`
+      : 'Your subscription is in a grace period. Please renew to continue access.';
+  } else if (status === 'cancelled') {
+    accessReason = 'cancelled';
+    const endDate = sub.endDate;
+    if (endDate && new Date(endDate) >= new Date()) {
+      hasAccess = true;
+    }
+  }
+
+  // Check expiry warning (for active/paused)
+  if (hasAccess) {
+    const endDate = sub.endDate;
+    if (endDate) {
+      const msUntilExpiry = new Date(endDate).getTime() - Date.now();
+      daysUntilExpiry = Math.ceil(msUntilExpiry / (1000 * 60 * 60 * 24));
+
+      if (daysUntilExpiry <= 7 && daysUntilExpiry > 0 && status === 'active') {
+        showWarning = true;
+        warningType = 'expiring_soon';
+        warningMessage = `Your subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}. Renew now to avoid interruption.`;
+      }
+    }
+  }
+
+  return { hasAccess, accessReason, showWarning, warningType, warningMessage, daysUntilExpiry };
+};
+
+/**
  * Fetch subscription data
  */
 const fetchSubscription = async (userId) => {
@@ -130,6 +201,12 @@ export const useSubscriptionQuery = () => {
     });
   };
 
+  // Access state (from computeAccessState)
+  const accessState = useMemo(
+    () => computeAccessState(query.data),
+    [query.data]
+  );
+
   // Memoize expensive checks
   const hasActiveSubscription = useMemo(
     () => query.data?.status === 'active',
@@ -164,6 +241,13 @@ export const useSubscriptionQuery = () => {
     hasActiveSubscription,
     hasActiveOrPausedSubscription,
     hasValidSubscriptionAccess,
+    // Access state (matches computeAccessState from subscriptionStore)
+    hasAccess: accessState.hasAccess,
+    accessReason: accessState.accessReason,
+    showWarning: accessState.showWarning,
+    warningType: accessState.warningType,
+    warningMessage: accessState.warningMessage,
+    daysUntilExpiry: accessState.daysUntilExpiry,
     prefetchSubscription,
     refreshSubscription,
     clearSubscriptionCache,

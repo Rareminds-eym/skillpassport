@@ -1,18 +1,19 @@
-import { AlertCircle, Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, RefreshCw, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
+import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
+import { ssoClient } from '@/shared/api/ssoClient';
+import { AlertCircle, Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, RefreshCw, Shield, Sparkles, TrendingUp } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
-import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { ssoClient } from '@/shared/api/ssoClient';
 
 
 
-import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from "@/shared/lib/getEntityContent";
 import { calculateDaysRemaining, isActiveOrPaused } from '@/features/subscription';
+import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parselearnerType } from "@/shared/lib/getEntityContent";
 
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
-import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
+import { useAuthLoading, useIsAuthenticated, useUser, useUserRole } from '@/shared/model/authStore';
 /**
  * Get the subscription manage path based on user role
  */
@@ -20,9 +21,7 @@ function getManagePath(userRole) {
   if (!userRole) return null; // Return null instead of default to prevent wrong redirects
 
   const manageRoutes = {
-    admin: '/admin/subscription/manage',
-    company_admin: '/admin/subscription/manage',
-    owner: '/admin/subscription/manage',
+    company_admin: '/recruitment/subscription/manage',
     school_admin: '/school-admin/subscription/manage',
     college_admin: '/college-admin/subscription/manage',
     university_admin: '/university-admin/subscription/manage',
@@ -36,25 +35,11 @@ function getManagePath(userRole) {
 }
 
 /**
- * Get the dashboard path based on user role
+ * Get the dashboard path based on user role.
+ * Delegates to the canonical getRouteForRole helper in roleBasedRouter.ts.
  */
 function getDashboardPath(userRole) {
-  if (!userRole) return '/learner/dashboard';
-
-  const dashboardRoutes = {
-    learner: '/learner/dashboard',
-    educator: '/educator/dashboard',
-    school_educator: '/educator/dashboard',
-    college_educator: '/educator/dashboard',
-    school_admin: '/school-admin/dashboard',
-    college_admin: '/college-admin/dashboard',
-    university_admin: '/university-admin/dashboard',
-    recruiter: '/recruitment/overview',
-    admin: '/admin/dashboard',
-    company_admin: '/admin/dashboard',
-    owner: '/admin/dashboard',
-  };
-  return dashboardRoutes[userRole] || '/learner/dashboard';
+  return getRouteForRole(userRole ?? '');
 }
 
 /**
@@ -81,8 +66,6 @@ function getManagePathFromType(type) {
     'university-admin': '/university-admin/subscription/manage',
     // Recruiter
     'recruiter': '/recruitment/subscription/manage',
-    // Generic admin
-    'admin': '/admin/subscription/manage',
   };
 
   return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
@@ -751,7 +734,7 @@ function SubscriptionPlans() {
 
   const learnerType = type || 'learner';
 
-  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshAccess } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
 
   // Combined loading state — wait for auth, subscription, AND plans from API.
@@ -915,7 +898,7 @@ function SubscriptionPlans() {
         toast.success('Welcome! Your free account is ready', { id: loadingToast });
 
         // Refresh subscription access
-        await refreshAccess();
+        await refreshSubscription();
 
         // Navigate to appropriate dashboard based on user role
         const targetPath = getDashboardPath(userRole) || `/learner/dashboard`;
@@ -941,7 +924,7 @@ function SubscriptionPlans() {
       }
     });
 
-  }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole, refreshAccess]);
+  }, [isAuthenticated, authLoading, user, navigate, learnerType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole, refreshSubscription]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -1044,7 +1027,7 @@ function SubscriptionPlans() {
                 <p className="text-red-700 text-sm">{subscriptionError?.message || 'Please try again.'}</p>
               </div>
             </div>
-            <button onClick={refreshAccess} className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 text-sm font-semibold shadow-lg transition-all hover:scale-105">
+            <button onClick={refreshSubscription} className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 text-sm font-semibold shadow-lg transition-all hover:scale-105">
               Retry
             </button>
           </div>

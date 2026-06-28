@@ -111,19 +111,31 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         .eq('is_active', true)
         .maybeSingle();
 
-      if (dbPlan) {
-        const yearlyPrice = dbPlan.pricing_matrix?.all?.yearly;
-        if (typeof yearlyPrice !== 'number') {
-          logger.warn('Plan has no yearly price', { planId: body.planId, pricingMatrix: dbPlan.pricing_matrix });
-          return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing', context.request);
-        }
-        const expectedPaise = Math.round(yearlyPrice * 100);
-        if (body.amount !== expectedPaise) {
-          logger.warn('Price mismatch', { clientAmount: body.amount, expected: expectedPaise, planId: body.planId });
-          return apiError(400, 'VALIDATION_ERROR', 'Plan price does not match. Please refresh and try again.', context.request);
-        }
-      } else {
+      if (!dbPlan) {
         logger.warn('Plan not found in plans_cache', { planId: body.planId });
+        return apiError(404, 'NOT_FOUND', 'Plan not found or inactive', context.request);
+      }
+
+      const pricingMatrix = dbPlan.pricing_matrix as Record<string, any>;
+      const clientAmount = body.amount as number;
+      let isValidPrice = false;
+
+      if (pricingMatrix) {
+        for (const key in pricingMatrix) {
+          const price = pricingMatrix[key]?.yearly;
+          if (typeof price === 'number') {
+            const expectedPaise = Math.round(price * 100);
+            if (clientAmount === expectedPaise) {
+              isValidPrice = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!isValidPrice) {
+        logger.warn('Price mismatch or no valid pricing found', { clientAmount, planId: body.planId, pricingMatrix });
+        return apiError(400, 'VALIDATION_ERROR', 'Plan price does not match. Please refresh and try again.', context.request);
       }
     }
 
@@ -138,6 +150,9 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
         user_id: user.id,
         user_email: user.email || '',
         org_id: user.org_id || '',
+        plan_id: (body.planId as string) || '',
+        plan_name: (body.planName as string) || '',
+        type: 'subscription',
       },
     });
 

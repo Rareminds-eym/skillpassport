@@ -927,7 +927,7 @@ const LearnerDashboard = () => {
   // Memoize learnerSkills to prevent infinite re-renders
   const learnerSkills = useMemo(() => {
     return (
-      learnerData?.profile?.technicalSkills?.map((skill) => skill.name) || []
+      learnerData?.profile?.technicalSkills?.map((skill) => skill?.name).filter(Boolean) || []
     );
   }, [learnerData?.profile?.technicalSkills]);
 
@@ -941,7 +941,7 @@ const LearnerDashboard = () => {
     return projectsData
       .map((project) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
-        if (project.has_pending_edit && project.verified_data) {
+        if (project?.has_pending_edit && project?.verified_data) {
           return {
             ...project,
             // Use verified_data for display (old approved version)
@@ -995,7 +995,7 @@ const LearnerDashboard = () => {
     return educationData
       .map((education) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
-        if (education.has_pending_edit && education.verified_data) {
+        if (education?.has_pending_edit && education?.verified_data) {
 
           return {
             ...education,
@@ -1050,7 +1050,7 @@ const LearnerDashboard = () => {
     const processed = skillsData
       .map((skill) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
-        if (skill.has_pending_edit && skill.verified_data) {
+        if (skill?.has_pending_edit && skill?.verified_data) {
           return {
             ...skill,
             name: skill.verified_data.name,
@@ -1098,7 +1098,7 @@ const LearnerDashboard = () => {
     const processed = skillsData
       .map((skill) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
-        if (skill.has_pending_edit && skill.verified_data) {
+        if (skill?.has_pending_edit && skill?.verified_data) {
           return {
             ...skill,
             name: skill.verified_data.name,
@@ -1147,7 +1147,7 @@ const LearnerDashboard = () => {
     return experienceData
       .map((exp) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
-        if (exp.has_pending_edit && exp.verified_data) {
+        if (exp?.has_pending_edit && exp?.verified_data) {
 
 
           return {
@@ -1209,7 +1209,7 @@ const LearnerDashboard = () => {
     return certificatesData
       .map((cert) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
-        if (cert.has_pending_edit && cert.verified_data) {
+        if (cert?.has_pending_edit && cert?.verified_data) {
           return {
             ...cert,
             // Override with verified data for display
@@ -1793,7 +1793,7 @@ const LearnerDashboard = () => {
       let name = null;
 
       // Check grade to determine if school or college learner
-      const grade = learnerData?.grade || '';
+      const grade = learnerData?.grade ? String(learnerData.grade) : '';
       const isSchoolGrade = grade && (
         grade.includes('Grade') ||
         grade.includes('6') || grade.includes('7') || grade.includes('8') ||

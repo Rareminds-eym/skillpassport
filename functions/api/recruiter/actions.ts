@@ -405,6 +405,109 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiSuccess({ success, failed, errors }, context.request);
   }
 
+  if (action === 'get-opportunities-skills') {
+    const { opportunityIds } = body;
+    if (!opportunityIds || !Array.isArray(opportunityIds)) return apiError(400, 'VALIDATION_ERROR', 'Missing or invalid opportunityIds', context.request);
+
+    const { data, error } = await supabase
+      .from('opportunities')
+      .select('id, skills_required')
+      .in('id', opportunityIds);
+
+    if (error) return apiDbError(error, context.request);
+    return apiSuccess(data || [], context.request);
+  }
+
+  if (action === 'get-learner-info') {
+    const { learnerId } = body;
+    if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request);
+
+    const { data, error } = await supabase
+      .from('learners')
+      .select('name, email, contact_number')
+      .eq('id', learnerId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') return apiDbError(error, context.request);
+    return apiSuccess(data || null, context.request);
+  }
+
+  if (action === 'create-requisition') {
+    const { requisitionData } = body;
+    if (!requisitionData) return apiError(400, 'VALIDATION_ERROR', 'Missing requisitionData', context.request);
+
+    const { data, error } = await supabase
+      .from('opportunities')
+      .insert({
+        ...requisitionData,
+        messages_count: 0,
+        views_count: 0,
+        posted_date: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) return apiDbError(error, context.request);
+    return apiSuccess(data || {}, context.request);
+  }
+
+  if (action === 'update-requisition') {
+    const { id, updates } = body;
+    if (!id || !updates) return apiError(400, 'VALIDATION_ERROR', 'Missing id or updates', context.request);
+
+    const { data, error } = await supabase
+      .from('opportunities')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) return apiDbError(error, context.request);
+    return apiSuccess(data || {}, context.request);
+  }
+
+  if (action === 'delete-requisition') {
+    const { id } = body;
+    if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request);
+
+    const { error } = await supabase
+      .from('opportunities')
+      .delete()
+      .eq('id', id);
+
+    if (error) return apiDbError(error, context.request);
+    return apiSuccess({ success: true }, context.request);
+  }
+
+  if (action === 'get-applications-by-opportunity') {
+    const { opportunityId } = body;
+    if (!opportunityId) return apiError(400, 'VALIDATION_ERROR', 'Missing opportunityId', context.request);
+
+    const { data, error } = await supabase
+      .from('applied_jobs')
+      .select(`
+        id,
+        application_status,
+        applied_at,
+        viewed_at,
+        interview_scheduled_at,
+        updated_at,
+        learners (
+          id,
+          email,
+          profile
+        )
+      `)
+      .eq('opportunity_id', opportunityId)
+      .order('applied_at', { ascending: false });
+
+    if (error) return apiDbError(error, context.request);
+    return apiSuccess(data || [], context.request);
+  }
+
   return apiError(400, 'BAD_REQUEST', `Unknown action: ${action}`, context.request);
   } catch (error: any) {
     console.error(`[recruiter/actions] action=${action}:`, error?.message || error);

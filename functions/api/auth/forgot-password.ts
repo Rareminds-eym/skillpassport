@@ -58,51 +58,30 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       }, 500);
     }
 
-    // Call SSO Worker via service binding
+    // Call SSO Worker via service binding using True RPC
     // SSO Worker will handle token generation and call back to SkillPassport for email template
-    const ssoResponse = await env.SSO_SERVICE.fetch(
-      new Request('https://internal/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: body.email,
-          redirect_url: body.redirect_url
-        }),
-      })
-    );
+    try {
+      const result = await env.SSO_SERVICE.forgotPassword({
+        email: body.email,
+        redirect_url: body.redirect_url
+      }, request.headers.get("CF-Connecting-IP") ?? undefined, request.headers.get("User-Agent") ?? undefined);
 
-    if (!ssoResponse.ok) {
-      let errorText = 'Unknown error';
-      try {
-        errorText = await ssoResponse.text();
-      } catch (e) {
-        apiLogger.error('Failed to read error response', e as Error);
-      }
-      apiLogger.error('SSO Worker forgot password failed', new Error(errorText));
+      apiLogger.info('Password reset request processed successfully', {
+        email: body.email
+      });
+
+      return jsonResponse({
+        success: true,
+        message: result.message || 'If an account exists, a reset email has been sent.'
+      });
+    } catch (ssoError: any) {
+      apiLogger.error('SSO Worker forgot password failed', ssoError);
 
       return jsonResponse({
         success: false,
-        error: 'Failed to process password reset request'
-      }, ssoResponse.status);
+        error: ssoError.message || 'Failed to process password reset request'
+      }, 400);
     }
-
-    const ssoData = await ssoResponse.json();
-    if (typeof ssoData !== 'object' || ssoData === null) {
-      throw new Error('Invalid SSO response');
-    }
-
-    apiLogger.info('Password reset request processed successfully', {
-      email: body.email
-    });
-
-    return jsonResponse({
-      success: true,
-      message: (ssoData && typeof ssoData === 'object' && 'message' in ssoData && typeof ssoData.message === 'string')
-        ? ssoData.message
-        : 'If an account exists, a reset email has been sent.'
-    });
 
   } catch (error) {
     apiLogger.error('Error processing forgot password request', error as Error);

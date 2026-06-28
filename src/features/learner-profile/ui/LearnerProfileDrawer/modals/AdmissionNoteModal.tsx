@@ -2,7 +2,7 @@ import { useAuthStore } from '@/shared/model/authStore';
 import { ChatBubbleLeftRightIcon, DocumentTextIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { MessageService } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
 import { Learner } from '@/features/learner-profile/model';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';

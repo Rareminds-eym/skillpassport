@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { updateAssignmentStatus, submitAssignmentWithStagedFiles, getAssignmentWithFiles } from '@/features/educator-copilot';
 import { Assignment } from '@/features/myclass';
 import { isOverdue } from '@/features/myclass';
-import { getAuthSession, validateStorageConfig } from '@/features/myclass';
+import { getAuthSession } from '@/features/myclass';
 import { getUploadErrorMessage } from '@/features/myclass';
 
 interface UseAssignmentActionsProps {
@@ -86,7 +86,6 @@ export const useAssignmentActions = ({
 
     try {
       const session = await getAuthSession();
-      validateStorageConfig();
 
       setUploadProgress(10);
 

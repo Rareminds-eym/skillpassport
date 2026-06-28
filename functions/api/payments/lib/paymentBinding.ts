@@ -102,6 +102,9 @@ export interface PaymentWorkerEnv {
 }
 
 import { apiError } from '../../../lib/response';
+import { createLogger } from '../../../lib/logger';
+
+const logger = createLogger('payment-binding');
 
 // ─── Helper Functions ───────────────────────────────────────────────────────────
 
@@ -120,12 +123,14 @@ import { apiError } from '../../../lib/response';
  */
 export function getPaymentWorker(env: PaymentWorkerEnv): PaymentWorkerBinding {
   if (!env.PAYMENT_WORKER) {
+    logger.error('PAYMENT_WORKER binding is not configured - payment operations will fail');
     throw new Error(
       'PAYMENT_WORKER binding is not configured. ' +
       'Add [[services]] to wrangler.toml or use --service PAYMENT_WORKER=razorpay-api in local dev.'
     );
   }
 
+  logger.debug('Payment worker binding resolved');
   return env.PAYMENT_WORKER;
 }
 
@@ -165,6 +170,13 @@ export function rpcErrorResponse(error: unknown, request?: Request): Response {
   const colonIndex = message.indexOf(':');
   const code = colonIndex > 0 ? message.slice(0, colonIndex).trim() : 'INTERNAL_ERROR';
   const detail = colonIndex > 0 ? message.slice(colonIndex + 1).trim() : message;
+
+  logger.error('Payment worker RPC error', error instanceof Error ? error : new Error(message), {
+    code,
+    status,
+    detail,
+    path: request?.url,
+  });
 
   return apiError(status, code, detail, request);
 }

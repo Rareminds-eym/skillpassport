@@ -12,10 +12,20 @@ import {
 import { UserPlusIcon } from 'lucide-react';
 import { getLogger } from '@/shared/config/logging';
 import { SearchBar } from '@/shared/ui';
-import { Pagination } from '@/shared/ui';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/shared/ui';
 import { LearnerProfileDrawer, AdmissionNoteModal } from '@/features/learner-profile';
 import { AddLearnerModal } from '@/features/college-admin';
 import { useLearners } from '@/entities/learner';
+import { useUser } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
 import { AssessmentReportDrawer } from '@/features/assessment';
 // @ts-ignore - JS file without types
 import { getLatestResult } from '@/features/assessment';
@@ -192,7 +202,25 @@ const LearnerDataAdmission = () => {
     maxScore: 100
   });
 
-  const { learners, loading, error } = useLearners();
+  const user = useUser();
+  const [collegeId, setCollegeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCollegeId = async () => {
+      if (!user?.id && !user?.email) return;
+      const res: any = await apiPost('/college-admin/actions', {
+        action: 'get-org-by-admin-or-email',
+        userId: user.id,
+        email: user.email,
+      });
+      if (res?.data?.id) setCollegeId(res.data.id);
+    };
+    fetchCollegeId();
+  }, [user?.id, user?.email]);
+
+  const { learners, loading, error } = useLearners({
+    collegeId,
+  });
 
   useEffect(() => {
     setCurrentPage(1);
@@ -348,6 +376,20 @@ const LearnerDataAdmission = () => {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1, 2, 3);
+      if (currentPage > 4) pages.push('...');
+      if (currentPage > 3 && currentPage < totalPages - 2) pages.push(currentPage);
+      if (currentPage < totalPages - 3) pages.push('...');
+      pages.push(totalPages - 1, totalPages);
+    }
+    return [...new Set(pages)];
   };
 
   const handleClearFilters = () => {
@@ -648,7 +690,7 @@ const LearnerDataAdmission = () => {
             </div>
           </div>
 
-          <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
+          <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4 min-h-0">
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {loading && <div className="text-sm text-gray-500">Loading enrollments...</div>}
@@ -878,13 +920,44 @@ const LearnerDataAdmission = () => {
           </div>
 
           {!loading && totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-            />
+            <div className="flex-shrink-0 border-t border-gray-200 bg-white py-4">
+              <Pagination>
+                <PaginationContent className="flex flex-wrap items-center justify-center gap-2">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
+                      className={`w-auto px-3 ${currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
+                    />
+                  </PaginationItem>
+
+                  {getPageNumbers().map((pageNum, index) => (
+                    <PaginationItem key={index}>
+                      {pageNum === '...' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); handlePageChange(pageNum as number); }}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer w-9 h-9 flex items-center justify-center"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) handlePageChange(currentPage + 1); }}
+                      className={`w-auto px-3 ${currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           )}
         </div>
       </div>

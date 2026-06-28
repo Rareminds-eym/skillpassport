@@ -26,7 +26,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import Loader from '@/shared/ui/Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
-import { useSubscriptionContext, ACCESS_REASONS } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
+import { ACCESS_REASONS } from '@/features/subscription/model/subscriptionStore';
 import { useUser, useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
 // ============================================================================
 // CONSTANTS
@@ -62,7 +63,6 @@ const PATH_TO_USER_TYPE = {
   '/college-admin': 'college_admin',
   '/school-admin': 'school_admin',
   '/university-admin': 'university_admin',
-  '/admin': 'admin',
 };
 
 // ============================================================================
@@ -126,7 +126,7 @@ async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
  * Hook to handle post-payment subscription synchronization
  * Ensures subscription cache is refreshed before allowing access
  */
-function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
+function usePostPaymentSync(isPostPayment, hasAccess, refreshSubscription) {
   const [syncState, setSyncState] = useState({
     status: 'idle', // 'idle' | 'syncing' | 'synced' | 'failed'
     attempts: 0,
@@ -174,7 +174,7 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
     // Perform sync with retries
     retryWithBackoff(
       async () => {
-        await refreshAccess();
+        await refreshSubscription();
         // Small delay to ensure React Query cache is updated
         await sleep(100);
       },
@@ -204,7 +204,7 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
           clearTimeout(timeoutRef.current);
         }
       });
-  }, [isPostPayment, hasAccess, refreshAccess, syncState.status]);
+  }, [isPostPayment, hasAccess, refreshSubscription, syncState.status]);
 
   // Reset sync state when hasAccess becomes true
   useEffect(() => {
@@ -378,26 +378,23 @@ const SubscriptionProtectedRoute = ({
     }
   }, [location.pathname, isAuthenticated, role, authLoading, user?.id, allowedRoles, requireSubscription]);
 
-  const subscriptionContext = useSubscriptionContext();
-  
-  // Add safety checks for undefined context
   const {
-    hasAccess = false,
-    accessReason = 'no_subscription',
-    isLoading: subscriptionLoading = true,
-    showWarning = false,
-    warningType = null,
-    warningMessage = null,
-    error: subscriptionError = null,
-    isRefetching = false,
-    refreshAccess = async () => {},
-  } = subscriptionContext || {};
+    hasAccess,
+    accessReason,
+    loading: subscriptionLoading,
+    showWarning,
+    warningType,
+    warningMessage,
+    error: subscriptionError,
+    isRefetching,
+    refreshSubscription,
+  } = useSubscriptionQuery();
 
   // Detect post-payment navigation
   const isPostPayment = location.state?.fromPayment === true;
 
   // Post-payment synchronization
-  const postPaymentSync = usePostPaymentSync(isPostPayment, hasAccess, refreshAccess);
+  const postPaymentSync = usePostPaymentSync(isPostPayment, hasAccess, refreshSubscription);
 
   // Guard state machine
   const guardState = useGuardState({

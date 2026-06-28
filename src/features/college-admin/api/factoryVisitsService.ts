@@ -66,7 +66,7 @@ class FactoryVisitsService {
       const result = await apiPost<any>('/college-admin/events', {
         action: 'register-for-factory-visit',
         learner_id: learnerId,
-        visit_id: visitId
+        opportunity_id: visitId
       });
 
       if (!result.success) {

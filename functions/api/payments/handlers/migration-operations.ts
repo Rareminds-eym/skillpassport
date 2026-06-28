@@ -1,8 +1,8 @@
-import { getContextUser } from '../../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { getContextUser } from '../../../lib/auth';
+import { apiError, apiSuccess } from '../../../lib/response';
+import { ssoListAddonCatalog } from '../../../lib/sso-client';
 import { getServiceClient } from '../../../lib/supabase';
-import { ssoFetch } from '../../../lib/sso-client';
-import { apiSuccess, apiError } from '../../../lib/response';
 
 async function trackEvent(supabase: ReturnType<typeof getServiceClient>, userId: string, eventType: string, metadata: Record<string, unknown> = {}): Promise<void> {
   try {
@@ -22,21 +22,25 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
     const { action } = body;
     const supabase = getServiceClient(env);
 
+    const checkIsAdmin = async () => {
+      const { data } = await supabase.from('admin_users').select('id').eq('user_id', userId).maybeSingle();
+      return !!data;
+    };
+
     if (action === 'getMigrationMapping') {
       const { planCode } = body;
       const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name, base_features').eq('plan_code', planCode).single();
       if (planError) return apiError(200, 'ERROR', 'PLAN_NOT_FOUND', context.request);
 
-      const addonsResp = await ssoFetch(env as any, 'http://sso-worker/api/addon-catalog', { method: 'GET' });
-      if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
-      const { addons } = await addonsResp.json() as { addons: any[] };
+      const addonsData = await ssoListAddonCatalog(env as any);
+      const addons = (addonsData.addons || []) as any[];
 
       const addOnMap = new Map((addons || []).map(a => [a.feature_key, a]));
 
       const planFeatures = Array.isArray(plan.base_features) ? plan.base_features : [];
       const mappedFeatures = planFeatures.filter(featureKey => addOnMap.has(featureKey)).map(featureKey => {
         const addOn = addOnMap.get(featureKey);
-        return { feature_key: featureKey, feature_name: addOn.name || addOn.feature_name, addon_price_monthly: parseFloat(addOn.price_monthly) ?? 0, addon_price_annual: parseFloat(addOn.price_annual) ?? 0 };
+        return { feature_key: featureKey, feature_name: addOn.name || addOn.feature_name, addon_price_monthly: safeParseFloat(addOn.price_monthly, 0), addon_price_annual: safeParseFloat(addOn.price_annual, 0) };
       });
       return apiSuccess({ planCode, planName: plan.name, planId: plan.id, features: mappedFeatures }, context.request);
     }
@@ -45,15 +49,14 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const { data: subscription } = await supabase.from('subscription_cache').select('id, plan_id, status, created_at, plan_amount, plan_code, plan_name, features').eq('user_id', userId).eq('status', 'active').single();
       if (!subscription) return apiError(200, 'ERROR', 'NO_ACTIVE_SUBSCRIPTION', context.request);
 
-      const addonsResp = await ssoFetch(env as any, 'http://sso-worker/api/addon-catalog', { method: 'GET' });
-      if (!addonsResp.ok) throw new Error(`SSO Worker addons error: ${addonsResp.status}`);
-      const { addons } = await addonsResp.json() as { addons: any[] };
+      const addonsData = await ssoListAddonCatalog(env as any);
+      const addons = (addonsData.addons || []) as any[];
 
       const addOnMap = new Map((addons || []).map(a => [a.feature_key, a]));
 
       const planFeatures = Array.isArray(subscription.features) ? subscription.features : [];
-      const newPrice = planFeatures.filter(featureKey => addOnMap.has(featureKey)).reduce((sum, featureKey) => sum + (parseFloat(addOnMap.get(featureKey)?.price_monthly) ?? 0), 0);
-      const originalPrice = parseFloat(subscription.plan_amount) ?? 0;
+      const newPrice = planFeatures.filter(featureKey => addOnMap.has(featureKey)).reduce((sum, featureKey) => sum + safeParseFloat(addOnMap.get(featureKey)?.price_monthly, 0), 0);
+      const originalPrice = safeParseFloat(subscription.plan_amount, 0);
       const eligible = newPrice > originalPrice;
       const protectedUntil = new Date(); protectedUntil.setFullYear(protectedUntil.getFullYear() + 1);
 
@@ -77,7 +80,12 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
 
     if (action === 'migrateUser') {
       const { targetUserId, preservePricing = false } = body;
-      const migrateId = targetUserId || userId;
+
+      let migrateId = userId;
+      if (targetUserId && targetUserId !== userId) {
+        if (!(await checkIsAdmin())) return apiError(403, 'FORBIDDEN', 'Admin access required to migrate other users', context.request);
+        migrateId = targetUserId;
+      }
 
       const { data: subscription, error: subError } = await supabase.from('subscription_cache').select('id, plan_id, plan_code, status, subscription_end_date, plan_amount').eq('user_id', migrateId).in('status', ['active', 'pending']).single();
       if (subError) {
@@ -88,15 +96,14 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
       const { data: plan, error: planError } = await supabase.from('plans_cache').select('id, plan_code, name').eq('id', subscription.plan_id).single();
       if (planError || !plan) return apiError(200, 'ERROR', 'PLAN_NOT_FOUND', context.request);
 
-      const mappingResp = await ssoFetch(env as any, 'http://sso-worker/api/addon-catalog', { method: 'GET' });
-      if (!mappingResp.ok) throw new Error(`SSO Worker addons error: ${mappingResp.status}`);
-      const { addons } = await mappingResp.json() as { addons: any[] };
+      const mappingData = await ssoListAddonCatalog(env as any);
+      const addons = (mappingData.addons || []) as any[];
       const features = Array.isArray(plan.base_features) ? plan.base_features : [];
       const addOnMap = new Map((addons || []).map(a => [a.feature_key, a]));
       const relevantAddons = features.filter(f => addOnMap.has(f)).map(f => addOnMap.get(f)!);
 
       const originalPrice = subscription.plan_amount ?? 0;
-      const newPrice = relevantAddons.reduce((sum, a) => sum + (parseFloat(a.price_monthly) ?? 0), 0);
+      const newPrice = relevantAddons.reduce((sum, a) => sum + safeParseFloat(a.price_monthly, 0), 0);
       let priceProtectedUntil = null;
       if (preservePricing && originalPrice < newPrice) {
         const protectedUntil = new Date();
@@ -125,7 +132,7 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
         start_date: new Date().toISOString(),
         end_date: subscription.subscription_end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         auto_renew: true,
-        price_at_purchase: preservePricing && priceProtectedUntil ? (originalPrice / relevantAddons.length) : (parseFloat(addon.price_monthly) ?? 0),
+        price_at_purchase: preservePricing && priceProtectedUntil ? (originalPrice / relevantAddons.length) : safeParseFloat(addon.price_monthly, 0),
       }));
 
       const { error: entError } = await supabase.from('user_entitlements').insert(entitlements).select();
@@ -140,7 +147,12 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
 
     if (action === 'scheduleMigrationNotification') {
       const { targetUserId, migrationDate } = body;
-      const notifyId = targetUserId || userId;
+
+      let notifyId = userId;
+      if (targetUserId && targetUserId !== userId) {
+        if (!(await checkIsAdmin())) return apiError(403, 'FORBIDDEN', 'Admin access required', context.request);
+        notifyId = targetUserId;
+      }
 
       if (!migrationDate) return apiError(400, 'VALIDATION_ERROR', 'Migration date is required', context.request);
 
@@ -187,6 +199,8 @@ export async function handleMigrationOperations(context: AuthenticatedContext): 
     }
 
     if (action === 'getPendingMigrations') {
+      if (!(await checkIsAdmin())) return apiError(403, 'FORBIDDEN', 'Admin access required', context.request);
+
       const { limit = 100 } = body;
       const { data, error } = await supabase.from('subscription_migrations').select('*').eq('migration_status', 'pending').lte('migration_date', new Date().toISOString()).order('migration_date', { ascending: true }).limit(limit);
       if (error) throw error;

@@ -1,3 +1,6 @@
+import { SubscriptionDashboard } from '@/features/subscription';
+import { useSubscriptionPlansData } from '@/features/subscription/model';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import {
   AlertCircle,
   ArrowLeft,
@@ -23,17 +26,13 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { SubscriptionDashboard } from '@/features/subscription';
-import { useSubscriptionPlansData } from '@/features/subscription/model';
-import { useSubscriptionAccess } from '@/features/subscription/model/subscriptionStore';
 
-import { getUserSubscriptions } from '@/features/subscription/api';
-import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
-import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '@/features/subscription';
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
+import { calculateDaysRemaining, calculateProgressPercentage, deactivateSubscription, formatDate, getSubscriptionStatusChecks, pauseSubscription, resumeSubscription } from '@/features/subscription';
+import { getUserSubscriptions } from '@/features/subscription/api';
 
 
-import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
+import { useAuthLoading, useUser, useUserRole } from '@/shared/model/authStore';
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
@@ -44,7 +43,6 @@ function getSettingsPathFromUrl(pathname) {
   if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
   if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
   if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
-  if (pathname.startsWith('/admin')) return '/admin/settings';
   return '/learner/settings'; // fallback
 }
 
@@ -58,7 +56,7 @@ function getDashboardPathFromUrl(pathname) {
   if (pathname.startsWith('/college-admin')) return '/college-admin/dashboard';
   if (pathname.startsWith('/school-admin')) return '/school-admin/dashboard';
   if (pathname.startsWith('/university-admin')) return '/university-admin/dashboard';
-  if (pathname.startsWith('/admin')) return '/admin/dashboard';
+  if (pathname.startsWith('/admin')) return '/';
   return '/learner/dashboard'; // fallback
 }
 
@@ -72,7 +70,6 @@ function getUserTypeFromUrl(pathname) {
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
-  if (pathname.startsWith('/admin')) return 'admin';
   return 'learner'; // fallback
 }
 
@@ -85,7 +82,7 @@ function MySubscription() {
   const user = useUser();
   const { role } = useUserRole();
   const authLoading = useAuthLoading();
-  const { subscriptionData, loading: subscriptionLoading, refreshAccess } = useSubscriptionAccess();
+  const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
 
   // Get settings, dashboard paths, and user type from current URL (more reliable than role)
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
@@ -192,7 +189,7 @@ function MySubscription() {
         alert(`Subscription cancelled successfully. You'll have access until ${formatDate(subscriptionData.endDate)}`);
 
         // Refresh subscription data
-        await refreshAccess();
+        await refreshSubscription();
 
         setShowCancelModal(false);
         setCancelReason('');
@@ -223,7 +220,7 @@ function MySubscription() {
 
       if (result.success) {
         alert(`Subscription paused for ${pauseMonths} month(s). It will automatically resume after this period.`);
-        await refreshAccess();
+        await refreshSubscription();
         setShowPauseModal(false);
         setShowCancelModal(false);
       } else {
@@ -251,7 +248,7 @@ function MySubscription() {
 
       if (result.success) {
         alert('Subscription resumed successfully!');
-        await refreshAccess();
+        await refreshSubscription();
       } else {
         alert(`Failed to resume subscription: ${result.error}`);
       }

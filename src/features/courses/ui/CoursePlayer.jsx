@@ -25,7 +25,6 @@ import { generateCourseCertificate } from '@/features/digital-portfolio';
 import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { enrollmentService } from '@/features/courses';
 import { courseProgressService as progressService } from '@/features/courses';
-import { fileService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api/authenticatedMediaService';
 
 const CoursePlayer = () => {

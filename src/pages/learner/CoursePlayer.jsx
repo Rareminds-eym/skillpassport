@@ -26,7 +26,6 @@ import { apiPost } from '@/shared/api/apiClient';
 import { downloadCertificate } from '@/shared/lib/certificateUtils';
 import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
 import { courseProgressService } from '@/features/courses';
-import { fileService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api';
 import { getLogger } from '@/shared/config/logging';
 import { useCertificateModal } from '@/features/certificate-generation';
@@ -1385,7 +1384,10 @@ const CoursePlayer = () => {
       const learnerIdText = learnerRecord.learner_id;
       
       // Get learner name from learners table
-      const prefillName = learnerRecord.name || user?.email?.split('@')[0] || '';
+      const userFullName = learnerRecord.users
+        ? [learnerRecord.users.firstName, learnerRecord.users.lastName].filter(Boolean).join(' ')
+        : '';
+      const prefillName = learnerRecord.name || userFullName || user?.email?.split('@')[0] || '';
 
       await apiPost('/learner-pages/actions', {
         action: 'complete-course-enrollment',

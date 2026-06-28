@@ -644,6 +644,12 @@ const UnifiedSignup = () => {
           org_name: orgName,
           role: state.selectedRole!,
           redirect_url: window.location.origin,
+          user_metadata: {
+            firstName: state.firstName.trim(),
+            lastName: state.lastName.trim(),
+            phone: state.phone.trim() || null,
+            avatarUrl: null,
+          },
         });
         ssoUserId = ssoResult.user.id;
         if (ssoResult.email_sent === false) {
@@ -656,6 +662,12 @@ const UnifiedSignup = () => {
           password: state.password,
           role: state.selectedRole!,
           redirect_url: window.location.origin,
+          user_metadata: {
+            firstName: state.firstName.trim(),
+            lastName: state.lastName.trim(),
+            phone: state.phone.trim() || null,
+            avatarUrl: null,
+          },
         });
         ssoUserId = ssoResult.user.id;
         if (ssoResult.email_sent === false) {
@@ -741,7 +753,6 @@ const UnifiedSignup = () => {
         console.log('[UnifiedSignup] ✓ Invitation token found, attempting auto-accept');
         console.log('[UnifiedSignup] Request payload:', {
           token: freshInvitationToken,
-          userId: ssoUserId,
         });
 
         try {
@@ -756,7 +767,6 @@ const UnifiedSignup = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               token: freshInvitationToken,
-              userId: ssoUserId,
             }),
           });
 

@@ -1,12 +1,14 @@
 /**
  * Messaging Feature - Public API
- * 
+ *
  * This is the public interface for the messaging feature.
  * All external imports should go through this file.
- * 
+ *
  * @example
  * ```typescript
- * import { MessageModal, useMessages, MessageService } from '@/features/messaging';
+ * import { MessageModal, useMessages } from '@/features/messaging';
+ * // For MessageService, import from shared layer:
+ * import MessageService from '@/shared/api/messageService';
  * ```
  */
 
@@ -46,6 +48,7 @@ export type {
 
 export { useMessageNotifications } from './model/useMessageNotifications';
 export { default as useTypingIndicator } from './model/useTypingIndicator';
+export { useConversationMutations } from './model/useConversationMutations';
 
 // Store - Re-export from shared
 export { useMessageStore } from '@/shared/model/useMessageStore';
@@ -54,13 +57,37 @@ export { useMessageStore } from '@/shared/model/useMessageStore';
 export { useUnreadMessagesCount } from './model/useUnreadMessagesCount';
 
 // ============================================================================
-// Services
+// Types - SINGLE SOURCE
 // ============================================================================
-export { default as MessageService } from '../../shared/api/messageService';
+// Export types from feature types.ts (canonical location)
+export type {
+  UserRole,
+  AdminRole,
+  CollegeLecturer,
+  ConversationType,
+  Message,
+  Conversation,
+  SendMessageParams,
+  MessageMetadata,
+  CreateConversationParams,
+  ConversationMetadata,
+} from './api/types';
 
 // ============================================================================
-// Types
+// Services - Use Shared Layer Directly
 // ============================================================================
-
-// API & Data Access
-export * from './api';
+// ⚠️ Services are in the shared layer, NOT in features
+// Import directly from @/shared/api - DO NOT re-export from features
+//
+// ✅ CORRECT IMPORTS:
+//   For hooks:
+//     import { useConversationMutations, useMessages } from '@/features/messaging/model';
+//   For services (if needed):
+//     import { MessageQueryService } from '@/shared/api/messageQueryService';
+//     import { MessageMutationService } from '@/shared/api/messageMutationService';
+//
+// ❌ INCORRECT (DO NOT USE):
+//   import { MessageQueryService } from '@/features/messaging';
+//
+// Legacy MessageService (deprecated):
+//   import MessageService from '@/shared/api/messageService';

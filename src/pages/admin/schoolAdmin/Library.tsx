@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { useLearners } from '@/entities/learner/model/useAdminLearners';
 import { getLogger } from '@/shared/config/logging';
 import { useAuthStore } from '@/shared/model/authStore';
+import { apiPost } from '@/shared/api/apiClient';
 
 
 const logger = getLogger('school-admin-library');
@@ -127,7 +128,7 @@ export default function LibraryModule() {
     pageSize: 10
   });
 
-  // Get current school ID from organizations table
+  // Get current school ID via API
   useEffect(() => {
     const getCurrentSchoolId = async () => {
       try {
@@ -141,31 +142,17 @@ export default function LibraryModule() {
           }
         }
 
-        // Then try Supabase auth
-        const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-        if (user) {
-          // Check school_educators table first - use maybeSingle() to avoid 406 error
-          const { data: educator } = await supabase
-            .from('school_educators')
-            .select('school_id')
-            .eq('user_id', user.id)
-            .maybeSingle();
+        // Use API to get school ID
+        try {
+          const response = await apiPost<{ schoolId: string }>('/school-admin/actions', {
+            action: 'fetchCommunicationSchoolData'
+          });
 
-          if (educator?.school_id) {
-            setSchoolId(educator.school_id);
-          } else {
-            // Check organizations table for school admin
-            const { data: org } = await supabase
-              .from('organizations')
-              .select('id')
-              .eq('organization_type', 'school')
-              .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-              .maybeSingle();
-
-            if (org?.id) {
-              setSchoolId(org.id);
-            }
+          if (response?.schoolId) {
+            setSchoolId(response.schoolId);
           }
+        } catch (error) {
+          logger.error('Error getting school ID from API', error);
         }
       } catch (error) {
         logger.error('Error getting school ID', error);
@@ -188,57 +175,21 @@ export default function LibraryModule() {
 
     setLoading(true);
     try {
-      // Fetch books
-      const { data: booksData, error: booksError } = await supabase
-        .from('library_books_school')
-        .select('*')
-        .eq('school_id', schoolId)
-        .order('created_at', { ascending: false });
+      const response = await apiPost<any>('/school-admin/actions', {
+        action: 'fetchLibraryData',
+        schoolId
+      });
 
-      if (booksError) throw booksError;
-      setBooks(booksData || []);
-
-      // Fetch current issues
-      const { data: issuesData, error: issuesError } = await supabase
-        .from('library_book_issues_school')
-        .select(`
-          *,
-          book:library_books_school(*)
-        `)
-        .eq('school_id', schoolId)
-        .eq('status', 'issued')
-        .order('issue_date', { ascending: false });
-
-      if (issuesError) throw issuesError;
-      setBookIssues(issuesData || []);
-
-      // Fetch library stats - use maybeSingle() to avoid 406 error
-      const { data: statsData, error: statsError } = await supabase
-        .from('library_stats_school')
-        .select('*')
-        .eq('school_id', schoolId)
-        .maybeSingle();
-
-      if (statsError || !statsData) {
-        logger.warn('Stats view not available, calculating manually');
-        // Calculate stats manually
-        const totalBooks = booksData?.length || 0;
-        const totalCopies = booksData?.reduce((sum, book) => sum + book.total_copies, 0) || 0;
-        const availableCopies = booksData?.reduce((sum, book) => sum + book.available_copies, 0) || 0;
-        const currentlyIssued = issuesData?.length || 0;
-
-        setLibraryStats({
-          total_books: totalBooks,
-          total_copies: totalCopies,
-          available_copies: availableCopies,
-          currently_issued: currentlyIssued,
-          overdue_count: 0,
-          total_pending_fines: 0
-        });
-      } else {
-        setLibraryStats(statsData);
-      }
-
+      setBooks(response?.books || []);
+      setBookIssues(response?.issues || []);
+      setLibraryStats(response?.stats || {
+        total_books: 0,
+        total_copies: 0,
+        available_copies: 0,
+        currently_issued: 0,
+        overdue_count: 0,
+        total_pending_fines: 0
+      });
     } catch (error) {
       logger.error('Error fetching library data', error);
       toast.error('Failed to load library data');
@@ -252,13 +203,11 @@ export default function LibraryModule() {
     if (!schoolId) return;
 
     try {
-      const { data: categoriesData, error } = await supabase
-        .from('library_categories_school')
-        .select('*')
-        .eq('school_id', schoolId)
-        .order('name');
+      const categoriesData = await apiPost<any[]>('/school-admin/actions', {
+        action: 'getLibraryCategories',
+        schoolId
+      });
 
-      if (error) throw error;
       setCategories(categoriesData || []);
     } catch (error) {
       logger.error('Error fetching categories', error);
@@ -274,9 +223,11 @@ export default function LibraryModule() {
 
     try {
       setLoading(true);
-      const { error } = await supabase
-        .from('library_books_school')
-        .update({
+      await apiPost('/school-admin/actions', {
+        action: 'updateLibraryBook',
+        bookId: editingBook.id,
+        schoolId,
+        bookData: {
           title: editingBook.title,
           author: editingBook.author,
           isbn: editingBook.isbn,
@@ -286,11 +237,8 @@ export default function LibraryModule() {
           publication_year: editingBook.publication_year || null,
           description: editingBook.description || null,
           location_shelf: editingBook.location_shelf || null
-        })
-        .eq('id', editingBook.id)
-        .eq('school_id', schoolId);
-
-      if (error) throw error;
+        }
+      });
 
       toast.success('Book updated successfully!');
       setShowEditBookModal(false);
@@ -298,7 +246,7 @@ export default function LibraryModule() {
       fetchLibraryData(); // Refresh data
     } catch (error: any) {
       logger.error('Error updating book', error);
-      if (error.code === '23505') {
+      if (error.message?.includes('23505') || error.message?.includes('ISBN')) {
         toast.error('A book with this ISBN already exists');
       } else {
         toast.error('Failed to update book');
@@ -318,13 +266,11 @@ export default function LibraryModule() {
 
     try {
       setLoading(true);
-      const { error } = await supabase
-        .from('library_books_school')
-        .delete()
-        .eq('id', bookId)
-        .eq('school_id', schoolId);
-
-      if (error) throw error;
+      await apiPost('/school-admin/actions', {
+        action: 'deleteLibraryBook',
+        bookId,
+        schoolId
+      });
 
       toast.success('Book deleted successfully!');
       fetchLibraryData(); // Refresh data
@@ -361,17 +307,11 @@ export default function LibraryModule() {
 
     setHistoryLoading(true);
     try {
-      const { data: historyData, error } = await supabase
-        .from('library_book_issues_school')
-        .select(`
-          *,
-          book:library_books_school(*)
-        `)
-        .eq('school_id', schoolId)
-        .order('created_at', { ascending: false })
-        .limit(100); // Limit to last 100 records for performance
+      const historyData = await apiPost<any[]>('/school-admin/actions', {
+        action: 'getLibraryHistory',
+        schoolId
+      });
 
-      if (error) throw error;
       setHistoryData(historyData || []);
     } catch (error) {
       logger.error('Error fetching history data', error);
@@ -388,18 +328,10 @@ export default function LibraryModule() {
     setOverdueLoading(true);
     try {
       // Fetch overdue books (issued books past due date)
-      const { data: overdueData, error } = await supabase
-        .from('library_book_issues_school')
-        .select(`
-          *,
-          book:library_books_school(*)
-        `)
-        .eq('school_id', schoolId)
-        .eq('status', 'issued')
-        .lt('due_date', new Date().toISOString().split('T')[0])
-        .order('due_date', { ascending: true });
-
-      if (error) throw error;
+      const overdueData = await apiPost<any[]>('/school-admin/actions', {
+        action: 'getOverdueBooks',
+        schoolId
+      });
 
       // Calculate days overdue and fine for each book
       const overdueWithFines = (overdueData || []).map(issue => ({
@@ -469,16 +401,12 @@ export default function LibraryModule() {
       const issue = overdueBooks.find(b => b.id === issueId);
       if (!issue) return;
 
-      const { error } = await supabase
-        .from('library_book_issues_school')
-        .update({
-          status: 'overdue',
-          fine_amount: issue.calculated_fine
-        })
-        .eq('id', issueId)
-        .eq('school_id', schoolId);
-
-      if (error) throw error;
+      await apiPost('/school-admin/actions', {
+        action: 'markBookOverdue',
+        issueId,
+        schoolId,
+        fineAmount: issue.calculated_fine
+      });
 
       toast.success('Book marked as overdue with fine calculated');
       fetchOverdueBooks(); // Refresh overdue data
@@ -509,26 +437,22 @@ export default function LibraryModule() {
 
     try {
       setLoading(true);
-      const { error } = await supabase
-        .from('library_books_school')
-        .insert([{
-          school_id: schoolId,
+      await apiPost('/school-admin/actions', {
+        action: 'addLibraryBook',
+        schoolId,
+        bookData: {
           title: newBook.title,
           author: newBook.author,
           isbn: newBook.isbn,
           total_copies: newBook.total_copies,
-          available_copies: newBook.total_copies,
           category: newBook.category || null,
           publisher: newBook.publisher || null,
           publication_year: newBook.publication_year || null,
           description: newBook.description || null,
           location_shelf: newBook.location_shelf || null,
           status: 'available'
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
+        }
+      });
 
       toast.success('Book added successfully!');
       setNewBook({
@@ -575,10 +499,10 @@ export default function LibraryModule() {
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 14);
 
-      const { error } = await supabase
-        .from('library_book_issues_school')
-        .insert([{
-          school_id: schoolId,
+      await apiPost('/school-admin/actions', {
+        action: 'issueBook',
+        schoolId,
+        issueData: {
           book_id: selectedBookForIssue.id,
           learner_id: selectedLearner.id,
           learner_name: selectedLearner.name,
@@ -588,12 +512,9 @@ export default function LibraryModule() {
           issue_date: issueDate.toISOString().split('T')[0],
           due_date: dueDate.toISOString().split('T')[0],
           status: 'issued',
-          issued_by: 'Admin' // You can get this from current user
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
+          issued_by: 'Admin'
+        }
+      });
 
       toast.success(`Book "${selectedBookForIssue.title}" issued to ${selectedLearner.name}`);
 
@@ -617,19 +538,12 @@ export default function LibraryModule() {
     try {
       setLoading(true);
 
-      const { error } = await supabase
-        .from('library_book_issues_school')
-        .update({
-          return_date: new Date().toISOString().split('T')[0],
-          status: 'returned',
-          returned_by: 'Admin'
-        })
-        .eq('id', issueId)
-        .eq('school_id', schoolId)
-        .select()
-        .single();
-
-      if (error) throw error;
+      await apiPost('/school-admin/actions', {
+        action: 'returnBook',
+        issueId,
+        schoolId,
+        returnDate: new Date().toISOString().split('T')[0]
+      });
 
       toast.success('Book returned successfully');
       fetchLibraryData(); // Refresh data
