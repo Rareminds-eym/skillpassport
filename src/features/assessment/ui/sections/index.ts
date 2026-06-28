@@ -21,8 +21,6 @@ export { default as StageScoresSection } from './StageScoresSection';
 // @ts-expect-error - JSX components without type declarations
 export { default as LoadingState } from '../LoadingState';
 // @ts-expect-error - JSX components without type declarations
-export { default as ErrorState } from '../ErrorState';
-// @ts-expect-error - JSX components without type declarations
 export { default as ReportHeader } from '../ReportHeader';
 // @ts-expect-error - JSX components without type declarations
 export { default as SummaryCard } from '../SummaryCard';

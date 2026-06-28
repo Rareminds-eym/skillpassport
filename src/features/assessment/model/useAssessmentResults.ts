@@ -147,10 +147,13 @@ interface UseAssessmentResultsReturn {
   learnerAcademicData: LearnerAcademicData;
   validationWarnings: string[];
   handleRetry: () => void;
+  handleClusterRetry: () => Promise<void>;
   validateResults: () => string[];
   navigate: NavigateFunction;
   attemptData: AttemptData | null;
   resultData: TransformedResults | null;
+  isClusterRetry: boolean;
+  isClusterGenerationFailed: boolean;
 }
 
 // ===== CONSTANTS =====
@@ -177,6 +180,8 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<boolean>(false);
+  const [isClusterRetry, setIsClusterRetry] = useState<boolean>(false);
+  const [isClusterGenerationFailed, setIsClusterGenerationFailed] = useState<boolean>(false);
   const [gradeLevel, setGradeLevel] = useState<string>('after12');
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo>(DEFAULT_LEARNER_INFO);
 
@@ -192,6 +197,7 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
     if (isRetry) setRetrying(true);
     setLoading(true);
     setError(null);
+    setIsClusterGenerationFailed(false);
 
     try {
       const payload = await assessmentService.getResult(attemptId) as ServicePayload;
@@ -201,7 +207,13 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
 
       if (!payload?.hasResult || !payload.result) {
         setResults(null);
-        setError('Your assessment analysis is not ready yet. Please try again shortly.');
+        // Detect if this is a cluster generation failure (college level with no result)
+        if (payload?.attempt?.gradeLevel === 'college') {
+          setIsClusterGenerationFailed(true);
+          setError('We\'re still analyzing your career recommendations. Please try again in a moment.');
+        } else {
+          setError('Your assessment analysis is not ready yet. Please try again shortly.');
+        }
         return;
       }
 
@@ -225,6 +237,30 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
   const handleRetry = useCallback((): void => {
     loadResults(true);
   }, [loadResults]);
+
+  const handleClusterRetry = useCallback(async (): Promise<void> => {
+    if (!attemptId) return;
+
+    try {
+      setIsClusterRetry(true);
+      setError(null);
+
+      // Call the cluster generation retry API
+      const result = await assessmentService.retryClusterGeneration(attemptId, gradeLevel);
+
+      if (result.success) {
+        // Cluster generation succeeded, wait a moment then reload results
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await loadResults(true);
+      } else {
+        setError(`Retry failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Cluster retry failed. Please try again.');
+    } finally {
+      setIsClusterRetry(false);
+    }
+  }, [attemptId, gradeLevel, loadResults]);
 
   const monthsInGrade = null;
 
@@ -271,9 +307,12 @@ export const useAssessmentResults = (): UseAssessmentResultsReturn => {
     learnerAcademicData: { subjectMarks: [], projects: [], experiences: [], education: [] },
     validationWarnings: [],
     handleRetry,
+    handleClusterRetry,
     validateResults,
     navigate,
     attemptData: results?.attempt_data || null,
     resultData: results,
-  }), [results, loading, error, retrying, gradeLevel, monthsInGrade, learnerInfo, handleRetry, validateResults, navigate]);
+    isClusterRetry,
+    isClusterGenerationFailed,
+  }), [results, loading, error, retrying, gradeLevel, monthsInGrade, learnerInfo, handleRetry, handleClusterRetry, validateResults, navigate, isClusterRetry, isClusterGenerationFailed]);
 };

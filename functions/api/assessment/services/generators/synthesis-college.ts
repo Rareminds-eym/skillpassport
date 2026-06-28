@@ -8,8 +8,7 @@
  * Fully non-fatal: returns null on any failure so analysis + clusters still complete.
  */
 import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
-import type { StudentProfile } from '../core/scoring-service';
-import type { ClusterNarrativeContext } from '../../types';
+import type { StudentProfile, ClusterNarrativeContext } from '../../types';
 import { buildCollegeSynthesisPrompt } from '../../prompts/synthesis/college';
 
 export interface CollegeSynthesis {

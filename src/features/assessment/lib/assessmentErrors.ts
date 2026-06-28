@@ -20,6 +20,24 @@ export type QuestionGenerationErrorType =
   (typeof QuestionGenerationError)[keyof typeof QuestionGenerationError];
 
 /**
+ * Error types for cluster generation
+ */
+export const ClusterGenerationError = {
+  API_UNAVAILABLE: 'API_UNAVAILABLE',
+  RATE_LIMIT: 'RATE_LIMIT',
+  INVALID_RESPONSE: 'INVALID_RESPONSE',
+  RAG_SEARCH_FAILED: 'RAG_SEARCH_FAILED',
+  CLUSTER_VALIDATION_FAILED: 'CLUSTER_VALIDATION_FAILED',
+  LLM_ERROR: 'LLM_ERROR',
+  DATABASE_ERROR: 'DATABASE_ERROR',
+  NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',
+  UNKNOWN: 'UNKNOWN'
+} as const;
+
+export type ClusterGenerationErrorType =
+  (typeof ClusterGenerationError)[keyof typeof ClusterGenerationError];
+
+/**
  * User-friendly error messages for each error type
  */
 export const ERROR_MESSAGES: Record<string, string> = {
@@ -29,7 +47,17 @@ export const ERROR_MESSAGES: Record<string, string> = {
   [QuestionGenerationError.INSUFFICIENT_QUESTIONS]: 'Generating additional questions...',
   [QuestionGenerationError.DATABASE_ERROR]: 'Unable to save questions, but you can continue with the assessment.',
   [QuestionGenerationError.NETWORK_TIMEOUT]: 'Network connection timeout. Retrying...',
-  [QuestionGenerationError.UNKNOWN]: 'An unexpected error occurred. Retrying...'
+  [QuestionGenerationError.UNKNOWN]: 'An unexpected error occurred. Retrying...',
+  // Cluster generation errors
+  [ClusterGenerationError.API_UNAVAILABLE]: 'Career matching service is temporarily unavailable.',
+  [ClusterGenerationError.RATE_LIMIT]: 'Processing your career recommendations...',
+  [ClusterGenerationError.INVALID_RESPONSE]: 'Received invalid career data. Please try again.',
+  [ClusterGenerationError.RAG_SEARCH_FAILED]: 'Failed to search occupations. Please try again.',
+  [ClusterGenerationError.CLUSTER_VALIDATION_FAILED]: 'Failed to generate valid career clusters. Please try again.',
+  [ClusterGenerationError.LLM_ERROR]: 'Career analysis service error. Please try again.',
+  [ClusterGenerationError.DATABASE_ERROR]: 'Unable to save career recommendations. Please try again.',
+  [ClusterGenerationError.NETWORK_TIMEOUT]: 'Network timeout during career analysis. Please try again.',
+  [ClusterGenerationError.UNKNOWN]: 'An unexpected error occurred during career analysis.'
 };
 
 export interface ErrorHandlingResult {

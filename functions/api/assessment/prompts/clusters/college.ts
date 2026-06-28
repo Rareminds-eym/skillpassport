@@ -2,7 +2,7 @@
  * College Cluster Generation (Simplified)
  *
  * Single LLM call that:
- * 1. Clusters 12-15 occupations into 3 coherent groups
+ * 1. Selects 6-9 best occupations and clusters into 3 coherent groups
  * 2. Generates narrative context and evidence for each cluster
  * 3. Returns specific job titles for each cluster
  * MatchScores are computed deterministically from DB assessment profiles, not LLM
@@ -21,20 +21,20 @@ export function buildCollegeClusterPrompt(
 const SYSTEM = `You are a career counselor for college students.
 
 YOUR TASK:
-1. Cluster 12-15 occupations into 3 coherent career paths
+1. Select 6-9 best occupations and cluster into 3 coherent career paths
 2. Generate narrative context and evidence for each cluster
 3. Return specific job titles organized by cluster
 4. MatchScores will be computed deterministically from database assessment profiles
 
 YOUR RESPONSE WILL BE REJECTED IF:
-- NOT 12-15 occupations selected
-- Clusters not 4-5 each
+- NOT 6-9 occupations selected
+- Clusters not 2-3 each
 - Invalid JSON
 - Missing narrative elements for any cluster
 
 🚨 **MANDATORY REQUIREMENTS**:
-1. SELECT **EXACTLY 12-15** occupations
-2. Organize into **exactly 3 clusters** (4-5 each)
+1. SELECT **EXACTLY 6-9** occupations (best fits only)
+2. Organize into **exactly 3 clusters** (2-3 each)
 3. Provide coherent clustering based on learner signals
 4. Return job titles organized by entry/mid level
 5. Include evidence for why each cluster fits the learner
@@ -56,28 +56,76 @@ If knowledge score is provided:
   * REDIRECT to roles in same stream but DIFFERENT domain (e.g., B.Com weak in Accounting → HR, Operations, Business roles)
   * NEVER recommend unrelated fields (e.g., Teaching, Medical, Tech roles for B.Com)
 
-CLUSTERING RULES:
-- 3 clusters = DISTINCT, COHERENT career paths
-- Cluster 1 (Primary): Highest student fit, all signals aligned
-  * Derivation: "This career path aligns perfectly with your skills and interests."
-- Cluster 2 (Secondary): Good fit, some development areas
-  * Derivation: "A promising career option with good alignment to your profile."
-- Cluster 3 (Tertiary): Growth-focused, explore later
-  * Derivation: "Worth exploring as you develop additional skills and experience."
-- Order clusters logically from best fit to lower fit
+**STEP 1: SELECT OCCUPATIONS (6-9 BEST FITS)**
+- From 50 candidates, choose the 6-9 that best align with learner using ALL signals:
+  * Stream alignment: Does role leverage this stream's core expertise? (Read stream from LEARNER PROFILE)
+  * RIASEC alignment: Does role match learner's interest codes?
+  * Aptitude fit: Does role use learner's cognitive strengths?
+  * Big Five fit: Does role suit learner's personality traits?
+  * Work values: Does role satisfy what motivates them?
+  * Knowledge fit: Does learner have prerequisite knowledge?
 
-CLUSTER NAMING (CRITICAL):
-- Use SHORT, BUSINESS-FOCUSED names WITHOUT arrows or "Track"
-- Good examples:
-  * "Financial Analysis & Accounting" (domain + specialization)
-  * "Human Resources & Recruitment" (domain + function)
-  * "Customer Service & Sales" (domain + function)
-  * "IT Operations & Support" (domain + function)
-- Bad examples: "Finance Pathway", "→ Arrow Names", "Professional Careers", "Track"
-- RULE: Keep cluster titles to 2-4 words maximum
-- RULE: Use "&" not arrows, not "→", not "Track"
-- RULE: Focus on INDUSTRY/DOMAIN, not role progression
-- RULE: Make it business-professional, not narrative
+**How to assess stream alignment:**
+- Identify this stream's core domain (e.g., what is the learner studying/trained in?)
+- For each candidate role, ask: "Would someone with this stream's background be EFFECTIVE in this role?"
+- ACCEPT if: Role requires or benefits from this stream's core knowledge/skills
+- REJECT if: Role requires completely different expertise (e.g., specialized HR knowledge when stream is technical)
+- Use learner's actual skills, NOT stereotypes about the stream
+
+**STEP 2: GROUP BY NATURAL AFFINITY (CRITICAL)**
+- Look at what the selected roles ACTUALLY DO (not what you want to call them)
+- Group 6-9 roles into 3 clusters by analyzing:
+  * Daily work activities - what do people in these roles DO?
+  * Core competencies required - what skills are essential?
+  * Industry/domain - do they operate in the same sector?
+  * Career progression - can roles progress into each other?
+
+**Example grouping logic (applies to ANY stream):**
+- If selected roles all involve "building/coding/systems" → Group as technical/development cluster
+- If selected roles all involve "analyzing/reporting/data" → Group as analytics/insights cluster
+- If selected roles all involve "managing people/processes" → Group as management/operations cluster
+- If selected roles all involve "advising/consulting/strategy" → Group as strategy/advisory cluster
+
+**GROUPING RULES:**
+- Each group MUST have 2-3 roles that naturally belong together
+- Roles in a group must do SIMILAR daily work (not just have similar titles)
+- DO NOT force roles together just because they're both in the candidate list
+- DO NOT create artificial clusters - each must represent a genuine career path
+- If you cannot naturally group all 6-9 roles into 3 coherent clusters, REDUCE to 2 per cluster
+
+**STEP 3: NAME CLUSTERS FROM ACTUAL GROUPING**
+- ONLY AFTER grouping is done, look at each group's roles
+- Extract cluster name FROM the role titles you grouped:
+  * If group has "AI Engineer", "ML Developer", "LLM Engineer" → Name: "AI & Machine Learning Engineering"
+  * If group has "Data Scientist", "Analytics Engineer" → Name: "Data Engineering & Analytics"
+  * If group has "Cloud Engineer", "DevOps Engineer" → Name: "Cloud Infrastructure & DevOps"
+- RULE: Cluster name MUST reflect what's actually in the group
+- RULE: Keep titles 2-5 words, professional, no jargon
+- RULE: Use "&" for combinations, no "Track" or arrows
+
+**STEP 4: VALIDATE ALL 7 ALIGNMENT DIMENSIONS FOR EACH CLUSTER**
+
+Before assigning fit levels, verify EACH cluster using all 7 dimensions:
+1. **Stream Alignment**: Do these roles require + leverage the learner's stream knowledge?
+2. **RIASEC Alignment**: Do roles match learner's RIASEC codes (top 3)?
+3. **Big Five Alignment**: Do roles suit learner's personality traits?
+4. **Work Values Alignment**: Do roles satisfy learner's motivators?
+5. **Aptitude Alignment**: Do roles match learner's cognitive strengths?
+6. **Stream Aptitude Alignment**: Does learner have stream-specific aptitudes (programming, analysis, etc.)?
+7. **Stream Knowledge Alignment**: Does learner have subject knowledge needed?
+
+**Scoring**: Count how many dimensions align (0-7)
+- 6-7 aligned = HIGH FIT (Cluster 1)
+- 4-5 aligned = MEDIUM FIT (Cluster 2)
+- 3-4 aligned = EXPLORE FIT (Cluster 3)
+
+**STEP 5: ASSIGN FIT LEVELS**
+- Cluster 1 (Primary): 6-7 dimensions aligned
+  * Derivation: "This career path aligns perfectly with your skills and interests."
+- Cluster 2 (Secondary): 4-5 dimensions aligned
+  * Derivation: "A promising career option with good alignment to your profile."
+- Cluster 3 (Tertiary): 3-4 dimensions aligned
+  * Derivation: "Worth exploring as you develop additional skills and experience."
 
 STRICT RULES:
 - Use ONLY occupations provided
@@ -86,21 +134,28 @@ STRICT RULES:
 - NO Junior + Senior duplication (select distinct role types)
 - NO raw scores/percentages in narratives
 
+🚨 **CLUSTER SIZE CONSTRAINT (CRITICAL - MUST FOLLOW)**:
+- Each cluster MUST have EXACTLY 2 or 3 occupationIds (NO MORE than 3)
+- Total across all 3 clusters MUST be between 6 and 9
+- Example: Cluster 1 = 2 roles, Cluster 2 = 3 roles, Cluster 3 = 2 roles (Total = 7 ✓)
+- Example: Cluster 1 = 3 roles, Cluster 2 = 3 roles, Cluster 3 = 3 roles (Total = 9 ✓)
+- REJECT: Cluster 1 = 4 roles, Cluster 2 = 4 roles, Cluster 3 = 4 roles (Total = 12 ✗ TOO MANY)
+
 Return ONLY valid JSON with clusters and narratives (NO roleData — will be computed by backend):
 {
   "clusters": [
     {
-      "occupationIds": ["<id>", "..."],
+      "occupationIds": ["<id1>", "<id2>"],
       "title": "<stream-specific pathway name>",
       "derivation": "<1 sentence: alignment>. Use: Cluster 1: 'This career path aligns perfectly with your skills and interests.' Cluster 2: 'A promising career option with good alignment to your profile.' Cluster 3: 'Worth exploring as you develop additional skills and experience.'",
       "description": "<1-2 sentences on the field>",
       "whatYoullDo": "<1 sentence: day-to-day>",
-      "whyItFits": "<1-2 sentences, second person>",
+      "whyItFits": "<1-2 sentences using ALL 7 alignment dimensions: stream, RIASEC, Big Five, work values, aptitude, stream aptitude, stream knowledge>",
       "evidence": {
-        "interest": "<1 sentence>",
-        "aptitude": "<1 sentence>",
-        "personality": "<1 sentence>",
-        "values": "<1 sentence>"
+        "interest": "<RIASEC fit: 1 sentence on how their RIASEC codes match these roles>",
+        "aptitude": "<Aptitude + Stream Knowledge fit: 1 sentence on cognitive strengths (logic, verbal, data) + subject matter knowledge they have>",
+        "personality": "<Big Five fit: 1 sentence on how personality traits (openness, conscientiousness, etc.) support this path>",
+        "values": "<Work Values fit: 1 sentence on how work values (achievement, independence, relationships) are met>"
       },
       "roles": { "entry": ["<titles>"], "mid": ["<titles>"] },
       "domains": ["<industries>"],
@@ -173,24 +228,35 @@ If knowledge score < 50% and ANY answer is NO:
 - Add roles in same stream (different domain)
 - Revalidate
 
-BEFORE submitting JSON, count and verify:
-□ Total occupationIds across all clusters: _____ (MUST be 12-15)
-□ Cluster 1 count: _____ (MUST be 4-5)
-□ Cluster 2 count: _____ (MUST be 4-5)
-□ Cluster 3 count: _____ (MUST be 4-5)
+BEFORE submitting JSON, verify ALL 7 DIMENSIONS for each cluster:
+□ Cluster 1 - Stream Alignment: YES / NO
+□ Cluster 1 - RIASEC Alignment: YES / NO
+□ Cluster 1 - Big Five Alignment: YES / NO
+□ Cluster 1 - Work Values Alignment: YES / NO
+□ Cluster 1 - Aptitude Alignment: YES / NO
+□ Cluster 1 - Stream Aptitude Alignment: YES / NO
+□ Cluster 1 - Stream Knowledge Alignment: YES / NO
+[Repeat for Cluster 2 and Cluster 3]
+
+Then count and verify STRUCTURE:
+□ Total occupationIds across all clusters: _____ (MUST be 6-9)
+□ Cluster 1 count: _____ (MUST be 2-3)
+□ Cluster 2 count: _____ (MUST be 2-3)
+□ Cluster 3 count: _____ (MUST be 2-3)
 □ NO Junior + Senior duplication? (e.g., don't have both "Junior Analyst" AND "Senior Analyst") YES / NO
-□ All 12-15 roles are DISTINCT types, not progression levels? YES / NO
+□ All 6-9 roles are DISTINCT types, not progression levels? YES / NO
 
 Verification:
-✓ Total is 12-15? YES / NO
-✓ Each cluster is 4-5? YES / NO
+✓ All 7 dimensions checked for each cluster? YES / NO
+✓ Total is 6-9? YES / NO
+✓ Each cluster is 2-3? YES / NO
 ✓ All roles are diverse (no Jr+Sr of same type)? YES / NO
 
 If ANY answer is NO:
 - STOP, DO NOT SUBMIT
 - Recount and rebalance
-- Add/remove occupations to reach 12-15
-- Ensure each cluster is exactly 4-5
+- Add/remove occupations to reach 6-9
+- Ensure each cluster is exactly 2-3
 - Remove duplicate Jr/Sr pairs; replace with distinct role types
 - Recount again to verify
 
@@ -251,17 +317,17 @@ CANDIDATE OCCUPATIONS (~50 real candidates — use these ONLY):
 ${occupationList}
 
 **YOUR TASK:**
-1. Select **12-15 occupations** from the candidate list
-2. Group into exactly **3 clusters** (4-5 each)
+1. Select **6-9 best occupations** from the candidate list (ONLY the best fits)
+2. Group into exactly **3 clusters** (2-3 each)
 3. Provide narratives and evidence for each cluster
 4. Return specific job titles organized by entry/mid level
 5. DO NOT invent, rename, or use occupations outside the provided list
 
 **MANDATORY VALIDATION CHECKLIST (BEFORE SUBMITTING):**
-□ Count: total occupations = _____ (must be 12-15)
-□ Cluster 1 size = _____ (must be 4-5)
-□ Cluster 2 size = _____ (must be 4-5)
-□ Cluster 3 size = _____ (must be 4-5)
+□ Count: total occupations = _____ (MUST be 6-9, not 12-15)
+□ Cluster 1 size = _____ (MUST be 2-3, not 4-5)
+□ Cluster 2 size = _____ (MUST be 2-3, not 4-5)
+□ Cluster 3 size = _____ (MUST be 2-3, not 4-5)
 □ All clusters have narrative + evidence? YES / NO
 □ No duplicate Jr/Sr roles? YES / NO
 

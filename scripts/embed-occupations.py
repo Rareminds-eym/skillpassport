@@ -3,14 +3,17 @@
 Generate role (occupation) embeddings for RAG, using the FULL semantic field set
 from the seeded v2 tables, and write a deterministic seed file.
 
-Per-role document (all signal-bearing fields):
+Per-role document (all signal-bearing fields, combining ALL domains):
+    Industries: <all industries for this role>
     Role: <name>
-    Domain: <domain name> — <domain description>
+    Domains:
+      1. <domain name> — <domain description>
+      2. ...
     RIASEC interest codes: <riasec_code_string>
-    Summary: <description>
+    Role Description: <description>
     Why this fits: <riasec_reason>
     Observable behaviours: <observable_behaviours>
-    Key responsibilities:
+    Key responsibilities (from all domains):
     - <capability name>: <capability description> (Work style: <work_style_demands>)
       Skills: <skill names>
     - ...
@@ -78,15 +81,36 @@ def embed(text):
 
 def build_text(o):
     rds = o.get("role_domains") or []
-    dom = rds[0].get("domains") if rds else None
-    domain = f"{dom['name']} — {dom.get('description', '')}".strip(" —") if dom else ""
 
-    lines = [f"Role: {o['name']}",
-             f"Domain: {domain}",
-             f"RIASEC interest codes: {o.get('riasec_code_string') or ''}",
-             f"Summary: {o.get('description') or ''}",
-             f"Why this fits: {o.get('riasec_reason') or ''}",
-             f"Observable behaviours: {o.get('observable_behaviours') or ''}"]
+    # Collect all industries and domains
+    industries = set()
+    for rd in rds:
+        dom = rd.get("domains")
+        if dom:
+            ind = dom.get("industries", {}).get("name", "")
+            if ind:
+                industries.add(ind)
+
+    lines = []
+
+    if industries:
+        lines.append(f"Industries: {', '.join(sorted(industries))}")
+
+    lines.append(f"Role: {o['name']}")
+
+    # Include all domains
+    if rds:
+        lines.append("Domains:")
+        for i, rd in enumerate(rds, 1):
+            dom = rd.get("domains")
+            if dom:
+                domain_text = f"{dom['name']} — {dom.get('description', '')}".strip(" —")
+                lines.append(f"  {i}. {domain_text}")
+
+    lines.extend([f"RIASEC interest codes: {o.get('riasec_code_string') or ''}",
+                  f"Role Description: {o.get('description') or ''}",
+                  f"Why this fits: {o.get('riasec_reason') or ''}",
+                  f"Observable behaviours: {o.get('observable_behaviours') or ''}"])
 
     apt = o.get("aptitude_profile") or {}
     if apt:
@@ -108,6 +132,26 @@ def build_text(o):
         lines.append(f"  Agreeableness: {b5.get('agreeableness', 0)}/5")
         lines.append(f"  Emotional stability: {b5.get('emotional_stability', 0)}/5")
 
+    b5_assess = o.get("big5_assessment") or {}
+    if b5_assess:
+        lines.append("High-Fit Big Five Traits:")
+        traits = b5_assess.get("traits", [])
+        if traits:
+            lines.append(f"  Traits: {', '.join(traits)}")
+        rationale = b5_assess.get("rationale", "")
+        if rationale:
+            lines.append(f"  Why: {rationale}")
+
+    apt_assess = o.get("aptitude_assessment") or {}
+    if apt_assess:
+        lines.append("High-Fit Aptitude Areas:")
+        areas = apt_assess.get("areas", [])
+        if areas:
+            lines.append(f"  Areas: {', '.join(areas)}")
+        rationale = apt_assess.get("rationale", "")
+        if rationale:
+            lines.append(f"  Why: {rationale}")
+
     wv = o.get("work_values_profile") or {}
     if wv:
         lines.append("Work values profile:")
@@ -120,13 +164,24 @@ def build_text(o):
         lines.append(f"  Creativity: {wv.get('creativity', 0)}/5")
         lines.append(f"  Leadership: {wv.get('leadership', 0)}/5")
 
+    wv_assess = o.get("work_values_assessment") or {}
+    if wv_assess:
+        lines.append("High-Fit Work Values:")
+        values = wv_assess.get("values", [])
+        if values:
+            lines.append(f"  Values: {', '.join(values)}")
+        rationale = wv_assess.get("rationale", "")
+        if rationale:
+            lines.append(f"  Why: {rationale}")
+
     lines.append("Key responsibilities:")
 
-    # capabilities (ordered by plan step), each with work style + its skills
+    # Collect all capabilities from all domains (ordered by plan step)
     steps = []
     for rd in rds:
         steps.extend(rd.get("role_capability_sequence") or [])
     steps.sort(key=lambda s: s.get("sequence_step") or 0)
+
     for s in steps:
         cm = s.get("capability_master") or {}
         if not cm.get("name"):
@@ -136,7 +191,8 @@ def build_text(o):
         if ws:
             line += f" (Work style: {ws})"
         lines.append(line)
-        skills = [sk["name"] for sk in (cm.get("capability_skills") or []) if sk.get("name")]
+        # Skills are now in skill_capability_mapping junction table
+        skills = [sk["name"] for sk in (cm.get("skill_capability_mapping") or []) if sk.get("name")]
         if skills:
             lines.append("  Skills: " + "; ".join(skills))
     return "\n".join(lines)
@@ -147,13 +203,14 @@ def vec_literal(v):
 
 
 def main():
-    # occupations -> role_domains -> (domains, role_capability_sequence -> capability_master -> skills)
+    # occupations -> role_domains -> (domains -> industries, role_capability_sequence -> capability_master -> skill_capability_mapping -> skills)
     print("Fetching occupations with full relationships...")
     occ = sb_get("/occupations?is_active=eq.true&select=id,code,name,description,riasec_code_string,riasec_reason,"
                  "observable_behaviours,aptitude_profile,big_five_profile,work_values_profile,"
-                 "role_domains(domains(name,description),"
+                 "big5_assessment,aptitude_assessment,work_values_assessment,"
+                 "role_domains(domains(name,description,industries(name)),"
                  "role_capability_sequence(sequence_step,"
-                 "capability_master(name,description,primary_riasec,secondary_riasec,work_style_demands,capability_skills(name))))"
+                 "capability_master(name,description,primary_riasec,secondary_riasec,work_style_demands,skill_capability_mapping(skills(name)))))"
                  "&order=code&limit=5000")
     print(f"\n[DATA] Fetched {len(occ)} active roles\n")
 

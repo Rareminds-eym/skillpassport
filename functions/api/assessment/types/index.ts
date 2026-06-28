@@ -5,6 +5,59 @@
  */
 
 // ============================================================================
+// GRADE LEVELS & STUDENT PROFILE
+// ============================================================================
+
+export type GradeLevel = 'middle' | 'high' | 'higher' | 'after10' | 'after12' | 'college';
+
+/**
+ * Unified student profile used across scoring, synthesis, and clustering services
+ */
+export interface StudentProfile {
+  riasec_scores: Record<string, number>;
+  riasec_code: string;
+  strength_scores: Array<{ dimension: string; average: number; ratings: number[] }>;
+  aptitude_overall?: number;
+  accuracy_by_subtag?: Record<string, number>;
+  learning_preferences?: Record<string, unknown>;
+  // College / higher-grade signals (optional; absent for middle school)
+  big_five_scores?: Record<string, number>;   // dimension -> 1..5 average
+  work_values?: Record<string, number>;        // value -> 1..5 average
+  knowledge_score?: number;                     // 0..100 scored domain knowledge
+  knowledge_strengths?: string[];               // topic areas student excels in
+  knowledge_weaknesses?: string[];              // topic areas student struggles with
+  knowledge_details?: Record<string, any>;      // full knowledge assessment details (byTopic, strongTopics, weakTopics, recommendation)
+  employability_scores?: Record<string, number>; // skill -> 0..100 (Communication, Leadership, SJT, etc.)
+  stream_aptitude_score?: number;               // 0..100 stream-specific aptitude (BBA, MCA, B.Tech, etc.)
+  stream_aptitude_details?: Record<string, any>; // full stream aptitude details (byDifficulty, correctCount, totalQuestions)
+  stream?: string;
+  degreeLevel?: string;                          // undergraduate | postgraduate | diploma (UG/PG)
+}
+
+/**
+ * Match score result for basic grade levels
+ */
+export interface MatchScores {
+  interestFit: number;
+  capabilityFit: number;
+  personalityFit: number;
+  final: number;
+}
+
+/**
+ * College / higher-secondary 5-component match result.
+ * final = IF×0.35 + CF×0.25 + PF×0.20 + KF×0.12 + VF×0.08
+ */
+export interface CollegeMatchScores {
+  interestFit: number;     // IF: RIASEC hexagon-distance alignment, full code (0-100)
+  cognitiveFit: number;    // CF: aptitude + strengths (0-100)
+  personalityFit: number;  // PF: Big Five alignment (0-100)
+  knowledgeFit: number;    // KF: scored domain knowledge (0-100)
+  valuesFit: number;       // VF: work-values alignment (0-100)
+  final: number;
+}
+
+// ============================================================================
 // REQUEST TYPES
 // ============================================================================
 

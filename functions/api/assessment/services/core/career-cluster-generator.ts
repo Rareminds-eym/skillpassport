@@ -11,16 +11,16 @@
  */
 
 import { callOpenRouterWithRetry, repairAndParseJSON, getAPIKeys } from '../../../shared/ai-config';
-import {
-  calculateMiddleSchoolMatchScore,
-  calculateCollegeMatchScore,
-  type StudentProfile,
-  type GradeLevel,
-} from './scoring-service';
+import type { StudentProfile, GradeLevel } from '../../types';
 import { callEmbeddingWorker } from '../../../embedding/services/embeddingWorkerClient';
 import { EMBEDDING_TASK_TYPES } from '../../../embedding/config/constants';
 import { getClusterPrompt } from '../../prompts';
 import type { ClusterNarrativeContext } from '../../types';
+import {
+  compareBigFiveProfiles,
+  compareWorkValues,
+  buildAssessmentRagContext,
+} from './assessment-context-builder';
 
 // Re-export so existing importers (analysis-*) keep working.
 export type { ClusterNarrativeContext } from '../../types';
@@ -51,15 +51,6 @@ const CLUSTER_GENERATION_CONFIG = {
   temperature: 0.1,
 };
 
-/** Dynamic fit band assignment based on cluster rank (no hardcoded thresholds).
- * Highest-scoring cluster = High, lowest = Explore, middle = Medium.
- */
-function fitBandByRank(index: number, totalClusters: number): 'High' | 'Medium' | 'Explore' {
-  if (index === 0) return 'High';
-  if (index === totalClusters - 1) return 'Explore';
-  return 'Medium';
-}
-
 interface ScoredOccupation {
   occupation_id: string;
   code: string;
@@ -67,7 +58,14 @@ interface ScoredOccupation {
   riasecCodes: string[];
   score: number;
   semanticScore?: number;
-  description?: string;  // Role description from occupations table
+  riasecAlignment?: number;  // 0-1 scale from RPC (how well occupation RIASEC matches learner)
+  description?: string;
+  // Win 1: Observable behaviours
+  observable_behaviours?: string;
+  // Wins 4, 5, 6: Profiles for profile matching
+  aptitude_profile?: Record<string, number>;
+  big_five_profile?: Record<string, number>;
+  work_values_profile?: Record<string, number>;
 }
 
 /**
@@ -133,24 +131,22 @@ async function generateCareerClusters(
   }
 
 
-  // RAG retrieval: semantic search → get all candidates.
+  // Step 1: Context input
+  console.log(`[CONTEXT] Stream=${student.stream} | RIASEC=${riasecCode} | Grade=${gradeLevel}`);
+
+  // Step 2: RAG retrieval: semantic search → get all candidates.
   const candidates = await retrieveByEmbedding(supabase, student, context, riasecCode, env, gradeLevel);
 
   if (candidates.length === 0) {
-    console.warn('[CLUSTER-GEN] No candidates from RAG — skipping');
+    console.warn('[RAG] No candidates retrieved');
     return null;
   }
 
-  // LOG RAG OUTPUT
-  console.log('\n' + '='.repeat(120));
-  console.log('[RAG OUTPUT] Retrieved ' + candidates.length + ' candidates from semantic search');
-  console.log('='.repeat(120));
-  candidates.forEach((occ, i) => {
-    console.log(
-      `[RAG] #${(i + 1).toString().padStart(3)} | ${occ.name.padEnd(50)} | RIASEC: ${(occ.riasecCodes.join('/') || 'n/a').padEnd(10)} | Semantic: ${(occ.semanticScore ?? 'n/a').toString().padEnd(8)}`
-    );
+  console.log(`[RAG] Retrieved ${candidates.length} candidates | Top 3: ${candidates.slice(0, 3).map(c => c.name).join(' → ')}`);
+  candidates.slice(0, 50).forEach((occ, i) => {
+    console.log(`[RAG-${(i + 1).toString().padStart(2)}] ${occ.name.substring(0, 38).padEnd(38)} | ${(occ.riasecCodes?.join('/') || 'n/a').padEnd(8)} | Sem=${(occ.semanticScore || 0).toFixed(2)} | RIASEC=${(occ.riasecAlignment || 0).toFixed(2)}`);
   });
-  console.log('='.repeat(120) + '\n');
+
 
   // OpenRouter: group + narrative only.
   // Phase 1 LLM receives ALL candidates and uses full learner profile to intelligently select 12-15 best fits
@@ -161,6 +157,7 @@ async function generateCareerClusters(
   }
 
   const { system, user } = getClusterPrompt(gradeLevel, student, candidates, context);
+
   const messages = [
     { role: 'system', content: system },
     { role: 'user', content: user },
@@ -172,12 +169,20 @@ async function generateCareerClusters(
     temperature: CLUSTER_GENERATION_CONFIG.temperature,
   });
 
+  // Step 3: LLM Clustering
+  console.log(`[LLM] Starting cluster generation with ${candidates.length} candidates`);
   const parsed = repairAndParseJSON(raw, true);
   const aiClusters: any[] = parsed?.clusters || parsed?.careerFit?.clusters || [];
   if (!Array.isArray(aiClusters) || aiClusters.length === 0) {
-    console.error('[CLUSTER-GEN] OpenRouter returned no clusters');
+    console.error('[LLM] No clusters returned from LLM');
     return null;
   }
+
+  console.log(`[LLM] Generated ${aiClusters.length} clusters`);
+  aiClusters.forEach((cluster, i) => {
+    const roleCount = cluster.occupationIds?.length || 0;
+    console.log(`[CLUSTER-${i + 1}] ${cluster.title || 'Untitled'} | Roles=${roleCount} | Score=${cluster.matchScore}`);
+  });
 
   const specificOptions = sanitizeSpecificOptions(parsed?.specificOptions || parsed?.careerFit?.specificOptions);
   const overallSummary = typeof parsed?.overallSummary === 'string' && parsed.overallSummary.trim()
@@ -208,43 +213,32 @@ async function generateCareerClusters(
     };
   });
 
-  // VALIDATE Phase 1 requirements
+  // Step 4: Match Score Calculation & Validation
   const totalSelected = selectedOccupationIds.length;
-  const isCountValid = totalSelected >= 12 && totalSelected <= 15;
-  const eachClusterValid = clusterCounts.every(count => count >= 4 && count <= 5);
+  const isCountValid = totalSelected >= 6 && totalSelected <= 9;
+  const eachClusterValid = clusterCounts.every(count => count >= 2 && count <= 3);
 
-  console.log('\n' + '='.repeat(120));
-  console.log('[CLUSTER-GEN] PHASE 1: Clustering complete. VALIDATION CHECK');
-  console.log('='.repeat(120));
-  console.log(`[CLUSTER-GEN] Total occupations selected: ${totalSelected} (required: 12-15) → ${isCountValid ? '✅' : '❌'}`);
-  console.log(`[CLUSTER-GEN] Cluster sizes: ${clusterCounts.join('/')} (each required: 4-5)`);
-  console.log(`[CLUSTER-GEN] Each cluster 4-5? → ${eachClusterValid ? '✅' : '❌'}`);
+  console.log(`[MATCHSCORE] Validation: Total=${totalSelected} (expect 6-9) | Per-cluster=${clusterCounts.join(',')} (expect 2-3 each) | Valid=${isCountValid && eachClusterValid}`);
 
   if (!isCountValid || !eachClusterValid) {
-    console.error('[CLUSTER-GEN] ❌ PHASE 1 VALIDATION FAILED');
-    console.error(`[CLUSTER-GEN] Expected: 12-15 total occupations, each cluster 4-5 occupations`);
-    console.error(`[CLUSTER-GEN] Got: ${totalSelected} total, clusters [${clusterCounts.join(', ')}]`);
-    console.error('[CLUSTER-GEN] LLM did not follow Phase 1 requirements. Skipping career clustering.');
+    console.error(`[MATCHSCORE] ❌ FAILED: Got ${totalSelected} total, clusters [${clusterCounts.join(', ')}]`);
     return null;
   }
 
-  console.log(`[CLUSTER-GEN] ✅ VALIDATION PASSED`);
-  console.log(`[CLUSTER-GEN] Selected: ${selectedOccupationIds.map(id => occupationMap[id]?.name).filter(Boolean).join(', ')}`);
-  console.log('='.repeat(120) + '\n');
+  // Step 5: Roles extraction
+  console.log(`[ROLES] Processing ${totalSelected} selected roles across ${aiClusters.length} clusters`);
 
   // Extract roleData from LLM response (embedded in each cluster)
-  console.log('[CLUSTER-GEN] Computing matchScores from DB occupation assessment profiles...\n');
 
   // Compute cluster scores from LLM-selected occupations using DB occupation assessment profiles.
   const scoreById = new Map(candidates.map((o) => [o.occupation_id, o]));
-  const clusters = (
-    await Promise.all(
-      aiClusters.map((c) => finalizeCluster(c, scoreById, student, supabase))
-    )
-  ).filter((c): c is Record<string, unknown> => c !== null);
+  const clusterResults = await Promise.all(
+    aiClusters.map((c, idx) => finalizeCluster(c, scoreById, student, supabase, idx))
+  );
+  const clusters = clusterResults.filter((c): c is Record<string, unknown> => c !== null);
 
   if (clusters.length === 0) {
-    console.error('[CLUSTER-GEN] No valid clusters after validation');
+    console.error('[ROLES] No valid clusters after scoring');
     return null;
   }
 
@@ -253,6 +247,12 @@ async function generateCareerClusters(
   const fitBands = ['High', 'Medium', 'Explore'] as const;
   clusters.forEach((cluster, index) => {
     (cluster as any).fit = fitBands[index] || 'Explore';
+  });
+
+  // Final summary
+  console.log(`[SUMMARY] Final clusters=${clusters.length} | Total roles=${selectedOccupationIds.length}`);
+  clusters.forEach((cluster: any, i) => {
+    console.log(`[CLUSTER-FINAL-${i + 1}] ${cluster.title} [${cluster.fit}] | Score=${cluster.matchScore?.toFixed(0) || '—'}`);
   });
 
   return { clusters, specificOptions, overallSummary };
@@ -289,105 +289,24 @@ function sanitizeSpecificOptions(raw: any): Record<string, unknown> | undefined 
  * Build the student "query" document embedded for semantic retrieval.
  * College adds the richer signals (Big Five, work values, knowledge) to sharpen the query.
  */
+/**
+ * Build RAG embedding query text from student profile and context.
+ * Uses assessment-context-builder as the single source for context generation.
+ */
 function buildStudentEmbeddingText(
   student: StudentProfile,
   context: ClusterNarrativeContext,
-  gradeLevel: GradeLevel,
-  aptitudeInsights?: { strengths: string[]; weaknesses: string[]; pattern: string } | null
+  _gradeLevel: GradeLevel
 ): string {
-  const strengths = (student.strength_scores || [])
-    .slice().sort((a, b) => b.average - a.average).slice(0, 6)
-    .map((s) => s.dimension).join(', ');
-  const prefs = Object.values(student.learning_preferences || {})
-    .flatMap((v) => (Array.isArray(v) ? v : [v]))
-    .filter((v): v is string => typeof v === 'string').join('; ');
-  const subtags = context.adaptive?.accuracyBySubtag || {};
-  // Only label an aptitude "strongest" if it clears a real floor (>= 50% accuracy).
-  // Without this, a low-scoring student's query claimed e.g. "pattern recognition" (12.5%)
-  // as a strength, injecting misleading positive signal into the embedding.
-  const APTITUDE_FLOOR = 50;
-  const strongAptitudes = Object.entries(subtags)
-    .map(([k, v]) => [k, typeof v === 'object' && v ? Number(v.accuracy) : Number(v)] as [string, number])
-    .filter(([, a]) => !isNaN(a) && a >= APTITUDE_FLOOR).sort((x, y) => y[1] - x[1]).slice(0, 3)
-    .map(([k]) => k.replace(/_/g, ' ')).join(', ');
-  const reflections = (context.reflections || []).map((r) => r.answer).join(' ');
+  // Single source of truth: assessment-context-builder handles all RAG context
+  let ragContext = buildAssessmentRagContext(student, { degreeLevel: student.degreeLevel }, undefined);
 
-  const lines = [
-    student.stream ? `Enrolled program / stream: ${student.stream}.` : '',
-    student.degreeLevel ? `Study level: ${student.degreeLevel} (${student.degreeLevel === 'postgraduate' ? 'targeting advanced / specialist roles' : 'targeting entry-level roles'}).` : '',
-    `Student interest profile (RIASEC ${student.riasec_code}).`,
-    `RIASEC scores: ${JSON.stringify(student.riasec_scores)}.`,
-    strengths ? `Top character strengths: ${strengths}.` : '',
-    strongAptitudes ? `Strongest aptitude areas: ${strongAptitudes}.` : '',
-    prefs ? `Learning preferences: ${prefs}.` : '',
-  ];
-
-  // College/after12/higher grades: add JSON assessment profiles + Big Five, work values for richer semantic embedding.
-  const richGrades = ['college', 'after12', 'higher_secondary'];
-  if (richGrades.includes(gradeLevel)) {
-    if (student.aptitude_scores) {
-      lines.push(`aptitude_profile: ${JSON.stringify(student.aptitude_scores)}.`);
-    }
-    if (student.big_five_scores) {
-      lines.push(`big_five_profile: ${JSON.stringify(student.big_five_scores)}.`);
-    }
-    if (student.work_values) {
-      lines.push(`work_values_profile: ${JSON.stringify(student.work_values)}.`);
-    }
-
-    const VALUE_FLOOR = 3.5;
-    const topAbove = (obj: Record<string, number> | undefined, n: number, floor: number) =>
-      Object.entries(obj || {})
-        .filter(([, v]) => v >= floor)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, n)
-        .map(([k]) => k)
-        .join(', ');
-    const bigFive = topAbove(student.big_five_scores, 3, VALUE_FLOOR);
-    const values = topAbove(student.work_values, 3, VALUE_FLOOR);
-    if (bigFive) lines.push(`Strongest Big Five traits: ${bigFive}.`);
-    if (values) lines.push(`Top work values: ${values}.`);
-
-    // Add domain knowledge with insights (not just percentage)
-    if (student.knowledge_score != null) {
-      let knowledgeLine = `Domain knowledge score: ${student.knowledge_score}%.`;
-      if (context.knowledgeInsights?.strengths?.length) {
-        knowledgeLine += ` Strong in: ${context.knowledgeInsights.strengths.join(', ')}.`;
-      }
-      if (context.knowledgeInsights?.weaknesses?.length) {
-        knowledgeLine += ` Weak in: ${context.knowledgeInsights.weaknesses.join(', ')}.`;
-      }
-      lines.push(knowledgeLine);
-    }
-
-    // Add aptitude insights from adaptive test difficulty-based performance
-    if (aptitudeInsights?.strengths?.length) {
-      lines.push(`Aptitude strengths: ${aptitudeInsights.strengths.join(', ')}.`);
-    }
-    if (aptitudeInsights?.weaknesses?.length) {
-      lines.push(`Aptitude gaps to develop: ${aptitudeInsights.weaknesses.join(', ')}.`);
-    }
-    if (aptitudeInsights?.pattern) {
-      lines.push(`Aptitude pattern: ${aptitudeInsights.pattern}.`);
-    }
-    // Structured signals above + the AI profile-synthesis narrative below (grounded + rich).
-    if (context.profileNarrative) lines.push(`Profile synthesis: ${context.profileNarrative}`);
+  // Add profileNarrative from college.ts synthesis if available (most domain-specific signal)
+  if (context.profileNarrative) {
+    ragContext += `\n\nAI PROFILE SYNTHESIS (Domain-Grounded):\n${context.profileNarrative}`;
   }
 
-  if (reflections) lines.push(`Reflection: ${reflections}`);
-
-  // LOG: Show each line of learner context being added to RAG query
-  const filteredLines = lines.filter(Boolean);
-  console.log('\n' + '='.repeat(120));
-  console.log('[RAG QUERY BUILDER] Learner context lines assembled for semantic embedding:');
-  console.log('='.repeat(120));
-  filteredLines.forEach((line, idx) => {
-    const preview = line.length > 100 ? line.substring(0, 100) + '...' : line;
-    console.log(`[Line ${idx + 1}/${filteredLines.length}] ${preview}`);
-  });
-  console.log('='.repeat(120) + '\n');
-
-  return filteredLines.join('\n');
+  return ragContext;
 }
 
 /**
@@ -405,12 +324,13 @@ async function retrieveByEmbedding(
   gradeLevel: GradeLevel
 ): Promise<ScoredOccupation[]> {
   try {
-    const text = buildStudentEmbeddingText(student, context, gradeLevel, context.aptitudeInsights);
+    const text = buildStudentEmbeddingText(student, context, gradeLevel);
     const queryVec = await callEmbeddingWorker(text, env, EMBEDDING_TASK_TYPES.RETRIEVAL_QUERY);
     const literal = '[' + queryVec.map((x) => x.toFixed(6)).join(',') + ']';
 
     const { data, error } = await supabase.rpc('match_occupations_by_embedding', {
       query_embedding: literal,
+      learner_riasec_code: riasecCode,
       match_count: CANDIDATE_POOL_SIZE,
     });
     if (error) {
@@ -419,18 +339,22 @@ async function retrieveByEmbedding(
     }
     if (!data || data.length === 0) return [];
 
-
-    const candidates: ScoredOccupation[] = (data as any[]).map((occ, i) => {
+    // Build candidates - keep RAG order (no reranking here)
+    // Profiles fetched on-demand in finalizeCluster() for actual scoring
+    const candidates: ScoredOccupation[] = (data as any[]).map((occ) => {
       const riasecCodes: string[] = occ.occupation_codes || [];
       const sim = Number(occ.similarity);
+      const alignment = Number(occ.riasec_alignment);
+
       return {
         occupation_id: occ.occupation_id,
         code: occ.occupation_code,
         name: occ.occupation_name,
         riasecCodes,
-        score: 0, // Will be computed by finalizeCluster after LLM clustering
+        score: 0,
         semanticScore: !isNaN(sim) ? Math.round(sim * 1000) / 10 : undefined,
-        description: occ.description || occ.occupation_description,  // From occupations table
+        riasecAlignment: !isNaN(alignment) ? Math.round(alignment * 100) : undefined,
+        description: occ.description || occ.occupation_description,
       };
     });
 
@@ -457,17 +381,22 @@ async function finalizeCluster(
   aiCluster: any,
   scoreById: Map<string, ScoredOccupation>,
   student: StudentProfile,
-  supabase: any
+  supabase: any,
+  clusterIndex: number = 0
 ): Promise<Record<string, unknown> | null> {
   // Accept occupation ids from the model's grouping, keep only those in the candidate set.
   const requestedIds: string[] = Array.isArray(aiCluster?.occupationIds)
     ? aiCluster.occupationIds
     : [];
+
   const validOccupations = requestedIds
     .map((id) => scoreById.get(id))
     .filter((o): o is ScoredOccupation => !!o);
 
-  if (validOccupations.length === 0) return null;
+  if (validOccupations.length === 0) {
+    console.warn(`[FINALIZE-${clusterIndex + 1}] No valid occupations in candidate set for "${aiCluster?.title}" (requested: ${requestedIds.length})`);
+    return null;
+  }
 
   // Fetch occupation assessment profiles from DB for all occupations in this cluster.
   const { data: occupationProfiles, error } = await supabase
@@ -476,7 +405,7 @@ async function finalizeCluster(
     .in('id', validOccupations.map((o) => o.occupation_id));
 
   if (error) {
-    console.error(`[CLUSTER-GEN] Error fetching occupation profiles: ${error.message}`);
+    console.error(`[FINALIZE-${clusterIndex + 1}] Error fetching occupation profiles: ${error.message}`);
     return null;
   }
 
@@ -509,22 +438,28 @@ async function finalizeCluster(
     // Compute component scores using ONLY REAL DATA (no neutral padding)
     const scores: { component: string; score: number; weight: number }[] = [];
 
-    // Aptitude (if data exists)
+    // Aptitude (if data exists) - Win 4
     if (Object.keys(learnerAptitude).length > 0 && Object.keys(profiles.aptitude_profile).length > 0) {
       const aptitudeScore = computeAssessmentMatchScore(learnerAptitude, profiles.aptitude_profile);
       scores.push({ component: 'aptitude', score: aptitudeScore, weight: 0.35 });
     }
 
-    // Big Five (if data exists)
+    // Big Five (if data exists) - Win 5
     if (student.big_five_scores && Object.keys(student.big_five_scores).length > 0 && Object.keys(profiles.big_five_profile).length > 0) {
-      const bigFiveScore = computeAssessmentMatchScore(student.big_five_scores, profiles.big_five_profile);
-      scores.push({ component: 'big_five', score: bigFiveScore, weight: 0.25 });
+      // Use the enhanced comparison function
+      const bigFiveScore = Math.round(compareBigFiveProfiles(student.big_five_scores, profiles.big_five_profile) || 0);
+      if (!isNaN(bigFiveScore) && bigFiveScore > 0) {
+        scores.push({ component: 'big_five', score: bigFiveScore, weight: 0.25 });
+      }
     }
 
-    // Work Values (if data exists)
-    if (student.work_values && Object.keys(student.work_values).length > 0 && Object.keys(profiles.work_values_profile).length > 0) {
-      const workValuesScore = computeAssessmentMatchScore(student.work_values, profiles.work_values_profile);
-      scores.push({ component: 'work_values', score: workValuesScore, weight: 0.4 });
+    // Work Values (if data exists) - Win 6
+    if (student.work_values_scores && Object.keys(student.work_values_scores).length > 0 && Object.keys(profiles.work_values_profile).length > 0) {
+      // Use the enhanced comparison function
+      const workValuesScore = Math.round(compareWorkValues(student.work_values_scores, profiles.work_values_profile) || 0);
+      if (!isNaN(workValuesScore) && workValuesScore > 0) {
+        scores.push({ component: 'work_values', score: workValuesScore, weight: 0.4 });
+      }
     }
 
     // If no data available, skip this occupation
@@ -554,7 +489,7 @@ async function finalizeCluster(
     clusterScore = Math.round(occupationScores.reduce((sum, s) => sum + s, 0) / occupationScores.length);
     const sorted = [...occupationScores].sort((a, b) => b - a);
     const scoreRange = `${sorted[sorted.length - 1]}-${sorted[0]}`;
-    console.log(`[CLUSTER-GEN] Cluster "${aiCluster?.title}" avg matchScore: ${clusterScore} (range: ${scoreRange})`);
+    console.log(`[FINALIZE-${clusterIndex + 1}] "${aiCluster?.title}" avg matchScore: ${clusterScore} (range: ${scoreRange})`);
   }
 
   return {
@@ -586,17 +521,36 @@ async function finalizeCluster(
  * Convert accuracy_by_subtag (percentage-based) to 1-5 aptitude scale.
  * Formula: score = (accuracy_percent / 100) * 5, clamped to [1, 5]
  */
-function convertAccuracyToAptitudeProfile(accuracy: Record<string, number> | undefined): Record<string, number> {
+/**
+ * Extract and normalize accuracy_by_subtag to 0-100 scale (same as occupation aptitude_profile).
+ * The adaptive_aptitude_results.accuracy_by_subtag is an object with { accuracy: percentage },
+ * so we extract the accuracy value. If it's a direct percentage, use it as-is.
+ * This ensures learner and occupation aptitude values are on the same 0-100 scale for comparison.
+ */
+function convertAccuracyToAptitudeProfile(accuracy: Record<string, number | any> | undefined): Record<string, number> {
   if (!accuracy || Object.keys(accuracy).length === 0) {
     return {};
   }
 
   const profile: Record<string, number> = {};
-  for (const [key, percentValue] of Object.entries(accuracy)) {
-    if (typeof percentValue === 'number' && !isNaN(percentValue)) {
-      // Convert percentage (0-100) to 1-5 scale
-      const scaled = Math.max(1, Math.min(5, (percentValue / 100) * 5));
-      profile[key] = Math.round(scaled * 10) / 10; // Round to 1 decimal
+  for (const [key, value] of Object.entries(accuracy)) {
+    let percentValue = 0;
+
+    // Handle two formats:
+    // 1. Direct value: { "verbal_reasoning": 86.36 }
+    // 2. Object with accuracy field: { "verbal_reasoning": { "accuracy": 86.36 } }
+    if (typeof value === 'number' && !isNaN(value)) {
+      percentValue = value; // Direct percentage (0-100)
+    } else if (typeof value === 'object' && value !== null && 'accuracy' in value) {
+      const acc = Number(value.accuracy);
+      if (!isNaN(acc)) {
+        percentValue = acc; // Extract accuracy from object (0-100)
+      }
+    }
+
+    // Keep on 0-100 scale (same as occupation aptitude_profile)
+    if (percentValue > 0) {
+      profile[key] = Math.round(percentValue * 10) / 10; // Round to 1 decimal
     }
   }
   return profile;
@@ -604,8 +558,8 @@ function convertAccuracyToAptitudeProfile(accuracy: Record<string, number> | und
 
 /**
  * Compute normalized distance match score between learner and occupation profiles.
- * For 1-5 scale: score = ((5 - abs(learner - occupation)) / 5.0) * 100
- * Returns 0-100 scale score, or null if no matching data.
+ * Data is on 0-100 scale: score = 100 - abs(learner - occupation)
+ * Result: 0-100 scale score, or null if no matching data.
  *
  * Handles key mismatches by matching similar keys.
  */
@@ -624,7 +578,8 @@ function computeAssessmentMatchScore(
     const occupationValue = occupationProfile[key];
     if (occupationValue !== undefined && !isNaN(learnerValue) && !isNaN(occupationValue)) {
       const absDiff = Math.abs(learnerValue - occupationValue);
-      const normalizedScore = ((5 - absDiff) / 5.0) * 100;
+      // Data is 0-100 scale: max diff is 100, so score = 100 - absDiff
+      const normalizedScore = Math.max(0, 100 - absDiff);
       scores.push(normalizedScore);
     }
   }
@@ -636,7 +591,8 @@ function computeAssessmentMatchScore(
         // Match if keys are similar (same words, different order/format)
         if (similarKeys(lKey, oKey) && !isNaN(learnerValue) && !isNaN(occupationValue)) {
           const absDiff = Math.abs(learnerValue - occupationValue);
-          const normalizedScore = ((5 - absDiff) / 5.0) * 100;
+          // Data is 0-100 scale: max diff is 100, so score = 100 - absDiff
+          const normalizedScore = Math.max(0, 100 - absDiff);
           scores.push(normalizedScore);
         }
       }

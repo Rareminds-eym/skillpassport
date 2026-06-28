@@ -29,7 +29,6 @@ import {
 import {
     PrintView,
     LoadingState,
-    ErrorState,
     ReportHeader,
     SummaryCard,
     ProfileSection,
@@ -38,6 +37,9 @@ import {
     RoadmapSection,
     StageScoresSection
 } from './sections';
+
+// Import screens
+import { ErrorScreen } from './screens';
 
 // Import Career Track Modal
 import CareerTrackModal from './CareerTrackModal';
@@ -589,10 +591,13 @@ const AssessmentResult = () => {
         learnerAcademicData,
         validationWarnings,
         handleRetry,
+        handleClusterRetry,
         validateResults,
         navigate,
         attemptData,
-        resultData
+        resultData,
+        isClusterRetry,
+        isClusterGenerationFailed
     } = useAssessmentResults();
 
     // Try to get attemptId from multiple sources
@@ -918,12 +923,13 @@ const AssessmentResult = () => {
     // Error state
     if (error) {
         return (
-            <ErrorState
-                error={error}
-                onRetry={handleRetry}
-                retrying={retrying}
-                retryAttemptCount={retryAttemptCount}
-                onRetake={() => navigate('/learner/assessment/test')}
+            <ErrorScreen
+                errorType="server"
+                title="Something Went Wrong"
+                message={typeof error === 'string' ? error : error?.error || error?.message || 'We encountered an issue analyzing your assessment. Please try again.'}
+                onRetry={isClusterGenerationFailed ? handleClusterRetry : handleRetry}
+                onBackToDashboard={() => navigate('/learner/assessment/test')}
+                showContactSupport={false}
             />
         );
     }
@@ -1527,7 +1533,7 @@ const AssessmentResult = () => {
                                                 key={index}
                                                 cluster={cluster}
                                                 index={index}
-                                                fitType={index === 0 ? 'TRACK 1' : index === 1 ? 'TRACK 2' : 'TRACK 3'}
+                                                fitType={`TRACK ${String.fromCharCode(65 + index)}`}
                                                 color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
                                                 reverse={index === 1}
                                                 specificRoles={careerFit?.specificOptions?.[
@@ -2087,7 +2093,7 @@ const AssessmentResult = () => {
                                             key={index}
                                             cluster={cluster}
                                             index={index}
-                                            fitType={index === 0 ? 'TRACK 1' : index === 1 ? 'TRACK 2' : 'TRACK 3'}
+                                            fitType={`TRACK ${String.fromCharCode(65 + index)}`}
                                             color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
                                             reverse={index === 1}
                                             specificRoles={careerFit?.specificOptions?.[
@@ -2139,7 +2145,7 @@ const AssessmentResult = () => {
                                         key={index}
                                         cluster={cluster}
                                         index={index}
-                                        fitType={index === 0 ? 'TRACK 1' : index === 1 ? 'TRACK 2' : 'TRACK 3'}
+                                        fitType={`TRACK ${String.fromCharCode(65 + index)}`}
                                         color={index === 0 ? 'green' : index === 1 ? 'yellow' : 'purple'}
                                         reverse={index === 1}
                                         specificRoles={careerFit?.specificOptions?.[

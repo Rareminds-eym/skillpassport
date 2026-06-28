@@ -6,11 +6,10 @@
  */
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { RIASECScores, AdaptiveAptitudeData } from '../../types';
+import type { RIASECScores, AdaptiveAptitudeData, StudentProfile } from '../../types';
 import { getTopCategories, getTopScores } from '../../lib/analysis-helpers';
 import { generateCollegeCareerClusters } from '../core/career-cluster-generator';
 import { generateCollegeSynthesis } from '../generators/synthesis-college';
-import type { StudentProfile } from '../core/scoring-service';
 
 /**
  * Flatten adaptive `accuracy_by_subtag` ({ subtag: { accuracy } }) into { subtag: number }
@@ -489,66 +488,70 @@ export async function analyzeCollege(
     // Step 13b2: Generate aptitude insights from adaptive test (accuracyBySubtag + accuracyByDifficulty).
     // Converts percentage data to readable skill names for RAG semantic matching.
     const aptitudeInsights = (() => {
-      const subtags = adaptiveData?.accuracyBySubtag as Record<string, any> | undefined;
-      const diffByDifficulty = adaptiveData?.accuracyByDifficulty as Record<string, any> | undefined;
+      // Use ADAPTIVE test data (accuracyBySubtag) structured like knowledge_details
+      const adaptiveSubtags = adaptiveData?.accuracyBySubtag as Record<string, any> | undefined;
+      const streamByDiff = streamMcq.streamAptitudeDetails?.byDifficulty as Record<string, any> | undefined;
 
-      if (!subtags && !diffByDifficulty) return null;
+      if (!adaptiveSubtags && !streamByDiff) return null;
 
-      // Extract specific subtag strengths (>=85%) and weaknesses (<60%)
-      const subtag_strengths: string[] = [];
-      const subtag_weaknesses: string[] = [];
+      // Build strong/weak topics from ADAPTIVE test subtags (like knowledge_details.strongTopics)
+      const strongTopics: string[] = [];
+      const weakTopics: string[] = [];
 
-      if (subtags && typeof subtags === 'object') {
-        Object.entries(subtags).forEach(([key, value]: [string, any]) => {
+      if (adaptiveSubtags && typeof adaptiveSubtags === 'object') {
+        Object.entries(adaptiveSubtags).forEach(([key, value]: [string, any]) => {
           const acc = typeof value === 'object' && value ? (value.accuracy ?? 0) : 0;
           if (typeof acc === 'number' && value?.total > 0) {
             const label = key.replace(/_/g, ' ');
-            if (acc >= 85) subtag_strengths.push(label);
-            else if (acc < 60) subtag_weaknesses.push(label);
+            // Strong: significantly above average (if overall is 48%, then 65%+ is strong)
+            if (acc >= 65) strongTopics.push(label);
+            // Weak: significantly below average
+            else if (acc < 45) weakTopics.push(label);
           }
         });
       }
 
-      // Extract difficulty pattern (which levels strong vs weak)
-      const diff_strong: string[] = [];
-      const diff_weak: string[] = [];
+      // Generate pattern from STREAM MCQ difficulty performance
+      let pattern = 'Consistent performance across difficulty levels';
+      if (streamByDiff && typeof streamByDiff === 'object') {
+        const diff_strong: string[] = [];
+        const diff_weak: string[] = [];
 
-      if (diffByDifficulty && typeof diffByDifficulty === 'object') {
-        Object.entries(diffByDifficulty)
-          .sort(([a], [b]) => parseInt(a) - parseInt(b))
-          .forEach(([level, data]: [string, any]) => {
-            const acc = typeof data === 'object' && data ? (data.accuracy ?? 0) : 0;
-            if (typeof acc === 'number' && data?.total > 0) {
-              if (acc >= 80) diff_strong.push(`level ${level}`);
-              else if (acc < 65) diff_weak.push(`level ${level}`);
-            }
-          });
+        Object.entries(streamByDiff).forEach(([diff, data]: [string, any]) => {
+          const pct = typeof data === 'object' && data ? (data.percentage ?? 0) : 0;
+          if (typeof pct === 'number' && data?.total > 0) {
+            if (pct >= 65) diff_strong.push(diff);
+            else if (pct < 55) diff_weak.push(diff);
+          }
+        });
+
+        if (diff_strong.length > 0 && diff_weak.length > 0) {
+          pattern = `Performs better on ${diff_strong.join(' and ')} difficulty, struggles with ${diff_weak.join(' and ')} difficulty`;
+        } else if (diff_weak.length > 0) {
+          pattern = `Struggles most with ${diff_weak.join(' and ')} difficulty questions`;
+        }
       }
 
-      // Build strengths (specific skill names converted from percentages)
-      const strengths = [
-        ...subtag_strengths.slice(0, 2),
-        ...(diff_strong.length > 0 ? [`excels at ${diff_strong.join(' and ')}`] : [])
-      ].filter(Boolean).slice(0, 3);
-
-      // Build weaknesses (specific skill names converted from percentages)
-      const weaknesses = [
-        ...subtag_weaknesses.slice(0, 2),
-        ...(diff_weak.length > 0 ? [`struggles with ${diff_weak.join(' and ')}`] : [])
-      ].filter(Boolean).slice(0, 2);
-
-      // Generate pattern from difficulty trajectory
-      let pattern = 'Stable performance across difficulty levels';
-      if (diff_strong.length > 0 && diff_weak.length > 0) {
-        pattern = `Excels at ${diff_strong.join(', ')} problems; weak at ${diff_weak.join(', ')} problems`;
-      } else if (diff_strong.length > 0) {
-        pattern = `Excels at ${diff_strong.join(', ')} problems`;
-      } else if (diff_weak.length > 0) {
-        pattern = `Struggles most with ${diff_weak.join(', ')} problems`;
+      // Generate recommendation like knowledge_details does
+      let recommendation = '';
+      if (weakTopics.length > 0) {
+        recommendation = `Strengthen these cognitive areas: ${weakTopics.join(', ')}.`;
+      } else if (strongTopics.length > 0) {
+        recommendation = `Strong performance in ${strongTopics.join(', ')}. Continue building on these strengths.`;
+      } else {
+        recommendation = 'Balanced aptitude profile. Focus on consistent practice to improve all areas.';
       }
 
-      return strengths.length > 0 || weaknesses.length > 0
-        ? { strengths, weaknesses, pattern }
+      return strongTopics.length > 0 || weakTopics.length > 0
+        ? {
+            score: streamMcq.streamAptitudeScore,
+            strongTopics,
+            weakTopics,
+            pattern,
+            recommendation,
+            correctCount: streamMcq.streamAptitudeDetails?.correctCount,
+            totalQuestions: streamMcq.streamAptitudeDetails?.totalQuestions,
+          }
         : null;
     })();
 
@@ -576,8 +579,10 @@ export async function analyzeCollege(
       knowledge_score: effectiveKnowledgeScore ?? undefined,
       knowledge_strengths: streamMcq.knowledgeDetails?.strongTopics || [],
       knowledge_weaknesses: streamMcq.knowledgeDetails?.weakTopics || [],
+      knowledge_details: streamMcq.knowledgeDetails || undefined,
       employability_scores: employabilityAggregated,
       stream_aptitude_score: streamMcq.streamAptitudeScore ?? undefined,
+      stream_aptitude_details: streamMcq.streamAptitudeDetails || undefined,
       stream:
         (attempt.learner_context as any)?.programName ||
         (attempt.learner_context as any)?.selectedStream ||
@@ -696,14 +701,17 @@ export async function analyzeCollege(
 
     // Step 18: Generate career clusters (deterministic 5-component scoring + RAG re-rank +
     // OpenRouter narrative). The RAG query is the structured signals + the synthesis
-    // profileNarrative. Then merge synthesis sections + careerFit into gemini_results. Non-fatal.
+    // profileNarrative. Then merge synthesis sections + careerFit into gemini_results.
+
+    const finalNarrativeContext = { ...narrativeContext, profileNarrative: synthesis?.profileNarrative };
+
     let careerFit: { clusters: unknown[]; specificOptions?: unknown; overallSummary?: string } | null = null;
     try {
       careerFit = await generateCollegeCareerClusters(
         supabase,
         studentProfile,
         context.env as Record<string, string>,
-        { ...narrativeContext, profileNarrative: synthesis?.profileNarrative }
+        finalNarrativeContext
       );
 
       // gemini_results holds ONLY what has no dedicated column:
@@ -732,7 +740,27 @@ export async function analyzeCollege(
         console.error('[ANALYZE-COLLEGE] Failed to store gemini_results:', geminiUpdateError.message);
       }
     } catch (clusterError) {
-      console.error('[ANALYZE-COLLEGE] Career cluster generation failed (non-fatal):', clusterError);
+      // Clustering failed — delete incomplete result and return error for frontend to retry
+      console.error('[ANALYZE-COLLEGE] Career cluster generation failed:', clusterError);
+
+      const { error: deleteError } = await supabase
+        .from('personal_assessment_results')
+        .delete()
+        .eq('attempt_id', attemptId);
+
+      if (deleteError) {
+        console.error('[ANALYZE-COLLEGE] Failed to delete incomplete result:', deleteError.message);
+      }
+
+      return Response.json(
+        {
+          error: 'We\'re still analyzing your career recommendations. Please try again in a moment.',
+          code: 'CLUSTER_GENERATION_FAILED',
+          attemptId: attemptId,
+          learnerId: learnerId
+        },
+        { status: 500 }
+      );
     }
 
     return Response.json(
@@ -754,10 +782,11 @@ export async function analyzeCollege(
       { status: 200 }
     );
   } catch (error) {
+    console.error('[ANALYZE-COLLEGE] Analysis failed:', error);
+
     return Response.json(
       {
-        error: 'College analysis failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: 'We encountered an issue analyzing your assessment. Please try again.'
       },
       { status: 500 }
     );
