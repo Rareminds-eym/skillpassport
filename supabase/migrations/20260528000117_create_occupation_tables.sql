@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS public.capability_master (
   code               VARCHAR(20) UNIQUE NOT NULL,   -- e.g. 'IND-CAP-01' (HTT) or 'HR-IND-CAP-01'
   name               TEXT NOT NULL,
   description        TEXT NOT NULL,
-  master_sequence    INTEGER UNIQUE,                       -- canonical catalog sort key 1..27; NOT learner order
+  master_sequence    INTEGER,                              -- sequence order within role; can repeat across roles
   capability_status  public.capability_status_enum,        -- Core / Important / Supporting
   primary_riasec     TEXT[],                               -- explanatory only; does NOT feed match score
   secondary_riasec   TEXT[],
@@ -82,7 +82,7 @@ COMMENT ON COLUMN public.capability_master.master_sequence IS 'Canonical catalog
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.occupations (
   id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code                  VARCHAR(24) UNIQUE NOT NULL,   -- e.g. 'HTT-ROLE-001', 'HR-ROLE-001'
+  code                  VARCHAR(50) UNIQUE NOT NULL,   -- e.g. 'HTT-ROLE-001', 'HR-ROLE-001'
   name                  VARCHAR(255) UNIQUE NOT NULL,
   description           TEXT,
   primary_riasec        CHAR(1),                            -- R/I/A/S/E/C
@@ -94,6 +94,9 @@ CREATE TABLE IF NOT EXISTS public.occupations (
   aptitude_profile      JSONB DEFAULT '{}'::jsonb,
   big_five_profile      JSONB DEFAULT '{}'::jsonb,
   work_values_profile   JSONB DEFAULT '{}'::jsonb,
+  big5_assessment       JSONB DEFAULT '{}'::jsonb,         -- Assessment traits + rationale
+  aptitude_assessment   JSONB DEFAULT '{}'::jsonb,         -- Assessment areas + rationale
+  work_values_assessment JSONB DEFAULT '{}'::jsonb,        -- Assessment values + rationale
   is_active             BOOLEAN DEFAULT TRUE,
   metadata              JSONB DEFAULT '{}'::jsonb,
   created_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -108,31 +111,17 @@ CREATE INDEX idx_occupations_riasec ON public.occupations(primary_riasec, second
 CREATE INDEX idx_occupations_aptitude_profile ON public.occupations USING GIN (aptitude_profile);
 CREATE INDEX idx_occupations_big_five_profile ON public.occupations USING GIN (big_five_profile);
 CREATE INDEX idx_occupations_work_values_profile ON public.occupations USING GIN (work_values_profile);
+CREATE INDEX idx_occupations_big5_assessment ON public.occupations USING GIN (big5_assessment);
+CREATE INDEX idx_occupations_aptitude_assessment ON public.occupations USING GIN (aptitude_assessment);
+CREATE INDEX idx_occupations_work_values_assessment ON public.occupations USING GIN (work_values_assessment);
 COMMENT ON TABLE public.occupations IS '86 HTT roles (table named occupations to avoid collision with RBAC public.roles). riasec_code_string drives the Holland-hexagon match score; riasec_reason is the embedding source.';
 COMMENT ON COLUMN public.occupations.riasec_reason IS 'Per-row unique text (86/86) used as the embedding source for RAG.';
+COMMENT ON COLUMN public.occupations.big5_assessment IS 'JSONB: {traits: [array of Big5 traits], rationale: "explanation of fit"}. Used for RAG and learner matching.';
+COMMENT ON COLUMN public.occupations.aptitude_assessment IS 'JSONB: {areas: [array of aptitude areas], rationale: "explanation of fit"}. Used for RAG and learner matching.';
+COMMENT ON COLUMN public.occupations.work_values_assessment IS 'JSONB: {values: [array of work values], rationale: "explanation of fit"}. Used for RAG and learner matching.';
 
 -- ============================================================================
--- TABLE 4: capability_skills  (188 skills; each belongs to exactly 1 capability)
--- NOTE: named `capability_skills`, NOT `skills`, because public.skills already exists.
--- Domain is reachable via capability (verified 188/188), so not stored here.
--- ============================================================================
-CREATE TABLE IF NOT EXISTS public.capability_skills (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code          VARCHAR(20) UNIQUE NOT NULL,   -- e.g. 'IND-SK-001' (HTT) or 'HR-IND-SK-001'
-  capability_id UUID NOT NULL REFERENCES public.capability_master(id) ON DELETE RESTRICT,
-  name          TEXT NOT NULL,
-  description   TEXT,
-  skill_type    VARCHAR(50),                                -- Documentation / Coordination / ...
-  created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  updated_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_capability_skills_code ON public.capability_skills(code);
-CREATE INDEX idx_capability_skills_capability ON public.capability_skills(capability_id);
-COMMENT ON TABLE public.capability_skills IS '188 skills, each mapped to exactly one capability (1:1 verified). Named capability_skills to avoid collision with public.skills. Domain derives via capability.';
-
--- ============================================================================
--- TABLE 5: role_domains  (M:N context label: which domains a role touches)
+-- TABLE 4: role_domains  (M:N context label: which domains a role touches)
 -- 15 roles span >1 domain. This pairing is a plain label; it does NOT own capabilities.
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.role_domains (
@@ -148,7 +137,7 @@ CREATE INDEX idx_role_domains_domain ON public.role_domains(domain_id);
 COMMENT ON TABLE public.role_domains IS 'M:N role<->domain context label. Multi-domain combined cells (e.g. "D06; D01") are split into separate rows on load.';
 
 -- ============================================================================
--- TABLE 6: role_capability_sequence  (the ordered 6-month learning plan)
+-- TABLE 5: role_capability_sequence  (the ordered 6-month learning plan)
 -- Hangs off a single role_domains context (Option A: multi-domain roles attach
 -- their plan to the primary/first-listed domain). One ordered plan per role.
 -- ============================================================================
@@ -158,13 +147,13 @@ CREATE TABLE IF NOT EXISTS public.role_capability_sequence (
   capability_id       UUID NOT NULL REFERENCES public.capability_master(id) ON DELETE RESTRICT,
   sequence_step       INTEGER NOT NULL,                     -- 1..N order within the plan
   capability_priority VARCHAR(20),                          -- Core / Important / Supporting
-  required_level      VARCHAR(4),                           -- L1 / L2 / L3
+  required_level      VARCHAR(4),                           -- L1 / L2 / L3 / L4 / L5
   duration_weeks      INTEGER,
   cumulative_weeks    INTEGER,
   created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT unique_context_step       UNIQUE(role_domain_id, sequence_step),
   CONSTRAINT unique_context_capability UNIQUE(role_domain_id, capability_id),
-  CONSTRAINT chk_required_level CHECK (required_level IN ('L1','L2','L3'))
+  CONSTRAINT chk_required_level CHECK (required_level IN ('L1','L2','L3','L4','L5'))
 );
 
 CREATE INDEX idx_rcs_context ON public.role_capability_sequence(role_domain_id);
@@ -174,14 +163,13 @@ COMMENT ON TABLE public.role_capability_sequence IS 'Ordered role learning plan.
 COMMENT ON COLUMN public.role_capability_sequence.role_domain_id IS 'FK to role_domains (the role+domain context). Replaces separate role_id+domain_id; enforces the pair exists.';
 
 -- ============================================================================
--- TABLE 7: embeddings  (generic RAG vector storage)
+-- TABLE 6: embeddings  (generic RAG vector storage)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS public.embeddings (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  entity_type VARCHAR(50) NOT NULL,                         -- 'occupation' (extensible)
+  entity_type VARCHAR(50) NOT NULL,                         
   entity_id   UUID NOT NULL,
   embedding   vector(1536),
-  metadata    JSONB DEFAULT '{}'::jsonb,
   created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT unique_entity_embedding UNIQUE(entity_type, entity_id),
