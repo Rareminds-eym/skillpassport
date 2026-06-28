@@ -30,7 +30,7 @@ export type { ClusterNarrativeContext } from '../../types';
  * Candidate pool pulled from RAG retrieval.
  * Optimized for cost and quality — 50 candidates provide good coverage while reducing token usage.
  */
-const CANDIDATE_POOL_SIZE = 50;
+const CANDIDATE_POOL_SIZE = 20;
 
 /**
  * OpenRouter configuration.

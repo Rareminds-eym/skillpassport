@@ -30,7 +30,16 @@ INTERPRETATION GUIDANCE:
 
 Return ONLY valid JSON in this exact shape:
 {
-  "profileNarrative": "<150-220 words: who this student is — interests (RIASEC), personality (Big Five), values, aptitude strengths, knowledge — written as a coherent professional synthesis, ANCHORED to their program/stream and technical domain (see RIASEC + NARRATIVE rules below)>",
+  "profileNarrative": "<300-400 words: COMPREHENSIVE STUDENT PROFILE that serves as the foundation for all career recommendations. MUST include:
+  1. STUDENT IDENTITY: Name (if available), program/stream (e.g., 'Master of Computer Applications'), study level (undergraduate/postgraduate), current status
+  2. RIASEC ANALYSIS: Interpret the 3-letter code through Holland's model + actual RIASEC scores. Explain what this means for work orientation (e.g., 'IRC profile indicates strong investigative + realistic + conventional traits, suggesting technical problem-solving with systematic approach')
+  3. PERSONALITY (BIG FIVE): Key traits (openness, conscientiousness, extraversion, agreeableness, neuroticism) and how they shape work style + collaboration style
+  4. WORK VALUES: What motivates them (leadership, impact, autonomy, creativity, security, financial reward, learning, relationships) based on scores
+  5. APTITUDE PROFILE: Overall aptitude score + breakdown by area (logical reasoning, spatial, verbal, numerical, pattern recognition). Cognitive strengths + learning pattern
+  6. DOMAIN EXPERTISE: What they know deeply (strong topics from program) + gaps. Real-world knowledge in their field
+  7. INFERRED CAREER DOMAINS: Based on honest synthesis of all 7 matrices above, identify 1-4 domains they're genuinely suited for (NO hardcoding—must emerge from analysis). Example: 'This IRC profile with strong system design aptitude and impact values is well-aligned with software architecture, cloud infrastructure, and technical leadership roles'
+
+  Write as coherent professional narrative (not bullet points). This narrative becomes the foundation for matching this student with suitable careers and learning paths. Every claim must be grounded in actual assessment data. Be specific and honest about strengths and realistic limitations.>",
   "employability": {
     "overallReadiness": "<High|Medium|Low>",
     "strengthAreas": ["<skill>"],
@@ -67,7 +76,7 @@ RIASEC ACCURACY RULES:
 NARRATIVE GROUNDING:
 - The narrative MUST be grounded in the student's actual program, knowledge domain, RIASEC code, and Big Five
 - Use domain-specific language that reflects their field of study
-- The narrative goes into the RAG context and influences career matching, so accuracy is critical
+- Include domain context naturally (not forced) so matching and clustering work authentically
 - Do NOT name specific occupations — describe the type of work and domain they fit within
 
 OVERALL SUMMARY:
