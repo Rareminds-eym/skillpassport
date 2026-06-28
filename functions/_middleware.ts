@@ -119,6 +119,12 @@ export const onRequest: PagesFunction = async (context) => {
   // Continue to the actual function handler
   const response = await context.next();
 
+  // Do not wrap WebSocket upgrade responses (101) — the webSocket property
+  // is non-serializable and would be lost by new Response(response.body, ...).
+  if (response.status === 101) {
+    return response;
+  }
+
   // Add CORS headers to the response with origin validation
   const corsHeaders = getCorsHeaders(origin);
   const newHeaders = new Headers(response.headers);
