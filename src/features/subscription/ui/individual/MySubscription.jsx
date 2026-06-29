@@ -27,15 +27,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import toast from 'react-hot-toast';
-import { SubscriptionDashboard } from '@/features/subscription';
-import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
-
-
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { getUserSubscriptions } from '@/features/subscription/api';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '@/features/subscription/lib';
-import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 import { getLogger } from '@/shared/config/logging';
 
@@ -307,7 +302,12 @@ function MySubscription() {
           return;
         } catch (urlError) {
           logger.error('Failed to get presigned URL', urlError);
-          toast.error(`Failed to generate download link: ${urlError?.message || 'Unknown error'}`);
+          const errorMsg = urlError?.message || 'Unknown error';
+          if (errorMsg.includes('not found')) {
+            toast.error('Receipt is still being generated. Please try again in a moment or check your email.');
+          } else {
+            toast.error(`Failed to generate download link. A copy has been sent to your email.`);
+          }
           return;
         }
       }
@@ -350,25 +350,36 @@ function MySubscription() {
         
         if (!presignedUrl || presignedUrl === '' || presignedUrl === 'about:blank') {
           logger.error('Invalid presigned URL received', new Error('Invalid URL'), { presignedUrl });
-          toast.error('Failed to generate download link. Receipt may not exist.');
+          toast.error('Failed to generate download link. Receipt may not exist yet.');
           return;
         }
         
-        // Open in new tab to trigger download
-        window.open(presignedUrl, '_blank');
+        // Use hidden link instead of window.open to avoid blank tab
+        const link = document.createElement('a');
+        link.href = presignedUrl;
+        link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         toast.success('Receipt downloading!');
       } catch (urlError) {
         logger.error('Failed to get presigned URL for legacy payment', urlError);
-        toast.error(`Failed to generate download link: ${urlError?.message || 'Unknown error'}`);
+        const errorMsg = urlError?.message || 'Unknown error';
+        if (errorMsg.includes('not found')) {
+          toast.error('Receipt is still being generated. Please try again in a moment or check your email.');
+        } else {
+          toast.error(`Failed to generate download link. A copy has been sent to your email.`);
+        }
         return;
       }
     } catch (error) {
       logger.error('Receipt download failed', error);
       const errorMessage = error?.message || 'Failed to download receipt';
       if (errorMessage.includes('not found')) {
-        toast.error('Receipt not found. It may still be generating. Please try again in a moment.');
+        toast.error('Receipt is still being generated. Please try again in a moment or check your email.');
       } else {
-        toast.error('Failed to download receipt. Please contact support if the issue persists.');
+        toast.error('Failed to download receipt. A copy has been sent to your email.');
       }
     } finally {
       setIsDownloadingInvoice(false);

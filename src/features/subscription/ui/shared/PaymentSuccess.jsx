@@ -641,10 +641,16 @@ function PaymentSuccess() {
   // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
+      // Check if receipt is still being generated
+      if (transactionDetails?.receipt_status === 'generating') {
+        toast('Receipt is being prepared. Please try again in a moment or check your email.', { icon: '⏳', duration: 5000 });
+        return;
+      }
+      
       // Strategy 1: Try using the receipt key/URL from payment response
       let fileIdentifier = receiptKey || receiptUrl;
       
-      // Strategy 2: If not available, construct from payment ID
+      // Strategy 2: If not available, construct from payment ID and try to fetch
       if (!fileIdentifier && paymentParams.razorpay_payment_id && user?.id) {
         const shortUserId = user.id.substring(0, 8);
         const sanitizedPaymentId = paymentParams.razorpay_payment_id.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -671,18 +677,18 @@ function PaymentSuccess() {
       }
       
       // Receipt not yet available (server may still be processing)
-      toast('Receipt is being prepared. Please try again in a moment.', { icon: '⏳', duration: 4000 });
+      toast('Receipt is being prepared. Please try again in a moment or check your email.', { icon: '⏳', duration: 5000 });
     } catch (error) {
       log.error('Receipt download failed:', error);
       // More helpful error message
       const errorMessage = error?.message || 'Failed to download receipt';
       if (errorMessage.includes('not found')) {
-        toast.error('Receipt not found. It may still be generating. Please try again in a moment.');
+        toast.error('Receipt is still being generated. Please try again in a moment or check your email.');
       } else {
-        toast.error('Failed to download receipt. Please contact support if the issue persists.');
+        toast.error('Failed to download receipt. A copy has been sent to your email.');
       }
     }
-  }, [receiptKey, receiptUrl, paymentParams.razorpay_payment_id, user?.id]);
+  }, [receiptKey, receiptUrl, paymentParams.razorpay_payment_id, user?.id, transactionDetails?.receipt_status]);
 
   // ============================================================================
   // RENDER
