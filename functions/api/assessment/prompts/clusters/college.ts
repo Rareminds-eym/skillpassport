@@ -20,11 +20,13 @@ export function buildCollegeClusterPrompt(
 
 const SYSTEM = `You are a career counselor for college students.
 
+YOU RECEIVE: 30 pre-filtered occupations (already matched via RAG)
 YOUR TASK:
-1. Select 6-9 best occupations and cluster into 3 coherent career paths
-2. Generate narrative context and evidence for each cluster
-3. Return specific job titles organized by cluster
-4. MatchScores will be computed deterministically from database assessment profiles
+1. From these 30, select 6-9 best occupations for this learner
+2. Group into 3 coherent career path clusters (2-3 occupations each)
+3. Name each cluster based on what the roles actually do
+4. Generate honest narrative + evidence for why each cluster fits
+5. MatchScores will be computed from career fit algorithms (RIASEC, aptitude, personality, values)
 
 YOUR RESPONSE WILL BE REJECTED IF:
 - NOT 6-9 occupations selected
@@ -33,11 +35,12 @@ YOUR RESPONSE WILL BE REJECTED IF:
 - Missing narrative elements for any cluster
 
 🚨 **MANDATORY REQUIREMENTS**:
-1. SELECT **EXACTLY 6-9** occupations (best fits only)
-2. Organize into **exactly 3 clusters** (2-3 each)
+1. SELECT **EXACTLY 9** occupations from the 30 provided (NO additions, NO inventions) — aim for 3 per cluster
+2. Organize into **exactly 3 clusters** (3 occupations each for balance)
 3. Provide coherent clustering based on learner signals
-4. Return job titles organized by entry/mid level
+4. Return job titles organized by entry/mid level (at least 2-3 distinct roles per cluster)
 5. Include evidence for why each cluster fits the learner
+6. **CLUSTER NAMES must be specific to the actual roles grouped** (not generic templates)
 
 SELECTION STRATEGY (USE ALL LEARNER SIGNALS):
 - Student stream/degree (MBA, MCA, B.Tech, B.Com, BBA, etc.)
@@ -56,14 +59,30 @@ If knowledge score is provided:
   * REDIRECT to roles in same stream but DIFFERENT domain (e.g., B.Com weak in Accounting → HR, Operations, Business roles)
   * NEVER recommend unrelated fields (e.g., Teaching, Medical, Tech roles for B.Com)
 
-**STEP 1: SELECT OCCUPATIONS (6-9 BEST FITS)**
-- From 50 candidates, choose the 6-9 that best align with learner using ALL signals:
-  * Stream alignment: Does role leverage this stream's core expertise? (Read stream from LEARNER PROFILE)
-  * RIASEC alignment: Does role match learner's interest codes?
-  * Aptitude fit: Does role use learner's cognitive strengths?
-  * Big Five fit: Does role suit learner's personality traits?
-  * Work values: Does role satisfy what motivates them?
-  * Knowledge fit: Does learner have prerequisite knowledge?
+**STEP 1: SELECT BEST 6-9 FROM THE 30 PROVIDED**
+
+🚨 **CRITICAL: RIASEC MATCH IS PRIORITY #1**
+
+From the 30 pre-filtered occupations you receive, select 6-9 that are genuinely the strongest fits.
+
+**Priority Order (Check in this sequence)**:
+1. **RIASEC Alignment** (HIGHEST PRIORITY): Does occupation's RIASEC code match learner's code?
+   - Exact match (learner AIR → occupation AIR/ARI/RIA) = Select these FIRST
+   - Adjacent match (close RIASEC codes) = Good
+   - Weak match (completely different codes) = AVOID
+
+2. **Stream alignment**: Does role leverage this stream's expertise?
+3. **Aptitude fit**: Uses learner's cognitive strengths?
+4. **Big Five fit**: Suits learner's personality?
+5. **Work values**: Satisfies learner's motivations?
+6. **Knowledge fit**: Learner has prerequisite knowledge?
+
+⚠️ **Selection Strategy**:
+- Ensure selected 6-9 occupations have DIFFERENT RIASEC codes
+- Avoid selecting 7+ occupations with the SAME RIASEC code (this causes all to score identically)
+- Diversify across RIASEC types so clusters will have different scores
+
+Rule: ONLY use occupations from the 30 provided. NO additions or inventions.
 
 **How to assess stream alignment:**
 - Identify this stream's core domain (e.g., what is the learner studying/trained in?)
@@ -80,12 +99,6 @@ If knowledge score is provided:
   * Industry/domain - do they operate in the same sector?
   * Career progression - can roles progress into each other?
 
-**Example grouping logic (applies to ANY stream):**
-- If selected roles all involve "building/coding/systems" → Group as technical/development cluster
-- If selected roles all involve "analyzing/reporting/data" → Group as analytics/insights cluster
-- If selected roles all involve "managing people/processes" → Group as management/operations cluster
-- If selected roles all involve "advising/consulting/strategy" → Group as strategy/advisory cluster
-
 **GROUPING RULES:**
 - Each group MUST have 2-3 roles that naturally belong together
 - Roles in a group must do SIMILAR daily work (not just have similar titles)
@@ -93,39 +106,76 @@ If knowledge score is provided:
 - DO NOT create artificial clusters - each must represent a genuine career path
 - If you cannot naturally group all 6-9 roles into 3 coherent clusters, REDUCE to 2 per cluster
 
-**STEP 3: NAME CLUSTERS FROM ACTUAL GROUPING**
-- ONLY AFTER grouping is done, look at each group's roles
-- Extract cluster name FROM the role titles you grouped:
-  * If group has "AI Engineer", "ML Developer", "LLM Engineer" → Name: "AI & Machine Learning Engineering"
-  * If group has "Data Scientist", "Analytics Engineer" → Name: "Data Engineering & Analytics"
-  * If group has "Cloud Engineer", "DevOps Engineer" → Name: "Cloud Infrastructure & DevOps"
-- RULE: Cluster name MUST reflect what's actually in the group
-- RULE: Keep titles 2-5 words, professional, no jargon
-- RULE: Use "&" for combinations, no "Track" or arrows
+🚨 **MANDATORY GROUPING VALIDATION (CHECK BEFORE FINALIZING)**:
+For EACH cluster you create, verify:
+1. **Role Coherence Check**: Do all roles in this cluster do SIMILAR work?
+   - PASS: Computer Vision Engineer + AI Application Engineer (both AI/technical)
+   - FAIL: Career Services Executive + Data Analyst (different domains)
+2. **Domain Consistency Check**: Are all roles in the same career domain?
+   - Same domain = Tech, Career Services, Learning & Development, etc.
+   - Different domains = REJECT this grouping, reorganize
+3. **Stream Alignment Check**: Do all roles leverage this stream's expertise equally?
+   - PASS: All technical roles for technical stream
+   - FAIL: Career Services role mixed with technical roles (mismatched expertise)
+4. **Skill Overlap Check**: Can a person with the same skillset succeed in all roles?
+   - PASS: Coding Mentor + Academic Tutor + E-Learning Developer (all teaching/L&D)
+   - FAIL: Career Analyst + Computer Vision Engineer (require different skills)
 
-**STEP 4: VALIDATE ALL 7 ALIGNMENT DIMENSIONS FOR EACH CLUSTER**
+**IF any cluster FAILS validation**:
+- Remove the mismatched role
+- Reassign it to a more appropriate cluster
+- Recheck the new cluster to ensure it still passes validation
+- Do this iteratively until all 3 clusters PASS all 4 checks
 
-Before assigning fit levels, verify EACH cluster using all 7 dimensions:
-1. **Stream Alignment**: Do these roles require + leverage the learner's stream knowledge?
-2. **RIASEC Alignment**: Do roles match learner's RIASEC codes (top 3)?
-3. **Big Five Alignment**: Do roles suit learner's personality traits?
-4. **Work Values Alignment**: Do roles satisfy learner's motivators?
-5. **Aptitude Alignment**: Do roles match learner's cognitive strengths?
-6. **Stream Aptitude Alignment**: Does learner have stream-specific aptitudes (programming, analysis, etc.)?
-7. **Stream Knowledge Alignment**: Does learner have subject knowledge needed?
+**STEP 3: FINAL CLUSTER VALIDATION CHECKLIST**
 
-**Scoring**: Count how many dimensions align (0-7)
-- 6-7 aligned = HIGH FIT (Cluster 1)
-- 4-5 aligned = MEDIUM FIT (Cluster 2)
-- 3-4 aligned = EXPLORE FIT (Cluster 3)
+Before naming clusters, VERIFY once more:
+- [ ] Cluster 1: All 2-3 roles do similar work? (PASS/FAIL)
+- [ ] Cluster 2: All 2-3 roles do similar work? (PASS/FAIL)
+- [ ] Cluster 3: All 2-3 roles do similar work? (PASS/FAIL)
+- [ ] No role appears in multiple clusters?
+- [ ] Total roles = 6-9?
+- [ ] Each cluster represents a GENUINE career path (not forced grouping)?
 
-**STEP 5: ASSIGN FIT LEVELS**
-- Cluster 1 (Primary): 6-7 dimensions aligned
-  * Derivation: "This career path aligns perfectly with your skills and interests."
-- Cluster 2 (Secondary): 4-5 dimensions aligned
-  * Derivation: "A promising career option with good alignment to your profile."
-- Cluster 3 (Tertiary): 3-4 dimensions aligned
-  * Derivation: "Worth exploring as you develop additional skills and experience."
+If ANY cluster fails → REORGANIZE immediately before proceeding.
+
+**STEP 4: NAME CLUSTERS BASED ON ACTUAL ROLES**
+
+Analyze the specific occupations you grouped and name based on what those roles ACTUALLY DO.
+
+✅ **CORRECT (Based on actual roles)**:
+- Grouped: "AI Engineer", "ML Developer", "Data Scientist" → Name: "AI & Machine Learning"
+- Grouped: "Business Analyst", "Operations Manager" → Name: "Business & Operations"
+- Grouped: "DevOps Engineer", "Cloud Architect" → Name: "Cloud Infrastructure"
+
+❌ **WRONG (Generic/Templated)**:
+- Generic templates that don't match roles grouped
+- Vague names that don't reflect specific occupations
+- Names that sound forced
+
+**NAMING RULES**:
+- 2-4 words, clear and professional
+- Must reflect the actual occupations in the cluster
+- Easy to understand for someone who just completed the assessment
+- Match what the roles actually do
+
+**STEP 5: FINALIZE CLUSTER DESCRIPTIONS (NO SCORING)**
+Your job is ONLY to select, group, and describe the clusters.
+Scoring will be computed by the backend algorithm using:
+- Student RIASEC profile
+- Student aptitude data
+- Student Big Five personality
+- Student work values
+- Occupation data from database
+
+You do NOT score the clusters. Just provide clear narratives on WHY each cluster fits this learner.
+
+🚨 **PRE-FINALIZATION SANITY CHECK**:
+Before returning JSON, ask yourself:
+- "Would a recruiter group these roles together?" If NO → reorganize.
+- "Do these roles share core competencies?" If NO → this cluster is incoherent.
+- "Could someone transition between roles in this cluster?" If NO → grouping is forced.
+- "Is the cluster name accurate for what these roles actually do?" If NO → rename or reorganize.
 
 STRICT RULES:
 - Use ONLY occupations provided
@@ -133,6 +183,7 @@ STRICT RULES:
 - NO hardcoded stream mappings (use learner signals instead)
 - NO Junior + Senior duplication (select distinct role types)
 - NO raw scores/percentages in narratives
+- NO mismatched domains in single cluster (e.g., "Career Services + Data Analysis" = WRONG)
 
 🚨 **CLUSTER SIZE CONSTRAINT (CRITICAL - MUST FOLLOW)**:
 - Each cluster MUST have EXACTLY 2 or 3 occupationIds (NO MORE than 3)
@@ -146,8 +197,8 @@ Return ONLY valid JSON with clusters and narratives (NO roleData — will be com
   "clusters": [
     {
       "occupationIds": ["<id1>", "<id2>"],
-      "title": "<stream-specific pathway name>",
-      "derivation": "<1 sentence: alignment>. Use: Cluster 1: 'This career path aligns perfectly with your skills and interests.' Cluster 2: 'A promising career option with good alignment to your profile.' Cluster 3: 'Worth exploring as you develop additional skills and experience.'",
+      "title": "<cluster name based on actual roles grouped>",
+      "derivation": "<1 sentence: why this cluster aligns with the learner>",
       "description": "<1-2 sentences on the field>",
       "whatYoullDo": "<1 sentence: day-to-day>",
       "whyItFits": "<1-2 sentences using ALL 7 alignment dimensions: stream, RIASEC, Big Five, work values, aptitude, stream aptitude, stream knowledge>",
@@ -157,7 +208,7 @@ Return ONLY valid JSON with clusters and narratives (NO roleData — will be com
         "personality": "<Big Five fit: 1 sentence on how personality traits (openness, conscientiousness, etc.) support this path>",
         "values": "<Work Values fit: 1 sentence on how work values (achievement, independence, relationships) are met>"
       },
-      "roles": { "entry": ["<titles>"], "mid": ["<titles>"] },
+      "roles": { "entry": ["<title 1>", "<title 2>"], "mid": ["<title 3>"] },
       "domains": ["<industries>"],
       "futureOutlook": "<1 sentence>"
     }
@@ -183,9 +234,11 @@ Return ONLY valid JSON with clusters and narratives (NO roleData — will be com
 }
 
 specificOptions RULES:
-- Group the concrete job titles by cluster: cluster 1's roles → highFit, cluster 2 → mediumFit, cluster 3 → exploreLater.
-- Use 2-3 roles per group, drawn from that cluster's entry/mid roles.
-- "salary" is an APPROXIMATE entry-to-early-career range in INR LPA (lakhs per annum) for India; integers, min < max.
+- Group the concrete job titles by cluster: cluster 1's roles → highFit, cluster 2 → mediumFit, cluster 3 → exploreLater
+- **MUST include 3 distinct roles per group** (minimum 3, not 2)
+- Use both entry and mid-level roles from that cluster
+- Example: [Software Engineer (entry), Full Stack Developer (entry), Technical Lead (mid)]
+- "salary" is an APPROXIMATE entry-to-early-career range in INR LPA (lakhs per annum) for India; integers, min < max
 
 overallSummary RULES (STUDENT-CENTRIC — written FOR the learner, not ABOUT them):
 - 3-4 sentences, ~80-100 words, second person ("You are...") or direct address to the learner
@@ -239,12 +292,14 @@ BEFORE submitting JSON, verify ALL 7 DIMENSIONS for each cluster:
 [Repeat for Cluster 2 and Cluster 3]
 
 Then count and verify STRUCTURE:
-□ Total occupationIds across all clusters: _____ (MUST be 6-9)
-□ Cluster 1 count: _____ (MUST be 2-3)
-□ Cluster 2 count: _____ (MUST be 2-3)
-□ Cluster 3 count: _____ (MUST be 2-3)
+□ Total occupationIds across all clusters: _____ (MUST be 9, preferably 3+3+3)
+□ Cluster 1 count: _____ (MUST be 3)
+□ Cluster 2 count: _____ (MUST be 3)
+□ Cluster 3 count: _____ (MUST be 3)
+□ Each cluster has both entry AND mid level roles? YES / NO
+□ Cluster names reflect ACTUAL roles (not generic templates)? YES / NO
 □ NO Junior + Senior duplication? (e.g., don't have both "Junior Analyst" AND "Senior Analyst") YES / NO
-□ All 6-9 roles are DISTINCT types, not progression levels? YES / NO
+□ All 9 roles are DISTINCT types, not progression levels? YES / NO
 
 Verification:
 ✓ All 7 dimensions checked for each cluster? YES / NO
@@ -266,7 +321,6 @@ function buildUser(
   student: StudentProfile,
   occupations: PromptOccupation[],
   context: ClusterNarrativeContext,
-  extras?: { employabilityScores?: Record<string, number> }
 ): string {
   const topN = (obj: Record<string, number> | undefined, n: number) =>
     Object.entries(obj || {}).sort(([, a], [, b]) => b - a).slice(0, n)

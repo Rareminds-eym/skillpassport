@@ -82,23 +82,47 @@ interface StudentContext {
 
 /**
  * Interpret RIASEC code into work style and career orientation
+ * Enhanced with keyword extraction for better RAG semantic matching
  */
 function interpretRIASEC(code: string, scores?: Record<string, number>): string {
   const riasecMeaning: Record<string, string> = {
-    R: 'hands-on, practical, working with tools and systems',
-    I: 'analytical, research-oriented, problem-solving and inquiry',
-    A: 'creative, self-expression, working with ideas and design',
-    S: 'helping, collaborating with people, social impact',
-    E: 'leadership, persuasion, business strategy and influence',
-    C: 'organized, systematic, detail-focused processes',
+    R: 'hands-on, practical, working with tools and systems, mechanical, engineering, building',
+    I: 'analytical, research-oriented, problem-solving and inquiry, investigation, technical depth, systems thinking',
+    A: 'creative, self-expression, working with ideas and design, innovation, artistic vision, aesthetic',
+    S: 'helping, collaborating with people, social impact, teamwork, mentoring, communication',
+    E: 'leadership, persuasion, business strategy and influence, entrepreneurship, management, initiative',
+    C: 'organized, systematic, detail-focused processes, compliance, data-driven, structured',
   };
 
   const topTypes = code.split('').slice(0, 3);
   const meanings = topTypes.map(t => riasecMeaning[t] || '').filter(Boolean);
 
-  return `WORK ORIENTATION & CAREER DRIVERS (RIASEC: ${code}):
+  // Extract dominant types for keyword extraction
+  const dominant = topTypes.join('');
+  let domainKeywords = '';
+  if (dominant.includes('A')) {
+    domainKeywords = 'creative design innovation artistic UX product vision';
+  }
+  if (dominant.includes('I')) {
+    domainKeywords += ' analytical research investigation technical depth systems';
+  }
+  if (dominant.includes('R')) {
+    domainKeywords += ' hands-on practical engineering building implementation';
+  }
+  if (dominant.includes('S')) {
+    domainKeywords += ' collaboration people teamwork communication mentoring';
+  }
+  if (dominant.includes('E')) {
+    domainKeywords += ' leadership entrepreneurship business strategy management';
+  }
+  if (dominant.includes('C')) {
+    domainKeywords += ' organization systems data compliance processes';
+  }
+
+  return `CAREER INTERESTS & WORK ORIENTATION (RIASEC: ${code}):
 Primary interests: ${meanings.join('; ')}.
-Career fit: Seeks roles combining these elements — analytical depth, business impact, and structured execution.`.trim();
+Career focus: ${domainKeywords.trim()}.
+Career fit: Seeks roles combining these elements in ways that align with their interest profile.`.trim();
 }
 
 /**
@@ -367,7 +391,13 @@ export function buildAssessmentRagContext(
 Program: ${stream} | Education Level: ${degree}
 `);
 
-  // DOMAIN EXPERTISE FIRST (Most differentiating)
+  // RIASEC FIRST (Career orientation — primary matching signal for RAG)
+  // Put this FIRST so embedding prioritizes interest matching over competency matching
+  if (student.riasec_code && student.riasec_scores) {
+    sections.push(interpretRIASEC(student.riasec_code, student.riasec_scores));
+  }
+
+  // DOMAIN EXPERTISE (Knowledge strengths + gaps)
   // Map StudentProfile knowledge fields to AssessmentData format
   if (student.knowledge_score) {
     const knowledgeDetails = {
@@ -377,11 +407,6 @@ Program: ${stream} | Education Level: ${degree}
     if (knowledgeDetails.strongTopics.length > 0 || knowledgeDetails.weakTopics.length > 0) {
       sections.push(interpretKnowledge(student.knowledge_score, knowledgeDetails, stream));
     }
-  }
-
-  // RIASEC (Career orientation)
-  if (student.riasec_code && student.riasec_scores) {
-    sections.push(interpretRIASEC(student.riasec_code, student.riasec_scores));
   }
 
   // Cognitive Strengths & Aptitudes

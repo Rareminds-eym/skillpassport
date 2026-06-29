@@ -21,6 +21,7 @@ import {
   compareWorkValues,
   buildAssessmentRagContext,
 } from './assessment-context-builder';
+import { calculateCollegeMatchScore } from './scoring-service';
 
 // Re-export so existing importers (analysis-*) keep working.
 export type { ClusterNarrativeContext } from '../../types';
@@ -30,7 +31,7 @@ export type { ClusterNarrativeContext } from '../../types';
  * Candidate pool pulled from RAG retrieval.
  * Optimized for cost and quality — 50 candidates provide good coverage while reducing token usage.
  */
-const CANDIDATE_POOL_SIZE = 20;
+const CANDIDATE_POOL_SIZE = 30;
 
 /**
  * OpenRouter configuration.
@@ -328,13 +329,15 @@ async function retrieveByEmbedding(
     const queryVec = await callEmbeddingWorker(text, env, EMBEDDING_TASK_TYPES.RETRIEVAL_QUERY);
     const literal = '[' + queryVec.map((x) => x.toFixed(6)).join(',') + ']';
 
-    const { data, error } = await supabase.rpc('match_occupations_by_embedding', {
+    const { data, error } = await supabase.rpc('hybrid_search_occupations', {
+      query_text: text,
       query_embedding: literal,
       learner_riasec_code: riasecCode,
       match_count: CANDIDATE_POOL_SIZE,
+      alpha: 0.6,
     });
     if (error) {
-      console.error('[CLUSTER-GEN] match_occupations_by_embedding failed:', error.message);
+      console.error('[CLUSTER-GEN] hybrid_search_occupations failed:', error.message);
       return [];
     }
     if (!data || data.length === 0) return [];
@@ -343,7 +346,7 @@ async function retrieveByEmbedding(
     // Profiles fetched on-demand in finalizeCluster() for actual scoring
     const candidates: ScoredOccupation[] = (data as any[]).map((occ) => {
       const riasecCodes: string[] = occ.occupation_codes || [];
-      const sim = Number(occ.similarity);
+      const hybridScore = Number(occ.hybrid_score);
       const alignment = Number(occ.riasec_alignment);
 
       return {
@@ -352,9 +355,9 @@ async function retrieveByEmbedding(
         name: occ.occupation_name,
         riasecCodes,
         score: 0,
-        semanticScore: !isNaN(sim) ? Math.round(sim * 1000) / 10 : undefined,
+        semanticScore: !isNaN(hybridScore) ? Math.round(hybridScore * 1000) / 10 : undefined,
         riasecAlignment: !isNaN(alignment) ? Math.round(alignment * 100) : undefined,
-        description: occ.description || occ.occupation_description,
+        description: occ.description || '',
       };
     });
 
@@ -421,75 +424,32 @@ async function finalizeCluster(
     ])
   );
 
-  // Compute matchScore for each occupation using normalized distance formula (ONLY REAL DATA).
+  // Compute matchScore for each occupation using proper career fit scoring
   const occupationScores = validOccupations
     .map((occ, idx) => {
-      const profiles = profileMap.get(occ.occupation_id);
-      if (!profiles) {
-        console.warn(
-          `[CLUSTER-GEN] ⚠️ No profiles for occupation ${occ.occupation_id} (${occ.name}), skipping`
-        );
-        return null; // Skip: no profiles in DB
+      try {
+        // Use college match scoring algorithm (5-component: interest + cognitive + personality + knowledge + values)
+        const scores = calculateCollegeMatchScore(student, occ.riasecCodes?.[0] || '');
+
+        if (idx < 3) {
+          console.log(`[CLUSTER-GEN] ${occ.name}: Interest=${scores.interestFit} | Cognitive=${scores.cognitiveFit} | Personality=${scores.personalityFit} | Knowledge=${scores.knowledgeFit} | Values=${scores.valuesFit} → Final=${scores.final}`);
+        }
+
+        return scores.final;
+      } catch (err) {
+        console.warn(`[CLUSTER-GEN] Score calculation failed for ${occ.name}:`, err instanceof Error ? err.message : err);
+        return null;
       }
-
-    // For aptitude: convert accuracy_by_subtag percentages to 1-5 scale
-    const learnerAptitude = convertAccuracyToAptitudeProfile(student.accuracy_by_subtag);
-
-    // Compute component scores using ONLY REAL DATA (no neutral padding)
-    const scores: { component: string; score: number; weight: number }[] = [];
-
-    // Aptitude (if data exists) - Win 4
-    if (Object.keys(learnerAptitude).length > 0 && Object.keys(profiles.aptitude_profile).length > 0) {
-      const aptitudeScore = computeAssessmentMatchScore(learnerAptitude, profiles.aptitude_profile);
-      scores.push({ component: 'aptitude', score: aptitudeScore, weight: 0.35 });
-    }
-
-    // Big Five (if data exists) - Win 5
-    if (student.big_five_scores && Object.keys(student.big_five_scores).length > 0 && Object.keys(profiles.big_five_profile).length > 0) {
-      // Use the enhanced comparison function
-      const bigFiveScore = Math.round(compareBigFiveProfiles(student.big_five_scores, profiles.big_five_profile) || 0);
-      if (!isNaN(bigFiveScore) && bigFiveScore > 0) {
-        scores.push({ component: 'big_five', score: bigFiveScore, weight: 0.25 });
-      }
-    }
-
-    // Work Values (if data exists) - Win 6
-    if (student.work_values_scores && Object.keys(student.work_values_scores).length > 0 && Object.keys(profiles.work_values_profile).length > 0) {
-      // Use the enhanced comparison function
-      const workValuesScore = Math.round(compareWorkValues(student.work_values_scores, profiles.work_values_profile) || 0);
-      if (!isNaN(workValuesScore) && workValuesScore > 0) {
-        scores.push({ component: 'work_values', score: workValuesScore, weight: 0.4 });
-      }
-    }
-
-    // If no data available, skip this occupation
-    if (scores.length === 0) {
-      return null; // Will be filtered out below
-    }
-
-    // Re-weight available components proportionally
-    const totalWeight = scores.reduce((sum, s) => sum + s.weight, 0);
-    const matchScore = Math.round(
-      scores.reduce((sum, s) => sum + (s.score * (s.weight / totalWeight)), 0)
-    );
-
-    // Debug: Log first 3 occupations for transparency
-    if (idx < 3) {
-      const componentsStr = scores.map((s) => `${s.component}=${s.score}`).join(', ');
-      console.log(`[CLUSTER-GEN] ${occ.name}: ${componentsStr} → matchScore=${matchScore}`);
-    }
-
-      return matchScore;
     })
-    .filter((score): score is number => score !== null); // Only use occupations with real data
+    .filter((score): score is number => score !== null);
 
-  // Cluster matchScore = simple average of all occupation scores.
+  // Cluster matchScore: Computed from occupation scoring algorithm (RIASEC + aptitude + personality + knowledge + values)
   let clusterScore = 0;
   if (occupationScores.length > 0) {
     clusterScore = Math.round(occupationScores.reduce((sum, s) => sum + s, 0) / occupationScores.length);
     const sorted = [...occupationScores].sort((a, b) => b - a);
     const scoreRange = `${sorted[sorted.length - 1]}-${sorted[0]}`;
-    console.log(`[FINALIZE-${clusterIndex + 1}] "${aiCluster?.title}" avg matchScore: ${clusterScore} (range: ${scoreRange})`);
+    console.log(`[FINALIZE-${clusterIndex + 1}] "${aiCluster?.title}" matchScore: ${clusterScore} (range: ${scoreRange})`);
   }
 
   return {
