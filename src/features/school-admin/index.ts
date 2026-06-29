@@ -3,6 +3,8 @@ export {
   TrainingDetailsModal,
   ExperienceDetailsModal,
   ProjectDetailsModal,
+  CertificateDetailsModal,
+  SkillDetailsModal,
   PendingTrainings,
   DocumentViewerModal
 } from './ui';
@@ -13,4 +15,4 @@ export * from './api';
 export * from './model/types';
 export { timetableSlotsService } from './api/timetableSlotsService';
 export { curriculumService } from './api/curriculumService';
-export type { SchoolAdminNotificationService } from './api/schoolAdminNotificationService';
+export { SchoolAdminNotificationService } from './api/schoolAdminNotificationService';

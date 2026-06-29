@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
+import { toast } from 'react-hot-toast';
 import { 
   Clock, 
   User, 
@@ -25,7 +26,8 @@ import {
   Award,
   Building,
   CheckCircle,
-  FileText
+  FileText,
+  Zap
 } from 'lucide-react';
 import { getLogger } from '@/shared/config/logging';
 
@@ -35,24 +37,32 @@ import { SchoolAdminNotificationService } from '@/features/school-admin';
 import { 
   TrainingDetailsModal, 
   ExperienceDetailsModal, 
-  ProjectDetailsModal 
+  ProjectDetailsModal,
+  CertificateDetailsModal,
+  SkillDetailsModal
 } from '@/features/school-admin';
 import { apiPost } from '@/shared/api/apiClient';
 
 import { useUser } from '@/shared/model/authStore';
 const Verifications: React.FC = () => {
   const user = useUser();
-  const [activeTab, setActiveTab] = useState<"trainings" | "experiences" | "certificates" | "projects">("trainings");
+  const [activeTab, setActiveTab] = useState<"trainings" | "experiences" | "certificates" | "skills" | "projects">("trainings");
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
   const [pendingTrainings, setPendingTrainings] = useState<any[]>([]);
   const [pendingExperiences, setPendingExperiences] = useState<any[]>([]);
+  const [pendingCertificates, setPendingCertificates] = useState<any[]>([]);
+  const [pendingSkills, setPendingSkills] = useState<any[]>([]);
   const [pendingProjects, setPendingProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState(null);
   const [selectedExperience, setSelectedExperience] = useState(null);
+  const [selectedCertificate, setSelectedCertificate] = useState(null);
+  const [selectedSkill, setSelectedSkill] = useState(null);
   const [selectedProject, setSelectedProject] = useState(null);
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [showExperienceModal, setShowExperienceModal] = useState(false);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [showSkillModal, setShowSkillModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -107,6 +117,10 @@ const Verifications: React.FC = () => {
         fetchTrainingData();
       } else if (activeTab === 'experiences') {
         fetchExperienceData();
+      } else if (activeTab === 'certificates') {
+        fetchCertificateData();
+      } else if (activeTab === 'skills') {
+        fetchSkillData();
       } else if (activeTab === 'projects') {
         fetchProjectData();
       }
@@ -147,6 +161,40 @@ const Verifications: React.FC = () => {
     }
   };
 
+  const fetchCertificateData = async () => {
+    if (!schoolId) return;
+    
+    setLoading(true);
+    try {
+      logger.info('Fetching certificates for school', { schoolId });
+      const pendingData = await SchoolAdminNotificationService.getPendingCertificates(schoolId);
+      logger.info('Received certificate data', { count: pendingData?.length || 0 });
+      setPendingCertificates(pendingData || []);
+    } catch (error) {
+      logger.error('Error fetching certificate data', error as Error);
+      toast.error("Failed to load certificate data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSkillData = async () => {
+    if (!schoolId) return;
+    
+    setLoading(true);
+    try {
+      logger.info('Fetching skills for school', { schoolId });
+      const pendingData = await SchoolAdminNotificationService.getPendingSkills(schoolId);
+      logger.info('Received skill data', { count: pendingData?.length || 0 });
+      setPendingSkills(pendingData || []);
+    } catch (error) {
+      logger.error('Error fetching skill data', error as Error);
+      toast.error("Failed to load skill data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchProjectData = async () => {
     logger.info('fetchProjectData called', { schoolId, hasUser: !!user });
     
@@ -169,33 +217,53 @@ const Verifications: React.FC = () => {
     }
   };
 
-  const handleTrainingAction = (action: string, training: any) => {
+  const handleTrainingAction = async (action: string, training: any) => {
     if (action === 'view') {
       setSelectedTraining(training);
       setShowTrainingModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      fetchTrainingData(); // Refresh data
-      toast.success(`Training ${action} successfully!`);
+      await fetchTrainingData(); // Refresh data and wait for completion
+      // Note: success toast is already shown in the modal
     }
   };
 
-  const handleExperienceAction = (action: string, experience: any) => {
+  const handleExperienceAction = async (action: string, experience: any) => {
     if (action === 'view') {
       setSelectedExperience(experience);
       setShowExperienceModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      fetchExperienceData(); // Refresh data
-      toast.success(`Experience ${action} successfully!`);
+      await fetchExperienceData(); // Refresh data and wait for completion
+      // Note: success toast is already shown in the modal
     }
   };
 
-  const handleProjectAction = (action: string, project: any) => {
+  const handleCertificateAction = async (action: string, certificate: any) => {
+    if (action === 'view') {
+      setSelectedCertificate(certificate);
+      setShowCertificateModal(true);
+    } else if (action === 'approved' || action === 'rejected') {
+      await fetchCertificateData(); // Refresh data and wait for completion
+      // Note: success toast is already shown in the modal
+    }
+  };
+
+  const handleSkillAction = async (action: string, skill: any) => {
+    if (action === 'view') {
+      setSelectedSkill(skill);
+      setShowSkillModal(true);
+    } else if (action === 'approved' || action === 'rejected') {
+      await fetchSkillData(); // Refresh data and wait for completion
+      // Note: success toast is already shown in the modal
+    }
+  };
+
+  const handleProjectAction = async (action: string, project: any) => {
     if (action === 'view') {
       setSelectedProject(project);
       setShowProjectModal(true);
     } else if (action === 'approved' || action === 'rejected') {
-      fetchProjectData(); // Refresh data
-      toast.success(`Project ${action} successfully!`);
+      await fetchProjectData(); // Refresh data and wait for completion
+      // Note: success toast is already shown in the modal
     }
   };
 
@@ -223,6 +291,8 @@ const Verifications: React.FC = () => {
     await Promise.all([
       fetchTrainingData(),
       fetchExperienceData(),
+      fetchCertificateData(),
+      fetchSkillData(),
       fetchProjectData()
     ]);
     setLoading(false);
@@ -254,7 +324,7 @@ const Verifications: React.FC = () => {
   const tabs = {
     trainings: { label: "Training Approvals", icon: CheckCircle, count: pendingTrainings.length },
     experiences: { label: "Experience Approvals", icon: User, count: pendingExperiences.length },
-    // certificates: { label: "Certificate Verification", icon: FileText, count: 0 },
+    certificates: { label: "Certificate Verification", icon: FileText, count: pendingCertificates.length },
     projects: { label: "Project Validation", icon: Building, count: pendingProjects.length }
   };
 
@@ -283,6 +353,30 @@ const Verifications: React.FC = () => {
     });
   };
 
+  const getFilteredCertificates = () => {
+    return pendingCertificates.filter(certificate => {
+      const matchesSearch = (certificate.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (certificate.learner_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (certificate.issuer || certificate.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || certificate.approval_status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  };
+
+  const getFilteredSkills = () => {
+    return pendingSkills.filter(skill => {
+      const matchesSearch = (skill.skill_name || skill.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (skill.learner_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (skill.category || '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || skill.approval_status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  };
+
   const getFilteredProjects = () => {
     return pendingProjects.filter(project => {
       const matchesSearch = (project.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -298,10 +392,14 @@ const Verifications: React.FC = () => {
   // Get current page data for each tab (with filtering)
   const filteredTrainings = getFilteredTrainings();
   const filteredExperiences = getFilteredExperiences();
+  const filteredCertificates = getFilteredCertificates();
+  const filteredSkills = getFilteredSkills();
   const filteredProjects = getFilteredProjects();
   
   const currentTrainings = getCurrentPageData(filteredTrainings);
   const currentExperiences = getCurrentPageData(filteredExperiences);
+  const currentCertificates = getCurrentPageData(filteredCertificates);
+  const currentSkills = getCurrentPageData(filteredSkills);
   const currentProjects = getCurrentPageData(filteredProjects);
 
   // Get total pages for current tab (with filtering)
@@ -311,6 +409,10 @@ const Verifications: React.FC = () => {
         return getTotalPages(filteredTrainings);
       case 'experiences':
         return getTotalPages(filteredExperiences);
+      case 'certificates':
+        return getTotalPages(filteredCertificates);
+      case 'skills':
+        return getTotalPages(filteredSkills);
       case 'projects':
         return getTotalPages(filteredProjects);
       default:
@@ -532,6 +634,144 @@ const Verifications: React.FC = () => {
     </Card>
   );
 
+  // Certificate Card Component
+  const CertificateCard = ({ certificate }: { certificate: any }) => (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-gray-600" />
+            <h3 className="font-bold text-lg text-gray-900">
+              {certificate.learner_name || 'Unknown Learner'}
+            </h3>
+          </div>
+          <div className="text-xs text-gray-500 ml-4">
+            Submitted: {new Date(certificate.created_at).toLocaleDateString()}
+          </div>
+        </div>
+
+        <div className="space-y-2 mb-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Mail className="w-4 h-4" />
+            <span>{certificate.learner_email || 'No email'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Award className="w-4 h-4" />
+            <span>
+              {certificate.title}
+            </span>
+          </div>
+          {certificate.issuer && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Building2 className="w-4 h-4" />
+              <span>{certificate.issuer}</span>
+            </div>
+          )}
+          
+          {certificate.issued_on && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Calendar className="w-4 h-4" />
+              <span>Issued: {formatDate(certificate.issued_on)}</span>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+              <Clock className="w-3 h-3 mr-1" />
+              Pending
+            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">
+              School Admin
+            </Badge>
+          </div>
+          <Button
+            onClick={() => handleCertificateAction('view', certificate)}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+            size="sm"
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            View Details
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Skill Card Component
+  const SkillCard = ({ skill }: { skill: any }) => (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-gray-600" />
+            <h3 className="font-bold text-lg text-gray-900">
+              {skill.learner_name || 'Unknown Learner'}
+            </h3>
+          </div>
+          <div className="text-xs text-gray-500 ml-4">
+            Submitted: {new Date(skill.created_at).toLocaleDateString()}
+          </div>
+        </div>
+
+        <div className="space-y-2 mb-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Mail className="w-4 h-4" />
+            <span>{skill.learner_email || 'No email'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Zap className="w-4 h-4" />
+            <span className="font-semibold">
+              {skill.skill_name || skill.name}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {skill.level && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Award className="w-4 h-4" />
+                <span>Level: {skill.level} / 5</span>
+              </div>
+            )}
+            {skill.type && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <FileText className="w-4 h-4" />
+                <span>Type: {skill.type}</span>
+              </div>
+            )}
+          </div>
+          
+          {skill.category && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Building2 className="w-4 h-4" />
+              <span>Category: {skill.category}</span>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+              <Clock className="w-3 h-3 mr-1" />
+              Pending
+            </Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">
+              School Admin
+            </Badge>
+          </div>
+          <Button
+            onClick={() => handleSkillAction('view', skill)}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex-shrink-0"
+            size="sm"
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            View Details
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   // Project Card Component
   const ProjectCard = ({ project }: { project: any }) => (
     <Card className="hover:shadow-md transition-shadow">
@@ -659,7 +899,7 @@ const Verifications: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card className="bg-blue-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -684,28 +924,40 @@ const Verifications: React.FC = () => {
             </CardContent>
           </Card>
           
+          <Card className="bg-purple-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Certificates</p>
+                  <p className="text-2xl font-bold text-purple-600">{pendingCertificates.length}</p>
+                </div>
+                <Award className="w-8 h-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-teal-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Skills</p>
+                  <p className="text-2xl font-bold text-teal-600">{pendingSkills.length}</p>
+                </div>
+                <Zap className="w-8 h-8 text-teal-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
           <Card className="bg-orange-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Pending</p>
                   <p className="text-2xl font-bold text-orange-600">
-                    {pendingTrainings.length + pendingExperiences.length + pendingProjects.length}
+                    {pendingTrainings.length + pendingExperiences.length + pendingCertificates.length + pendingSkills.length + pendingProjects.length}
                   </p>
                 </div>
                 <AlertCircle className="w-8 h-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-purple-50">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Your Role</p>
-                  <p className="text-lg font-semibold text-purple-600">School Admin</p>
-                </div>
-                <GraduationCap className="w-8 h-8 text-purple-600" />
               </div>
             </CardContent>
           </Card>
@@ -713,27 +965,41 @@ const Verifications: React.FC = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-lg">
+          <TabsList className="grid w-full grid-cols-5 bg-gray-100 p-1 rounded-lg">
             <TabsTrigger 
               value="trainings" 
               className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <BookOpen className="w-4 h-4" />
-              Training Approvals ({pendingTrainings.length})
+              Training ({pendingTrainings.length})
             </TabsTrigger>
             <TabsTrigger 
               value="experiences" 
               className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Briefcase className="w-4 h-4" />
-              Experience Approvals ({pendingExperiences.length})
+              Experience ({pendingExperiences.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="certificates" 
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+            >
+              <Award className="w-4 h-4" />
+              Certificate ({pendingCertificates.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="skills" 
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+            >
+              <Zap className="w-4 h-4" />
+              Skills ({pendingSkills.length})
             </TabsTrigger>
             <TabsTrigger 
               value="projects" 
               className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Building2 className="w-4 h-4" />
-              Project Approvals ({pendingProjects.length})
+              Project ({pendingProjects.length})
             </TabsTrigger>
           </TabsList>
 
@@ -915,6 +1181,184 @@ const Verifications: React.FC = () => {
             )}
           </TabsContent>
 
+          {/* Certificate Verification Tab */}
+          <TabsContent value="certificates" className="space-y-6">
+            {/* Search and Filter Bar */}
+            <Card className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      placeholder="Search certificates, learners, or issuers..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  {/* View Toggle Buttons */}
+                  <div className="flex items-center border border-gray-300 rounded-lg p-1">
+                    <Button
+                      variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('grid')}
+                      className="p-2"
+                    >
+                      <Grid3X3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                      className="p-2"
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {filteredCertificates.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                    {searchQuery || statusFilter !== 'all' ? 'No certificates found' : 'No Pending Certificate Verifications'}
+                  </h3>
+                  <p className="text-gray-500">
+                    {searchQuery || statusFilter !== 'all' 
+                      ? 'Try adjusting your search or filter criteria'
+                      : 'All certificate submissions have been reviewed. New submissions will appear here.'
+                    }
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className={viewMode === 'grid' 
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+                  : "space-y-4"
+                }>
+                  {currentCertificates.map((certificate) => (
+                    <CertificateCard key={certificate.id} certificate={certificate} />
+                  ))}
+                </div>
+                <PaginationControls
+                  totalPages={getTotalPages(filteredCertificates)}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                />
+              </>
+            )}
+          </TabsContent>
+
+          {/* Skills Verification Tab */}
+          <TabsContent value="skills" className="space-y-6">
+            {/* Search and Filter Bar */}
+            <Card className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      placeholder="Search skills, learners, or categories..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  {/* View Toggle Buttons */}
+                  <div className="flex items-center border border-gray-300 rounded-lg p-1">
+                    <Button
+                      variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('grid')}
+                      className="p-2"
+                    >
+                      <Grid3X3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant={viewMode === 'list' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setViewMode('list')}
+                      className="p-2"
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {filteredSkills.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Zap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                    {searchQuery || statusFilter !== 'all' ? 'No skills found' : 'No Pending Skill Verifications'}
+                  </h3>
+                  <p className="text-gray-500">
+                    {searchQuery || statusFilter !== 'all' 
+                      ? 'Try adjusting your search or filter criteria'
+                      : 'All skill submissions have been reviewed. New submissions will appear here.'
+                    }
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className={viewMode === 'grid' 
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
+                  : "space-y-4"
+                }>
+                  {currentSkills.map((skill) => (
+                    <SkillCard key={skill.id} skill={skill} />
+                  ))}
+                </div>
+                <PaginationControls
+                  totalPages={getTotalPages(filteredSkills)}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                />
+              </>
+            )}
+          </TabsContent>
+
           {/* Project Approvals Tab */}
           <TabsContent value="projects" className="space-y-6">
             {/* Search and Filter Bar */}
@@ -1026,6 +1470,30 @@ const Verifications: React.FC = () => {
             setSelectedExperience(null);
           }}
           onAction={handleExperienceAction}
+          currentUserId={user?.id}
+        />
+
+        {/* Certificate Details Modal */}
+        <CertificateDetailsModal
+          certificate={selectedCertificate}
+          isOpen={showCertificateModal}
+          onClose={() => {
+            setShowCertificateModal(false);
+            setSelectedCertificate(null);
+          }}
+          onAction={handleCertificateAction}
+          currentUserId={user?.id}
+        />
+
+        {/* Skill Details Modal */}
+        <SkillDetailsModal
+          skill={selectedSkill}
+          isOpen={showSkillModal}
+          onClose={() => {
+            setShowSkillModal(false);
+            setSelectedSkill(null);
+          }}
+          onAction={handleSkillAction}
           currentUserId={user?.id}
         />
 

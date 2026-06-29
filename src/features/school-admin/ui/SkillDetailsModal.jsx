@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock, Zap, Mail, TrendingUp } from 'lucide-react';
 import { SchoolAdminNotificationService } from '@/features/school-admin';
 import { CollegeAdminNotificationService } from '@/features/college-admin';
 import { toast } from 'react-hot-toast';
 
-const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUserId }) => {
+const SkillDetailsModal = ({ skill, isOpen, onClose, onAction, currentUserId }) => {
   const [actionLoading, setActionLoading] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
 
-  if (!isOpen || !training) return null;
+  if (!isOpen || !skill) return null;
 
-  // Handle approve training
+  // Handle approve skill
   const handleApprove = async () => {
     setActionLoading('approving');
     
@@ -22,39 +22,38 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
       }
 
       let result;
-      const approvalAuthority = training.approval_authority;
+      const approvalAuthority = skill.approval_authority;
       
       if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.approveTraining(
-          training.id,
+        result = await CollegeAdminNotificationService.approveSkill(
+          skill.id,
           currentUserId,
           'Approved by College Admin'
         );
       } else {
-        result = await SchoolAdminNotificationService.approveTraining(
-          training.id,
+        result = await SchoolAdminNotificationService.approveSkill(
+          skill.id,
           currentUserId,
           'Approved by School Admin'
         );
       }
       
-      toast.success(result.message || `Training "${training.title}" approved successfully!`);
+      toast.success(result.message || `Skill "${skill.skill_name || skill.name}" approved successfully!`);
       
-      // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await onAction('approved', training);
+        await onAction('approved', skill);
       }
       
       onClose();
     } catch (error) {
-      console.error('Error approving training:', error);
-      toast.error(error.message || 'Failed to approve training');
+      console.error('Error approving skill:', error);
+      toast.error(error.message || 'Failed to approve skill');
     } finally {
       setActionLoading(null);
     }
   };
 
-  // Handle reject training
+  // Handle reject skill
   const handleReject = async () => {
     if (!rejectionReason.trim()) {
       toast.error('Please provide a reason for rejection');
@@ -70,33 +69,32 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
       }
 
       let result;
-      const approvalAuthority = training.approval_authority;
+      const approvalAuthority = skill.approval_authority;
       
       if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.rejectTraining(
-          training.id,
+        result = await CollegeAdminNotificationService.rejectSkill(
+          skill.id,
           currentUserId,
           rejectionReason
         );
       } else {
-        result = await SchoolAdminNotificationService.rejectTraining(
-          training.id,
+        result = await SchoolAdminNotificationService.rejectSkill(
+          skill.id,
           currentUserId,
           rejectionReason
         );
       }
       
-      toast.success(result.message || `Training "${training.title}" rejected.`);
+      toast.success(result.message || `Skill "${skill.skill_name || skill.name}" rejected.`);
       
-      // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await onAction('rejected', training);
+        await onAction('rejected', skill);
       }
       
       onClose();
     } catch (error) {
-      console.error('Error rejecting training:', error);
-      toast.error(error.message || 'Failed to reject training');
+      console.error('Error rejecting skill:', error);
+      toast.error(error.message || 'Failed to reject skill');
     } finally {
       setActionLoading(null);
     }
@@ -111,17 +109,12 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
     });
   };
 
-  const formatDuration = (startDate, endDate) => {
-    if (!startDate || !endDate) return 'Duration not specified';
-    
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 30) return `${diffDays} days`;
-    const months = Math.floor(diffDays / 30);
-    return `${months} month${months > 1 ? 's' : ''}`;
+  const getLevelBadgeColor = (level) => {
+    const levelNum = parseInt(level) || 0;
+    if (levelNum >= 4) return 'bg-green-100 text-green-800';
+    if (levelNum >= 3) return 'bg-blue-100 text-blue-800';
+    if (levelNum >= 2) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -130,8 +123,8 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Training Details</h2>
-            <p className="text-sm text-gray-600">Review and approve training submission</p>
+            <h2 className="text-xl font-bold text-gray-900">Skill Details</h2>
+            <p className="text-sm text-gray-600">Review and approve skill submission</p>
           </div>
           <button
             onClick={onClose}
@@ -154,70 +147,73 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Name</p>
-                <p className="font-medium text-gray-900">{training.learner_name}</p>
+                <p className="font-medium text-gray-900">{skill.learner_name}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium text-gray-900">{training.learner_email}</p>
+                <p className="font-medium text-gray-900">{skill.learner_email}</p>
               </div>
             </div>
           </div>
 
-          {/* Training Information */}
+          {/* Skill Information */}
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-gray-200 rounded-lg">
-                <FileText className="h-5 w-5 text-gray-600" />
+                <Zap className="h-5 w-5 text-gray-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Training Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Skill Information</h3>
             </div>
             
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600">Training Title</p>
-                <p className="font-semibold text-gray-900 text-lg">{training.title}</p>
+                <p className="text-sm text-gray-600">Skill Name</p>
+                <p className="font-semibold text-gray-900 text-lg">{skill.skill_name || skill.name}</p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600">Organization</p>
+                  <p className="text-sm text-gray-600">Proficiency Level</p>
                   <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{training.organization}</p>
+                    <TrendingUp className="h-4 w-4 text-gray-500" />
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getLevelBadgeColor(skill.level)}`}>
+                      Level {skill.level || 'N/A'} / 5
+                    </span>
                   </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Duration</p>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">
-                      {formatDuration(training.start_date, training.end_date)}
-                    </p>
+                {skill.type && (
+                  <div>
+                    <p className="text-sm text-gray-600">Type</p>
+                    <p className="font-medium text-gray-900">{skill.type}</p>
                   </div>
-                </div>
+                )}
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+
+              {skill.category && (
                 <div>
-                  <p className="text-sm text-gray-600">Start Date</p>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{formatDate(training.start_date)}</p>
-                  </div>
+                  <p className="text-sm text-gray-600">Category</p>
+                  <p className="font-medium text-gray-900">{skill.category}</p>
                 </div>
+              )}
+
+              {skill.source && (
                 <div>
-                  <p className="text-sm text-gray-600">End Date</p>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{formatDate(training.end_date)}</p>
-                  </div>
+                  <p className="text-sm text-gray-600">Source</p>
+                  <p className="font-medium text-gray-900">{skill.source}</p>
                 </div>
-              </div>
+              )}
               
-              {training.description && (
+              {skill.description && (
                 <div>
                   <p className="text-sm text-gray-600">Description</p>
-                  <p className="text-gray-900 mt-1 leading-relaxed">{training.description}</p>
+                  <p className="text-gray-900 mt-1 leading-relaxed">{skill.description}</p>
+                </div>
+              )}
+
+              {skill.years_of_experience && (
+                <div>
+                  <p className="text-sm text-gray-600">Years of Experience</p>
+                  <p className="font-medium text-gray-900">{skill.years_of_experience} years</p>
                 </div>
               )}
             </div>
@@ -235,7 +231,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
               </div>
               <div>
                 <p className="text-sm text-gray-600">Submitted On</p>
-                <p className="font-medium text-gray-900">{formatDate(training.created_at)}</p>
+                <p className="font-medium text-gray-900">{formatDate(skill.created_at)}</p>
               </div>
             </div>
           </div>
@@ -247,7 +243,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Please provide a reason for rejecting this training..."
+                placeholder="Please provide a reason for rejecting this skill..."
                 className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
                 rows={3}
               />
@@ -285,7 +281,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                Approve Training
+                Approve Skill
               </button>
             </>
           ) : (
@@ -320,4 +316,4 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
   );
 };
 
-export default TrainingDetailsModal;
+export default SkillDetailsModal;

@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock, Award, Link as LinkIcon, Mail } from 'lucide-react';
 import { SchoolAdminNotificationService } from '@/features/school-admin';
 import { CollegeAdminNotificationService } from '@/features/college-admin';
 import { toast } from 'react-hot-toast';
 
-const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUserId }) => {
+const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, currentUserId }) => {
   const [actionLoading, setActionLoading] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
 
-  if (!isOpen || !training) return null;
+  if (!isOpen || !certificate) return null;
 
-  // Handle approve training
+  // Handle approve certificate
   const handleApprove = async () => {
     setActionLoading('approving');
     
@@ -22,39 +22,39 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
       }
 
       let result;
-      const approvalAuthority = training.approval_authority;
+      const approvalAuthority = certificate.approval_authority;
       
       if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.approveTraining(
-          training.id,
+        result = await CollegeAdminNotificationService.approveCertificate(
+          certificate.id,
           currentUserId,
           'Approved by College Admin'
         );
       } else {
-        result = await SchoolAdminNotificationService.approveTraining(
-          training.id,
+        result = await SchoolAdminNotificationService.approveCertificate(
+          certificate.id,
           currentUserId,
           'Approved by School Admin'
         );
       }
       
-      toast.success(result.message || `Training "${training.title}" approved successfully!`);
+      toast.success(result.message || `Certificate "${certificate.title}" approved successfully!`);
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await onAction('approved', training);
+        await onAction('approved', certificate);
       }
       
       onClose();
     } catch (error) {
-      console.error('Error approving training:', error);
-      toast.error(error.message || 'Failed to approve training');
+      console.error('Error approving certificate:', error);
+      toast.error(error.message || 'Failed to approve certificate');
     } finally {
       setActionLoading(null);
     }
   };
 
-  // Handle reject training
+  // Handle reject certificate
   const handleReject = async () => {
     if (!rejectionReason.trim()) {
       toast.error('Please provide a reason for rejection');
@@ -70,33 +70,33 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
       }
 
       let result;
-      const approvalAuthority = training.approval_authority;
+      const approvalAuthority = certificate.approval_authority;
       
       if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.rejectTraining(
-          training.id,
+        result = await CollegeAdminNotificationService.rejectCertificate(
+          certificate.id,
           currentUserId,
           rejectionReason
         );
       } else {
-        result = await SchoolAdminNotificationService.rejectTraining(
-          training.id,
+        result = await SchoolAdminNotificationService.rejectCertificate(
+          certificate.id,
           currentUserId,
           rejectionReason
         );
       }
       
-      toast.success(result.message || `Training "${training.title}" rejected.`);
+      toast.success(result.message || `Certificate "${certificate.title}" rejected.`);
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await onAction('rejected', training);
+        await onAction('rejected', certificate);
       }
       
       onClose();
     } catch (error) {
-      console.error('Error rejecting training:', error);
-      toast.error(error.message || 'Failed to reject training');
+      console.error('Error rejecting certificate:', error);
+      toast.error(error.message || 'Failed to reject certificate');
     } finally {
       setActionLoading(null);
     }
@@ -111,27 +111,14 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
     });
   };
 
-  const formatDuration = (startDate, endDate) => {
-    if (!startDate || !endDate) return 'Duration not specified';
-    
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 30) return `${diffDays} days`;
-    const months = Math.floor(diffDays / 30);
-    return `${months} month${months > 1 ? 's' : ''}`;
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Training Details</h2>
-            <p className="text-sm text-gray-600">Review and approve training submission</p>
+            <h2 className="text-xl font-bold text-gray-900">Certificate Details</h2>
+            <p className="text-sm text-gray-600">Review and approve certificate submission</p>
           </div>
           <button
             onClick={onClose}
@@ -154,70 +141,83 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Name</p>
-                <p className="font-medium text-gray-900">{training.learner_name}</p>
+                <p className="font-medium text-gray-900">{certificate.learner_name}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium text-gray-900">{training.learner_email}</p>
+                <p className="font-medium text-gray-900">{certificate.learner_email}</p>
               </div>
             </div>
           </div>
 
-          {/* Training Information */}
+          {/* Certificate Information */}
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-gray-200 rounded-lg">
-                <FileText className="h-5 w-5 text-gray-600" />
+                <Award className="h-5 w-5 text-gray-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Training Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Certificate Information</h3>
             </div>
             
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600">Training Title</p>
-                <p className="font-semibold text-gray-900 text-lg">{training.title}</p>
+                <p className="text-sm text-gray-600">Certificate Title</p>
+                <p className="font-semibold text-gray-900 text-lg">{certificate.title}</p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600">Organization</p>
+                  <p className="text-sm text-gray-600">Issuing Organization</p>
                   <div className="flex items-center gap-2">
                     <Building className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{training.organization}</p>
+                    <p className="font-medium text-gray-900">{certificate.issuer || certificate.organization || 'Not specified'}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Duration</p>
+                  <p className="text-sm text-gray-600">Issue Date</p>
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">
-                      {formatDuration(training.start_date, training.end_date)}
-                    </p>
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <p className="font-medium text-gray-900">{formatDate(certificate.issued_on || certificate.issue_date)}</p>
                   </div>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+
+              {certificate.expiry_date && (
                 <div>
-                  <p className="text-sm text-gray-600">Start Date</p>
+                  <p className="text-sm text-gray-600">Expiry Date</p>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{formatDate(training.start_date)}</p>
+                    <p className="font-medium text-gray-900">{formatDate(certificate.expiry_date)}</p>
                   </div>
                 </div>
+              )}
+
+              {certificate.credential_id && (
                 <div>
-                  <p className="text-sm text-gray-600">End Date</p>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{formatDate(training.end_date)}</p>
-                  </div>
+                  <p className="text-sm text-gray-600">Credential ID</p>
+                  <p className="font-medium text-gray-900">{certificate.credential_id}</p>
                 </div>
-              </div>
+              )}
+
+              {(certificate.certificate_url || certificate.document_url) && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Certificate Document</p>
+                  <a
+                    href={certificate.certificate_url || certificate.document_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                  >
+                    <LinkIcon className="h-4 w-4" />
+                    View Certificate
+                  </a>
+                </div>
+              )}
               
-              {training.description && (
+              {certificate.description && (
                 <div>
                   <p className="text-sm text-gray-600">Description</p>
-                  <p className="text-gray-900 mt-1 leading-relaxed">{training.description}</p>
+                  <p className="text-gray-900 mt-1 leading-relaxed">{certificate.description}</p>
                 </div>
               )}
             </div>
@@ -235,7 +235,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
               </div>
               <div>
                 <p className="text-sm text-gray-600">Submitted On</p>
-                <p className="font-medium text-gray-900">{formatDate(training.created_at)}</p>
+                <p className="font-medium text-gray-900">{formatDate(certificate.created_at)}</p>
               </div>
             </div>
           </div>
@@ -247,7 +247,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Please provide a reason for rejecting this training..."
+                placeholder="Please provide a reason for rejecting this certificate..."
                 className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
                 rows={3}
               />
@@ -285,7 +285,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                Approve Training
+                Approve Certificate
               </button>
             </>
           ) : (
@@ -320,4 +320,4 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
   );
 };
 
-export default TrainingDetailsModal;
+export default CertificateDetailsModal;

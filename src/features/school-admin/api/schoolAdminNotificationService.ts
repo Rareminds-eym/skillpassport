@@ -203,6 +203,194 @@ export class SchoolAdminNotificationService {
     }
   }
 
+  // Certificates
+  static async getPendingCertificates(schoolId: string) {
+    try {
+      const data = await apiPost(API_PATH, {
+        action: 'get-pending-certificates',
+        school_id: schoolId,
+      });
+      return ((data as any)?.data as any[]) || [];
+    } catch (error) {
+      logger.error('Failed to fetch pending certificates', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  static async approveCertificate(certificateId: string, approverId: string, notes = '') {
+    try {
+      const result = await apiPost(API_PATH, {
+        action: 'approve-certificate',
+        certificate_id: certificateId,
+        approver_id: approverId,
+        notes,
+      });
+      return result as { success: boolean; message: string; certificate_id: string };
+    } catch (error) {
+      logger.error('Failed to approve certificate', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  static async rejectCertificate(certificateId: string, rejectorId: string, notes = '') {
+    try {
+      if (!notes || notes.trim() === '') {
+        throw new Error('Rejection reason is required');
+      }
+      const result = await apiPost(API_PATH, {
+        action: 'reject-certificate',
+        certificate_id: certificateId,
+        rejector_id: rejectorId,
+        notes,
+      });
+      return result as { success: boolean; message: string; certificate_id: string; reason: string };
+    } catch (error) {
+      logger.error('Failed to reject certificate', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  // Education
+  static async getPendingEducation(schoolId: string) {
+    try {
+      const data = await apiPost(API_PATH, {
+        action: 'get-pending-education',
+        school_id: schoolId,
+      });
+      return ((data as any)?.data as any[]) || [];
+    } catch (error) {
+      logger.error('Failed to fetch pending education', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  static async approveEducation(educationId: string, approverId: string, notes = '') {
+    try {
+      const result = await apiPost(API_PATH, {
+        action: 'approve-education',
+        education_id: educationId,
+        approver_id: approverId,
+        notes,
+      });
+      return result as { success: boolean; message: string; education_id: string };
+    } catch (error) {
+      logger.error('Failed to approve education', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  static async rejectEducation(educationId: string, rejectorId: string, notes = '') {
+    try {
+      if (!notes || notes.trim() === '') {
+        throw new Error('Rejection reason is required');
+      }
+      const result = await apiPost(API_PATH, {
+        action: 'reject-education',
+        education_id: educationId,
+        rejector_id: rejectorId,
+        notes,
+      });
+      return result as { success: boolean; message: string; education_id: string; reason: string };
+    } catch (error) {
+      logger.error('Failed to reject education', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  // Skills
+  static async getPendingSkills(schoolId: string) {
+    try {
+      const data = await apiPost(API_PATH, {
+        action: 'get-pending-skills',
+        school_id: schoolId,
+      });
+      return ((data as any)?.data as any[]) || [];
+    } catch (error) {
+      logger.error('Failed to fetch pending skills', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  static async approveSkill(skillId: string, approverId: string, notes = '') {
+    try {
+      const result = await apiPost(API_PATH, {
+        action: 'approve-skill',
+        skill_id: skillId,
+        approver_id: approverId,
+        notes,
+      });
+      return result as { success: boolean; message: string; skill_id: string };
+    } catch (error) {
+      logger.error('Failed to approve skill', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  static async rejectSkill(skillId: string, rejectorId: string, notes = '') {
+    try {
+      if (!notes || notes.trim() === '') {
+        throw new Error('Rejection reason is required');
+      }
+      const result = await apiPost(API_PATH, {
+        action: 'reject-skill',
+        skill_id: skillId,
+        rejector_id: rejectorId,
+        notes,
+      });
+      return result as { success: boolean; message: string; skill_id: string; reason: string };
+    } catch (error) {
+      logger.error('Failed to reject skill', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  // Achievements
+  static async getPendingAchievements(schoolId: string) {
+    try {
+      const data = await apiPost(API_PATH, {
+        action: 'get-pending-achievements',
+        school_id: schoolId,
+      });
+      return ((data as any)?.data as any[]) || [];
+    } catch (error) {
+      logger.error('Failed to fetch pending achievements', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  static async approveAchievement(achievementId: string, approverId: string, notes = '') {
+    try {
+      const result = await apiPost(API_PATH, {
+        action: 'approve-achievement',
+        achievement_id: achievementId,
+        approver_id: approverId,
+        notes,
+      });
+      return result as { success: boolean; message: string; achievement_id: string };
+    } catch (error) {
+      logger.error('Failed to approve achievement', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  static async rejectAchievement(achievementId: string, rejectorId: string, notes = '') {
+    try {
+      if (!notes || notes.trim() === '') {
+        throw new Error('Rejection reason is required');
+      }
+      const result = await apiPost(API_PATH, {
+        action: 'reject-achievement',
+        achievement_id: achievementId,
+        rejector_id: rejectorId,
+        notes,
+      });
+      return result as { success: boolean; message: string; achievement_id: string; reason: string };
+    } catch (error) {
+      logger.error('Failed to reject achievement', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
   static subscribeToNotifications(schoolId: string, callback: (notification: any) => void) {
     const wsClient = getWSClient();
     
