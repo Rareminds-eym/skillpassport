@@ -163,7 +163,12 @@ export const onRequest: PagesFunction = async (context) => {
     // Authenticated endpoints
     if (path === '/create-learner' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
-        return await handleCreateLearner(authContext.request, authContext.env);
+        const user = getContextUser(authContext);
+        return await handleCreateLearner(authContext.request, authContext.env, {
+          id: user.id,
+          email: user.email || '',
+          org_id: (user as any).org_id,
+        });
       })(context);
     }
     if (path === '/create-teacher' && request.method === 'POST') {

@@ -20,7 +20,11 @@ import {
 /**
  * Handle admin creating a learner
  */
-export async function handleCreateLearner(request: Request, env: any): Promise<Response> {
+export async function handleCreateLearner(
+  request: Request, 
+  env: any,
+  user: { id: string; email: string; org_id?: string }
+): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -69,8 +73,11 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     .eq('email', userEmail)
     .maybeSingle();
 
-  const userId = currentUserData?.id || null;
+  const userId = currentUserData?.id || user.id;
   const userRole = currentUserData?.role || null;
+
+  // Get SSO org_id from the authenticated user's JWT
+  const ssoOrgId = user.org_id || null;
 
   // Determine institution type
   let schoolId = requestSchoolId || null;
@@ -123,6 +130,12 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     return apiError(400, 'VALIDATION_ERROR', 'School/College ID not found', request);
   }
 
+  // If we don't have ssoOrgId, we can't properly map the learner to the organization in SSO
+  if (!ssoOrgId) {
+    console.warn(`Admin ${userEmail} does not have org_id in JWT. Learner will be created without SSO organization mapping.`);
+    return apiError(400, 'VALIDATION_ERROR', 'Admin organization ID not found. Please ensure you are properly logged in as a school/college admin.', request);
+  }
+
   // Check if email already exists
   const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
   const emailExists = existingAuthUsers?.users?.some(
@@ -141,25 +154,40 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     return apiError(400, 'VALIDATION_ERROR', `Learner with email ${learner.email} already exists`, request);
   }
 
-  const learnerPassword = generatePassword();
-  const learnerRole = institutionType === 'college' ? 'learner' : 'learner';
+  // Use email as password for learners (easy to remember)
+  const learnerPassword = learner.email;
+  const learnerRole = 'learner';
 
-  // Create auth user
-  const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: learner.email.toLowerCase(),
-    password: learnerPassword,
-    email_confirm: true,
-    user_metadata: {
-      name: learner.name,
-      role: learnerRole,
-      phone: learner.contactNumber,
+  // ── Create the AUTH user in the SSO worker ──
+  // This makes the learner a real, active SSO member of the school/college's org
+  // with the learner role, so they can log in via SSO.
+  let ssoUserId: string | null = null;
+  
+  try {
+    const ssoMember = await ssoCreateMember(env, {
+      email: learner.email.toLowerCase(),
       password: learnerPassword,
-      added_by: userId,
-    },
-  });
+      role: learnerRole,
+      org_id: ssoOrgId,
+      user_metadata: {
+        name: learner.name,
+        phone: learner.contactNumber,
+        added_by: userId,
+        institution_type: institutionType,
+        school_id: schoolId,
+        college_id: collegeId,
+      },
+    });
+    if (ssoMember?.user_id) {
+      ssoUserId = ssoMember.user_id;
+    }
+  } catch (ssoErr) {
+    // If SSO creation fails, we should not proceed with app DB creation
+    return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create learner account in SSO', request);
+  }
 
-  if (authError || !authUser.user) {
-    return apiError(500, 'INTERNAL_ERROR', `Failed to create auth account: ${authError?.message}`, request);
+  if (!ssoUserId) {
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to create authentication user', request);
   }
 
   try {
@@ -167,7 +195,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     const { firstName, lastName } = splitName(learner.name);
 
     await supabaseAdmin.from('users').insert({
-      id: authUser.user.id,
+      id: ssoUserId,
       email: learner.email.toLowerCase(),
       firstName,
       lastName,
@@ -180,6 +208,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
         collegeId,
         addedBy: userId,
         password: learnerPassword,
+        org_id: ssoOrgId,
       },
     });
 
@@ -189,7 +218,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     const { data: learnerRecord, error: learnerError } = await supabaseAdmin
       .from('learners')
       .insert({
-        user_id: authUser.user.id,
+        user_id: ssoUserId,
         email: learner.email.toLowerCase(),
         name: learner.name,
         contactNumber: learner.contactNumber,
@@ -223,7 +252,7 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
     return apiSuccess({
       message: `Learner ${learner.name} created successfully`,
       data: {
-        authUserId: authUser.user.id,
+        authUserId: ssoUserId,
         learnerId: learnerRecord.id,
         email: learner.email,
         name: learner.name,
@@ -231,11 +260,15 @@ export async function handleCreateLearner(request: Request, env: any): Promise<R
         institutionType,
         schoolId,
         collegeId,
+        ssoOrgId,
       },
     }, request);
   } catch (error) {
-    // Rollback auth user
-    await deleteAuthUser(supabaseAdmin, authUser.user.id);
+    // Rollback: Delete from app DB
+    if (ssoUserId) {
+      await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+      // Note: SSO user remains (will be reused on retry if duplicate email)
+    }
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
 }

@@ -60,7 +60,7 @@ interface SsoTransactionData {
 type SsoFetcher = Fetcher & {
   createSubscription(data: unknown): Promise<Record<string, unknown>>;
   createFreemiumSubscription(data: unknown): Promise<Record<string, unknown>>;
-  createMember(data: { email: string; password: string; role: string; org_id: string }):
+  createMember(data: { email: string; password: string; role: string; org_id: string; user_metadata?: Record<string, unknown> }):
     Promise<{ user_id: string; org_id: string; membership_id: string }>;
   updateSubscriptionStatus(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
   updateSubscriptionField(subscriptionId: string, data: unknown): Promise<Record<string, unknown>>;
@@ -125,7 +125,7 @@ export async function ssoCreateFreemiumSubscription(
  */
 export async function ssoCreateMember(
   env: SsoClientEnv,
-  data: { email: string; password: string; role: string; org_id: string },
+  data: { email: string; password: string; role: string; org_id: string; user_metadata?: Record<string, unknown> },
 ): Promise<{ user_id: string; org_id: string; membership_id: string }> {
   return getSsoService(env).createMember(data);
 }
