@@ -3,13 +3,14 @@
  * Password Reset Completion API (SkillPassport Proxy)
  * POST /api/auth/reset-password
  * 
- * Calls SSO Worker via service binding to complete password reset
+ * Calls SSO Worker via RPC to complete password reset
  */
 
 import { z } from 'zod';
-import { apiLogger } from '../../lib/logger';
-import { jsonResponse } from '../../lib/response';
-import type { Env } from '../../lib/types';
+import { createLogger } from '../../lib/logger';
+import { apiError, apiSuccess } from '../../lib/response';
+
+const logger = createLogger('auth-reset-password');
 
 const resetPasswordSchema = z.object({
   token: z.string({ message: 'token is required' })
@@ -20,13 +21,9 @@ const resetPasswordSchema = z.object({
     .min(1, 'password is required')
 });
 
-const ssoResponseSchema = z.object({
-  reset: z.boolean().optional()
-});
-
 type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>;
 
-export async function onRequestPost(context: { request: Request; env: Env }): Promise<Response> {
+export async function onRequestPost(context: { request: Request; env: any }): Promise<Response> {
   const { request, env } = context;
 
   try {
@@ -36,62 +33,46 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       const parsed = await request.json();
       const result = resetPasswordSchema.safeParse(parsed);
       if (!result.success) {
-        return jsonResponse({
-          success: false,
-          error: result.error.issues[0].message
-        }, 400);
+        return apiError(400, 'VALIDATION_ERROR', result.error.issues[0].message);
       }
       body = result.data;
     } catch (error) {
-      apiLogger.error('Invalid JSON in reset password request', error as Error);
-      return jsonResponse({
-        success: false,
-        error: 'Invalid JSON payload'
-      }, 400);
+      logger.error('Invalid JSON in reset password request', error as Error);
+      return apiError(400, 'INVALID_JSON', 'Invalid JSON payload');
     }
 
-    apiLogger.info('Processing reset password request via service binding');
+    logger.info('Processing reset password request via service binding');
 
     // Check if SSO service binding is available
     if (!env.SSO_SERVICE) {
-      apiLogger.error('SSO service binding not configured');
-      return jsonResponse({
-        success: false,
-        error: 'SSO service not available'
-      }, 500);
+      logger.error('SSO service binding not configured');
+      return apiError(500, 'SERVICE_UNAVAILABLE', 'SSO service not available');
     }
 
-    // Call SSO Worker via service binding using True RPC
+    // Call SSO Worker via RPC
     try {
-      const result = await env.SSO_SERVICE.resetPassword({
+      const ssoResult = await env.SSO_SERVICE.resetPassword({
         token: body.token,
         password: body.password
-      }, request.headers.get("CF-Connecting-IP") ?? undefined, request.headers.get("User-Agent") ?? undefined);
+      });
 
-      apiLogger.info('Password reset completed successfully');
+      if (!ssoResult.success) {
+        return apiError(400, 'RESET_FAILED', ssoResult.error || 'Failed to reset password');
+      }
 
-      return jsonResponse({
-        success: true,
-        reset: result.reset ?? true,
+      logger.info('Password reset completed successfully');
+
+      return apiSuccess({
+        reset: true,
         message: 'Password reset successfully'
       });
     } catch (ssoError: any) {
-      apiLogger.error('SSO Worker reset password failed', ssoError);
-
-      return jsonResponse({
-        success: false,
-        error: ssoError.message || 'Failed to reset password'
-      }, 400);
+      logger.error('SSO Worker reset password failed', ssoError);
+      return apiError(400, 'SSO_ERROR', ssoError.message || 'Failed to reset password');
     }
 
-
-
   } catch (error) {
-    apiLogger.error('Error processing reset password request', error as Error);
-
-    return jsonResponse({
-      success: false,
-      error: 'Internal server error'
-    }, 500);
+    logger.error('Error processing reset password request', error as Error);
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error');
   }
 }

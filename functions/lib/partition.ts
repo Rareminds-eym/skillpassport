@@ -3,17 +3,16 @@
  * Copied from realtime-worker/src/utils.ts for direct DO access from Pages Functions.
  */
 
-/** Total number of DO partitions in the hash ring */
-export const TOTAL_PARTITIONS = 10;
-
 /**
- * Deterministic hash of a userId to a partition index (0–9).
- * Uses the Java-style 31-multiplier string hash for even distribution.
+ * Deterministic hash of a userId to a partition index.
+ * Reads TOTAL_PARTITIONS from env.REALTIME_PARTITIONS when available.
+ * Defaults to 10 if not configured.
  */
-export function getPartitionId(userId: string): number {
+export function getPartitionId(userId: string, totalPartitions?: number): number {
+  const count = totalPartitions ?? 10;
   let hash = 0;
   for (let i = 0; i < userId.length; i++) {
     hash = (Math.imul(31, hash) + userId.charCodeAt(i)) | 0;
   }
-  return (hash >>> 0) % TOTAL_PARTITIONS;
+  return (hash >>> 0) % count;
 }

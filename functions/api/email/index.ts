@@ -20,5 +20,5 @@ export const onRequestPost: PagesFunction = async (context) => {
   const body: any = await context.request.json().catch(() => null);
   if (!body) return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', context.request);
   const supabase = createSupabaseClient(context.env);
-  return await handleGenericEmail(body, context.env as any, supabase);
+  return await handleGenericEmail(body, context.env, supabase);
 };

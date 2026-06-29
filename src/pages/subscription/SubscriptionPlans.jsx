@@ -808,6 +808,16 @@ function SubscriptionPlans() {
       navigate(location.pathname + location.search, { replace: true, state: {} });
       toast.success(message, { duration: 5000, id: 'signup-success' });
     }
+
+    // Show warning if verification email wasn't sent during signup
+    const emailSentFailed = sessionStorage.getItem('email_sent_failed');
+    if (emailSentFailed === 'true') {
+      sessionStorage.removeItem('email_sent_failed');
+      toast.error(
+        'Account created, but verification email could not be sent. Please use "Resend verification email" after logging in.',
+        { duration: 8000, id: 'email-sent-failed' }
+      );
+    }
   }, []);
 
   useEffect(() => {
