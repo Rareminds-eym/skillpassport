@@ -7,215 +7,259 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
 
-/**
- * Get all notifications for a college admin
- * @param {string} collegeId - College's UUID
- * @param {Object} options - Query options
- * @returns {Promise<Array>} List of notifications
- */
-export async function getCollegeAdminNotifications(collegeId, options = {}) {
+// Type definitions
+interface NotificationOptions {
+  unreadOnly?: boolean;
+}
+
+interface ApiResponse<T = any> {
+  data: T;
+  error?: string;
+  success?: boolean;
+}
+
+interface ApprovalResult {
+  success: boolean;
+  message: string;
+}
+
+export async function getCollegeAdminNotifications(
+  collegeId: string,
+  options: NotificationOptions = {}
+): Promise<any[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-notifications',
     college_id: collegeId,
     unread_only: options?.unreadOnly
-  });
+  }) as ApiResponse;
 
   return result.data || [];
 }
 
-/**
- * Get unread notification count
- * @param {string} collegeId - College's UUID
- * @returns {Promise<number>} Count of unread notifications
- */
-export async function getUnreadCount(collegeId) {
+export async function getUnreadCount(collegeId: string): Promise<number> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-unread-count',
     college_id: collegeId,
     admin_type: 'college_admin'
-  });
+  }) as ApiResponse<number>;
 
   return result.data || 0;
 }
 
-/**
- * Get pending trainings for college admin
- * @param {string} collegeId - College's UUID
- * @returns {Promise<Array>} List of pending trainings
- */
-export async function getPendingTrainings(collegeId) {
+export async function getPendingTrainings(collegeId: string): Promise<any[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-pending-trainings',
     college_id: collegeId
-  });
+  }) as ApiResponse<any[]>;
 
   return result.data;
 }
 
-/**
- * Get pending experiences for college admin
- * @param {string} collegeId - College's UUID
- * @returns {Promise<Array>} List of pending experiences
- */
-export async function getPendingExperiences(collegeId) {
+export async function getPendingExperiences(collegeId: string): Promise<any[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-pending-experiences',
     college_id: collegeId
-  });
+  }) as ApiResponse<any[]>;
 
   return result.data;
 }
 
-/**
- * Get pending projects for college admin
- * @param {string} collegeId - College's UUID
- * @returns {Promise<Array>} List of pending projects
- */
-export async function getPendingProjects(collegeId) {
+export async function getPendingProjects(collegeId: string): Promise<any[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-pending-projects',
     college_id: collegeId
-  });
+  }) as ApiResponse<any[]>;
 
   return result.data;
 }
 
-/**
- * Mark notification as read
- * @param {string} notificationId - Notification ID
- * @returns {Promise<boolean>} Success status
- */
-export async function markAsRead(notificationId) {
+export async function markAsRead(notificationId: string): Promise<boolean> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'mark-notification-read',
     notification_id: notificationId
-  });
+  }) as ApiResponse<boolean>;
 
   return result.data;
 }
 
-/**
- * Approve training
- * @param {string} trainingId - Training ID
- * @param {string} approverId - Approver's user ID
- * @param {string} notes - Optional approval notes
- * @returns {Promise<Object>} Result object with success status and message
- */
-export async function approveTraining(trainingId, approverId, notes = '') {
+export async function approveTraining(
+  trainingId: string,
+  approverId: string,
+  notes = ''
+): Promise<ApprovalResult> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'approve-training',
     training_id: trainingId,
     approver_id: approverId,
     notes
-  });
+  }) as ApiResponse<ApprovalResult>;
 
   return result.data;
 }
 
-/**
- * Reject training
- * @param {string} trainingId - Training ID
- * @param {string} rejectorId - Rejector's user ID
- * @param {string} notes - Rejection reason
- * @returns {Promise<Object>} Result object with success status and message
- */
-export async function rejectTraining(trainingId, rejectorId, notes = '') {
+export async function rejectTraining(
+  trainingId: string,
+  rejectorId: string,
+  notes = ''
+): Promise<ApprovalResult> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'reject-training',
     training_id: trainingId,
     rejector_id: rejectorId,
     notes
-  });
+  }) as ApiResponse<ApprovalResult>;
 
   return result.data;
 }
 
-/**
- * Approve experience
- * @param {string} experienceId - Experience ID
- * @param {string} approverId - Approver's user ID
- * @param {string} notes - Optional approval notes
- * @returns {Promise<Object>} Result object with success status and message
- */
-export async function approveExperience(experienceId, approverId, notes = '') {
+export async function approveExperience(
+  experienceId: string,
+  approverId: string,
+  notes = ''
+): Promise<ApprovalResult> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'approve-experience',
     experience_id: experienceId,
     approver_id: approverId,
     notes
-  });
+  }) as ApiResponse<ApprovalResult>;
 
   return result.data;
 }
 
-/**
- * Reject experience
- * @param {string} experienceId - Experience ID
- * @param {string} rejectorId - Rejector's user ID
- * @param {string} notes - Rejection reason
- * @returns {Promise<Object>} Result object with success status and message
- */
-export async function rejectExperience(experienceId, rejectorId, notes = '') {
+export async function rejectExperience(
+  experienceId: string,
+  rejectorId: string,
+  notes = ''
+): Promise<ApprovalResult> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'reject-experience',
     experience_id: experienceId,
     rejector_id: rejectorId,
     notes
-  });
+  }) as ApiResponse<ApprovalResult>;
 
   return result.data;
 }
 
-/**
- * Approve project
- * @param {string} projectId - Project ID
- * @param {string} approverId - Approver's user ID
- * @param {string} notes - Optional approval notes
- * @returns {Promise<Object>} Result object with success status and message
- */
-export async function approveProject(projectId, approverId, notes = '') {
+export async function approveProject(
+  projectId: string,
+  approverId: string,
+  notes = ''
+): Promise<ApprovalResult> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'approve-project',
     project_id: projectId,
     approver_id: approverId,
     notes
-  });
+  }) as ApiResponse<ApprovalResult>;
 
   return result.data;
 }
 
-/**
- * Reject project
- * @param {string} projectId - Project ID
- * @param {string} rejectorId - Rejector's user ID
- * @param {string} notes - Rejection reason
- * @returns {Promise<Object>} Result object with success status and message
- */
-export async function rejectProject(projectId, rejectorId, notes = '') {
+export async function rejectProject(
+  projectId: string,
+  rejectorId: string,
+  notes = ''
+): Promise<ApprovalResult> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'reject-project',
     project_id: projectId,
     rejector_id: rejectorId,
     notes
-  });
+  }) as ApiResponse<ApprovalResult>;
 
   return result.data;
 }
 
-/**
- * Subscribe to real-time notifications (unified system)
- * Uses WebSocket client via getWSClient()
- * @param {string} collegeId - College's UUID
- * @param {Function} callback - Callback function for new notifications
- * @returns {Function} Unsubscribe function
- */
-export function subscribeToNotifications(collegeId, callback) {
+export async function getPendingCertificates(collegeId: string): Promise<any[]> {
+  const result = await apiPost('/college-admin/notifications', {
+    action: 'get-pending-certificates',
+    college_id: collegeId
+  }) as ApiResponse<any[]>;
+
+  return result.data;
+}
+
+export async function approveCertificate(
+  certificateId: string,
+  approverId: string,
+  notes = ''
+): Promise<ApprovalResult> {
+  const result = await apiPost('/college-admin/notifications', {
+    action: 'approve-certificate',
+    certificate_id: certificateId,
+    approver_id: approverId,
+    notes
+  }) as ApiResponse<ApprovalResult>;
+
+  return result.data;
+}
+
+export async function rejectCertificate(
+  certificateId: string,
+  rejectorId: string,
+  notes = ''
+): Promise<ApprovalResult> {
+  const result = await apiPost('/college-admin/notifications', {
+    action: 'reject-certificate',
+    certificate_id: certificateId,
+    rejector_id: rejectorId,
+    notes
+  }) as ApiResponse<ApprovalResult>;
+
+  return result.data;
+}
+
+export async function getPendingSkills(collegeId: string): Promise<any[]> {
+  const result = await apiPost('/college-admin/notifications', {
+    action: 'get-pending-skills',
+    college_id: collegeId
+  }) as ApiResponse<any[]>;
+
+  return result.data;
+}
+
+export async function approveSkill(
+  skillId: string,
+  approverId: string,
+  notes = ''
+): Promise<ApprovalResult> {
+  const result = await apiPost('/college-admin/notifications', {
+    action: 'approve-skill',
+    skill_id: skillId,
+    approver_id: approverId,
+    notes
+  }) as ApiResponse<ApprovalResult>;
+
+  return result.data;
+}
+
+export async function rejectSkill(
+  skillId: string,
+  rejectorId: string,
+  notes = ''
+): Promise<ApprovalResult> {
+  const result = await apiPost('/college-admin/notifications', {
+    action: 'reject-skill',
+    skill_id: skillId,
+    rejector_id: rejectorId,
+    notes
+  }) as ApiResponse<ApprovalResult>;
+
+  return result.data;
+}
+
+export function subscribeToNotifications(
+  collegeId: string,
+  callback: (notification: any) => void
+): () => void {
   const wsClient = getWSClient();
   
   const unsub = wsClient.subscribe(
     'training_notifications',
     { event: 'INSERT', filter: `college_id=eq.${collegeId}` },
-    (event) => {
+    (event: any) => {
       if (event.type === 'change') {
         callback(event.payload);
       }
@@ -232,6 +276,8 @@ export const CollegeAdminNotificationService = {
   getPendingTrainings,
   getPendingExperiences,
   getPendingProjects,
+  getPendingCertificates,
+  getPendingSkills,
   markAsRead,
   approveTraining,
   rejectTraining,
@@ -239,5 +285,9 @@ export const CollegeAdminNotificationService = {
   rejectExperience,
   approveProject,
   rejectProject,
+  approveCertificate,
+  rejectCertificate,
+  approveSkill,
+  rejectSkill,
   subscribeToNotifications,
 };
