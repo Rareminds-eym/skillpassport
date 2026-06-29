@@ -192,7 +192,12 @@ export const handleProfileMediaUrl: PagesFunction = async (context) => {
   }
 
   try {
-    const body = await request.json() as { fileKey?: string; url?: string };
+    let body: { fileKey?: string; url?: string };
+    try {
+      body = await request.json() as { fileKey?: string; url?: string };
+    } catch {
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON request body', request);
+    }
     const { fileKey: providedKey, url } = body;
 
     // Accept either a raw file key or a stored URL (extract the key from it).

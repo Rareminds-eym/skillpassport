@@ -262,6 +262,14 @@ export async function handleUpdateEducatorMetadata(
   const { table, key, value } = params;
   if (!userId || !table || !key) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, table, or key', context.request, { startTime });
   if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
+
+  // Only JSON-serializable values may be stored in the metadata JSONB column.
+  // Rejects non-serializable types (function, symbol, bigint); allows
+  // string/number/boolean/null/undefined/array/plain object.
+  const t = typeof value;
+  const isSerializable = value === null || t === 'undefined' || t === 'string' || t === 'number' || t === 'boolean' || t === 'object';
+  if (!isSerializable) return apiError(400, 'VALIDATION_ERROR', 'Invalid metadata value type', context.request, { startTime });
+
   userId = String(userId);
   const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
 

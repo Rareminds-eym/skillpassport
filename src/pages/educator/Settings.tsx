@@ -1087,15 +1087,15 @@ const Settings: React.FC = () => {
   };
 
   /**
-   * Returns the STORED photo reference for the current educator.
+   * Returns the stored photo reference for the current educator.
    *
-   * College lecturers store it at `metadata.photo_url` (no dedicated photo
-   * column exists); school educators use the top-level `photo_url` column.
+   * College lecturers store it at metadata.photo_url (no dedicated photo
+   * column exists); school educators use the top-level photo_url column.
    *
-   * Note: this is the stored R2 url/key and is NOT directly renderable — use
-   * `resolvedPhotoUrl` (a short-lived signed URL) for the `<img>` src.
+   * Note: this is the stored R2 url/key and is NOT directly renderable. Use
+   * resolvedPhotoUrl (a short-lived signed URL) for the image src.
    *
-   * @returns The stored photo url/key, or `null` if none is set.
+   * @returns The stored photo url/key, or null if none is set.
    */
   const getPhotoUrl = useCallback((): string | null => {
     if (!educatorData) return null;
@@ -1103,7 +1103,7 @@ const Settings: React.FC = () => {
       return educatorData.metadata?.photo_url || null;
     }
     return educatorData.photo_url || null;
-  }, [educatorData]);
+  }, [educatorData?.collegeId, educatorData?.metadata?.photo_url, educatorData?.photo_url]);
 
   // Short-lived signed URL resolved from the stored reference, safe for <img src>.
   // We cannot point <img> at /document-access (it needs an Authorization header
@@ -1123,8 +1123,12 @@ const Settings: React.FC = () => {
         if (!cancelled) setResolvedPhotoUrl(signed);
       })
       .catch((error) => {
-        logger.error('Failed to resolve photo URL', error instanceof Error ? error : new Error(String(error)));
+        if (!cancelled) {
+          logger.error('Failed to resolve photo URL', error instanceof Error ? error : new Error(String(error)));
+          setResolvedPhotoUrl(null); // Reset state on error
+        }
       });
+
     // Cleanup: mark this run stale so a late-resolving fetch won't apply.
     const cleanup = () => { cancelled = true; };
     return cleanup;
@@ -1416,7 +1420,9 @@ const Settings: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Current photo status */}
+                        {/* Current photo status. Do NOT render the stored URL or
+                            the signed URL here — exposing storage paths/credentials
+                            in the UI is a security leak. Status text only. */}
                         {getPhotoUrl() && (
                           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="flex items-center gap-2">

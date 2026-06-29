@@ -158,7 +158,13 @@ export const getProfileMediaUrl = async (urlOrKey: string): Promise<string | nul
       return null;
     }
 
-    const result = await response.json() as { data?: { url?: string } };
+    let result: { data?: { url?: string } };
+    try {
+      result = await response.json() as { data?: { url?: string } };
+    } catch (parseError) {
+      logger.error('Failed to parse profile media URL response', parseError instanceof Error ? parseError : new Error(String(parseError)));
+      return null;
+    }
     return result?.data?.url ?? null;
   } catch (error) {
     logger.error('Error getting profile media URL', error instanceof Error ? error : new Error(String(error)));
