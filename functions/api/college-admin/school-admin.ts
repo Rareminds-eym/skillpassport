@@ -7,14 +7,71 @@ import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
+// ── Type Definitions ──
+interface LearnerSnapshot {
+  id: string;
+  name: string;
+  email: string;
+  school_id: string | null;
+  university_college_id: string | null;
+  learner_type?: string;
+}
+
+interface RecordWithLearner {
+  id: string;
+  approval_status: string;
+  approval_authority?: string;
+  created_at: string;
+  updated_at?: string;
+  learner: LearnerSnapshot | LearnerSnapshot[];
+  organization?: string;
+  [key: string]: unknown;
+}
+
+interface FlattenedRecord extends Omit<RecordWithLearner, 'learner'> {
+  learner_name: string;
+  learner_email: string;
+  learner_school_id: string | null;
+  learner_college_id: string | null;
+  learner_type?: string;
+  _needsApprovalAuthorityFix?: true;
+}
+
+// ── Helper Functions ──
+function filterAndFlattenBySchool(
+  data: RecordWithLearner[],
+  school_id: string,
+  extra?: (l: LearnerSnapshot) => Partial<FlattenedRecord>
+): FlattenedRecord[] {
+  return data
+    .filter((item) => {
+      const l = Array.isArray(item.learner) ? item.learner[0] : item.learner;
+      return l?.school_id === school_id;
+    })
+    .map((item) => {
+      const l = Array.isArray(item.learner) ? item.learner[0] : item.learner;
+      const { learner: _, ...rest } = item;
+      return {
+        ...rest,
+        learner_name: l?.name ?? '',
+        learner_email: l?.email ?? '',
+        learner_school_id: l?.school_id ?? null,
+        learner_college_id: l?.university_college_id ?? null,
+        ...(extra ? extra(l) : {}),
+      };
+    });
+}
+
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const supabase = getServiceClient(env);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let body: Record<string, any>;
   try {
-    body = await context.request.json() as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    body = (await context.request.json()) as any;
   } catch {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON body', context.request);
   }
@@ -117,28 +174,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('trainings').select('*, learner:learners!trainings_learner_id_fkey(*)').eq('approval_status', 'pending').eq('approval_authority', 'school_admin').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
 
-        const filtered = (data || []).filter((t: any) => {
-          const l = Array.isArray(t.learner) ? t.learner[0] : t.learner;
-          return l?.school_id === school_id;
-        });
-
-        let results = filtered.map((t: any) => {
-          const l = Array.isArray(t.learner) ? t.learner[0] : t.learner;
-          return { ...t, learner_name: l?.name || '', learner_email: l?.email || '', learner_school_id: l?.school_id || null, learner_college_id: l?.university_college_id || null };
-        });
+        let results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
 
         if (results.length === 0) {
           const { data: fb } = await supabase.from('trainings').select('*, learner:learners!trainings_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
           if (fb) {
-            const fallback = (fb || []).filter((t: any) => {
+            const fallback = (fb as RecordWithLearner[]).filter((t) => {
               const l = Array.isArray(t.learner) ? t.learner[0] : t.learner;
               const org = (t.organization || '').toLowerCase();
               return org === 'rareminds' && l?.school_id === school_id && l?.learner_type !== 'learner';
             });
-            results = fallback.map((t: any) => {
-              const l = Array.isArray(t.learner) ? t.learner[0] : t.learner;
-              return { ...t, learner_name: l?.name || '', learner_email: l?.email || '', learner_school_id: l?.school_id || null, learner_college_id: l?.university_college_id || null, _needsApprovalAuthorityFix: true };
-            });
+            results = filterAndFlattenBySchool(fallback, school_id).map(r => ({ ...r, _needsApprovalAuthorityFix: true as const }));
           }
         }
 
@@ -168,13 +214,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('experience').select('*, learner:learners!experience_learner_id_fkey(*)').eq('approval_status', 'pending').eq('approval_authority', 'school_admin').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = (data || []).filter((e: any) => {
-          const l = Array.isArray(e.learner) ? e.learner[0] : e.learner;
-          return l?.school_id === school_id;
-        }).map((e: any) => {
-          const l = Array.isArray(e.learner) ? e.learner[0] : e.learner;
-          return { ...e, learner_name: l?.name || '', learner_email: l?.email || '', learner_school_id: l?.school_id || null, learner_college_id: l?.university_college_id || null, learner_type: l?.learner_type };
-        });
+        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id, (l) => ({
+          learner_type: l?.learner_type
+        }));
         return apiSuccess(results, context.request, { startTime });
       }
 
@@ -201,20 +243,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('certificates').select('*, learner:learners!certificates_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = (data || []).filter((c: any) => {
-          const l = Array.isArray(c.learner) ? c.learner[0] : c.learner;
-          return l?.school_id === school_id;
-        }).map((c: any) => {
-          const l = Array.isArray(c.learner) ? c.learner[0] : c.learner;
-          return { ...c, learner_name: l?.name || '', learner_email: l?.email || '', learner_school_id: l?.school_id || null, learner_college_id: l?.university_college_id || null };
-        });
+        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
         return apiSuccess(results, context.request, { startTime });
       }
 
       case 'approve-certificate': {
         const { certificate_id, approver_id, notes } = params;
         if (!certificate_id) return apiError(400, 'VALIDATION_ERROR', 'Missing certificate_id', context.request, { startTime });
-        const { data, error } = await supabase.from('certificates').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', certificate_id).eq('approval_status', 'pending').select().single();
+        const { error } = await supabase.from('certificates').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', certificate_id).eq('approval_status', 'pending');
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Certificate approved', certificate_id }, context.request, { startTime });
       }
@@ -223,7 +259,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { certificate_id, rejector_id, notes } = params;
         if (!certificate_id) return apiError(400, 'VALIDATION_ERROR', 'Missing certificate_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { data, error } = await supabase.from('certificates').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', certificate_id).eq('approval_status', 'pending').select().single();
+        const { error } = await supabase.from('certificates').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', certificate_id).eq('approval_status', 'pending');
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Certificate rejected', certificate_id, reason: notes }, context.request, { startTime });
       }
@@ -234,20 +270,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('education').select('*, learner:learners!education_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = (data || []).filter((e: any) => {
-          const l = Array.isArray(e.learner) ? e.learner[0] : e.learner;
-          return l?.school_id === school_id;
-        }).map((e: any) => {
-          const l = Array.isArray(e.learner) ? e.learner[0] : e.learner;
-          return { ...e, learner_name: l?.name || '', learner_email: l?.email || '', learner_school_id: l?.school_id || null, learner_college_id: l?.university_college_id || null };
-        });
+        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
         return apiSuccess(results, context.request, { startTime });
       }
 
       case 'approve-education': {
         const { education_id, approver_id, notes } = params;
         if (!education_id) return apiError(400, 'VALIDATION_ERROR', 'Missing education_id', context.request, { startTime });
-        const { data, error } = await supabase.from('education').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', education_id).eq('approval_status', 'pending').select().single();
+        const { error } = await supabase.from('education').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', education_id).eq('approval_status', 'pending');
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Education approved', education_id }, context.request, { startTime });
       }
@@ -256,7 +286,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { education_id, rejector_id, notes } = params;
         if (!education_id) return apiError(400, 'VALIDATION_ERROR', 'Missing education_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { data, error } = await supabase.from('education').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', education_id).eq('approval_status', 'pending').select().single();
+        const { error } = await supabase.from('education').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', education_id).eq('approval_status', 'pending');
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Education rejected', education_id, reason: notes }, context.request, { startTime });
       }
@@ -267,20 +297,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('skills').select('*, learner:learners!skills_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = (data || []).filter((s: any) => {
-          const l = Array.isArray(s.learner) ? s.learner[0] : s.learner;
-          return l?.school_id === school_id;
-        }).map((s: any) => {
-          const l = Array.isArray(s.learner) ? s.learner[0] : s.learner;
-          return { ...s, learner_name: l?.name || '', learner_email: l?.email || '', learner_school_id: l?.school_id || null, learner_college_id: l?.university_college_id || null };
-        });
+        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
         return apiSuccess(results, context.request, { startTime });
       }
 
       case 'approve-skill': {
         const { skill_id, approver_id, notes } = params;
         if (!skill_id) return apiError(400, 'VALIDATION_ERROR', 'Missing skill_id', context.request, { startTime });
-        const { data, error } = await supabase.from('skills').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', skill_id).eq('approval_status', 'pending').select().single();
+        const { error } = await supabase.from('skills').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', skill_id).eq('approval_status', 'pending');
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Skill approved', skill_id }, context.request, { startTime });
       }
@@ -289,7 +313,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { skill_id, rejector_id, notes } = params;
         if (!skill_id) return apiError(400, 'VALIDATION_ERROR', 'Missing skill_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { data, error } = await supabase.from('skills').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', skill_id).eq('approval_status', 'pending').select().single();
+        const { error } = await supabase.from('skills').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', skill_id).eq('approval_status', 'pending');
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Skill rejected', skill_id, reason: notes }, context.request, { startTime });
       }
@@ -300,20 +324,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('achievements').select('*, learner:learners!achievements_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = (data || []).filter((a: any) => {
-          const l = Array.isArray(a.learner) ? a.learner[0] : a.learner;
-          return l?.school_id === school_id;
-        }).map((a: any) => {
-          const l = Array.isArray(a.learner) ? a.learner[0] : a.learner;
-          return { ...a, learner_name: l?.name || '', learner_email: l?.email || '', learner_school_id: l?.school_id || null, learner_college_id: l?.university_college_id || null };
-        });
+        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
         return apiSuccess(results, context.request, { startTime });
       }
 
       case 'approve-achievement': {
         const { achievement_id, approver_id, notes } = params;
         if (!achievement_id) return apiError(400, 'VALIDATION_ERROR', 'Missing achievement_id', context.request, { startTime });
-        const { data, error } = await supabase.from('achievements').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', achievement_id).eq('approval_status', 'pending').select().single();
+        const { error } = await supabase.from('achievements').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', achievement_id).eq('approval_status', 'pending');
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Achievement approved', achievement_id }, context.request, { startTime });
       }
@@ -322,7 +340,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { achievement_id, rejector_id, notes } = params;
         if (!achievement_id) return apiError(400, 'VALIDATION_ERROR', 'Missing achievement_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { data, error } = await supabase.from('achievements').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', achievement_id).eq('approval_status', 'pending').select().single();
+        const { error } = await supabase.from('achievements').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', achievement_id).eq('approval_status', 'pending');
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Achievement rejected', achievement_id, reason: notes }, context.request, { startTime });
       }
@@ -334,24 +352,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('projects').select('*, learner:learners!projects_learner_id_fkey(*)').eq('approval_status', 'pending').eq('approval_authority', 'school_admin').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
 
-        let results = (data || []).filter((p: any) => {
-          const l = Array.isArray(p.learner) ? p.learner[0] : p.learner;
-          return l?.school_id === school_id;
-        }).map((p: any) => {
-          const l = Array.isArray(p.learner) ? p.learner[0] : p.learner;
-          return { ...p, learner_name: l?.name || '', learner_email: l?.email || '', learner_school_id: l?.school_id || null, learner_college_id: l?.university_college_id || null };
-        });
+        let results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
 
         if (results.length === 0) {
           const { data: fb } = await supabase.from('projects').select('*, learner:learners!projects_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
           if (fb) {
-            results = (fb || []).filter((p: any) => {
+            const fallback = (fb as RecordWithLearner[]).filter((p) => {
               const l = Array.isArray(p.learner) ? p.learner[0] : p.learner;
               return l?.school_id === school_id && l?.learner_type !== 'learner';
-            }).map((p: any) => {
-              const l = Array.isArray(p.learner) ? p.learner[0] : p.learner;
-              return { ...p, learner_name: l?.name || '', learner_email: l?.email || '', learner_school_id: l?.school_id || null, learner_college_id: l?.university_college_id || null, _needsApprovalAuthorityFix: true };
             });
+            results = filterAndFlattenBySchool(fallback, school_id).map(r => ({ ...r, _needsApprovalAuthorityFix: true as const }));
           }
         }
         return apiSuccess(results, context.request, { startTime });
@@ -503,6 +513,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'update-teacher-document-urls': {
         const { teacher_id, degree_certificate_url, id_proof_url, experience_letters_url } = params;
         if (!teacher_id) return apiError(400, 'VALIDATION_ERROR', 'Missing teacher_id', context.request, { startTime });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updates: Record<string, any> = {};
         if (degree_certificate_url !== undefined) updates.degree_certificate_url = degree_certificate_url;
         if (id_proof_url !== undefined) updates.id_proof_url = id_proof_url;
@@ -572,6 +583,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       default:
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
     }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error(`[school-admin POST] action=${action}:`, error?.message || error);
     return apiDbError(error, context.request, { startTime });

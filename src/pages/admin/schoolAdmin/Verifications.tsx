@@ -15,17 +15,13 @@ import {
   Timer,
   Eye,
   AlertCircle,
-  RefreshCw,
   ChevronLeft,
   ChevronRight,
   Search,
-  Filter,
   Grid3X3,
   List,
   Mail,
   Award,
-  Building,
-  CheckCircle,
   FileText,
   Zap
 } from 'lucide-react';
@@ -33,7 +29,7 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('school-admin-verifications');
 
-import { SchoolAdminNotificationService } from '@/features/school-admin';
+import { SchoolAdminNotificationService, PendingItem } from '@/features/school-admin';
 import { 
   TrainingDetailsModal, 
   ExperienceDetailsModal, 
@@ -48,17 +44,17 @@ const Verifications: React.FC = () => {
   const user = useUser();
   const [activeTab, setActiveTab] = useState<"trainings" | "experiences" | "certificates" | "skills" | "projects">("trainings");
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
-  const [pendingTrainings, setPendingTrainings] = useState<any[]>([]);
-  const [pendingExperiences, setPendingExperiences] = useState<any[]>([]);
-  const [pendingCertificates, setPendingCertificates] = useState<any[]>([]);
-  const [pendingSkills, setPendingSkills] = useState<any[]>([]);
-  const [pendingProjects, setPendingProjects] = useState<any[]>([]);
+  const [pendingTrainings, setPendingTrainings] = useState<PendingItem[]>([]);
+  const [pendingExperiences, setPendingExperiences] = useState<PendingItem[]>([]);
+  const [pendingCertificates, setPendingCertificates] = useState<PendingItem[]>([]);
+  const [pendingSkills, setPendingSkills] = useState<PendingItem[]>([]);
+  const [pendingProjects, setPendingProjects] = useState<PendingItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedTraining, setSelectedTraining] = useState(null);
-  const [selectedExperience, setSelectedExperience] = useState(null);
-  const [selectedCertificate, setSelectedCertificate] = useState(null);
-  const [selectedSkill, setSelectedSkill] = useState(null);
-  const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedTraining, setSelectedTraining] = useState<PendingItem | null>(null);
+  const [selectedExperience, setSelectedExperience] = useState<PendingItem | null>(null);
+  const [selectedCertificate, setSelectedCertificate] = useState<PendingItem | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<PendingItem | null>(null);
+  const [selectedProject, setSelectedProject] = useState<PendingItem | null>(null);
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [showExperienceModal, setShowExperienceModal] = useState(false);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
@@ -84,9 +80,11 @@ const Verifications: React.FC = () => {
         return;
       }
 
-      if (user.school_id) {
-        logger.info('Found user.school_id', { schoolId: user.school_id });
-        setSchoolId(user.school_id);
+      // Cast user to check for school_id property
+      const userWithSchool = user as typeof user & { school_id?: string };
+      if (userWithSchool.school_id) {
+        logger.info('Found user.school_id', { schoolId: userWithSchool.school_id });
+        setSchoolId(userWithSchool.school_id);
         return;
       }
 
@@ -217,7 +215,7 @@ const Verifications: React.FC = () => {
     }
   };
 
-  const handleTrainingAction = async (action: string, training: any) => {
+  const handleTrainingAction = async (action: string, training: PendingItem) => {
     if (action === 'view') {
       setSelectedTraining(training);
       setShowTrainingModal(true);
@@ -227,7 +225,7 @@ const Verifications: React.FC = () => {
     }
   };
 
-  const handleExperienceAction = async (action: string, experience: any) => {
+  const handleExperienceAction = async (action: string, experience: PendingItem) => {
     if (action === 'view') {
       setSelectedExperience(experience);
       setShowExperienceModal(true);
@@ -237,7 +235,7 @@ const Verifications: React.FC = () => {
     }
   };
 
-  const handleCertificateAction = async (action: string, certificate: any) => {
+  const handleCertificateAction = async (action: string, certificate: PendingItem) => {
     if (action === 'view') {
       setSelectedCertificate(certificate);
       setShowCertificateModal(true);
@@ -247,7 +245,7 @@ const Verifications: React.FC = () => {
     }
   };
 
-  const handleSkillAction = async (action: string, skill: any) => {
+  const handleSkillAction = async (action: string, skill: PendingItem) => {
     if (action === 'view') {
       setSelectedSkill(skill);
       setShowSkillModal(true);
@@ -257,7 +255,7 @@ const Verifications: React.FC = () => {
     }
   };
 
-  const handleProjectAction = async (action: string, project: any) => {
+  const handleProjectAction = async (action: string, project: PendingItem) => {
     if (action === 'view') {
       setSelectedProject(project);
       setShowProjectModal(true);
@@ -272,41 +270,14 @@ const Verifications: React.FC = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const formatDuration = (startDate: string, endDate: string) => {
-    if (!startDate || !endDate) return 'Duration not specified';
-    
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 30) return `${diffDays} days`;
-    const months = Math.floor(diffDays / 30);
-    return `${months} month${months > 1 ? 's' : ''}`;
-  };
-
-  // Refresh all data
-  const refreshData = async () => {
-    setLoading(true);
-    await Promise.all([
-      fetchTrainingData(),
-      fetchExperienceData(),
-      fetchCertificateData(),
-      fetchSkillData(),
-      fetchProjectData()
-    ]);
-    setLoading(false);
-    toast.success("Data has been refreshed successfully");
-  };
-
   // Pagination helper functions
-  const getCurrentPageData = (data: any[]) => {
+  const getCurrentPageData = (data: PendingItem[]) => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return data.slice(startIndex, endIndex);
   };
 
-  const getTotalPages = (data: any[]) => {
+  const getTotalPages = (data: PendingItem[]) => {
     return Math.ceil(data.length / itemsPerPage);
   };
 
@@ -319,13 +290,6 @@ const Verifications: React.FC = () => {
     setCurrentPage(1); // Reset to first page when changing tabs
     setSearchQuery(''); // Reset search when changing tabs
     setStatusFilter('all'); // Reset filter when changing tabs
-  };
-
-  const tabs = {
-    trainings: { label: "Training Approvals", icon: CheckCircle, count: pendingTrainings.length },
-    experiences: { label: "Experience Approvals", icon: User, count: pendingExperiences.length },
-    certificates: { label: "Certificate Verification", icon: FileText, count: pendingCertificates.length },
-    projects: { label: "Project Validation", icon: Building, count: pendingProjects.length }
   };
 
   // Filter functions
@@ -402,24 +366,6 @@ const Verifications: React.FC = () => {
   const currentSkills = getCurrentPageData(filteredSkills);
   const currentProjects = getCurrentPageData(filteredProjects);
 
-  // Get total pages for current tab (with filtering)
-  const getCurrentTabTotalPages = () => {
-    switch (activeTab) {
-      case 'trainings':
-        return getTotalPages(filteredTrainings);
-      case 'experiences':
-        return getTotalPages(filteredExperiences);
-      case 'certificates':
-        return getTotalPages(filteredCertificates);
-      case 'skills':
-        return getTotalPages(filteredSkills);
-      case 'projects':
-        return getTotalPages(filteredProjects);
-      default:
-        return 1;
-    }
-  };
-
   // Pagination Component
   const PaginationControls = ({ totalPages, currentPage, onPageChange }: { totalPages: number, currentPage: number, onPageChange: (page: number) => void }) => {
     if (totalPages <= 1) return null;
@@ -473,7 +419,7 @@ const Verifications: React.FC = () => {
   };
 
   // Training Card Component
-  const TrainingCard = ({ training }: { training: any }) => (
+  const TrainingCard = ({ training }: { training: PendingItem }) => (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-2">
@@ -484,7 +430,7 @@ const Verifications: React.FC = () => {
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(training.created_at || training.start_date).toLocaleDateString()}
+            Submitted: {new Date(training.created_at || training.start_date || '').toLocaleDateString()}
           </div>
         </div>
        
@@ -518,7 +464,7 @@ const Verifications: React.FC = () => {
             </div>
           )}
           
-          {training.hours_spent > 0 && (
+          {training.hours_spent && training.hours_spent > 0 && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Timer className="w-4 h-4" />
               <span>{training.hours_spent} hours</span>
@@ -534,11 +480,14 @@ const Verifications: React.FC = () => {
         {training.skills && training.skills.length > 0 && (
           <div className="mb-4">
             <div className="flex flex-wrap gap-1">
-              {training.skills.slice(0, 3).map((skill: string, index: number) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {skill}
-                </Badge>
-              ))}
+              {training.skills.slice(0, 3).map((skill, index: number) => {
+                const skillName = typeof skill === 'string' ? skill : skill.name;
+                return (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {skillName}
+                  </Badge>
+                );
+              })}
               {training.skills.length > 3 && (
                 <Badge variant="outline" className="text-xs">
                   +{training.skills.length - 3} more
@@ -572,7 +521,7 @@ const Verifications: React.FC = () => {
   );
 
   // Experience Card Component
-  const ExperienceCard = ({ experience }: { experience: any }) => (
+  const ExperienceCard = ({ experience }: { experience: PendingItem }) => (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-2">
@@ -583,7 +532,7 @@ const Verifications: React.FC = () => {
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(experience.created_at || experience.start_date).toLocaleDateString()}
+            Submitted: {new Date(experience.created_at || experience.start_date || '').toLocaleDateString()}
           </div>
         </div>
 
@@ -635,7 +584,7 @@ const Verifications: React.FC = () => {
   );
 
   // Certificate Card Component
-  const CertificateCard = ({ certificate }: { certificate: any }) => (
+  const CertificateCard = ({ certificate }: { certificate: PendingItem }) => (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-2">
@@ -700,7 +649,7 @@ const Verifications: React.FC = () => {
   );
 
   // Skill Card Component
-  const SkillCard = ({ skill }: { skill: any }) => (
+  const SkillCard = ({ skill }: { skill: PendingItem }) => (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-2">
@@ -773,7 +722,7 @@ const Verifications: React.FC = () => {
   );
 
   // Project Card Component
-  const ProjectCard = ({ project }: { project: any }) => (
+  const ProjectCard = ({ project }: { project: PendingItem }) => (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-2">
@@ -784,7 +733,7 @@ const Verifications: React.FC = () => {
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(project.created_at || project.start_date).toLocaleDateString()}
+            Submitted: {new Date(project.created_at || project.start_date || '').toLocaleDateString()}
           </div>
         </div>
 
@@ -824,14 +773,17 @@ const Verifications: React.FC = () => {
             </div>
           )}
 
-          {project.tech_stack && project.tech_stack.length > 0 && (
+          {project.tech_stack && Array.isArray(project.tech_stack) && project.tech_stack.length > 0 && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <div className="flex flex-wrap gap-1">
-                {project.tech_stack.slice(0, 3).map((tech: string, index: number) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {tech}
-                  </Badge>
-                ))}
+                {project.tech_stack.slice(0, 3).map((tech, index: number) => {
+                  const techName = typeof tech === 'string' ? tech : tech.name;
+                  return (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {techName}
+                    </Badge>
+                  );
+                })}
                 {project.tech_stack.length > 3 && (
                   <Badge variant="secondary" className="text-xs">
                     +{project.tech_stack.length - 3} more
@@ -1436,7 +1388,7 @@ const Verifications: React.FC = () => {
                   : "space-y-4"
                 }>
                   {currentProjects.map((project) => (
-                    <ProjectCard key={project.project_id} project={project} />
+                    <ProjectCard key={project.project_id || project.id} project={project} />
                   ))}
                 </div>
                 <PaginationControls

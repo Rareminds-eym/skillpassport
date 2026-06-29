@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock, Award, Link as LinkIcon, Mail } from 'lucide-react';
+import { X, User, Calendar, Building, CheckCircle, XCircle, Award, Link as LinkIcon } from 'lucide-react';
 import { SchoolAdminNotificationService } from '@/features/school-admin';
 import { CollegeAdminNotificationService } from '@/features/college-admin';
 import { toast } from 'react-hot-toast';
