@@ -296,8 +296,11 @@ function MySubscription() {
           link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
           link.style.display = 'none';
           document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          try {
+            link.click();
+          } finally {
+            document.body.removeChild(link);
+          }
           toast.success('Receipt downloading!');
           return;
         } catch (urlError) {

@@ -652,7 +652,7 @@ function PaymentSuccess() {
       
       // Strategy 2: If not available, construct from payment ID and try to fetch
       if (!fileIdentifier && paymentParams.razorpay_payment_id && user?.id) {
-        const shortUserId = user.id.substring(0, 8);
+        const shortUserId = (user?.id || '').substring(0, 8) || 'unknown';
         const sanitizedPaymentId = paymentParams.razorpay_payment_id.replace(/[^a-zA-Z0-9_-]/g, '');
         // Use a wildcard pattern - backend will find the file with any timestamp
         fileIdentifier = `payment_pdf/user_${shortUserId}/${sanitizedPaymentId}`;

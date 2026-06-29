@@ -22,6 +22,7 @@
 
 import { apiError, apiSuccess } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
+import type { Fetcher } from '@cloudflare/workers-types';
 import { APP_URL } from '../../email/types';
 import {
   fulfillLearnerSubscription,
@@ -338,11 +339,20 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
         return;
       }
       
-      const ssoEnv = { SSO_SERVICE: env.SSO_SERVICE };
-      const ssoClient = await import('../../../lib/sso-client.js');
-      await ssoClient.ssoUpdateSubscriptionField(ssoEnv, subscription.id, {
-        receipt_url: receiptKey,
-      });
+      let ssoClient;
+      try {
+        ssoClient = await import('../../../lib/sso-client.js');
+      } catch (importErr) {
+        logger.error('Failed to load sso-client module', importErr instanceof Error ? importErr : new Error(String(importErr)));
+        throw importErr;
+      }
+      await ssoClient.ssoUpdateSubscriptionField(
+        env as unknown as { SSO_SERVICE: Fetcher },
+        subscription.id,
+        {
+          receipt_url: receiptKey,
+        }
+      );
       logger.info('Receipt key saved to subscription', { receiptKey });
     } catch (updateErr) {
       logger.error('Failed to save receipt key (non-critical)', updateErr instanceof Error ? updateErr : new Error(String(updateErr)));

@@ -327,6 +327,11 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
         return apiError(404, 'NOT_FOUND', 'Receipt not found. It may still be generating.', request);
       }
 
+      if (!files[0] || !files[0].key) {
+        logger.error('Invalid file object returned from list', new Error('Missing key property'));
+        return apiError(500, 'INTERNAL_ERROR', 'Failed to process receipt file', request);
+      }
+
       // Use the first (and should be only) matching file
       fileKey = files[0].key;
       logger.info('Using file', { fileKey });

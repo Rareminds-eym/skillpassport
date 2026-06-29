@@ -285,7 +285,8 @@ function MySubscription() {
         try {
           const presignedUrl = await getPaymentReceiptPresignedUrl(subscriptionData.receiptUrl, 3600);
           
-          if (!presignedUrl || presignedUrl === '' || presignedUrl === 'about:blank') {
+          const isValidUrl = presignedUrl && presignedUrl.startsWith('https://') && presignedUrl.length > 10;
+          if (!isValidUrl) {
             toast.error('Failed to generate download link. Please try again.');
             return;
           }
@@ -296,8 +297,11 @@ function MySubscription() {
           link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
           link.style.display = 'none';
           document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          try {
+            link.click();
+          } finally {
+            document.body.removeChild(link);
+          }
           toast.success('Receipt downloading!');
           return;
         } catch (urlError) {
@@ -360,8 +364,11 @@ function MySubscription() {
         link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
         link.style.display = 'none';
         document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        try {
+          link.click();
+        } finally {
+          document.body.removeChild(link);
+        }
         toast.success('Receipt downloading!');
       } catch (urlError) {
         logger.error('Failed to get presigned URL for legacy payment', urlError);

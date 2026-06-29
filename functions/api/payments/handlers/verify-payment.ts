@@ -271,9 +271,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           plan_amount: planPrice,
           billing_cycle: plan.duration as string,
           features: validPlan.base_features || [],
-          full_name: userName || user.email || '',
-          email: user.email || '',
-          phone: userPhone,
+          full_name: userName || (user.email as string) || '',
+          email: (user.email as string) || '',
+          phone: userPhone || undefined,
           razorpay_order_id: body.razorpay_order_id as string,
           razorpay_payment_id: body.razorpay_payment_id as string,
           // DO NOT set receipt_url here - will be set after successful upload
@@ -355,8 +355,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 4: Send payment confirmation email
     try {
       await sendPaymentSuccessEmail(env as unknown as PagesEnv, {
-        name: userName || user.email || '',
-        email: user.email || '',
+        name: userName || (user.email as string) || '',
+        email: (user.email as string) || '',
         phone: userPhone || '',
         amount: planPrice,
         orderId: body.razorpay_order_id as string,
@@ -390,38 +390,40 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             },
             user: {
               name: userName,
-              email: user.email || '',
-              phone: userPhone,
+              email: (user.email as string) || '',
+              phone: userPhone || undefined,
             },
           })
         );
       } else {
         // Fallback: Generate receipt synchronously if waitUntil is not available
         logger.warn('context.waitUntil not available, generating receipt synchronously');
-        generateAndUploadReceipt({
-          env,
-          supabase,
-          subscriptionId: subscription.id as string,
-          userId: user.id,
-          receiptKey,
-          paymentId: body.razorpay_payment_id as string,
-          orderId: body.razorpay_order_id as string,
-          amount: planPrice,
-          paymentMethod: payment.method || 'Card',
-          subscription: {
-            plan_type: subscription.plan_type as string,
-            billing_cycle: subscription.billing_cycle as string,
-            subscription_start_date: subscription.subscription_start_date as string,
-            subscription_end_date: subscription.subscription_end_date as string,
-          },
-          user: {
-            name: userName,
-            email: user.email || '',
-            phone: userPhone,
-          },
-        }).catch(err => {
+        try {
+          await generateAndUploadReceipt({
+            env,
+            supabase,
+            subscriptionId: subscription.id as string,
+            userId: user.id,
+            receiptKey,
+            paymentId: body.razorpay_payment_id as string,
+            orderId: body.razorpay_order_id as string,
+            amount: planPrice,
+            paymentMethod: payment.method || 'Card',
+            subscription: {
+              plan_type: subscription.plan_type as string,
+              billing_cycle: subscription.billing_cycle as string,
+              subscription_start_date: subscription.subscription_start_date as string,
+              subscription_end_date: subscription.subscription_end_date as string,
+            },
+            user: {
+              name: userName,
+              email: (user.email as string) || '',
+              phone: userPhone || undefined,
+            },
+          });
+        } catch (err) {
           logger.error('Synchronous receipt generation failed', err instanceof Error ? err : new Error(String(err)));
-        });
+        }
       }
     }
 
