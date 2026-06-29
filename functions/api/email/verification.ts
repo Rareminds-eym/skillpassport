@@ -42,15 +42,6 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
   const { request, env } = context;
 
   try {
-    // Check if email service is configured
-    if (!isEmailConfigured(env)) {
-      apiLogger.error('Email service not configured');
-      return jsonResponse({
-        success: false,
-        error: 'Email service not configured'
-      }, 500);
-    }
-
     // Parse request body and validate using Zod
     let body: VerificationEmailRequest;
     try {
@@ -102,6 +93,9 @@ The SkillPassport Team
     const subject = 'Verify your email address - SkillPassport';
 
     // If templateOnly mode, return template data without sending
+    // NOTE: This path does NOT require EMAIL_SERVICE binding — it generates and returns
+    // the template data for the SSO worker to send via its own EMAIL_SERVICE binding.
+    // The isEmailConfigured check below is only relevant when actually sending.
     if (body.templateOnly) {
       return jsonResponse({
         success: true,
@@ -109,6 +103,15 @@ The SkillPassport Team
         text,
         subject,
       });
+    }
+
+    // Check if email service is configured (only needed for actual sending)
+    if (!isEmailConfigured(env)) {
+      apiLogger.error('Email service not configured');
+      return jsonResponse({
+        success: false,
+        error: 'Email service not configured'
+      }, 500);
     }
 
     // Send email via email-worker

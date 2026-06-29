@@ -635,6 +635,7 @@ const UnifiedSignup = () => {
       // Step 1: Create SSO user
       let ssoUserId: string;
 
+      let emailSent = true;
       if (isAdminRole) {
         // Admin signup creates user + org
         const orgName = `${state.firstName} ${state.lastName}'s Institution`;
@@ -652,9 +653,7 @@ const UnifiedSignup = () => {
           },
         });
         ssoUserId = ssoResult.user.id;
-        if (ssoResult.email_sent === false) {
-          sessionStorage.setItem('email_sent_failed', 'true');
-        }
+        emailSent = ssoResult.email_sent !== false;
       } else {
         // Member signup (learner, educator, recruiter) — no org creation
         const ssoResult = await ssoClient.signupMember({
@@ -670,9 +669,18 @@ const UnifiedSignup = () => {
           },
         });
         ssoUserId = ssoResult.user.id;
-        if (ssoResult.email_sent === false) {
-          sessionStorage.setItem('email_sent_failed', 'true');
-        }
+        emailSent = ssoResult.email_sent !== false;
+      }
+
+      // If verification email failed, show error and stop the flow
+      if (!emailSent) {
+        sessionStorage.setItem('email_sent_failed', 'true');
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Your account was created but we couldn\'t send the verification email. Please use the "Resend verification email" option after logging in.',
+        }));
+        return;
       }
 
       // Update auth store with the new user
@@ -796,24 +804,9 @@ const UnifiedSignup = () => {
             sessionStorage.removeItem('invitation_email');
             sessionStorage.removeItem('invitation_return_url');
 
-            // Logout to clear the current JWT
-            try {
-              await ssoClient.logout();
-              console.log('[UnifiedSignup] ✓ Logged out successfully');
-            } catch (logoutError) {
-              console.warn('[UnifiedSignup] Logout failed (non-critical):', logoutError);
-            }
-
-            // Clear auth store
-            useAuthStore.setState({
-              user: null,
-              isAuthenticated: false,
-              role: null,
-              isLearner: false,
-              isEducator: false,
-              isAdmin: false,
-              isRecruiter: false,
-            });
+            // Logout to clear the current JWT and reset auth state
+            await useAuthStore.getState().logout();
+            console.log('[UnifiedSignup] ✓ Logged out successfully');
 
             // Redirect to verify-email page
             // User will verify email, then get redirected based on stored context
@@ -894,14 +887,9 @@ const UnifiedSignup = () => {
             method: 'POST',
           });
         } catch {
-          // If delete fails, at least logout to revoke the session
-          try { await ssoClient.logout(); } catch { /* best-effort */ }
+          // If delete fails, still clear auth state
         }
-        useAuthStore.setState({
-          user: null,
-          isAuthenticated: false,
-          role: null,
-        });
+        await useAuthStore.getState().logout();
       }
 
       // Track signup_failed — error message and role captured for GTM

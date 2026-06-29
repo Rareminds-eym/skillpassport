@@ -31,15 +31,6 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
   const { request, env } = context;
 
   try {
-    // Check if email service is configured
-    if (!isEmailConfigured(env)) {
-      apiLogger.error('Email service not configured');
-      return jsonResponse({
-        success: false,
-        error: 'Email service not configured'
-      }, 500);
-    }
-
     // Parse request body and validate using Zod
     let body: PasswordResetEmailRequest;
     try {
@@ -98,6 +89,17 @@ The SkillPassport Team
         text,
         subject,
       });
+    }
+
+    // NOTE: This path requires EMAIL_SERVICE binding — it actually sends the email.
+    // The isEmailConfigured check is here (not at function entry) because the
+    // templateOnly path above returns template data without needing the binding.
+    if (!isEmailConfigured(env)) {
+      apiLogger.error('Email service not configured');
+      return jsonResponse({
+        success: false,
+        error: 'Email service not configured'
+      }, 500);
     }
 
     // Send email via email-worker

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { fetchMaintenanceMode } from '../api/maintenanceService';
-import { supabase } from '../api/supabaseClient';
+import RealtimeService from '../api/realtimeService';
 
 interface MaintenanceState {
   isMaintenanceMode: boolean;
@@ -9,7 +9,7 @@ interface MaintenanceState {
   checkMaintenanceMode: () => Promise<void>;
 }
 
-let _realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+let _broadcastUnsubscribe: (() => void) | null = null;
 let _hasChecked = false;
 
 export const useMaintenanceStore = create<MaintenanceState>((set) => ({
@@ -25,36 +25,26 @@ export const useMaintenanceStore = create<MaintenanceState>((set) => ({
       const { isEnabled, bypassToken } = await fetchMaintenanceMode();
       set({ isMaintenanceMode: isEnabled, activeBypassToken: bypassToken, maintenanceLoading: false });
 
-      if (_realtimeChannel) {
-        _realtimeChannel.unsubscribe();
+      // Subscribe to maintenance config updates via custom WebSocket
+      if (_broadcastUnsubscribe) {
+        _broadcastUnsubscribe();
       }
 
-      _realtimeChannel = supabase
-        .channel('maintenance-config-updates')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'app_config', filter: 'key=eq.maintenance_mode' },
-          (payload) => {
-            const newValue = payload.new?.value === 'true';
-            set({ isMaintenanceMode: newValue });
+      const { unsubscribe } = await RealtimeService.createBroadcastChannel(
+        'maintenance-config-updates',
+        (payload) => {
+          if (payload.type === 'update') {
+            const { key, value } = payload.payload;
+            if (key === 'maintenance_mode') {
+              set({ isMaintenanceMode: value === 'true' });
+            } else if (key === 'maintenance_bypass_token') {
+              set({ activeBypassToken: value || null });
+            }
           }
-        )
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'app_config', filter: 'key=eq.maintenance_bypass_token' },
-          (payload) => {
-            const newToken = payload.new?.value || null;
-            set({ activeBypassToken: newToken });
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: 'DELETE', schema: 'public', table: 'app_config', filter: 'key=eq.maintenance_bypass_token' },
-          () => {
-            set({ activeBypassToken: null });
-          }
-        )
-        .subscribe();
+        }
+      );
+
+      _broadcastUnsubscribe = unsubscribe;
     } catch (error) {
       console.error('Failed to check maintenance mode', error);
       set({ isMaintenanceMode: false, activeBypassToken: null, maintenanceLoading: false });
@@ -67,9 +57,9 @@ export const initializeMaintenanceStore = () => {
 };
 
 export const cleanupMaintenanceStore = () => {
-  if (_realtimeChannel) {
-    _realtimeChannel.unsubscribe();
-    _realtimeChannel = null;
+  if (_broadcastUnsubscribe) {
+    _broadcastUnsubscribe();
+    _broadcastUnsubscribe = null;
   }
   _hasChecked = false;
 };
