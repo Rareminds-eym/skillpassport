@@ -1103,7 +1103,7 @@ const Settings: React.FC = () => {
       return educatorData.metadata?.photo_url || null;
     }
     return educatorData.photo_url || null;
-  }, [educatorData?.collegeId, educatorData?.metadata?.photo_url, educatorData?.photo_url]);
+  }, [educatorData]);
 
   // Short-lived signed URL resolved from the stored reference, safe for <img src>.
   // We cannot point <img> at /document-access (it needs an Authorization header
@@ -1118,20 +1118,20 @@ const Settings: React.FC = () => {
       return;
     }
     let cancelled = false;
-    getProfileMediaUrl(storedRef)
-      .then((signed) => {
+    (async () => {
+      try {
+        const signed = await getProfileMediaUrl(storedRef);
         if (!cancelled) setResolvedPhotoUrl(signed);
-      })
-      .catch((error) => {
+      } catch (error) {
         if (!cancelled) {
           logger.error('Failed to resolve photo URL', error instanceof Error ? error : new Error(String(error)));
           setResolvedPhotoUrl(null); // Reset state on error
         }
-      });
+      }
+    })();
 
     // Cleanup: mark this run stale so a late-resolving fetch won't apply.
-    const cleanup = () => { cancelled = true; };
-    return cleanup;
+    return () => { cancelled = true; };
   }, [getPhotoUrl]);
 
   const tabs = [
@@ -1420,9 +1420,15 @@ const Settings: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Current photo status. Do NOT render the stored URL or
-                            the signed URL here — exposing storage paths/credentials
-                            in the UI is a security leak. Status text only. */}
+                        {/*
+                          SECURITY: getPhotoUrl() is called below ONLY as an
+                          existence check (truthy = a photo is set) to decide
+                          whether to show the status badge. Its return value (a
+                          stored R2 url/key) is intentionally NEVER rendered, and
+                          neither is the signed URL — presigned URLs and storage
+                          paths are sensitive and must not be exposed in the UI.
+                          Status text only.
+                        */}
                         {getPhotoUrl() && (
                           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="flex items-center gap-2">

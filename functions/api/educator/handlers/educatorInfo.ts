@@ -252,8 +252,15 @@ export async function handleRemoveEducatorMedia(params: any, context: Authentica
 }
 
 
+interface UpdateEducatorMetadataParams {
+  userId?: string;
+  table?: string;
+  key?: string;
+  value?: unknown;
+}
+
 export async function handleUpdateEducatorMetadata(
-  params: { userId?: string; table?: string; key?: string; value?: unknown },
+  params: UpdateEducatorMetadataParams,
   context: AuthenticatedContext,
   startTime: number,
 ) {
@@ -264,10 +271,22 @@ export async function handleUpdateEducatorMetadata(
   if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
 
   // Only JSON-serializable values may be stored in the metadata JSONB column.
-  // Rejects non-serializable types (function, symbol, bigint); allows
-  // string/number/boolean/null/undefined/array/plain object.
+  // Allows string/number/boolean/null/undefined and, for objects, ONLY arrays
+  // or plain objects. Rejects non-serializable primitives (function/symbol/
+  // bigint) and non-plain objects (Date, Map, Set, Error, class instances).
   const t = typeof value;
-  const isSerializable = value === null || t === 'undefined' || t === 'string' || t === 'number' || t === 'boolean' || t === 'object';
+  const isPlainObjectOrArray = (v: unknown): boolean => {
+    if (Array.isArray(v)) return true;
+    const proto = Object.getPrototypeOf(v);
+    return proto === Object.prototype || proto === null;
+  };
+  const isSerializable =
+    value === null ||
+    t === 'undefined' ||
+    t === 'string' ||
+    t === 'number' ||
+    t === 'boolean' ||
+    (t === 'object' && isPlainObjectOrArray(value));
   if (!isSerializable) return apiError(400, 'VALIDATION_ERROR', 'Invalid metadata value type', context.request, { startTime });
 
   userId = String(userId);

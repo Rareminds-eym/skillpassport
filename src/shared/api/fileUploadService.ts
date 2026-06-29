@@ -144,13 +144,15 @@ export const getDocumentUrl = (fileUrl: string, mode: 'inline' | 'download' = 'i
 
 
 export const getProfileMediaUrl = async (urlOrKey: string): Promise<string | null> => {
-  if (!urlOrKey) return null;
+  // Defensive: reject empty or whitespace-only input before hitting the API.
+  const value = urlOrKey?.trim();
+  if (!value) return null;
 
   try {
     const response = await ssoClient.fetch(`${STORAGE_API_URL}/profile-media-url`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: urlOrKey }),
+      body: JSON.stringify({ url: value }),
     });
 
     if (!response.ok) {
