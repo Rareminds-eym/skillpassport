@@ -12,7 +12,7 @@ interface NotificationOptions {
   unreadOnly?: boolean;
 }
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   data: T;
   error?: string;
   success?: boolean;
@@ -26,12 +26,12 @@ interface ApprovalResult {
 export async function getCollegeAdminNotifications(
   collegeId: string,
   options: NotificationOptions = {}
-): Promise<any[]> {
+): Promise<unknown[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-notifications',
     college_id: collegeId,
     unread_only: options?.unreadOnly
-  }) as ApiResponse;
+  }) as ApiResponse<unknown[]>;
 
   return result.data || [];
 }
@@ -46,29 +46,29 @@ export async function getUnreadCount(collegeId: string): Promise<number> {
   return result.data || 0;
 }
 
-export async function getPendingTrainings(collegeId: string): Promise<any[]> {
+export async function getPendingTrainings(collegeId: string): Promise<unknown[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-pending-trainings',
     college_id: collegeId
-  }) as ApiResponse<any[]>;
+  }) as ApiResponse<unknown[]>;
 
   return result.data;
 }
 
-export async function getPendingExperiences(collegeId: string): Promise<any[]> {
+export async function getPendingExperiences(collegeId: string): Promise<unknown[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-pending-experiences',
     college_id: collegeId
-  }) as ApiResponse<any[]>;
+  }) as ApiResponse<unknown[]>;
 
   return result.data;
 }
 
-export async function getPendingProjects(collegeId: string): Promise<any[]> {
+export async function getPendingProjects(collegeId: string): Promise<unknown[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-pending-projects',
     college_id: collegeId
-  }) as ApiResponse<any[]>;
+  }) as ApiResponse<unknown[]>;
 
   return result.data;
 }
@@ -172,11 +172,11 @@ export async function rejectProject(
   return result.data;
 }
 
-export async function getPendingCertificates(collegeId: string): Promise<any[]> {
+export async function getPendingCertificates(collegeId: string): Promise<unknown[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-pending-certificates',
     college_id: collegeId
-  }) as ApiResponse<any[]>;
+  }) as ApiResponse<unknown[]>;
 
   return result.data;
 }
@@ -211,11 +211,11 @@ export async function rejectCertificate(
   return result.data;
 }
 
-export async function getPendingSkills(collegeId: string): Promise<any[]> {
+export async function getPendingSkills(collegeId: string): Promise<unknown[]> {
   const result = await apiPost('/college-admin/notifications', {
     action: 'get-pending-skills',
     college_id: collegeId
-  }) as ApiResponse<any[]>;
+  }) as ApiResponse<unknown[]>;
 
   return result.data;
 }
@@ -252,16 +252,16 @@ export async function rejectSkill(
 
 export function subscribeToNotifications(
   collegeId: string,
-  callback: (notification: any) => void
+  callback: (notification: unknown) => void
 ): () => void {
   const wsClient = getWSClient();
   
   const unsub = wsClient.subscribe(
     'training_notifications',
     { event: 'INSERT', filter: `college_id=eq.${collegeId}` },
-    (event: any) => {
-      if (event.type === 'change') {
-        callback(event.payload);
+    (event: unknown) => {
+      if (typeof event === 'object' && event !== null && 'type' in event && event.type === 'change') {
+        callback('payload' in event ? event.payload : event);
       }
     }
   );
