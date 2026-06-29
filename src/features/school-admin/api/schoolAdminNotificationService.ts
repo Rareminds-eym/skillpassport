@@ -143,6 +143,11 @@ interface RejectAchievementResult extends ApproveResult {
   reason: string;
 }
 
+interface RejectExperienceResult extends ApproveResult {
+  experience_id: string;
+  reason: string;
+}
+
 export class SchoolAdminNotificationService {
   static async getSchoolAdminNotifications(schoolId: string, options: { unreadOnly?: boolean } = {}) {
     try {
@@ -267,13 +272,13 @@ export class SchoolAdminNotificationService {
       if (!notes || notes.trim() === '') {
         throw new Error('Rejection reason is required');
       }
-      const result = await apiPost(API_PATH, {
+      const envelope = await apiPost(API_PATH, {
         action: 'reject-experience',
         experience_id: experienceId,
         rejector_id: rejectorId,
         notes,
-      });
-      return result;
+      }) as ApiEnvelope<RejectExperienceResult>;
+      return envelope.data;
     } catch (error) {
       logger.error('Failed to reject experience', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
