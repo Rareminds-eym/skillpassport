@@ -5,6 +5,18 @@ import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
 
 const getSub = (context: AuthenticatedContext) => getServiceClient(context.env as any);
 
+/**
+ * Returns true if the value is an array or a plain object (prototype is
+ * Object.prototype or null). Used to keep only JSON-serializable structures
+ * out of the metadata JSONB column — rejects non-plain objects such as Date,
+ * Map, Set, Error, and class instances.
+ */
+const isPlainObjectOrArray = (v: unknown): boolean => {
+  if (Array.isArray(v)) return true;
+  const proto = Object.getPrototypeOf(v);
+  return proto === Object.prototype || proto === null;
+};
+
 
 export async function handleGetOrganizationById(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
@@ -253,9 +265,9 @@ export async function handleRemoveEducatorMedia(params: any, context: Authentica
 
 
 interface UpdateEducatorMetadataParams {
-  userId?: string;
-  table?: string;
-  key?: string;
+  userId: string;
+  table: string;
+  key: string;
   value?: unknown;
 }
 
@@ -275,11 +287,6 @@ export async function handleUpdateEducatorMetadata(
   // or plain objects. Rejects non-serializable primitives (function/symbol/
   // bigint) and non-plain objects (Date, Map, Set, Error, class instances).
   const t = typeof value;
-  const isPlainObjectOrArray = (v: unknown): boolean => {
-    if (Array.isArray(v)) return true;
-    const proto = Object.getPrototypeOf(v);
-    return proto === Object.prototype || proto === null;
-  };
   const isSerializable =
     value === null ||
     t === 'undefined' ||

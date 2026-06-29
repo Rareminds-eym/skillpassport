@@ -1097,13 +1097,13 @@ const Settings: React.FC = () => {
    *
    * @returns The stored photo url/key, or null if none is set.
    */
-  const getPhotoUrl = useCallback((): string | null => {
-    if (!educatorData) return null;
-    if (educatorData.collegeId !== undefined) {
-      return educatorData.metadata?.photo_url || null;
-    }
-    return educatorData.photo_url || null;
-  }, [educatorData]);
+ const getPhotoUrl = useCallback((): string | null => {
+  if (!educatorData) return null;
+  if (educatorData.collegeId !== undefined) {
+    return educatorData.metadata?.photo_url || null;
+  }
+  return educatorData.photo_url || null;
+}, [educatorData?.collegeId, educatorData?.metadata?.photo_url, educatorData?.photo_url]);
 
   // Short-lived signed URL resolved from the stored reference, safe for <img src>.
   // We cannot point <img> at /document-access (it needs an Authorization header
@@ -1111,27 +1111,45 @@ const Settings: React.FC = () => {
   // GET URL via the authenticated /profile-media-url endpoint.
   const [resolvedPhotoUrl, setResolvedPhotoUrl] = useState<string | null>(null);
 
+  // Explicit lifecycle of the profile photo, so the UI can distinguish
+  // "no photo configured" from "failed to resolve". `resolvedPhotoUrl` still
+  // drives the <img> src exactly as before; this is additive metadata only.
+  // - 'none'    : no stored photo reference exists
+  // - 'loading' : a stored reference exists and we're minting a signed URL
+  // - 'success' : signed URL resolved (resolvedPhotoUrl is set)
+  // - 'error'   : signed URL request failed
+  type PhotoStatus = 'none' | 'loading' | 'success' | 'error';
+  const [photoStatus, setPhotoStatus] = useState<PhotoStatus>('none');
+
   useEffect(() => {
     const storedRef = getPhotoUrl();
     if (!storedRef) {
       setResolvedPhotoUrl(null);
+      setPhotoStatus('none');
       return;
     }
-    let cancelled = false;
-    (async () => {
+    let isMounted = true;
+    setPhotoStatus('loading');
+    const fetchSignedUrl = async () => {
       try {
         const signed = await getProfileMediaUrl(storedRef);
-        if (!cancelled) setResolvedPhotoUrl(signed);
+        if (isMounted) {
+          setResolvedPhotoUrl(signed);
+          // A null signed URL means resolution did not yield a usable image.
+          setPhotoStatus(signed ? 'success' : 'error');
+        }
       } catch (error) {
-        if (!cancelled) {
+        if (isMounted) {
           logger.error('Failed to resolve photo URL', error instanceof Error ? error : new Error(String(error)));
           setResolvedPhotoUrl(null); // Reset state on error
+          setPhotoStatus('error');
         }
       }
-    })();
+    };
+    fetchSignedUrl();
 
     // Cleanup: mark this run stale so a late-resolving fetch won't apply.
-    return () => { cancelled = true; };
+    return () => { isMounted = false; };
   }, [getPhotoUrl]);
 
   const tabs = [
@@ -1429,12 +1447,31 @@ const Settings: React.FC = () => {
                           paths are sensitive and must not be exposed in the UI.
                           Status text only.
                         */}
-                        {getPhotoUrl() && (
+                        {photoStatus === 'loading' && (
+                          <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <ArrowPathIcon className="w-4 h-4 text-slate-500 animate-spin" />
+                              <p className="text-sm text-slate-600 font-medium">Loading profile photo…</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {photoStatus === 'success' && (
                           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="flex items-center gap-2">
                               <CheckCircleIcon className="w-4 h-4 text-green-600" />
                               <p className="text-sm text-green-700 font-medium">Profile photo active</p>
                             </div>
+                          </div>
+                        )}
+
+                        {photoStatus === 'error' && (
+                          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <ExclamationTriangleIcon className="w-4 h-4 text-red-600" />
+                              <p className="text-sm text-red-700 font-medium">Couldn’t load profile photo</p>
+                            </div>
+                            <p className="text-xs text-red-600 mt-1">Showing your initials instead. Try re-uploading the photo.</p>
                           </div>
                         )}
 

@@ -203,7 +203,8 @@ export const handleProfileMediaUrl: PagesFunction = async (context) => {
     // Accept either a raw file key or a stored URL (extract the key from it).
     let fileKey = providedKey ?? undefined;
     if (!fileKey && url) {
-      fileKey = R2Client.extractKeyFromUrl(url) ?? undefined;
+      const extracted = R2Client.extractKeyFromUrl(url);
+      if (extracted) fileKey = extracted;
     }
 
     if (!fileKey) {
