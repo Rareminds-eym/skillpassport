@@ -635,6 +635,7 @@ const UnifiedSignup = () => {
       // Step 1: Create SSO user
       let ssoUserId: string;
 
+      let emailSent = true;
       if (isAdminRole) {
         // Admin signup creates user + org
         const orgName = `${state.firstName} ${state.lastName}'s Institution`;
@@ -652,9 +653,7 @@ const UnifiedSignup = () => {
           },
         });
         ssoUserId = ssoResult.user.id;
-        if (ssoResult.email_sent === false) {
-          sessionStorage.setItem('email_sent_failed', 'true');
-        }
+        emailSent = ssoResult.email_sent !== false;
       } else {
         // Member signup (learner, educator, recruiter) — no org creation
         const ssoResult = await ssoClient.signupMember({
@@ -670,9 +669,18 @@ const UnifiedSignup = () => {
           },
         });
         ssoUserId = ssoResult.user.id;
-        if (ssoResult.email_sent === false) {
-          sessionStorage.setItem('email_sent_failed', 'true');
-        }
+        emailSent = ssoResult.email_sent !== false;
+      }
+
+      // If verification email failed, show error and stop the flow
+      if (!emailSent) {
+        sessionStorage.setItem('email_sent_failed', 'true');
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Your account was created but we couldn\'t send the verification email. Please use the "Resend verification email" option after logging in.',
+        }));
+        return;
       }
 
       // Update auth store with the new user
