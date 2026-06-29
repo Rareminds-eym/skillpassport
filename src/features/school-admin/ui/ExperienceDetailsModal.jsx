@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { SchoolAdminNotificationService } from '@/features/school-admin';
-import { CollegeAdminNotificationService } from '@/features/college-admin';
+import { VerificationService } from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
 
 const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, currentUserId }) => {
@@ -21,22 +20,17 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
         return;
       }
 
-      let result;
-      const approvalAuthority = experience.approval_authority;
+      const approvalAuthority = experience.approval_authority || 'school_admin';
+      const notes = approvalAuthority === 'college_admin' 
+        ? 'Approved by College Admin' 
+        : 'Approved by School Admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.approveExperience(
-          experience.id,
-          currentUserId,
-          'Approved by College Admin'
-        );
-      } else {
-        result = await SchoolAdminNotificationService.approveExperience(
-          experience.id,
-          currentUserId,
-          'Approved by School Admin'
-        );
-      }
+      const result = await VerificationService.approveExperience(
+        experience.id,
+        currentUserId,
+        notes,
+        approvalAuthority
+      );
       
       toast.success(result.message || `Experience "${experience.role}" approved successfully!`);
       onAction && onAction('approved', experience);
@@ -64,22 +58,14 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
     setActionLoading('rejecting');
     
     try {
-      let result;
-      const approvalAuthority = experience.approval_authority;
+      const approvalAuthority = experience.approval_authority || 'school_admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.rejectExperience(
-          experience.id,
-          currentUserId,
-          rejectionReason
-        );
-      } else {
-        result = await SchoolAdminNotificationService.rejectExperience(
-          experience.id,
-          currentUserId,
-          rejectionReason
-        );
-      }
+      const result = await VerificationService.rejectExperience(
+        experience.id,
+        currentUserId,
+        rejectionReason,
+        approvalAuthority
+      );
       
       toast.success(result.message || `Experience "${experience.role}" rejected.`);
       onAction && onAction('rejected', experience);

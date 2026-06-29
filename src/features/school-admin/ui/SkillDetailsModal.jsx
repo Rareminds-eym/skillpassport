@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock, Zap, Mail, TrendingUp } from 'lucide-react';
-import { SchoolAdminNotificationService } from '@/features/school-admin';
-import { CollegeAdminNotificationService } from '@/features/college-admin';
+import { VerificationService } from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
 
 const SkillDetailsModal = ({ skill, isOpen, onClose, onAction, currentUserId }) => {
@@ -21,22 +20,17 @@ const SkillDetailsModal = ({ skill, isOpen, onClose, onAction, currentUserId }) 
         return;
       }
 
-      let result;
-      const approvalAuthority = skill.approval_authority;
+      const approvalAuthority = skill.approval_authority || 'school_admin';
+      const notes = approvalAuthority === 'college_admin' 
+        ? 'Approved by College Admin' 
+        : 'Approved by School Admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.approveSkill(
-          skill.id,
-          currentUserId,
-          'Approved by College Admin'
-        );
-      } else {
-        result = await SchoolAdminNotificationService.approveSkill(
-          skill.id,
-          currentUserId,
-          'Approved by School Admin'
-        );
-      }
+      const result = await VerificationService.approveSkill(
+        skill.id,
+        currentUserId,
+        notes,
+        approvalAuthority
+      );
       
       toast.success(result.message || `Skill "${skill.skill_name || skill.name}" approved successfully!`);
       
@@ -68,22 +62,14 @@ const SkillDetailsModal = ({ skill, isOpen, onClose, onAction, currentUserId }) 
         return;
       }
 
-      let result;
-      const approvalAuthority = skill.approval_authority;
+      const approvalAuthority = skill.approval_authority || 'school_admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.rejectSkill(
-          skill.id,
-          currentUserId,
-          rejectionReason
-        );
-      } else {
-        result = await SchoolAdminNotificationService.rejectSkill(
-          skill.id,
-          currentUserId,
-          rejectionReason
-        );
-      }
+      const result = await VerificationService.rejectSkill(
+        skill.id,
+        currentUserId,
+        rejectionReason,
+        approvalAuthority
+      );
       
       toast.success(result.message || `Skill "${skill.skill_name || skill.name}" rejected.`);
       

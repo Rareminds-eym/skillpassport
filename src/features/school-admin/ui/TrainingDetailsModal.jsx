@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { SchoolAdminNotificationService } from '@/features/school-admin';
-import { CollegeAdminNotificationService } from '@/features/college-admin';
+import { VerificationService } from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
 
 const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUserId }) => {
@@ -21,22 +20,17 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
         return;
       }
 
-      let result;
-      const approvalAuthority = training.approval_authority;
+      const approvalAuthority = training.approval_authority || 'school_admin';
+      const notes = approvalAuthority === 'college_admin' 
+        ? 'Approved by College Admin' 
+        : 'Approved by School Admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.approveTraining(
-          training.id,
-          currentUserId,
-          'Approved by College Admin'
-        );
-      } else {
-        result = await SchoolAdminNotificationService.approveTraining(
-          training.id,
-          currentUserId,
-          'Approved by School Admin'
-        );
-      }
+      const result = await VerificationService.approveTraining(
+        training.id,
+        currentUserId,
+        notes,
+        approvalAuthority
+      );
       
       toast.success(result.message || `Training "${training.title}" approved successfully!`);
       
@@ -69,22 +63,14 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
         return;
       }
 
-      let result;
-      const approvalAuthority = training.approval_authority;
+      const approvalAuthority = training.approval_authority || 'school_admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.rejectTraining(
-          training.id,
-          currentUserId,
-          rejectionReason
-        );
-      } else {
-        result = await SchoolAdminNotificationService.rejectTraining(
-          training.id,
-          currentUserId,
-          rejectionReason
-        );
-      }
+      const result = await VerificationService.rejectTraining(
+        training.id,
+        currentUserId,
+        rejectionReason,
+        approvalAuthority
+      );
       
       toast.success(result.message || `Training "${training.title}" rejected.`);
       

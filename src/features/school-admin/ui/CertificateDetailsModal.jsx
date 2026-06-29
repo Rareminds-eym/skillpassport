@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Calendar, Building, CheckCircle, XCircle, Award, Link as LinkIcon } from 'lucide-react';
-import { SchoolAdminNotificationService } from '@/features/school-admin';
-import { CollegeAdminNotificationService } from '@/features/college-admin';
+import { VerificationService } from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
 
 const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, currentUserId }) => {
@@ -21,22 +20,17 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
         return;
       }
 
-      let result;
-      const approvalAuthority = certificate.approval_authority;
+      const approvalAuthority = certificate.approval_authority || 'school_admin';
+      const notes = approvalAuthority === 'college_admin' 
+        ? 'Approved by College Admin' 
+        : 'Approved by School Admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.approveCertificate(
-          certificate.id,
-          currentUserId,
-          'Approved by College Admin'
-        );
-      } else {
-        result = await SchoolAdminNotificationService.approveCertificate(
-          certificate.id,
-          currentUserId,
-          'Approved by School Admin'
-        );
-      }
+      const result = await VerificationService.approveCertificate(
+        certificate.id,
+        currentUserId,
+        notes,
+        approvalAuthority
+      );
       
       toast.success(result.message || `Certificate "${certificate.title}" approved successfully!`);
       
@@ -69,22 +63,14 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
         return;
       }
 
-      let result;
-      const approvalAuthority = certificate.approval_authority;
+      const approvalAuthority = certificate.approval_authority || 'school_admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.rejectCertificate(
-          certificate.id,
-          currentUserId,
-          rejectionReason
-        );
-      } else {
-        result = await SchoolAdminNotificationService.rejectCertificate(
-          certificate.id,
-          currentUserId,
-          rejectionReason
-        );
-      }
+      const result = await VerificationService.rejectCertificate(
+        certificate.id,
+        currentUserId,
+        rejectionReason,
+        approvalAuthority
+      );
       
       toast.success(result.message || `Certificate "${certificate.title}" rejected.`);
       
