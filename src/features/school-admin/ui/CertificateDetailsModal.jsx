@@ -42,7 +42,7 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await onAction('approved', certificate);
+        await Promise.resolve(onAction('approved', certificate));
       }
       
       onClose();
@@ -90,7 +90,7 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await onAction('rejected', certificate);
+        await Promise.resolve(onAction('rejected', certificate));
       }
       
       onClose();

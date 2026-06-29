@@ -41,7 +41,7 @@ const SkillDetailsModal = ({ skill, isOpen, onClose, onAction, currentUserId }) 
       toast.success(result.message || `Skill "${skill.skill_name || skill.name}" approved successfully!`);
       
       if (onAction) {
-        await onAction('approved', skill);
+        await Promise.resolve(onAction('approved', skill));
       }
       
       onClose();
@@ -88,7 +88,7 @@ const SkillDetailsModal = ({ skill, isOpen, onClose, onAction, currentUserId }) 
       toast.success(result.message || `Skill "${skill.skill_name || skill.name}" rejected.`);
       
       if (onAction) {
-        await onAction('rejected', skill);
+        await Promise.resolve(onAction('rejected', skill));
       }
       
       onClose();

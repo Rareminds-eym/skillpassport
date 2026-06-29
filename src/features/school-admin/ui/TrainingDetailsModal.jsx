@@ -42,7 +42,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await onAction('approved', training);
+        await Promise.resolve(onAction('approved', training));
       }
       
       onClose();
@@ -90,7 +90,7 @@ const TrainingDetailsModal = ({ training, isOpen, onClose, onAction, currentUser
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await onAction('rejected', training);
+        await Promise.resolve(onAction('rejected', training));
       }
       
       onClose();

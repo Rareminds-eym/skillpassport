@@ -23,6 +23,29 @@ interface ApprovalResult {
   message: string;
 }
 
+export interface CollegeAdminNotification {
+  id: string;
+  college_id: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  notification_type?: string;
+  [key: string]: unknown;
+}
+
+// ── Type Guards ──
+function isCollegeAdminNotification(val: unknown): val is CollegeAdminNotification {
+  return (
+    typeof val === 'object' &&
+    val !== null &&
+    typeof (val as CollegeAdminNotification).id === 'string' &&
+    typeof (val as CollegeAdminNotification).college_id === 'string' &&
+    typeof (val as CollegeAdminNotification).message === 'string' &&
+    typeof (val as CollegeAdminNotification).is_read === 'boolean' &&
+    typeof (val as CollegeAdminNotification).created_at === 'string'
+  );
+}
+
 export async function getCollegeAdminNotifications(
   collegeId: string,
   options: NotificationOptions = {}
@@ -252,7 +275,7 @@ export async function rejectSkill(
 
 export function subscribeToNotifications(
   collegeId: string,
-  callback: (notification: unknown) => void
+  callback: (notification: CollegeAdminNotification) => void
 ): () => void {
   const wsClient = getWSClient();
   
@@ -260,8 +283,15 @@ export function subscribeToNotifications(
     'training_notifications',
     { event: 'INSERT', filter: `college_id=eq.${collegeId}` },
     (event: unknown) => {
-      if (typeof event === 'object' && event !== null && 'type' in event && event.type === 'change') {
-        callback('payload' in event ? event.payload : event);
+      if (
+        typeof event === 'object' &&
+        event !== null &&
+        'type' in event &&
+        event.type === 'change' &&
+        'payload' in event &&
+        isCollegeAdminNotification(event.payload)
+      ) {
+        callback(event.payload); // ✅ no cast needed, TypeScript knows the type
       }
     }
   );

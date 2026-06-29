@@ -148,6 +148,19 @@ interface RejectExperienceResult extends ApproveResult {
   reason: string;
 }
 
+// ── Type Guards ──
+function isAdminNotification(val: unknown): val is AdminNotification {
+  return (
+    typeof val === 'object' &&
+    val !== null &&
+    typeof (val as AdminNotification).id === 'string' &&
+    typeof (val as AdminNotification).school_id === 'string' &&
+    typeof (val as AdminNotification).message === 'string' &&
+    typeof (val as AdminNotification).is_read === 'boolean' &&
+    typeof (val as AdminNotification).created_at === 'string'
+  );
+}
+
 export class SchoolAdminNotificationService {
   static async getSchoolAdminNotifications(schoolId: string, options: { unreadOnly?: boolean } = {}) {
     try {
@@ -540,8 +553,8 @@ export class SchoolAdminNotificationService {
       'training_notifications',
       { event: 'INSERT', filter: `school_id=eq.${schoolId}` },
       (event) => {
-        if (event.type === 'change') {
-          callback(event.payload as AdminNotification);
+        if (event.type === 'change' && isAdminNotification(event.payload)) {
+          callback(event.payload); // ✅ no cast needed, TypeScript knows the type
         }
       }
     );
