@@ -205,9 +205,12 @@ export const handleProfileMediaUrl: PagesFunction = async (context) => {
       return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
     }
 
-    // Ownership check: user id must be a path segment of the key
-    // (keys are `uploads/{userId}/...`). Segment match avoids substring matches.
-    const isOwner = fileKey.split('/').includes(user.id);
+    // Ownership check: keys are `uploads/{userId}/...`, so the user-id segment
+    // must EXACTLY equal the authenticated user's id and sit in its expected
+    // position. Exact segment comparison (not substring/`includes`) prevents a
+    // value like `user123` from matching `123`.
+    const segments = fileKey.split('/');
+    const isOwner = segments[0] === 'uploads' && segments[1] === user.id;
     if (!isOwner) {
       return apiError(403, 'FORBIDDEN', 'You do not have access to this file', request);
     }

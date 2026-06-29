@@ -21,7 +21,7 @@ import {
   ShieldCheckIcon,
   UserIcon
 } from '@heroicons/react/24/outline';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getDocumentUrl, getProfileMediaUrl, storageService, uploadFile, validateFile } from '@/shared/api';
 // @ts-ignore - JSX file without declaration
@@ -1086,18 +1086,24 @@ const Settings: React.FC = () => {
     setSaveStatus('idle');
   };
 
-  // Helper to get the STORED photo reference from educator data (handles
-  // different storage). College lecturers store it at metadata.photo_url (no
-  // photo column exists); school educators use the dedicated photo_url column.
-  // This is the stored R2 url/key — NOT directly renderable; use
-  // resolvedPhotoUrl (a short-lived signed URL) for the <img src>.
-  const getPhotoUrl = () => {
+  /**
+   * Returns the STORED photo reference for the current educator.
+   *
+   * College lecturers store it at `metadata.photo_url` (no dedicated photo
+   * column exists); school educators use the top-level `photo_url` column.
+   *
+   * Note: this is the stored R2 url/key and is NOT directly renderable — use
+   * `resolvedPhotoUrl` (a short-lived signed URL) for the `<img>` src.
+   *
+   * @returns The stored photo url/key, or `null` if none is set.
+   */
+  const getPhotoUrl = useCallback((): string | null => {
     if (!educatorData) return null;
     if (educatorData.collegeId !== undefined) {
       return educatorData.metadata?.photo_url || null;
     }
     return educatorData.photo_url || null;
-  };
+  }, [educatorData]);
 
   // Short-lived signed URL resolved from the stored reference, safe for <img src>.
   // We cannot point <img> at /document-access (it needs an Authorization header
@@ -1112,13 +1118,17 @@ const Settings: React.FC = () => {
       return;
     }
     let cancelled = false;
-    getProfileMediaUrl(storedRef).then((signed) => {
-      if (!cancelled) setResolvedPhotoUrl(signed);
-    });
-    return () => { cancelled = true; };
-    // Re-resolve whenever the stored photo reference changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [educatorData?.metadata?.photo_url, educatorData?.photo_url]);
+    getProfileMediaUrl(storedRef)
+      .then((signed) => {
+        if (!cancelled) setResolvedPhotoUrl(signed);
+      })
+      .catch((error) => {
+        logger.error('Failed to resolve photo URL', error instanceof Error ? error : new Error(String(error)));
+      });
+    // Cleanup: mark this run stale so a late-resolving fetch won't apply.
+    const cleanup = () => { cancelled = true; };
+    return cleanup;
+  }, [getPhotoUrl]);
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: UserIcon },

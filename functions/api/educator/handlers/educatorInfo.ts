@@ -252,11 +252,17 @@ export async function handleRemoveEducatorMedia(params: any, context: Authentica
 }
 
 
-export async function handleUpdateEducatorMetadata(params: any, context: AuthenticatedContext, startTime: number) {
+export async function handleUpdateEducatorMetadata(
+  params: { userId?: string; table?: string; key?: string; value?: unknown },
+  context: AuthenticatedContext,
+  startTime: number,
+) {
   const supabase = getSub(context);
-  const { userId, table, key, value } = params;
+  let { userId } = params;
+  const { table, key, value } = params;
   if (!userId || !table || !key) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, table, or key', context.request, { startTime });
   if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
+  userId = String(userId);
   const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
 
   // Read current metadata so we merge rather than overwrite sibling keys.
