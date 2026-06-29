@@ -1,10 +1,10 @@
+import { MaintenanceBanner } from '@/app/components/MaintenanceBanner';
+import { MaintenancePage } from '@/pages/MaintenancePage';
+import { useAuthStore } from '@/shared/model/authStore';
+import { useMaintenanceStore } from '@/shared/model/maintenanceStore';
+import { Loader2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useMaintenanceStore } from '@/shared/model/maintenanceStore';
-import { useAuthStore } from '@/shared/model/authStore';
-import { MaintenancePage } from '@/pages/MaintenancePage';
-import { MaintenanceBanner } from '@/app/components/MaintenanceBanner';
-import { Loader2 } from 'lucide-react';
 
 const BYPASS_STORAGE_KEY = 'sp_maintenance_bypass';
 
@@ -61,7 +61,7 @@ export const MaintenanceGuard: React.FC<MaintenanceGuardProps> = ({ children }) 
   // If we are still checking auth or maintenance status, show a loader
   if (maintenanceLoading || isAuthLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
       </div>
     );

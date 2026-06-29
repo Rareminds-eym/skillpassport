@@ -1,126 +1,68 @@
 # Wrangler configuration for Cloudflare Pages Functions
-# This is used for local development with `wrangler pages dev`
+# Production vars are configured in Cloudflare dashboard.
+# For local dev: wrangler pages dev ./dist
 
 name = "skill-passport-portal"
-compatibility_date = "2026-05-25"
+compatibility_date = "2026-06-08"
 compatibility_flags = ["nodejs_compat"]
 
 # ============================================================================
-# R2 BUCKET BINDING
+# DURABLE OBJECT BINDINGS
 # ============================================================================
-# [[r2_buckets]]
-# binding = "R2_BUCKET"
-# bucket_name = "skill-echosystem"
 
-# ============================================================================
-# KV NAMESPACES - REMOVED
-# ============================================================================
-# KV namespaces removed to eliminate external dependencies
-# Rate limiting and caching now rely on database-level constraints
+[[durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "realtime-worker"
 
 # ============================================================================
 # SERVICE BINDINGS
 # ============================================================================
-# Payment worker — called via RPC (WorkerEntrypoint), zero-latency, no JWT needed.
-# Local dev: npx wrangler pages dev ./dist --service PAYMENT_WORKER=razorpay-api
 
 [[services]]
 binding = "PAYMENT_WORKER"
 service = "razorpay-api"
 entrypoint = "PaymentService"
 
-# SSO worker — authentication service, zero-latency internal routing
-# RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]
 binding = "SSO_SERVICE"
 service = "sso-api"
 entrypoint = "SsoWorker"
 
-# Realtime worker — WebSocket hub, zero-latency internal routing
-# RPC-style binding (WorkerEntrypoint) for WebSocket upgrade delegation
-[[services]]
-binding = "REALTIME_WORKER"
-service = "realtime-worker"
-
-# Embedding worker — ML model execution, zero-latency internal routing
-# RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]
 binding = "EMBEDDING_SERVICE"
 service = "embedding-worker"
 entrypoint = "EmbeddingWorker"
 
-# ============================================================================
-# QUEUE PRODUCER — Realtime Events
-# ============================================================================
-# Sends DB mutation events to the realtime-events-queue for fan-out
-# to all Durable Object partitions in the realtime-worker.
 [[queues.producers]]
 binding = "REALTIME_EVENTS_QUEUE"
 queue = "realtime-events-queue"
 
-# ============================================================================
-# QUEUE PRODUCER — SSO Reverse Metadata Sync
-# ============================================================================
-# Sends profile update events to the sso-worker for bidirectional metadata sync.
 [[queues.producers]]
 binding = "SSO_REVERSE_SYNC_QUEUE"
 queue = "sso-reverse-sync-queue"
 
-# Email worker — centralized email service, zero-latency internal routing
-# RPC-style binding (WorkerEntrypoint) for typed method calls
 [[services]]
 binding = "EMAIL_SERVICE"
 service = "shared-email-api"
 entrypoint = "EmailService"
 
 # ============================================================================
-# ENVIRONMENT VARIABLES
+# VARIABLES
 # ============================================================================
-# Variables are categorized into:
-# 1. Client Variables (VITE_*) - Exposed to frontend via Vite build
-# 2. Pages Function Variables - Used by backend (functions/api/**)
-# 3. Secrets - Sensitive values (use .dev.vars locally, wrangler secret in production)
+
+[observability]
+enabled = true
+head_sampling_rate = 1
 
 [vars]
-# ──────────────────────────────────────────────────────────────────────────
-# NON-SECRET CONFIGURATION
-# ──────────────────────────────────────────────────────────────────────────
 ENVIRONMENT = "production"
 
-
-# Supabase Configuration (Pages Functions)
-SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
-
-# API URLs (Pages Functions)
-EMBEDDING_API_URL = "https://embedding-api.dark-mode-d021.workers.dev"
-
-# Cloudflare R2 Configuration (Pages Functions)
-CLOUDFLARE_R2_BUCKET_NAME = "skill-echosystem"
-
-# ──────────────────────────────────────────────────────────────────────────
-# CLIENT VARIABLES (VITE_*) - Exposed to Frontend
-# ──────────────────────────────────────────────────────────────────────────
-# Note: These are injected into the Vite build and visible in browser.
-# Only include non-sensitive configuration here.
-
-# SSO / Auth (Frontend)
-VITE_SSO_URL = "https://sso-api.dark-mode-d021.workers.dev/"
-
-# Supabase (Frontend)
-VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
-
-# API URLs (Frontend)
-
-# Analytics 
-VITE_GTM_ID = "GTM-M2N3952J"
-
-# Note: Razorpay keys are managed by the payment worker and returned in API responses
-
-# ──────────────────────────────────────────────────────────────────────────
+# ============================================================================
 # SECRETS (DO NOT COMMIT VALUES)
-# ──────────────────────────────────────────────────────────────────────────
+# ============================================================================
 # For local development: Add these to .dev.vars file (gitignored)
-# For production: Set using `wrangler secret put <KEY_NAME>`
+# For production: Set using `wrangler secret put <KEY_NAME>` or dashboard
 #
 # Required secrets:
 # - SUPABASE_ANON_KEY
@@ -142,30 +84,3 @@ VITE_GTM_ID = "GTM-M2N3952J"
 # - ADMIN_EMAIL (admin notification recipient)
 # - APP_URL (public app base URL for email links)
 # - FROM_EMAIL, FROM_NAME (default sender identity)
-#
-# Note: Razorpay keys are NOT needed here - they are managed by the payment worker
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# VARIABLE USAGE GUIDE
-# ──────────────────────────────────────────────────────────────────────────
-#
-# CLIENT VARIABLES (VITE_*):
-# - Injected into frontend bundle during Vite build
-# - Accessible via import.meta.env.VITE_* in React components
-# - Visible in browser DevTools (never put secrets here!)
-# - Examples: API endpoints, public keys, feature flags
-#
-# PAGES FUNCTION VARIABLES (no prefix):
-# - Available to backend code in functions/api/**
-# - Accessed via context.env.VARIABLE_NAME
-# - NOT exposed to frontend
-# - Examples: Database credentials, API keys, service URLs
-#
-# SECRETS (.dev.vars or wrangler secret):
-# - Sensitive values that should never be committed
-# - Local dev: Add to .dev.vars (gitignored)
-# - Production: Use `wrangler secret put KEY_NAME`
-# - Examples: API keys, passwords, tokens
-#
-# ──────────────────────────────────────────────────────────────────────────

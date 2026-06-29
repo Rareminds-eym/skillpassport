@@ -1,7 +1,8 @@
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
+import { useAuthLoading, useIsAuthenticated, useUserRole } from '@/shared/model/authStore';
+import Loader from '@/shared/ui/Loader';
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useIsAuthenticated, useAuthLoading, useUserRole } from '@/shared/model/authStore';
-import Loader from '@/shared/ui/Loader';
 
 interface GuestOnlyRouteProps {
   children: React.ReactNode;

@@ -22,7 +22,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
+import type { Conversation } from '@/features/messaging';
 import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
 import { apiPost } from '@/shared/api/apiClient';
