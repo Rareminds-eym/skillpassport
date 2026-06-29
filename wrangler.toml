@@ -57,6 +57,7 @@ head_sampling_rate = 1
 
 [vars]
 ENVIRONMENT = "production"
+REALTIME_PARTITIONS = "10"
 
 # ============================================================================
 # SECRETS (DO NOT COMMIT VALUES)

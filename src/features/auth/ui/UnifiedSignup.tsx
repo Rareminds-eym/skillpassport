@@ -672,15 +672,10 @@ const UnifiedSignup = () => {
         emailSent = ssoResult.email_sent !== false;
       }
 
-      // If verification email failed, show error and stop the flow
+      // If verification email failed, flag it but continue the flow.
+      // The user is logged in and can resend verification from within the app.
       if (!emailSent) {
         sessionStorage.setItem('email_sent_failed', 'true');
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: 'Your account was created but we couldn\'t send the verification email. Please use the "Resend verification email" option after logging in.',
-        }));
-        return;
       }
 
       // Update auth store with the new user
