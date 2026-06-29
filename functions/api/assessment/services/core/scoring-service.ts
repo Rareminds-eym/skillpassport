@@ -356,11 +356,11 @@ export function calculateCollegeMatchScore(
     valuesFit * 0.08
   );
   return {
-    interestFit: Math.round(interestFit),
-    cognitiveFit: Math.round(cognitiveFit),
-    personalityFit: Math.round(personalityFit),
-    knowledgeFit: Math.round(knowledgeFit),
-    valuesFit: Math.round(valuesFit),
+    interestFit: Math.round(Math.max(0, Math.min(100, interestFit))),
+    cognitiveFit: Math.round(Math.max(0, Math.min(100, cognitiveFit))),
+    personalityFit: Math.round(Math.max(0, Math.min(100, personalityFit))),
+    knowledgeFit: Math.round(Math.max(0, Math.min(100, knowledgeFit))),
+    valuesFit: Math.round(Math.max(0, Math.min(100, valuesFit))),
     final: Math.max(0, Math.min(100, final)),
   };
 }
@@ -594,11 +594,11 @@ export function calculateCollegeMatchScoreFromDemand(
   );
 
   return {
-    interestFit: Math.round(interestFit),
-    cognitiveFit: Math.round(cognitiveFit),
-    personalityFit: Math.round(personalityFit),
-    knowledgeFit: Math.round(knowledgeFit),
-    valuesFit: Math.round(valuesFit),
+    interestFit: Math.round(Math.max(0, Math.min(100, interestFit))),
+    cognitiveFit: Math.round(Math.max(0, Math.min(100, cognitiveFit))),
+    personalityFit: Math.round(Math.max(0, Math.min(100, personalityFit))),
+    knowledgeFit: Math.round(Math.max(0, Math.min(100, knowledgeFit))),
+    valuesFit: Math.round(Math.max(0, Math.min(100, valuesFit))),
     final: Math.max(0, Math.min(100, final)),
   };
 }

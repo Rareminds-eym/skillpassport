@@ -348,6 +348,7 @@ async function retrieveByEmbedding(
       const riasecCodes: string[] = occ.occupation_codes || [];
       const hybridScore = Number(occ.hybrid_score);
       const alignment = Number(occ.riasec_alignment);
+      const domain = occ.domain_name || 'Unclassified';
 
       return {
         occupation_id: occ.occupation_id,
@@ -357,7 +358,7 @@ async function retrieveByEmbedding(
         score: 0,
         semanticScore: !isNaN(hybridScore) ? Math.round(hybridScore * 1000) / 10 : undefined,
         riasecAlignment: !isNaN(alignment) ? Math.round(alignment * 100) : undefined,
-        description: occ.description || '',
+        description: `[${domain}] ${occ.description || occ.occupation_name}`,
       };
     });
 
@@ -444,9 +445,11 @@ async function finalizeCluster(
     .filter((score): score is number => score !== null);
 
   // Cluster matchScore: Computed from occupation scoring algorithm (RIASEC + aptitude + personality + knowledge + values)
+  // THRESHOLD: Clamp between 0-100 (no negative, no above 100)
   let clusterScore = 0;
   if (occupationScores.length > 0) {
-    clusterScore = Math.round(occupationScores.reduce((sum, s) => sum + s, 0) / occupationScores.length);
+    const averageScore = occupationScores.reduce((sum, s) => sum + s, 0) / occupationScores.length;
+    clusterScore = Math.round(Math.max(0, Math.min(100, averageScore)));
     const sorted = [...occupationScores].sort((a, b) => b - a);
     const scoreRange = `${sorted[sorted.length - 1]}-${sorted[0]}`;
     console.log(`[FINALIZE-${clusterIndex + 1}] "${aiCluster?.title}" matchScore: ${clusterScore} (range: ${scoreRange})`);
@@ -454,7 +457,7 @@ async function finalizeCluster(
 
   return {
     title: str(aiCluster?.title),
-    matchScore: clusterScore,
+    matchScore: Math.max(0, Math.min(100, clusterScore)), // Ensure 0-100 threshold
     fit: 'Medium', // Placeholder: will be assigned after sorting by rank
     derivation: str(aiCluster?.derivation),
     description: str(aiCluster?.description),

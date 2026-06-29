@@ -106,6 +106,12 @@ Rule: ONLY use occupations from the 30 provided. NO additions or inventions.
 - DO NOT create artificial clusters - each must represent a genuine career path
 - If you cannot naturally group all 6-9 roles into 3 coherent clusters, REDUCE to 2 per cluster
 
+🚨 **DOMAIN-BASED GROUPING (PRIMARY RULE)**:
+Each occupation now includes its domain in square brackets: [Domain Name]
+- CRITICAL: **Group roles with the SAME domain together**
+- FAIL if cluster mixes domains (e.g., [Career Services] + [Sales & Marketing] = REJECT)
+- Use domain as the PRIMARY constraint for grouping
+
 🚨 **MANDATORY GROUPING VALIDATION (CHECK BEFORE FINALIZING)**:
 For EACH cluster you create, verify:
 1. **Role Coherence Check**: Do all roles in this cluster do SIMILAR work?

@@ -62,7 +62,8 @@ RETURNS TABLE (
   hybrid_score double precision,
   search_method varchar(20),
   riasec_alignment double precision,
-  description text
+  description text,
+  domain_name text
 )
 LANGUAGE sql
 STABLE
@@ -152,33 +153,36 @@ AS $$
     FULL OUTER JOIN semantic_search ss ON ks.id = ss.id
   )
   SELECT
-    id,
-    code,
-    name,
-    occupation_codes,
-    COALESCE(semantic_similarity, 0)::double precision AS semantic_similarity,
-    COALESCE(keyword_rank_score, 0)::double precision AS keyword_rank_score,
-    hybrid_score::double precision,
-    search_method::varchar(20),
-    riasec_align::double precision,
-    description
+    ranked.id,
+    ranked.code,
+    ranked.name,
+    ranked.occupation_codes,
+    COALESCE(ranked.semantic_similarity, 0)::double precision AS semantic_similarity,
+    COALESCE(ranked.keyword_rank_score, 0)::double precision AS keyword_rank_score,
+    ranked.hybrid_score::double precision,
+    ranked.search_method::varchar(20),
+    ranked.riasec_align::double precision,
+    ranked.description,
+    COALESCE(d.name, 'Unclassified')::text AS domain_name
   FROM (
     SELECT
-      id,
-      code,
-      name,
-      description,
-      occupation_codes,
-      semantic_score AS semantic_similarity,
-      bm25_score AS keyword_rank_score,
-      hybrid_score,
-      search_method,
-      riasec_align,
-      ROW_NUMBER() OVER (ORDER BY hybrid_score DESC, riasec_align DESC) AS final_rank
-    FROM combined
+      c.id,
+      c.code,
+      c.name,
+      c.description,
+      c.occupation_codes,
+      c.semantic_score AS semantic_similarity,
+      c.bm25_score AS keyword_rank_score,
+      c.hybrid_score,
+      c.search_method,
+      c.riasec_align,
+      ROW_NUMBER() OVER (ORDER BY c.hybrid_score DESC, c.riasec_align DESC) AS final_rank
+    FROM combined c
   ) ranked
-  WHERE final_rank <= match_count
-  ORDER BY hybrid_score DESC, riasec_align DESC;
+  LEFT JOIN public.role_domains rd ON ranked.id = rd.role_id
+  LEFT JOIN public.domains d ON rd.domain_id = d.id
+  WHERE ranked.final_rank <= match_count
+  ORDER BY ranked.hybrid_score DESC, ranked.riasec_align DESC;
 $$;
 
 -- ============================================================================
@@ -198,7 +202,8 @@ RETURNS TABLE (
   similarity double precision,
   riasec_alignment double precision,
   method varchar(20),
-  description text
+  description text,
+  domain_name text
 )
 LANGUAGE sql
 STABLE
@@ -211,7 +216,8 @@ AS $$
     hybrid_score::double precision as similarity,
     riasec_alignment,
     search_method::varchar(20) as method,
-    description
+    description,
+    domain_name
   FROM hybrid_search_occupations(
     query_text,
     query_embedding,
