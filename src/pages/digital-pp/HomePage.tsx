@@ -54,7 +54,7 @@ const HomePage: React.FC = () => {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="fixed top-6 left-6 z-50"
+          className="fixed top-20 left-6 z-50"
         >
           <button
             onClick={handleGoBack}
