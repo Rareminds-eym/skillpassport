@@ -272,6 +272,14 @@ const Verifications: React.FC = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Safe date formatter that handles null/undefined/invalid dates
+  const formatSubmissionDate = (date?: string | null, fallbackDate?: string | null): string => {
+    const dateToFormat = date || fallbackDate;
+    if (!dateToFormat) return 'Not specified';
+    const d = new Date(dateToFormat);
+    return isNaN(d.getTime()) ? 'Not specified' : d.toLocaleDateString();
+  };
+
   // Pagination helper functions
   const getCurrentPageData = (data: PendingItem[]) => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -292,7 +300,8 @@ const Verifications: React.FC = () => {
     const validTabs = ['trainings', 'experiences', 'certificates', 'skills', 'projects'] as const;
     type ValidTab = typeof validTabs[number];
     
-    if (validTabs.includes(tab as ValidTab)) {
+    // Proper type guard - check includes on readonly string array
+    if ((validTabs as readonly string[]).includes(tab)) {
       setActiveTab(tab as ValidTab);
       setCurrentPage(1); // Reset to first page when changing tabs
       setSearchQuery(''); // Reset search when changing tabs
@@ -440,7 +449,7 @@ const Verifications: React.FC = () => {
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(training.created_at || training.start_date || '').toLocaleDateString()}
+            Submitted: {formatSubmissionDate(training.created_at, training.start_date)}
           </div>
         </div>
        
@@ -542,7 +551,7 @@ const Verifications: React.FC = () => {
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(experience.created_at || experience.start_date || '').toLocaleDateString()}
+            Submitted: {formatSubmissionDate(experience.created_at, experience.start_date)}
           </div>
         </div>
 
@@ -605,7 +614,7 @@ const Verifications: React.FC = () => {
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(certificate.created_at).toLocaleDateString()}
+            Submitted: {formatSubmissionDate(certificate.created_at)}
           </div>
         </div>
 
@@ -670,7 +679,7 @@ const Verifications: React.FC = () => {
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(skill.created_at).toLocaleDateString()}
+            Submitted: {formatSubmissionDate(skill.created_at)}
           </div>
         </div>
 
@@ -743,7 +752,7 @@ const Verifications: React.FC = () => {
             </h3>
           </div>
           <div className="text-xs text-gray-500 ml-4">
-            Submitted: {new Date(project.created_at || project.start_date || '').toLocaleDateString()}
+            Submitted: {formatSubmissionDate(project.created_at, project.start_date)}
           </div>
         </div>
 
@@ -1397,8 +1406,11 @@ const Verifications: React.FC = () => {
                   ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
                   : "space-y-4"
                 }>
-                  {currentProjects.map((project) => (
-                    <ProjectCard key={project.project_id || project.id} project={project} />
+                  {currentProjects.map((project, index) => (
+                    <ProjectCard 
+                      key={project.project_id || project.id || `project-fallback-${index}`} 
+                      project={project} 
+                    />
                   ))}
                 </div>
                 <PaginationControls

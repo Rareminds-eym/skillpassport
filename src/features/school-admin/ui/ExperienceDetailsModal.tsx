@@ -44,7 +44,7 @@ const ExperienceDetailsModal: React.FC<ExperienceDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error approving experience:', error);
-      toast.error((error instanceof Error ? error.message : null) || 'Failed to approve experience');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to approve experience');
     } finally {
       setActionLoading(null);
     }
@@ -79,7 +79,7 @@ const ExperienceDetailsModal: React.FC<ExperienceDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error rejecting experience:', error);
-      toast.error(error.message || 'Failed to reject experience');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to reject experience');
     } finally {
       setActionLoading(null);
     }

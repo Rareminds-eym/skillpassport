@@ -58,7 +58,7 @@ const CertificateDetailsModal: React.FC<CertificateDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error approving certificate:', error);
-      toast.error((error instanceof Error ? error.message : null) || 'Failed to approve certificate');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to approve certificate');
     } finally {
       setActionLoading(null);
     }
@@ -98,7 +98,7 @@ const CertificateDetailsModal: React.FC<CertificateDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error rejecting certificate:', error);
-      toast.error((error instanceof Error ? error.message : null) || 'Failed to reject certificate');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to reject certificate');
     } finally {
       setActionLoading(null);
     }

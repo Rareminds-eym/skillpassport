@@ -49,7 +49,7 @@ const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error approving training:', error);
-      toast.error((error instanceof Error ? error.message : null) || 'Failed to approve training');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to approve training');
     } finally {
       setActionLoading(null);
     }
@@ -89,7 +89,7 @@ const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error rejecting training:', error);
-      toast.error((error instanceof Error ? error.message : null) || 'Failed to reject training');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to reject training');
     } finally {
       setActionLoading(null);
     }

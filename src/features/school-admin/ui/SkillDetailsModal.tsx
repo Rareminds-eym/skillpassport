@@ -57,7 +57,7 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error approving skill:', error);
-      toast.error((error instanceof Error ? error.message : null) || 'Failed to approve skill');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to approve skill');
     } finally {
       setActionLoading(null);
     }
@@ -96,7 +96,7 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error rejecting skill:', error);
-      toast.error((error instanceof Error ? error.message : null) || 'Failed to reject skill');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to reject skill');
     } finally {
       setActionLoading(null);
     }

@@ -57,7 +57,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error approving project:', error);
-      toast.error(error.message || 'Failed to approve project');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to approve project');
     } finally {
       setIsProcessing(false);
       setNotes('');
@@ -95,7 +95,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error rejecting project:', error);
-      toast.error(error.message || 'Failed to reject project');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to reject project');
     } finally {
       setIsProcessing(false);
       setNotes('');

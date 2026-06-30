@@ -41,15 +41,15 @@ interface FlattenedRecord extends Omit<RecordWithLearner, 'learner'> {
 function filterAndFlattenBySchool(
   data: RecordWithLearner[],
   school_id: string,
-  extra?: (l: LearnerSnapshot) => Partial<FlattenedRecord>
+  extra?: (l: LearnerSnapshot | null) => Partial<FlattenedRecord>
 ): FlattenedRecord[] {
   return data
     .filter((item) => {
-      const l = Array.isArray(item.learner) ? (item.learner[0] ?? item.learner) : item.learner;
+      const l = Array.isArray(item.learner) ? (item.learner[0] ?? null) : item.learner;
       return l?.school_id === school_id;
     })
     .map((item) => {
-      const l = Array.isArray(item.learner) ? (item.learner[0] ?? item.learner) : item.learner;
+      const l = Array.isArray(item.learner) ? (item.learner[0] ?? null) : item.learner;
       const { learner: _, ...rest } = item;
       return {
         ...rest,
