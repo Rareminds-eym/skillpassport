@@ -399,7 +399,13 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
               phone: userPhone || undefined,
             },
           }).catch((err) => {
-            logger.error('Async receipt generation failed', err instanceof Error ? err : new Error(String(err)));
+            // Safe error boundary - ensure logger.error never throws
+            try {
+              logger.error('Async receipt generation failed', err instanceof Error ? err : new Error(String(err)));
+            } catch (logError) {
+              // Last resort: console.error if logger itself fails
+              logger.error('Receipt generation failed and logger threw:', err);
+            }
           })
         );
       } else {
