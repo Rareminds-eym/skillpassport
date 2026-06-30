@@ -241,12 +241,11 @@ export interface CreateLearnerRequest {
 
 // ==================== ENVIRONMENT ====================
 
-export interface ApiEnv {
+export interface ApiEnv extends Record<string, unknown> {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   SSO_SERVICE: unknown; // Service binding
-  [key: string]: unknown;
 }
 
 // ==================== HELPER TYPES ====================
