@@ -177,13 +177,13 @@ const PassportPage: React.FC = () => {
       id: 'personal',
       title: 'Personal Information',
       content: (
-        <div className="h-full p-8 bg-gradient-to-br from-amber-50 to-yellow-50 relative">
+        <div className="h-full p-3 md:p-8 bg-gradient-to-br from-amber-50 to-yellow-50 relative">
           <div className="absolute top-4 right-4 opacity-10">
             <Shield className="w-32 h-32 text-gray-400" />
           </div>
 
           <div className="relative">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col items-center text-center md:flex-row md:items-center md:justify-between md:text-left mb-6">
               <h2 className="text-2xl font-bold text-gray-900 uppercase tracking-wide">Personal Details</h2>
               <span className="text-xs font-mono text-gray-500">Page 01</span>
             </div>
@@ -240,11 +240,11 @@ const PassportPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg p-4 shadow-md border-l-4 border-blue-600 mb-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg p-1 md:p-4 shadow-md border-l-4 border-blue-600 mb-2 md:mb-4">
+              <div className="grid grid-cols-2 gap-6 md:gap-4">
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Email</p>
-                  <p className="text-sm font-medium text-gray-800">{learner?.email}</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-800 break-all">{learner?.email}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Contact</p>
@@ -269,14 +269,14 @@ const PassportPage: React.FC = () => {
             </div>
 
             {/* Verification Stamp */}
-            <div className="absolute bottom-8 right-8">
+            <div className="absolute bottom-5 md:bottom-8 right-28 md:right-8">
               {learner?.approval_status === 'approved' ? (
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-full border-4 border-green-600 flex items-center justify-center transform -rotate-12">
+                  <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-green-600 flex items-center justify-center transform -rotate-12">
                     <div className="text-center">
-                      <CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-1" />
+                      <CheckCircle className="w-8 h-8 md:w-10 md:h-10 text-green-600 mx-auto mb-1" />
                       <p className="text-green-600 font-bold text-xs uppercase">Verified by</p>
-                      <p className="text-green-600 font-bold text-sm">Rareminds</p>
+                      <p className="text-green-600 font-bold text-xs md:text-sm">Rareminds</p>
                     </div>
                   </div>
                 </div>
@@ -301,13 +301,13 @@ const PassportPage: React.FC = () => {
       id: 'education',
       title: 'Education',
       content: (
-        <div className="h-full p-8 bg-gradient-to-br from-blue-50 to-indigo-50">
-          <div className="flex items-center justify-between mb-6">
+        <div className="h-full p-16 md:p-8 bg-gradient-to-br from-blue-50 to-indigo-50">
+          <div className="flex flex-col items-center text-center md:flex-row md:items-center md:justify-between md:text-left mb-6">
             <div className="flex items-center space-x-3">
               <Book className="w-6 h-6 text-blue-600" />
               <h2 className="text-2xl font-bold text-gray-900 uppercase">Education</h2>
             </div>
-            <span className="text-xs font-mono text-gray-500">Page 02</span>
+            <span className="text-xs font-mono text-gray-500 mt-1 md:mt-0">Page 02</span>
           </div>
 
           <div className="space-y-4">
@@ -343,13 +343,13 @@ const PassportPage: React.FC = () => {
       id: 'skills',
       title: 'Skills',
       content: (
-        <div className="h-full p-8 bg-gradient-to-br from-purple-50 to-pink-50">
-          <div className="flex items-center justify-between mb-6">
+        <div className="h-full p-24 md:p-8 bg-gradient-to-br from-purple-50 to-pink-50">
+          <div className="flex flex-col items-center text-center md:flex-row md:items-center md:justify-between md:text-left mb-6">
             <div className="flex items-center space-x-3">
               <Code className="w-6 h-6 text-purple-600" />
               <h2 className="text-2xl font-bold text-gray-900 uppercase">Skills</h2>
             </div>
-            <span className="text-xs font-mono text-gray-500">Page 03</span>
+            <span className="text-xs font-mono text-gray-500 mt-1 md:mt-0">Page 03</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -381,13 +381,13 @@ const PassportPage: React.FC = () => {
       id: 'languages',
       title: 'Languages',
       content: (
-        <div className="h-full p-8 bg-gradient-to-br from-green-50 to-emerald-50">
-          <div className="flex items-center justify-between mb-6">
+        <div className="h-full p-16 md:p-8 bg-gradient-to-br from-green-50 to-emerald-50">
+          <div className="flex flex-col items-center text-center md:flex-row md:items-center md:justify-between md:text-left mb-6">
             <div className="flex items-center space-x-3">
               <Globe className="w-6 h-6 text-green-600" />
               <h2 className="text-2xl font-bold text-gray-900 uppercase">Languages</h2>
             </div>
-            <span className="text-xs font-mono text-gray-500">Page 04</span>
+            <span className="text-xs font-mono text-gray-500 mt-1 md:mt-0">Page 04</span>
           </div>
 
           <div className="space-y-3">
@@ -425,13 +425,13 @@ const PassportPage: React.FC = () => {
       id: 'projects',
       title: 'Projects',
       content: (
-        <div className="h-full p-8 bg-gradient-to-br from-orange-50 to-amber-50">
-          <div className="flex items-center justify-between mb-6">
+        <div className="h-full p-20 md:p-8 bg-gradient-to-br from-orange-50 to-amber-50">
+          <div className="flex flex-col items-center text-center md:flex-row md:items-center md:justify-between md:text-left mb-6">
             <div className="flex items-center space-x-3">
               <Briefcase className="w-6 h-6 text-orange-600" />
               <h2 className="text-2xl font-bold text-gray-900 uppercase">Projects</h2>
             </div>
-            <span className="text-xs font-mono text-gray-500">Page 05</span>
+            <span className="text-xs font-mono text-gray-500 mt-1 md:mt-0">Page 05</span>
           </div>
 
           <div className="space-y-4 overflow-y-auto max-h-[500px]">
@@ -465,13 +465,13 @@ const PassportPage: React.FC = () => {
       id: 'achievements',
       title: 'Achievements',
       content: (
-        <div className="h-full p-8 bg-gradient-to-br from-yellow-50 to-amber-50">
-          <div className="flex items-center justify-between mb-6">
+        <div className="h-full p-11 md:p-8 bg-gradient-to-br from-yellow-50 to-amber-50">
+          <div className="flex flex-col items-center text-center md:flex-row md:items-center md:justify-between md:text-left mb-6">
             <div className="flex items-center space-x-3">
               <Award className="w-6 h-6 text-yellow-600" />
               <h2 className="text-2xl font-bold text-gray-900 uppercase">Achievements</h2>
             </div>
-            <span className="text-xs font-mono text-gray-500">Page 06</span>
+            <span className="text-xs font-mono text-gray-500 mt-1 md:mt-0">Page 06</span>
           </div>
 
           <div className="space-y-3">
@@ -518,13 +518,13 @@ const PassportPage: React.FC = () => {
       id: 'hobbies',
       title: 'Hobbies',
       content: (
-        <div className="h-full p-8 bg-gradient-to-br from-slate-50 to-gray-100">
-          <div className="flex items-center justify-between mb-6">
+        <div className="h-full p-20 md:p-8 bg-gradient-to-br from-slate-50 to-gray-100">
+          <div className="flex flex-col items-center text-center md:flex-row md:items-center md:justify-between md:text-left mb-6">
             <div className="flex items-center space-x-3">
               <Star className="w-6 h-6 text-slate-600" />
               <h2 className="text-2xl font-bold text-gray-900 uppercase">Hobbies</h2>
             </div>
-            <span className="text-xs font-mono text-gray-500">Page 07</span>
+            <span className="text-xs font-mono text-gray-500 mt-1 md:mt-0">Page 07</span>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -561,13 +561,13 @@ const PassportPage: React.FC = () => {
       id: 'interests',
       title: 'Areas of Interest',
       content: (
-        <div className="h-full p-8 bg-gradient-to-br from-teal-50 to-cyan-50">
-          <div className="flex items-center justify-between mb-6">
+        <div className="h-full p-20 md:p-8 bg-gradient-to-br from-teal-50 to-cyan-50">
+          <div className="flex flex-col items-center text-center md:flex-row md:items-center md:justify-between md:text-left mb-6">
             <div className="flex items-center space-x-3">
               <Target className="w-6 h-6 text-teal-600" />
               <h2 className="text-2xl font-bold text-gray-900 uppercase">Interests</h2>
             </div>
-            <span className="text-xs font-mono text-gray-500">Page 08</span>
+            <span className="text-xs font-mono text-gray-500 mt-1 md:mt-0">Page 08</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -636,7 +636,7 @@ const PassportPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
       {/* Back Button - Only show for admins */}
       {isAdminViewing && (
-        <div className="fixed top-4 left-4 z-50">
+        <div className="fixed top-16 left-4 z-50">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-all duration-200 backdrop-blur-sm bg-opacity-90"
@@ -647,14 +647,14 @@ const PassportPage: React.FC = () => {
       )}
 
       {/* Passport Book */}
-      <div className="flex items-center justify-center min-h-screen py-8 px-4 md:px-8">
+      <div className="flex items-center justify-center min-h-screen py-4 md:py-8 px-4 md:px-8">
         <div
           className="relative transition-transform duration-300 ease-in-out"
           style={{ transform: `scale(${zoomLevel})` }}
         >
           {/* Passport Book Container */}
           <div
-            className="w-full md:w-[500px] lg:w-[600px] h-[600px] md:h-[700px] bg-white dark:bg-gray-800 rounded-lg shadow-2xl border-4 border-gray-900 dark:border-gray-700 relative overflow-hidden transition-colors duration-300"
+            className="w-full md:w-[500px] lg:w-[600px] h-[480px] sm:h-[550px] md:h-[700px] bg-white dark:bg-gray-800 rounded-lg shadow-2xl border-4 border-gray-900 dark:border-gray-700 relative overflow-hidden transition-colors duration-300"
             style={{ perspective: '1000px' }}
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
@@ -723,22 +723,32 @@ const PassportPage: React.FC = () => {
       </div>
 
       {/* Page Indicators */}
-      <div className="fixed bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 z-40">
-        <div className="flex space-x-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg transition-colors duration-300">
-          {pages.map((page, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                setDirection(index > currentPage ? 1 : -1);
-                setCurrentPage(index);
-              }}
-              className={`transition-all ${index === currentPage
-                  ? 'w-8 h-3 bg-blue-600 dark:bg-blue-500 rounded-full'
-                  : 'w-3 h-3 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 rounded-full'
-                }`}
-              aria-label={`Go to ${page.title}`}
-            />
-          ))}
+      <div className="fixed bottom-3 md:bottom-8 left-1/2 transform -translate-x-1/2 z-40">
+        <div className="flex items-center gap-1 md:gap-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full px-2 py-1.5 md:px-4 md:py-2 shadow-lg transition-colors duration-300">
+          {pages.map((page, index) => {
+            const isActive = index === currentPage;
+            const activeClass = 'w-2 h-2 md:w-8 md:h-3 bg-blue-600 dark:bg-blue-500';
+            const inactiveClass = 'w-2 h-2 md:w-3 md:h-3 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500';
+            return (
+              <span
+                key={index}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  setDirection(index > currentPage ? 1 : -1);
+                  setCurrentPage(index);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setDirection(index > currentPage ? 1 : -1);
+                    setCurrentPage(index);
+                  }
+                }}
+                className={`cursor-pointer transition-all rounded-full block ${isActive ? activeClass : inactiveClass}`}
+                aria-label={`Go to ${page.title}`}
+              />
+            );
+          })}
         </div>
       </div>
 
