@@ -36,6 +36,7 @@ import { getCorsHeaders } from '../../lib/cors';
 import { apiSuccess, apiError } from '../../lib/response';
 import { withAuth, withAuthAllowUnverified, getContextUser } from '../../lib/auth';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { AdminUserContext } from './types';
 import {
   handleGetSchools,
   handleGetColleges,
@@ -164,31 +165,34 @@ export const onRequest: PagesFunction = async (context) => {
     if (path === '/create-learner' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
         const user = getContextUser(authContext);
-        return await handleCreateLearner(authContext.request, authContext.env, {
+        const userContext: AdminUserContext = {
           id: user.id,
           email: user.email || '',
-          org_id: (user as any).org_id,
-        });
+          org_id: 'org_id' in user ? user.org_id as string | undefined : undefined,
+        };
+        return await handleCreateLearner(authContext.request, authContext.env, userContext);
       })(context);
     }
     if (path === '/create-teacher' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
         const user = getContextUser(authContext);
-        return await handleCreateTeacher(authContext.request, authContext.env, {
+        const userContext: AdminUserContext = {
           id: user.id,
           email: user.email || '',
-          org_id: (user as any).org_id,
-        });
+          org_id: 'org_id' in user ? user.org_id as string | undefined : undefined,
+        };
+        return await handleCreateTeacher(authContext.request, authContext.env, userContext);
       })(context);
     }
     if (path === '/create-college-staff' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
         const user = getContextUser(authContext);
-        return await handleCreateCollegeStaff(authContext.request, authContext.env, {
+        const userContext: AdminUserContext = {
           id: user.id,
           email: user.email || '',
-          org_id: (user as any).org_id,
-        });
+          org_id: 'org_id' in user ? user.org_id as string | undefined : undefined,
+        };
+        return await handleCreateCollegeStaff(authContext.request, authContext.env, userContext);
       })(context);
     }
     if (path === '/update-learner-documents' && request.method === 'POST') {

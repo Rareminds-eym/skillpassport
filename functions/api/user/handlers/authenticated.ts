@@ -16,37 +16,41 @@ import {
   splitName,
   validateEmail,
 } from '../utils/helpers';
+import type { 
+  AdminUserContext, 
+  SsoUserMetadata, 
+  SsoMemberResponse, 
+  CreateLearnerRequest,
+  ApiEnv,
+  SubjectExpertise,
+  AuthUser
+} from '../types';
 
 /**
  * Handle admin creating a learner
  */
 export async function handleCreateLearner(
   request: Request, 
-  env: any,
-  user: { id: string; email: string; org_id?: string }
+  env: ApiEnv,
+  user: AdminUserContext
 ): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
-  const body = await request.json() as {
-    learner: {
-      name: string;
-      email: string;
-      contactNumber: string;
-      dateOfBirth?: string;
-      gender?: string;
-      enrollmentNumber?: string;
-      grade?: string;
-      section?: string;
-      guardianName?: string;
-      guardianPhone?: string;
-    };
-    userEmail: string;
-    schoolId?: string;
-    collegeId?: string;
-  };
+  // Parse and validate request body
+  let body: CreateLearnerRequest;
+  try {
+    const parsed = await request.json();
+    if (!parsed || typeof parsed !== 'object') {
+      return apiError(400, 'VALIDATION_ERROR', 'Request body must be an object', request);
+    }
+    body = parsed as CreateLearnerRequest;
+  } catch (e) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', request);
+  }
 
   const { learner, userEmail, schoolId: requestSchoolId, collegeId: requestCollegeId } = body;
 
+  // Validate required fields
   if (!learner || !learner.name || !learner.email || !learner.contactNumber) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: name, email, and contactNumber', request);
   }
@@ -55,8 +59,19 @@ export async function handleCreateLearner(
     return apiError(400, 'VALIDATION_ERROR', 'No user email provided', request);
   }
 
-  if (!validateEmail(learner.email)) {
+  // Normalize and validate email
+  const normalizedEmail = learner.email?.toLowerCase()?.trim();
+  if (!normalizedEmail || !validateEmail(normalizedEmail)) {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
+  }
+
+  // Validate user context
+  if (!user.id || typeof user.id !== 'string' || !user.id.trim()) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid user ID in context', request);
+  }
+
+  if (!user.email || typeof user.email !== 'string' || !user.email.trim()) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid user email in context', request);
   }
 
   // Get current user data
@@ -74,10 +89,16 @@ export async function handleCreateLearner(
     .maybeSingle();
 
   const userId = currentUserData?.id || user.id;
+  if (!userId || typeof userId !== 'string') {
+    return apiError(400, 'VALIDATION_ERROR', 'Unable to determine admin user ID', request);
+  }
+  
   const userRole = currentUserData?.role || null;
 
-  // Get SSO org_id from the authenticated user's JWT
-  const ssoOrgId = user.org_id || null;
+  // Get and validate SSO org_id from the authenticated user's JWT
+  const ssoOrgId = typeof user.org_id === 'string' && user.org_id.trim() 
+    ? user.org_id 
+    : null;
 
   // Determine institution type
   let schoolId = requestSchoolId || null;
@@ -130,32 +151,44 @@ export async function handleCreateLearner(
     return apiError(400, 'VALIDATION_ERROR', 'School/College ID not found', request);
   }
 
+  // Validate institution type matches institution ID
+  if (institutionType === 'school' && !schoolId) {
+    return apiError(400, 'VALIDATION_ERROR', 'School ID is required for school learners', request);
+  }
+  if (institutionType === 'college' && !collegeId) {
+    return apiError(400, 'VALIDATION_ERROR', 'College ID is required for college learners', request);
+  }
+
   // If we don't have ssoOrgId, we can't properly map the learner to the organization in SSO
   if (!ssoOrgId) {
     console.warn(`Admin ${userEmail} does not have org_id in JWT. Learner will be created without SSO organization mapping.`);
     return apiError(400, 'VALIDATION_ERROR', 'Admin organization ID not found. Please ensure you are properly logged in as a school/college admin.', request);
   }
 
-  // Check if email already exists
+  // Check if email already exists in auth
   const { data: existingAuthUsers } = await supabaseAdmin.auth.admin.listUsers();
-  const emailExists = existingAuthUsers?.users?.some(
-    (u: any) => u.email === learner.email.toLowerCase()
-  );
+  const emailExists = Array.isArray(existingAuthUsers?.users) && 
+    existingAuthUsers.users.some((u: AuthUser) => u?.email === normalizedEmail);
   if (emailExists) {
     return apiError(400, 'VALIDATION_ERROR', `Learner with email ${learner.email} already exists`, request);
   }
 
+  // Check if email already exists in learners table
   const { data: existingLearner } = await supabaseAdmin
     .from('learners')
     .select('id')
-    .eq('email', learner.email.toLowerCase())
+    .eq('email', normalizedEmail)
     .maybeSingle();
   if (existingLearner) {
     return apiError(400, 'VALIDATION_ERROR', `Learner with email ${learner.email} already exists`, request);
   }
 
-  // Use email as password for learners (easy to remember)
-  const learnerPassword = learner.email;
+  // Validate password (using email as password)
+  if (!normalizedEmail || normalizedEmail.length < 6) {
+    return apiError(400, 'VALIDATION_ERROR', 'Email must be at least 6 characters to use as password', request);
+  }
+  
+  const learnerPassword = normalizedEmail;
   const learnerRole = 'learner';
 
   // ── Create the AUTH user in the SSO worker ──
@@ -165,7 +198,7 @@ export async function handleCreateLearner(
   
   try {
     const ssoMember = await ssoCreateMember(env, {
-      email: learner.email.toLowerCase(),
+      email: normalizedEmail,
       password: learnerPassword,
       role: learnerRole,
       org_id: ssoOrgId,
@@ -176,11 +209,15 @@ export async function handleCreateLearner(
         institution_type: institutionType,
         school_id: schoolId,
         college_id: collegeId,
-      },
+      } as SsoUserMetadata,
     });
-    if (ssoMember?.user_id) {
-      ssoUserId = ssoMember.user_id;
+    
+    // Validate SSO response
+    if (!ssoMember || typeof ssoMember.user_id !== 'string' || !ssoMember.user_id.trim()) {
+      throw new Error('Invalid SSO response: missing or invalid user_id');
     }
+    
+    ssoUserId = ssoMember.user_id;
   } catch (ssoErr) {
     // If SSO creation fails, we should not proceed with app DB creation
     return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create learner account in SSO', request);
@@ -196,7 +233,7 @@ export async function handleCreateLearner(
 
     await supabaseAdmin.from('users').insert({
       id: ssoUserId,
-      email: learner.email.toLowerCase(),
+      email: normalizedEmail,
       firstName,
       lastName,
       role: learnerRole,
@@ -219,7 +256,7 @@ export async function handleCreateLearner(
       .from('learners')
       .insert({
         user_id: ssoUserId,
-        email: learner.email.toLowerCase(),
+        email: normalizedEmail,
         name: learner.name,
         contactNumber: learner.contactNumber,
         contact_number: learner.contactNumber,
@@ -254,7 +291,7 @@ export async function handleCreateLearner(
       data: {
         authUserId: ssoUserId,
         learnerId: learnerRecord.id,
-        email: learner.email,
+        email: normalizedEmail,
         name: learner.name,
         password: learnerPassword,
         institutionType,
@@ -264,9 +301,15 @@ export async function handleCreateLearner(
       },
     }, request);
   } catch (error) {
-    // Rollback: Delete from app DB
+    // Rollback: Delete from app DB with error handling
     if (ssoUserId) {
-      await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+      const { error: deleteError } = await supabaseAdmin
+        .from('users')
+        .delete()
+        .eq('id', ssoUserId);
+      if (deleteError) {
+        console.error(`Failed to rollback user ${ssoUserId}:`, deleteError);
+      }
       // Note: SSO user remains (will be reused on retry if duplicate email)
     }
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
@@ -276,10 +319,22 @@ export async function handleCreateLearner(
 /**
  * Handle admin creating a teacher
  */
-export async function handleCreateTeacher(request: Request, env: any, user: { id: string; email: string; org_id?: string }): Promise<Response> {
+export async function handleCreateTeacher(request: Request, env: ApiEnv, user: AdminUserContext): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
-  const body = await request.json() as {
+  // Parse and validate request body
+  let body;
+  try {
+    const parsed = await request.json();
+    if (!parsed || typeof parsed !== 'object') {
+      return apiError(400, 'VALIDATION_ERROR', 'Request body must be an object', request);
+    }
+    body = parsed;
+  } catch (e) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', request);
+  }
+
+  const { teacher } = body as {
     teacher: {
       first_name: string;
       last_name: string;
@@ -294,9 +349,8 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
       specialization?: string;
       experience_years?: number;
       date_of_joining?: string;
-      subject_expertise?: any[]; // Can be array of strings or objects
+      subject_expertise?: SubjectExpertise[];
       subjects_handled?: string[];
-      // Additional personal information
       employee_id?: string;
       gender?: string;
       city?: string;
@@ -307,16 +361,25 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     };
   };
 
-  const { teacher } = body;
-
   console.log('📥 Received teacher data in API:', JSON.stringify(teacher, null, 2));
 
   if (!teacher || !teacher.first_name || !teacher.last_name || !teacher.email) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: first_name, last_name, and email', request);
   }
 
-  if (!validateEmail(teacher.email)) {
+  // Normalize and validate email
+  const normalizedEmail = teacher.email?.toLowerCase()?.trim();
+  if (!normalizedEmail || !validateEmail(normalizedEmail)) {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
+  }
+
+  // Validate user context
+  if (!user.id || typeof user.id !== 'string' || !user.id.trim()) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid user ID in context', request);
+  }
+
+  if (!user.email || typeof user.email !== 'string' || !user.email.trim()) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid user email in context', request);
   }
 
   // Get school ID
@@ -358,14 +421,16 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
   const { data: existingTeacher } = await supabaseAdmin
     .from('school_educators')
     .select('id')
-    .eq('email', teacher.email.toLowerCase())
+    .eq('email', normalizedEmail)
     .maybeSingle();
   if (existingTeacher) {
     return apiError(400, 'VALIDATION_ERROR', `Teacher with email ${teacher.email} already exists`, request);
   }
 
   // The new teacher must join the admin's organization in the SSO DB.
-  const ssoOrgId = user.org_id;
+  const ssoOrgId = typeof user.org_id === 'string' && user.org_id.trim()
+    ? user.org_id
+    : null;
   if (!ssoOrgId) {
     return apiError(400, 'VALIDATION_ERROR', 'Admin organization not found in session', request);
   }
@@ -379,12 +444,17 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
   let ssoUserId: string;
   try {
     const ssoMember = await ssoCreateMember(env, {
-      email: teacher.email.toLowerCase(),
+      email: normalizedEmail,
       password: teacherPassword,
       role: 'school_educator',
       org_id: ssoOrgId,
     });
-    if (!ssoMember?.user_id) throw new Error('SSO member creation returned invalid user_id');
+    
+    // Validate SSO response
+    if (!ssoMember || typeof ssoMember.user_id !== 'string' || !ssoMember.user_id.trim()) {
+      throw new Error('Invalid SSO response: missing or invalid user_id');
+    }
+    
     ssoUserId = ssoMember.user_id;
   } catch (ssoErr) {
     return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create teacher account', request);
@@ -395,7 +465,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     // Mirrors the SSO user id; this is a profile shadow, not an auth record.
     await supabaseAdmin.from('users').insert({
       id: ssoUserId,
-      email: teacher.email.toLowerCase(),
+      email: normalizedEmail,
       firstName: teacher.first_name,
       lastName: teacher.last_name,
       role: 'school_educator',
@@ -414,7 +484,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     const educatorData = {
       user_id: ssoUserId,
       school_id: schoolId,
-      email: teacher.email.toLowerCase(),
+      email: normalizedEmail,
       first_name: teacher.first_name,
       last_name: teacher.last_name,
       phone_number: teacher.phone_number || null,
@@ -428,7 +498,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
       date_of_joining: teacher.date_of_joining || null,
       role: teacher.role || 'subject_teacher',
       subject_expertise: teacher.subject_expertise || [],
-      subjects_handled: teacher.subjects_handled || (Array.isArray(teacher.subject_expertise) ? teacher.subject_expertise.map((s: any) => typeof s === 'string' ? s : s.name) : []),
+      subjects_handled: teacher.subjects_handled || (Array.isArray(teacher.subject_expertise) ? teacher.subject_expertise.map((s: SubjectExpertise | string) => typeof s === 'string' ? s : s.name) : []),
       onboarding_status: 'active',
       // Additional personal information
       employee_id: teacher.employee_id || null,
@@ -463,7 +533,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
       message: `Teacher ${teacher.first_name} ${teacher.last_name} created successfully`,
       authUserId: ssoUserId,
       teacherId: teacherRecord.id,
-      email: teacher.email,
+      email: normalizedEmail,
       name: `${teacher.first_name} ${teacher.last_name}`,
       password: teacherPassword,
       role: teacher.role,
@@ -472,7 +542,13 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
     // Best-effort rollback of the app-DB profile row. The SSO user already
     // exists; it is reused on a corrected retry (duplicate email is rejected).
     if (ssoUserId) {
-      await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+      const { error: deleteError } = await supabaseAdmin
+        .from('users')
+        .delete()
+        .eq('id', ssoUserId);
+      if (deleteError) {
+        console.error(`Failed to rollback user ${ssoUserId}:`, deleteError);
+      }
     }
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }
@@ -481,7 +557,7 @@ export async function handleCreateTeacher(request: Request, env: any, user: { id
 /**
  * Handle updating learner documents
  */
-export async function handleUpdateLearnerDocuments(request: Request, env: any): Promise<Response> {
+export async function handleUpdateLearnerDocuments(request: Request, env: ApiEnv): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   const body = await request.json() as {
@@ -556,10 +632,22 @@ export async function handleUpdateLearnerDocuments(request: Request, env: any): 
  * Handle college admin creating a staff member
  * Supports roles: College Admin, HoD, Faculty, Lecturer, Exam Cell, Finance Admin, Placement Officer
  */
-export async function handleCreateCollegeStaff(request: Request, env: any, user: { id: string; email: string; org_id?: string }): Promise<Response> {
+export async function handleCreateCollegeStaff(request: Request, env: ApiEnv, user: AdminUserContext): Promise<Response> {
   const supabaseAdmin = createSupabaseAdminClient(env);
 
-  const body = await request.json() as {
+  // Parse and validate request body
+  let body;
+  try {
+    const parsed = await request.json();
+    if (!parsed || typeof parsed !== 'object') {
+      return apiError(400, 'VALIDATION_ERROR', 'Request body must be an object', request);
+    }
+    body = parsed;
+  } catch (e) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON in request body', request);
+  }
+
+  const { staff, collegeId: requestCollegeId } = body as {
     staff: {
       name: string;
       email: string;
@@ -574,8 +662,6 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
     collegeId?: string;
   };
 
-  const { staff, collegeId: requestCollegeId } = body;
-
   if (!staff || !staff.name || !staff.email) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: name and email', request);
   }
@@ -584,8 +670,19 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
     return apiError(400, 'VALIDATION_ERROR', 'At least one role must be selected', request);
   }
 
-  if (!validateEmail(staff.email)) {
+  // Normalize and validate email
+  const normalizedEmail = staff.email?.toLowerCase()?.trim();
+  if (!normalizedEmail || !validateEmail(normalizedEmail)) {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid email format', request);
+  }
+
+  // Validate user context
+  if (!user.id || typeof user.id !== 'string' || !user.id.trim()) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid user ID in context', request);
+  }
+
+  if (!user.email || typeof user.email !== 'string' || !user.email.trim()) {
+    return apiError(400, 'VALIDATION_ERROR', 'Invalid user email in context', request);
   }
 
   // ── Resolve the APP-DB college id (organizations row) ──
@@ -629,19 +726,13 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
     return apiError(400, 'VALIDATION_ERROR', 'College ID not found. Please ensure you are logged in as a college admin.', request);
   }
 
-  // The new staff member must join the admin's organization in the SSO DB.
-  const ssoOrgId = user.org_id;
-  if (!ssoOrgId) {
-    return apiError(400, 'VALIDATION_ERROR', 'Admin organization not found in session', request);
-  }
-
   // Pre-check for an existing staff profile in the app DB (fast, friendly error).
   // The SSO worker is the source of truth for the auth user and rejects
   // duplicate emails too.
   const { data: existingLecturer } = await supabaseAdmin
     .from('college_lecturers')
     .select('id')
-    .eq('metadata->>email', staff.email.toLowerCase())
+    .eq('metadata->>email', normalizedEmail)
     .maybeSingle();
   if (existingLecturer) {
     return apiError(400, 'VALIDATION_ERROR', `Staff member with email ${staff.email} already exists`, request);
@@ -666,18 +757,31 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
   // member maps to college_admin; all other college staff map to college_educator.
   const ssoRole = primaryRole === 'college_admin' ? 'college_admin' : 'college_educator';
 
+  // The new staff member must join the admin's organization in the SSO DB.
+  const ssoOrgId = typeof user.org_id === 'string' && user.org_id.trim()
+    ? user.org_id
+    : null;
+  if (!ssoOrgId) {
+    return apiError(400, 'VALIDATION_ERROR', 'Admin organization not found in session', request);
+  }
+
   // ── Create the AUTH user in the SSO worker (never Supabase Auth) ──
   // Makes the staff a real, active SSO member of the college's org. Access is
   // granted through the organization's subscription/seats — no personal sub.
   let ssoUserId: string;
   try {
     const ssoMember = await ssoCreateMember(env, {
-      email: staff.email.toLowerCase(),
+      email: normalizedEmail,
       password: staffPassword,
       role: ssoRole,
       org_id: ssoOrgId,
     });
-    if (!ssoMember?.user_id) throw new Error('SSO member creation returned invalid user_id');
+    
+    // Validate SSO response
+    if (!ssoMember || typeof ssoMember.user_id !== 'string' || !ssoMember.user_id.trim()) {
+      throw new Error('Invalid SSO response: missing or invalid user_id');
+    }
+    
     ssoUserId = ssoMember.user_id;
   } catch (ssoErr) {
     return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message || 'Failed to create staff account', request);
@@ -690,7 +794,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
     // role (faculty/hod/lecturer/...) is preserved in metadata.
     const { error: userInsertError } = await supabaseAdmin.from('users').insert({
       id: ssoUserId,
-      email: staff.email.toLowerCase(),
+      email: normalizedEmail,
       firstName,
       lastName,
       role: ssoRole,
@@ -727,7 +831,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
         metadata: {
           first_name: firstName,
           last_name: lastName,
-          email: staff.email.toLowerCase(),
+          email: normalizedEmail,
           phone: staff.phone || null,
           role: primaryRole,
           roles: staff.roles,
@@ -749,7 +853,7 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
       message: `Staff member ${staff.name} created successfully`,
       authUserId: ssoUserId,
       staffId: staffRecord.id,
-      email: staff.email,
+      email: normalizedEmail,
       name: staff.name,
       roles: staff.roles,
       password: staffPassword,
@@ -759,7 +863,13 @@ export async function handleCreateCollegeStaff(request: Request, env: any, user:
     // Best-effort rollback of the app-DB profile row. The SSO user already
     // exists; it is reused on a corrected retry (duplicate email is rejected).
     if (ssoUserId) {
-      await supabaseAdmin.from('users').delete().eq('id', ssoUserId);
+      const { error: deleteError } = await supabaseAdmin
+        .from('users')
+        .delete()
+        .eq('id', ssoUserId);
+      if (deleteError) {
+        console.error(`Failed to rollback user ${ssoUserId}:`, deleteError);
+      }
     }
     return apiError(400, 'VALIDATION_ERROR', (error as Error).message, request);
   }

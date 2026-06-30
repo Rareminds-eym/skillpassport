@@ -197,3 +197,67 @@ export interface UnifiedSignupRequest {
   preferredLanguage?: string;
   referralCode?: string;
 }
+
+// ==================== ADMIN USER CONTEXT ====================
+
+export interface AdminUserContext {
+  id: string;
+  email: string;
+  org_id?: string;
+}
+
+export interface SsoUserMetadata {
+  name: string;
+  phone?: string;
+  added_by: string;
+  institution_type: string | null;
+  school_id: string | null;
+  college_id: string | null;
+}
+
+export interface SsoMemberResponse {
+  user_id: string;
+  org_id: string;
+  membership_id: string;
+}
+
+export interface CreateLearnerRequest {
+  learner: {
+    name: string;
+    email: string;
+    contactNumber: string;
+    dateOfBirth?: string;
+    gender?: string;
+    enrollmentNumber?: string;
+    grade?: string;
+    section?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+  };
+  userEmail: string;
+  schoolId?: string;
+  collegeId?: string;
+}
+
+// ==================== ENVIRONMENT ====================
+
+export interface ApiEnv {
+  SUPABASE_URL: string;
+  SUPABASE_ANON_KEY: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+  SSO_SERVICE: unknown; // Service binding
+  [key: string]: unknown;
+}
+
+// ==================== HELPER TYPES ====================
+
+export interface SubjectExpertise {
+  name: string;
+  [key: string]: unknown;
+}
+
+export interface AuthUser {
+  id: string;
+  email?: string;
+  [key: string]: unknown;
+}
