@@ -341,7 +341,7 @@ function MySubscription() {
 
       // Construct the receipt key pattern - matches what the backend generates
       // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
-      const shortUserId = user?.id?.slice(0, 8) || '';
+    const shortUserId = user?.id ? user.id.slice(0, 8) : '';
       const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9_-]/g, '');
       
       // The exact key format may vary by timestamp, so we use the payment ID as identifier

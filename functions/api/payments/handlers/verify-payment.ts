@@ -39,10 +39,15 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
   const user = getContextUser(context);
   const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
 
+  // Ensure user.email exists before proceeding
+  if (!user.email) {
+    return apiError(400, 'VALIDATION_ERROR', 'User email is required', context.request);
+  }
+
   // Safe accessor for optional user properties from JWT
   const userRecord = user as unknown as Record<string, unknown>;
-  const userName = userRecord.name as string | undefined;
-  const userPhone = userRecord.phone as string | undefined;
+  const userName = (userRecord.name as string | undefined) || undefined;
+  const userPhone = (userRecord.phone as string | undefined) || undefined;
 
   try {
     let body: Record<string, unknown>;
@@ -206,7 +211,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           logger.info('Subscription already updated by webhook (duplicate caught). Syncing shadow cache before return');
 
           try {
-            await syncUserShadow(supabase, user.id, (body.email as string) || user.email);
+            await syncUserShadow(supabase, user.id, (body.email as string | undefined) || user.email);
             const syncData = await ssoSyncSubscription(env, user.id);
             if (syncData.subscription) {
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
@@ -271,8 +276,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           plan_amount: planPrice,
           billing_cycle: plan.duration as string,
           features: validPlan.base_features || [],
-          full_name: userName || (user.email as string) || '',
-          email: (user.email as string) || '',
+          full_name: userName || user.email,
+          email: user.email,
           phone: userPhone || undefined,
           razorpay_order_id: body.razorpay_order_id as string,
           razorpay_payment_id: body.razorpay_payment_id as string,
@@ -284,7 +289,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           logger.info('Subscription already created (duplicate caught). Order fulfilled asynchronously. Syncing shadow cache before return');
 
           try {
-            await syncUserShadow(supabase, user.id, (body.email as string) || user.email);
+            await syncUserShadow(supabase, user.id, (body.email as string | undefined) || user.email);
             const syncData = await ssoSyncSubscription(env, user.id);
             if (syncData.subscription) {
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
@@ -342,7 +347,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 3.5: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.id, (body.email as string) || user.email);
+      await syncUserShadow(supabase, user.id, (body.email as string | undefined) || user.email);
 
       const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {
@@ -355,8 +360,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 4: Send payment confirmation email
     try {
       await sendPaymentSuccessEmail(env as unknown as PagesEnv, {
-        name: userName || (user.email as string) || '',
-        email: (user.email as string) || '',
+        name: userName || user.email,
+        email: user.email,
         phone: userPhone || '',
         amount: planPrice,
         orderId: body.razorpay_order_id as string,
@@ -390,9 +395,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             },
             user: {
               name: userName,
-              email: (user.email as string) || '',
+              email: user.email,
               phone: userPhone || undefined,
             },
+          }).catch((err) => {
+            logger.error('Async receipt generation failed', err instanceof Error ? err : new Error(String(err)));
           })
         );
       } else {
@@ -417,7 +424,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             },
             user: {
               name: userName,
-              email: (user.email as string) || '',
+              email: user.email,
               phone: userPhone || undefined,
             },
           });
