@@ -51,7 +51,14 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
       toast.success(result.message || `Skill "${skill.skill_name || skill.name}" approved successfully!`);
       
       if (onAction) {
-        await Promise.resolve(onAction('approved', skill));
+        try {
+          const result = onAction('approved', skill);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
       }
       
       onClose();
@@ -90,7 +97,14 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
       toast.success(result.message || `Skill "${skill.skill_name || skill.name}" rejected.`);
       
       if (onAction) {
-        await Promise.resolve(onAction('rejected', skill));
+        try {
+          const result = onAction('rejected', skill);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
       }
       
       onClose();

@@ -38,6 +38,19 @@ interface FlattenedRecord extends Omit<RecordWithLearner, 'learner'> {
 }
 
 // ── Helper Functions ──
+function isRecordWithLearner(item: unknown): item is RecordWithLearner {
+  return (
+    typeof item === 'object' && 
+    item !== null && 
+    'id' in item && 
+    'learner' in item &&
+    (
+      typeof (item as any).learner === 'object' ||
+      Array.isArray((item as any).learner)
+    )
+  );
+}
+
 function filterAndFlattenBySchool(
   data: RecordWithLearner[],
   school_id: string,
@@ -172,7 +185,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('trainings').select('*, learner:learners!trainings_learner_id_fkey(*)').eq('approval_status', 'pending').eq('approval_authority', 'school_admin').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
 
-        let results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
+        const validatedData = Array.isArray(data) && data.every(isRecordWithLearner) ? data : [];
+        let results = filterAndFlattenBySchool(validatedData, school_id);
 
         if (results.length === 0) {
           const { data: fb } = await supabase.from('trainings').select('*, learner:learners!trainings_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
@@ -212,7 +226,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('experience').select('*, learner:learners!experience_learner_id_fkey(*)').eq('approval_status', 'pending').eq('approval_authority', 'school_admin').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id, (l) => ({
+        const validatedData = Array.isArray(data) && data.every(isRecordWithLearner) ? data : [];
+        const results = filterAndFlattenBySchool(validatedData, school_id, (l) => ({
           learner_type: l?.learner_type
         }));
         return apiSuccess(results, context.request, { startTime });
@@ -241,7 +256,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('certificates').select('*, learner:learners!certificates_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
+        const validatedData = Array.isArray(data) && data.every(isRecordWithLearner) ? data : [];
+        const results = filterAndFlattenBySchool(validatedData, school_id);
         return apiSuccess(results, context.request, { startTime });
       }
 
@@ -268,7 +284,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('education').select('*, learner:learners!education_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
+        const validatedData = Array.isArray(data) && data.every(isRecordWithLearner) ? data : [];
+        const results = filterAndFlattenBySchool(validatedData, school_id);
         return apiSuccess(results, context.request, { startTime });
       }
 
@@ -295,7 +312,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('skills').select('*, learner:learners!skills_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
+        const validatedData = Array.isArray(data) && data.every(isRecordWithLearner) ? data : [];
+        const results = filterAndFlattenBySchool(validatedData, school_id);
         return apiSuccess(results, context.request, { startTime });
       }
 
@@ -322,7 +340,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!school_id) return apiError(400, 'VALIDATION_ERROR', 'Missing school_id', context.request, { startTime });
         const { data, error } = await supabase.from('achievements').select('*, learner:learners!achievements_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
+        const validatedData = Array.isArray(data) && data.every(isRecordWithLearner) ? data : [];
+        const results = filterAndFlattenBySchool(validatedData, school_id);
         return apiSuccess(results, context.request, { startTime });
       }
 
@@ -350,7 +369,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await supabase.from('projects').select('*, learner:learners!projects_learner_id_fkey(*)').eq('approval_status', 'pending').eq('approval_authority', 'school_admin').order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
 
-        let results = filterAndFlattenBySchool(data as RecordWithLearner[], school_id);
+        const validatedData = Array.isArray(data) && data.every(isRecordWithLearner) ? data : [];
+        let results = filterAndFlattenBySchool(validatedData, school_id);
 
         if (results.length === 0) {
           const { data: fb } = await supabase.from('projects').select('*, learner:learners!projects_learner_id_fkey(*)').eq('approval_status', 'pending').order('created_at', { ascending: false });

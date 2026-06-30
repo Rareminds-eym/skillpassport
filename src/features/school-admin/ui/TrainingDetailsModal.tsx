@@ -43,7 +43,14 @@ const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await Promise.resolve(onAction('approved', training));
+        try {
+          const result = onAction('approved', training);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
       }
       
       onClose();
@@ -83,7 +90,14 @@ const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await Promise.resolve(onAction('rejected', training));
+        try {
+          const result = onAction('rejected', training);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
       }
       
       onClose();

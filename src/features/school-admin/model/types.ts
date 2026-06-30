@@ -316,6 +316,7 @@ export interface UserRoleHistoryRecord {
  */
 export interface BasePendingItem {
   id: string;
+  learner_id?: string;
   approval_status: string;
   created_at: string;
   learner_name: string;

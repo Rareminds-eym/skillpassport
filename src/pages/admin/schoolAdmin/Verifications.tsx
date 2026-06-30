@@ -93,7 +93,12 @@ const Verifications: React.FC = () => {
       logger.info('user.school_id not found, checking school_educators table');
       
       try {
-        const resp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId' });
+        interface SchoolIdResponse {
+          data?: {
+            schoolId?: string;
+          };
+        }
+        const resp: SchoolIdResponse = await apiPost('/school-admin/actions', { action: 'fetchSchoolId' });
         if (resp.data?.schoolId) {
           logger.info('Found school_id', { schoolId: resp.data.schoolId });
           setSchoolId(resp.data.schoolId);
@@ -1406,9 +1411,9 @@ const Verifications: React.FC = () => {
                   ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
                   : "space-y-4"
                 }>
-                  {currentProjects.map((project, index) => (
+                  {currentProjects.map((project) => (
                     <ProjectCard 
-                      key={project.project_id || project.id || `project-fallback-${index}`} 
+                      key={project.project_id || project.id || `${project.learner_id || 'unknown'}-${project.created_at}`} 
                       project={project} 
                     />
                   ))}

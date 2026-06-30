@@ -99,7 +99,7 @@ const ExperienceDetailsModal: React.FC<ExperienceDetailsModalProps> = ({
     
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const diffTime = Math.abs(end - start);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 30) return `${diffDays} days`;
