@@ -63,7 +63,9 @@ RETURNS TABLE (
   search_method varchar(20),
   riasec_alignment double precision,
   description text,
-  domain_name text
+  domain_name text,
+  degree_gate varchar(20),
+  cross_industry_role_paths text
 )
 LANGUAGE sql
 STABLE
@@ -76,6 +78,8 @@ AS $$
       o.name,
       o.description,
       ARRAY[o.riasec_code_string]::varchar(10)[] AS occupation_codes,
+      o.degree_gate,
+      o.cross_industry_role_paths,
       ROW_NUMBER() OVER (ORDER BY ts_rank(to_tsvector('english', COALESCE(o.name, '') || ' ' || COALESCE(o.description, '')),
                          plainto_tsquery('english', query_text)) DESC) AS bm25_rank,
       ts_rank(to_tsvector('english', COALESCE(o.name, '') || ' ' || COALESCE(o.description, '')),
@@ -94,6 +98,8 @@ AS $$
       o.name,
       o.description,
       ARRAY[o.riasec_code_string]::varchar(10)[] AS occupation_codes,
+      o.degree_gate,
+      o.cross_industry_role_paths,
       ROW_NUMBER() OVER (ORDER BY GREATEST(0, 1 - (e.embedding <=> query_embedding::vector)) DESC) AS semantic_rank,
       GREATEST(0, 1 - (e.embedding <=> query_embedding::vector)) AS semantic_score
     FROM public.embeddings e
@@ -110,6 +116,8 @@ AS $$
       COALESCE(ks.name, ss.name) AS name,
       COALESCE(ks.description, ss.description) AS description,
       COALESCE(ks.occupation_codes, ss.occupation_codes) AS occupation_codes,
+      COALESCE(ks.degree_gate, ss.degree_gate) AS degree_gate,
+      COALESCE(ks.cross_industry_role_paths, ss.cross_industry_role_paths) AS cross_industry_role_paths,
       ss.semantic_score,
       ks.bm25_score,
       -- RRF Formula: 1/(k + rank), then normalize
@@ -163,7 +171,9 @@ AS $$
     ranked.search_method::varchar(20),
     ranked.riasec_align::double precision,
     ranked.description,
-    COALESCE(d.name, 'Unclassified')::text AS domain_name
+    COALESCE(d.name, 'Unclassified')::text AS domain_name,
+    ranked.degree_gate,
+    ranked.cross_industry_role_paths
   FROM (
     SELECT
       c.id,
@@ -171,6 +181,8 @@ AS $$
       c.name,
       c.description,
       c.occupation_codes,
+      c.degree_gate,
+      c.cross_industry_role_paths,
       c.semantic_score AS semantic_similarity,
       c.bm25_score AS keyword_rank_score,
       c.hybrid_score,
@@ -203,7 +215,9 @@ RETURNS TABLE (
   riasec_alignment double precision,
   method varchar(20),
   description text,
-  domain_name text
+  domain_name text,
+  degree_gate varchar(20),
+  cross_industry_role_paths text
 )
 LANGUAGE sql
 STABLE
@@ -217,7 +231,9 @@ AS $$
     riasec_alignment,
     search_method::varchar(20) as method,
     description,
-    domain_name
+    domain_name,
+    degree_gate,
+    cross_industry_role_paths
   FROM hybrid_search_occupations(
     query_text,
     query_embedding,

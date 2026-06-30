@@ -98,12 +98,17 @@ CREATE TABLE IF NOT EXISTS public.occupations (
   aptitude_assessment   JSONB DEFAULT '{}'::jsonb,         -- Assessment areas + rationale
   work_values_assessment JSONB DEFAULT '{}'::jsonb,        -- Assessment values + rationale
   is_active             BOOLEAN DEFAULT TRUE,
+  degree_gate                  VARCHAR(20) DEFAULT 'Preferred', 
+  direct_degree_mapping        TEXT,                              
+  cross_industry_role_paths    TEXT,                              
+  cross_industry_fit_conditions TEXT,                            
   metadata              JSONB DEFAULT '{}'::jsonb,
   created_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at            TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT chk_primary_riasec   CHECK (primary_riasec   IN ('R','I','A','S','E','C')),
   CONSTRAINT chk_secondary_riasec CHECK (secondary_riasec IN ('R','I','A','S','E','C')),
-  CONSTRAINT chk_tertiary_riasec  CHECK (tertiary_riasec  IN ('R','I','A','S','E','C'))
+  CONSTRAINT chk_tertiary_riasec  CHECK (tertiary_riasec  IN ('R','I','A','S','E','C')),
+  CONSTRAINT chk_degree_gate      CHECK (degree_gate IN ('Mandatory','Preferred'))
 );
 
 CREATE INDEX idx_occupations_code ON public.occupations(code);
@@ -114,11 +119,16 @@ CREATE INDEX idx_occupations_work_values_profile ON public.occupations USING GIN
 CREATE INDEX idx_occupations_big5_assessment ON public.occupations USING GIN (big5_assessment);
 CREATE INDEX idx_occupations_aptitude_assessment ON public.occupations USING GIN (aptitude_assessment);
 CREATE INDEX idx_occupations_work_values_assessment ON public.occupations USING GIN (work_values_assessment);
+CREATE INDEX idx_occupations_degree_gate ON public.occupations(degree_gate);
 COMMENT ON TABLE public.occupations IS '86 HTT roles (table named occupations to avoid collision with RBAC public.roles). riasec_code_string drives the Holland-hexagon match score; riasec_reason is the embedding source.';
 COMMENT ON COLUMN public.occupations.riasec_reason IS 'Per-row unique text (86/86) used as the embedding source for RAG.';
 COMMENT ON COLUMN public.occupations.big5_assessment IS 'JSONB: {traits: [array of Big5 traits], rationale: "explanation of fit"}. Used for RAG and learner matching.';
 COMMENT ON COLUMN public.occupations.aptitude_assessment IS 'JSONB: {areas: [array of aptitude areas], rationale: "explanation of fit"}. Used for RAG and learner matching.';
 COMMENT ON COLUMN public.occupations.work_values_assessment IS 'JSONB: {values: [array of work values], rationale: "explanation of fit"}. Used for RAG and learner matching.';
+COMMENT ON COLUMN public.occupations.degree_gate IS 'Mandatory = hard eligibility filter (regulated/core roles, ~19/769 in source sheet); Preferred = soft ranking/tie-breaker signal only (~750/769). Source: L&D direct_degree_gate.';
+COMMENT ON COLUMN public.occupations.direct_degree_mapping IS 'Eligible degree family text for this role. Source: L&D direct_degree_mapping.';
+COMMENT ON COLUMN public.occupations.cross_industry_role_paths IS 'Redirect role paths for learners outside the direct degree mapping (e.g. weak stream knowledge). Source: L&D cross_industry_role_paths.';
+COMMENT ON COLUMN public.occupations.cross_industry_fit_conditions IS 'Assessment-evidence condition required to unlock the cross-industry redirect (e.g. strong logical reasoning + conscientiousness). Source: L&D cross_industry_fit_conditions.';
 
 -- ============================================================================
 -- TABLE 4: role_domains  (M:N context label: which domains a role touches)

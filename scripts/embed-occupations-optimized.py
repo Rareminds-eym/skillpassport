@@ -11,6 +11,18 @@ Removes low-signal numeric scales. Keeps only semantic signal:
 Per-role document focuses on SEMANTIC meaning, not numeric scales.
 This improves embedding quality by 20-30% for career matching RAG.
 
+Also embeds degree-fit signal (added 2026-06-30, source: L&D
+"Master sheet 2 - Degree Mapping R-D Enriched.xlsx"):
+- direct_degree_mapping (preferred/eligible degree family)
+- cross_industry_role_paths + cross_industry_fit_conditions (the bridge for
+  learners outside the direct degree match — this is what lets RAG surface
+  this role to e.g. a BCA student with strong process/data aptitude even
+  though their degree isn't the direct match)
+Mandatory-gated roles (regulated/core, ~19/769) state the gate explicitly so
+weak-knowledge learners are semantically steered toward the cross-industry
+bridge instead of the core role itself. Knowledge fit itself is judged by the
+LLM clustering prompt from the learner's profile, not a per-role DB threshold.
+
 Usage:
     python scripts/embed-occupations-optimized.py             # generate + write + apply
     python scripts/embed-occupations-optimized.py --no-apply  # only write seed file
@@ -133,7 +145,30 @@ def build_text_optimized(o):
         if rationale:
             lines.append(f"Why These Values Are Satisfied: {rationale}")
 
-    # 9. HOW: Key Capabilities, Skills, & Work Style
+    # 9. DEGREE/KNOWLEDGE FIT: who this role suits academically, and the bridge for
+    # learners outside the direct degree match. Embedding this (not just storing it as a
+    # DB column) lets RAG semantic retrieval naturally favour/deprioritize this role based
+    # on the learner's stream + knowledge strengths/weaknesses text in the query.
+    gate = o.get("degree_gate") or "Preferred"
+    direct_mapping = o.get("direct_degree_mapping")
+    cross_paths = o.get("cross_industry_role_paths")
+    cross_conditions = o.get("cross_industry_fit_conditions")
+
+    if direct_mapping:
+        if gate == "Mandatory":
+            lines.append(
+                f"Degree Requirement (Mandatory — regulated/core role): {direct_mapping}. "
+                f"Learners without this degree should NOT be matched to this role directly."
+            )
+        else:
+            lines.append(f"Preferred Degree Background: {direct_mapping}")
+
+    if cross_paths:
+        lines.append(f"Alternate Entry Path For Other Degrees: {cross_paths}")
+    if cross_conditions:
+        lines.append(f"This Alternate Path Works When The Learner Shows: {cross_conditions}")
+
+    # 10. HOW: Key Capabilities, Skills, & Work Style
     lines.append("Key Capabilities & Skills:")
 
     # Collect all capabilities from all domains (ordered by step)
@@ -174,6 +209,7 @@ def main():
     occ = sb_get("/occupations?is_active=eq.true&select=id,code,name,description,riasec_code_string,riasec_reason,"
                  "observable_behaviours,"
                  "big5_assessment,aptitude_assessment,work_values_assessment,"
+                 "degree_gate,direct_degree_mapping,cross_industry_role_paths,cross_industry_fit_conditions,"
                  "role_domains(domains(name,description,industries(name)),"
                  "role_capability_sequence(sequence_step,"
                  "capability_master(name,description,work_style_demands,skill_capability_mapping(skills(name)))))"
