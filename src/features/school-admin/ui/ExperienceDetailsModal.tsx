@@ -40,7 +40,19 @@ const ExperienceDetailsModal: React.FC<ExperienceDetailsModalProps> = ({
       );
       
       toast.success(result.message || `Experience "${experience.role}" approved successfully!`);
-      onAction && onAction('approved', experience);
+      
+      // Call onAction and wait for parent to refresh data before closing modal
+      if (onAction) {
+        try {
+          const result = onAction('approved', experience);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
+      }
+      
       onClose();
     } catch (error) {
       console.error('Error approving experience:', error);
@@ -75,7 +87,19 @@ const ExperienceDetailsModal: React.FC<ExperienceDetailsModalProps> = ({
       );
       
       toast.success(result.message || `Experience "${experience.role}" rejected.`);
-      onAction && onAction('rejected', experience);
+      
+      // Call onAction and wait for parent to refresh data before closing modal
+      if (onAction) {
+        try {
+          const result = onAction('rejected', experience);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
+      }
+      
       onClose();
     } catch (error) {
       console.error('Error rejecting experience:', error);

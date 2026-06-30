@@ -1,3 +1,5 @@
+// Barrel exports for school-admin UI components
+// All modal components use named exports for FSD compliance
 export { default as NotificationBell } from './NotificationBell';
 export { default as TrainingDetailsModal } from './TrainingDetailsModal';
 export { default as ExperienceDetailsModal } from './ExperienceDetailsModal';

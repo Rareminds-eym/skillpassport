@@ -53,7 +53,19 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
       );
       
       toast.success('Project approved successfully!');
-      onAction('approved', project);
+      
+      // Call onAction and wait for parent to refresh data before closing modal
+      if (onAction) {
+        try {
+          const result = onAction('approved', project);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
+      }
+      
       onClose();
     } catch (error) {
       console.error('Error approving project:', error);
@@ -91,7 +103,19 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
       );
       
       toast.success('Project rejected successfully!');
-      onAction('rejected', project);
+      
+      // Call onAction and wait for parent to refresh data before closing modal
+      if (onAction) {
+        try {
+          const result = onAction('rejected', project);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
+      }
+      
       onClose();
     } catch (error) {
       console.error('Error rejecting project:', error);

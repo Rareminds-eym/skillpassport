@@ -39,15 +39,22 @@ interface FlattenedRecord extends Omit<RecordWithLearner, 'learner'> {
 
 // ── Helper Functions ──
 function isRecordWithLearner(item: unknown): item is RecordWithLearner {
+  if (typeof item !== 'object' || item === null) {
+    return false;
+  }
+  
+  const record = item as Record<string, unknown>;
+  
+  if (!('id' in record) || !('learner' in record)) {
+    return false;
+  }
+  
+  const { learner } = record;
+  
+  // Learner must be either an object or an array
   return (
-    typeof item === 'object' && 
-    item !== null && 
-    'id' in item && 
-    'learner' in item &&
-    (
-      typeof (item as any).learner === 'object' ||
-      Array.isArray((item as any).learner)
-    )
+    (typeof learner === 'object' && learner !== null && !Array.isArray(learner)) ||
+    (Array.isArray(learner) && learner.length > 0)
   );
 }
 
