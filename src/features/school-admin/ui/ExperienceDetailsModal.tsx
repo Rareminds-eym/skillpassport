@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
-import * as VerificationService from '@/shared/api/verificationService';
+import { approveExperience, rejectExperience } from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
 import type { ExperienceDetailsModalProps } from '../model/types';
 
@@ -27,12 +27,12 @@ const ExperienceDetailsModal: React.FC<ExperienceDetailsModalProps> = ({
         return;
       }
 
-      const approvalAuthority = experience.approval_authority || 'school_admin';
+      const approvalAuthority = (experience.approval_authority || 'school_admin') as 'college_admin' | 'school_admin';
       const notes = approvalAuthority === 'college_admin' 
         ? 'Approved by College Admin' 
         : 'Approved by School Admin';
       
-      const result = await VerificationService.approveExperience(
+      const result = await approveExperience(
         experience.id,
         currentUserId,
         notes,
@@ -44,7 +44,7 @@ const ExperienceDetailsModal: React.FC<ExperienceDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error approving experience:', error);
-      toast.error(error.message || 'Failed to approve experience');
+      toast.error((error instanceof Error ? error.message : null) || 'Failed to approve experience');
     } finally {
       setActionLoading(null);
     }
@@ -65,9 +65,9 @@ const ExperienceDetailsModal: React.FC<ExperienceDetailsModalProps> = ({
     setActionLoading('rejecting');
     
     try {
-      const approvalAuthority = experience.approval_authority || 'school_admin';
+      const approvalAuthority = (experience.approval_authority || 'school_admin') as 'college_admin' | 'school_admin';
       
-      const result = await VerificationService.rejectExperience(
+      const result = await rejectExperience(
         experience.id,
         currentUserId,
         rejectionReason,

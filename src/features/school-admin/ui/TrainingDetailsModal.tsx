@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
-import * as VerificationService from '@/shared/api/verificationService';
+import { approveTraining, rejectTraining } from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
 import type { TrainingDetailsModalProps } from '../model/types';
 
@@ -32,7 +32,7 @@ const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
         ? 'Approved by College Admin' 
         : 'Approved by School Admin';
       
-      const result = await VerificationService.approveTraining(
+      const result = await approveTraining(
         training.id,
         currentUserId,
         notes,
@@ -72,7 +72,7 @@ const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({
 
       const approvalAuthority = (training.approval_authority || 'school_admin') as 'college_admin' | 'school_admin';
       
-      const result = await VerificationService.rejectTraining(
+      const result = await rejectTraining(
         training.id,
         currentUserId,
         rejectionReason,

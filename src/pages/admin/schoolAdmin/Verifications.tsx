@@ -80,12 +80,14 @@ const Verifications: React.FC = () => {
         return;
       }
 
-      // Cast user to check for school_id property
-      const userWithSchool = user as typeof user & { school_id?: string };
-      if (userWithSchool.school_id) {
-        logger.info('Found user.school_id', { schoolId: userWithSchool.school_id });
-        setSchoolId(userWithSchool.school_id);
-        return;
+      // Check for school_id property with runtime validation
+      if (user && typeof user === 'object' && 'school_id' in user) {
+        const schoolId = (user as Record<string, unknown>).school_id;
+        if (typeof schoolId === 'string') {
+          logger.info('Found user.school_id', { schoolId });
+          setSchoolId(schoolId);
+          return;
+        }
       }
 
       logger.info('user.school_id not found, checking school_educators table');
@@ -100,7 +102,7 @@ const Verifications: React.FC = () => {
           setSchoolId(undefined);
         }
       } catch (err) {
-        logger.error('Failed to fetch school_id', err as Error);
+        logger.error('Failed to fetch school_id', err instanceof Error ? err : new Error(String(err)));
         setSchoolId(undefined);
       }
     };
@@ -135,7 +137,7 @@ const Verifications: React.FC = () => {
       logger.info('Received training data', { count: pendingData?.length || 0 });
       setPendingTrainings(pendingData || []);
     } catch (error) {
-      logger.error('Error fetching training data', error as Error);
+      logger.error('Error fetching training data', error instanceof Error ? error : new Error(String(error)));
       toast.error("Failed to load training data");
     } finally {
       setLoading(false);
@@ -152,7 +154,7 @@ const Verifications: React.FC = () => {
       logger.info('Received experience data', { count: pendingData?.length || 0 });
       setPendingExperiences(pendingData || []);
     } catch (error) {
-      logger.error('Error fetching experience data', error as Error);
+      logger.error('Error fetching experience data', error instanceof Error ? error : new Error(String(error)));
       toast.error("Failed to load experience data");
     } finally {
       setLoading(false);
@@ -169,7 +171,7 @@ const Verifications: React.FC = () => {
       logger.info('Received certificate data', { count: pendingData?.length || 0 });
       setPendingCertificates(pendingData || []);
     } catch (error) {
-      logger.error('Error fetching certificate data', error as Error);
+      logger.error('Error fetching certificate data', error instanceof Error ? error : new Error(String(error)));
       toast.error("Failed to load certificate data");
     } finally {
       setLoading(false);
@@ -186,7 +188,7 @@ const Verifications: React.FC = () => {
       logger.info('Received skill data', { count: pendingData?.length || 0 });
       setPendingSkills(pendingData || []);
     } catch (error) {
-      logger.error('Error fetching skill data', error as Error);
+      logger.error('Error fetching skill data', error instanceof Error ? error : new Error(String(error)));
       toast.error("Failed to load skill data");
     } finally {
       setLoading(false);
@@ -208,7 +210,7 @@ const Verifications: React.FC = () => {
       logger.info('Received project data', { count: pendingData?.length || 0 });
       setPendingProjects(pendingData || []);
     } catch (error) {
-      logger.error('Error fetching project data', error as Error);
+      logger.error('Error fetching project data', error instanceof Error ? error : new Error(String(error)));
       toast.error("Failed to load project data");
     } finally {
       setLoading(false);
@@ -286,10 +288,18 @@ const Verifications: React.FC = () => {
   };
 
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab as any);
-    setCurrentPage(1); // Reset to first page when changing tabs
-    setSearchQuery(''); // Reset search when changing tabs
-    setStatusFilter('all'); // Reset filter when changing tabs
+    // Type-safe tab validation
+    const validTabs = ['trainings', 'experiences', 'certificates', 'skills', 'projects'] as const;
+    type ValidTab = typeof validTabs[number];
+    
+    if (validTabs.includes(tab as ValidTab)) {
+      setActiveTab(tab as ValidTab);
+      setCurrentPage(1); // Reset to first page when changing tabs
+      setSearchQuery(''); // Reset search when changing tabs
+      setStatusFilter('all'); // Reset filter when changing tabs
+    } else {
+      console.warn(`Invalid tab: ${tab}`);
+    }
   };
 
   // Filter functions

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, Calendar, Building, CheckCircle, XCircle, Award, Link as LinkIcon } from 'lucide-react';
-import * as VerificationService from '@/shared/api/verificationService';
+import { approveCertificate, rejectCertificate } from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
 import type { CertificateDetailsModalProps } from '../model/types';
 
@@ -17,6 +17,15 @@ const CertificateDetailsModal: React.FC<CertificateDetailsModalProps> = ({
 
   if (!isOpen || !certificate) return null;
 
+  // Validate and get approval authority
+  const getApprovalAuthority = (): 'college_admin' | 'school_admin' => {
+    const authority = certificate?.approval_authority;
+    if (authority === 'college_admin' || authority === 'school_admin') {
+      return authority;
+    }
+    return 'school_admin'; // Default fallback
+  };
+
   // Handle approve certificate
   const handleApprove = async () => {
     setActionLoading('approving');
@@ -27,12 +36,12 @@ const CertificateDetailsModal: React.FC<CertificateDetailsModalProps> = ({
         return;
       }
 
-      const approvalAuthority = (certificate.approval_authority || 'school_admin') as 'college_admin' | 'school_admin';
+      const approvalAuthority = getApprovalAuthority();
       const notes = approvalAuthority === 'college_admin' 
         ? 'Approved by College Admin' 
         : 'Approved by School Admin';
       
-      const result = await VerificationService.approveCertificate(
+      const result = await approveCertificate(
         certificate.id,
         currentUserId,
         notes,
@@ -70,9 +79,9 @@ const CertificateDetailsModal: React.FC<CertificateDetailsModalProps> = ({
         return;
       }
 
-      const approvalAuthority = (certificate.approval_authority || 'school_admin') as 'college_admin' | 'school_admin';
+      const approvalAuthority = getApprovalAuthority();
       
-      const result = await VerificationService.rejectCertificate(
+      const result = await rejectCertificate(
         certificate.id,
         currentUserId,
         rejectionReason,

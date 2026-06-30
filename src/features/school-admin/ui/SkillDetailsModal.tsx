@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock, Zap, Mail, TrendingUp } from 'lucide-react';
-import * as VerificationService from '@/shared/api/verificationService';
+import { X, User, CheckCircle, XCircle, Zap, TrendingUp } from 'lucide-react';
+import { approveSkill, rejectSkill } from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
 import type { SkillDetailsModalProps } from '../model/types';
 
@@ -17,6 +17,15 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
 
   if (!isOpen || !skill) return null;
 
+  // Validate and get approval authority
+  const getApprovalAuthority = (): 'college_admin' | 'school_admin' => {
+    const authority = skill?.approval_authority;
+    if (authority === 'college_admin' || authority === 'school_admin') {
+      return authority;
+    }
+    return 'school_admin'; // Default fallback
+  };
+
   // Handle approve skill
   const handleApprove = async () => {
     setActionLoading('approving');
@@ -27,12 +36,12 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
         return;
       }
 
-      const approvalAuthority = skill.approval_authority || 'school_admin';
+      const approvalAuthority = getApprovalAuthority();
       const notes = approvalAuthority === 'college_admin' 
         ? 'Approved by College Admin' 
         : 'Approved by School Admin';
       
-      const result = await VerificationService.approveSkill(
+      const result = await approveSkill(
         skill.id,
         currentUserId,
         notes,
@@ -48,7 +57,7 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error approving skill:', error);
-      toast.error(error.message || 'Failed to approve skill');
+      toast.error((error instanceof Error ? error.message : null) || 'Failed to approve skill');
     } finally {
       setActionLoading(null);
     }
@@ -69,9 +78,9 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
         return;
       }
 
-      const approvalAuthority = skill.approval_authority || 'school_admin';
+      const approvalAuthority = getApprovalAuthority();
       
-      const result = await VerificationService.rejectSkill(
+      const result = await rejectSkill(
         skill.id,
         currentUserId,
         rejectionReason,
@@ -87,13 +96,13 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Error rejecting skill:', error);
-      toast.error(error.message || 'Failed to reject skill');
+      toast.error((error instanceof Error ? error.message : null) || 'Failed to reject skill');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string): string => {
     if (!dateString) return 'Not specified';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -102,8 +111,8 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
     });
   };
 
-  const getLevelBadgeColor = (level) => {
-    const levelNum = parseInt(level) || 0;
+  const getLevelBadgeColor = (level: number | undefined): string => {
+    const levelNum = parseInt(String(level || 0)) || 0;
     if (levelNum >= 4) return 'bg-green-100 text-green-800';
     if (levelNum >= 3) return 'bg-blue-100 text-blue-800';
     if (levelNum >= 2) return 'bg-yellow-100 text-yellow-800';
@@ -257,7 +266,7 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
             <>
               <button
                 onClick={() => setShowRejectForm(true)}
-                disabled={actionLoading}
+                disabled={!!actionLoading}
                 className="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
               >
                 <XCircle className="h-4 w-4" />
@@ -266,7 +275,7 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
               
               <button
                 onClick={handleApprove}
-                disabled={actionLoading}
+                disabled={!!actionLoading}
                 className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 {actionLoading === 'approving' ? (
@@ -291,7 +300,7 @@ const SkillDetailsModal: React.FC<SkillDetailsModalProps> = ({
               
               <button
                 onClick={handleReject}
-                disabled={actionLoading || !rejectionReason.trim()}
+                disabled={!!actionLoading || !rejectionReason.trim()}
                 className="flex items-center gap-2 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 {actionLoading === 'rejecting' ? (

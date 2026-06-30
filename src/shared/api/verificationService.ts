@@ -29,6 +29,40 @@ type ItemType =
   | 'certificate' 
   | 'skill';
 
+// ── Type Guards ──
+
+/**
+ * Type guard to validate ApprovalResult shape
+ */
+function isApprovalResult(value: unknown): value is ApprovalResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'success' in value &&
+    typeof (value as Record<string, unknown>).success === 'boolean' &&
+    'message' in value &&
+    typeof (value as Record<string, unknown>).message === 'string'
+  );
+}
+
+/**
+ * Type guard to validate ApiResponse shape
+ */
+function isApiResponse<T>(value: unknown, dataValidator: (data: unknown) => data is T): value is ApiResponse<T> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  
+  const obj = value as Record<string, unknown>;
+  
+  // Check if it has 'data' property and validate it
+  if (!('data' in obj)) {
+    return false;
+  }
+  
+  return dataValidator(obj.data);
+}
+
 // ── Helper Functions ──
 
 /**
@@ -58,6 +92,17 @@ function createActionPayload(
   };
 }
 
+/**
+ * Validates and extracts ApprovalResult from API response
+ * Throws error if response structure is invalid
+ */
+function validateAndExtractResult(result: unknown, action: string, itemType: ItemType): ApprovalResult {
+  if (!isApiResponse(result, isApprovalResult)) {
+    throw new Error(`Invalid API response format for ${action}-${itemType}`);
+  }
+  return result.data;
+}
+
 // ── Factory Functions ──
 
 /**
@@ -73,9 +118,9 @@ function createApprovalFunction(itemType: ItemType) {
   ): Promise<ApprovalResult> => {
     const endpoint = getEndpoint(approvalAuthority);
     const payload = createActionPayload(`approve-${itemType}`, itemType, itemId, approverId, notes);
+    const result = await apiPost(endpoint, payload);
     
-    const result = await apiPost(endpoint, payload) as ApiResponse<ApprovalResult>;
-    return result.data;
+    return validateAndExtractResult(result, 'approve', itemType);
   };
 }
 
@@ -96,9 +141,9 @@ function createRejectionFunction(itemType: ItemType) {
 
     const endpoint = getEndpoint(approvalAuthority);
     const payload = createActionPayload(`reject-${itemType}`, itemType, itemId, rejectorId, notes);
+    const result = await apiPost(endpoint, payload);
     
-    const result = await apiPost(endpoint, payload) as ApiResponse<ApprovalResult>;
-    return result.data;
+    return validateAndExtractResult(result, 'reject', itemType);
   };
 }
 

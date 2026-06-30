@@ -1,3 +1,4 @@
+// ── UI Components ──
 export {
   NotificationBell,
   TrainingDetailsModal,
@@ -9,12 +10,16 @@ export {
   DocumentViewerModal
 } from './ui';
 
-// API & Data Access
+// ── API Services ──
+export { SchoolAdminNotificationService } from './api/schoolAdminNotificationService';
+export { timetableSlotsService } from './api/timetableSlotsService';
+export { curriculumService } from './api/curriculumService';
 export * from './api';
 
-// Types - Export all types including modal props for proper FSD layer isolation
-export * from './model/types';
-export type { 
+// ── Types ──
+// Export only what's needed for external consumers
+export type {
+  // Pending Item Types
   PendingItem,
   PendingTraining,
   PendingCertificate,
@@ -23,14 +28,18 @@ export type {
   PendingSkill,
   PendingEducation,
   PendingAchievement,
+  // Modal Component Props
   TrainingDetailsModalProps,
   CertificateDetailsModalProps,
   ExperienceDetailsModalProps,
   ProjectDetailsModalProps,
-  SkillDetailsModalProps
+  SkillDetailsModalProps,
+  // Other domain types
+  AdmissionApplication,
+  LearnerProfile,
+  AttendanceRecord,
+  AttendanceAlert,
+  LearnerReport,
+  NotificationData,
+  OrganizationData
 } from './model/types';
-
-// Services
-export { timetableSlotsService } from './api/timetableSlotsService';
-export { curriculumService } from './api/curriculumService';
-export { SchoolAdminNotificationService } from './api/schoolAdminNotificationService';

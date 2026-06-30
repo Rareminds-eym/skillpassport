@@ -397,6 +397,10 @@ export interface PendingSkill extends BasePendingItem {
   name?: string;
   level?: number;
   category?: string;
+  type?: string;
+  source?: string;
+  description?: string;
+  years_of_experience?: number;
   approval_authority?: string;
   updated_at?: string;
 }
