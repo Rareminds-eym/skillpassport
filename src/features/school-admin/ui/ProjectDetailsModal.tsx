@@ -16,12 +16,19 @@ import {
 } from 'lucide-react';
 import { SchoolAdminNotificationService } from '@/features/school-admin';
 import { toast } from 'react-hot-toast';
+import type { ProjectDetailsModalProps } from '../model/types';
 
-const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId }) => {
+const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ 
+  project, 
+  isOpen, 
+  onClose, 
+  onAction, 
+  currentUserId 
+}) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [notes, setNotes] = useState('');
   const [showNotesInput, setShowNotesInput] = useState(false);
-  const [actionType, setActionType] = useState('');
+  const [actionType, setActionType] = useState<'approve' | 'reject' | ''>('');
 
   if (!isOpen || !project) return null;
 

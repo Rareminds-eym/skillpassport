@@ -308,4 +308,182 @@ export interface UserRoleHistoryRecord {
   reason?: string;
   assigned_at: string;
 }
- //save
+
+// ── Verification & Approval Types ──
+
+/**
+ * Base pending item with required fields for all verification submissions
+ */
+export interface BasePendingItem {
+  id: string;
+  approval_status: string;
+  created_at: string;
+  learner_name: string;
+  learner_email: string;
+  learner_school_id: string | null;
+  learner_college_id: string | null;
+  learner_type?: string;
+  _needsApprovalAuthorityFix?: true;
+}
+
+/**
+ * Training submission pending approval
+ */
+export interface PendingTraining extends BasePendingItem {
+  title: string;
+  organization: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+  duration?: string;
+  approval_authority?: string;
+  updated_at?: string;
+}
+
+/**
+ * Certificate submission pending approval
+ */
+export interface PendingCertificate extends BasePendingItem {
+  title: string;
+  issuer?: string;
+  organization?: string;
+  issued_on?: string;
+  issue_date?: string;
+  expiry_date?: string;
+  credential_id?: string;
+  certificate_url?: string;
+  document_url?: string;
+  description?: string;
+  approval_authority?: string;
+  updated_at?: string;
+}
+
+/**
+ * Experience submission pending approval
+ */
+export interface PendingExperience extends BasePendingItem {
+  title?: string;
+  role?: string;
+  organization: string;
+  description?: string;
+  start_date: string;
+  end_date?: string;
+  type?: string;
+  approval_authority?: string;
+  updated_at?: string;
+}
+
+/**
+ * Project submission pending approval
+ */
+export interface PendingProject extends BasePendingItem {
+  title: string;
+  name?: string;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+  skills?: Array<string | { name: string }>;
+  tech_stack?: Array<string | { name: string }>;
+  status?: string;
+  approval_authority?: string;
+  updated_at?: string;
+}
+
+/**
+ * Skill submission pending approval
+ */
+export interface PendingSkill extends BasePendingItem {
+  skill_name?: string;
+  name?: string;
+  level?: number;
+  category?: string;
+  approval_authority?: string;
+  updated_at?: string;
+}
+
+/**
+ * Education submission pending approval
+ */
+export interface PendingEducation extends BasePendingItem {
+  school_name: string;
+  degree?: string;
+  field_of_study?: string;
+  start_date?: string;
+  end_date?: string;
+  grade?: string;
+  description?: string;
+  approval_authority?: string;
+  updated_at?: string;
+}
+
+/**
+ * Achievement submission pending approval
+ */
+export interface PendingAchievement extends BasePendingItem {
+  title: string;
+  description?: string;
+  category?: string;
+  date?: string;
+  issued_by?: string;
+  approval_authority?: string;
+  updated_at?: string;
+}
+
+/**
+ * Union type for all pending items
+ */
+export type PendingItem = 
+  | PendingTraining 
+  | PendingCertificate 
+  | PendingExperience 
+  | PendingProject 
+  | PendingSkill 
+  | PendingEducation 
+  | PendingAchievement;
+
+// ── Modal Component Props ──
+
+/**
+ * Base props for all detail modal components
+ */
+export interface BaseDetailModalProps<T> {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUserId: string;
+  onAction?: (action: 'approved' | 'rejected', item: T) => void | Promise<void>;
+}
+
+/**
+ * Props for TrainingDetailsModal component
+ */
+export interface TrainingDetailsModalProps extends BaseDetailModalProps<PendingTraining> {
+  training: PendingTraining | null;
+}
+
+/**
+ * Props for CertificateDetailsModal component
+ */
+export interface CertificateDetailsModalProps extends BaseDetailModalProps<PendingCertificate> {
+  certificate: PendingCertificate | null;
+}
+
+/**
+ * Props for ExperienceDetailsModal component
+ */
+export interface ExperienceDetailsModalProps extends BaseDetailModalProps<PendingExperience> {
+  experience: PendingExperience | null;
+}
+
+/**
+ * Props for ProjectDetailsModal component
+ */
+export interface ProjectDetailsModalProps extends BaseDetailModalProps<PendingProject> {
+  project: PendingProject | null;
+}
+
+/**
+ * Props for SkillDetailsModal component
+ */
+export interface SkillDetailsModalProps extends BaseDetailModalProps<PendingSkill> {
+  skill: PendingSkill | null;
+}

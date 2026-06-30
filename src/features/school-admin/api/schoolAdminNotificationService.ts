@@ -1,6 +1,16 @@
 import { apiPost } from '@/shared/api/apiClient';
 import { getLogger } from '@/shared/config/logging';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
+import type { 
+  PendingItem,
+  PendingTraining,
+  PendingExperience,
+  PendingProject,
+  PendingCertificate,
+  PendingEducation,
+  PendingSkill,
+  PendingAchievement
+} from '../model/types';
 
 const logger = getLogger('school-admin-notification');
 
@@ -23,59 +33,6 @@ export interface AdminNotification {
   is_read: boolean;
   created_at: string;
   notification_type?: string;
-  [key: string]: unknown;
-}
-
-// ── Base Pending Item ──
-interface BasePendingItem {
-  id: string;
-  approval_status: string;
-  created_at: string;
-  learner_name: string;
-  learner_email: string;
-  learner_school_id: string | null;
-  learner_college_id: string | null;
-  learner_type?: string;
-  _needsApprovalAuthorityFix?: true;
-}
-
-// ── Pending Item (shared shape for trainings / experiences /
-//    projects / certificates / education / skills / achievements) ──
-export interface PendingItem extends BasePendingItem {
-  // Common fields that may exist on any item
-  title?: string;
-  name?: string;
-  skill_name?: string;
-  organization?: string;
-  issuer?: string;
-  role?: string;
-  description?: string;
-  start_date?: string;
-  end_date?: string;
-  duration?: string;
-  hours_spent?: number;
-  school_name?: string;
-  skills?: Array<string | { name: string; [key: string]: unknown }>;
-  tech_stack?: Array<string | { name: string; [key: string]: unknown }>;
-  level?: number;
-  type?: string;
-  category?: string;
-  status?: string;
-  issued_on?: string;
-  issue_date?: string;
-  expiry_date?: string;
-  credential_id?: string;
-  certificate_url?: string;
-  document_url?: string;
-  approval_authority?: string;
-  updated_at?: string;
-  project_id?: string;
-  training_id?: string;
-  experience_id?: string;
-  certificate_id?: string;
-  skill_id?: string;
-  education_id?: string;
-  achievement_id?: string;
   [key: string]: unknown;
 }
 
@@ -189,12 +146,12 @@ export class SchoolAdminNotificationService {
     }
   }
 
-  static async getPendingTrainings(schoolId: string) {
+  static async getPendingTrainings(schoolId: string): Promise<PendingTraining[]> {
     try {
       const envelope = await apiPost(API_PATH, {
         action: 'get-pending-trainings',
         school_id: schoolId,
-      }) as ApiEnvelope<PendingItem[]>;
+      }) as ApiEnvelope<PendingTraining[]>;
       // apiPost returns the API envelope { success, data, error }; the array
       // payload lives under `.data`.
       return envelope?.data ?? [];
@@ -204,12 +161,12 @@ export class SchoolAdminNotificationService {
     }
   }
 
-  static async getPendingExperiences(schoolId: string) {
+  static async getPendingExperiences(schoolId: string): Promise<PendingExperience[]> {
     try {
       const envelope = await apiPost(API_PATH, {
         action: 'get-pending-experiences',
         school_id: schoolId,
-      }) as ApiEnvelope<PendingItem[]>;
+      }) as ApiEnvelope<PendingExperience[]>;
       // apiPost returns the API envelope { success, data, error }; the array
       // payload lives under `.data`.
       return envelope?.data ?? [];
@@ -298,12 +255,12 @@ export class SchoolAdminNotificationService {
     }
   }
 
-  static async getPendingProjects(schoolId: string) {
+  static async getPendingProjects(schoolId: string): Promise<PendingProject[]> {
     try {
       const envelope = await apiPost(API_PATH, {
         action: 'get-pending-projects',
         school_id: schoolId,
-      }) as ApiEnvelope<PendingItem[]>;
+      }) as ApiEnvelope<PendingProject[]>;
       // apiPost returns the API envelope { success, data, error }; the array
       // payload lives under `.data`.
       return envelope?.data ?? [];
@@ -359,12 +316,12 @@ export class SchoolAdminNotificationService {
   }
 
   // Certificates
-  static async getPendingCertificates(schoolId: string) {
+  static async getPendingCertificates(schoolId: string): Promise<PendingCertificate[]> {
     try {
       const envelope = await apiPost(API_PATH, {
         action: 'get-pending-certificates',
         school_id: schoolId,
-      }) as ApiEnvelope<PendingItem[]>;
+      }) as ApiEnvelope<PendingCertificate[]>;
       return envelope?.data ?? [];
     } catch (error) {
       logger.error('Failed to fetch pending certificates', error instanceof Error ? error : new Error('Unknown error'));
@@ -406,12 +363,12 @@ export class SchoolAdminNotificationService {
   }
 
   // Education
-  static async getPendingEducation(schoolId: string) {
+  static async getPendingEducation(schoolId: string): Promise<PendingEducation[]> {
     try {
       const envelope = await apiPost(API_PATH, {
         action: 'get-pending-education',
         school_id: schoolId,
-      }) as ApiEnvelope<PendingItem[]>;
+      }) as ApiEnvelope<PendingEducation[]>;
       return envelope?.data ?? [];
     } catch (error) {
       logger.error('Failed to fetch pending education', error instanceof Error ? error : new Error('Unknown error'));
@@ -453,12 +410,12 @@ export class SchoolAdminNotificationService {
   }
 
   // Skills
-  static async getPendingSkills(schoolId: string) {
+  static async getPendingSkills(schoolId: string): Promise<PendingSkill[]> {
     try {
       const envelope = await apiPost(API_PATH, {
         action: 'get-pending-skills',
         school_id: schoolId,
-      }) as ApiEnvelope<PendingItem[]>;
+      }) as ApiEnvelope<PendingSkill[]>;
       return envelope?.data ?? [];
     } catch (error) {
       logger.error('Failed to fetch pending skills', error instanceof Error ? error : new Error('Unknown error'));
@@ -500,12 +457,12 @@ export class SchoolAdminNotificationService {
   }
 
   // Achievements
-  static async getPendingAchievements(schoolId: string) {
+  static async getPendingAchievements(schoolId: string): Promise<PendingAchievement[]> {
     try {
       const envelope = await apiPost(API_PATH, {
         action: 'get-pending-achievements',
         school_id: schoolId,
-      }) as ApiEnvelope<PendingItem[]>;
+      }) as ApiEnvelope<PendingAchievement[]>;
       return envelope?.data ?? [];
     } catch (error) {
       logger.error('Failed to fetch pending achievements', error instanceof Error ? error : new Error('Unknown error'));

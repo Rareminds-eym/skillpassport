@@ -192,7 +192,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'approve-training': {
         const { training_id, approver_id, notes } = params;
         if (!training_id) return apiError(400, 'VALIDATION_ERROR', 'Missing training_id', context.request, { startTime });
-        const { error } = await supabase.from('trainings').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', training_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('trainings').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', training_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Training approved', training_id }, context.request, { startTime });
       }
@@ -201,7 +201,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { training_id, rejector_id, notes } = params;
         if (!training_id) return apiError(400, 'VALIDATION_ERROR', 'Missing training_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { error } = await supabase.from('trainings').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', training_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('trainings').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', training_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Training rejected', training_id, reason: notes }, context.request, { startTime });
       }
@@ -221,7 +221,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'approve-experience': {
         const { experience_id, approver_id, notes } = params;
         if (!experience_id) return apiError(400, 'VALIDATION_ERROR', 'Missing experience_id', context.request, { startTime });
-        const { error } = await supabase.from('experience').update({ approval_status: 'approved', verified: true, approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', experience_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('experience').update({ approval_status: 'approved', verified: true, approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', experience_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Experience approved', experience_id }, context.request, { startTime });
       }
@@ -248,7 +248,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'approve-certificate': {
         const { certificate_id, approver_id, notes } = params;
         if (!certificate_id) return apiError(400, 'VALIDATION_ERROR', 'Missing certificate_id', context.request, { startTime });
-        const { error } = await supabase.from('certificates').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', certificate_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('certificates').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', certificate_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Certificate approved', certificate_id }, context.request, { startTime });
       }
@@ -257,7 +257,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { certificate_id, rejector_id, notes } = params;
         if (!certificate_id) return apiError(400, 'VALIDATION_ERROR', 'Missing certificate_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { error } = await supabase.from('certificates').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', certificate_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('certificates').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', certificate_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Certificate rejected', certificate_id, reason: notes }, context.request, { startTime });
       }
@@ -275,7 +275,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'approve-education': {
         const { education_id, approver_id, notes } = params;
         if (!education_id) return apiError(400, 'VALIDATION_ERROR', 'Missing education_id', context.request, { startTime });
-        const { error } = await supabase.from('education').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', education_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('education').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', education_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Education approved', education_id }, context.request, { startTime });
       }
@@ -284,7 +284,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { education_id, rejector_id, notes } = params;
         if (!education_id) return apiError(400, 'VALIDATION_ERROR', 'Missing education_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { error } = await supabase.from('education').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', education_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('education').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', education_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Education rejected', education_id, reason: notes }, context.request, { startTime });
       }
@@ -302,7 +302,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'approve-skill': {
         const { skill_id, approver_id, notes } = params;
         if (!skill_id) return apiError(400, 'VALIDATION_ERROR', 'Missing skill_id', context.request, { startTime });
-        const { error } = await supabase.from('skills').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', skill_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('skills').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', skill_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Skill approved', skill_id }, context.request, { startTime });
       }
@@ -311,7 +311,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { skill_id, rejector_id, notes } = params;
         if (!skill_id) return apiError(400, 'VALIDATION_ERROR', 'Missing skill_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { error } = await supabase.from('skills').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', skill_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('skills').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', skill_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Skill rejected', skill_id, reason: notes }, context.request, { startTime });
       }
@@ -329,7 +329,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'approve-achievement': {
         const { achievement_id, approver_id, notes } = params;
         if (!achievement_id) return apiError(400, 'VALIDATION_ERROR', 'Missing achievement_id', context.request, { startTime });
-        const { error } = await supabase.from('achievements').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', achievement_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('achievements').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', achievement_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Achievement approved', achievement_id }, context.request, { startTime });
       }
@@ -338,7 +338,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { achievement_id, rejector_id, notes } = params;
         if (!achievement_id) return apiError(400, 'VALIDATION_ERROR', 'Missing achievement_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { error } = await supabase.from('achievements').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', achievement_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('achievements').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', achievement_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Achievement rejected', achievement_id, reason: notes }, context.request, { startTime });
       }
@@ -368,7 +368,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'approve-project': {
         const { project_id, approver_id, notes } = params;
         if (!project_id) return apiError(400, 'VALIDATION_ERROR', 'Missing project_id', context.request, { startTime });
-        const { error } = await supabase.from('projects').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', project_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('projects').update({ approval_status: 'approved', approved_by: approver_id || user.id, approved_at: new Date().toISOString(), approval_notes: notes || null, updated_at: new Date().toISOString() }).eq('id', project_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Project approved', project_id }, context.request, { startTime });
       }
@@ -377,7 +377,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { project_id, rejector_id, notes } = params;
         if (!project_id) return apiError(400, 'VALIDATION_ERROR', 'Missing project_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason is required', context.request, { startTime });
-        const { error } = await supabase.from('projects').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', project_id).eq('approval_status', 'pending');
+        const { error } = await supabase.from('projects').update({ approval_status: 'rejected', rejected_by: rejector_id || user.id, rejected_at: new Date().toISOString(), approval_notes: notes, updated_at: new Date().toISOString() }).eq('id', project_id).eq('approval_status', 'pending').select().single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Project rejected', project_id, reason: notes }, context.request, { startTime });
       }

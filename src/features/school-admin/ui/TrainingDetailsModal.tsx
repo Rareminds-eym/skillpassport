@@ -1,16 +1,23 @@
 import React, { useState } from 'react';
-import { X, User, Calendar, Building, CheckCircle, XCircle, Award, Link as LinkIcon } from 'lucide-react';
-import { VerificationService } from '@/shared/api/verificationService';
+import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import * as VerificationService from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
+import type { TrainingDetailsModalProps } from '../model/types';
 
-const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, currentUserId }) => {
-  const [actionLoading, setActionLoading] = useState(null);
+const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({ 
+  training, 
+  isOpen, 
+  onClose, 
+  onAction, 
+  currentUserId 
+}) => {
+  const [actionLoading, setActionLoading] = useState<'approving' | 'rejecting' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
 
-  if (!isOpen || !certificate) return null;
+  if (!isOpen || !training) return null;
 
-  // Handle approve certificate
+  // Handle approve training
   const handleApprove = async () => {
     setActionLoading('approving');
     
@@ -20,35 +27,35 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
         return;
       }
 
-      const approvalAuthority = certificate.approval_authority || 'school_admin';
+      const approvalAuthority = (training.approval_authority || 'school_admin') as 'college_admin' | 'school_admin';
       const notes = approvalAuthority === 'college_admin' 
         ? 'Approved by College Admin' 
         : 'Approved by School Admin';
       
-      const result = await VerificationService.approveCertificate(
-        certificate.id,
+      const result = await VerificationService.approveTraining(
+        training.id,
         currentUserId,
         notes,
         approvalAuthority
       );
       
-      toast.success(result.message || `Certificate "${certificate.title}" approved successfully!`);
+      toast.success(result.message || `Training "${training.title}" approved successfully!`);
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await Promise.resolve(onAction('approved', certificate));
+        await Promise.resolve(onAction('approved', training));
       }
       
       onClose();
     } catch (error) {
-      console.error('Error approving certificate:', error);
-      toast.error(error.message || 'Failed to approve certificate');
+      console.error('Error approving training:', error);
+      toast.error((error instanceof Error ? error.message : null) || 'Failed to approve training');
     } finally {
       setActionLoading(null);
     }
   };
 
-  // Handle reject certificate
+  // Handle reject training
   const handleReject = async () => {
     if (!rejectionReason.trim()) {
       toast.error('Please provide a reason for rejection');
@@ -63,32 +70,32 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
         return;
       }
 
-      const approvalAuthority = certificate.approval_authority || 'school_admin';
+      const approvalAuthority = (training.approval_authority || 'school_admin') as 'college_admin' | 'school_admin';
       
-      const result = await VerificationService.rejectCertificate(
-        certificate.id,
+      const result = await VerificationService.rejectTraining(
+        training.id,
         currentUserId,
         rejectionReason,
         approvalAuthority
       );
       
-      toast.success(result.message || `Certificate "${certificate.title}" rejected.`);
+      toast.success(result.message || `Training "${training.title}" rejected.`);
       
       // Call onAction and wait for parent to refresh data before closing modal
       if (onAction) {
-        await Promise.resolve(onAction('rejected', certificate));
+        await Promise.resolve(onAction('rejected', training));
       }
       
       onClose();
     } catch (error) {
-      console.error('Error rejecting certificate:', error);
-      toast.error(error.message || 'Failed to reject certificate');
+      console.error('Error rejecting training:', error);
+      toast.error((error instanceof Error ? error.message : null) || 'Failed to reject training');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string): string => {
     if (!dateString) return 'Not specified';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -97,14 +104,27 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
     });
   };
 
+  const formatDuration = (startDate: string, endDate: string): string => {
+    if (!startDate || !endDate) return 'Duration not specified';
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) return `${diffDays} days`;
+    const months = Math.floor(diffDays / 30);
+    return `${months} month${months > 1 ? 's' : ''}`;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Certificate Details</h2>
-            <p className="text-sm text-gray-600">Review and approve certificate submission</p>
+            <h2 className="text-xl font-bold text-gray-900">Training Details</h2>
+            <p className="text-sm text-gray-600">Review and approve training submission</p>
           </div>
           <button
             onClick={onClose}
@@ -127,83 +147,70 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Name</p>
-                <p className="font-medium text-gray-900">{certificate.learner_name}</p>
+                <p className="font-medium text-gray-900">{training.learner_name}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium text-gray-900">{certificate.learner_email}</p>
+                <p className="font-medium text-gray-900">{training.learner_email}</p>
               </div>
             </div>
           </div>
 
-          {/* Certificate Information */}
+          {/* Training Information */}
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-gray-200 rounded-lg">
-                <Award className="h-5 w-5 text-gray-600" />
+                <FileText className="h-5 w-5 text-gray-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Certificate Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Training Information</h3>
             </div>
             
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600">Certificate Title</p>
-                <p className="font-semibold text-gray-900 text-lg">{certificate.title}</p>
+                <p className="text-sm text-gray-600">Training Title</p>
+                <p className="font-semibold text-gray-900 text-lg">{training.title}</p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600">Issuing Organization</p>
+                  <p className="text-sm text-gray-600">Organization</p>
                   <div className="flex items-center gap-2">
                     <Building className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{certificate.issuer || certificate.organization || 'Not specified'}</p>
+                    <p className="font-medium text-gray-900">{training.organization}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Issue Date</p>
+                  <p className="text-sm text-gray-600">Duration</p>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{formatDate(certificate.issued_on || certificate.issue_date)}</p>
+                    <Clock className="h-4 w-4 text-gray-500" />
+                    <p className="font-medium text-gray-900">
+                      {formatDuration(training.start_date, training.end_date)}
+                    </p>
                   </div>
                 </div>
               </div>
-
-              {certificate.expiry_date && (
+              
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600">Expiry Date</p>
+                  <p className="text-sm text-gray-600">Start Date</p>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{formatDate(certificate.expiry_date)}</p>
+                    <p className="font-medium text-gray-900">{formatDate(training.start_date)}</p>
                   </div>
                 </div>
-              )}
-
-              {certificate.credential_id && (
                 <div>
-                  <p className="text-sm text-gray-600">Credential ID</p>
-                  <p className="font-medium text-gray-900">{certificate.credential_id}</p>
+                  <p className="text-sm text-gray-600">End Date</p>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <p className="font-medium text-gray-900">{formatDate(training.end_date)}</p>
+                  </div>
                 </div>
-              )}
-
-              {(certificate.certificate_url || certificate.document_url) && (
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">Certificate Document</p>
-                  <a
-                    href={certificate.certificate_url || certificate.document_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                  >
-                    <LinkIcon className="h-4 w-4" />
-                    View Certificate
-                  </a>
-                </div>
-              )}
+              </div>
               
-              {certificate.description && (
+              {training.description && (
                 <div>
                   <p className="text-sm text-gray-600">Description</p>
-                  <p className="text-gray-900 mt-1 leading-relaxed">{certificate.description}</p>
+                  <p className="text-gray-900 mt-1 leading-relaxed">{training.description}</p>
                 </div>
               )}
             </div>
@@ -221,7 +228,7 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
               </div>
               <div>
                 <p className="text-sm text-gray-600">Submitted On</p>
-                <p className="font-medium text-gray-900">{formatDate(certificate.created_at)}</p>
+                <p className="font-medium text-gray-900">{formatDate(training.created_at)}</p>
               </div>
             </div>
           </div>
@@ -233,7 +240,7 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Please provide a reason for rejecting this certificate..."
+                placeholder="Please provide a reason for rejecting this training..."
                 className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
                 rows={3}
               />
@@ -254,7 +261,7 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
             <>
               <button
                 onClick={() => setShowRejectForm(true)}
-                disabled={actionLoading}
+                disabled={!!actionLoading}
                 className="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
               >
                 <XCircle className="h-4 w-4" />
@@ -263,7 +270,7 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
               
               <button
                 onClick={handleApprove}
-                disabled={actionLoading}
+                disabled={!!actionLoading}
                 className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 {actionLoading === 'approving' ? (
@@ -271,7 +278,7 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                Approve Certificate
+                Approve Training
               </button>
             </>
           ) : (
@@ -288,7 +295,7 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
               
               <button
                 onClick={handleReject}
-                disabled={actionLoading || !rejectionReason.trim()}
+                disabled={!!actionLoading || !rejectionReason.trim()}
                 className="flex items-center gap-2 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 {actionLoading === 'rejecting' ? (
@@ -306,4 +313,4 @@ const CertificateDetailsModal = ({ certificate, isOpen, onClose, onAction, curre
   );
 };
 
-export default CertificateDetailsModal;
+export default TrainingDetailsModal;
