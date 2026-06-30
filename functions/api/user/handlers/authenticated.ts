@@ -9,6 +9,7 @@
 import { apiError, apiSuccess } from '../../../lib/response';
 import { ssoCreateMember } from '../../../lib/sso-client';
 import { createSupabaseAdminClient } from '../../../lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   calculateAge,
   generatePassword,
@@ -28,13 +29,13 @@ import type {
 /**
  * Parse and validate request body as JSON object
  */
-async function parseRequestBody(request: Request): Promise<any> {
+async function parseRequestBody(request: Request): Promise<Record<string, unknown>> {
   try {
     const parsed = await request.json();
     if (!parsed || typeof parsed !== 'object') {
       throw new Error('Request body must be an object');
     }
-    return parsed;
+    return parsed as Record<string, unknown>;
   } catch (e) {
     throw new Error('Invalid JSON in request body');
   }
@@ -119,8 +120,8 @@ async function createSsoMember(
  * Rollback user creation by deleting app DB records
  */
 async function rollbackUserCreation(
-  supabaseAdmin: any,
-  ssoUserId: string | null,
+  supabaseAdmin: SupabaseClient,
+  ssoUserId: string | null | undefined,
   entityTable: 'learners' | 'school_educators' | 'college_lecturers',
   entityName: string
 ): Promise<void> {
@@ -167,7 +168,7 @@ export async function handleCreateLearner(
   // Parse and validate request body
   let body: CreateLearnerRequest;
   try {
-    body = await parseRequestBody(request) as CreateLearnerRequest;
+    body = await parseRequestBody(request) as unknown as CreateLearnerRequest;
   } catch (e) {
     return apiError(400, 'VALIDATION_ERROR', (e as Error).message, request);
   }
@@ -314,7 +315,7 @@ export async function handleCreateLearner(
   const learnerRole = 'learner';
 
   // Create the AUTH user in the SSO worker
-  let ssoUserId: string;
+  let ssoUserId: string | undefined;
   try {
     ssoUserId = await createSsoMember(
       env,
@@ -333,6 +334,11 @@ export async function handleCreateLearner(
     );
   } catch (ssoErr) {
     return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message, request);
+  }
+
+  // Additional safety check
+  if (!ssoUserId) {
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to create authentication user', request);
   }
 
   try {
@@ -534,7 +540,7 @@ export async function handleCreateTeacher(request: Request, env: ApiEnv, user: A
   const teacherPassword = generatePassword();
 
   // Create the AUTH user in the SSO worker
-  let ssoUserId: string;
+  let ssoUserId: string | undefined;
   try {
     ssoUserId = await createSsoMember(
       env,
@@ -545,6 +551,11 @@ export async function handleCreateTeacher(request: Request, env: ApiEnv, user: A
     );
   } catch (ssoErr) {
     return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message, request);
+  }
+
+  // Additional safety check
+  if (!ssoUserId) {
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to create authentication user', request);
   }
 
   try {
@@ -841,7 +852,7 @@ export async function handleCreateCollegeStaff(request: Request, env: ApiEnv, us
   }
 
   // Create the AUTH user in the SSO worker
-  let ssoUserId: string;
+  let ssoUserId: string | undefined;
   try {
     ssoUserId = await createSsoMember(
       env,
@@ -852,6 +863,11 @@ export async function handleCreateCollegeStaff(request: Request, env: ApiEnv, us
     );
   } catch (ssoErr) {
     return apiError(400, 'VALIDATION_ERROR', (ssoErr as Error).message, request);
+  }
+
+  // Additional safety check
+  if (!ssoUserId) {
+    return apiError(500, 'INTERNAL_ERROR', 'Failed to create authentication user', request);
   }
 
   try {
