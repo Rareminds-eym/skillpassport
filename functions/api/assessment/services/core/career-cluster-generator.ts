@@ -67,6 +67,9 @@ interface ScoredOccupation {
   aptitude_profile?: Record<string, number>;
   big_five_profile?: Record<string, number>;
   work_values_profile?: Record<string, number>;
+  // Degree-gate signal (from occupations table, L&D degree mapping).
+  degreeGate?: 'Mandatory' | 'Preferred';
+  crossIndustryRolePaths?: string;
 }
 
 /**
@@ -359,6 +362,8 @@ async function retrieveByEmbedding(
         semanticScore: !isNaN(hybridScore) ? Math.round(hybridScore * 1000) / 10 : undefined,
         riasecAlignment: !isNaN(alignment) ? Math.round(alignment * 100) : undefined,
         description: `[${domain}] ${occ.description || occ.occupation_name}`,
+        degreeGate: occ.degree_gate || 'Preferred',
+        crossIndustryRolePaths: occ.cross_industry_role_paths || undefined,
       };
     });
 

@@ -45,19 +45,35 @@ YOUR RESPONSE WILL BE REJECTED IF:
 SELECTION STRATEGY (USE ALL LEARNER SIGNALS):
 - Student stream/degree (MBA, MCA, B.Tech, B.Com, BBA, etc.)
 - Aptitude strengths AND weaknesses (growth opportunities, not dealbreakers)
-- Knowledge strengths AND weaknesses (⚠️ IF SCORE < 50% in a domain, exclude roles requiring that domain — but redirect to alternate roles in SAME stream, not unrelated fields)
+- Knowledge strengths AND weaknesses (⚠️ IF SCORE < 35% in a domain, exclude roles requiring that domain — but redirect to alternate roles in SAME stream, not unrelated fields)
 - RIASEC profile (career interests)
 - Big Five traits (personality fit)
 - Work values (what motivates them)
 - Profile narrative (readiness, trajectory)
 
-🚨 **KNOWLEDGE GATE (MANDATORY)**:
-If knowledge score is provided:
-- Knowledge score ≥ 50%: Use all occupations, weak areas are learning opportunities
-- Knowledge score < 50%: Identify weak domains from context. Then:
-  * EXCLUDE roles that require those weak domains (e.g., B.Com weak in Accounting → skip Accountant, Auditor, Financial Analyst)
-  * REDIRECT to roles in same stream but DIFFERENT domain (e.g., B.Com weak in Accounting → HR, Operations, Business roles)
-  * NEVER recommend unrelated fields (e.g., Teaching, Medical, Tech roles for B.Com)
+🚨 **KNOWLEDGE GATE (MANDATORY — judge fit yourself from the learner's profile, not a numeric table)**:
+Each candidate occupation in the list below carries a DEGREE GATE (Mandatory/Preferred) and, where
+relevant, an Alternate path for learners who don't clear the gate. There is no per-role knowledge
+score — use your own judgement of how well the learner's actual knowledge score, strengths, and
+weaknesses (given above) fit each occupation's evident demands.
+
+- DEGREE GATE: MANDATORY roles — only select if the learner's degree/stream is a genuine match AND
+  their knowledge score/strengths plausibly support the role (treat ~35% knowledge score as the
+  floor below which a Mandatory role should not be selected). If not, DO NOT select this occupation;
+  instead consider the roles named in its "Alternate path" text.
+- DEGREE GATE: Preferred roles — degree/knowledge is a ranking signal, not a hard block. If the
+  learner's knowledge score is low (below ~35%) or their stated weaknesses clearly conflict with
+  what the role demands, prefer the occupation's own "Alternate path" roles when present — but a
+  Preferred-gate role MAY still be selected if RIASEC, Big Five, or work-values fit is strong (this
+  is what allows a strong learner with a real interest in a different domain — e.g. Digital Media —
+  to still be recommended even if their stream/knowledge doesn't directly match).
+- If BOTH knowledge score AND stream aptitude score are low (below ~35%) for this learner, weight
+  the redirect more heavily: prefer clusters built from each role's "Alternate path" text and from
+  domains the learner's strengths actually support (e.g. Education & Skilling, Training, Operations,
+  Customer-facing roles), over high-knowledge-demand technical/specialist roles.
+- NEVER recommend a role with no plausible connection to the learner's actual stream, RIASEC
+  profile, or stated strengths (e.g. do not recommend Medical/Clinical roles to a B.Com student
+  with no health-domain signal anywhere in their profile).
 
 **STEP 1: SELECT BEST 6-9 FROM THE 30 PROVIDED**
 
@@ -274,15 +290,19 @@ overallSummary RULES (STUDENT-CENTRIC — written FOR the learner, not ABOUT the
 
 🚨 **CRITICAL GATE**:
 
-KNOWLEDGE GATE CHECK (IF KNOWLEDGE SCORE < 50%):
-□ Have you identified weak knowledge domains from the KNOWLEDGE INSIGHTS section? YES / NO
-□ Have you EXCLUDED roles that require those weak domains? YES / NO
-□ Have you REDIRECTED to alternate roles in the SAME stream instead? YES / NO
-□ Example check: B.Com student weak in Accounting → Did you skip Accountant/Auditor and recommend HR/Ops instead? YES / NO
+KNOWLEDGE GATE CHECK (IF KNOWLEDGE SCORE < 35% OR STREAM APTITUDE SCORE < 10%):
+□ For every selected MANDATORY-gate occupation: does the learner's degree/stream genuinely match,
+  and do their knowledge score/strengths plausibly support this role? YES / NO / N/A (none selected)
+□ For Preferred-gate occupations where the learner's knowledge is weak: did you prefer the
+  occupation's own "Alternate path" roles, unless RIASEC/Big Five/work-values fit was strong enough
+  to justify keeping the direct role anyway? YES / NO
+□ Example check: a learner weak in Accounting and stream aptitude → did you skip Mandatory-gated
+  Accountant/Auditor roles and prefer roles named in their Alternate path (e.g. HR/Ops/Support)
+  instead? YES / NO
 
-If knowledge score < 50% and ANY answer is NO:
+If either score < 35% or stream aptitude < 10%, and ANY answer is NO:
 - STOP, DO NOT SUBMIT
-- Review the weak domains
+- Review the candidate list's DEGREE GATE / Alternate path fields again
 - Remove roles requiring those domains
 - Add roles in same stream (different domain)
 - Revalidate
@@ -335,7 +355,11 @@ function buildUser(
   const occupationList = occupations
     .map((o) => {
       const desc = o.description ? ` | ${o.description}` : '';
-      return `- id=${o.occupation_id} | ${o.name} | RIASEC: ${o.riasecCodes.join('/') || 'n/a'}${desc}`;
+      const gateText = o.degreeGate === 'Mandatory'
+        ? ` | DEGREE GATE: MANDATORY — only match learners with a matching degree/strong knowledge fit`
+        : ` | DEGREE GATE: Preferred`;
+      const bridgeText = o.crossIndustryRolePaths ? ` | Alternate path for other degrees/weak knowledge: ${o.crossIndustryRolePaths}` : '';
+      return `- id=${o.occupation_id} | ${o.name} | RIASEC: ${o.riasecCodes.join('/') || 'n/a'}${desc}${gateText}${bridgeText}`;
     })
     .join('\n');
 
@@ -365,6 +389,7 @@ RIASEC scores: ${JSON.stringify(student.riasec_scores)}
 Big Five (strongest first): ${topN(student.big_five_scores, 5) || 'Not available'}
 Work values (top): ${topN(student.work_values, 3) || 'Not available'}
 Knowledge score: ${student.knowledge_score != null ? student.knowledge_score + '%' : 'Not available'}
+Stream aptitude score: ${student.stream_aptitude_score != null ? student.stream_aptitude_score + '%' : 'Not available'}
 Adaptive aptitude: ${formatAptitude(context.adaptive)}
 
 ${aptitudeInsightsText}

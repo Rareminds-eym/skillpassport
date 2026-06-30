@@ -474,6 +474,9 @@ export interface PromptOccupation {
   name: string;
   riasecCodes: string[];
   description?: string;  // Role description for LLM to understand importance & differences
+  // Degree-gate signal (source: occupations table, L&D degree mapping).
+  degreeGate?: 'Mandatory' | 'Preferred';
+  crossIndustryRolePaths?: string;       
 }
 
 /**
