@@ -168,7 +168,17 @@ export async function handleCreateLearner(
   // Parse and validate request body
   let body: CreateLearnerRequest;
   try {
-    body = await parseRequestBody(request) as unknown as CreateLearnerRequest;
+    const parsed = await parseRequestBody(request);
+    
+    // Validate request structure before type assertion
+    if (!parsed.learner || typeof parsed.learner !== 'object') {
+      throw new Error('Missing or invalid learner object in request');
+    }
+    if (!parsed.userEmail || typeof parsed.userEmail !== 'string') {
+      throw new Error('Missing or invalid userEmail in request');
+    }
+    
+    body = parsed as unknown as CreateLearnerRequest;
   } catch (e) {
     return apiError(400, 'VALIDATION_ERROR', (e as Error).message, request);
   }
@@ -429,14 +439,7 @@ export async function handleCreateTeacher(request: Request, env: ApiEnv, user: A
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   // Parse and validate request body
-  let body;
-  try {
-    body = await parseRequestBody(request);
-  } catch (e) {
-    return apiError(400, 'VALIDATION_ERROR', (e as Error).message, request);
-  }
-
-  const { teacher } = body as {
+  let body: {
     teacher: {
       first_name: string;
       last_name: string;
@@ -462,6 +465,21 @@ export async function handleCreateTeacher(request: Request, env: ApiEnv, user: A
       pincode?: string;
     };
   };
+  
+  try {
+    const parsed = await parseRequestBody(request);
+    
+    // Validate request structure before type assertion
+    if (!parsed.teacher || typeof parsed.teacher !== 'object') {
+      throw new Error('Missing or invalid teacher object in request');
+    }
+    
+    body = parsed as typeof body;
+  } catch (e) {
+    return apiError(400, 'VALIDATION_ERROR', (e as Error).message, request);
+  }
+
+  const { teacher } = body;
 
   console.log('📥 Received teacher data in API:', JSON.stringify(teacher, null, 2));
 
@@ -596,7 +614,11 @@ export async function handleCreateTeacher(request: Request, env: ApiEnv, user: A
       date_of_joining: teacher.date_of_joining || null,
       role: teacher.role || 'subject_teacher',
       subject_expertise: teacher.subject_expertise || [],
-      subjects_handled: teacher.subjects_handled || (Array.isArray(teacher.subject_expertise) ? teacher.subject_expertise.map((s: SubjectExpertise | string) => typeof s === 'string' ? s : s.name) : []),
+      subjects_handled: teacher.subjects_handled || (Array.isArray(teacher.subject_expertise) ? teacher.subject_expertise.map((s: SubjectExpertise | string) => {
+        if (typeof s === 'string') return s;
+        if (s && typeof s === 'object' && 'name' in s && typeof s.name === 'string') return s.name;
+        return '';
+      }).filter(Boolean) : []),
       onboarding_status: 'active',
       // Additional personal information
       employee_id: teacher.employee_id || null,
@@ -726,14 +748,7 @@ export async function handleCreateCollegeStaff(request: Request, env: ApiEnv, us
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   // Parse and validate request body
-  let body;
-  try {
-    body = await parseRequestBody(request);
-  } catch (e) {
-    return apiError(400, 'VALIDATION_ERROR', (e as Error).message, request);
-  }
-
-  const { staff, collegeId: requestCollegeId } = body as {
+  let body: {
     staff: {
       name: string;
       email: string;
@@ -747,6 +762,21 @@ export async function handleCreateCollegeStaff(request: Request, env: ApiEnv, us
     };
     collegeId?: string;
   };
+  
+  try {
+    const parsed = await parseRequestBody(request);
+    
+    // Validate request structure before type assertion
+    if (!parsed.staff || typeof parsed.staff !== 'object') {
+      throw new Error('Missing or invalid staff object in request');
+    }
+    
+    body = parsed as typeof body;
+  } catch (e) {
+    return apiError(400, 'VALIDATION_ERROR', (e as Error).message, request);
+  }
+
+  const { staff, collegeId: requestCollegeId } = body;
 
   if (!staff || !staff.name || !staff.email) {
     return apiError(400, 'VALIDATION_ERROR', 'Missing required fields: name and email', request);
