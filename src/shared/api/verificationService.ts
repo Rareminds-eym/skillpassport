@@ -84,6 +84,13 @@ function createActionPayload(
   userId: string,
   notes: string
 ): Record<string, unknown> {
+  if (!itemId || itemId.trim() === '') {
+    throw new Error('itemId is required and cannot be empty');
+  }
+  if (!userId || userId.trim() === '') {
+    throw new Error('userId is required and cannot be empty');
+  }
+  
   return {
     action,
     [`${itemType}_id`]: itemId,

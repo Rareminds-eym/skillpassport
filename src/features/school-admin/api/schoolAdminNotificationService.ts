@@ -107,14 +107,14 @@ interface RejectExperienceResult extends ApproveResult {
 
 // ── Type Guards ──
 function isAdminNotification(val: unknown): val is AdminNotification {
+  if (typeof val !== 'object' || val === null) return false;
+  const obj = val as Record<string, unknown>;
   return (
-    typeof val === 'object' &&
-    val !== null &&
-    typeof (val as AdminNotification).id === 'string' &&
-    typeof (val as AdminNotification).school_id === 'string' &&
-    typeof (val as AdminNotification).message === 'string' &&
-    typeof (val as AdminNotification).is_read === 'boolean' &&
-    typeof (val as AdminNotification).created_at === 'string'
+    typeof obj.id === 'string' &&
+    typeof obj.school_id === 'string' &&
+    typeof obj.message === 'string' &&
+    typeof obj.is_read === 'boolean' &&
+    typeof obj.created_at === 'string'
   );
 }
 

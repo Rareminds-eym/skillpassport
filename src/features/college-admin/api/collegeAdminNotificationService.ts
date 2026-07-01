@@ -35,14 +35,14 @@ export interface CollegeAdminNotification {
 
 // ── Type Guards ──
 function isCollegeAdminNotification(val: unknown): val is CollegeAdminNotification {
+  if (typeof val !== 'object' || val === null) return false;
+  const obj = val as Record<string, unknown>;
   return (
-    typeof val === 'object' &&
-    val !== null &&
-    typeof (val as CollegeAdminNotification).id === 'string' &&
-    typeof (val as CollegeAdminNotification).college_id === 'string' &&
-    typeof (val as CollegeAdminNotification).message === 'string' &&
-    typeof (val as CollegeAdminNotification).is_read === 'boolean' &&
-    typeof (val as CollegeAdminNotification).created_at === 'string'
+    typeof obj.id === 'string' &&
+    typeof obj.college_id === 'string' &&
+    typeof obj.message === 'string' &&
+    typeof obj.is_read === 'boolean' &&
+    typeof obj.created_at === 'string'
   );
 }
 

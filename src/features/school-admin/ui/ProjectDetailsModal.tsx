@@ -127,12 +127,12 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({
     }
   };
 
-  const handleActionClick = (type) => {
+  const handleActionClick = (type: 'approve' | 'reject') => {
     setActionType(type);
     setShowNotesInput(true);
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'Not specified';
     return new Date(dateString).toLocaleDateString();
   };
