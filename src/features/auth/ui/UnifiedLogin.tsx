@@ -483,7 +483,9 @@ const UnifiedLogin = () => {
                     >
                       <option value="">Choose your role...</option>
                       {ALL_ROLES.map((role) => (
-                        <option key={role} value={role}>
+                        // Recruiter login is invitation-only: keep the option
+                        // visible but disabled (non-selectable).
+                        <option key={role} value={role} disabled={role === 'recruiter'}>
                           {ROLE_DISPLAY_NAMES[role]}
                         </option>
                       ))}
