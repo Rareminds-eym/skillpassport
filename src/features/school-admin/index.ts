@@ -14,7 +14,25 @@ export {
 export { SchoolAdminNotificationService } from './api/schoolAdminNotificationService';
 export { timetableSlotsService } from './api/timetableSlotsService';
 export { curriculumService } from './api/curriculumService';
-export * from './api';
+export { schoolLibraryService } from './api/schoolLibraryService';
+export {
+  createSchool,
+  checkSchoolCode,
+  getSchoolByOwner,
+  getSchoolById,
+  getAllSchools,
+  getSchoolByEmail,
+} from './api/schoolService';
+
+// ── API Types ──
+export type {
+  SchoolLibraryBook,
+  SchoolLibraryBookIssue,
+  SchoolLibrarySetting,
+  SchoolLibraryCategory,
+  SchoolLibraryStats,
+  SchoolOverdueBook,
+} from './api/schoolLibraryService';
 
 // ── Types ──
 // Export only what's needed for external consumers
