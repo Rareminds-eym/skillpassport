@@ -1,13 +1,20 @@
 /**
  * Middle School Assessment Analysis (Grades 6-8)
  *
- * Calculates RIASEC scores, strength aggregation, learning preferences,
- * and links adaptive aptitude session data.
+ * Calculates the 8-area capability wheel (per BRD section 10.1: Self/EQ, Social/SQ,
+ * Thinking & Problem Solving, Communication, Digital & AI Literacy, Execution &
+ * Independence, Exposure & Career Awareness, Portfolio & Evidence), strength
+ * aggregation, learning preferences, and links adaptive aptitude session data.
+ *
+ * RIASEC (Realistic/Investigative/Artistic/Social/Enterprising/Conventional) is
+ * intentionally not computed here: it does not appear anywhere in the BRD's
+ * middle-school capability model, and its only data source (the now-deactivated
+ * middle_interest_explorer section's category_mapping) no longer exists in the
+ * active middle-school flow.
  */
 
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
-import type { RIASECScores, StrengthScore, AdaptiveAptitudeData } from '../../types';
-import { getTopCategories, getTopStrengths } from '../../lib/analysis-helpers';
+import type { StrengthScore, AdaptiveAptitudeData } from '../../types';
+import { getTopStrengths } from '../../lib/analysis-helpers';
 import { generateMiddleSchoolCareerClusters } from '../core/career-cluster-generator';
 import type { StudentProfile } from '../core/scoring-service';
 
@@ -27,6 +34,18 @@ function flattenAccuracyBySubtag(
     }
   }
   return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Status label conversion (evalution.txt section 6/9) — same scale used across all grade bands.
+ */
+function getCapabilityStatusLabel(score: number): string {
+  if (score === 0) return 'Not Yet Evidenced';
+  if (score < 2.0) return 'Starting';
+  if (score < 3.0) return 'Practicing';
+  if (score < 3.8) return 'Growing';
+  if (score < 4.5) return 'Confident';
+  return 'Ready for Next Level';
 }
 
 async function tryFetchAdaptiveResults(supabase: any, sessionId: string) {
@@ -96,60 +115,42 @@ export async function analyzeMiddleSchool(
     // Index questions by UUID for O(1) lookup
     const questionMap = new Map(questions.map((q) => [q.id, q]));
 
-    // Step 2b: Look up section names to identify learning preference questions
+    // Step 2b: Look up section names/scales to identify learning preference questions
+    // and to know each section's max rating value (scales differ: 1-5 for most sections, 0-4 for exposure_index).
     const sectionIds = [...new Set(questions.map((q: any) => q.section_id).filter(Boolean))];
     let learningPrefSectionId: string | null = null;
+    const sectionScaleMax = new Map<string, number>();
     if (sectionIds.length > 0) {
       const { data: sections } = await supabase
         .from('personal_assessment_sections')
-        .select('id, name')
+        .select('id, name, response_scale')
         .in('id', sectionIds);
       if (sections) {
         const lpSection = sections.find((s: any) => s.name === 'middle_learning_preferences');
         learningPrefSectionId = lpSection?.id ?? null;
+
+        for (const section of sections) {
+          const scale = Array.isArray(section.response_scale) ? section.response_scale : [];
+          const maxValue = scale.length > 0
+            ? Math.max(...scale.map((s: any) => s.value))
+            : 5; // default 1-5 rating scale when section has no explicit response_scale
+          sectionScaleMax.set(section.id, maxValue);
+        }
       }
     }
 
-    // Step 3: Calculate RIASEC scores from database metadata
-    const riasecScores: RIASECScores = {
-      realistic: 0,
-      investigative: 0,
-      artistic: 0,
-      social: 0,
-      enterprising: 0,
-      conventional: 0,
-    };
-
-    // DB category_mapping format: {"option text": "R"} where letter maps to full category name
-    const RIASEC_LETTER_MAP: Record<string, keyof RIASECScores> = {
-      R: 'realistic',
-      I: 'investigative',
-      A: 'artistic',
-      S: 'social',
-      E: 'enterprising',
-      C: 'conventional',
-    };
-
+    // Step 3: Aggregate ratings into strength dimensions and capability areas
     const strengthsByDimension = new Map<string, number[]>();
+
+    // Doc-aligned capability-area aggregation (evalution.txt section 4/12): groups the same
+    // rating responses by the coarse metadata.capability_area (e.g. "Self / EQ", "Social / SQ")
+    // instead of the fine-grained strength_type, so EQ and SQ each produce one combined
+    // percentage score rather than a flat list of single-item dimensions.
+    const capabilityRawByArea = new Map<string, { total: number; max: number; count: number }>();
 
     for (const [uuid, answer] of Object.entries(allResponses)) {
       const question = questionMap.get(uuid);
       if (!question) continue;
-
-      // Process RIASEC category mapping (format: {"option text": "R/I/A/S/E/C"})
-      if (question.category_mapping && typeof question.category_mapping === 'object') {
-        const mapping = question.category_mapping as Record<string, string>;
-        const answerArray = Array.isArray(answer) ? answer : [answer];
-
-        for (const selectedOption of answerArray) {
-          if (selectedOption && typeof selectedOption === 'string') {
-            const letter = mapping[selectedOption];
-            if (letter && RIASEC_LETTER_MAP[letter]) {
-              riasecScores[RIASEC_LETTER_MAP[letter]] += 1;
-            }
-          }
-        }
-      }
 
       // Process strength dimensions from metadata
       if (question.metadata && typeof answer === 'number') {
@@ -160,8 +161,36 @@ export async function analyzeMiddleSchool(
           }
           strengthsByDimension.get(strengthType)!.push(answer);
         }
+
+        // Process capability-area grouping (Self/EQ, Social/SQ, etc.) for combined scores
+        const capabilityArea = (question.metadata as any).capability_area;
+        if (capabilityArea) {
+          const maxValue = sectionScaleMax.get(question.section_id) ?? 5;
+          const entry = capabilityRawByArea.get(capabilityArea) ?? { total: 0, max: 0, count: 0 };
+          entry.total += answer;
+          entry.max += maxValue;
+          entry.count += 1;
+          capabilityRawByArea.set(capabilityArea, entry);
+        }
       }
     }
+
+    // Step 3b: Convert raw capability totals into percentage + 5-point score + status label,
+    // following evalution.txt section 4 (percentage = raw/max*100, score_out_of_5 = percentage/20)
+    // and section 6 (status label conversion table).
+    const capabilityScores = Array.from(capabilityRawByArea.entries()).map(([capabilityArea, { total, max, count }]) => {
+      const percentage = max > 0 ? (total / max) * 100 : 0;
+      const scoreOutOf5 = Math.round((percentage / 20) * 100) / 100;
+      return {
+        capability_area: capabilityArea,
+        raw_score: total,
+        max_score: max,
+        question_count: count,
+        percentage: Math.round(percentage * 100) / 100,
+        score_out_of_5: scoreOutOf5,
+        status: getCapabilityStatusLabel(scoreOutOf5),
+      };
+    });
 
     // Step 4: Aggregate strength scores
     const strengthScores: StrengthScore[] = Array.from(strengthsByDimension.entries()).map(
@@ -250,9 +279,6 @@ export async function analyzeMiddleSchool(
     }
 
     // Step 7: Build profile snapshot
-    const topCategories = getTopCategories(riasecScores);
-    const riasecCode = topCategories.map((c) => c[0]).join('');
-
     // Collect free-text reflections (type='text' questions)
     const reflections: Array<{ question: string; answer: string }> = [];
     for (const [uuid, answer] of Object.entries(allResponses)) {
@@ -267,16 +293,16 @@ export async function analyzeMiddleSchool(
       stream_id: attempt.stream_id,
       started_at: attempt.started_at,
       completed_at: new Date().toISOString(),
-      riasec_profile: topCategories,
       top_strengths: getTopStrengths(strengthScores, 3),
+      capability_scores: capabilityScores,
       reflections,
     };
 
     // Step 8: Validate results before storing - prevent empty data insertion
-    const hasValidRIASEC = Object.values(riasecScores).some(score => score > 0);
     const hasValidStrengths = strengthScores.length > 0;
+    const hasValidCapabilities = capabilityScores.length > 0;
 
-    if (!hasValidRIASEC && !hasValidStrengths) {
+    if (!hasValidStrengths && !hasValidCapabilities) {
       return Response.json(
         { error: 'Failed to calculate assessment scores', details: 'No valid data could be extracted' },
         { status: 400 }
@@ -292,8 +318,6 @@ export async function analyzeMiddleSchool(
           learner_id: learnerId,
           grade_level: attempt.grade_level,
           stream_id: attempt.stream_id || 'general',
-          riasec_scores: riasecScores,
-          riasec_code: riasecCode,
           strength_scores: strengthScores,
           learning_preferences: learningPreferences,
           aptitude_scores: adaptiveData,
@@ -332,11 +356,13 @@ export async function analyzeMiddleSchool(
 
     // Step 11: Generate career clusters (deterministic retrieval/scoring + OpenRouter narrative)
     // and merge them into gemini_results.careerFit. Non-fatal: analysis succeeds regardless.
+    // Note: middle school no longer computes a RIASEC code (see file header), so
+    // generateMiddleSchoolCareerClusters will skip cluster generation gracefully
+    // (it already no-ops on an empty riasec_code) until it's updated to score by
+    // the 8-area capability wheel instead.
     let careerFit: { clusters: unknown[] } | null = null;
     try {
       const student: StudentProfile = {
-        riasec_scores: riasecScores as unknown as Record<string, number>,
-        riasec_code: riasecCode,
         strength_scores: strengthScores,
         // Adaptive overall_accuracy is 0-100; the scorer expects a 0-1 fraction.
         aptitude_overall: aptitudeOverall != null ? aptitudeOverall / 100 : undefined,
@@ -377,9 +403,8 @@ export async function analyzeMiddleSchool(
     return Response.json(
       {
         success: true,
-        riasecScores,
-        riasecCode,
         strengthScores,
+        capabilityScores,
         learningPreferences,
         adaptiveData,
         aptitudeOverall,

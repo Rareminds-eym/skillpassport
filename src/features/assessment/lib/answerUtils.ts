@@ -12,7 +12,7 @@ export const isQuestionAnswered = (
   answer: AnswerValue,
   question: Question | null
 ): boolean => {
-  if (!answer) return false;
+  if (answer === undefined || answer === null || answer === '') return false;
   if (!question) return false;
 
   // SJT questions need both best and worst

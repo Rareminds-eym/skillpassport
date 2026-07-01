@@ -40,7 +40,8 @@ export async function loadSectionsWithQuestions(
         .select('*')
         .eq('is_active', true)
         .eq('grade_level', gradeLevel)
-        .not('name', 'like', 'adaptive_aptitude%');
+        .not('name', 'like', 'adaptive_aptitude%')
+        .order('order_number', { ascending: true });
 
       if (gradeError) throw gradeError;
       logger.info('Fetched grade-specific sections', { count: gradeSections?.length || 0, gradeLevel });

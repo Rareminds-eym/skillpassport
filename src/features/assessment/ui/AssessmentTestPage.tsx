@@ -1102,7 +1102,7 @@ const AssessmentTestPage: React.FC = () => {
     // Validate answer completeness
     const isCurrentAnswered = (() => {
       const answer = store.answers[currentQuestion?.id];
-      const hasAnswer = !!answer;
+      const hasAnswer = answer !== undefined && answer !== null && answer !== '';
 
       // For multiselect questions, must have exact selection count
       if (currentQuestion?.type === 'multiselect' && currentQuestion?.maxSelections) {
