@@ -22,6 +22,7 @@ import {
   ssoRecordTransaction,
   ssoSyncSubscription,
   ssoUpdateSubscriptionField,
+  ssoUpdateTransaction,
 } from '../../../lib/sso-client';
 import { getServiceClient } from '../../../lib/supabase';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
@@ -322,8 +323,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
 
     // Step 3: Record payment transaction in auth DB
+    let transactionId: string | undefined;
     try {
-      await ssoRecordTransaction(env, {
+      const txResult = await ssoRecordTransaction(env, {
         subscription_id: subscription.id as string,
         user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
@@ -336,6 +338,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         payment_method: payment.method,
         // DO NOT set receipt_url here - will be set after successful upload
       });
+      transactionId = txResult.id as string;
     } catch (txError: any) {
       if (txError.message?.includes('duplicate key') || txError.message?.includes('23505') || txError.status === 409) {
         logger.info('Transaction already recorded (duplicate caught). Skipping further duplicate handling');
@@ -381,6 +384,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             env,
             supabase,
             subscriptionId: subscription.id as string,
+            transactionId,
             userId: user.id,
             receiptKey,
             paymentId: body.razorpay_payment_id as string,
@@ -416,6 +420,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             env,
             supabase,
             subscriptionId: subscription.id as string,
+            transactionId,
             userId: user.id,
             receiptKey,
             paymentId: body.razorpay_payment_id as string,
@@ -494,6 +499,7 @@ async function generateAndUploadReceipt(params: {
   env: PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
   supabase: ReturnType<typeof getServiceClient>;
   subscriptionId: string;
+  transactionId?: string;
   userId: string;
   receiptKey: string;
   paymentId: string;
@@ -516,6 +522,7 @@ async function generateAndUploadReceipt(params: {
     env,
     supabase,
     subscriptionId,
+    transactionId,
     userId,
     receiptKey,
     paymentId,
@@ -610,13 +617,31 @@ async function generateAndUploadReceipt(params: {
 
     logger.info('Receipt uploaded successfully to R2', { receiptKey, size: pdfBytes.buffer.byteLength });
 
-    // Update subscription in auth DB with receipt URL
+    // Update subscription and transaction in auth DB with receipt URL
     try {
       logger.info('Updating subscription with receipt URL in auth DB', { subscriptionId, receiptKey });
       await ssoUpdateSubscriptionField(env, subscriptionId, {
         receipt_url: receiptKey,
       });
       logger.info('Receipt URL saved to auth DB subscription successfully', { receiptKey, subscriptionId });
+
+      // Update transaction with receipt URL
+      if (transactionId) {
+        try {
+          logger.info('Updating transaction with receipt URL in auth DB', { transactionId, receiptKey });
+          await ssoUpdateTransaction(env, transactionId, {
+            receipt_url: receiptKey,
+          });
+          logger.info('Receipt URL saved to auth DB transaction successfully', { receiptKey, transactionId });
+        } catch (txUpdateErr) {
+          logger.error(
+            'Failed to update transaction with receipt_url (non-critical)',
+            txUpdateErr instanceof Error ? txUpdateErr : new Error(String(txUpdateErr))
+          );
+        }
+      } else {
+        logger.warn('No transaction ID available, skipping transaction receipt URL update');
+      }
 
       // Sync to app DB subscription_cache
       try {
