@@ -406,7 +406,7 @@ const AchievementBadge = ({ achievement, isUnlocked }) => {
 
 
 // Compact Achievements Row
-const CompactAchievementsRow = ({ stats, courseData }) => {
+const CompactAchievementsRow = ({ stats, courseData, learnerDbId }) => {
   const [achievementData, setAchievementData] = useState(null);
   const [loading, setLoading] = useState(true);
   const hasFetchedRef = useRef(false);
@@ -431,7 +431,7 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
         if (!user) return;
 
         const result = await apiPost('/learner-profile/actions', {
-          action: 'fetch-achievement-stats', userId: user.id,
+          action: 'fetch-achievement-stats', userId: user.id, learnerDbId: learnerDbId || undefined,
         });
         const d = result?.data || {};
 
@@ -820,6 +820,7 @@ const WeeklyLearningTracker = () => {
   const [courseData, setCourseData] = useState([]);
   const [stats, setStats] = useState({ totalMinutes: 0, completedLessons: 0, completedModules: 0, completedCourses: 0, currentStreak: 0 });
   const [loading, setLoading] = useState(true);
+  const [learnerDbId, setLearnerDbId] = useState(null);
 
   // Course filter state
   const [selectedCourseId, setSelectedCourseId] = useState(null); // null = "All Courses"
@@ -885,10 +886,19 @@ const WeeklyLearningTracker = () => {
 
       const weekDates = getCurrentWeek();
 
+      // Resolve learners.id from user.id (SSO UUID)
+      // course_enrollments.learner_id stores learners.id, not user.id
+      const learnerRes = await apiPost('/learner-profile/actions', {
+        action: 'fetch-authenticated-learner',
+        userId: user.id,
+      });
+      const learnerId = learnerRes?.data?.id || user.id;
+      setLearnerDbId(learnerId);
+
       // Fetch all data in parallel via API (no N+1)
       const [progressRes, enrollmentsRes] = await Promise.all([
         apiPost('/learners/management', { action: 'get-learner-progress', learnerId: user.id }),
-        apiPost('/learners/management', { action: 'get-learner-enrollments', learnerId: user.id })
+        apiPost('/learners/management', { action: 'get-learner-enrollments', learnerId: learnerId })
       ]);
 
       const progressData = progressRes?.data ?? [];
@@ -1182,7 +1192,7 @@ const WeeklyLearningTracker = () => {
       </div>
 
       {/* Row 3: Compact Achievements (Full Width) */}
-      <CompactAchievementsRow stats={displayStats} courseData={courseData} />
+      <CompactAchievementsRow stats={displayStats} courseData={courseData} learnerDbId={learnerDbId} />
 
       {/* Row 4: Courses Section (Full Width) */}
       <CoursesSection

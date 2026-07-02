@@ -716,12 +716,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'fetch-achievement-stats': {
-        const { userId } = params;
+        const { userId, learnerDbId } = params;
         if (!userId) return apiError(400, 'VALIDATION_ERROR', 'Missing userId', context.request, { startTime });
+        const dbId = learnerDbId || userId;
         const [streakRes, progressRes, enrollRes] = await Promise.allSettled([
-          supabase.from('learner_streaks').select('current_streak, longest_streak').eq('learner_id', userId).maybeSingle(),
+          supabase.from('learner_streaks').select('current_streak, longest_streak').eq('learner_id', dbId).maybeSingle(),
           supabase.from('learner_course_progress').select('time_spent_seconds, status').eq('learner_id', userId),
-          supabase.from('course_enrollments').select('completed_at').eq('learner_id', userId).not('completed_at', 'is', null),
+          supabase.from('course_enrollments').select('completed_at').eq('learner_id', dbId).not('completed_at', 'is', null),
         ]);
         const extract = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? (r.value.data || []) : [];
         const streak = streakRes.status === 'fulfilled' ? streakRes.value.data || { current_streak: 0, longest_streak: 0 } : { current_streak: 0, longest_streak: 0 };
