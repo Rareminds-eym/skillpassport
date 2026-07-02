@@ -421,7 +421,11 @@ const CompactAchievementsRow = ({ stats, courseData, learnerDbId }) => {
   );
 
   useEffect(() => {
-    // Only fetch once on mount
+    // Wait for learnerDbId to be resolved before fetching
+    // learnerDbId starts as null on mount and gets set after fetchWeeklyProgress resolves it
+    // Without this guard, the fetch would run with learnerDbId = null and hasFetchedRef
+    // would block the correct fetch from running when learnerDbId arrives
+    if (!learnerDbId) return;
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
 
@@ -460,7 +464,7 @@ const CompactAchievementsRow = ({ stats, courseData, learnerDbId }) => {
       }
     };
     fetchAchievementData();
-  }, []); // Empty dependency - fetch only once on mount
+  }, [learnerDbId]); // Re-run when learnerDbId resolves from null to actual value
 
   const data = achievementData || {
     currentStreak: stats.currentStreak || 0,
