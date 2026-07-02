@@ -16,12 +16,19 @@ import {
 } from 'lucide-react';
 import { SchoolAdminNotificationService } from '@/features/school-admin';
 import { toast } from 'react-hot-toast';
+import type { ProjectDetailsModalProps } from '../model/types';
 
-const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId }) => {
+const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ 
+  project, 
+  isOpen, 
+  onClose, 
+  onAction, 
+  currentUserId 
+}) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [notes, setNotes] = useState('');
   const [showNotesInput, setShowNotesInput] = useState(false);
-  const [actionType, setActionType] = useState('');
+  const [actionType, setActionType] = useState<'approve' | 'reject' | ''>('');
 
   if (!isOpen || !project) return null;
 
@@ -46,11 +53,23 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
       );
       
       toast.success('Project approved successfully!');
-      onAction('approved', project);
+      
+      // Call onAction and wait for parent to refresh data before closing modal
+      if (onAction) {
+        try {
+          const result = onAction('approved', project);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
+      }
+      
       onClose();
     } catch (error) {
       console.error('Error approving project:', error);
-      toast.error(error.message || 'Failed to approve project');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to approve project');
     } finally {
       setIsProcessing(false);
       setNotes('');
@@ -84,11 +103,23 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
       );
       
       toast.success('Project rejected successfully!');
-      onAction('rejected', project);
+      
+      // Call onAction and wait for parent to refresh data before closing modal
+      if (onAction) {
+        try {
+          const result = onAction('rejected', project);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
+      }
+      
       onClose();
     } catch (error) {
       console.error('Error rejecting project:', error);
-      toast.error(error.message || 'Failed to reject project');
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to reject project');
     } finally {
       setIsProcessing(false);
       setNotes('');
@@ -96,12 +127,12 @@ const ProjectDetailsModal = ({ project, isOpen, onClose, onAction, currentUserId
     }
   };
 
-  const handleActionClick = (type) => {
+  const handleActionClick = (type: 'approve' | 'reject') => {
     setActionType(type);
     setShowNotesInput(true);
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'Not specified';
     return new Date(dateString).toLocaleDateString();
   };
