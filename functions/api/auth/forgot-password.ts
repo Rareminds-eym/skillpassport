@@ -32,12 +32,12 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
       const parsed = await request.json();
       const result = forgotPasswordSchema.safeParse(parsed);
       if (!result.success) {
-        return apiError(400, 'VALIDATION_ERROR', result.error.issues[0].message);
+        return apiError(400, 'VALIDATION_ERROR', result.error.issues[0].message, request);
       }
       body = result.data;
     } catch (error) {
       logger.error('Invalid JSON in forgot password request', error as Error);
-      return apiError(400, 'INVALID_JSON', 'Invalid JSON payload');
+      return apiError(400, 'INVALID_JSON', 'Invalid JSON payload', request);
     }
 
     logger.info('Processing forgot password request via service binding', {
@@ -47,7 +47,7 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
     // Check if SSO service binding is available
     if (!env.SSO_SERVICE) {
       logger.error('SSO service binding not configured');
-      return apiError(500, 'SERVICE_UNAVAILABLE', 'SSO service not available');
+      return apiError(500, 'SERVICE_UNAVAILABLE', 'SSO service not available', request);
     }
 
     // Call SSO Worker via RPC (email sent internally by sso-worker)
@@ -58,7 +58,7 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
       }, request.headers.get("CF-Connecting-IP") ?? undefined, request.headers.get("User-Agent") ?? undefined);
 
       if (!ssoResult.success) {
-        return apiError(400, 'FORGOT_PASSWORD_FAILED', ssoResult.error || 'Failed to process password reset request');
+        return apiError(400, 'FORGOT_PASSWORD_FAILED', ssoResult.error || 'Failed to process password reset request', request);
       }
 
       logger.info('Password reset request processed successfully', {
@@ -67,14 +67,14 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
 
       return apiSuccess({
         message: ssoResult.message || 'If an account exists, a reset email has been sent.'
-      });
+      }, request);
     } catch (ssoError: any) {
       logger.error('SSO Worker forgot password failed', ssoError);
-      return apiError(400, 'SSO_ERROR', ssoError.message || 'Failed to process password reset request');
+      return apiError(400, 'SSO_ERROR', ssoError.message || 'Failed to process password reset request', request);
     }
 
   } catch (error) {
     logger.error('Error processing forgot password request', error as Error);
-    return apiError(500, 'INTERNAL_ERROR', 'Internal server error');
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 }

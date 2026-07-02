@@ -33,12 +33,12 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
       const parsed = await request.json();
       const result = resetPasswordSchema.safeParse(parsed);
       if (!result.success) {
-        return apiError(400, 'VALIDATION_ERROR', result.error.issues[0].message);
+        return apiError(400, 'VALIDATION_ERROR', result.error.issues[0].message, request);
       }
       body = result.data;
     } catch (error) {
       logger.error('Invalid JSON in reset password request', error as Error);
-      return apiError(400, 'INVALID_JSON', 'Invalid JSON payload');
+      return apiError(400, 'INVALID_JSON', 'Invalid JSON payload', request);
     }
 
     logger.info('Processing reset password request via service binding');
@@ -46,7 +46,7 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
     // Check if SSO service binding is available
     if (!env.SSO_SERVICE) {
       logger.error('SSO service binding not configured');
-      return apiError(500, 'SERVICE_UNAVAILABLE', 'SSO service not available');
+      return apiError(500, 'SERVICE_UNAVAILABLE', 'SSO service not available', request);
     }
 
     // Call SSO Worker via RPC
@@ -57,7 +57,7 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
       });
 
       if (!ssoResult.success) {
-        return apiError(400, 'RESET_FAILED', ssoResult.error || 'Failed to reset password');
+        return apiError(400, 'RESET_FAILED', ssoResult.error || 'Failed to reset password', request);
       }
 
       logger.info('Password reset completed successfully');
@@ -65,14 +65,14 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
       return apiSuccess({
         reset: true,
         message: 'Password reset successfully'
-      });
+      }, request);
     } catch (ssoError: any) {
       logger.error('SSO Worker reset password failed', ssoError);
-      return apiError(400, 'SSO_ERROR', ssoError.message || 'Failed to reset password');
+      return apiError(400, 'SSO_ERROR', ssoError.message || 'Failed to reset password', request);
     }
 
   } catch (error) {
     logger.error('Error processing reset password request', error as Error);
-    return apiError(500, 'INTERNAL_ERROR', 'Internal server error');
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 }

@@ -45,7 +45,6 @@ export { default as SelectCourseModal } from './ui/SelectCourseModal';
 export { default as SkillsDashboard } from './ui/SkillsDashboard';
 export { default as SkillTrackerExpanded } from './ui/SkillTrackerExpanded';
 export { default as LearnerCard3D } from './ui/LearnerCard3D';
-export { default as LearnerPublicViewer } from './ui/LearnerPublicViewer';
 export { default as SuggestedNextSteps } from './ui/SuggestedNextSteps';
 export { default as TopSkillsInDemand } from './ui/TopSkillsInDemand';
 export { default as TrainingRecommendations } from './ui/TrainingRecommendations';

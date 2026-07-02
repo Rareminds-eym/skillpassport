@@ -1,0 +1,81 @@
+import { apiError } from '../../lib/response';
+import type { Env } from '../../lib/types';
+
+interface SignupMemberBody {
+  email: string;
+  password: string;
+  role: string;
+  org_id?: string;
+  redirect_url?: string;
+}
+
+export async function onRequestPost(context: {
+  request: Request;
+  env: Env;
+  data?: Record<string, unknown>;
+}): Promise<Response> {
+  const { request, env } = context;
+
+  let body: SignupMemberBody;
+  try {
+    body = await request.json() as SignupMemberBody;
+  } catch {
+    return apiError(400, 'INVALID_JSON', 'Invalid JSON body', request);
+  }
+
+  if (!body.email || !body.password || !body.role) {
+    return apiError(400, 'MISSING_FIELDS', 'email, password, and role are required', request);
+  }
+
+  const ip = request.headers.get('CF-Connecting-IP') || undefined;
+  const ua = request.headers.get('User-Agent') || undefined;
+
+  try {
+    const ssoService = env.SSO_SERVICE as any;
+
+    // Call RPC method directly
+    const result = await ssoService.signupMember({
+      email: body.email,
+      password: body.password,
+      role: body.role,
+      org_id: body.org_id,
+      redirect_url: body.redirect_url,
+      ip,
+      ua,
+    });
+
+    // Return raw SignupMemberResponse (auth-client expects { access_token, user, org, email_sent })
+    const requestId = crypto.randomUUID();
+    const origin = request.headers.get('Origin') ?? null;
+    const { getCorsHeaders } = await import('../../lib/cors');
+
+    const headers = new Headers({
+      'Content-Type': 'application/json',
+      'X-Request-ID': requestId,
+      ...getCorsHeaders(origin),
+    });
+
+    // Set refresh_token as HttpOnly cookie for session persistence
+    if (result.refresh_token) {
+      headers.append(
+        'Set-Cookie',
+        `refresh_token=${result.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
+      );
+    }
+
+    // Return raw response (auth-client.signupMember expects { access_token, user, org, email_sent })
+    return new Response(JSON.stringify(result), {
+      status: 201,
+      headers,
+    });
+  } catch (err: any) {
+    const errMsg = err?.message ?? 'Signup failed';
+    console.error('[SignupMember] RPC error:', err);
+
+    if (errMsg.includes('duplicate') || errMsg.includes('already exists')) {
+      return apiError(409, 'EMAIL_EXISTS', 'An account with this email already exists', request);
+    }
+
+    return apiError(500, 'SIGNUP_FAILED', errMsg, request);
+  }
+}
