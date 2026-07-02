@@ -45,11 +45,6 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     return apiError(400, 'VALIDATION_ERROR', 'User email is required', context.request);
   }
 
-  // Safe accessor for optional user properties from JWT
-  const userRecord = user as unknown as Record<string, unknown>;
-  const userName = (userRecord.name as string | undefined) || undefined;
-  const userPhone = (userRecord.phone as string | undefined) || undefined;
-
   try {
     let body: Record<string, unknown>;
     try {
@@ -277,9 +272,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           plan_amount: planPrice,
           billing_cycle: plan.duration as string,
           features: validPlan.base_features || [],
-          full_name: userName || user.email,
+          full_name: user.name || user.email,
           email: user.email,
-          phone: userPhone || undefined,
+          phone: user.phone || undefined,
           razorpay_order_id: body.razorpay_order_id as string,
           razorpay_payment_id: body.razorpay_payment_id as string,
           // DO NOT set receipt_url here - will be set after successful upload
@@ -363,9 +358,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 4: Send payment confirmation email
     try {
       await sendPaymentSuccessEmail(env as unknown as PagesEnv, {
-        name: userName || user.email,
+        name: user.name || user.email,
         email: user.email,
-        phone: userPhone || '',
+        phone: user.phone || '',
         amount: planPrice,
         orderId: body.razorpay_order_id as string,
         campaign: plan.name as string,
@@ -398,9 +393,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
               subscription_end_date: subscription.subscription_end_date as string,
             },
             user: {
-              name: userName,
+              name: user.name,
               email: user.email,
-              phone: userPhone || undefined,
+              phone: user.phone || undefined,
             },
           }).catch((err) => {
             // Safe error boundary - ensure logger.error never throws
@@ -434,9 +429,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
               subscription_end_date: subscription.subscription_end_date as string,
             },
             user: {
-              name: userName,
+              name: user.name,
               email: user.email,
-              phone: userPhone || undefined,
+              phone: user.phone || undefined,
             },
           });
         } catch (err) {

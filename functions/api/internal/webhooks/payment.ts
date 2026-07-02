@@ -344,16 +344,19 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
         ssoClient = await import('../../../lib/sso-client.js');
       } catch (importErr) {
         logger.error('Failed to load sso-client module', importErr instanceof Error ? importErr : new Error(String(importErr)));
-        throw importErr;
+        // Continue without storing receipt key, don't throw
       }
-      await ssoClient.ssoUpdateSubscriptionField(
-        env as unknown as { SSO_SERVICE: Fetcher },
-        subscription.id,
-        {
-          receipt_url: receiptKey,
-        }
-      );
-      logger.info('Receipt key saved to subscription', { receiptKey });
+      
+      if (ssoClient) {
+        await ssoClient.ssoUpdateSubscriptionField(
+          env as unknown as { SSO_SERVICE: Fetcher },
+          subscription.id,
+          {
+            receipt_url: receiptKey,
+          }
+        );
+        logger.info('Receipt key saved to subscription', { receiptKey });
+      }
     } catch (updateErr) {
       logger.error('Failed to save receipt key (non-critical)', updateErr instanceof Error ? updateErr : new Error(String(updateErr)));
     }

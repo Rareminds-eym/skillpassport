@@ -663,14 +663,31 @@ function PaymentSuccess() {
         log.info('Requesting presigned URL for:', fileIdentifier);
         const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
         
-        // Use hidden link instead of window.open to avoid blank tab
-        const link = document.createElement('a');
-        link.href = presignedUrl;
-        link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Try fetch + blob approach first for better control
+        try {
+          const response = await fetch(presignedUrl);
+          if (!response.ok) {
+            throw new Error('Fetch failed');
+          }
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          try {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
+            link.click();
+          } finally {
+            URL.revokeObjectURL(url);
+          }
+        } catch (fetchError) {
+          // Fallback: direct link if fetch fails (e.g., CORS issues)
+          log.warn('Fetch failed, using direct link', fetchError);
+          const link = document.createElement('a');
+          link.href = presignedUrl;
+          link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
+          link.target = '_blank';
+          link.click();
+        }
         
         toast.success('Receipt downloading!');
         return;
