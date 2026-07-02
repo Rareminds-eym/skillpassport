@@ -230,7 +230,7 @@ export const CompanySignup: React.FC = () => {
             console.log('[CompanySignup] Signup complete, redirecting to email verification...');
 
             // Step 7: Redirect to email verification page (same flow as normal signup)
-            // After email verification, user will be redirected to /recruitment/subscription/plans
+            // After email verification, user will be redirected to /subscription/plans?type=recruiter
             navigate('/verify-email', {
                 replace: true, // Replace history to prevent back button issues
             });

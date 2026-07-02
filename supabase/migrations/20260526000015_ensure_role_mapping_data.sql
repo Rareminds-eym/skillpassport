@@ -5,6 +5,23 @@
 
 BEGIN;
 
+-- Create recruitment_role_mapping table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.recruitment_role_mapping (
+    id SERIAL PRIMARY KEY,
+    sso_role_name TEXT NOT NULL UNIQUE,
+    recruitment_role TEXT NOT NULL,
+    can_manage_team BOOLEAN DEFAULT FALSE,
+    can_create_jobs BOOLEAN DEFAULT FALSE,
+    can_edit_jobs BOOLEAN DEFAULT FALSE,
+    can_delete_jobs BOOLEAN DEFAULT FALSE,
+    can_view_candidates BOOLEAN DEFAULT FALSE,
+    can_manage_candidates BOOLEAN DEFAULT FALSE,
+    can_view_analytics BOOLEAN DEFAULT FALSE,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Delete existing data and re-insert to ensure consistency
 DELETE FROM public.recruitment_role_mapping;
 

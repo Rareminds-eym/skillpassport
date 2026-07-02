@@ -29,34 +29,9 @@ const GuestOnlyRoute: React.FC<GuestOnlyRouteProps> = ({ children }) => {
       return <Navigate to={returnUrl} replace />;
     }
 
-    // Default routing based on role
-    switch (role) {
-      case 'learner':
-        return <Navigate to="/learner/dashboard" replace />;
-      case 'educator':
-      case 'school_educator':
-      case 'college_educator':
-        return <Navigate to="/educator/dashboard" replace />;
-      case 'admin':
-      case 'company_admin':
-      case 'school_admin':
-      case 'college_admin':
-      case 'university_admin':
-      case 'owner':
-        // University admin goes to university dashboard, school to school, etc.
-        if (role === 'university_admin') return <Navigate to="/university/dashboard" replace />;
-        if (role === 'school_admin') return <Navigate to="/school/dashboard" replace />;
-        if (role === 'college_admin') return <Navigate to="/college/dashboard" replace />;
-        // Company owner/admin goes to recruiter dashboard
-        if (role === 'owner' || role === 'company_admin') return <Navigate to="/recruiter/dashboard" replace />;
-        return <Navigate to="/recruiter/dashboard" replace />;
-      case 'recruiter':
-      case 'hr':
-        return <Navigate to="/recruiter/dashboard" replace />;
-      default:
-        // Fallback for unknown or missing roles
-        return <Navigate to="/" replace />;
-    }
+    // Use the canonical role-based routing from roleBasedRouter.ts
+    const dashboardRoute = getRouteForRole(role || '');
+    return <Navigate to={dashboardRoute} replace />;
   }
 
   // User is not authenticated, render the children (e.g. Login form)

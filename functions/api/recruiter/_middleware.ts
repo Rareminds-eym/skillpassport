@@ -33,17 +33,18 @@ export const onRequest = withAuth(async (context: AuthenticatedContext) => {
       .from('organization_members')
       .select('organization_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error || !memberData?.organization_id) {
       console.error('[recruiter-middleware] Failed to get organization:', {
         userId: user.id,
-        error: error?.message
+        error: error?.message,
+        errorDetails: error
       });
-      
+
       return apiError(
-        403, 
-        'ORGANIZATION_NOT_FOUND', 
+        403,
+        'ORGANIZATION_NOT_FOUND',
         'User is not associated with any organization. Please contact support.',
         context.request
       );

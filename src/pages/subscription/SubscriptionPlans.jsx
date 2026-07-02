@@ -596,6 +596,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           ) : (
             <button
               onClick={handleClick}
+              disabled={isDowngrade}
               className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${isOrganizationMode
                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
                 : isUpgrade || plan.recommended
@@ -705,9 +706,9 @@ function SubscriptionPlans() {
   const roleTypeParam = useMemo(() => getRoleTypeParam(pageRole), [pageRole]);
 
   // Determine business type based on user role
-  // B2C for individual learners, B2B for organization admins
+  // B2C for individual learners, B2B for organization admins and recruiters
   const businessType = useMemo(() => {
-    return pageRole === 'admin' ? 'b2b' : 'b2c';
+    return (pageRole === 'admin' || pageRole === 'recruiter') ? 'b2b' : 'b2c';
   }, [pageRole]);
 
   // Fetch plans EXCLUSIVELY from the Cloudflare Worker API.
@@ -827,6 +828,47 @@ function SubscriptionPlans() {
   }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
 
   const handlePlanSelection = useCallback(async (plan) => {
+    // RECRUITER PAYMENT BLOCK: For now, recruiters see plans but skip payment
+    // They can select a plan (UI acknowledgment) and proceed to onboarding or dashboard
+    if (pageRole === 'recruiter') {
+      // Check if auth is still loading
+      if (authLoading) {
+        if (DEBUG) console.log('[SubscriptionPlans] Auth still loading, please wait...');
+        return;
+      }
+
+      // If not authenticated, redirect to signup
+      if (!isAuthenticated) {
+        if (DEBUG) console.log('[SubscriptionPlans] Recruiter not authenticated, redirecting to signup');
+        navigate('/signup', {
+          state: {
+            plan,
+            learnerType,
+            returnTo: '/subscription/plans'
+          }
+        });
+        return;
+      }
+
+      // For authenticated recruiters: Skip payment, check onboarding status
+      // This is UI-only - no actual subscription is created yet
+      toast.success(`${plan.name} plan selected! Setting up your account...`, {
+        duration: 2000,
+        icon: '✅'
+      });
+
+      // Redirect to dashboard after plan selection
+      // Onboarding is now completed BEFORE reaching this page
+      if (DEBUG) console.log('[SubscriptionPlans] Plan selected, redirecting to dashboard');
+      const targetPath = getDashboardPath(userRole) || '/recruitment/overview';
+
+      setTimeout(() => {
+        navigate(targetPath, { replace: true });
+      }, 1500);
+
+      return;
+    }
+
     // If user is currently on their ACTIVE plan (not cancelled), go to manage page
     // Cancelled subscriptions should allow re-purchase of the same plan
     if (subscriptionData && (subscriptionData.plan === plan.plan_code || subscriptionData.plan === plan.id) && subscriptionData.status !== 'cancelled') {

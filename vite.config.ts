@@ -35,8 +35,9 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild',
     chunkSizeWarningLimit: 1000,
+    target: 'esnext',
     rollupOptions: {
-      maxParallelFileOps: 3,
+      maxParallelFileOps: 1,
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
@@ -46,7 +47,7 @@ export default defineConfig({
 
           // Extract package name from node_modules path
           const parts = id.split('node_modules/')[1]?.split('/') ?? [];
-          if (!parts.length) return 'vendor-misc';
+          if (!parts.length) return 'vendor';
 
           // Get the actual package name (handle scoped packages like @supabase/supabase-js)
           const packageName = parts[0].startsWith('@') && parts.length > 1
@@ -60,81 +61,51 @@ export default defineConfig({
             return 'vendor-react';
           }
 
-          // Victory charts and d3 - keep together to avoid circular deps
-          if (packageName.startsWith('victory') || packageName === 'victory-vendor' || packageName.startsWith('d3-')) {
+          // Radix UI components - group together
+          if (packageName.startsWith('@radix-ui/')) {
+            return 'vendor-radix';
+          }
+
+          // Supabase - group together
+          if (packageName.startsWith('@supabase/')) {
+            return 'vendor-supabase';
+          }
+
+          // Charts - group together
+          if (packageName.startsWith('victory') || packageName === 'victory-vendor' || 
+              packageName.startsWith('d3-') || packageName === 'recharts' ||
+              packageName === 'apexcharts' || packageName === 'react-apexcharts') {
             return 'vendor-charts';
           }
 
-          // Other chart libraries
-          if (packageName === 'recharts') {
-            return 'vendor-recharts';
+          // UI/Animation libraries - group together
+          if (packageName === 'framer-motion' || packageName === 'gsap' || 
+              packageName === 'lottie-react' || packageName.startsWith('@tsparticles/') ||
+              packageName.startsWith('@lottiefiles/')) {
+            return 'vendor-animation';
           }
 
-          // Large individual packages that need their own chunks
-          if (packageName === '@supabase/supabase-js' || packageName === '@supabase/postgrest-js' ||
-            packageName === '@supabase/realtime-js' || packageName === '@supabase/storage-js' ||
-            packageName === '@supabase/functions-js' || packageName === '@supabase/auth-js') {
-            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
-          }
-
-          if (packageName === '@tanstack/react-query') {
-            return 'vendor-tanstack-react-query';
-          }
-
-          if (packageName === 'lucide-react') {
-            return 'vendor-lucide-react';
-          }
-
-          if (packageName === 'xlsx') {
-            return 'vendor-xlsx';
-          }
-
-          if (packageName === 'react-datepicker' || packageName === 'date-fns') {
-            return 'vendor-datepicker';
-          }
-
-          if (packageName === 'country-state-city') {
-            return 'vendor-country-state-city';
-          }
-
-          if (packageName === 'indian-pincodes') {
-            return 'vendor-indian-pincodes';
-          }
-
-          // Radix UI - split each package separately
-          if (packageName.startsWith('@radix-ui/')) {
-            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
-          }
-
-          // PDF libraries
+          // PDF/Document libraries - group together
           if (packageName === 'jspdf' || packageName === 'jspdf-autotable' ||
-            packageName === 'pdfjs-dist' || packageName === 'pdf-lib' ||
-            packageName === 'html2canvas') {
-            return `vendor-${packageName}`;
+              packageName === 'pdfjs-dist' || packageName === 'pdf-lib' ||
+              packageName === 'html2canvas' || packageName === 'docx') {
+            return 'vendor-pdf';
           }
 
-          // AI libraries
-          if (packageName === '@google/generative-ai' || packageName === 'openai' ||
-            packageName === '@xenova/transformers') {
-            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
-          }
-
-          // Animation libraries
-          if (packageName === 'framer-motion' || packageName === 'motion' ||
-            packageName === 'gsap' || packageName === 'lottie-react' ||
-            packageName === '@tsparticles/react' || packageName === '@tsparticles/slim' ||
-            packageName === '@lottiefiles/dotlottie-react') {
-            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
-          }
-
-          // Icon libraries
+          // Icons - group together
           if (packageName === 'react-icons' || packageName === '@heroicons/react' ||
-            packageName === '@tabler/icons-react') {
-            return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
+              packageName === '@tabler/icons-react' || packageName === 'lucide-react') {
+            return 'vendor-icons';
           }
 
-          // Everything else gets its own chunk to avoid exceeding 25MB limit
-          return `vendor-${packageName.replace(/[@\/]/g, '-')}`;
+          // Large data/utility libraries
+          if (packageName === 'xlsx' || packageName === 'country-state-city' ||
+              packageName === 'indian-pincodes' || packageName === 'papaparse') {
+            return 'vendor-data';
+          }
+
+          // Everything else
+          return 'vendor';
         },
       },
     },

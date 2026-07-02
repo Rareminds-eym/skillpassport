@@ -56,7 +56,7 @@ const VerifyEmail = () => {
         setState('success');
 
         // Auto-redirect after a short delay to show success message
-        setTimeout(() => {
+        setTimeout(async () => {
           const currentUser = useAuthStore.getState().user;
           const userRole = currentUser?.role || useAuthStore.getState().role;
           const userRoles = currentUser?.roles || [];
@@ -131,6 +131,7 @@ const VerifyEmail = () => {
               hasInvitationToken: !!invitationToken
             });
             navigate('/login', { replace: true });
+            return; // CRITICAL: Stop execution after navigation
           } else if (isInstitutionAdmin) {
             // Institution admin who just signed up — send to institution
             // subscription plans (b2b) for their role.
@@ -140,28 +141,141 @@ const VerifyEmail = () => {
               orgId: currentUser?.orgId,
             });
             navigate(`/subscription/plans?type=${userRole}`, { replace: true });
+            return; // CRITICAL: Stop execution after navigation
           } else if (isRecruitmentUser) {
-            // Recruitment user without invitation context
-            // Company admins (owner role in SSO) who just signed up should see subscription plans first
-            // Invited recruiters should go directly to their respective dashboards
-            const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+            // NEW ROUTING LOGIC: Check recruiterType from sessionStorage
+            const recruiterType = sessionStorage.getItem('recruiter_type');
+            const invitationToken = sessionStorage.getItem('invitation_token');
 
-            if (isCompanyAdmin) {
-              // New company signup - show subscription plans
-              console.log('[VerifyEmail] Redirecting company admin to recruitment subscription plans', {
-                userRole,
-                roles: userRoles,
-                orgId: currentUser?.orgId,
+            // Also check if org name is NULL - indicates new admin recruiter who hasn't set company details
+            const orgName = currentUser?.user_metadata?.organizationName;
+            const hasNullOrgName = !orgName || orgName === null || orgName === 'null';
+
+            console.log('[VerifyEmail] Recruitment user detected', {
+              userRole,
+              roles: userRoles,
+              recruiterType,
+              hasInvitationToken: !!invitationToken,
+              orgName,
+              hasNullOrgName
+            });
+
+            // Check if this is a NEW admin recruiter (NULL org name OR recruiter_type=admin)
+            const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+            const isNewAdminRecruiter = (recruiterType === 'admin' || (isCompanyAdmin && hasNullOrgName));
+
+            if (isNewAdminRecruiter && !invitationToken) {
+              // Admin recruiter: Go to onboarding first to set company details
+              // After onboarding, they'll go to subscription plans
+              console.log('[VerifyEmail] New admin recruiter (NULL org) → onboarding (company details first)');
+              sessionStorage.removeItem('recruiter_type'); // Clean up
+              navigate('/recruitment/onboarding/step-1', {
+                replace: true,
               });
-              navigate('/recruitment/subscription/plans', { replace: true });
+              return; // CRITICAL: Prevent fallthrough to legacy routing
+            } else if (recruiterType === 'invited' && invitationToken) {
+              // Invited recruiter: Auto-accept invitation, then go to dashboard
+              console.log('[VerifyEmail] Invited recruiter → auto-accepting invitation');
+
+              try {
+                const response = await fetch('/api/recruitment/invitations/accept', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ token: invitationToken }),
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  console.log('[VerifyEmail] Invitation accepted successfully:', result);
+
+                  // Clean up
+                  sessionStorage.removeItem('recruiter_type');
+                  sessionStorage.removeItem('invitation_token');
+                  sessionStorage.removeItem('invitation_email');
+                  sessionStorage.removeItem('invitation_org_id');
+                  sessionStorage.removeItem('invitation_org_name');
+
+                  // Force logout and redirect to login to get fresh JWT with membership
+                  console.log('[VerifyEmail] Logging out to get fresh JWT with org membership');
+                  await ssoClient.logout();
+                  useAuthStore.setState({
+                    user: null,
+                    isAuthenticated: false,
+                    role: null,
+                  });
+
+                  // Store redirect target for after login
+                  sessionStorage.setItem('post_login_redirect', '/recruitment/overview');
+                  navigate('/login?verified=1&invited=1', { replace: true });
+                  return; // CRITICAL: Stop execution after navigation
+                } else {
+                  // Invitation acceptance failed - show error
+                  const errorData = await response.json();
+                  console.error('[VerifyEmail] Invitation acceptance failed:', errorData);
+
+                  // Redirect to error page with details
+                  navigate('/invitation-error', {
+                    replace: true,
+                    state: {
+                      errorType: response.status === 409 ? 'already_used' :
+                        response.status === 410 ? 'expired' :
+                          response.status === 404 ? 'invalid' : 'unknown',
+                      errorMessage: errorData.error,
+                    }
+                  });
+                  return; // CRITICAL: Stop execution after error navigation
+                }
+              } catch (error) {
+                console.error('[VerifyEmail] Invitation acceptance error:', error);
+                navigate('/invitation-error', {
+                  replace: true,
+                  state: { errorType: 'unknown', errorMessage: 'Failed to process invitation' }
+                });
+                return; // CRITICAL: Stop execution after error navigation
+              }
             } else {
-              // Invited recruiter - go to overview dashboard
-              console.log('[VerifyEmail] Redirecting invited recruiter to overview dashboard', {
-                userRole,
-                roles: userRoles,
-                orgId: currentUser?.orgId,
-              });
-              navigate('/recruitment/overview', { replace: true });
+              // Fallback: Legacy recruitment user routing (no recruiterType stored)
+              const isCompanyAdmin = userRoles.includes('owner') || userRoles.includes('company_admin');
+
+              if (isCompanyAdmin) {
+                console.log('[VerifyEmail] LEGACY: Company admin → syncing org and redirecting to subscription plans');
+
+                // Sync organization from SSO to Skillpassport DB
+                // Admin recruiters create org in SSO DB during signup, but it needs to be synced to local DB
+                const orgId = currentUser?.orgId;
+                const orgName = currentUser?.user_metadata?.organizationName || `${currentUser?.user_metadata?.firstName}'s Organization`;
+
+                if (orgId) {
+                  try {
+                    console.log('[VerifyEmail] Syncing organization to local DB:', { orgId, orgName });
+                    await fetch('/api/organization', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        action: 'create-local-organization',
+                        p_organization_id: orgId,
+                        p_organization_name: orgName,
+                        p_recruitment_enabled: true,
+                        p_max_recruiters: 10,
+                      }),
+                    });
+                    console.log('[VerifyEmail] ✓ Organization synced to local DB');
+                  } catch (syncError) {
+                    console.error('[VerifyEmail] Failed to sync organization (non-critical):', syncError);
+                    // Non-critical: Continue with redirect even if sync fails
+                    // The org context will try to load from FDW as fallback
+                  }
+                }
+
+                navigate('/subscription/plans?type=recruiter', { replace: true });
+                return; // CRITICAL: Stop execution after navigation
+              } else {
+                console.log('[VerifyEmail] LEGACY: Invited recruiter → overview dashboard');
+                navigate('/recruitment/overview', { replace: true });
+                return; // CRITICAL: Stop execution after navigation
+              }
             }
           } else {
             // Regular learner user - go to subscription plans
@@ -170,6 +284,7 @@ const VerifyEmail = () => {
               roles: userRoles
             });
             navigate('/subscription/plans', { replace: true });
+            return; // CRITICAL: Stop execution after navigation
           }
         }, 1500); // Show success message for 1.5 seconds before redirecting
 

@@ -2,15 +2,19 @@
 -- Phase 1: Replace FDW with Local organization_members Table
 -- =====================================================
 -- 
--- ARCHITECTURE CHANGE:
--- Previously, membership data was queried via Foreign Data Wrapper (FDW)
--- from the SSO-Worker database (sso_foreign.memberships, etc.).
--- Since FDW is not set up/not available, we now store membership
--- data locally in public.organization_members.
+-- ARCHITECTURE CHANGE (Updated 2026):
+-- We use a queue-based sync system (auth-sync-consumer) to sync data from
+-- SSO-Worker database to local Skillpassport tables in real-time.
+-- 
+-- Data Flow:
+-- 1. SSO-Worker creates user/org/membership
+-- 2. SSO-Worker publishes events to Cloudflare Queue
+-- 3. auth-sync-consumer processes queue messages
+-- 4. Data synced to local tables (users, organizations, organization_members)
 --
 -- This migration:
--- 1. Creates organization_members table
--- 2. Rewrites all RPC functions to use local table instead of sso_foreign.*
+-- 1. Creates organization_members table (synced via queue)
+-- 2. Rewrites all RPC functions to use local table
 -- 3. Updates create_local_organization to accept creator user ID
 --
 -- Phase: 1 of 1 (no phase 2/3 needed - no old columns to drop)
@@ -47,7 +51,8 @@ CREATE INDEX IF NOT EXISTS idx_organization_members_status
     ON public.organization_members(status);
 
 COMMENT ON TABLE public.organization_members IS
-'Local membership table replacing FDW-based sso_foreign.memberships. Stores which users belong to which organizations and their role.';
+'Local membership table synced from SSO-Worker via queue-based sync (auth-sync-consumer). Stores which users belong to which organizations and their role.';
+
 
 -- =====================================================
 -- STEP 2: Rewrite is_org_member (was FDW-based)

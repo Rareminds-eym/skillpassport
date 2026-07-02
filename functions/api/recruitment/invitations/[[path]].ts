@@ -62,12 +62,17 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 });
 
 /**
- * POST /api/recruitment/invitations or /api/recruitment/invitations/accept
- * Create invitation or accept invitation based on path
+ * POST /api/recruitment/invitations or /api/recruitment/invitations/accept or /api/recruitment/invitations/validate
+ * Create invitation, accept invitation, or validate invitation token based on path
  */
 export async function onRequestPost(context: any): Promise<Response> {
     const url = new URL(context.request.url);
     const path = url.pathname;
+
+    // Route to validate handler if path ends with /validate (no auth required)
+    if (path.endsWith('/validate')) {
+        return handleValidateInvitation(context);
+    }
 
     // Route to accept handler if path ends with /accept
     if (path.endsWith('/accept')) {
@@ -168,6 +173,98 @@ export const onRequestPut = withAuth(async (context: AuthenticatedContext) => {
         );
     }
 });
+
+/**
+ * Validate Recruitment Invitation Token
+ * POST /api/recruitment/invitations/validate
+ * 
+ * This endpoint validates an invitation token WITHOUT requiring authentication.
+ * Used during signup flow to pre-select recruiter type and org info.
+ */
+async function handleValidateInvitation(context: any): Promise<Response> {
+    console.log('=== VALIDATE INVITATION TOKEN API CALLED ===');
+    const env = context.env as Record<string, string>;
+    const supabase = getServiceClient(env as any);
+
+    let body: { token: string };
+    try {
+        body = await context.request.json();
+        console.log('[validate-invitation] Token validation request:', {
+            token: body.token ? `${body.token.substring(0, 8)}...` : 'missing',
+        });
+    } catch (parseError) {
+        console.error('[validate-invitation] Failed to parse JSON body:', parseError);
+        return Response.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { token } = body;
+
+    if (!token) {
+        return Response.json({ error: 'token is required' }, { status: 400 });
+    }
+
+    try {
+        // Fetch invitation from database
+        const { data: invitation, error: inviteError } = await supabase
+            .from('organization_invitations')
+            .select(`
+                *,
+                organization:organizations(
+                    id,
+                    name,
+                    organization_settings(recruitment_enabled)
+                )
+            `)
+            .eq('invitation_token', token)
+            .single();
+
+        if (inviteError || !invitation) {
+            console.error('[validate-invitation] Invitation not found:', inviteError);
+            return Response.json({ error: 'Invalid invitation token' }, { status: 404 });
+        }
+
+        console.log('[validate-invitation] ✓ Invitation found:', {
+            id: invitation.id,
+            email: invitation.invitee_email,
+            role: invitation.invitee_role,
+            status: invitation.status,
+            orgId: invitation.organization_id,
+        });
+
+        // Check invitation status
+        if (invitation.status === 'accepted') {
+            return Response.json({ error: 'Invitation already accepted' }, { status: 409 });
+        }
+
+        if (invitation.status === 'cancelled') {
+            return Response.json({ error: 'Invitation has been cancelled' }, { status: 410 });
+        }
+
+        if (new Date(invitation.expires_at) < new Date()) {
+            return Response.json({ error: 'Invitation has expired' }, { status: 410 });
+        }
+
+        // Return validated invitation data
+        const orgData = Array.isArray(invitation.organization) 
+            ? invitation.organization[0] 
+            : invitation.organization;
+
+        return Response.json({
+            valid: true,
+            inviteeEmail: invitation.invitee_email,
+            organizationId: invitation.organization_id,
+            organizationName: orgData?.name || 'Unknown Organization',
+            role: invitation.invitee_role,
+            expiresAt: invitation.expires_at,
+        });
+    } catch (error: any) {
+        console.error('[validate-invitation] Validation error:', error);
+        return Response.json(
+            { error: 'Failed to validate invitation', details: error.message },
+            { status: 500 }
+        );
+    }
+}
 
 /**
  * Accept Recruitment Invitation

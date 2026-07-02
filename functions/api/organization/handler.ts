@@ -382,7 +382,8 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
 
 async function updateOrganizationHandler(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
-  const { id, ...updates } = body;
+  // Exclude 'action' and 'id' from updates - these are routing/identifier fields, not data columns
+  const { id, action, ...updates } = body;
   const { data, error } = await supabase.from('organizations').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
   if (error) throw error;
   return apiSuccess(data, context.request);
@@ -400,6 +401,15 @@ async function createLocalOrganizationHandler(context: AuthenticatedContext, bod
   const supabase = getSupabase(context);
   const userId = getUserId(context);
   const { p_organization_id, p_organization_name, p_recruitment_enabled, p_max_recruiters } = body;
+
+  console.log('[createLocalOrganizationHandler] Calling create_local_organization with:', {
+    p_organization_id,
+    p_organization_name,
+    p_recruitment_enabled: p_recruitment_enabled ?? true,
+    p_max_recruiters: p_max_recruiters ?? 10,
+    p_created_by_user_id: userId,
+  });
+
   const { data, error } = await supabase.rpc('create_local_organization', {
     p_organization_id,
     p_organization_name,
@@ -407,7 +417,13 @@ async function createLocalOrganizationHandler(context: AuthenticatedContext, bod
     p_max_recruiters: p_max_recruiters ?? 10,
     p_created_by_user_id: userId,
   });
-  if (error) throw error;
+
+  if (error) {
+    console.error('[createLocalOrganizationHandler] Database error:', error);
+    throw error;
+  }
+
+  console.log('[createLocalOrganizationHandler] Success:', data);
   return apiSuccess(data, context.request);
 }
 
