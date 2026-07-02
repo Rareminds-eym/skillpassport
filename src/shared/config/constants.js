@@ -47,3 +47,18 @@ export const ROUTES = {
   LEARNER_APPLIED_JOBS: '/learner/applied-jobs',
   LEARNER_BROWSE_JOBS: '/learner/browse-jobs',
 };
+
+/**
+ * Receipt file path configuration
+ * CRITICAL: Must match backend configuration in verify-payment.ts
+ */
+export const RECEIPT_CONFIG = {
+  // Length of user ID prefix used in receipt file paths
+  // Pattern: payment_pdf/user_{first8chars}/{sanitizedPaymentId}_{timestamp}.pdf
+  USER_ID_PREFIX_LENGTH: 8,
+  
+  // Regex to sanitize payment IDs for safe file paths
+  // Removes all characters except alphanumeric, underscore, and hyphen
+  PAYMENT_ID_SANITIZE_REGEX: /[^a-zA-Z0-9_-]/g,
+};
+

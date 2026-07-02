@@ -28,6 +28,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
+import { RECEIPT_CONFIG } from '@/shared/config/constants';
+import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
 
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 import toast from 'react-hot-toast';
@@ -293,33 +295,9 @@ function MySubscription() {
           errorOccurred = true;
           errorMessage = 'Failed to generate download link. Please try again.';
         } else {
-          // Try fetch + blob approach first for better control
-          try {
-            const response = await fetch(presignedUrl);
-            if (!response.ok) {
-              throw new Error('Fetch failed');
-            }
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            try {
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
-              link.click();
-              successfulDownload = true;
-            } finally {
-              URL.revokeObjectURL(url);
-            }
-          } catch (fetchError) {
-            // Fallback: direct link if fetch fails (e.g., CORS issues)
-            logger.warn('Fetch failed, using direct link', fetchError);
-            const link = document.createElement('a');
-            link.href = presignedUrl;
-            link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
-            link.target = '_blank';
-            link.click();
-            successfulDownload = true;
-          }
+          // Use shared download helper with fallback mechanism
+          await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+          successfulDownload = true;
         }
       } else {
         // PRIORITY 2: Determine which payment ID to use for constructing receipt path
@@ -345,8 +323,8 @@ function MySubscription() {
         } else {
           // Construct the receipt key pattern - matches what the backend generates
           // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
-          const shortUserId = user?.id?.slice(0, 8) || '';
-          const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9_-]/g, '');
+          const shortUserId = user?.id?.slice(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH) || '';
+          const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
           
           // The exact key format may vary by timestamp, so we use the payment ID as identifier
           // The backend will handle key extraction from payment ID
@@ -360,33 +338,9 @@ function MySubscription() {
             errorOccurred = true;
             errorMessage = 'Failed to generate download link. Receipt may not exist.';
           } else {
-            // Try fetch + blob approach first for better control
-            try {
-              const response = await fetch(presignedUrl);
-              if (!response.ok) {
-                throw new Error('Fetch failed');
-              }
-              const blob = await response.blob();
-              const url = URL.createObjectURL(blob);
-              try {
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
-                link.click();
-                successfulDownload = true;
-              } finally {
-                URL.revokeObjectURL(url);
-              }
-            } catch (fetchError) {
-              // Fallback: direct link if fetch fails (e.g., CORS issues)
-              logger.warn('Fetch failed, using direct link', fetchError);
-              const link = document.createElement('a');
-              link.href = presignedUrl;
-              link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
-              link.target = '_blank';
-              link.click();
-              successfulDownload = true;
-            }
+            // Use shared download helper with fallback mechanism
+            await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+            successfulDownload = true;
           }
         }
       }

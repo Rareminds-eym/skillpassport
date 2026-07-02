@@ -14,6 +14,7 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
+import { RECEIPT_CONFIG, DateUtils } from '../../../lib/constants';
 import { sendEmailSafe } from '../../../lib/email-service';
 import { createLogger } from '../../../lib/logger';
 import { apiError, apiSuccess } from '../../../lib/response';
@@ -141,8 +142,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // DO NOT store in database yet - only after successful upload
     let receiptKey: string | null = null;
     
-    const shortUserId = user.id.substring(0, 8);
-    const sanitizedPmtId = (body.razorpay_payment_id as string).replace(/[^a-zA-Z0-9_-]/g, '');
+    const shortUserId = user.id.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
+    const sanitizedPmtId = (body.razorpay_payment_id as string).replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
     const timestamp = Date.now();
     receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
 
@@ -402,8 +403,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             try {
               logger.error('Async receipt generation failed', err instanceof Error ? err : new Error(String(err)));
             } catch (logError) {
-              // Last resort: console.error if logger itself fails
-              logger.error('Receipt generation failed and logger threw:', err);
+              // Logger itself failed - log to console as fallback
+              console.error('Logger failed during receipt error handling:', logError, 'Original error:', err);
             }
           })
         );
@@ -597,11 +598,17 @@ async function generateAndUploadReceipt(params: {
 
     // Generate PDF
     logger.info('Generating PDF receipt', { paymentId, amount });
-    const pdfBytes = await generateReceiptPDF(receiptData);
-    logger.info('PDF generated successfully', { size: pdfBytes.buffer.byteLength });
+    let pdfBytes;
+    try {
+      pdfBytes = await generateReceiptPDF(receiptData);
+      logger.info('PDF generated successfully', { size: pdfBytes.buffer.byteLength });
+    } catch (pdfError) {
+      logger.error('PDF generation failed', pdfError instanceof Error ? pdfError : new Error(String(pdfError)));
+      throw pdfError;
+    }
     
-    const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9_-]/g, '');
-    const filename = `Receipt-${sanitizedPaymentId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+    const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+    const filename = `Receipt-${sanitizedPaymentId.slice(-8)}-${DateUtils.getDateString()}.pdf`;
 
     // Upload to R2
     logger.info('Uploading receipt to R2', { receiptKey, filename });

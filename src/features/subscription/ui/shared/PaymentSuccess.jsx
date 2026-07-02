@@ -13,6 +13,8 @@
  */
 
 import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import { RECEIPT_CONFIG } from '@/shared/config/constants';
+import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
 import {
   ArrowRight,
   Calendar,
@@ -652,8 +654,8 @@ function PaymentSuccess() {
       
       // Strategy 2: If not available, construct from payment ID and try to fetch
       if (!fileIdentifier && paymentParams.razorpay_payment_id && user?.id) {
-        const shortUserId = (user?.id || '').substring(0, 8) || 'unknown';
-        const sanitizedPaymentId = paymentParams.razorpay_payment_id.replace(/[^a-zA-Z0-9_-]/g, '');
+        const shortUserId = (user?.id || '').substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH) || 'unknown';
+        const sanitizedPaymentId = paymentParams.razorpay_payment_id.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
         // Use a wildcard pattern - backend will find the file with any timestamp
         fileIdentifier = `payment_pdf/user_${shortUserId}/${sanitizedPaymentId}`;
         log.info('Constructed receipt identifier from payment ID:', fileIdentifier);
@@ -663,31 +665,8 @@ function PaymentSuccess() {
         log.info('Requesting presigned URL for:', fileIdentifier);
         const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
         
-        // Try fetch + blob approach first for better control
-        try {
-          const response = await fetch(presignedUrl);
-          if (!response.ok) {
-            throw new Error('Fetch failed');
-          }
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          try {
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
-            link.click();
-          } finally {
-            URL.revokeObjectURL(url);
-          }
-        } catch (fetchError) {
-          // Fallback: direct link if fetch fails (e.g., CORS issues)
-          log.warn('Fetch failed, using direct link', fetchError);
-          const link = document.createElement('a');
-          link.href = presignedUrl;
-          link.download = `Receipt-${new Date().toISOString().split('T')[0]}.pdf`;
-          link.target = '_blank';
-          link.click();
-        }
+        // Use shared download helper with fallback mechanism
+        await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
         
         toast.success('Receipt downloading!');
         return;

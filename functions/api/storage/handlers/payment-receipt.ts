@@ -9,6 +9,7 @@
 import type { PagesFunction } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';;
 import { corsHeaders } from '../../../lib/cors';
+import { RECEIPT_CONFIG, DateUtils } from '../../../lib/constants';
 import { R2Client } from '../utils/r2-client';
 import {
   createAuthenticationError,
@@ -78,10 +79,10 @@ export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }
 
     // Generate unique filename with hybrid folder structure: {name}_{short_id}/
     const timestamp = Date.now();
-    const sanitizedPaymentId = paymentId.replace(/[^a-zA-Z0-9_-]/g, '');
+    const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
 
     // Create folder name: sanitized_name + short user_id (first 8 chars)
-    const shortUserId = userId.substring(0, 8);
+    const shortUserId = userId.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
     const sanitizedName = userName
       ? userName
           .toLowerCase()
@@ -95,7 +96,7 @@ export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }
     const fileKey = `payment_pdf/${folderName}/${sanitizedPaymentId}_${timestamp}.pdf`;
     const finalFilename =
       filename ||
-      `Receipt-${sanitizedPaymentId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+      `Receipt-${sanitizedPaymentId.slice(-8)}-${DateUtils.getDateString()}.pdf`;
 
     logger.info('File key and filename prepared', { fileKey, finalFilename });
 
@@ -327,13 +328,14 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
         return apiError(404, 'NOT_FOUND', 'Receipt not found. It may still be generating.', request);
       }
 
-      if (!files[0] || !files[0].key) {
+      const firstFile = files[0];
+      if (!firstFile || !firstFile.key) {
         logger.error('Invalid file object returned from list', new Error('Missing key property'));
         return apiError(500, 'INTERNAL_ERROR', 'Failed to process receipt file', request);
       }
 
       // Use the first (and should be only) matching file
-      fileKey = files[0].key;
+      fileKey = firstFile.key;
       logger.info('Using file', { fileKey });
     }
 

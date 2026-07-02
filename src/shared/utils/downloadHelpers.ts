@@ -1,0 +1,96 @@
+/**
+ * Download Helper Utilities
+ * 
+ * Provides robust file download functionality with:
+ * - Memory leak prevention via proper cleanup
+ * - Fallback mechanisms for CORS issues
+ * - Error handling and logging
+ */
+
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('download-helpers');
+
+/**
+ * Get current date in YYYY-MM-DD format
+ * Used for consistent date formatting in filenames
+ */
+export function getDateString(date: Date = new Date()): string {
+  return date.toISOString().split('T')[0];
+}
+
+/**
+ * Download a file from a URL with proper memory management
+ * 
+ * Strategy:
+ * 1. Try fetch + blob (better control, proper cleanup)
+ * 2. Fallback to direct link if fetch fails (e.g., CORS issues)
+ * 
+ * @param url - The URL to download from (typically a presigned URL)
+ * @param filename - The filename to save as
+ * @returns True if download succeeded
+ * @throws Error if download fails completely
+ */
+export async function downloadFileFromUrl(url: string, filename?: string): Promise<boolean> {
+  if (!url) {
+    throw new Error('URL is required for download');
+  }
+  
+  if (!filename) {
+    filename = `download-${getDateString()}.pdf`;
+  }
+
+  try {
+    // Primary strategy: fetch + blob for better control
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Fetch failed with status ${response.status}`);
+    }
+    
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    
+    try {
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      link.click();
+      return true;
+    } finally {
+      // Guaranteed cleanup - prevents memory leaks
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch (fetchError) {
+    // Fallback strategy: direct link (for CORS issues, etc.)
+    const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+    logger.warn('Fetch failed, using direct link fallback', { error: error.message, stack: error.stack });
+    
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.target = '_blank'; // Open in new tab if download attribute doesn't work
+      link.click();
+      return true;
+    } catch (fallbackError) {
+      const fallbackErr = fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError));
+      logger.error('Both fetch and direct link failed', fallbackErr);
+      throw new Error(`Download failed: ${fallbackErr.message}`);
+    }
+  }
+}
+
+/**
+ * Generate a receipt filename with standardized format
+ * 
+ * @param identifier - Optional identifier (e.g., payment ID)
+ * @returns Formatted filename
+ */
+export function generateReceiptFilename(identifier?: string): string {
+  const date = getDateString();
+  if (identifier) {
+    return `Receipt-${identifier}-${date}.pdf`;
+  }
+  return `Receipt-${date}.pdf`;
+}

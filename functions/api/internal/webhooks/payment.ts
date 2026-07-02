@@ -23,6 +23,7 @@
 import { apiError, apiSuccess } from '../../../lib/response';
 import type { PagesEnv } from '../../../lib/types';
 import type { Fetcher } from '@cloudflare/workers-types';
+import { RECEIPT_CONFIG, DateUtils } from '../../../lib/constants';
 import { APP_URL } from '../../email/types';
 import {
   fulfillLearnerSubscription,
@@ -320,11 +321,11 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
     };
 
     const pdfBytes = await generateReceiptPDF(receiptData);
-    const shortUserId = userId.substring(0, 8);
-    const sanitizedPmtId = razorpay_payment_id.replace(/[^a-zA-Z0-9_-]/g, '');
+    const shortUserId = userId.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
+    const sanitizedPmtId = razorpay_payment_id.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
     const timestamp = Date.now();
     receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
-    const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+    const filename = `Receipt-${sanitizedPmtId.slice(-8)}-${DateUtils.getDateString()}.pdf`;
 
     const r2 = new R2Client(env);
     await r2.upload(receiptKey, pdfBytes.buffer as ArrayBuffer, 'application/pdf', {
