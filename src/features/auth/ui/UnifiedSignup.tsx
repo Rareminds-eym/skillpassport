@@ -1346,7 +1346,9 @@ const UnifiedSignup = () => {
                     {state.roleDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
                         {allRoles.map(role => {
-                          const isAvailable = true; // All roles are now available
+                          // Recruiter signup is invitation-only, so keep it visible
+                          // in the dropdown but non-selectable.
+                          const isAvailable = role !== 'recruiter';
                           return (
                             <button
                               key={role}
@@ -1368,11 +1370,6 @@ const UnifiedSignup = () => {
                                 } ${state.selectedRole === role ? 'bg-blue-50 text-blue-700' : ''}`}
                             >
                               <span className="font-medium">{getRoleDisplayName(role)}</span>
-                              {!isAvailable && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-200 text-gray-600">
-                                  Coming Soon
-                                </span>
-                              )}
                             </button>
                           );
                         })}
