@@ -631,24 +631,71 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         // Fetch privacy settings from user_settings table using learner's user_id
         let privacySettings = { profileVisibility: 'public', showEmail: true, showPhone: true, showLocation: true };
+        let settingsError: any = null;
 
         if (learnerData.user_id) {
-          const { data: userSettings, error: settingsError } = await supabase
+          const result = await supabase
             .from('user_settings')
             .select('privacy_settings')
             .eq('user_id', learnerData.user_id)
             .maybeSingle();
 
-          if (!settingsError && userSettings?.privacy_settings) {
-            privacySettings = userSettings.privacy_settings;
+          settingsError = result.error;
+          if (!settingsError && result.data?.privacy_settings) {
+            privacySettings = result.data.privacy_settings;
+          } else if (settingsError && settingsError.code !== 'PGRST116') {
+            console.warn(`Failed to fetch privacy settings for user ${learnerData.user_id}:`, settingsError);
           }
         }
 
-        // Note: Frontend enforces privacy checks based on user role and settings
-        // API returns raw data with privacy settings; frontend filters based on viewer permissions
+        // Normalize privacy settings with safe defaults
+        const normalizedSettings = {
+          profileVisibility: privacySettings?.profileVisibility || 'public',
+          showEmail: privacySettings?.showEmail !== false,
+          showPhone: privacySettings?.showPhone !== false,
+          showLocation: privacySettings?.showLocation !== false,
+        };
+
+        // Server-side privacy enforcement
+        const viewerId = (context.user as any)?.id;
+        const isProfileOwner = learnerData.user_id === viewerId;
+        const viewerRoles = (context.user as any)?.roles || [];
+        const isAdmin = viewerRoles.some((r: string) => ['admin', 'principal', 'it_admin'].includes(r));
+
+        // Check if viewer can access this profile
+        if (!isProfileOwner && !isAdmin) {
+          const canView =
+            normalizedSettings.profileVisibility === 'public' ||
+            (normalizedSettings.profileVisibility === 'recruiters' &&
+             viewerRoles.some((r: string) => ['recruiter', 'educator', 'school_educator', 'college_educator'].includes(r)));
+
+          if (!canView) {
+            return apiError(403, 'FORBIDDEN', 'You do not have permission to view this profile', context.request, { startTime });
+          }
+        }
+
+        // Filter sensitive data if not owner
+        const responseData = { ...learnerData };
+        if (!isProfileOwner) {
+          if (!normalizedSettings.showEmail) {
+            responseData.email = undefined;
+            responseData.contact_email = undefined;
+          }
+          if (!normalizedSettings.showPhone) {
+            responseData.phone = undefined;
+            responseData.mobile = undefined;
+          }
+          if (!normalizedSettings.showLocation) {
+            responseData.location = undefined;
+            responseData.city = undefined;
+            responseData.state = undefined;
+            responseData.country = undefined;
+          }
+        }
+
         return apiSuccess({
-          ...learnerData,
-          privacySettings
+          ...responseData,
+          privacySettings: normalizedSettings
         }, context.request, { startTime });
       }
 

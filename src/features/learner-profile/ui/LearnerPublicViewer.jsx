@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   Check,
   CheckCircle,
@@ -303,6 +303,22 @@ export default function LearnerPublicViewer() {
   }, [profile, education, training, experience, technicalSkills, softSkills, projects, certificates]);
 
   const employability = employabilityData?.employabilityScore || 0;
+
+  // Privacy settings with safe defaults and validation - MUST be before early returns
+  const privacySettings = useMemo(() => {
+    const settings = raw?.privacySettings || profile?.privacySettings || parsedProfile?.privacySettings;
+    const validVisibilities = ['public', 'recruiters', 'private'];
+    const profileVisibility = validVisibilities.includes(settings?.profileVisibility)
+      ? settings.profileVisibility
+      : 'public';
+
+    return {
+      profileVisibility,
+      showEmail: settings?.showEmail !== false,
+      showPhone: settings?.showPhone !== false,
+      showLocation: settings?.showLocation !== false,
+    };
+  }, [raw?.privacySettings, profile?.privacySettings, parsedProfile?.privacySettings]);
 
   const tabs = [
     "Overview",
@@ -618,12 +634,14 @@ export default function LearnerPublicViewer() {
   }
 
   // Define role checks early - needed for privacy validation
-  const userRole = user?.role?.toLowerCase();
+  const userRole = user?.role?.toLowerCase() ?? 'guest';
   const isLearner = userRole === "learner";
   const isRecruiter = userRole === "recruiter";
   const isEducator = userRole === "educator" || userRole === "school_educator" || userRole === "college_educator";
   const isAdmin = userRole?.includes("admin") || userRole === "principal" || userRole === "it_admin";
-  const isProfileOwner = user?.email === raw?.email || user?.id === raw?.user_id;
+  // Safe ownership check with null coalescing
+  const isProfileOwner = (user?.email && raw?.email && user.email === raw.email) ||
+                         (user?.id && raw?.user_id && user.id === raw.user_id);
 
   // Check if user has permission to view this learner profile
   const hasAccess = isLearner || // Learners can view all learner profiles
@@ -650,20 +668,13 @@ export default function LearnerPublicViewer() {
     );
   }
 
-  // Privacy settings with safe defaults
-  const privacySettings = raw?.privacySettings ||
-                         profile?.privacySettings ||
-                         parsedProfile?.privacySettings ||
-                         { profileVisibility: 'public', showEmail: true, showPhone: true, showLocation: true };
-  const profileVisibility = privacySettings?.profileVisibility || 'public';
-
   // Get contact visibility settings with safe defaults for owner
-  const showEmail = isProfileOwner ? true : (privacySettings?.showEmail !== false);
-  const showPhone = isProfileOwner ? true : (privacySettings?.showPhone !== false);
-  const showLocation = isProfileOwner ? true : (privacySettings?.showLocation !== false);
+  const showEmail = isProfileOwner ? true : privacySettings.showEmail;
+  const showPhone = isProfileOwner ? true : privacySettings.showPhone;
+  const showLocation = isProfileOwner ? true : privacySettings.showLocation;
 
   // Check if profile is private (but allow owner to view)
-  if (profileVisibility === 'private' && !isProfileOwner) {
+  if (privacySettings.profileVisibility === 'private' && !isProfileOwner) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-indigo-50">
         <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">
@@ -680,7 +691,7 @@ export default function LearnerPublicViewer() {
   }
 
   // Check if profile is "recruiters only" and viewer is not a recruiter and not the owner
-  if (profileVisibility === 'recruiters' && !isRecruiter && !isProfileOwner) {
+  if (privacySettings.profileVisibility === 'recruiters' && !isRecruiter && !isProfileOwner) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-indigo-50">
         <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">

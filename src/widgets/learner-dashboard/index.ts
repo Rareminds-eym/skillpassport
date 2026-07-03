@@ -49,6 +49,9 @@ export { default as SuggestedNextSteps } from './ui/SuggestedNextSteps';
 export { default as TopSkillsInDemand } from './ui/TopSkillsInDemand';
 export { default as TrainingRecommendations } from './ui/TrainingRecommendations';
 
+// Re-export from features layer for backward compatibility
+export { default as LearnerPublicViewer } from '@/features/learner-profile/ui/LearnerPublicViewer';
+
 // Settings Components
 export { default as FormField } from './ui/settings/FormField';
 export { default as MainSettings } from './ui/settings/MainSettings';

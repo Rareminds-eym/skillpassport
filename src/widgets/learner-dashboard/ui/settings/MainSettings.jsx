@@ -489,18 +489,39 @@ const MainSettings = () => {
   };
 
   const handlePrivacyChange = (setting, value) => {
-    // If profile visibility is being changed to 'private', automatically disable contact info visibility
-    if (setting === 'profileVisibility' && value === 'private') {
-      setPrivacySettings((prev) => ({
-        ...prev,
-        profileVisibility: value,
-        showEmail: false,
-        showPhone: false,
-        showLocation: false,
-      }));
-    } else {
-      setPrivacySettings((prev) => ({ ...prev, [setting]: value }));
+    // Validate privacy setting values
+    const validVisibilityLevels = ['public', 'recruiters', 'private'];
+
+    if (setting === 'profileVisibility') {
+      if (!validVisibilityLevels.includes(value)) {
+        toast.error('Invalid profile visibility setting');
+        return;
+      }
+
+      // If profile visibility is being changed to 'private', automatically disable contact info visibility
+      if (value === 'private') {
+        setPrivacySettings((prev) => ({
+          ...prev,
+          profileVisibility: value,
+          showEmail: false,
+          showPhone: false,
+          showLocation: false,
+        }));
+        toast.success('Profile set to private. Contact information hidden.');
+        return;
+      }
     }
+
+    // Validate boolean settings
+    if (['showEmail', 'showPhone', 'showLocation'].includes(setting)) {
+      if (typeof value !== 'boolean') {
+        toast.error('Invalid setting value');
+        return;
+      }
+    }
+
+    setPrivacySettings((prev) => ({ ...prev, [setting]: value }));
+    toast.success('Privacy settings updated');
   };
 
   // Handle "Add New" selection for institutions

@@ -201,6 +201,9 @@ function transformProfileData(profile: ProfileInput | null, email: string, learn
 
 /**
  * Fetch learner data by email from Supabase
+ * @param email - The email address to fetch
+ * @param publicProfileLearnerId - Optional learner ID for public profile context
+ * @returns ServiceResponse with learner data (privacy-filtered server-side)
  */
 export const getlearnerByEmail = async (email: string, publicProfileLearnerId?: string): Promise<ServiceResponse> => {
   try {
@@ -641,6 +644,7 @@ export const getlearnerByEmail = async (email: string, publicProfileLearnerId?: 
 
 /**
  * Fetch learner data by learner ID from Supabase
+ * Server-side enforces privacy filtering based on viewer context
  */
 export const getlearnerById = async (learnerId: string): Promise<ServiceResponse> => {
   try {
@@ -651,7 +655,24 @@ export const getlearnerById = async (learnerId: string): Promise<ServiceResponse
       return { success: false, data: null, error: 'No data found for this learner ID.' };
     }
 
-    return await getlearnerByEmail(data.email, learnerId);
+    // Fetch learner by email with learnerId context for privacy enforcement
+    const result = await getlearnerByEmail(data.email, learnerId);
+
+    // Double-check privacy settings on client-side as defense-in-depth
+    if (result.success && result.data?.privacySettings) {
+      const privacySettings = result.data.privacySettings;
+      // Server has already filtered - this is just for extra validation
+      if (privacySettings.profileVisibility === 'private') {
+        // Verify the user should have access
+        const user = useAuthStore.getState().user;
+        const isOwner = user?.email === data.email || user?.id === data.user_id;
+        if (!isOwner) {
+          return { success: false, data: null, error: 'This profile is private' };
+        }
+      }
+    }
+
+    return result;
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in getlearnerById', err instanceof Error ? err : new Error(String(err)));

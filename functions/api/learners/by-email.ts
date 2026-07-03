@@ -97,21 +97,68 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       console.log(`[LearnersByEmail] Full query success for "${email}", learner id="${fullData.id}"`);
 
       // Fetch privacy settings
-      let privacySettings = { profileVisibility: 'public' };
+      let privacySettings = { profileVisibility: 'public', showEmail: true, showPhone: true, showLocation: true };
+      let settingsError: any = null;
       if (fullData.user_id) {
-        const { data: userSettings } = await supabase
+        const result = await supabase
           .from('user_settings')
           .select('privacy_settings')
           .eq('user_id', fullData.user_id)
           .maybeSingle();
-        if (userSettings?.privacy_settings) {
-          privacySettings = userSettings.privacy_settings;
+        settingsError = result.error;
+        if (!settingsError && result.data?.privacy_settings) {
+          privacySettings = result.data.privacy_settings;
+        } else if (settingsError && settingsError.code !== 'PGRST116') {
+          console.warn(`Failed to fetch privacy settings for user ${fullData.user_id}:`, settingsError);
+        }
+      }
+
+      // Normalize privacy settings
+      const normalizedSettings = {
+        profileVisibility: privacySettings?.profileVisibility || 'public',
+        showEmail: privacySettings?.showEmail !== false,
+        showPhone: privacySettings?.showPhone !== false,
+        showLocation: privacySettings?.showLocation !== false,
+      };
+
+      // Server-side privacy enforcement
+      const isProfileOwner = isOwner;
+      const viewerRoles = user.roles || [];
+
+      // Check if viewer can access based on privacy settings
+      if (!isProfileOwner && !isAdmin) {
+        const canView =
+          normalizedSettings.profileVisibility === 'public' ||
+          (normalizedSettings.profileVisibility === 'recruiters' &&
+           viewerRoles.some((r: string) => ['recruiter', 'educator', 'school_educator', 'college_educator'].includes(r)));
+
+        if (!canView) {
+          return apiError(403, 'FORBIDDEN', 'Profile visibility does not permit this access', context.request, { startTime });
+        }
+      }
+
+      // Filter sensitive fields if not owner
+      const responseData = { ...fullData };
+      if (!isProfileOwner) {
+        if (!normalizedSettings.showEmail) {
+          responseData.email = undefined;
+          responseData.contact_email = undefined;
+        }
+        if (!normalizedSettings.showPhone) {
+          responseData.phone = undefined;
+          responseData.mobile = undefined;
+        }
+        if (!normalizedSettings.showLocation) {
+          responseData.location = undefined;
+          responseData.city = undefined;
+          responseData.state = undefined;
+          responseData.country = undefined;
         }
       }
 
       return apiSuccess({
-        ...fullData,
-        privacySettings
+        ...responseData,
+        privacySettings: normalizedSettings
       }, context.request, { startTime });
     }
 
@@ -141,21 +188,68 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       ]);
 
       // Fetch privacy settings
-      let privacySettings = { profileVisibility: 'public' };
+      let privacySettings = { profileVisibility: 'public', showEmail: true, showPhone: true, showLocation: true };
+      let settingsError: any = null;
       if (simpleData.user_id) {
-        const { data: userSettings } = await supabase
+        const result = await supabase
           .from('user_settings')
           .select('privacy_settings')
           .eq('user_id', simpleData.user_id)
           .maybeSingle();
-        if (userSettings?.privacy_settings) {
-          privacySettings = userSettings.privacy_settings;
+        settingsError = result.error;
+        if (!settingsError && result.data?.privacy_settings) {
+          privacySettings = result.data.privacy_settings;
+        } else if (settingsError && settingsError.code !== 'PGRST116') {
+          console.warn(`Failed to fetch privacy settings for user ${simpleData.user_id}:`, settingsError);
+        }
+      }
+
+      // Normalize privacy settings
+      const normalizedSettings = {
+        profileVisibility: privacySettings?.profileVisibility || 'public',
+        showEmail: privacySettings?.showEmail !== false,
+        showPhone: privacySettings?.showPhone !== false,
+        showLocation: privacySettings?.showLocation !== false,
+      };
+
+      // Server-side privacy enforcement
+      const isProfileOwner = isOwner;
+      const viewerRoles = user.roles || [];
+
+      // Check if viewer can access based on privacy settings
+      if (!isProfileOwner && !isAdmin) {
+        const canView =
+          normalizedSettings.profileVisibility === 'public' ||
+          (normalizedSettings.profileVisibility === 'recruiters' &&
+           viewerRoles.some((r: string) => ['recruiter', 'educator', 'school_educator', 'college_educator'].includes(r)));
+
+        if (!canView) {
+          return apiError(403, 'FORBIDDEN', 'Profile visibility does not permit this access', context.request, { startTime });
+        }
+      }
+
+      // Filter sensitive fields if not owner
+      const responseData = { ...simpleData };
+      if (!isProfileOwner) {
+        if (!normalizedSettings.showEmail) {
+          responseData.email = undefined;
+          responseData.contact_email = undefined;
+        }
+        if (!normalizedSettings.showPhone) {
+          responseData.phone = undefined;
+          responseData.mobile = undefined;
+        }
+        if (!normalizedSettings.showLocation) {
+          responseData.location = undefined;
+          responseData.city = undefined;
+          responseData.state = undefined;
+          responseData.country = undefined;
         }
       }
 
       const mergedData = {
-        ...simpleData,
-        privacySettings,
+        ...responseData,
+        privacySettings: normalizedSettings,
         skill_passports: skillPassports.data || [],
         projects: projects.data || [],
         certificates: certificates.data || [],
@@ -184,7 +278,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     if (byUserData) {
       console.log(`[LearnersByEmail] Found learner by user_id! id="${byUserData.id}", learner_email="${byUserData.email}"`);
       const learnerId = byUserData.id;
-      const [skillPassports, projects, certificates, experience, skills, trainings, educationData, userSettings] = await Promise.all([
+      const [skillPassports, projects, certificates, experience, skills, trainings, educationData, userSettingsResult] = await Promise.all([
         supabase.from('skill_passports').select('*').eq('learner_id', learnerId),
         supabase.from('projects').select('*').eq('learner_id', learnerId),
         supabase.from('certificates').select('*').eq('learner_id', learnerId),
@@ -195,14 +289,59 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
         supabase.from('user_settings').select('privacy_settings').eq('user_id', byUserData.user_id).maybeSingle(),
       ]);
 
-      let privacySettings = { profileVisibility: 'public' };
-      if (userSettings.data?.privacy_settings) {
-        privacySettings = userSettings.data.privacy_settings;
+      let privacySettings = { profileVisibility: 'public', showEmail: true, showPhone: true, showLocation: true };
+      if (userSettingsResult.data?.privacy_settings) {
+        privacySettings = userSettingsResult.data.privacy_settings;
+      } else if (userSettingsResult.error && userSettingsResult.error.code !== 'PGRST116') {
+        console.warn(`Failed to fetch privacy settings for user ${byUserData.user_id}:`, userSettingsResult.error);
+      }
+
+      // Normalize privacy settings
+      const normalizedSettings = {
+        profileVisibility: privacySettings?.profileVisibility || 'public',
+        showEmail: privacySettings?.showEmail !== false,
+        showPhone: privacySettings?.showPhone !== false,
+        showLocation: privacySettings?.showLocation !== false,
+      };
+
+      // Server-side privacy enforcement (for by_user_id lookup, still apply filters)
+      const isProfileOwner = userId === byUserData.user_id;
+      const viewerRoles = user.roles || [];
+
+      // Check if viewer can access based on privacy settings
+      if (!isProfileOwner && !isAdmin) {
+        const canView =
+          normalizedSettings.profileVisibility === 'public' ||
+          (normalizedSettings.profileVisibility === 'recruiters' &&
+           viewerRoles.some((r: string) => ['recruiter', 'educator', 'school_educator', 'college_educator'].includes(r)));
+
+        if (!canView) {
+          return apiError(403, 'FORBIDDEN', 'Profile visibility does not permit this access', context.request, { startTime });
+        }
+      }
+
+      // Filter sensitive fields if not owner
+      const responseData = { ...byUserData };
+      if (!isProfileOwner) {
+        if (!normalizedSettings.showEmail) {
+          responseData.email = undefined;
+          responseData.contact_email = undefined;
+        }
+        if (!normalizedSettings.showPhone) {
+          responseData.phone = undefined;
+          responseData.mobile = undefined;
+        }
+        if (!normalizedSettings.showLocation) {
+          responseData.location = undefined;
+          responseData.city = undefined;
+          responseData.state = undefined;
+          responseData.country = undefined;
+        }
       }
 
       const mergedData = {
-        ...byUserData,
-        privacySettings,
+        ...responseData,
+        privacySettings: normalizedSettings,
         skill_passports: skillPassports.data || [],
         projects: projects.data || [],
         certificates: certificates.data || [],
