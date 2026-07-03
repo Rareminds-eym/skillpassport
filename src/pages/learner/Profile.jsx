@@ -1,6 +1,5 @@
 import { useParams, useLocation } from 'react-router-dom';
-import { ProfileEditSection } from '@/widgets/learner-dashboard';
-import { LearnerPublicViewer } from '@/features/learner-profile';
+import { ProfileEditSection, LearnerPublicViewer } from '@/widgets/learner-dashboard';
 import { useUser } from '@/shared/model/authStore';
 
 
