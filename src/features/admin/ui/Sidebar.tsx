@@ -225,6 +225,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
               path: "/school-admin/skills/reports",
               icon: ChartPieIcon,
             },
+            // TEMPORARY (frontend verification): Course Analytics Dashboard
+            // for School Admin (Grade -> Section hierarchy).
+            {
+              name: "Course Analytics",
+              path: "/school-admin/course-analytics",
+              icon: ChartBarIcon,
+            },
           ],
         },
       ];
@@ -412,6 +419,14 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
               name: "District & College Reports",
               path: "/university-admin/analytics/reports",
               icon: ChartPieIcon,
+            },
+            // TEMPORARY (frontend verification): Course Analytics Dashboard
+            // for University Admin (Faculty -> Department -> Program ->
+            // Academic Year -> Section hierarchy).
+            {
+              name: "Course Analytics",
+              path: "/university-admin/analytics/course-analytics",
+              icon: ChartBarIcon,
             },
             {
               name: "Scheme Compliance (TNSDC)",
@@ -721,6 +736,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Reports & Analytics",
             path: "/college-admin/reports",
             icon: ChartPieIcon,
+          },
+          // TEMPORARY (frontend verification): new Course Analytics Dashboard,
+          // exposed for College Admin alongside the existing Reports & Analytics.
+          {
+            name: "Course Analytics",
+            path: "/college-admin/course-analytics",
+            icon: ChartBarIcon,
           },
         ],
       },
