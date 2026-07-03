@@ -862,7 +862,7 @@ const CollegeVerifications = () => {
   pendingProjects.length,
 ]);
 
-  const MobileTabMenu = ({ activeTab, onTabChange, counts }) => {
+  const MobileTabMenu = ({ activeTab, onTabChange, counts, tabOptions }) => {
     const [open, setOpen] = useState(false);
     const active = tabOptions.find(t => t.value === activeTab);
     const ActiveIcon = active?.icon || BookOpen;
@@ -1053,6 +1053,7 @@ const CollegeVerifications = () => {
           <MobileTabMenu
             activeTab={activeTab}
             onTabChange={handleTabChange}
+            tabOptions={tabOptions}
             counts={{
               trainings: pendingTrainings.length,
               experiences: pendingExperiences.length,

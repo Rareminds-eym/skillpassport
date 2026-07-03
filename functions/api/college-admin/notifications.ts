@@ -465,7 +465,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { certificate_id, approver_id, notes } = params;
         if (!certificate_id) return apiError(400, 'VALIDATION_ERROR', 'Missing certificate_id', context.request, { startTime });
 
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('certificates')
           .update({
             approval_status: 'approved',
@@ -476,11 +476,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           })
           .eq('id', certificate_id)
           .eq('approval_status', 'pending')
-          .select('id');
+          .select()
+          .single();
         if (error) return apiDbError(error, context.request, { startTime });
-        if (!data || data.length === 0) {
-          return apiError(409, 'CONFLICT', 'Certificate not found or already processed', context.request, { startTime });
-        }
         return apiSuccess({ success: true, message: 'Certificate approved', certificate_id }, context.request, { startTime });
       }
 
@@ -489,7 +487,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!certificate_id) return apiError(400, 'VALIDATION_ERROR', 'Missing certificate_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason (notes) is required', context.request, { startTime });
 
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('certificates')
           .update({
             approval_status: 'rejected',
@@ -500,11 +498,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           })
           .eq('id', certificate_id)
           .eq('approval_status', 'pending')
-          .select('id');
+          .select()
+          .single();
         if (error) return apiDbError(error, context.request, { startTime });
-        if (!data || data.length === 0) {
-           return apiError(409, 'CONFLICT', 'Certificate not found or already processed', context.request, { startTime });
-        }
         return apiSuccess({ success: true, message: 'Certificate rejected', certificate_id }, context.request, { startTime });
       }
 
@@ -543,7 +539,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { skill_id, approver_id, notes } = params;
         if (!skill_id) return apiError(400, 'VALIDATION_ERROR', 'Missing skill_id', context.request, { startTime });
 
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('skills')
           .update({
             approval_status: 'approved',
@@ -554,11 +550,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           })
           .eq('id', skill_id)
           .eq('approval_status', 'pending')
-          .select('id');
+          .select()
+          .single();
         if (error) return apiDbError(error, context.request, { startTime });
-        if (!data || data.length === 0) {
-           return apiError(409, 'CONFLICT', 'Skill not found or already processed', context.request, { startTime });
-        }
         return apiSuccess({ success: true, message: 'Skill approved', skill_id }, context.request, { startTime });
       }
 
@@ -567,7 +561,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!skill_id) return apiError(400, 'VALIDATION_ERROR', 'Missing skill_id', context.request, { startTime });
         if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason (notes) is required', context.request, { startTime });
 
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('skills')
           .update({
             approval_status: 'rejected',
@@ -578,11 +572,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           })
           .eq('id', skill_id)
           .eq('approval_status', 'pending')
-          .select('id');
+          .select()
+          .single();
         if (error) return apiDbError(error, context.request, { startTime });
-        if (!data || data.length === 0) {
-           return apiError(409, 'CONFLICT', 'Skill not found or already processed', context.request, { startTime });
-        }
         return apiSuccess({ success: true, message: 'Skill rejected', skill_id }, context.request, { startTime });
       }
 
