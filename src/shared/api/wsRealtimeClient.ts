@@ -134,6 +134,7 @@ export class WSRealtimeClient {
     const token = ssoClient.getAccessToken();
     if (!token) {
       console.warn('[WS] No access token available, deferring connection');
+      this.scheduleReconnect();
       return;
     }
 

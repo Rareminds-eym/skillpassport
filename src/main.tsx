@@ -61,15 +61,15 @@ try {
 import { initializeStores } from '@/shared/model/authStore';
 import { initializeMaintenanceStore } from '@/shared/model/maintenanceStore';
 
-// Initialize stores before rendering.
-// Auth MUST resolve first so maintenanceStore can check the access token
-// before deciding between WebSocket (authenticated) vs polling (visitor).
-initializeStores()
-  .then(() => initializeMaintenanceStore())
-  .catch((err) => {
-    logger.error('[main] initializeStores failed, forcing maintenance check anyway', err);
-    initializeMaintenanceStore();
-  });
+// Initialize stores before rendering
+(async () => {
+  try {
+    await initializeStores();
+  } catch (e) {
+    logger.error('Failed to initialize auth store', e instanceof Error ? e : new Error(String(e)));
+  }
+  initializeMaintenanceStore();
+})();
 
 // Unregister any existing service workers to prevent Workbox warnings
 if ('serviceWorker' in navigator) {
