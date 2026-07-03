@@ -878,9 +878,8 @@ const UnifiedSignup = () => {
       if (ssoClient.isAuthenticated()) {
         try {
           // Delete the SSO user (cascades to sessions, memberships, etc.)
-          await ssoClient.fetch(`${import.meta.env.VITE_SSO_URL}/auth/delete-account`, {
-            method: 'POST',
-          });
+          const { apiPost } = await import('@/shared/api/apiClient');
+          await apiPost('/auth/delete-account', {});
         } catch {
           // If delete fails, still clear auth state
         }

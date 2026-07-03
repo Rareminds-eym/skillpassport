@@ -1,27 +1,51 @@
-import { createLogger } from '../../lib/logger';
-import { apiError, apiSuccess } from '../../lib/response';
+import type { Env } from '../../lib/types';
+import { apiLogger } from '../../lib/logger';
 
-const logger = createLogger('auth-signup');
+interface SignupBody {
+  email: string;
+  password: string;
+  org_name: string;
+  role: string;
+  redirect_url?: string;
+}
 
 /**
  * POST /api/auth/signup
  *
- * Creates user, org, membership via sso-worker RPC
- * sso-worker handles email sending internally
+ * Pure RPC call to SSO Worker signup method.
+ * Creates user, organization, and membership via RPC.
+ * Sets refresh token as HTTP-Only cookie.
  */
-export async function onRequestPost(context: { request: Request; env: any }): Promise<Response> {
+export async function onRequestPost(context: { request: Request; env: Env }): Promise<Response> {
   const { request, env } = context;
 
   try {
-    const body = await request.json() as any;
+    const body = await request.json() as SignupBody;
     const { email, password, org_name, role, redirect_url } = body;
 
     if (!email || !password || !org_name || !role) {
-      return apiError(400, 'VALIDATION_ERROR', 'email, password, org_name, and role are required');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'email, password, org_name, and role are required'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    // Call sso-worker via RPC for signup (email sent internally by sso-worker)
-    const ssoResult = await env.SSO_SERVICE.signup({
+    if (!env.SSO_SERVICE) {
+      apiLogger.error('SSO_SERVICE binding not configured');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Authentication service unavailable'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Call RPC method directly on SSO Worker
+    const ssoResult = await (env.SSO_SERVICE as any).signup({
       email,
       password,
       org_name,
@@ -29,20 +53,63 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
       redirect_url
     });
 
-    if (!ssoResult.success) {
-      return apiError(400, 'SIGNUP_FAILED', ssoResult.error || 'Signup failed');
+    // Handle RPC error response
+    if (!ssoResult || !ssoResult.success) {
+      const errorMsg = ssoResult?.error || 'Signup failed';
+      apiLogger.warn('Signup failed from SSO', { email, error: errorMsg });
+      return new Response(JSON.stringify({
+        success: false,
+        error: errorMsg
+      }), {
+        status: ssoResult?.status || 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    return apiSuccess({
-      user: ssoResult.user,
-      access_token: ssoResult.access_token,
-      refresh_token: ssoResult.refresh_token,
-      org: ssoResult.org,
-      email_sent: ssoResult.email_sent
+    // Verify tokens present
+    if (!ssoResult.access_token || !ssoResult.refresh_token) {
+      apiLogger.error('Missing tokens in signup RPC response', { email });
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Signup succeeded but tokens missing'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Set refresh token as HTTP-Only cookie
+    const headers = new Headers({
+      'Content-Type': 'application/json'
     });
 
-  } catch (error) {
-    logger.error('Signup error', error as Error);
-    return apiError(500, 'INTERNAL_ERROR', 'Internal server error');
+    headers.append(
+      'Set-Cookie',
+      `refresh_token=${ssoResult.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
+    );
+
+    apiLogger.info('Signup successful via RPC', { email, userId: ssoResult.user?.id, orgId: ssoResult.org?.id });
+
+    // Return access token to frontend (refresh token in cookie)
+    return new Response(JSON.stringify({
+      success: true,
+      access_token: ssoResult.access_token,
+      user: ssoResult.user,
+      org: ssoResult.org,
+      email_sent: ssoResult.email_sent
+    }), {
+      status: 200,
+      headers
+    });
+
+  } catch (error: any) {
+    apiLogger.error('Signup RPC call failed', error as Error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error?.message || 'Internal server error'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

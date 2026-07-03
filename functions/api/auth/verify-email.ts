@@ -16,20 +16,20 @@ export async function onRequestPost(context: { request: Request; env: any }): Pr
     const { token } = body;
 
     if (!token) {
-      return apiError(400, 'VALIDATION_ERROR', 'token is required');
+      return apiError(400, 'VALIDATION_ERROR', 'token is required', request);
     }
 
     // Call sso-worker via RPC for email verification
     const ssoResult = await env.SSO_SERVICE.verifyEmail({ token });
 
     if (!ssoResult.success) {
-      return apiError(400, 'VERIFY_FAILED', ssoResult.error || 'Email verification failed');
+      return apiError(400, 'VERIFY_FAILED', ssoResult.error || 'Email verification failed', request);
     }
 
-    return apiSuccess({ verified: true });
+    return apiSuccess({ verified: true }, request);
 
   } catch (error) {
     logger.error('Verify email error', error as Error);
-    return apiError(500, 'INTERNAL_ERROR', 'Internal server error');
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 }

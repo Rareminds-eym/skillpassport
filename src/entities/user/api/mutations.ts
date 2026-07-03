@@ -153,16 +153,12 @@ export const logActivity = async (
 };
 
 export const resetUserPassword = async (userId: string, newPassword: string): Promise<void> => {
-  const { ssoClient } = await import('@/shared/api/ssoClient');
-  const ssoUrl = import.meta.env.VITE_SSO_URL;
-  const res = await ssoClient.fetch(`${ssoUrl}/auth/admin-reset-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: userId, new_password: newPassword }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as any).error || 'Failed to reset password');
+  const res = (await apiPost('/auth/admin-reset-password', {
+    user_id: userId,
+    new_password: newPassword
+  })) as any;
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to reset password');
   }
 };
 
@@ -170,16 +166,12 @@ export const updatePassword = async (newPassword: string, currentPassword?: stri
   if (!currentPassword) {
     throw new Error('Current password is required to change password');
   }
-  const { ssoClient } = await import('@/shared/api/ssoClient');
-  const ssoUrl = import.meta.env.VITE_SSO_URL;
-  const res = await ssoClient.fetch(`${ssoUrl}/auth/change-password`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as any).error || 'Failed to change password');
+  const res = (await apiPost('/auth/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword
+  })) as any;
+  if (!res.success) {
+    throw new Error(res.error || 'Failed to change password');
   }
 };
 
