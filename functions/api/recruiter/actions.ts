@@ -445,6 +445,14 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // 🔒 SECURITY: Use organization_id from middleware context
       const organizationId = (context.data as any).organizationId;
 
+      if (!organizationId) {
+        console.error('[recruiter/actions] create-requisition: organizationId not found in context', {
+          userId: user.id,
+          contextData: context.data
+        });
+        return apiError(500, 'INTERNAL_ERROR', 'Organization context not found. Please contact support.', context.request);
+      }
+
       const { data, error } = await supabase
         .from('opportunities')
         .insert({

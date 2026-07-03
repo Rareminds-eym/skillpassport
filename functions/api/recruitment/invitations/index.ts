@@ -125,12 +125,75 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     }
 
     try {
-        // Generate invitation token
+        // 1. CHECK: Is there already a pending invitation for this email?
+        console.log('[invitations] Checking for duplicate pending invitation');
+        const { data: existingInvite, error: checkInviteError } = await supabase
+            .from('organization_invitations')
+            .select('id, status, expires_at')
+            .eq('invitee_email', email.toLowerCase())
+            .eq('organization_id', orgId)
+            .eq('status', 'pending')
+            .single();
+
+        if (checkInviteError && checkInviteError.code !== 'PGRST116') {
+            // PGRST116 = not found, which is fine
+            console.error('[invitations] Error checking for existing invite:', checkInviteError);
+        }
+
+        if (existingInvite) {
+            console.log('[invitations] Duplicate pending invitation found:', existingInvite.id);
+            return Response.json({
+                error: 'An invitation is already pending for this email. Resend or revoke it first.',
+                existingInvitationId: existingInvite.id
+            }, { status: 409 });
+        }
+
+        // 2. CHECK: Is this user already a member of the organization?
+        console.log('[invitations] Checking if user is already a member');
+
+        // First, try to find user by email via SSO
+        let existingUserId: string | null = null;
+        try {
+            const { ssoGetUserByEmail } = await import('../../../lib/sso-client');
+            const ssoUser = await ssoGetUserByEmail(env as any, email.toLowerCase());
+            if (ssoUser) {
+                existingUserId = ssoUser.id;
+                console.log('[invitations] Found existing user:', existingUserId);
+            }
+        } catch (ssoError) {
+            console.log('[invitations] No existing user found in SSO (this is fine)');
+        }
+
+        // If user exists, check if they're already a member of this org
+        if (existingUserId) {
+            const { data: existingMember, error: checkMemberError } = await supabase
+                .from('organization_members')
+                .select('id, status')
+                .eq('user_id', existingUserId)
+                .eq('organization_id', orgId)
+                .single();
+
+            if (checkMemberError && checkMemberError.code !== 'PGRST116') {
+                console.error('[invitations] Error checking for existing member:', checkMemberError);
+            }
+
+            if (existingMember) {
+                console.log('[invitations] User is already a member:', existingMember.id);
+                return Response.json({
+                    error: 'This user is already a member of your organisation.',
+                    memberStatus: existingMember.status
+                }, { status: 409 });
+            }
+        }
+
+        console.log('[invitations] No duplicates found, proceeding with invitation creation');
+
+        // 3. Generate invitation token
         const token = crypto.randomUUID();
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
 
-        // Create invitation
+        // 4. Create invitation
         const { data: invitation, error } = await supabase
             .from('organization_invitations')
             .insert({
@@ -138,7 +201,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
                 organization_type: 'company', // Assuming company for recruitment
                 invited_by: user.sub,
                 invited_by_role: 'company_admin', // Would need to get actual role
-                invitee_email: email,
+                invitee_email: email.toLowerCase(), // Normalize email
                 invitee_name: name || null,
                 invitee_role: role,
                 invitation_token: token,
@@ -149,13 +212,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .single();
 
         if (error) {
-            console.error('Error creating invitation:', error);
+            console.error('[invitations] Error creating invitation:', error);
             return Response.json({ error: error.message }, { status: 500 });
         }
 
-        // Send invitation email
+        console.log('[invitations] Invitation created successfully:', invitation.id);
+
+        // 5. Send invitation email (with transaction rollback on failure)
         const baseUrl = new URL(context.request.url).origin;
-        const invitationUrl = `${baseUrl}/accept-invitation?token=${token}`;
+        const invitationUrl = `${baseUrl}/invite/accept?token=${token}`;
 
         try {
             const { sendRecruitmentInvitationEmail } = await import('../../../lib/emailService');
@@ -172,6 +237,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
             const organizationName = orgData?.name || 'the organization';
 
+            console.log('[invitations] Sending invitation email to:', email);
+
             await sendRecruitmentInvitationEmail(
                 {
                     email,
@@ -183,22 +250,47 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
                 env as any
             );
 
-            console.log('[invitations] Invitation email sent successfully', { email, invitationId: invitation.id });
+            console.log('[invitations] ✓ Invitation email sent successfully');
+
+            return Response.json({
+                data: {
+                    invitation,
+                    invitationUrl,
+                    message: 'Invitation created successfully',
+                }
+            });
+
         } catch (emailError: any) {
-            // Log email error but don't fail the invitation creation
-            console.error('[invitations] Failed to send invitation email:', emailError);
-            // Invitation is still created, just email failed
+            console.error('[invitations] ✗ Failed to send invitation email:', emailError);
+            console.log('[invitations] Rolling back invitation creation');
+
+            // ROLLBACK: Delete the invitation we just created
+            const { error: deleteError } = await supabase
+                .from('organization_invitations')
+                .delete()
+                .eq('id', invitation.id);
+
+            if (deleteError) {
+                console.error('[invitations] ✗ Failed to rollback invitation:', deleteError);
+                // Return error about both failures
+                return Response.json({
+                    error: 'Failed to send invitation email and failed to rollback database changes',
+                    emailError: emailError.message,
+                    rollbackError: deleteError.message
+                }, { status: 500 });
+            }
+
+            console.log('[invitations] ✓ Invitation rolled back successfully');
+
+            // Return error indicating email failure
+            return Response.json({
+                error: 'Failed to send invitation email. The invitation was not created.',
+                details: emailError.message
+            }, { status: 500 });
         }
 
-        return Response.json({
-            data: {
-                invitation,
-                invitationUrl,
-                message: 'Invitation created successfully',
-            }
-        });
     } catch (error: any) {
-        console.error('Error creating invitation:', error);
+        console.error('[invitations] Unexpected error creating invitation:', error);
         return Response.json(
             { error: 'Failed to create invitation', details: error.message },
             { status: 500 }

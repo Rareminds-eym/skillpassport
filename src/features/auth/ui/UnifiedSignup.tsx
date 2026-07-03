@@ -50,9 +50,12 @@ import type { UserRole } from '@/shared/types/generated/roles';
 
 /**
  * The set of options the signup dropdown can offer: a curated subset of real
- * SSO `UserRole`s. This is a UI concern, distinct from the canonical `UserRole`.
+ * SSO `UserRole`s, plus UI-only redirect labels.
+ * 
+ * 'recruiter_admin' is a UI-only label that triggers admin recruiter signup flow
+ * (creates org with owner role). It's not an actual SSO role.
  */
-type SignupRoleOption = UserRole;
+type SignupRoleOption = UserRole | 'recruiter_admin';
 
 /**
  * The concrete, ordered list of roles offered by the signup dropdown.
@@ -65,11 +68,11 @@ type SignupRoleOption = UserRole;
 // offered here. Institutions onboard educators via the admin "Teacher/Educator
 // onboarding" (seat-based) flow, not the public self-signup. Their roles still
 // exist for login and admin-created accounts.
-// NOTE: recruitment_admin has been removed - admin vs invitation distinction
-// is now handled on Page 3 (recruiter sub-role selection).
+// NOTE: Only "recruiter_admin" is offered in normal signup flow. Invited recruiters
+// sign up through invitation links (which auto-select the role), not through this UI.
 const SIGNUP_ROLE_OPTIONS = [
   'learner',
-  'recruiter',
+  'recruiter_admin',
   'school_admin',
   'college_admin',
   'university_admin',
@@ -404,7 +407,7 @@ const UnifiedSignup = () => {
           inviteToken: inviteTokenFromUrl,
           inviteOrgName: data.organizationName,
           inviteValidated: true,
-          selectedRole: 'recruiter', // Auto-select recruiter role
+          selectedRole: 'recruiter', // Keep as 'recruiter' for invited users (not recruiter_admin)
           recruiterType: 'invited', // Auto-select invited type
           email: data.inviteeEmail || prev.email,
           loading: false,
@@ -438,7 +441,7 @@ const UnifiedSignup = () => {
   const getRoleDisplayName = (role: OfferedSignupRole): string => {
     const names: Record<OfferedSignupRole, string> = {
       learner: 'Learner',
-      recruiter: 'Recruiter',
+      recruiter_admin: 'Recruiter Admin',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
     };
     return names[role];
@@ -612,14 +615,8 @@ const UnifiedSignup = () => {
   const validateStep2 = (): boolean => {
     if (!state.selectedRole) { setState(prev => ({ ...prev, error: 'Please select a user role' })); return false; }
 
-    // NEW: Validate recruiter type for recruiters
-    if (state.selectedRole === 'recruiter' && !state.recruiterType) {
-      setState(prev => ({ ...prev, error: 'Please select a recruiter type' }));
-      return false;
-    }
-
-    // Organization name validation removed - now handled by backend with placeholder
-    // Real org name will be collected during onboarding (after subscription)
+    // Recruiter type validation removed - recruiter_admin role doesn't need sub-type selection
+    // Invited recruiters sign up through invitation links (handled separately)
 
     if (!state.country) { setState(prev => ({ ...prev, error: 'Please select your country' })); return false; }
     if (!state.state) { setState(prev => ({ ...prev, error: 'Please select your state' })); return false; }
@@ -686,9 +683,12 @@ const UnifiedSignup = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      // UPDATED FLOW: Admin recruiters create org during signup, invited recruiters don't
+      // UPDATED FLOW: 
+      // - recruiter_admin role = creates org during signup (admin type)
+      // - recruiter role (via invitation) = joins existing org (invited type)
+      // - institution admins = create org with proper role
       const isAdminRole = ['school_admin', 'college_admin', 'university_admin'].includes(state.selectedRole!);
-      const isRecruiterAdmin = state.selectedRole === 'recruiter' && state.recruiterType === 'admin';
+      const isRecruiterAdmin = state.selectedRole === 'recruiter_admin';
 
       // Step 1: Create SSO user
       let ssoUserId: string;
@@ -813,7 +813,8 @@ const UnifiedSignup = () => {
           preferredLanguage: state.preferredLanguage || undefined,
           referralCode: state.referralCode || undefined,
           // Store recruiter type for post-verification routing
-          recruiterType: state.recruiterType || undefined,
+          // recruiter_admin -> 'admin', recruiter (via invite) -> 'invited'
+          recruiterType: state.selectedRole === 'recruiter_admin' ? 'admin' : (state.recruiterType || undefined),
         }),
       });
 
@@ -825,7 +826,7 @@ const UnifiedSignup = () => {
       // Step 3: Redirect based on role
       const entityTypeMap: Record<OfferedSignupRole, string> = {
         learner: 'learner',
-        recruiter: 'recruitment-recruiter',
+        recruiter_admin: 'recruitment-recruiter',
         school_admin: 'school',
         college_admin: 'college',
         university_admin: 'university-admin'
@@ -836,7 +837,10 @@ const UnifiedSignup = () => {
       trackSignup.success(ssoUserId, state.email, state.selectedRole || 'unknown');
 
       // Store recruiter type in sessionStorage for post-verification routing
-      if (state.selectedRole === 'recruiter' && state.recruiterType) {
+      // recruiter_admin -> 'admin', recruiter (via invite) -> 'invited'
+      if (state.selectedRole === 'recruiter_admin') {
+        sessionStorage.setItem('recruiter_type', 'admin');
+      } else if (state.selectedRole === 'recruiter' && state.recruiterType) {
         sessionStorage.setItem('recruiter_type', state.recruiterType);
       }
 
@@ -1503,108 +1507,8 @@ const UnifiedSignup = () => {
                   </div>
                 </div>
 
-                {/* NEW: Recruiter Type Selection (only visible when Recruiter is selected) */}
-                {state.selectedRole === 'recruiter' && (
-                  <div className="space-y-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Recruiter Type <span className="text-red-500">*</span>
-                    </label>
-
-                    {/* Show invitation info banner if token is validated */}
-                    {state.inviteValidated && state.inviteOrgName && (
-                      <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
-                        <Mail className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm">
-                          <p className="font-medium text-blue-900">You're invited!</p>
-                          <p className="text-blue-700">Joining <span className="font-semibold">{state.inviteOrgName}</span></p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Admin Option */}
-                    <div
-                      onClick={() => {
-                        if (!state.inviteValidated) {
-                          setState(prev => ({ ...prev, recruiterType: 'admin', error: '' }));
-                        }
-                      }}
-                      className={`relative cursor-pointer rounded-xl border-2 p-4 transition-all ${state.inviteValidated
-                        ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50'
-                        : state.recruiterType === 'admin'
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-blue-300'
-                        }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${state.recruiterType === 'admin' && !state.inviteValidated
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-600'
-                            }`}
-                        >
-                          <Shield className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-base font-semibold text-gray-900 mb-1">
-                            Recruitment Admin
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Create and manage your company's recruitment workspace
-                          </p>
-                        </div>
-                        {state.recruiterType === 'admin' && !state.inviteValidated && (
-                          <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Organization Name Field - REMOVED (now collected in onboarding after subscription)
-                      Backend automatically creates placeholder org name during signup.
-                      Real company name will be set in 4-step onboarding wizard. */}
-
-                    {/* Invited Option */}
-                    <div
-                      onClick={() => {
-                        if (!state.inviteValidated) {
-                          setState(prev => ({ ...prev, recruiterType: 'invited', error: '' }));
-                        }
-                      }}
-                      className={`relative cursor-pointer rounded-xl border-2 p-4 transition-all ${state.inviteValidated
-                        ? 'border-blue-600 bg-blue-50 cursor-default'
-                        : state.recruiterType === 'invited'
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-200 bg-white hover:border-blue-300'
-                        }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${state.recruiterType === 'invited' || state.inviteValidated
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-600'
-                            }`}
-                        >
-                          <Mail className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-base font-semibold text-gray-900 mb-1">
-                            I have an invitation
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Join an existing company workspace using an invitation
-                          </p>
-                        </div>
-                        {(state.recruiterType === 'invited' || state.inviteValidated) && (
-                          <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                        )}
-                      </div>
-                      {state.inviteValidated && (
-                        <div className="mt-2 text-xs text-blue-700 font-medium">
-                          ✓ Pre-selected based on your invitation link
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {/* Recruiter Type Selection removed - recruiter_admin is auto-admin, 
+                     invited recruiters sign up through invitation links */}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1661,7 +1565,7 @@ const UnifiedSignup = () => {
                     {state.loading ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
-                      <span>{state.selectedRole === 'recruitment_admin' ? 'Create Company Account' : 'Create Account'}</span>
+                      <span>{state.selectedRole === 'recruiter_admin' ? 'Create Company Account' : 'Create Account'}</span>
                     )}
                   </button>
                 </div>
