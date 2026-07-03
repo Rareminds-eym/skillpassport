@@ -26,7 +26,8 @@ import {
   Mail,
   Award,
   Zap,
-  FileText
+  FileText,
+  Menu
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiPost } from '@/shared/api/apiClient';
@@ -154,11 +155,18 @@ const CollegeVerifications = () => {
   // Fetch pending certificates for college admin
   const fetchPendingCertificates = async () => {
     try {
+      logger.info('Fetching pending certificates using CollegeAdminNotificationService...');
       const response = await apiPost('/college-admin/verifications', { action: 'resolve-college-id' });
       const collegeId = response.data?.collegeId;
-      if (!collegeId) { setPendingCertificates([]); return; }
-      const certificates = await CollegeAdminNotificationService.getPendingCertificates(collegeId);
-      setPendingCertificates(certificates || []);
+      if (!collegeId) {
+      logger.warn('No college ID found - showing empty list');
+      setPendingCertificates([]);
+      return;
+    }
+    logger.info('Using college_id:', collegeId)
+    const certificates = await CollegeAdminNotificationService.getPendingCertificates(collegeId);
+    logger.info('Certificates fetched via notification service:', certificates.length);
+    setPendingCertificates(certificates || []);
     } catch (error) {
       logger.error('Error in fetchPendingCertificates:', error);
       toast.error("Failed to fetch pending certificates");
@@ -168,11 +176,18 @@ const CollegeVerifications = () => {
   // Fetch pending skills for college admin
   const fetchPendingSkills = async () => {
     try {
+      logger.info('Fetching pending skills using CollegeAdminNotificationService...');
       const response = await apiPost('/college-admin/verifications', { action: 'resolve-college-id' });
       const collegeId = response.data?.collegeId;
-      if (!collegeId) { setPendingSkills([]); return; }
-      const skills = await CollegeAdminNotificationService.getPendingSkills(collegeId);
-      setPendingSkills(skills || []);
+      if (!collegeId) {
+      logger.warn('No college ID found - showing empty list');
+      setPendingSkills([]);
+      return;
+    }
+    logger.info('Using college_id:', collegeId);
+    const skills = await CollegeAdminNotificationService.getPendingSkills(collegeId);
+    logger.info('Skills fetched via notification service:', skills.length);
+    setPendingSkills(skills || []);
     } catch (error) {
       logger.error('Error in fetchPendingSkills:', error);
       toast.error("Failed to fetch pending skills");
@@ -241,6 +256,7 @@ const CollegeVerifications = () => {
       setShowCertificateModal(true);
     } else if (action === 'approved' || action === 'rejected') {
       await fetchPendingCertificates();
+      toast.success(`Certificate ${action} successfully!`);
     }
   };
 
@@ -251,6 +267,7 @@ const CollegeVerifications = () => {
       setShowSkillModal(true);
     } else if (action === 'approved' || action === 'rejected') {
       await fetchPendingSkills();
+      toast.success(`Skill ${action} successfully!`);
     }
   };
 
@@ -369,6 +386,10 @@ const CollegeVerifications = () => {
         return getTotalPages(filteredExperiences);
       case 'projects':
         return getTotalPages(filteredProjects);
+      case 'certificates':
+       return getTotalPages(filteredCertificates);
+      case 'skills':
+       return getTotalPages(filteredSkills);
       default:
         return 1;
     }
@@ -844,6 +865,9 @@ const CollegeVerifications = () => {
       <div className="lg:hidden relative mb-2">
         <button
           onClick={() => setOpen(o => !o)}
+          aria-label="Toggle verification category menu"
+          aria-expanded={open}
+          aria-haspopup="true"
           className="flex items-center justify-between w-full bg-gray-100 rounded-lg px-4 py-3 font-medium text-gray-700"
         >
           <div className="flex items-center gap-2">
@@ -851,9 +875,7 @@ const CollegeVerifications = () => {
             <span>{active?.label} ({counts[activeTab] ?? 0})</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="block w-5 h-0.5 bg-gray-600" />
-            <span className="block w-5 h-0.5 bg-gray-600" />
-            <span className="block w-5 h-0.5 bg-gray-600" />
+            <Menu className="w-5 h-5 text-gray-600" />
           </div>
         </button>
         {open && (

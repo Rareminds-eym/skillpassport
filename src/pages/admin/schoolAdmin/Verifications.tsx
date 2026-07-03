@@ -23,7 +23,8 @@ import {
   Mail,
   Award,
   FileText,
-  Zap
+  Zap,
+  Menu
 } from 'lucide-react';
 import { getLogger } from '@/shared/config/logging';
 
@@ -860,6 +861,9 @@ const Verifications: React.FC = () => {
       <div className="lg:hidden relative mb-2">
         <button
           onClick={() => setOpen(o => !o)}
+          aria-label="Toggle verification category menu"
+          aria-expanded={open}
+          aria-haspopup="true"
           className="flex items-center justify-between w-full bg-gray-100 rounded-lg px-4 py-3 font-medium text-gray-700"
         >
           <div className="flex items-center gap-2">
@@ -867,9 +871,7 @@ const Verifications: React.FC = () => {
             <span>{active?.label} ({active?.count ?? 0})</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="block w-5 h-0.5 bg-gray-600" />
-            <span className="block w-5 h-0.5 bg-gray-600" />
-            <span className="block w-5 h-0.5 bg-gray-600" />
+            <Menu className="w-5 h-5 text-gray-600" />
           </div>
         </button>
         {open && (
