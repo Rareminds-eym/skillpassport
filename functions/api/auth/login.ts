@@ -10,7 +10,8 @@ interface LoginBody {
  * POST /api/auth/login
  *
  * Pure RPC call to SSO Worker login method.
- * Sets refresh token as HTTP-Only cookie and returns access token.
+ * Returns access token in body and response headers only.
+ * Refresh token is handled implicitly via auth-core + SSO RPC.
  */
 export async function onRequestPost(context: { request: Request; env: Env }): Promise<Response> {
   const { request, env } = context;
@@ -77,19 +78,27 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       });
     }
 
-    // Set refresh token as HTTP-Only cookie
     const headers = new Headers({
       'Content-Type': 'application/json'
     });
 
-    headers.append(
-      'Set-Cookie',
-      `refresh_token=${ssoResult.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`
-    );
+    // Set access token as header for in-memory client storage
+    if (ssoResult.access_token) {
+      headers.set('X-Access-Token', ssoResult.access_token);
+    }
+
+    // Set refresh token as HttpOnly cookie for auth-core implicit refresh
+    if (ssoResult.refresh_token) {
+      // Note: Secure flag omitted for localhost development (HTTP); production should use Secure
+      headers.append(
+        'Set-Cookie',
+        `refresh_token=${ssoResult.refresh_token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
+      );
+    }
 
     apiLogger.info('Login successful via RPC', { email, userId: ssoResult.user?.id });
 
-    // Return access token to frontend (refresh token in cookie)
+    // Return response body
     return new Response(JSON.stringify({
       success: true,
       access_token: ssoResult.access_token,
