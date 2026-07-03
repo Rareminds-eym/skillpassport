@@ -53,6 +53,7 @@ interface SsoTransactionData {
   organization_type?: string;
   seat_count?: number;
   is_bulk_purchase?: boolean;
+  /** R2 key to the payment receipt PDF (not a presigned URL) */
   receipt_url?: string;
   notes?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
@@ -155,6 +156,9 @@ export async function ssoRecordTransaction(
   return getSsoService(env).recordTransaction(data);
 }
 
+/**
+ * Update transaction metadata (e.g., receipt_url after async generation)
+ */
 export async function ssoUpdateTransaction(
   env: SsoClientEnv,
   transactionId: string,

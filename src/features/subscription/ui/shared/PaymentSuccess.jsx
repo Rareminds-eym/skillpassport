@@ -640,11 +640,14 @@ function PaymentSuccess() {
     }
   }, [verificationError, user, navigate]);
 
+  // Extract receipt status to avoid stale closure in useCallback
+  const receiptStatus = transactionDetails?.receipt_status;
+
   // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
       // Check if receipt is still being generated
-      if (transactionDetails?.receipt_status === 'generating') {
+      if (receiptStatus === 'generating') {
         toast('Receipt is being prepared. Please try again in a moment or check your email.', { icon: '⏳', duration: 5000 });
         return;
       }
@@ -654,10 +657,19 @@ function PaymentSuccess() {
       
       // Strategy 2: If not available, construct from payment ID and try to fetch
       if (!fileIdentifier && paymentParams.razorpay_payment_id && user?.id) {
-        const shortUserId = (user?.id || '').substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH) || 'unknown';
+        if (
+          !RECEIPT_CONFIG?.USER_ID_PREFIX_LENGTH ||
+          !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX
+        ) {
+          throw new Error('Receipt configuration is incomplete');
+        }
+
+        const userPrefix = user.id
+          ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
+          : '';
         const sanitizedPaymentId = paymentParams.razorpay_payment_id.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
         // Use a wildcard pattern - backend will find the file with any timestamp
-        fileIdentifier = `payment_pdf/user_${shortUserId}/${sanitizedPaymentId}`;
+        fileIdentifier = `payment_pdf/user_${userPrefix}/${sanitizedPaymentId}`;
         log.info('Constructed receipt identifier from payment ID:', fileIdentifier);
       }
       
@@ -666,10 +678,14 @@ function PaymentSuccess() {
         const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
         
         // Use shared download helper with fallback mechanism
-        await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
-        
-        toast.success('Receipt downloading!');
-        return;
+        try {
+          await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+          toast.success('Receipt downloading!');
+          return;
+        } catch (downloadError) {
+          log.error('Download helper failed:', downloadError);
+          throw downloadError;
+        }
       }
       
       // Receipt not yet available (server may still be processing)
@@ -677,14 +693,19 @@ function PaymentSuccess() {
     } catch (error) {
       log.error('Receipt download failed:', error);
       // More helpful error message
-      const errorMessage = error?.message || 'Failed to download receipt';
-      if (errorMessage.includes('not found')) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStatus =
+        typeof error === 'object' && error !== null && 'status' in error
+          ? error['status']
+          : undefined;
+
+      if (errorStatus === 404 || errorMessage.includes('404') || errorMessage.includes('not found')) {
         toast.error('Receipt is still being generated. Please try again in a moment or check your email.');
       } else {
         toast.error('Failed to download receipt. A copy has been sent to your email.');
       }
     }
-  }, [receiptKey, receiptUrl, paymentParams.razorpay_payment_id, user?.id, transactionDetails?.receipt_status]);
+  }, [receiptKey, receiptUrl, paymentParams.razorpay_payment_id, user?.id, receiptStatus]);
 
   // ============================================================================
   // RENDER

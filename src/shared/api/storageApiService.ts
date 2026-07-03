@@ -28,7 +28,9 @@ async function getAuthToken(): Promise<string | null> {
 const getAuthHeaders = (token?: string, isFormData = false): Record<string, string> => {
   const headers: Record<string, string> = {};
   if (!isFormData) headers['Content-Type'] = 'application/json';
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
   return headers;
 };
 
@@ -416,17 +418,15 @@ export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expire
 
   const result = await response.json() as PresignedUrlResponse;
   
-  // The API wraps response in { success: true, data: { presignedUrl, ... } }
-  if (result.success && result.data && result.data.presignedUrl) {
-    return result.data.presignedUrl;
+  const presignedUrl = result.success && result.data?.presignedUrl
+    ? result.data.presignedUrl
+    : result.presignedUrl;
+
+  if (!presignedUrl || typeof presignedUrl !== 'string') {
+    throw new Error('Invalid API response: presignedUrl not found or invalid type');
   }
-  
-  // Fallback for old format
-  if (result.presignedUrl) {
-    return result.presignedUrl;
-  }
-  
-  throw new Error('Invalid API response: presignedUrl not found');
+
+  return presignedUrl;
 }
 
 export default {

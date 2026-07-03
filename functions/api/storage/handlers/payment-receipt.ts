@@ -321,6 +321,12 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
 
       // List files with the partial key as prefix
       const files = await r2Client.list(fileKey);
+      
+      if (!files || !Array.isArray(files)) {
+        logger.error('Invalid response from r2Client.list', new Error('Expected array'));
+        return apiError(500, 'INTERNAL_ERROR', 'Failed to process receipt file', request);
+      }
+      
       logger.info(`Found ${files.length} matching files`);
 
       if (files.length === 0) {
@@ -329,8 +335,14 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
       }
 
       const firstFile = files[0];
-      if (!firstFile || !firstFile.key) {
-        logger.error('Invalid file object returned from list', new Error('Missing key property'));
+      if (
+        !firstFile ||
+        typeof firstFile !== 'object' ||
+        !('key' in firstFile) ||
+        typeof firstFile.key !== 'string' ||
+        !firstFile.key
+      ) {
+        logger.error('Invalid receipt file entry', new Error('Missing file key'));
         return apiError(500, 'INTERNAL_ERROR', 'Failed to process receipt file', request);
       }
 

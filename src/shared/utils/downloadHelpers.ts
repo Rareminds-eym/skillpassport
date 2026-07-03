@@ -28,10 +28,10 @@ export function getDateString(date: Date = new Date()): string {
  * 
  * @param url - The URL to download from (typically a presigned URL)
  * @param filename - The filename to save as
- * @returns True if download succeeded
+ * @returns Promise that resolves when download completes
  * @throws Error if download fails completely
  */
-export async function downloadFileFromUrl(url: string, filename?: string): Promise<boolean> {
+export async function downloadFileFromUrl(url: string, filename?: string): Promise<void> {
   if (!url) {
     throw new Error('URL is required for download');
   }
@@ -55,8 +55,16 @@ export async function downloadFileFromUrl(url: string, filename?: string): Promi
       const link = document.createElement('a');
       link.href = objectUrl;
       link.download = filename;
-      link.click();
-      return true;
+      
+      try {
+        link.click();
+      } catch (clickError) {
+        throw new Error(
+          `File download click failed: ${
+            clickError instanceof Error ? clickError.message : String(clickError)
+          }`
+        );
+      }
     } finally {
       // Guaranteed cleanup - prevents memory leaks
       URL.revokeObjectURL(objectUrl);
@@ -70,9 +78,17 @@ export async function downloadFileFromUrl(url: string, filename?: string): Promi
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
-      link.target = '_blank'; // Open in new tab if download attribute doesn't work
-      link.click();
-      return true;
+      link.target = '_blank'; // Note: Direct link may fail if CORS prevents download attribute from working.
+      
+      try {
+        link.click();
+      } catch (clickError) {
+        throw new Error(
+          `File download click failed: ${
+            clickError instanceof Error ? clickError.message : String(clickError)
+          }`
+        );
+      }
     } catch (fallbackError) {
       const fallbackErr = fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError));
       logger.error('Both fetch and direct link failed', fallbackErr);

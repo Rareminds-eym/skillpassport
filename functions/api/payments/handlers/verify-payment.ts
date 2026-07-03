@@ -46,6 +46,10 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     return apiError(400, 'VALIDATION_ERROR', 'User email is required', context.request);
   }
 
+  const userEmail: string = user.email;
+  const userName = typeof user.name === 'string' ? user.name : undefined;
+  const userPhone = typeof user.phone === 'string' ? user.phone : undefined;
+
   try {
     let body: Record<string, unknown>;
     try {
@@ -273,9 +277,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           plan_amount: planPrice,
           billing_cycle: plan.duration as string,
           features: validPlan.base_features || [],
-          full_name: user.name || user.email,
-          email: user.email,
-          phone: user.phone || undefined,
+          full_name: userName || userEmail,
+          email: userEmail,
+          phone: userPhone,
           razorpay_order_id: body.razorpay_order_id as string,
           razorpay_payment_id: body.razorpay_payment_id as string,
           // DO NOT set receipt_url here - will be set after successful upload
@@ -359,9 +363,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 4: Send payment confirmation email
     try {
       await sendPaymentSuccessEmail(env as unknown as PagesEnv, {
-        name: user.name || user.email,
-        email: user.email,
-        phone: user.phone || '',
+        name: userName || userEmail,
+        email: userEmail,
+        phone: userPhone || '',
         amount: planPrice,
         orderId: body.razorpay_order_id as string,
         campaign: plan.name as string,
@@ -394,50 +398,26 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
               subscription_end_date: subscription.subscription_end_date as string,
             },
             user: {
-              name: user.name,
-              email: user.email,
-              phone: user.phone || undefined,
+              name: userName,
+              email: userEmail,
+              phone: userPhone,
             },
           }).catch((err) => {
             // Safe error boundary - ensure logger.error never throws
             try {
               logger.error('Async receipt generation failed', err instanceof Error ? err : new Error(String(err)));
             } catch (logError) {
-              // Logger itself failed - log to console as fallback
-              console.error('Logger failed during receipt error handling:', logError, 'Original error:', err);
+              // Fallback logging - ensure error is always captured
+              try {
+                console.error('Logger failed during receipt error handling:', logError, 'Original error:', err);
+              } catch {
+                // Silent fallback - at least the promise won't reject
+              }
             }
           })
         );
       } else {
-        // Fallback: Generate receipt synchronously if waitUntil is not available
-        logger.warn('context.waitUntil not available, generating receipt synchronously');
-        try {
-          await generateAndUploadReceipt({
-            env,
-            supabase,
-            subscriptionId: subscription.id as string,
-            transactionId,
-            userId: user.id,
-            receiptKey,
-            paymentId: body.razorpay_payment_id as string,
-            orderId: body.razorpay_order_id as string,
-            amount: planPrice,
-            paymentMethod: payment.method || 'Card',
-            subscription: {
-              plan_type: subscription.plan_type as string,
-              billing_cycle: subscription.billing_cycle as string,
-              subscription_start_date: subscription.subscription_start_date as string,
-              subscription_end_date: subscription.subscription_end_date as string,
-            },
-            user: {
-              name: user.name,
-              email: user.email,
-              phone: user.phone || undefined,
-            },
-          });
-        } catch (err) {
-          logger.error('Synchronous receipt generation failed', err instanceof Error ? err : new Error(String(err)));
-        }
+        logger.warn('context.waitUntil not available, receipt generation skipped');
       }
     }
 

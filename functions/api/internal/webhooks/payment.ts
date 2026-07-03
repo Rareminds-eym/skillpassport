@@ -337,18 +337,28 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
     try {
       if (!env.SSO_SERVICE) {
         logger.warn('SSO_SERVICE not configured, skipping receipt key storage');
+        // Explicitly continue — receipt generation succeeded even if storage failed.
         return;
       }
       
-      let ssoClient;
-      try {
-        ssoClient = await import('../../../lib/sso-client.js');
-      } catch (importErr) {
-        logger.error('Failed to load sso-client module', importErr instanceof Error ? importErr : new Error(String(importErr)));
-        // Continue without storing receipt key, don't throw
+      interface SSOClientModule {
+        ssoUpdateSubscriptionField: (
+          env: { SSO_SERVICE: Fetcher },
+          subscriptionId: string,
+          fields: Record<string, string>
+        ) => Promise<void>;
       }
       
-      if (ssoClient) {
+      let ssoClient: SSOClientModule | null = null;
+      try {
+        ssoClient = (await import('../../../lib/sso-client.js')) as unknown as SSOClientModule;
+      } catch (importErr) {
+        logger.error('Failed to load sso-client module', importErr instanceof Error ? importErr : new Error(String(importErr)));
+        // Explicitly continue — receipt generation succeeded even if storage failed.
+        return;
+      }
+      
+      if (ssoClient && typeof ssoClient.ssoUpdateSubscriptionField === 'function') {
         await ssoClient.ssoUpdateSubscriptionField(
           env as unknown as { SSO_SERVICE: Fetcher },
           subscription.id,
@@ -357,9 +367,12 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
           }
         );
         logger.info('Receipt key saved to subscription', { receiptKey });
+      } else {
+        logger.warn('SSO client unavailable, subscription field update skipped');
       }
     } catch (updateErr) {
       logger.error('Failed to save receipt key (non-critical)', updateErr instanceof Error ? updateErr : new Error(String(updateErr)));
+      // Explicitly continue — receipt generation succeeded even if storage failed.
     }
 
     const emailData: EventConfirmationTemplateData = {

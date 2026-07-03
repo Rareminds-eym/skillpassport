@@ -279,6 +279,18 @@ function MySubscription() {
   };
 
   const handleDownloadInvoice = async (invoiceData = null) => {
+    if (!subscriptionData && !invoiceData) {
+      toast.error('Subscription details are not available. Please try again.');
+      return;
+    }
+
+    if (
+      !RECEIPT_CONFIG?.USER_ID_PREFIX_LENGTH ||
+      !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX
+    ) {
+      throw new Error('Receipt configuration is incomplete');
+    }
+
     setIsDownloadingInvoice(true);
     
     let successfulDownload = false;
@@ -296,8 +308,14 @@ function MySubscription() {
           errorMessage = 'Failed to generate download link. Please try again.';
         } else {
           // Use shared download helper with fallback mechanism
-          await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
-          successfulDownload = true;
+          try {
+            await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+            successfulDownload = true;
+          } catch (downloadError) {
+            logger.error('Download failed', downloadError);
+            errorOccurred = true;
+            errorMessage = 'Failed to download receipt. Please try again.';
+          }
         }
       } else {
         // PRIORITY 2: Determine which payment ID to use for constructing receipt path
@@ -323,24 +341,32 @@ function MySubscription() {
         } else {
           // Construct the receipt key pattern - matches what the backend generates
           // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
-          const shortUserId = user?.id?.slice(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH) || '';
+          const userPrefix = user?.id
+            ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
+            : '';
           const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
           
           // The exact key format may vary by timestamp, so we use the payment ID as identifier
           // The backend will handle key extraction from payment ID
-          const fileIdentifier = `payment_pdf/user_${shortUserId}/${sanitizedPaymentId}`;
+          const fileIdentifier = `payment_pdf/user_${userPrefix}/${sanitizedPaymentId}`;
           
           // Get presigned URL for the receipt
           const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
           
           if (!presignedUrl || presignedUrl === '' || presignedUrl === 'about:blank') {
-            logger.error('Invalid presigned URL received', new Error('Invalid URL'), { presignedUrl });
+            logger.error('Invalid presigned URL received', new Error('Invalid URL'));
             errorOccurred = true;
             errorMessage = 'Failed to generate download link. Receipt may not exist.';
           } else {
             // Use shared download helper with fallback mechanism
-            await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
-            successfulDownload = true;
+            try {
+              await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+              successfulDownload = true;
+            } catch (downloadError) {
+              logger.error('Download failed', downloadError);
+              errorOccurred = true;
+              errorMessage = 'Failed to download receipt. Please try again.';
+            }
           }
         }
       }
