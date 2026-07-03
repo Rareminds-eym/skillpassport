@@ -498,8 +498,10 @@ const MainSettings = () => {
         showPhone: false,
         showLocation: false,
       }));
+      toast.success('Profile set to private. Contact information has been hidden.');
     } else {
       setPrivacySettings((prev) => ({ ...prev, [setting]: value }));
+      toast.success('Privacy settings updated');
     }
   };
 

@@ -35,14 +35,15 @@ function safeParse(jsonLike) {
   if (typeof jsonLike === "object") return jsonLike;
   try {
     return JSON.parse(jsonLike);
-  } catch {
+  } catch (err) {
     try {
       return JSON.parse(
         String(jsonLike)
           .replace(/(\r\n|\n|\r)/g, " ")
           .replace(/'/g, '"')
       );
-    } catch {
+    } catch (fallbackErr) {
+      console.warn('Failed to parse profile data, using empty object:', fallbackErr);
       return {};
     }
   }
@@ -343,7 +344,8 @@ export default function LearnerPublicViewer() {
       } else {
         setShowShareModal(true);
       }
-    } catch {
+    } catch (err) {
+      console.warn('Share API not available, falling back to modal:', err);
       setShowShareModal(true);
     }
   };
@@ -638,8 +640,10 @@ export default function LearnerPublicViewer() {
                          {};
   const profileVisibility = privacySettings?.profileVisibility || 'public';
 
-  // Check if the viewer is the profile owner
-  const isProfileOwner = user?.email === raw?.email || user?.id === raw?.user_id;
+  // Check if the viewer is the profile owner (user_id is at raw level or nested in profile)
+  const rawUserId = raw?.user_id || profile?.user_id;
+  const isProfileOwner = (user?.email && raw?.email && user.email === raw.email) ||
+                         (user?.id && rawUserId && user.id === rawUserId);
 
   // Get contact visibility settings
   const showEmail = privacySettings?.showEmail !== false;

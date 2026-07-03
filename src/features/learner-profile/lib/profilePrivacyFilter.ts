@@ -10,7 +10,7 @@ export interface PrivacySettings {
 }
 
 interface ProfileData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function filterProfileByPrivacy(
