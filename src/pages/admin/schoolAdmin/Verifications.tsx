@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
@@ -844,13 +844,19 @@ const Verifications: React.FC = () => {
   );
 
   // Mobile Tab Menu Component
-  const tabOptions = [
+  const tabOptions = useMemo(() => [
     { value: 'trainings' as const, label: 'Training', icon: BookOpen, count: pendingTrainings.length },
     { value: 'experiences' as const, label: 'Experience', icon: Briefcase, count: pendingExperiences.length },
     { value: 'certificates' as const, label: 'Certificate', icon: Award, count: pendingCertificates.length },
     { value: 'skills' as const, label: 'Skills', icon: Zap, count: pendingSkills.length },
     { value: 'projects' as const, label: 'Project', icon: Building2, count: pendingProjects.length },
-  ];
+  ], [
+  pendingTrainings.length,
+  pendingExperiences.length,
+  pendingCertificates.length,
+  pendingSkills.length,
+  pendingProjects.length,
+]);
 
   const MobileTabMenu: React.FC<{ activeTab: string; onTabChange: (tab: string) => void }> = ({ activeTab, onTabChange }) => {
     const [open, setOpen] = React.useState(false);

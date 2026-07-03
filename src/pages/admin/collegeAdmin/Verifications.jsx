@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/shared/ui/Card';
 import { Button } from '@/shared/ui/ButtonNew';
 import { Badge } from '@/shared/ui/Badge';
@@ -159,14 +159,14 @@ const CollegeVerifications = () => {
       const response = await apiPost('/college-admin/verifications', { action: 'resolve-college-id' });
       const collegeId = response.data?.collegeId;
       if (!collegeId) {
-      logger.warn('No college ID found - showing empty list');
-      setPendingCertificates([]);
-      return;
-    }
-    logger.info('Using college_id:', collegeId)
-    const certificates = await CollegeAdminNotificationService.getPendingCertificates(collegeId);
-    logger.info('Certificates fetched via notification service:', certificates.length);
-    setPendingCertificates(certificates || []);
+        logger.warn('No college ID found - showing empty list');
+        setPendingCertificates([]);
+        return;
+      }
+      logger.info('Using college_id:', collegeId);
+      const certificates = await CollegeAdminNotificationService.getPendingCertificates(collegeId);
+      logger.info('Certificates fetched via notification service:', certificates.length);
+      setPendingCertificates(certificates || []);
     } catch (error) {
       logger.error('Error in fetchPendingCertificates:', error);
       toast.error("Failed to fetch pending certificates");
@@ -180,14 +180,14 @@ const CollegeVerifications = () => {
       const response = await apiPost('/college-admin/verifications', { action: 'resolve-college-id' });
       const collegeId = response.data?.collegeId;
       if (!collegeId) {
-      logger.warn('No college ID found - showing empty list');
-      setPendingSkills([]);
-      return;
-    }
-    logger.info('Using college_id:', collegeId);
-    const skills = await CollegeAdminNotificationService.getPendingSkills(collegeId);
-    logger.info('Skills fetched via notification service:', skills.length);
-    setPendingSkills(skills || []);
+        logger.warn('No college ID found - showing empty list');
+        setPendingSkills([]);
+        return;
+      }
+      logger.info('Using college_id:', collegeId);
+      const skills = await CollegeAdminNotificationService.getPendingSkills(collegeId);
+      logger.info('Skills fetched via notification service:', skills.length);
+      setPendingSkills(skills || []);
     } catch (error) {
       logger.error('Error in fetchPendingSkills:', error);
       toast.error("Failed to fetch pending skills");
@@ -848,16 +848,22 @@ const CollegeVerifications = () => {
   );
 
   // Mobile Tab Menu Component
-  const tabOptions = [
+  const tabOptions = useMemo(() =>  [
     { value: 'trainings', label: 'Training', icon: BookOpen, count: pendingTrainings.length },
     { value: 'experiences', label: 'Experience', icon: Briefcase, count: pendingExperiences.length },
     { value: 'projects', label: 'Project', icon: Building2, count: pendingProjects.length },
     { value: 'certificates', label: 'Certificate', icon: Award, count: pendingCertificates.length },
     { value: 'skills', label: 'Skills', icon: Zap, count: pendingSkills.length },
-  ];
+  ], [
+  pendingTrainings.length,
+  pendingExperiences.length,
+  pendingCertificates.length,
+  pendingSkills.length,
+  pendingProjects.length,
+]);
 
   const MobileTabMenu = ({ activeTab, onTabChange, counts }) => {
-    const [open, setOpen] = React.useState(false);
+    const [open, setOpen] = useState(false);
     const active = tabOptions.find(t => t.value === activeTab);
     const ActiveIcon = active?.icon || BookOpen;
 

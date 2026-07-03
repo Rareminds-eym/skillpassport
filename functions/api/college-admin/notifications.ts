@@ -27,7 +27,6 @@ interface CertificateRow {
   created_at: string;
   updated_at: string | null;
   learner: LearnerJoin | LearnerJoin[];
-  [key: string]: unknown;
 }
 
 interface SkillRow {
@@ -42,7 +41,6 @@ interface SkillRow {
   created_at: string;
   updated_at: string | null;
   learner: LearnerJoin | LearnerJoin[];
-  [key: string]: unknown;
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
@@ -559,7 +557,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .select('id');
         if (error) return apiDbError(error, context.request, { startTime });
         if (!data || data.length === 0) {
-           return apiError(409, 'CONFLICT', 'Certificate not found or already processed', context.request, { startTime });
+           return apiError(409, 'CONFLICT', 'Skill not found or already processed', context.request, { startTime });
         }
         return apiSuccess({ success: true, message: 'Skill approved', skill_id }, context.request, { startTime });
       }
@@ -583,7 +581,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .select('id');
         if (error) return apiDbError(error, context.request, { startTime });
         if (!data || data.length === 0) {
-           return apiError(409, 'CONFLICT', 'Certificate not found or already processed', context.request, { startTime });
+           return apiError(409, 'CONFLICT', 'Skill not found or already processed', context.request, { startTime });
         }
         return apiSuccess({ success: true, message: 'Skill rejected', skill_id }, context.request, { startTime });
       }
