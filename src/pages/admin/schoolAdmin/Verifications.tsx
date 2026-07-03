@@ -494,11 +494,6 @@ const Verifications: React.FC = () => {
               <span>{training.hours_spent} hours</span>
             </div>
           )}
-          
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <GraduationCap className="w-4 h-4" />
-            <span>School: {training.school_name || 'Unknown'}</span>
-          </div>
         </div>
         
         {training.skills && training.skills.length > 0 && (
@@ -847,6 +842,56 @@ const Verifications: React.FC = () => {
     </Card>
   );
 
+  // Mobile Tab Menu Component
+  const tabOptions = [
+    { value: 'trainings' as const, label: 'Training', icon: BookOpen, count: pendingTrainings.length },
+    { value: 'experiences' as const, label: 'Experience', icon: Briefcase, count: pendingExperiences.length },
+    { value: 'certificates' as const, label: 'Certificate', icon: Award, count: pendingCertificates.length },
+    { value: 'skills' as const, label: 'Skills', icon: Zap, count: pendingSkills.length },
+    { value: 'projects' as const, label: 'Project', icon: Building2, count: pendingProjects.length },
+  ];
+
+  const MobileTabMenu: React.FC<{ activeTab: string; onTabChange: (tab: string) => void }> = ({ activeTab, onTabChange }) => {
+    const [open, setOpen] = React.useState(false);
+    const active = tabOptions.find(t => t.value === activeTab);
+    const ActiveIcon = active?.icon || BookOpen;
+
+    return (
+      <div className="lg:hidden relative mb-2">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex items-center justify-between w-full bg-gray-100 rounded-lg px-4 py-3 font-medium text-gray-700"
+        >
+          <div className="flex items-center gap-2">
+            <ActiveIcon className="w-4 h-4 text-blue-600" />
+            <span>{active?.label} ({active?.count ?? 0})</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="block w-5 h-0.5 bg-gray-600" />
+            <span className="block w-5 h-0.5 bg-gray-600" />
+            <span className="block w-5 h-0.5 bg-gray-600" />
+          </div>
+        </button>
+        {open && (
+          <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1">
+            {tabOptions.map(({ value, label, icon: Icon, count }) => (
+              <button
+                key={value}
+                onClick={() => { onTabChange(value); setOpen(false); }}
+                className={`flex items-center gap-3 w-full px-4 py-3 text-sm hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg ${
+                  activeTab === value ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label} ({count})
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -875,7 +920,7 @@ const Verifications: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-8">
           <Card className="bg-blue-50">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -896,6 +941,18 @@ const Verifications: React.FC = () => {
                   <p className="text-2xl font-bold text-green-600">{pendingExperiences.length}</p>
                 </div>
                 <Briefcase className="w-8 h-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-indigo-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Projects</p>
+                  <p className="text-2xl font-bold text-indigo-600">{pendingProjects.length}</p>
+                </div>
+                <FileText className="w-8 h-8 text-indigo-600" />
               </div>
             </CardContent>
           </Card>
@@ -941,43 +998,47 @@ const Verifications: React.FC = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-gray-100 p-1 rounded-lg">
+          {/* Desktop tabs */}
+          <TabsList className="hidden lg:grid w-full grid-cols-5 bg-gray-100 p-1 rounded-lg">
             <TabsTrigger 
               value="trainings" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <BookOpen className="w-4 h-4" />
               Training ({pendingTrainings.length})
             </TabsTrigger>
             <TabsTrigger 
               value="experiences" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Briefcase className="w-4 h-4" />
               Experience ({pendingExperiences.length})
             </TabsTrigger>
             <TabsTrigger 
               value="certificates" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Award className="w-4 h-4" />
               Certificate ({pendingCertificates.length})
             </TabsTrigger>
             <TabsTrigger 
               value="skills" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Zap className="w-4 h-4" />
               Skills ({pendingSkills.length})
             </TabsTrigger>
             <TabsTrigger 
               value="projects" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
+              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-black data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:bg-gray-200 transition-all duration-200 rounded-md"
             >
               <Building2 className="w-4 h-4" />
               Project ({pendingProjects.length})
             </TabsTrigger>
           </TabsList>
+
+          {/* Mobile tab dropdown */}
+          <MobileTabMenu activeTab={activeTab} onTabChange={handleTabChange} />
 
           {/* Training Approvals Tab */}
           <TabsContent value="trainings" className="space-y-6">
