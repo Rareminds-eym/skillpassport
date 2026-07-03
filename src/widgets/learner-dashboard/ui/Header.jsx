@@ -32,6 +32,7 @@ import { useUser, useAuthActions } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
+
 const ICON_MAP = {
   BookmarkIcon,
   Cog6ToothIcon,

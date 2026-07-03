@@ -75,13 +75,44 @@
     <link rel="canonical" href="https://skillpassport.rareminds.in/" />
     
     <style>
-      /* Hide Zoho widget on learner pages */
+      /* Aggressively hide Zoho chat window by default - prevent any flicker */
+      body:not(.zoho-chat-open) div[id^="siqiframe"],
+      body:not(.zoho-chat-open) div[id*="zsalesiq"],
+      body:not(.zoho-chat-open) div[class*="zsiq"],
+      body:not(.zoho-chat-open) iframe[id*="siq"],
+      body:not(.zoho-chat-open) iframe[class*="zsiq"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        pointer-events: none !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
+      }
+      
+      /* Show when body has zoho-chat-open class */
+      body.zoho-chat-open div[id^="siqiframe"],
+      body.zoho-chat-open div[id*="zsalesiq"],
+      body.zoho-chat-open div[class*="zsiq"],
+      body.zoho-chat-open iframe[id*="siq"],
+      body.zoho-chat-open iframe[class*="zsiq"] {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: auto !important;
+        height: auto !important;
+        pointer-events: auto !important;
+        position: fixed !important;
+        left: auto !important;
+        top: auto !important;
+      }
+      
+      /* Hide Zoho float button on non-home pages */
       body.hide-zoho-widget #zsiq_float,
       body.hide-zoho-widget .zsiq_floatmain,
-      body.hide-zoho-widget .zsiq_float,
-      body.hide-zoho-widget div[id^="siqiframe"],
-      body.hide-zoho-widget div[id*="zsalesiq"],
-      body.hide-zoho-widget iframe[id*="siq"] {
+      body.hide-zoho-widget .zsiq_float {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
@@ -106,8 +137,11 @@
         // Function to update widget visibility
         function updateWidgetVisibility() {
           if (window.$zoho && window.$zoho.salesiq && window.$zoho.salesiq.floatwindow) {
+            // Only control the float button, not the chat window
+            // The chat window is controlled by our Contact Support button
             if (isHomePage()) {
               document.body.classList.remove('hide-zoho-widget');
+              $zoho.salesiq.floatwindow.visible('show');
             } else {
               $zoho.salesiq.floatwindow.visible('hide');
               document.body.classList.add('hide-zoho-widget');
@@ -122,22 +156,29 @@
           values:{}, 
           ready:function(){
             console.log('Zoho CRM widget loaded');
-            // Prevent auto-opening and keep chat window minimized
+            
             if (window.$zoho && window.$zoho.salesiq) {
               // Disable auto-popup
-              if ($zoho.salesiq.visitor) {
+              if ($zoho.salesiq.visitor && typeof $zoho.salesiq.visitor.trigger === 'function') {
                 $zoho.salesiq.visitor.trigger('disable');
               }
-              // Hide chat window
+              
+              // Close chat window once - CSS will keep it hidden
               if ($zoho.salesiq.chatwindow) {
-                $zoho.salesiq.chatwindow.visible('hide');
-                $zoho.salesiq.chatwindow.minimize();
+                if (typeof $zoho.salesiq.chatwindow.close === 'function') {
+                  $zoho.salesiq.chatwindow.close();
+                }
+                if (typeof $zoho.salesiq.chatwindow.visible === 'function') {
+                  $zoho.salesiq.chatwindow.visible('hide');
+                }
               }
+              
               // Hide float button on non-home pages
               if ($zoho.salesiq.floatwindow) {
                 $zoho.salesiq.floatwindow.visible(isHomePage() ? 'show' : 'hide');
               }
             }
+            
             // Initial visibility check
             setTimeout(updateWidgetVisibility, 500);
           }

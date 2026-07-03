@@ -28,6 +28,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
+import { RECEIPT_CONFIG } from '@/shared/config/constants';
+import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
+
+import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import toast from 'react-hot-toast';
+import { getLogger } from '@/shared/config/logging';
+import { useZohoSalesIQ } from '@/shared/hooks/useZohoSalesIQ';
+
+import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
+
+const logger = getLogger('my-subscription');
 import { calculateDaysRemaining, calculateProgressPercentage, deactivateSubscription, formatDate, getSubscriptionStatusChecks, pauseSubscription, resumeSubscription } from '@/features/subscription';
 import { getUserSubscriptions } from '@/features/subscription/api';
 
@@ -83,6 +94,7 @@ function MySubscription() {
   const { role } = useUserRole();
   const authLoading = useAuthLoading();
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
+  const { openChatWithContext, isOpening: isOpeningZoho } = useZohoSalesIQ();
 
   // Get settings, dashboard paths, and user type from current URL (more reliable than role)
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
@@ -304,9 +316,11 @@ function MySubscription() {
     }
   };
 
-  const handleContactSupport = () => {
-    // Navigate to support page or open support modal
-    navigate('/support?topic=billing');
+  const handleContactSupport = async () => {
+    // Open Zoho Sales Chat with user context
+    await openChatWithContext({
+      issueSource: 'Subscription Page - Contact Support'
+    });
   };
 
   // Use URL-based paths (already computed from location.pathname)
@@ -1127,10 +1141,20 @@ function MySubscription() {
                     </p>
                     <button
                       onClick={handleContactSupport}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all hover:scale-105"
+                      disabled={isOpeningZoho}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
-                      <Mail className="w-4 h-4" />
-                      Contact Support
+                      {isOpeningZoho ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Opening Chat...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4" />
+                          Contact Support
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
