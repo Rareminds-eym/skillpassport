@@ -294,9 +294,12 @@ function MySubscription() {
     }
 
     if (
-      !RECEIPT_CONFIG?.USER_ID_PREFIX_LENGTH ||
-      !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX
+      !RECEIPT_CONFIG ||
+      typeof RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH !== 'number' ||
+      RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH <= 0 ||
+      !(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX instanceof RegExp)
     ) {
+      logger.error('Invalid RECEIPT_CONFIG for receipt download');
       toast.error('System configuration error. Please contact support.');
       return;
     }

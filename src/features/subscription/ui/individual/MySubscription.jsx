@@ -294,15 +294,19 @@ function MySubscription() {
     }
 
     if (
-      !RECEIPT_CONFIG?.USER_ID_PREFIX_LENGTH ||
-      !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX
+      !RECEIPT_CONFIG ||
+      typeof RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH !== 'number' ||
+      RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH <= 0 ||
+      !(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX instanceof RegExp)
     ) {
+      logger.error('Invalid RECEIPT_CONFIG for receipt download');
       toast.error('System configuration error. Please contact support.');
       return;
     }
 
     const isValidPresignedUrl = (url) => {
       if (!url || typeof url !== 'string') return false;
+      if (!url.startsWith('https://')) return false;
       
       try {
         const parsedUrl = new URL(url);
@@ -372,34 +376,44 @@ function MySubscription() {
           errorOccurred = true;
           errorMessage = 'Receipt not available. Payment information not found.';
         } else {
-          // Construct the receipt key pattern - matches what the backend generates
-          // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
-          const RECEIPT_FILE_PREFIX = 'payment_pdf/user_';
-          const userPrefix = user?.id
-            ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
-            : '';
-          const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
-          
-          // The exact key format may vary by timestamp, so we use the payment ID as identifier
-          // The backend will handle key extraction from payment ID
-          const fileIdentifier = `${RECEIPT_FILE_PREFIX}${userPrefix}/${sanitizedPaymentId}`;
-          
-          // Get presigned URL for the receipt
-          const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
-          
-          if (!isValidPresignedUrl(presignedUrl)) {
-            logger.error('Invalid presigned URL received', new Error('Invalid URL'));
+          // Validate regex configuration before use
+          if (
+            !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX ||
+            !(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX instanceof RegExp)
+          ) {
+            logger.error('Invalid PAYMENT_ID_SANITIZE_REGEX configuration');
             errorOccurred = true;
-            errorMessage = 'Failed to generate download link. Receipt may not exist yet.';
+            errorMessage = 'System configuration error. Please contact support.';
           } else {
-            // Use shared download helper with fallback mechanism
-            try {
-              await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
-              successfulDownload = true;
-            } catch (downloadError) {
-              logger.error('Download helper failed', downloadError);
+            // Construct the receipt key pattern - matches what the backend generates
+            // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
+            const RECEIPT_FILE_PREFIX = 'payment_pdf/user_';
+            const userPrefix = user?.id
+              ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
+              : '';
+            const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+            
+            // The exact key format may vary by timestamp, so we use the payment ID as identifier
+            // The backend will handle key extraction from payment ID
+            const fileIdentifier = `${RECEIPT_FILE_PREFIX}${userPrefix}/${sanitizedPaymentId}`;
+            
+            // Get presigned URL for the receipt
+            const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
+            
+            if (!isValidPresignedUrl(presignedUrl)) {
+              logger.error('Invalid presigned URL received', new Error('Invalid URL'));
               errorOccurred = true;
-              errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+              errorMessage = 'Failed to generate download link. Receipt may not exist yet.';
+            } else {
+              // Use shared download helper with fallback mechanism
+              try {
+                await downloadFileFromUrl(presignedUrl, generateReceiptFilename());
+                successfulDownload = true;
+              } catch (downloadError) {
+                logger.error('Download helper failed', downloadError);
+                errorOccurred = true;
+                errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+              }
             }
           }
         }
@@ -1239,10 +1253,7 @@ function MySubscription() {
                       <div className="pt-3 border-t border-slate-200">
                         <button
                           onClick={() => {
-                            handleDownloadInvoice().catch((error) => {
-                              logger.error('Download invoice action failed', error);
-                              toast.error('Failed to download receipt. Please try again.');
-                            });
+                            handleDownloadInvoice();
                           }}
                           disabled={isDownloadingInvoice}
                           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200"

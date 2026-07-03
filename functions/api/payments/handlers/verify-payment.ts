@@ -62,17 +62,33 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       return apiError(400, 'VALIDATION_ERROR', 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required', context.request);
     }
 
+    // Type narrow and validate Razorpay IDs
+    if (
+      typeof body.razorpay_order_id !== 'string' ||
+      typeof body.razorpay_payment_id !== 'string' ||
+      typeof body.razorpay_signature !== 'string' ||
+      !body.razorpay_order_id.trim() ||
+      !body.razorpay_payment_id.trim() ||
+      !body.razorpay_signature.trim()
+    ) {
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid Razorpay payment parameters', context.request);
+    }
+
+    const razorpayOrderId = body.razorpay_order_id;
+    const razorpayPaymentId = body.razorpay_payment_id;
+    const razorpaySignature = body.razorpay_signature;
+
     // Step 1: Verify Razorpay HMAC signature via payment-worker RPC (unchanged)
     const worker = getPaymentWorker(env);
     const verifyResult = await worker.verifyPaymentSignature(
-      body.razorpay_order_id as string,
-      body.razorpay_payment_id as string,
-      body.razorpay_signature as string
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature
     );
 
     // Step 1.5: Verify payment was actually captured (Amount Spoofing Prevention)
-    const payment = await worker.getPayment(body.razorpay_payment_id as string);
-    if (payment.status !== 'captured' || payment.order_id !== body.razorpay_order_id) {
+    const payment = await worker.getPayment(razorpayPaymentId);
+    if (payment.status !== 'captured' || payment.order_id !== razorpayOrderId) {
       return apiError(400, 'VALIDATION_ERROR', 'Payment not captured or order ID mismatch', context.request);
     }
 
@@ -147,7 +163,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     let receiptKey: string | null = null;
     
     const shortUserId = user.id.substring(0, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH);
-    const sanitizedPmtId = (body.razorpay_payment_id as string).replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
+    const sanitizedPmtId = razorpayPaymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
     const timestamp = Date.now();
     receiptKey = `payment_pdf/user_${shortUserId}/${sanitizedPmtId}_${timestamp}.pdf`;
 
@@ -199,8 +215,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           plan_type: plan.name,
           plan_amount: planPrice,
           billing_cycle: plan.duration,
-          razorpay_order_id: body.razorpay_order_id,
-          razorpay_payment_id: body.razorpay_payment_id,
+          razorpay_order_id: razorpayOrderId,
+          razorpay_payment_id: razorpayPaymentId,
           subscription_start_date: now.toISOString(),
           subscription_end_date: endDate.toISOString(),
           auto_renew: true,
@@ -235,9 +251,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         try {
           await ssoRecordTransaction(env, {
             user_id: user.id,
-            razorpay_order_id: body.razorpay_order_id as string,
-            razorpay_payment_id: body.razorpay_payment_id as string,
-            razorpay_signature: body.razorpay_signature as string,
+            razorpay_order_id: razorpayOrderId,
+            razorpay_payment_id: razorpayPaymentId,
+            razorpay_signature: razorpaySignature,
             amount: planPrice,
             status: 'failed',
             transaction_type: 'upgrade',
@@ -280,8 +296,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           full_name: userName || userEmail,
           email: userEmail,
           phone: userPhone,
-          razorpay_order_id: body.razorpay_order_id as string,
-          razorpay_payment_id: body.razorpay_payment_id as string,
+          razorpay_order_id: razorpayOrderId,
+          razorpay_payment_id: razorpayPaymentId,
           // DO NOT set receipt_url here - will be set after successful upload
         });
       } catch (createError: any) {
@@ -328,9 +344,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       const txResult = await ssoRecordTransaction(env, {
         subscription_id: subscription.id as string,
         user_id: user.id,
-        razorpay_payment_id: body.razorpay_payment_id as string,
-        razorpay_order_id: body.razorpay_order_id as string,
-        razorpay_signature: body.razorpay_signature as string,
+        razorpay_payment_id: razorpayPaymentId,
+        razorpay_order_id: razorpayOrderId,
+        razorpay_signature: razorpaySignature,
         amount: planPrice,
         currency: 'INR',
         status: 'completed',
@@ -367,7 +383,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         email: userEmail,
         phone: userPhone || '',
         amount: planPrice,
-        orderId: body.razorpay_order_id as string,
+        orderId: razorpayOrderId,
         campaign: plan.name as string,
         receiptUrl: undefined, // Receipt will be generated asynchronously
       });
@@ -391,8 +407,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
               transactionId,
               userId: user.id,
               receiptKey,
-              paymentId: body.razorpay_payment_id as string,
-              orderId: body.razorpay_order_id as string,
+              paymentId: razorpayPaymentId,
+              orderId: razorpayOrderId,
               amount: planPrice,
               paymentMethod: payment.method || 'Card',
               subscription: {
@@ -621,16 +637,22 @@ async function generateAndUploadReceipt(params: {
       // Update transaction with receipt URL
       if (transactionId) {
         try {
-          logger.info('Updating transaction with receipt URL in auth DB', { transactionId, receiptKey });
+          logger.info('Updating transaction with receipt URL in auth DB');
           await ssoUpdateTransaction(env, transactionId, {
             receipt_url: receiptKey,
           });
-          logger.info('Receipt URL saved to auth DB transaction successfully', { receiptKey, transactionId });
+          logger.info('Receipt URL saved to auth DB transaction successfully');
         } catch (txUpdateErr) {
-          logger.error(
-            'Failed to update transaction with receipt_url (non-critical)',
-            txUpdateErr instanceof Error ? txUpdateErr : new Error(String(txUpdateErr))
-          );
+          const error = txUpdateErr instanceof Error ? txUpdateErr : new Error(String(txUpdateErr));
+          
+          // Graceful degradation: If SSO RPC method is not implemented yet, log warning and continue
+          if (error.message?.includes('not implemented')) {
+            logger.warn('Transaction update skipped: SSO RPC method not yet available');
+          } else {
+            logger.error('Failed to update transaction with receipt_url (non-critical)', error);
+          }
+          
+          // Continue - receipt generation should not fail because transaction metadata update failed
         }
       } else {
         logger.warn('No transaction ID available, skipping transaction receipt URL update');
