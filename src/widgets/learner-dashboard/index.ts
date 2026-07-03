@@ -13,7 +13,7 @@ export { default as AnalyticsView } from './ui/AnalyticsView';
 export { default as CourseAdvancedFilters } from './ui/CourseAdvancedFilters';
 export { default as Dashboard } from './ui/Dashboard';
 export { default as DashboardWithSupabase } from './ui/DashboardWithSupabase';
-
+export { default as LearnerPublicViewer } from './ui/LearnerPublicViewer';
 export { default as DigitalBadges } from './ui/DigitalBadges';
 export { default as DigitalPortfolioSideDrawer } from './ui/DigitalPortfolioSideDrawer';
 export { default as DocumentManager } from './ui/DocumentManager';
