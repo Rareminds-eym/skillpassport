@@ -49,6 +49,11 @@ export { default as SuggestedNextSteps } from './ui/SuggestedNextSteps';
 export { default as TopSkillsInDemand } from './ui/TopSkillsInDemand';
 export { default as TrainingRecommendations } from './ui/TrainingRecommendations';
 
+// Re-export from features for FSD compliance (pages can import from widgets)
+// This is a valid aggregation pattern - widgets acts as API layer
+// Use public API barrel export instead of internal path
+export { LearnerPublicViewer } from '@/features/learner-profile';
+
 // Settings Components
 export { default as FormField } from './ui/settings/FormField';
 export { default as MainSettings } from './ui/settings/MainSettings';

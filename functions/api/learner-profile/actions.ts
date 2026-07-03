@@ -622,9 +622,32 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'fetch-learner-by-id': {
         const { learnerId } = params;
         if (!learnerId) return apiError(400, 'VALIDATION_ERROR', 'Missing learnerId', context.request, { startTime });
-        const { data, error } = await supabase.from('learners').select('*').eq('id', learnerId).maybeSingle();
-        if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || null, context.request, { startTime });
+
+        // Fetch learner data
+        const { data: learnerData, error: learnerError } = await supabase.from('learners').select('*').eq('id', learnerId).maybeSingle();
+
+        if (learnerError && learnerError.code !== 'PGRST116') return apiDbError(learnerError, context.request, { startTime });
+        if (!learnerData) return apiSuccess(null, context.request, { startTime });
+
+        // Fetch privacy settings from user_settings table using learner's user_id
+        let privacySettings = { profileVisibility: 'public' };
+
+        if (learnerData.user_id) {
+          const { data: userSettings, error: settingsError } = await supabase
+            .from('user_settings')
+            .select('privacy_settings')
+            .eq('user_id', learnerData.user_id)
+            .maybeSingle();
+
+          if (!settingsError && userSettings?.privacy_settings) {
+            privacySettings = userSettings.privacy_settings;
+          }
+        }
+
+        return apiSuccess({
+          ...learnerData,
+          privacySettings
+        }, context.request, { startTime });
       }
 
       // ──────────────────────────────────────────────
