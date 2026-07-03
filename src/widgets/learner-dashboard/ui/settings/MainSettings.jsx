@@ -489,7 +489,18 @@ const MainSettings = () => {
   };
 
   const handlePrivacyChange = (setting, value) => {
-    setPrivacySettings((prev) => ({ ...prev, [setting]: value }));
+    // If profile visibility is being changed to 'private', automatically disable contact info visibility
+    if (setting === 'profileVisibility' && value === 'private') {
+      setPrivacySettings((prev) => ({
+        ...prev,
+        profileVisibility: value,
+        showEmail: false,
+        showPhone: false,
+        showLocation: false,
+      }));
+    } else {
+      setPrivacySettings((prev) => ({ ...prev, [setting]: value }));
+    }
   };
 
   // Handle "Add New" selection for institutions
