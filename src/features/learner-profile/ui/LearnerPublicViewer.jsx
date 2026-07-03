@@ -348,9 +348,28 @@ export default function LearnerPublicViewer() {
     }
   };
 
+  // Show loading while authentication is being checked
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50/30 to-purple-50/30 py-10 px-4 animate-pulse">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 flex flex-col md:flex-row items-center md:items-start gap-6">
+            <div className="w-24 h-24 bg-gray-200 rounded-xl"></div>
+            <div className="flex-1 space-y-4 text-center md:text-left">
+              <div className="space-y-2">
+                <div className="h-8 bg-gray-200 rounded w-48 mx-auto md:mx-0"></div>
+                <div className="h-4 bg-gray-200 rounded w-32 mx-auto md:mx-0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   // Strict authentication-based access control
   // Only authenticated users can view learner profiles
-  if (!authLoading && !user) {
+  if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6">
         <div className="bg-white p-10 max-w-md text-center border border-gray-200 rounded-lg shadow-lg">
@@ -598,13 +617,13 @@ export default function LearnerPublicViewer() {
     );
   }
 
-  // NOW do access control after we have the learner data loaded
-  // Role-based access control
-  const userRole = user.role?.toLowerCase();
+  // Define role checks early - needed for privacy validation
+  const userRole = user?.role?.toLowerCase();
   const isLearner = userRole === "learner";
   const isRecruiter = userRole === "recruiter";
   const isEducator = userRole === "educator" || userRole === "school_educator" || userRole === "college_educator";
   const isAdmin = userRole?.includes("admin") || userRole === "principal" || userRole === "it_admin";
+  const isProfileOwner = user?.email === raw?.email || user?.id === raw?.user_id;
 
   // Check if user has permission to view this learner profile
   const hasAccess = isLearner || // Learners can view all learner profiles
@@ -631,20 +650,17 @@ export default function LearnerPublicViewer() {
     );
   }
 
-  // Check privacy settings - look in multiple places where it might be stored
+  // Privacy settings with safe defaults
   const privacySettings = raw?.privacySettings ||
                          profile?.privacySettings ||
                          parsedProfile?.privacySettings ||
-                         {};
+                         { profileVisibility: 'public', showEmail: true, showPhone: true, showLocation: true };
   const profileVisibility = privacySettings?.profileVisibility || 'public';
 
-  // Check if the viewer is the profile owner
-  const isProfileOwner = user?.email === raw?.email || user?.id === raw?.user_id;
-
-  // Get contact visibility settings
-  const showEmail = privacySettings?.showEmail !== false;
-  const showPhone = privacySettings?.showPhone !== false;
-  const showLocation = privacySettings?.showLocation !== false;
+  // Get contact visibility settings with safe defaults for owner
+  const showEmail = isProfileOwner ? true : (privacySettings?.showEmail !== false);
+  const showPhone = isProfileOwner ? true : (privacySettings?.showPhone !== false);
+  const showLocation = isProfileOwner ? true : (privacySettings?.showLocation !== false);
 
   // Check if profile is private (but allow owner to view)
   if (profileVisibility === 'private' && !isProfileOwner) {

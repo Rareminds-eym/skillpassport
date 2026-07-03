@@ -630,7 +630,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!learnerData) return apiSuccess(null, context.request, { startTime });
 
         // Fetch privacy settings from user_settings table using learner's user_id
-        let privacySettings = { profileVisibility: 'public' };
+        let privacySettings = { profileVisibility: 'public', showEmail: true, showPhone: true, showLocation: true };
 
         if (learnerData.user_id) {
           const { data: userSettings, error: settingsError } = await supabase
@@ -644,6 +644,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           }
         }
 
+        // Note: Frontend enforces privacy checks based on user role and settings
+        // API returns raw data with privacy settings; frontend filters based on viewer permissions
         return apiSuccess({
           ...learnerData,
           privacySettings

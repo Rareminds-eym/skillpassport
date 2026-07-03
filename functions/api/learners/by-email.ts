@@ -32,7 +32,14 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   // (shared ADMIN_ROLES group) may fetch anyone's. Non-guard role check →
   // uses ADMIN_ROLES, replacing the inline literal (bug §7.1).
   const isAdmin = user.roles?.some((r: string) => ADMIN_ROLES.includes(r));
-  if (!isAdmin && user.email !== email) {
+  const isOwner = user.email === email;
+
+  // Audit log for public profile access attempts
+  if (publicProfileLearnerId && !isOwner && !isAdmin) {
+    console.log(`[LearnersByEmail] PUBLIC_PROFILE_ACCESS: userId="${user.id}" requested learnerId="${publicProfileLearnerId}" email="${email}"`);
+  }
+
+  if (!isAdmin && !isOwner) {
     if (!publicProfileLearnerId) {
       console.log(`[LearnersByEmail] BLOCKED: JWT email="${user.email}" tried to access "${email}"`);
       return apiError(403, 'FORBIDDEN', 'You can only access your own data', context.request, { startTime });
@@ -40,7 +47,7 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
     const { data: publicProfileLearner, error: publicProfileError } = await supabase
       .from('learners')
-      .select('id')
+      .select('id, user_id')
       .eq('id', publicProfileLearnerId)
       .eq('email', email)
       .maybeSingle();
