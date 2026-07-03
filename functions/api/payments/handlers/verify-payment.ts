@@ -212,7 +212,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           logger.info('Subscription already updated by webhook (duplicate caught). Syncing shadow cache before return');
 
           try {
-            await syncUserShadow(supabase, user.id, (body.email as string | undefined) || user.email);
+            await syncUserShadow(supabase, user.id, typeof body.email === 'string' ? body.email : userEmail);
             const syncData = await ssoSyncSubscription(env, user.id);
             if (syncData.subscription) {
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
@@ -290,7 +290,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           logger.info('Subscription already created (duplicate caught). Order fulfilled asynchronously. Syncing shadow cache before return');
 
           try {
-            await syncUserShadow(supabase, user.id, (body.email as string | undefined) || user.email);
+            await syncUserShadow(supabase, user.id, typeof body.email === 'string' ? body.email : userEmail);
             const syncData = await ssoSyncSubscription(env, user.id);
             if (syncData.subscription) {
               await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
@@ -338,7 +338,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         payment_method: payment.method,
         // DO NOT set receipt_url here - will be set after successful upload
       });
-      transactionId = txResult.id as string;
+      transactionId = typeof txResult.id === 'string' ? txResult.id : undefined;
     } catch (txError: any) {
       if (txError.message?.includes('duplicate key') || txError.message?.includes('23505') || txError.status === 409) {
         logger.info('Transaction already recorded (duplicate caught). Skipping further duplicate handling');
@@ -350,7 +350,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     // Step 3.5: Sync shadow table in app DB
     try {
       // Ensure user exists in users_shadow (FK constraint for subscription_cache)
-      await syncUserShadow(supabase, user.id, (body.email as string | undefined) || user.email);
+      await syncUserShadow(supabase, user.id, typeof body.email === 'string' ? body.email : userEmail);
 
       const syncData = await ssoSyncSubscription(env, user.id);
       if (syncData.subscription) {
@@ -380,29 +380,34 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       if (context.waitUntil) {
         logger.info('Scheduling async receipt generation', { receiptKey });
         context.waitUntil(
-          generateAndUploadReceipt({
-            env,
-            supabase,
-            subscriptionId: subscription.id as string,
-            transactionId,
-            userId: user.id,
-            receiptKey,
-            paymentId: body.razorpay_payment_id as string,
-            orderId: body.razorpay_order_id as string,
-            amount: planPrice,
-            paymentMethod: payment.method || 'Card',
-            subscription: {
-              plan_type: subscription.plan_type as string,
-              billing_cycle: subscription.billing_cycle as string,
-              subscription_start_date: subscription.subscription_start_date as string,
-              subscription_end_date: subscription.subscription_end_date as string,
-            },
-            user: {
-              name: userName,
-              email: userEmail,
-              phone: userPhone,
-            },
-          }).catch((err) => {
+          (async () => {
+            // Small delay gives transaction/subscription writes time to become visible before async receipt update.
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            
+            await generateAndUploadReceipt({
+              env,
+              supabase,
+              subscriptionId: subscription.id as string,
+              transactionId,
+              userId: user.id,
+              receiptKey,
+              paymentId: body.razorpay_payment_id as string,
+              orderId: body.razorpay_order_id as string,
+              amount: planPrice,
+              paymentMethod: payment.method || 'Card',
+              subscription: {
+                plan_type: subscription.plan_type as string,
+                billing_cycle: subscription.billing_cycle as string,
+                subscription_start_date: subscription.subscription_start_date as string,
+                subscription_end_date: subscription.subscription_end_date as string,
+              },
+              user: {
+                name: userName,
+                email: userEmail,
+                phone: userPhone,
+              },
+            });
+          })().catch((err) => {
             // Safe error boundary - ensure logger.error never throws
             try {
               logger.error('Async receipt generation failed', err instanceof Error ? err : new Error(String(err)));
@@ -525,6 +530,12 @@ async function generateAndUploadReceipt(params: {
       logger.warn(`Failed to fetch learner data: ${learnerError.message} (code: ${learnerError.code})`);
     }
 
+    // Safely normalize learner name before use
+    const learnerName =
+      typeof learner?.name === 'string' && learner.name.trim()
+        ? learner.name.trim()
+        : undefined;
+
     // Fetch company logo
     let logoBytes: Uint8Array | undefined;
     const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
@@ -559,7 +570,7 @@ async function generateAndUploadReceipt(params: {
         subscription_end_date: subscription.subscription_end_date,
       },
       user: {
-        name: learner?.name || userInfo.name || userInfo.email,
+        name: learnerName || userInfo.name || userInfo.email,
         email: userInfo.email,
         phone: userInfo.phone,
       },

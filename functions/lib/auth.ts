@@ -134,7 +134,9 @@ export function withAuthAllowUnverified(handler: (context: AuthenticatedContext)
 
 export interface AuthUser extends SSOAuthUser {
   id: string;
+  /** Optional display name returned by the auth/user profile provider when available. */
   name?: string;
+  /** Optional phone number returned by the auth/user profile provider when available. */
   phone?: string;
 }
 

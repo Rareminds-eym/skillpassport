@@ -661,7 +661,8 @@ function PaymentSuccess() {
           !RECEIPT_CONFIG?.USER_ID_PREFIX_LENGTH ||
           !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX
         ) {
-          throw new Error('Receipt configuration is incomplete');
+          toast.error('System configuration error. Please contact support.');
+          return;
         }
 
         const userPrefix = user.id

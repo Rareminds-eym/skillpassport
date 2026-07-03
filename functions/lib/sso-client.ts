@@ -164,7 +164,13 @@ export async function ssoUpdateTransaction(
   transactionId: string,
   data: { receipt_url?: string; status?: string; metadata?: Record<string, unknown> },
 ): Promise<Record<string, unknown>> {
-  return getSsoService(env).updateTransaction(transactionId, data);
+  const ssoService = getSsoService(env);
+  
+  if (typeof ssoService.updateTransaction !== 'function') {
+    throw new Error('SSO_SERVICE.updateTransaction RPC method not implemented');
+  }
+  
+  return ssoService.updateTransaction(transactionId, data);
 }
 
 export async function ssoGetUserSubscription(

@@ -284,12 +284,33 @@ function MySubscription() {
       return;
     }
 
+    // Validate invoiceData structure when passed
+    if (
+      invoiceData &&
+      (typeof invoiceData !== 'object' || Array.isArray(invoiceData))
+    ) {
+      toast.error('Invalid invoice details. Please try again.');
+      return;
+    }
+
     if (
       !RECEIPT_CONFIG?.USER_ID_PREFIX_LENGTH ||
       !RECEIPT_CONFIG?.PAYMENT_ID_SANITIZE_REGEX
     ) {
-      throw new Error('Receipt configuration is incomplete');
+      toast.error('System configuration error. Please contact support.');
+      return;
     }
+
+    const isValidPresignedUrl = (url) => {
+      if (!url || typeof url !== 'string') return false;
+      
+      try {
+        const parsedUrl = new URL(url);
+        return parsedUrl.protocol === 'https:' && Boolean(parsedUrl.hostname);
+      } catch {
+        return false;
+      }
+    };
 
     setIsDownloadingInvoice(true);
     
@@ -299,11 +320,16 @@ function MySubscription() {
     
     try {
       // PRIORITY 1: Check if subscription has receipt_url stored in database (R2 key)
-      if (subscriptionData?.receiptUrl) {
+      const receiptUrl =
+        typeof subscriptionData?.receiptUrl === 'string'
+          ? subscriptionData.receiptUrl.trim()
+          : '';
+      
+      if (receiptUrl) {
         // receipt_url is the R2 key, not a presigned URL - need to get presigned URL
-        const presignedUrl = await getPaymentReceiptPresignedUrl(subscriptionData.receiptUrl, 3600);
+        const presignedUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
         
-        if (!presignedUrl || presignedUrl === '' || presignedUrl === 'about:blank') {
+        if (!isValidPresignedUrl(presignedUrl)) {
           errorOccurred = true;
           errorMessage = 'Failed to generate download link. Please try again.';
         } else {
@@ -321,9 +347,15 @@ function MySubscription() {
         // PRIORITY 2: Determine which payment ID to use for constructing receipt path
         let paymentId = null;
         
+        // Safely normalize invoice payment ID if provided
+        const invoicePaymentId =
+          typeof invoiceData?.razorpay_payment_id === 'string'
+            ? invoiceData.razorpay_payment_id.trim()
+            : '';
+        
         // If invoice data is passed (from billing history), use that
-        if (invoiceData && invoiceData.razorpay_payment_id) {
-          paymentId = invoiceData.razorpay_payment_id;
+        if (invoicePaymentId) {
+          paymentId = invoicePaymentId;
         } else if (subscriptionData?.razorpayPaymentId) {
           // Use current subscription's payment ID
           paymentId = subscriptionData.razorpayPaymentId;
@@ -353,7 +385,7 @@ function MySubscription() {
           // Get presigned URL for the receipt
           const presignedUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
           
-          if (!presignedUrl || presignedUrl === '' || presignedUrl === 'about:blank') {
+          if (!isValidPresignedUrl(presignedUrl)) {
             logger.error('Invalid presigned URL received', new Error('Invalid URL'));
             errorOccurred = true;
             errorMessage = 'Failed to generate download link. Receipt may not exist.';

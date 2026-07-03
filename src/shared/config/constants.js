@@ -59,6 +59,7 @@ export const RECEIPT_CONFIG = {
   
   // Regex to sanitize payment IDs for safe file paths
   // Removes all characters except alphanumeric, underscore, and hyphen
+  // Must match backend RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX in functions/lib/constants.ts exactly.
   PAYMENT_ID_SANITIZE_REGEX: /[^a-zA-Z0-9_-]/g,
 };
 

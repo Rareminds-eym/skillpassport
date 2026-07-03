@@ -72,7 +72,7 @@ export async function downloadFileFromUrl(url: string, filename?: string): Promi
   } catch (fetchError) {
     // Fallback strategy: direct link (for CORS issues, etc.)
     const error = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
-    logger.warn('Fetch failed, using direct link fallback', { error: error.message, stack: error.stack });
+    logger.warn('Fetch failed, using direct link fallback', { error: error.message, stack: error.stack || 'No stack trace available' });
     
     try {
       const link = document.createElement('a');

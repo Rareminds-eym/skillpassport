@@ -2,6 +2,8 @@
 -- Date: 2026-06-27
 -- Purpose: Store receipt R2 key in subscription_cache for easier access
 
+-- IF NOT EXISTS keeps this migration idempotent across environments.
+-- Expected column type is TEXT; investigate manually if an environment has a different type.
 -- Add receipt_url column to subscription_cache
 ALTER TABLE public.subscription_cache 
 ADD COLUMN IF NOT EXISTS receipt_url text;
