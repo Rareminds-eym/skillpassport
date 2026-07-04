@@ -250,6 +250,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: learnersData, error: learnersError } = await supabase
           .from('learners')
           .select(`
+            id,
             user_id, 
             name, 
             email, 
@@ -265,11 +266,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (learnersError) return apiDbError(learnersError, context.request, { startTime });
         if (!learnersData || learnersData.length === 0) return apiSuccess([], context.request, { startTime });
 
-        const validLearners = learnersData.filter((s: any) => s.user_id != null);
-        if (validLearners.length === 0) return apiSuccess([], context.request, { startTime });
-
-        const learnerIds = validLearners.map((s: any) => s.user_id);
-        const learnerMap = new Map(validLearners.map((s: any) => [s.user_id, s]));
+        const learnerIds = learnersData.map((s: any) => s.id);
+        const learnerMap = new Map(learnersData.map((s: any) => [s.id, s]));
 
         const { data, error: fetchError } = await supabase
           .from('personal_assessment_results')
@@ -302,7 +300,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (fetchError) return apiDbError(fetchError, context.request, { startTime });
 
         const enrichedResults = (data || []).map((r: any) => {
-          const learner: any = learnerMap.get(r.learner_id);
+          const learner: any = learnerMap.get(r.learner_id); // learner_id references learners.id
           return {
             ...r,
             learner_name: learner?.name || null,

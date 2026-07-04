@@ -319,15 +319,12 @@ async function handleFetchAssessmentResults(supabase: any, context: Authenticate
   if (orgError) throw orgError;
   if (!org) return apiSuccess({ schoolName: '', results: [] }, context.request);
 
-  const { data: learnersData } = await supabase.from('learners').select('user_id, name, email, enrollmentNumber, grade, program_id, programs(id, name)').eq('school_id', org.id);
+  const { data: learnersData } = await supabase.from('learners').select('id, user_id, name, email, enrollmentNumber, grade, program_id, programs(id, name)').eq('school_id', org.id);
 
   if (!learnersData || learnersData.length === 0) return apiSuccess({ schoolName: org.name, results: [] }, context.request);
 
-  const validlearners = learnersData.filter((s: any) => s.user_id != null);
-  if (validlearners.length === 0) return apiSuccess({ schoolName: org.name, results: [] }, context.request);
-
-  const learnerIds = validlearners.map((s: any) => s.user_id);
-  const learnerMap = new Map(validlearners.map((s: any) => [s.user_id, s]));
+  const learnerIds = learnersData.map((s: any) => s.id);
+  const learnerMap = new Map(learnersData.map((s: any) => [s.id, s]));
 
   const { data: results, error: fetchError } = await supabase.from('personal_assessment_results').select('id, learner_id, stream_id, riasec_code, riasec_scores, aptitude_overall, aptitude_scores, employability_readiness, knowledge_score, status, created_at, career_fit, skill_gap, gemini_results, overall_summary, platform_courses, roadmap, profile_snapshot, personal_assessment_streams(name)').in('learner_id', learnerIds).order('created_at', { ascending: false });
   if (fetchError) throw fetchError;
