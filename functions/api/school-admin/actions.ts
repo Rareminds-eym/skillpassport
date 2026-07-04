@@ -3,6 +3,17 @@ import { getContextUser, withAuth } from '../../lib/auth';
 import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
+interface AssessmentLearnerRow {
+  id: string;
+  user_id: string | null;
+  name: string | null;
+  email: string | null;
+  enrollmentNumber: string | null;
+  grade: string | null;
+  program_id: string | null;
+  programs: { name: string } | { name: string }[] | null;
+}
+
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(context.env);
   let body: any;
@@ -323,8 +334,8 @@ async function handleFetchAssessmentResults(supabase: any, context: Authenticate
 
   if (!learnersData || learnersData.length === 0) return apiSuccess({ schoolName: org.name, results: [] }, context.request);
 
-  const learnerIds = learnersData.map((s: any) => s.id);
-  const learnerMap = new Map(learnersData.map((s: any) => [s.id, s]));
+  const learnerIds = (learnersData as AssessmentLearnerRow[]).map((s) => s.id);
+  const learnerMap = new Map((learnersData as AssessmentLearnerRow[]).map((s) => [s.id, s]));
 
   const { data: results, error: fetchError } = await supabase.from('personal_assessment_results').select('id, learner_id, stream_id, riasec_code, riasec_scores, aptitude_overall, aptitude_scores, employability_readiness, knowledge_score, status, created_at, career_fit, skill_gap, gemini_results, overall_summary, platform_courses, roadmap, profile_snapshot, personal_assessment_streams(name)').in('learner_id', learnerIds).order('created_at', { ascending: false });
   if (fetchError) throw fetchError;

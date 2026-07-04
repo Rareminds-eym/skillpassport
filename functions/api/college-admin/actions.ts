@@ -3,6 +3,17 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 
+interface AssessmentLearnerRow {
+  id: string;
+  user_id: string | null;
+  name: string | null;
+  email: string | null;
+  enrollmentNumber: string | null;
+  grade: string | null;
+  program_id: string | null;
+  programs: { name: string } | { name: string }[] | null;
+}
+
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
@@ -266,8 +277,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (learnersError) return apiDbError(learnersError, context.request, { startTime });
         if (!learnersData || learnersData.length === 0) return apiSuccess([], context.request, { startTime });
 
-        const learnerIds = learnersData.map((s: any) => s.id);
-        const learnerMap = new Map(learnersData.map((s: any) => [s.id, s]));
+        const learnerIds = (learnersData as AssessmentLearnerRow[]).map((s) => s.id);
+        const learnerMap = new Map((learnersData as AssessmentLearnerRow[]).map((s) => [s.id, s]));
 
         const { data, error: fetchError } = await supabase
           .from('personal_assessment_results')
