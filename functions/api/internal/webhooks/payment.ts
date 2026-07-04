@@ -354,19 +354,23 @@ async function generateAndSendReceipt(env: PagesEnv, subscription: any, paymentE
         ssoClient = (await import('../../../lib/sso-client.js')) as unknown as SSOClientModule;
       } catch (importErr) {
         logger.error('Failed to load sso-client module', importErr instanceof Error ? importErr : new Error(String(importErr)));
-        // Explicitly continue — receipt generation succeeded even if storage failed.
-        return;
+        // Explicitly continue — SSO subscription update is non-critical.
       }
       
       if (ssoClient && typeof ssoClient.ssoUpdateSubscriptionField === 'function') {
-        await ssoClient.ssoUpdateSubscriptionField(
-          env as unknown as { SSO_SERVICE: Fetcher },
-          subscription.id,
-          {
-            receipt_url: receiptKey,
-          }
-        );
-        logger.info('Receipt key saved to subscription', { receiptKey });
+        try {
+          await ssoClient.ssoUpdateSubscriptionField(
+            env as unknown as { SSO_SERVICE: Fetcher },
+            subscription.id,
+            {
+              receipt_url: receiptKey,
+            }
+          );
+          logger.info('Receipt key saved to subscription', { receiptKey });
+        } catch (ssoErr) {
+          logger.error('SSO subscription field update failed', ssoErr instanceof Error ? ssoErr : new Error(String(ssoErr)));
+          // Explicitly continue — payment/webhook flow should not fail because SSO metadata update failed.
+        }
       } else {
         logger.warn('SSO client unavailable, subscription field update skipped');
       }

@@ -424,16 +424,16 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
               },
             });
           })().catch((err) => {
-            // Safe error boundary - ensure logger.error never throws
             try {
-              logger.error('Async receipt generation failed', err instanceof Error ? err : new Error(String(err)));
-            } catch (logError) {
-              // Fallback logging - ensure error is always captured
-              try {
-                console.error('Logger failed during receipt error handling:', logError, 'Original error:', err);
-              } catch {
-                // Silent fallback - at least the promise won't reject
-              }
+              logger.error(
+                'Async receipt generation failed',
+                err instanceof Error ? err : new Error(String(err))
+              );
+            } catch {
+              console.error(
+                '[Receipt Generation Error]',
+                err instanceof Error ? err.message : String(err)
+              );
             }
           })
         );
