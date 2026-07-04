@@ -4,7 +4,6 @@
 
 # ==================== SSO / AUTH CONFIGURATION ====================
 # Must match the SSO worker that issued the user's session token
-SSO_DOMAIN=http://localhost:8787
 
 
 # ==================== SUPABASE CONFIGURATION ====================

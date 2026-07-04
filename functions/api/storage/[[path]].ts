@@ -18,7 +18,7 @@ const logger = createLogger('storage-api');
 // Import all handlers
 import { handleUpload } from './handlers/upload';
 import { handleDelete } from './handlers/delete';
-import { handlePresigned, handleConfirm, handleGetFileUrl } from './handlers/presigned';
+import { handlePresigned, handleConfirm, handleGetFileUrl, handleProfileMediaUrl } from './handlers/presigned';
 import { handleDocumentAccess } from './handlers/document-access';
 import { handleSignedUrl, handleSignedUrls } from './handlers/signed-url';
 import { handleUploadPaymentReceipt, handleGetPaymentReceipt, handleGetPaymentReceiptPresigned } from './handlers/payment-receipt';
@@ -146,6 +146,9 @@ export const onRequest: PagesFunction = async (context) => {
 
       case '/get-authenticated-url':
         return handleGetAuthenticatedUrl(authenticatedContext as Parameters<typeof handleGetAuthenticatedUrl>[0]);
+
+      case '/profile-media-url':
+        return handleProfileMediaUrl(authenticatedContext as Parameters<typeof handleProfileMediaUrl>[0]);
 
       default:
         return jsonResponse(

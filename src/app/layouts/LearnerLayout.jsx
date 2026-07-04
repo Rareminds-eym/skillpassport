@@ -66,6 +66,13 @@ const LearnerLayout = () => {
     profile: learnerData,
     loading: learnerLoading,
     refresh: refreshLearnerData,
+    education,
+    experience,
+    technicalSkills,
+    softSkills,
+    training,
+    projects,
+    certificates,
   } = useLearnerDashboard({ enabled: true });
 
   // Check if learner_type is empty or null
@@ -128,7 +135,16 @@ const LearnerLayout = () => {
       {!pageState.isViewingOthersProfile && pageState.isDashboardPage && (
         <ProfileHeroEdit
           onEditClick={handleEditClick}
-          learnerData={learnerData}
+          learnerData={{
+            ...learnerData,
+            education: education || [],
+            experience: experience || [],
+            technicalSkills: technicalSkills || [],
+            softSkills: softSkills || [],
+            training: training || [],
+            projects: projects || [],
+            certificates: certificates || []
+          }}
           loading={learnerLoading}
         />
       )}
