@@ -261,30 +261,32 @@ const ApplicantsList: React.FC = () => {
       // Fetch opportunities with skills_required
       const opportunityIds = [...new Set(applicantsForAnalysis.map(a => a.opportunity_id))];
 
-      const { data: opportunities, error: oppError } = await supabase
-        .from('opportunities')
-        .select('id, skills_required')
-        .in('id', opportunityIds);
+      try {
+        const opportunities = await apiPost<any[]>('/recruiter/actions', {
+          action: 'get-opportunities-skills',
+          opportunityIds
+        });
 
-      if (oppError) {
-        logger.error('Error fetching opportunities', oppError);
+        // Enrich with skills_required
+        const enrichedApplicants = applicantsForAnalysis.map(app => {
+          const opp = opportunities?.find(o => o.id === app.opportunity_id);
+          const skills = opp?.skills_required || [];
+          return {
+            ...app,
+            opportunity: {
+              ...app.opportunity,
+              skills_required: skills
+            }
+          };
+        });
+
+        const recommendations = await recruiterInsights.analyzeApplicantsForRecommendation(enrichedApplicants);
+        setAiRecommendations(recommendations);
+      } catch (apiErr) {
+        logger.error('Error fetching opportunities skills', apiErr);
+        const recommendations = await recruiterInsights.analyzeApplicantsForRecommendation(applicantsForAnalysis);
+        setAiRecommendations(recommendations);
       }
-
-      // Enrich with skills_required
-      const enrichedApplicants = applicantsForAnalysis.map(app => {
-        const opp = opportunities?.find(o => o.id === app.opportunity_id);
-        const skills = opp?.skills_required || [];
-        return {
-          ...app,
-          opportunity: {
-            ...app.opportunity,
-            skills_required: skills
-          }
-        };
-      });
-
-      const recommendations = await recruiterInsights.analyzeApplicantsForRecommendation(enrichedApplicants);
-      setAiRecommendations(recommendations);
     } catch (error) {
       logger.error('Error fetching AI recommendations', error);
     } finally {
@@ -323,12 +325,11 @@ const ApplicantsList: React.FC = () => {
     // If candidate is not in pipeline yet but has applied/viewed status, add them first
     if (!applicant.pipeline_candidate_id && (applicant.application_status === 'applied' || applicant.application_status === 'viewed')) {
       try {
-        // Add candidate to pipeline first using the service
-        const { data: learner } = await supabase
-          .from('learners')
-          .select('name, email, contact_number')
-          .eq('id', applicant.learner_id)
-          .single();
+        // Add candidate to pipeline first using the API
+        const learner = await apiPost<any>('/recruiter/actions', {
+          action: 'get-learner-info',
+          learnerId: applicant.learner_id
+        });
 
         if (!learner) {
           toast.error('Learner information not found');

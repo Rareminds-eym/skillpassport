@@ -29,7 +29,7 @@ import { clearFeatureAccessCache } from '@/features/subscription';
 import { addOnPaymentService } from '@/features/subscription';
 import { loadRazorpayScript } from '@/features/subscription/api';
 
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 /**
  * AddOnCheckout - Full checkout component
  * 
@@ -47,7 +47,7 @@ export function AddOnCheckout({
   onSuccess,
   className = ''
 }) {
-  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
+  const { purchaseAddOn, purchaseBundle, isPurchasing, refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscription();
   
   const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [discountCode, setDiscountCode] = useState('');

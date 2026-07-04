@@ -16,7 +16,7 @@
  */
 
 import React, { createContext, useContext, useCallback, useMemo, useState, useEffect } from 'react';
-import { useSubscriptionQuery } from './subscriptionStore';
+import { useSubscriptionQuery } from './useSubscriptionQuery';
 import { checkFeatureAccess, type FeatureAccessResult } from '../lib/featureGating';
 import { useUser } from '@/shared/model/authStore';
 

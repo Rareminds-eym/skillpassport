@@ -12,8 +12,8 @@
  * @module PaymentSuccess
  */
 
+import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 import {
-  AlertCircle,
   ArrowRight,
   Calendar,
   Check,
@@ -23,18 +23,18 @@ import {
   Loader2,
   MailCheck,
   RefreshCw,
-  Sparkles,
+  Sparkles
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { downloadReceipt } from '@/features/subscription/lib';
-import { getPaymentReceiptPresignedUrl } from '@/shared/api';
 
-import { useQueryClient } from '@tanstack/react-query';
-import { useSubscription, useSubscriptionStore } from '@/features/subscription/model/subscriptionStore';
-import { useUser, useUserRole } from '@/shared/model/authStore';
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
+import { useSubscription } from '@/features/subscription/model/subscriptionStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { queryKeys } from '@/shared/lib/queryKeys';
+import { useAuthStore, useUser, useUserRole } from '@/shared/model/authStore';
+import { useQueryClient } from '@tanstack/react-query';
 // ============================================================================
 // CONSTANTS & CONFIGURATION
 // ============================================================================
@@ -73,32 +73,9 @@ const CONFIG = {
   NO_SESSION_REDIRECT_DELAY_MS: 2000,
 };
 
-/** Dashboard routes by role */
-const DASHBOARD_ROUTES = {
-  // Admin roles
-  admin: '/admin/dashboard',
-  company_admin: '/admin/dashboard',
-  // Institution admin roles
-  school_admin: '/school-admin/dashboard',
-  college_admin: '/college-admin/dashboard',
-  university_admin: '/university-admin/dashboard',
-  // Educator roles
-  educator: '/educator/dashboard',
-  school_educator: '/educator/dashboard',
-  college_educator: '/educator/dashboard',
-  // Recruiter role
-  recruiter: '/recruitment/overview',
-  // Admin/owner roles
-  owner: '/admin/dashboard',
-  // Learner roles
-  learner: '/learner/dashboard',
-};
-
 /** Subscription manage routes by role */
 const MANAGE_ROUTES = {
-  admin: '/admin/subscription/manage',
-  company_admin: '/admin/subscription/manage',
-  owner: '/admin/subscription/manage',
+  company_admin: '/recruitment/subscription/manage',
   school_admin: '/school-admin/subscription/manage',
   college_admin: '/college-admin/subscription/manage',
   university_admin: '/university-admin/subscription/manage',
@@ -215,19 +192,18 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
 /**
  * Hook to manage navigation state machine
  *
- * Key design decision: after a successful payment, the Zustand store already
+ * Key design decision: after a successful payment, the React Query cache already
  * holds the correct subscription data (written by the payment verification
- * response via setAccessData). We check the store FIRST — if hasAccess is
- * already true, we navigate immediately without firing any API calls.
+ * response via setQueryData). We check the cache FIRST — if the cached
+ * subscription has status 'active', we navigate immediately without firing
+ * any API calls.
  * This eliminates the race condition where refreshSubscription() hits the API
  * before the DB has propagated the new subscription, gets stale "no data" back,
- * and overwrites hasAccess to false — causing a redirect loop to /subscription/plans.
- *
- * The store-level manual override guard (MANUAL_OVERRIDE_TTL) acts as a
- * secondary safety net in case other code paths trigger refreshSubscription()
- * during the same window.
+ * and triggers a redirect loop to /subscription/plans.
  */
 function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
+  const queryClient = useQueryClient();
+
   const [state, setState] = useState({
     status: NAV_STATES.IDLE,
     error: null,
@@ -250,18 +226,21 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
     log.info('Starting navigation to dashboard');
 
     try {
-      // ── PRIMARY PATH: Check the Zustand store directly. ──────────────
-      // If the store already has hasAccess=true (set by setAccessData from
-      // the payment verification response), skip the cache refresh entirely.
-      // The data is already correct — calling the API would risk overwriting
-      // it with stale results.
-      const storeHasAccess = useSubscriptionStore.getState().hasAccess;
+      // ── PRIMARY PATH: Check the React Query cache directly. ─────────
+      // If the subscription data is already cached (via useSubscriptionQuery),
+      // skip the cache refresh entirely. The data should already be correct
+      // since the payment verification response updated it.
+      const currentUser = useAuthStore.getState().user;
+      const cachedSub = currentUser?.id
+        ? queryClient.getQueryData(queryKeys.subscription.data.byOrganization(currentUser.id))
+        : null;
+      const storeHasAccess = cachedSub?.status === 'active';
 
       if (storeHasAccess) {
         log.info('Store already has hasAccess=true — navigating immediately (no API call)');
       } else if (!cacheRefresh.isRefreshed) {
         // FALLBACK: Store doesn't have access yet. Try refreshing from the API.
-        // This handles edge cases where setAccessData wasn't called (e.g.,
+        // This handles edge cases where queryClient.setQueryData wasn't called (e.g.,
         // subscription_created flag without a subscription object).
         log.info('Store has hasAccess=false — attempting cache refresh before navigation');
         await cacheRefresh.refresh();
@@ -417,7 +396,8 @@ function PaymentSuccess() {
   const location = useLocation();
   const user = useUser();
   const { role } = useUserRole();
-  const { refreshSubscription, refreshAccess } = useSubscription();
+  const { refreshSubscription: refreshSubscriptionRq } = useSubscriptionQuery();
+  const { refreshAccess } = useSubscription();
   const queryClient = useQueryClient();
 
   // ── Read exclusively from location.state (set by initiateRazorpayPayment callbacks) ──
@@ -476,11 +456,11 @@ function PaymentSuccess() {
   const getDashboardUrl = useCallback(() => {
     const userRole = getUserRole(user, role);
     log.info('Getting dashboard URL for role:', userRole);
-    return DASHBOARD_ROUTES[userRole] || '/learner/dashboard';
+    return getRouteForRole(userRole ?? '');
   }, [user, role]);
 
   // Cache refresh hook
-  const cacheRefresh = useCacheRefresh(refreshAccess, refreshSubscription);
+  const cacheRefresh = useCacheRefresh(refreshAccess, refreshSubscriptionRq);
 
   // Navigation state hook
   const navigation = useNavigationState(cacheRefresh, getDashboardUrl, navigate);
@@ -515,38 +495,32 @@ function PaymentSuccess() {
       setSubscriptionData(subscription);
 
       // =====================================================================
-      // FIX: Directly update the Zustand subscription store with the new
-      // subscription data instead of relying on a round-trip API re-fetch.
-      // This prevents the post-payment redirect loop where refreshAccess()
-      // fails (e.g. _currentUserId is null, API auth fails, or DB returns
-      // no data) and the route guard redirects back to /subscription/plans.
+      // Directly update the React Query cache with the new subscription data
+      // instead of relying on a round-trip API re-fetch. This prevents the
+      // post-payment redirect loop where the API returns stale "no data" and
+      // the route guard redirects back to /subscription/plans.
       // =====================================================================
       try {
-        const store = useSubscriptionStore.getState();
-        store.setAccessData({
-          hasAccess: true,
-          accessReason: 'active',
-          isLoading: false,
-          isRefetching: false,
-          error: null,
-          _currentUserId: user?.id,
-          subscription: {
-            id: subscription.id,
-            status: subscription.status || 'active',
-            plan_type: subscription.plan_name || subscription.plan_type,
-            startDate: subscription.start_date || subscription.subscription_start_date,
-            endDate: subscription.end_date || subscription.subscription_end_date,
-            end_date: subscription.end_date || subscription.subscription_end_date,
-            plan: subscription.plan_name || subscription.plan_type,
-            planName: subscription.plan_name || subscription.plan_type,
-            planPrice: subscription.plan_amount,
-            features: [],
-            autoRenew: true,
-          },
-        });
-        log.info('✅ Directly updated Zustand store with subscription data. hasAccess=true');
-      } catch (storeErr) {
-        log.error('Failed to directly update Zustand store:', storeErr);
+        const formattedSub = {
+          id: subscription.id,
+          status: subscription.status || 'active',
+          plan: subscription.plan_name || subscription.plan_type,
+          planName: subscription.plan_name || subscription.plan_type,
+          planPrice: subscription.plan_amount,
+          startDate: subscription.start_date || subscription.subscription_start_date,
+          endDate: subscription.end_date || subscription.subscription_end_date,
+          features: [],
+          autoRenew: true,
+        };
+        if (user?.id) {
+          queryClient.setQueryData(
+            queryKeys.subscription.data.byOrganization(user.id),
+            formattedSub
+          );
+        }
+        log.info('✅ Directly updated React Query cache with subscription data');
+      } catch (cacheErr) {
+        log.error('Failed to directly update React Query cache:', cacheErr);
       }
 
       // Also trigger cache refresh as a secondary mechanism
@@ -601,7 +575,7 @@ function PaymentSuccess() {
         }
       } else {
         // Existing subscription
-        
+
         setEmailStatus(EMAIL_STATES.SKIPPED);
 
         const storedReceiptUrl = transactionDetails.receipt_url ||
@@ -617,47 +591,25 @@ function PaymentSuccess() {
     } else if (transactionDetails.subscription_created === true) {
       // Subscription was created but details weren't in the response
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      try {
-        const store = useSubscriptionStore.getState();
-        store.setAccessData({
-          hasAccess: true,
-          accessReason: 'active',
-          isLoading: false,
-          _currentUserId: user?.id,
-        });
-        log.info('✅ Subscription created flag detected, set hasAccess=true');
-      } catch (e) {
-        log.error('Failed to update store for subscription_created flag:', e);
-      }
       queryClient.invalidateQueries({
         queryKey: queryKeys.subscription.data.all,
       });
+      log.info('✅ Subscription created flag detected, invalidated React Query cache');
       setEmailStatus(EMAIL_STATES.SENT);
     } else if (transactionDetails.subscription_error) {
       log.warn('Subscription creation issue:', transactionDetails.subscription_error);
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      
+
       setEmailStatus(EMAIL_STATES.SENT);
       toast('Payment successful! Your subscription will be activated shortly.', { duration: 5000, icon: '⏳' });
     } else {
       // Payment verified but no subscription object — still mark as active
       // This handles the case where verification succeeded inline in Razorpay handler
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      try {
-        const store = useSubscriptionStore.getState();
-        store.setAccessData({
-          hasAccess: true,
-          accessReason: 'active',
-          isLoading: false,
-          _currentUserId: user?.id,
-        });
-        log.info('✅ Payment verified, set hasAccess=true (no subscription object in response)');
-      } catch (e) {
-        log.error('Failed to update store:', e);
-      }
       queryClient.invalidateQueries({
         queryKey: queryKeys.subscription.data.all,
       });
+      log.info('✅ Payment verified, hasAccess true (no subscription object in response)');
       setEmailStatus(EMAIL_STATES.SENT);
     }
   }, [verificationStatus, transactionDetails, activationStatus, user, queryClient]);

@@ -2,7 +2,9 @@
  * Learners API
  *
  * CRUD operations for learner records.
- * All endpoints require SSO authentication. Data scoped by org_id.
+ * GET /api/learners?id=X — public learner profiles (unauthenticated OK)
+ * GET /api/learners — authenticated only, list/filter within org
+ * POST /api/learners — authenticated only, create/update learner
  */
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
@@ -15,18 +17,14 @@ export const onRequest = async (context: any) => {
   return apiMethodNotAllowed();
 };
 
-const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
-  const user = getContextUser(context);
+const onRequestGet = async (context: any) => {
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
-
   const url = new URL(context.request.url);
   const learnerId = url.searchParams.get('id');
 
-  const orgFilter = `college_id.eq.${user.org_id},school_id.eq.${user.org_id},universityId.eq.${user.org_id}`;
-
-  // If specific learner requested (by learners.id OR user_id — handles both QR/share links and auth UUID lookups)
-  // No org filter — direct ID lookup should work regardless of org
+  // Public endpoint: allow unauthenticated access to single learner profile
+  // (privacy is enforced on frontend)
   if (learnerId) {
     const { data, error } = await supabase
       .from('learners')
@@ -35,41 +33,48 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
       .maybeSingle();
 
     if (error) return apiDbError(error, context.request);
+    if (!data) return apiError(404, 'NOT_FOUND', 'Learner not found', context.request);
     return apiSuccess({ learner: data }, context.request);
   }
 
-  // If user is a learner, return their own profile
-  const isLearner = user.roles.some((r: string) =>
-    ['learner'].includes(r)
-  );
+  // All other GETs require authentication
+  return withAuth(async (context: AuthenticatedContext) => {
+    const user = getContextUser(context);
+    const orgFilter = `college_id.eq.${user.org_id},school_id.eq.${user.org_id},universityId.eq.${user.org_id}`;
 
-  if (isLearner) {
-    const { data, error } = await supabase
+    // If user is a learner, return their own profile
+    const isLearner = user.roles.some((r: string) =>
+      ['learner'].includes(r)
+    );
+
+    if (isLearner) {
+      const { data, error } = await supabase
+        .from('learners')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') return apiDbError(error, context.request);
+      return apiSuccess({ learner: data || null }, context.request);
+    }
+
+    // Admin: list learners in their org
+    const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+    const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+    if (isNaN(limit) || limit < 1) return apiError(400, 'VALIDATION_ERROR', 'limit must be a positive integer', context.request);
+    if (isNaN(offset) || offset < 0) return apiError(400, 'VALIDATION_ERROR', 'offset must be a non-negative integer', context.request);
+
+    const { data, error, count } = await supabase
       .from('learners')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
+      .select('*', { count: 'exact' })
+      .or(orgFilter)
+      .range(offset, offset + limit - 1)
+      .order('created_at', { ascending: false });
 
-    if (error && error.code !== 'PGRST116') return apiDbError(error, context.request);
-    return apiSuccess({ learner: data || null }, context.request);
-  }
-
-  // Admin: list learners in their org
-  const limit = parseInt(url.searchParams.get('limit') || '50', 10);
-  const offset = parseInt(url.searchParams.get('offset') || '0', 10);
-  if (isNaN(limit) || limit < 1) return apiError(400, 'VALIDATION_ERROR', 'limit must be a positive integer', context.request);
-  if (isNaN(offset) || offset < 0) return apiError(400, 'VALIDATION_ERROR', 'offset must be a non-negative integer', context.request);
-
-  const { data, error, count } = await supabase
-    .from('learners')
-    .select('*', { count: 'exact' })
-    .or(orgFilter)
-    .range(offset, offset + limit - 1)
-    .order('created_at', { ascending: false });
-
-  if (error) return apiDbError(error, context.request);
-  return apiSuccess({ learners: data, total: count }, context.request);
-});
+    if (error) return apiDbError(error, context.request);
+    return apiSuccess({ learners: data, total: count }, context.request);
+  })(context);
+};
 
 /**
  * POST /api/learners — Create or update learner record

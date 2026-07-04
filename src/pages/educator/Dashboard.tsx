@@ -45,7 +45,6 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [newAnnouncement, setNewAnnouncement] = useState('');
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [loadingMoreActivities, setLoadingMoreActivities] = useState(false);
   const loadingRef = useRef(false);
@@ -65,12 +64,10 @@ const Dashboard = () => {
 
       if (event === 'LOGIN') {
         logger.info('Auth state change - user authenticated');
-        setIsAuthenticated(true);
         setError(null);
         loadDashboardData();
       } else if (event === 'LOGOUT') {
         logger.warn('Auth state change - no user');
-        setIsAuthenticated(false);
         setLoading(false);
         setError('Please log in to view the dashboard');
       }
@@ -85,19 +82,16 @@ const Dashboard = () => {
 
         if (user) {
           logger.info('Session check - user found, loading data');
-          setIsAuthenticated(true);
           setError(null);
           loadDashboardData();
         } else {
           logger.warn('Session check - no user');
-          setIsAuthenticated(false);
           setLoading(false);
           setError('Please log in to view the dashboard');
         }
       } catch (err) {
         logger.error('Authentication error:', err);
         if (mounted) {
-          setIsAuthenticated(false);
           setLoading(false);
           setError('Authentication error. Please refresh the page.');
         }

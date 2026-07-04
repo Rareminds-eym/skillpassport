@@ -32,10 +32,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         service: 'analyze-assessment-api',
         timestamp: new Date().toISOString(),
         env: {
-          hasSupabaseUrl: !!(env.SUPABASE_URL || env.VITE_SUPABASE_URL),
-          hasSupabaseKey: !!(env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY),
-          hasOpenRouter: !!(env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY),
-          hasClaude: !!(env.CLAUDE_API_KEY || env.VITE_CLAUDE_API_KEY)
+          hasSupabaseUrl: !!env.SUPABASE_URL,
+          hasSupabaseKey: !!env.SUPABASE_ANON_KEY,
+          hasOpenRouter: !!env.OPENROUTER_API_KEY
         }
       }, request);
     }

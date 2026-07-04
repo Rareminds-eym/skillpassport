@@ -620,7 +620,7 @@ async function getSubscriptions(context: AuthenticatedContext) {
   if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'orgId is required', context.request);
   let query = supabase.from('subscription_cache').select('*').eq('organization_id', orgId);
   if (orgType) query = query.eq('organization_type', orgType);
-  if (isOrgSub) query = query.eq('is_org_subscription', true);
+  if (isOrgSub) query = query.eq('is_organization_subscription', true);
   query = query.order('created_at', { ascending: false });
   const { data, error } = await query;
   if (error) throw error;

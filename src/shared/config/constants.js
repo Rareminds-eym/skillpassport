@@ -35,11 +35,10 @@ export const ROUTES = {
   LOGIN_ADMIN: '/login/admin',
   REGISTER: '/signup',
 
-  ADMIN_DASHBOARD: '/admin/dashboard',
   ADMIN_USERS: '/admin/users',
   ADMIN_REPORTS: '/admin/reports',
 
-  RECRUITER_DASHBOARD: '/recruitment/dashboard',
+  RECRUITER_DASHBOARD: '/recruitment/overview',
   RECRUITER_POST_JOB: '/recruitment/post-job',
   RECRUITER_APPLICANTS: '/recruitment/applicants',
 

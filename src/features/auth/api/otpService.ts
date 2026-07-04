@@ -132,8 +132,13 @@ async function makeOtpRequest(
 
     // Handle non-OK responses
     if (!response.ok) {
+      // Extract error message from object if needed
+      const errorMessage = typeof result.error === 'object' && result.error !== null
+        ? (result.error as any).message || JSON.stringify(result.error)
+        : result.error ?? 'Request failed';
+
       throw new OtpApiError(
-        result.error ?? 'Request failed',
+        errorMessage,
         response.status,
         requestId
       );

@@ -51,16 +51,17 @@ export async function handleHasFeatureAccess(context: AuthenticatedContext): Pro
     }
 
     // Check for active add-on entitlement
-    const { data: entitlement, error: entError } = await supabase
+    const { data: entitlements, error: entError } = await supabase
       .from('user_entitlements')
       .select('id, bundle_id, status, end_date')
       .eq('user_id', userId)
       .eq('feature_key', featureKey)
       .in('status', ['active', 'grace_period', 'cancelled'])
       .gte('end_date', new Date().toISOString())
-      .maybeSingle();
+      .limit(1);
 
-    if (!entError && entitlement) {
+    if (!entError && entitlements && entitlements.length > 0) {
+      const entitlement = entitlements[0];
       const accessSource = entitlement.bundle_id ? 'bundle' : 'addon';
       return apiSuccess({ hasAccess: true, accessSource }, context.request, 200);
     }

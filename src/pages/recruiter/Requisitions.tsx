@@ -185,68 +185,59 @@ useEffect(() => {
   };
 
   const createRequisition = async (requisitionData: any): Promise<Opportunity> => {
-  const { data, error } = await supabase
-    .from('opportunities')
-    .insert({
-      title: requisitionData.job_title,
-      job_title: requisitionData.job_title,
-      company_name: requisitionData.company_name,  // MODIFY THIS - use actual value
-      company_logo: requisitionData.company_logo,  // ADD THIS
-      mode: requisitionData.mode,  // ADD THIS
-      department: requisitionData.department,
-      location: requisitionData.location,
-      employment_type: requisitionData.employment_type,
-      experience_level: requisitionData.experience_level,
-      experience_required: requisitionData.experience_required,  // ADD THIS
-      skills_required: requisitionData.skills_required,  // ADD THIS
-      deadline: requisitionData.deadline ? new Date(requisitionData.deadline).toISOString() : null,
-      benefits: requisitionData.benefits,  // ADD THIS
-      salary_range_min: requisitionData.salary_range_min,
-      salary_range_max: requisitionData.salary_range_max,
-      status: requisitionData.status,
-      description: requisitionData.description,
-      requirements: requisitionData.requirements,
-      responsibilities: requisitionData.responsibilities,
-      applications_count: requisitionData.applications_count || 0,
-      messages_count: 0,
-      views_count: 0,
-      created_by: user?.id,
-      posted_date: new Date().toISOString(),
-      is_active: requisitionData.status === 'open',
-      recruiter_id: requisitionData.recruiter_id
-    })
-    .select()
-    .single();
+    const data = await apiPost<Opportunity>('/recruiter/actions', {
+      action: 'create-requisition',
+      requisitionData: {
+        title: requisitionData.job_title,
+        job_title: requisitionData.job_title,
+        company_name: requisitionData.company_name,
+        company_logo: requisitionData.company_logo,
+        mode: requisitionData.mode,
+        department: requisitionData.department,
+        location: requisitionData.location,
+        employment_type: requisitionData.employment_type,
+        experience_level: requisitionData.experience_level,
+        experience_required: requisitionData.experience_required,
+        skills_required: requisitionData.skills_required,
+        deadline: requisitionData.deadline ? new Date(requisitionData.deadline).toISOString() : null,
+        benefits: requisitionData.benefits,
+        salary_range_min: requisitionData.salary_range_min,
+        salary_range_max: requisitionData.salary_range_max,
+        status: requisitionData.status,
+        description: requisitionData.description,
+        requirements: requisitionData.requirements,
+        responsibilities: requisitionData.responsibilities,
+        applications_count: requisitionData.applications_count || 0,
+        created_by: user?.id,
+        recruiter_id: requisitionData.recruiter_id
+      }
+    });
 
-  if (error) throw error;
-  return data;
-};
+    if (!data) throw new Error('Failed to create requisition');
+    return data;
+  };
 
   const updateRequisition = async (id: string, updates: any): Promise<Opportunity> => {
-    const { data, error } = await supabase
-      .from('opportunities')
-      .update({
+    const data = await apiPost<Opportunity>('/recruiter/actions', {
+      action: 'update-requisition',
+      id,
+      updates: {
         ...updates,
         title: updates.job_title,
         deadline: updates.deadline ? new Date(updates.deadline).toISOString() : null,
-        updated_at: new Date().toISOString(),
         is_active: updates.status === 'open'
-      })
-      .eq('id', id)
-      .select()
-      .single();
+      }
+    });
 
-    if (error) throw error;
+    if (!data) throw new Error('Failed to update requisition');
     return data;
   };
 
   const deleteRequisition = async (id: string) => {
-    const { error } = await supabase
-      .from('opportunities')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    await apiPost('/recruiter/actions', {
+      action: 'delete-requisition',
+      id
+    });
   };
 
 
@@ -1708,32 +1699,14 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
   const loadApplications = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('applied_jobs')
-        .select(`
-          id,
-          application_status,
-          applied_at,
-          viewed_at,
-          interview_scheduled_at,
-          updated_at,
-          learners (
-            id,
-            email,
-            profile
-          )
-        `)
-        .eq('opportunity_id', requisition.id)
-        .order('applied_at', { ascending: false });
-
-      if (error) {
-        logger.error('Error loading applications', error);
-        return;
-      }
+      const data = await apiPost<any[]>('/recruiter/actions', {
+        action: 'get-applications-by-opportunity',
+        opportunityId: requisition.id
+      });
 
       setApplications(data || []);
     } catch (error) {
-      logger.error('Error', error);
+      logger.error('Error loading applications', error);
     } finally {
       setLoading(false);
     }

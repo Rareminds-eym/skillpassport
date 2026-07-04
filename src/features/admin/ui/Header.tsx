@@ -62,9 +62,9 @@ const Header: React.FC<HeaderProps> = ({
     setShowProfileMenu(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowProfileMenu(false);
-    logout?.(); // optional: clear auth context
+    await logout?.();
     navigate("/login");
   };
 

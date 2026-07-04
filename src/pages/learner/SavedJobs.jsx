@@ -9,15 +9,37 @@ import {
     Search,
     Trash2
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { OpportunityCard, OpportunityListItem, OpportunityPreview } from '@/widgets/learner-dashboard';
 
 import { useSavedJobs } from '@/features/opportunities';
+import { SavedJobsService } from '@/features/opportunities';
+import { getLogger } from '@/shared/config/logging';
 
 import { useUser } from '@/shared/model/authStore';
+import { useAuthStore } from '@/shared/model/authStore';
+import { useLearnerDataByEmail } from '@/entities/learner';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem
+} from '@/shared/ui';
+import { getPageNumbers } from '@/shared/lib/pagination';
+
+const logger = getLogger('SavedJobs');
+
+const ITEMS_PER_PAGE = 8;
+
 const SavedJobs = () => {
+  const navigate = useNavigate();
   const user = useUser();
-  const learnerId = user?.id;
+  const authUser = useAuthStore((state) => state.user);
+  const userEmail = authUser?.email || localStorage.getItem("userEmail") || user?.email;
+  const { learnerData } = useLearnerDataByEmail(userEmail || '');
+  const learnerId = learnerData?.id;
 
   const {
     savedJobs,
@@ -40,6 +62,66 @@ const SavedJobs = () => {
     handleApply,
   } = useSavedJobs({ learnerId });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when filters/sort change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortBy, showActiveOnly, filteredAndSortedJobs]);
+
+  const totalPages = Math.max(1, Math.ceil((filteredAndSortedJobs?.length || 0) / ITEMS_PER_PAGE));
+
+  const handlePrevPage = useCallback(() => {
+    setCurrentPage(p => Math.max(1, p - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage(p => Math.min(totalPages, p + 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [totalPages]);
+
+  const handlePageClick = useCallback((pageNum) => {
+    setCurrentPage(pageNum);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const paginatedJobs = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredAndSortedJobs.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredAndSortedJobs, currentPage]);
+
+  // Log page state when data changes
+  useEffect(() => {
+    logger.info('SavedJobs page state updated', { learnerId, savedJobsCount: savedJobs?.length, loading, error });
+  }, [learnerId, savedJobs?.length, loading, error]);
+
+  // Handle clearing inactive jobs
+  const handleClearInactive = async () => {
+    try {
+      if (!learnerId) {
+        logger.warn('Cannot clear inactive jobs - no learnerId');
+        toast.error('Please log in first');
+        return;
+      }
+      logger.info('Clearing inactive jobs', { learnerId });
+      const result = await SavedJobsService.removeInactiveSavedJobs(learnerId);
+      if (result.success) {
+        logger.info('Inactive jobs cleared successfully', { count: result.count, learnerId });
+        toast.success(`Removed ${result.count || 0} inactive jobs`);
+        window.location.reload();
+      } else {
+        logger.error('Failed to clear inactive jobs', { message: result.message });
+        toast.error(result.message || 'Failed to remove inactive jobs');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error clearing inactive jobs';
+      logger.error('Error clearing inactive jobs', err);
+      toast.error(errorMessage);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
@@ -55,9 +137,9 @@ const SavedJobs = () => {
                 <p className="text-gray-600 mt-1">Jobs you've bookmarked for later</p>
               </div>
             </div>
-            
+
             {/* Clear inactive button */}
-            {savedJobs.some(job => !job.is_active) && (
+            {!loading && savedJobs && savedJobs.length > 0 && savedJobs.some(job => !job.is_active) && (
               <button
                 onClick={handleClearInactive}
                 className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
@@ -92,9 +174,9 @@ const SavedJobs = () => {
           <div className="flex flex-col gap-3 sm:gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
               <p className="text-xs sm:text-sm font-semibold text-gray-900">
-                Showing {filteredAndSortedJobs.length} of {savedJobs.length} Saved Jobs
+                Showing {paginatedJobs?.length || 0} of {filteredAndSortedJobs?.length || 0} Saved Jobs
               </p>
-              {savedJobs.filter(job => job.has_applied).length > 0 && (
+              {savedJobs && savedJobs.filter(job => job.has_applied).length > 0 && (
                 <span className="text-xs sm:text-sm text-green-600 flex items-center gap-1">
                   <CheckCircle className="w-4 h-4" />
                   {savedJobs.filter(job => job.has_applied).length} already applied
@@ -114,13 +196,13 @@ const SavedJobs = () => {
                 />
                 <span className="text-sm font-medium text-gray-700">Active Jobs Only</span>
               </label>
-              
+
               <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-2 rounded transition-colors ${
-                    viewMode === 'grid' 
-                      ? 'bg-gray-900 text-white' 
+                    viewMode === 'grid'
+                      ? 'bg-gray-900 text-white'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
@@ -129,8 +211,8 @@ const SavedJobs = () => {
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-2 rounded transition-colors ${
-                    viewMode === 'list' 
-                      ? 'bg-gray-900 text-white' 
+                    viewMode === 'list'
+                      ? 'bg-gray-900 text-white'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
@@ -140,7 +222,7 @@ const SavedJobs = () => {
 
               {/* Sort Dropdown */}
               <div className="relative flex-1 sm:flex-initial">
-                <select 
+                <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="w-full sm:w-auto px-3 sm:px-4 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 appearance-none bg-white text-sm font-medium"
@@ -178,12 +260,12 @@ const SavedJobs = () => {
             <p className="text-gray-500 mb-6">
               Start saving jobs from the Opportunities page to keep track of interesting positions
             </p>
-            <Link
-              to="/learner/opportunities"
+            <button
+              onClick={() => navigate('/learner/opportunities')}
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Browse Opportunities
-            </Link>
+            </button>
           </div>
         )}
 
@@ -194,7 +276,7 @@ const SavedJobs = () => {
             <div className="lg:col-span-2">
               {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
-                  {filteredAndSortedJobs.map((job) => (
+                  {paginatedJobs.map((job) => (
                     <OpportunityCard
                       key={job.id}
                       opportunity={job}
@@ -208,7 +290,7 @@ const SavedJobs = () => {
                 </div>
               ) : (
                 <div className="space-y-2.5 sm:space-y-4">
-                  {filteredAndSortedJobs.map((job) => (
+                  {paginatedJobs.map((job) => (
                     <OpportunityListItem
                       key={job.id}
                       opportunity={job}
@@ -220,6 +302,55 @@ const SavedJobs = () => {
                       onToggleSave={() => handleUnsave(job)}
                     />
                   ))}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                  <Pagination>
+                    <PaginationContent className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
+                      <PaginationItem>
+                        <button
+                          onClick={handlePrevPage}
+                          disabled={currentPage === 1}
+                          className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ← Previous
+                        </button>
+                      </PaginationItem>
+
+                      {getPageNumbers(currentPage, totalPages).map((pageNum, idx) => (
+                        <PaginationItem key={`page-${pageNum}-${idx}`}>
+                          {pageNum === '...' ? (
+                            <PaginationEllipsis className="text-xs md:text-sm" />
+                          ) : (
+                            <button
+                              onClick={() => handlePageClick(pageNum)}
+                              aria-current={currentPage === pageNum ? 'page' : undefined}
+                              className={`text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 min-w-8 md:min-w-9 flex items-center justify-center rounded-md transition-colors ${
+                                currentPage === pageNum
+                                  ? 'bg-blue-500 text-white font-medium'
+                                  : 'border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          )}
+                        </PaginationItem>
+                      ))}
+
+                      <PaginationItem>
+                        <button
+                          onClick={handleNextPage}
+                          disabled={currentPage === totalPages}
+                          className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2 h-8 md:h-9 rounded-md transition-colors border border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next →
+                        </button>
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
                 </div>
               )}
             </div>

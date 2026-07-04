@@ -5,7 +5,7 @@ import { AlertCircle, CheckCircle, Loader2, Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-type VerifyState = 'verifying' | 'success' | 'error' | 'no-token';
+type VerifyState = 'verifying' | 'success' | 'success_session_lost' | 'error' | 'no-token';
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -21,32 +21,43 @@ const VerifyEmail = () => {
 
   useEffect(() => {
     if (!token) return;
+    let redirectTimer: ReturnType<typeof setTimeout> | undefined;
 
     (async () => {
       try {
         await ssoClient.verifyEmail({ token });
 
         // Refresh session to get updated user data with is_email_verified = true
-        await useAuthStore.getState().refreshSession();
-
-        // Wait for session to fully propagate to auth store
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const refreshOk = await useAuthStore.getState().refreshSession();
 
         // Log user data after refresh for debugging
         const refreshedUser = useAuthStore.getState().user;
+        const isEmailVerified = refreshedUser?.isEmailVerified === true;
+
         console.log('[VerifyEmail] User data after refresh:', {
           role: refreshedUser?.role,
           roles: refreshedUser?.roles,
           orgId: refreshedUser?.orgId,
-          isEmailVerified: refreshedUser?.isEmailVerified,
+          isEmailVerified,
+          refreshOk,
           isAuthenticated: useAuthStore.getState().isAuthenticated,
         });
+
+        if (!refreshOk || !isEmailVerified) {
+          console.warn('[VerifyEmail] Session lost or stale after verification', {
+            refreshOk,
+            isEmailVerified,
+            user: refreshedUser,
+          });
+          setState('success_session_lost');
+          return;
+        }
 
         // Set success state
         setState('success');
 
         // Auto-redirect after a short delay to show success message
-        setTimeout(() => {
+        redirectTimer = setTimeout(() => {
           const currentUser = useAuthStore.getState().user;
           const userRole = currentUser?.role || useAuthStore.getState().role;
           const userRoles = currentUser?.roles || [];
@@ -85,7 +96,7 @@ const VerifyEmail = () => {
           // them to the correct plans page.
           if (!useAuthStore.getState().isAuthenticated) {
             console.log('[VerifyEmail] Not authenticated after verification, redirecting to login');
-            navigate('/login', { replace: true });
+            navigate('/login?verified=1', { replace: true });
             return;
           }
 
@@ -173,7 +184,21 @@ const VerifyEmail = () => {
         setState('error');
       }
     })();
+
+    return () => {
+      if (redirectTimer) clearTimeout(redirectTimer);
+    };
   }, [token, navigate]);
+
+  // Auto-redirect to login with verified param if session was lost
+  useEffect(() => {
+    if (state === 'success_session_lost') {
+      const timer = setTimeout(() => {
+        navigate('/login?verified=1', { replace: true });
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [state, navigate]);
 
   const handleResend = async () => {
     setResending(true);
@@ -184,6 +209,8 @@ const VerifyEmail = () => {
     } catch (err) {
       if (err instanceof AuthFetchError && err.status === 429) {
         setError('Too many requests. Please try again later.');
+      } else {
+        setError('Failed to resend verification email. Please try again.');
       }
     } finally {
       setResending(false);
@@ -225,6 +252,28 @@ const VerifyEmail = () => {
             </div>
           );
         })()}
+
+        {state === 'success_session_lost' && (
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">✅ Email Verified!</h2>
+            <p className="text-gray-600 mb-4">
+              Your email has been successfully verified.
+            </p>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-amber-800">
+                <strong>Session expired:</strong> Your session ended during verification.
+                Please log in again to continue.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/login?verified=1', { replace: true })}
+              className="w-full py-3 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            >
+              Continue to Login
+            </button>
+          </div>
+        )}
 
         {state === 'error' && (
           <div className="bg-white rounded-xl shadow-lg p-8">
@@ -305,7 +354,10 @@ const VerifyEmail = () => {
               </div>
             )}
             <button
-              onClick={() => navigate('/login')}
+              onClick={async () => {
+                await useAuthStore.getState().logout();
+                navigate('/login');
+              }}
               className="w-full py-3 px-4 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Logout

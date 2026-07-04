@@ -1075,9 +1075,9 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
 }
 
 // Worker API URL for role overview
-// Use local API endpoint instead of external Cloudflare Worker
-const ROLE_OVERVIEW_API_URL = import.meta.env.VITE_ROLE_OVERVIEW_API_URL || 
-  (typeof window !== 'undefined' ? `${window.location.origin}/api/role-overview` : '/api/role-overview');
+// Uses local API endpoint via Pages Functions
+const ROLE_OVERVIEW_API_URL =
+  typeof window !== 'undefined' ? `${window.location.origin}/api/role-overview` : '/api/role-overview';
 
 /**
  * Generate combined role overview data via Cloudflare Worker

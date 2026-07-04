@@ -10,7 +10,7 @@ import { clearFeatureAccessCache, useFeatureGate } from '@/features/subscription
 import { addOnPaymentService } from '@/features/subscription';
 import { loadRazorpayScript } from '@/features/subscription/api';
 
-import { useSubscriptionContext } from '@/features/subscription/model/subscriptionStore';
+import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 export function FeatureGate({
   featureKey,
   children,
@@ -21,7 +21,7 @@ export function FeatureGate({
   onUpgradeClick
 }) {
   const { hasAccess, isLoading, requiredAddOn, upgradePrice, error } = useFeatureGate(featureKey);
-  const { purchaseAddOn, isPurchasing } = useSubscriptionContext();
+  const { purchaseAddOn, isPurchasing } = useSubscription();
   const [showModal, setShowModal] = useState(false);
 
   const handleUpgradeClick = useCallback(() => {
@@ -289,7 +289,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
   const [billing, setBilling] = useState('annual'); // Default to annual for better value
   const [error, setError] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const { refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
+  const { refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscription();
 
   // Check if user already owns this add-on (including cancelled but not expired)
   const isAlreadyOwned = useMemo(() => {

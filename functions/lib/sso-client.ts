@@ -46,6 +46,8 @@ interface SsoTransactionData {
   status: string;
   transaction_type?: string;
   payment_method?: string;
+  failure_reason?: string;
+  product_id?: string;
   organization_id?: string;
   organization_type?: string;
   seat_count?: number;
@@ -68,8 +70,16 @@ type SsoFetcher = Fetcher & {
   getUserTransactions(userId: string, subscriptionId?: string): Promise<Record<string, unknown>[]>;
   syncPlans(): Promise<{ plans: Record<string, unknown>[] }>;
   listRoles(): Promise<{ roles: { id: string; name: string; description: string | null }[] }>;
+  getUserByEmail(email: string): Promise<{ id: string; email: string; is_email_verified: boolean } | null>;
+  getUserMemberships(userId: string): Promise<{ memberships: { id: string; org_id: string; role: string; status: string }[] }>;
+  createMembership(data: { user_id: string; org_id: string; status: string }): Promise<{ id: string; status: string }>;
+  updateMembershipStatus(data: { membership_id: string; status: string }): Promise<{ success: boolean }>;
+  assignMembershipRole(data: { membership_id: string; role_id: string }): Promise<{ success: boolean }>;
   recordAddonPurchase(data: unknown): Promise<Record<string, unknown>>;
   recordBundlePurchase(data: unknown): Promise<Record<string, unknown>>;
+  listAddonCatalog(): Promise<any>;
+  getAddonByFeatureKey(featureKey: string): Promise<any>;
+  listBundles(): Promise<any>;
 };
 
 // ─── Binding Guard ─────────────────────────────────────────────
@@ -185,6 +195,27 @@ export async function ssoListRoles(
   return getSsoService(env).listRoles();
 }
 
+/**
+ * Look up a user by their email via the SSO-Worker RPC.
+ * Returns the user record or null if no user is found with that email.
+ */
+export async function ssoGetUserByEmail(
+  env: SsoClientEnv,
+  email: string,
+): Promise<{ id: string; email: string; is_email_verified: boolean } | null> {
+  return getSsoService(env).getUserByEmail(email);
+}
+
+/**
+ * Get all organization memberships for a user via the SSO-Worker RPC.
+ */
+export async function ssoGetUserMemberships(
+  env: SsoClientEnv,
+  userId: string,
+): Promise<{ memberships: { id: string; org_id: string; role: string; status: string }[] }> {
+  return getSsoService(env).getUserMemberships(userId);
+}
+
 export async function ssoRecordAddonPurchase(
   env: SsoClientEnv,
   data: Record<string, unknown>,
@@ -199,33 +230,27 @@ export async function ssoRecordBundlePurchase(
   return getSsoService(env).recordBundlePurchase(data);
 }
 
-export async function ssoFetch(
-  env: SsoClientEnv,
-  path: string,
-  init?: RequestInit,
-): Promise<Response> {
-  const url = new URL(path, "http://sso-worker").toString();
-  return getSsoService(env).fetch(new Request(url, init));
+export async function ssoListAddonCatalog(env: SsoClientEnv): Promise<any> {
+  return getSsoService(env).listAddonCatalog();
+}
+
+export async function ssoGetAddonByFeatureKey(env: SsoClientEnv, featureKey: string): Promise<any> {
+  return getSsoService(env).getAddonByFeatureKey(featureKey);
+}
+
+export async function ssoListBundles(env: SsoClientEnv): Promise<any> {
+  return getSsoService(env).listBundles();
 }
 
 /**
  * Create a new membership in the SSO-Worker database
- * Used when accepting invitations (cannot write to foreign tables directly)
+ * Used when accepting invitations
  */
 export async function ssoCreateMembership(
   env: SsoClientEnv,
   data: { user_id: string; org_id: string; status: string },
 ): Promise<{ id: string; status: string }> {
-  const res = await ssoFetch(env, "/api/memberships/create", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`SSO create membership failed [${res.status}]: ${text}`);
-  }
-  return res.json() as Promise<{ id: string; status: string }>;
+  return getSsoService(env).createMembership(data);
 }
 
 /**
@@ -235,16 +260,7 @@ export async function ssoAssignMembershipRole(
   env: SsoClientEnv,
   data: { membership_id: string; role_id: string },
 ): Promise<{ success: boolean }> {
-  const res = await ssoFetch(env, "/api/memberships/assign-role", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`SSO assign role failed [${res.status}]: ${text}`);
-  }
-  return res.json() as Promise<{ success: boolean }>;
+  return getSsoService(env).assignMembershipRole(data);
 }
 
 /**
@@ -254,14 +270,5 @@ export async function ssoUpdateMembershipStatus(
   env: SsoClientEnv,
   data: { membership_id: string; status: string },
 ): Promise<{ success: boolean }> {
-  const res = await ssoFetch(env, "/api/memberships/update-status", {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`SSO update membership status failed [${res.status}]: ${text}`);
-  }
-  return res.json() as Promise<{ success: boolean }>;
+  return getSsoService(env).updateMembershipStatus(data);
 }

@@ -9,8 +9,6 @@
 
 import type { PagesEnv } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';
-import { getEmailWorkerConfig } from '../config/emailWorkerConfig';
-import { verifyOtpSms, EmailWorkerError } from '../utils/emailWorkerClient';
 import { formatPhoneNumber } from '../utils/formatPhone';
 
 interface VerifyOtpBody {
@@ -31,28 +29,12 @@ export async function verifyOtpHandler(
   env: PagesEnv
 ): Promise<Response> {
   try {
-    // Guard against null/non-object body before destructuring
-    if (!body || typeof body !== 'object') {
-      return apiError(400, 'VALIDATION_ERROR', 'Invalid request body', undefined);
+    const { phone, verificationId, otp: code, countryCode = '+91' } = body;
+    
+    if (!phone || !verificationId || !code) {
+      return apiError(400, 'VALIDATION_ERROR', 'Phone number, verification ID, and OTP code are required', undefined);
     }
     
-    const { phone, otp, countryCode = '+91', verificationId } = body;
-    
-    // Validate inputs
-    if (!phone) {
-      return apiError(400, 'VALIDATION_ERROR', 'Phone number is required', undefined);
-    }
-    
-    if (!otp) {
-      return apiError(400, 'VALIDATION_ERROR', 'OTP is required', undefined);
-    }
-
-    // Strict verificationId validation with trim
-    if (typeof verificationId !== 'string' || verificationId.trim().length === 0) {
-      return apiError(400, 'VALIDATION_ERROR', 'Verification ID is required. Please request a new OTP.', undefined);
-    }
-    
-    // Format phone number
     let formattedPhone: string;
     try {
       formattedPhone = formatPhoneNumber(phone, countryCode);
@@ -63,50 +45,35 @@ export async function verifyOtpHandler(
       return apiError(400, 'VALIDATION_ERROR', 'Failed to format phone number', undefined);
     }
 
-    // Validate phone length
     if (formattedPhone.length < 7 || formattedPhone.length > 15) {
       return apiError(400, 'VALIDATION_ERROR', 'Invalid phone number. Must be 7-15 digits.', undefined);
     }
     
-    // Get and validate email worker configuration
-    const emailWorkerConfig = getEmailWorkerConfig(env);
+    if (!env.EMAIL_SERVICE) {
+      return apiError(500, 'INTERNAL_ERROR', 'EMAIL_SERVICE binding is missing', undefined);
+    }
     
-    // Forward request to email-worker
     const cleanCountryCode = countryCode.replace('+', '');
-    const result = await verifyOtpSms(emailWorkerConfig, {
+    const result = await env.EMAIL_SERVICE.verifyOTP({
       mobileNumber: formattedPhone,
-      verificationId: verificationId.trim(),
-      code: otp,
+      verificationId,
+      code,
       countryCode: cleanCountryCode,
     });
     
-    // Build response data with explicit type
-    const data: VerifyOtpResponseData = {
-      phone: `${countryCode}${formattedPhone}`, // formatPhoneNumber strips country code, so concatenation is correct
-      verified: result.verified ?? false,
-    };
-    
-    if (result.verified === true) {
-      data.verificationToken = crypto.randomUUID();
+    if (!result.success || !result.verified) {
+      return apiError(400, 'VERIFICATION_FAILED', result.error || 'Invalid OTP code', undefined);
     }
     
-    // Return response in the format expected by frontend
     return apiSuccess({
-      message: result.message ?? 'Phone number verified successfully',
-      data,
+      message: 'Phone number verified successfully',
+      verified: true
     }, undefined);
   } catch (error) {
-    if (error instanceof EmailWorkerError) {
-      // Downstream service error
-      return apiError(502, 'ERROR', error.message, undefined);
-    }
-    
     if (error instanceof Error) {
-      // Unexpected error
       return apiError(500, 'INTERNAL_ERROR', error.message, undefined);
     }
     
-    // Unknown error type
     return apiError(500, 'INTERNAL_ERROR', 'An unexpected error occurred', undefined);
   }
 }

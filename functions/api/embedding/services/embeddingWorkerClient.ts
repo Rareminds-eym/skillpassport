@@ -42,7 +42,10 @@ export async function callEmbeddingWorker(
     : text;
 
   if (text.length > EMBEDDING_CONFIG.MAX_TEXT_LENGTH) {
-    console.warn(`[EmbeddingClient] Text truncated from ${text.length} to ${EMBEDDING_CONFIG.MAX_TEXT_LENGTH} chars`);
+    logger.warn('Text truncated for embedding', {
+      originalLength: text.length,
+      truncatedLength: EMBEDDING_CONFIG.MAX_TEXT_LENGTH,
+    });
   }
 
   try {
@@ -57,7 +60,7 @@ export async function callEmbeddingWorker(
       throw new EmbeddingError(
         'Invalid embedding response from worker',
         'INVALID_RESPONSE',
-        { response: data }
+        { response: embedding }
       );
     }
 
@@ -66,6 +69,7 @@ export async function callEmbeddingWorker(
   } catch (error) {
     // Re-throw EmbeddingError as-is
     if (error instanceof EmbeddingError) {
+      logger.error('Embedding error', error, { code: error.code });
       throw error;
     }
 

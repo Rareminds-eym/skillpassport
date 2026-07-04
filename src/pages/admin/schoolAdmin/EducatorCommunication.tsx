@@ -2,7 +2,7 @@ import { useAuthStore } from '@/shared/model/authStore';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { 
+import {
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   EllipsisVerticalIcon,
@@ -22,17 +22,17 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '@/features/messaging';
+import MessageService from '@/shared/api/messageService';
+import type { Conversation } from '@/features/messaging';
 import { useEducatorAdminMessages } from '@/features/educator';
 import { formatDistanceToNow } from 'date-fns';
-
+import { apiPost } from '@/shared/api/apiClient';
 
 import { useRealtimePresence } from '@/shared/lib/hooks';
 import { useTypingIndicator } from '@/shared/lib/hooks';
 import { useNotificationBroadcast } from '@/features/broadcast';
 import { DeleteConversationModal } from '@/features/messaging';
 import { getLogger } from '@/shared/config/logging';
-
 
 import { queryKeys } from '@/shared/lib/queryKeys';
 import { useUser } from '@/shared/model/authStore';
@@ -68,64 +68,47 @@ const EducatorCommunication = () => {
     targetEducatorEmail?: string; 
   } | null;
   
-  // Get school ID for the current admin - use maybeSingle() to avoid 406 error
+  // Get school ID for the current admin via API
   const { data: schoolData } = useQuery({
     queryKey: ['school-admin-school', schoolAdminId],
     queryFn: async () => {
       if (!schoolAdminId) return null;
-      
-      // First try school_educators table
-      const { data, error } = await supabase
-        .from('school_educators')
-        .select('school_id')
-        .eq('user_id', schoolAdminId)
-        .eq('role', 'school_admin')
-        .maybeSingle();
-      
-      if (data?.school_id) {
-        return { school_id: data.school_id };
-      }
-      
-      // Fallback: Check organizations table for school admins
-      const { data: { user } } = { data: { user: useAuthStore.getState().user } };
-      if (user) {
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .eq('organization_type', 'school')
-          .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
-          .maybeSingle();
-        
-        if (org?.id) {
-          return { school_id: org.id };
+
+      try {
+        const response = await apiPost<{ schoolId: string }>('/school-admin/actions', {
+          action: 'fetchCommunicationSchoolData'
+        });
+
+        if (response?.schoolId) {
+          return { school_id: response.schoolId };
         }
+
+        return null;
+      } catch (error) {
+        logger.error('Error fetching school ID', error);
+        throw error;
       }
-      
-      return null;
     },
     enabled: !!schoolAdminId,
   });
   
   const schoolId = schoolData?.school_id;
   
-  // Fetch active conversations with educators using the same pattern as learner admin
+  // Fetch active conversations with educators
   const { data: activeConversations = [], isLoading: loadingActive, refetch: refetchActive } = useQuery({
     queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'active'),
     queryFn: async () => {
       if (!schoolId) return [];
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
-        `)
-        .eq('school_id', schoolId)
-        .eq('conversation_type', 'educator_admin')
-        .eq('deleted_by_admin', false)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
-      
-      if (error) throw error;
-      return data || [];
+      try {
+        const response = await apiPost<any>('/school-admin/actions', {
+          action: 'fetchActiveEducatorConversations',
+          schoolId
+        });
+        return response || [];
+      } catch (error) {
+        logger.error('Error fetching active educator conversations', error);
+        throw error;
+      }
     },
     enabled: !!schoolId,
     staleTime: 60000,
@@ -140,19 +123,16 @@ const EducatorCommunication = () => {
     queryKey: queryKeys.educator.conversations.byEducator(schoolId, 'archived'),
     queryFn: async () => {
       if (!schoolId) return [];
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
-        `)
-        .eq('school_id', schoolId)
-        .eq('conversation_type', 'educator_admin')
-        .eq('status', 'archived')
-        .order('last_message_at', { ascending: false, nullsFirst: false });
-      
-      if (error) throw error;
-      return data || [];
+      try {
+        const response = await apiPost<any>('/school-admin/actions', {
+          action: 'fetchArchivedEducatorConversations',
+          schoolId
+        });
+        return response || [];
+      } catch (error) {
+        logger.error('Error fetching archived educator conversations', error);
+        throw error;
+      }
     },
     enabled: !!schoolId,
     staleTime: 60000,
@@ -512,43 +492,48 @@ const EducatorCommunication = () => {
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || !currentChat || !schoolAdminId) return;
-    
+
     try {
-      // Find educator user ID - use maybeSingle() to be defensive
-      const { data: educator, error: educatorError } = await supabase
-        .from('school_educators')
-        .select('user_id')
-        .eq('id', currentChat.educatorId)
-        .maybeSingle();
-      
-      if (educatorError || !educator) {
-        toast.error('Could not find educator');
+      // Find educator user ID via API
+      try {
+        const educatorResponse = await apiPost<{ user_id: string | null }>('/school-admin/actions', {
+          action: 'getEducatorUserId',
+          educatorId: currentChat.educatorId
+        });
+
+        if (!educatorResponse?.user_id) {
+          toast.error('Could not find educator');
+          return;
+        }
+
+        await sendMessage({
+          senderId: schoolAdminId,
+          senderType: 'school_admin',
+          receiverId: educatorResponse.user_id,
+          receiverType: 'educator',
+          messageText: messageInput,
+          subject: currentChat.subject
+        });
+
+        // Send notification to educator
+        try {
+          await sendNotification(educatorResponse.user_id, {
+            title: 'New Message from School Admin',
+            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            type: 'message',
+            link: `/educator/admin-communication?conversation=${selectedConversationId}`
+          });
+        } catch (notifError) {
+          // Silent fail
+        }
+
+        setMessageInput('');
+        setTyping(false);
+      } catch (error) {
+        logger.error('Error getting educator user ID', error);
+        toast.error('Failed to send message');
         return;
       }
-
-      await sendMessage({
-        senderId: schoolAdminId,
-        senderType: 'school_admin',
-        receiverId: educator.user_id,
-        receiverType: 'educator',
-        messageText: messageInput,
-        subject: currentChat.subject
-      });
-      
-      // Send notification to educator
-      try {
-        await sendNotification(educator.user_id, {
-          title: 'New Message from School Admin',
-          message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
-          type: 'message',
-          link: `/educator/admin-communication?conversation=${selectedConversationId}`
-        });
-      } catch (notifError) {
-        // Silent fail
-      }
-      
-      setMessageInput('');
-      setTyping(false);
     } catch (error) {
       logger.error('Error sending message', error as Error, { conversationId: selectedConversationId });
     }

@@ -190,7 +190,14 @@ export const useLearnerCollegeAdminConversations = (learnerId, enabled = true) =
     queryKey: queryKeys.learner.conversations.byLearner(learnerId, 'learner_college_admin'),
     queryFn: async () => {
       if (!learnerId) return [];
-      return await MessageService.getConversationsByLearner(learnerId, 'learner_college_admin');
+      // Use getUserConversations with learner userType and filter by conversation type
+      return await MessageService.getUserConversations(
+        learnerId,
+        'learner',
+        false, // includeArchived
+        true, // useCache
+        'learner_college_admin' // conversationType filter
+      );
     },
     enabled: !!learnerId && enabled,
     staleTime: 30000,

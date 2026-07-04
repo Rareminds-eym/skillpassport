@@ -12,16 +12,11 @@ const emailServiceResponseSchema = z.object({
   messageId: z.string().optional()
 });
 
-const FROM_EMAIL = 'noreply@rareminds.in';
-const FROM_NAME = 'Skill Passport';
-
 export interface EmailPayload {
   to: string | string[];
   subject: string;
   html: string;
   text?: string;
-  from?: string;
-  fromName?: string;
 }
 
 export interface EmailResult {
@@ -51,8 +46,6 @@ export async function sendEmail(
       subject: payload.subject,
       html: payload.html,
       text: payload.text || '',
-      from: payload.from || FROM_EMAIL,
-      fromName: payload.fromName || FROM_NAME,
     });
 
     if (!result.success) {

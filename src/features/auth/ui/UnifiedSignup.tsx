@@ -635,6 +635,7 @@ const UnifiedSignup = () => {
       // Step 1: Create SSO user
       let ssoUserId: string;
 
+      let emailSent = true;
       if (isAdminRole) {
         // Admin signup creates user + org
         const orgName = `${state.firstName} ${state.lastName}'s Institution`;
@@ -644,11 +645,15 @@ const UnifiedSignup = () => {
           org_name: orgName,
           role: state.selectedRole!,
           redirect_url: window.location.origin,
+          user_metadata: {
+            firstName: state.firstName.trim(),
+            lastName: state.lastName.trim(),
+            phone: state.phone.trim() || null,
+            avatarUrl: null,
+          },
         });
         ssoUserId = ssoResult.user.id;
-        if (ssoResult.email_sent === false) {
-          sessionStorage.setItem('email_sent_failed', 'true');
-        }
+        emailSent = ssoResult.email_sent !== false;
       } else {
         // Member signup (learner, educator, recruiter) — no org creation
         const ssoResult = await ssoClient.signupMember({
@@ -656,11 +661,21 @@ const UnifiedSignup = () => {
           password: state.password,
           role: state.selectedRole!,
           redirect_url: window.location.origin,
+          user_metadata: {
+            firstName: state.firstName.trim(),
+            lastName: state.lastName.trim(),
+            phone: state.phone.trim() || null,
+            avatarUrl: null,
+          },
         });
         ssoUserId = ssoResult.user.id;
-        if (ssoResult.email_sent === false) {
-          sessionStorage.setItem('email_sent_failed', 'true');
-        }
+        emailSent = ssoResult.email_sent !== false;
+      }
+
+      // If verification email failed, flag it but continue the flow.
+      // The user is logged in and can resend verification from within the app.
+      if (!emailSent) {
+        sessionStorage.setItem('email_sent_failed', 'true');
       }
 
       // Update auth store with the new user
@@ -741,7 +756,6 @@ const UnifiedSignup = () => {
         console.log('[UnifiedSignup] ✓ Invitation token found, attempting auto-accept');
         console.log('[UnifiedSignup] Request payload:', {
           token: freshInvitationToken,
-          userId: ssoUserId,
         });
 
         try {
@@ -756,7 +770,6 @@ const UnifiedSignup = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               token: freshInvitationToken,
-              userId: ssoUserId,
             }),
           });
 
@@ -786,24 +799,9 @@ const UnifiedSignup = () => {
             sessionStorage.removeItem('invitation_email');
             sessionStorage.removeItem('invitation_return_url');
 
-            // Logout to clear the current JWT
-            try {
-              await ssoClient.logout();
-              console.log('[UnifiedSignup] ✓ Logged out successfully');
-            } catch (logoutError) {
-              console.warn('[UnifiedSignup] Logout failed (non-critical):', logoutError);
-            }
-
-            // Clear auth store
-            useAuthStore.setState({
-              user: null,
-              isAuthenticated: false,
-              role: null,
-              isLearner: false,
-              isEducator: false,
-              isAdmin: false,
-              isRecruiter: false,
-            });
+            // Logout to clear the current JWT and reset auth state
+            await useAuthStore.getState().logout();
+            console.log('[UnifiedSignup] ✓ Logged out successfully');
 
             // Redirect to verify-email page
             // User will verify email, then get redirected based on stored context
@@ -880,18 +878,12 @@ const UnifiedSignup = () => {
       if (ssoClient.isAuthenticated()) {
         try {
           // Delete the SSO user (cascades to sessions, memberships, etc.)
-          await ssoClient.fetch(`${import.meta.env.VITE_SSO_URL}/auth/delete-account`, {
-            method: 'POST',
-          });
+          const { apiPost } = await import('@/shared/api/apiClient');
+          await apiPost('/auth/delete-account', {});
         } catch {
-          // If delete fails, at least logout to revoke the session
-          try { await ssoClient.logout(); } catch { /* best-effort */ }
+          // If delete fails, still clear auth state
         }
-        useAuthStore.setState({
-          user: null,
-          isAuthenticated: false,
-          role: null,
-        });
+        await useAuthStore.getState().logout();
       }
 
       // Track signup_failed — error message and role captured for GTM

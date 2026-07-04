@@ -5,11 +5,11 @@ import type { PagesEnv } from './types';
  * Create a Supabase client with anon key (for authenticated requests)
  */
 export function createSupabaseClient(env: PagesEnv): SupabaseClient {
-  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-  const supabaseKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
+  const supabaseUrl = env.SUPABASE_URL;
+  const supabaseKey = env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing required Supabase environment variables');
+    throw new Error('Missing required Supabase environment variables (SUPABASE_URL, SUPABASE_ANON_KEY)');
   }
 
   return createClient(supabaseUrl, supabaseKey, {
@@ -24,11 +24,11 @@ export function createSupabaseClient(env: PagesEnv): SupabaseClient {
  * Create a Supabase admin client with service role key (for privileged operations)
  */
 export function createSupabaseAdminClient(env: PagesEnv): SupabaseClient {
-  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  const supabaseUrl = env.SUPABASE_URL;
   const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing required Supabase admin environment variables');
+    throw new Error('Missing required Supabase admin environment variables (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)');
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {

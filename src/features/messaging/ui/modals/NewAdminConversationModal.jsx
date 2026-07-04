@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Building2, MessageCircle } from 'lucide-react';
 import { apiPost } from '@/shared/api/apiClient';
 
-const NewAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationCreated }) => {
+const NewAdminConversationModal = ({ isOpen, onClose, learnerId, schoolId, onConversationCreated }) => {
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('');
@@ -28,26 +28,37 @@ const NewAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationC
     if (isOpen && learnerId) {
       fetchlearnerSchool();
     }
-  }, [isOpen, learnerId]);
+  }, [isOpen, learnerId, schoolId]);
 
   const fetchlearnerSchool = async () => {
     setLoading(true);
     try {
-      // Get learner's school information
-      const { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-school', learnerId });
+      // If schoolId is provided, use it; otherwise fetch it
+      let schoolIdToUse = schoolId;
 
-      if (learnerData?.school) {
-        // Map the organization data to match expected school structure
-        const schoolData = {
-          id: learnerData.school.id,
-          name: learnerData.school.name,
-          address: learnerData.school.city && learnerData.school.state 
-            ? `${learnerData.school.city}, ${learnerData.school.state}` 
-            : null,
-          phone: null, // Organizations table doesn't have phone
-          email: null  // Organizations table doesn't have email
-        };
-        setSchool(schoolData);
+      if (!schoolIdToUse) {
+        const { data: learnerData } = await apiPost('/messaging/actions', { action: 'fetch-learner-school', learnerId });
+        schoolIdToUse = learnerData?.school_id;
+      }
+
+      if (schoolIdToUse) {
+        // Fetch school organization data
+        const { data: schoolData } = await apiPost('/messaging/actions', { action: 'fetch-organization', id: schoolIdToUse });
+
+        if (schoolData) {
+          const school = {
+            id: schoolData.id,
+            name: schoolData.name,
+            address: schoolData.city && schoolData.state
+              ? `${schoolData.city}, ${schoolData.state}`
+              : null,
+            phone: null,
+            email: null
+          };
+          setSchool(school);
+        } else {
+          console.error('School not found');
+        }
       } else {
         console.error('Learner has no associated school');
       }
@@ -60,11 +71,11 @@ const NewAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationC
 
   const handleCreateConversation = () => {
     const finalSubject = selectedSubject === 'Other' ? customSubject : selectedSubject;
-    if (school && finalSubject && initialMessage.trim()) {
+    if (school && finalSubject) {
       onConversationCreated({
         schoolId: school.id,
         subject: finalSubject,
-        initialMessage: initialMessage.trim()
+        initialMessage: initialMessage.trim() || '' // Allow empty initial message for direct chat
       });
       handleClose();
     }
@@ -110,8 +121,16 @@ const NewAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationC
           ) : !school ? (
             <div className="text-center py-12 px-6">
               <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-sm">No school information found</p>
-              <p className="text-gray-400 text-xs mt-2">Please contact support if this is an error</p>
+              <p className="text-gray-500 text-sm font-medium">No school linked to your account</p>
+              <p className="text-gray-400 text-xs mt-2 mb-4">To message your school administrator, please ensure your school is linked to your profile.</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left">
+                <p className="text-xs text-blue-800 font-medium mb-2">To fix this:</p>
+                <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+                  <li>Go to your Profile settings</li>
+                  <li>Add or update your school information</li>
+                  <li>Refresh this page</li>
+                </ol>
+              </div>
             </div>
           ) : (
             <div className="p-6 space-y-6">
@@ -170,16 +189,16 @@ const NewAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationC
                 </div>
               )}
 
-              {/* Message Input */}
+              {/* Message Input - Optional */}
               {selectedSubject && (selectedSubject !== 'Other' || customSubject.trim()) && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Your message
+                    Your message <span className="text-gray-500 font-normal">(optional)</span>
                   </label>
                   <textarea
                     value={initialMessage}
                     onChange={(e) => setInitialMessage(e.target.value)}
-                    placeholder="Type your message here..."
+                    placeholder="You can type your message here, or start chatting directly..."
                     rows={4}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
                     maxLength={1000}
@@ -210,11 +229,11 @@ const NewAdminConversationModal = ({ isOpen, onClose, learnerId, onConversationC
           </button>
           <button
             onClick={handleCreateConversation}
-            disabled={!school || !selectedSubject || (selectedSubject === 'Other' && !customSubject.trim()) || !initialMessage.trim() || initialMessage.length > 1000}
+            disabled={!school || !selectedSubject || (selectedSubject === 'Other' && !customSubject.trim()) || initialMessage.length > 1000}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center gap-2"
           >
             <MessageCircle className="w-4 h-4" />
-            Send Message
+            {initialMessage.trim() ? 'Send Message' : 'Start Chat'}
           </button>
         </div>
       </div>

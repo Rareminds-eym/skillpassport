@@ -79,6 +79,7 @@ export async function handleCreateRegistrationOrder(context: any): Promise<Respo
     const order = await worker.createOrder({
       amount: body.amount as number,
       currency: (body.currency as string) || 'INR',
+      receipt: `reg_${registrationId}`.substring(0, 40),
       notes: {
         registration_id: registrationId,
         plan_name: (body.planName as string) || '',

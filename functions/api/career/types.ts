@@ -191,9 +191,5 @@ export interface Env {
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
   OPENROUTER_API_KEY?: string;
-  VITE_OPENROUTER_API_KEY?: string;
-  VITE_SUPABASE_URL?: string;
-  VITE_SUPABASE_ANON_KEY?: string;
-  /** Cloudflare Service Binding to the embedding worker (embedding-api). */
-  EMBEDDING_SERVICE?: EmbeddingWorkerBinding;
+  EMBEDDING_API_URL?: string;
 }

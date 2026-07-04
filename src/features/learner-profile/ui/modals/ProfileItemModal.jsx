@@ -630,7 +630,7 @@ const ProfileItemModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-full h-screen flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-2xl w-full h-screen sm:h-4/6 flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-100">
           <DialogTitle className="flex items-center gap-2 text-lg">
             {Icon && <Icon className="w-5 h-5 text-blue-600" />}

@@ -14,22 +14,23 @@
 
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser } from '../../../lib/auth';
-import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
-import { getServiceClient } from '../../../lib/supabase';
-import { R2Client } from '../../storage/utils/r2-client';
-import { generateReceiptPDF, fetchImageBytes, type ReceiptData } from '../../storage/utils/pdf-generator';
-import type { PagesEnv } from '../../../lib/types';
-import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
-import type { EventConfirmationTemplateData } from '../../email/types';
 import { sendEmailSafe } from '../../../lib/email-service';
+import { apiError, apiSuccess } from '../../../lib/response';
 import {
   ssoCreateSubscription,
-  ssoUpdateSubscriptionField,
   ssoRecordTransaction,
   ssoSyncSubscription,
+  ssoUpdateSubscriptionField,
 } from '../../../lib/sso-client';
+import { getServiceClient } from '../../../lib/supabase';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
-import { apiSuccess, apiError } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
+import { APP_URL } from '../../email/types';
+import { generateUserConfirmationHtml, getUserConfirmationSubject } from '../../email/services/templates';
+import type { EventConfirmationTemplateData } from '../../email/types';
+import { fetchImageBytes, generateReceiptPDF, type ReceiptData } from '../../storage/utils/pdf-generator';
+import { R2Client } from '../../storage/utils/r2-client';
+import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
 
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
@@ -55,6 +56,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       body.razorpay_signature as string
     );
 
+    // Step 1.5: Verify payment was actually captured (Amount Spoofing Prevention)
+    const payment = await worker.getPayment(body.razorpay_payment_id as string);
+    if (payment.status !== 'captured' || payment.order_id !== body.razorpay_order_id) {
+      return apiError(400, 'VALIDATION_ERROR', 'Payment not captured or order ID mismatch', context.request);
+    }
+
     // Step 2: Signature valid — prepare subscription data
     const plan = body.plan as Record<string, unknown> | undefined;
     if (!plan || !plan.id || !plan.name || !plan.price || !plan.duration) {
@@ -77,14 +84,30 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       return apiError(400, 'VALIDATION_ERROR', 'Selected plan is not valid or inactive', context.request);
     }
 
+    // Step 2.5: Validate currency (SECURITY: prevent multi-currency fraud)
+    if (payment.currency !== 'INR') {
+      console.error('[VerifyPayment] Currency mismatch:', {
+        expected: 'INR',
+        actual: payment.currency,
+        paymentId: payment.id,
+        orderId: razorpay_order_id
+      });
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid payment currency. Only INR is supported.', context.request);
+    }
+
     // Authoritative price from DB — never trust client-supplied price
     const pricingMatrix = validPlan.pricing_matrix as Record<string, any>;
     const clientPrice = plan.price as number;
     let planPrice: number | undefined;
 
+    // SECURITY FIX: Check both yearly and monthly pricing based on plan duration
+    const planDuration = plan.duration as string;
+    const isYearly = planDuration.toLowerCase().includes('year') || planDuration.toLowerCase().includes('annual');
+    const cycleKey = isYearly ? 'yearly' : 'monthly';
+
     if (pricingMatrix) {
       for (const key in pricingMatrix) {
-        const price = pricingMatrix[key]?.yearly;
+        const price = pricingMatrix[key]?.[cycleKey];
         if (typeof price === 'number' && price === clientPrice) {
           planPrice = price;
           break;
@@ -93,8 +116,21 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
 
     if (typeof planPrice !== 'number') {
-      console.error('[VerifyPayment] Plan price mismatch or no yearly price found:', { planId: plan.id, clientPrice, pricingMatrix });
-      return apiError(400, 'VALIDATION_ERROR', 'Selected plan has no valid pricing matching the request', context.request);
+      console.error('[VerifyPayment] Plan price mismatch or no pricing found for cycle:', {
+        planId: plan.id,
+        clientPrice,
+        cycle: cycleKey,
+        duration: planDuration,
+        pricingMatrix
+      });
+      return apiError(400, 'VALIDATION_ERROR', `Selected plan has no valid ${cycleKey} pricing matching the request`, context.request);
+    }
+
+    // Step 2.6: Cross-verify authoritative Razorpay captured amount
+    const expectedPaise = Math.round(planPrice * 100);
+    if (payment.amount !== expectedPaise) {
+      console.error('[VerifyPayment] Amount mismatch:', { captured: payment.amount, expected: expectedPaise, planId: plan.id });
+      return apiError(400, 'VALIDATION_ERROR', `Amount mismatch: captured ${payment.amount} paise, expected ${expectedPaise}`, context.request);
     }
 
     // Calculate subscription dates
@@ -121,7 +157,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
       // Validate upgrade direction via current plan amount
       const currentPrice = existingCache.plan_amount;
-      
+
       const { data: currentPlan } = await supabase
         .from('plans_cache')
         .select('plan_code')
@@ -159,6 +195,27 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           status: 'active',
         });
       } catch (upgradeError: any) {
+        if (upgradeError.message?.includes('duplicate key') || upgradeError.message?.includes('23505') || upgradeError.status === 409) {
+          console.log('[VerifyPayment] Subscription already updated by webhook (duplicate caught). Syncing shadow cache before return.');
+
+          try {
+            await syncUserShadow(supabase, user.id, body.email || (user as any).email);
+            const syncData = await ssoSyncSubscription(env, user.id);
+            if (syncData.subscription) {
+              await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+            }
+          } catch (syncError) {
+            console.error('[VerifyPayment] Shadow sync failed during upgrade duplicate handling:', syncError);
+          }
+
+          return apiSuccess({
+            payment_verified: true,
+            subscription_upgraded: true,
+            already_fulfilled: true,
+            ...verifyResult,
+          }, context.request);
+        }
+
         console.error('[VerifyPayment] Upgrade failed:', upgradeError.message);
 
         // Record failed upgrade as an event in auth DB
@@ -167,9 +224,12 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
             user_id: user.id,
             razorpay_order_id: body.razorpay_order_id as string,
             razorpay_payment_id: body.razorpay_payment_id as string,
+            razorpay_signature: body.razorpay_signature as string,
             amount: planPrice,
             status: 'failed',
             transaction_type: 'upgrade',
+            payment_method: payment.method,
+            failure_reason: upgradeError.message,
             metadata: {
               original_subscription_id: existingCache.id,
               original_plan_id: existingCache.plan_id,
@@ -211,6 +271,28 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           razorpay_payment_id: body.razorpay_payment_id as string,
         });
       } catch (createError: any) {
+        // Handle race condition: Webhook or other synchronous flow already created the subscription
+        if (createError.message?.includes('duplicate key') || createError.message?.includes('23505') || createError.status === 409) {
+          console.log('[VerifyPayment] Subscription already created (duplicate caught). Order fulfilled asynchronously. Syncing shadow cache before return.');
+
+          try {
+            await syncUserShadow(supabase, user.id, body.email || (user as any).email);
+            const syncData = await ssoSyncSubscription(env, user.id);
+            if (syncData.subscription) {
+              await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
+            }
+          } catch (syncError) {
+            console.error('[VerifyPayment] Shadow sync failed during duplicate handling:', syncError);
+          }
+
+          return apiSuccess({
+            payment_verified: true,
+            subscription_created: true,
+            already_fulfilled: true,
+            ...verifyResult,
+          }, context.request);
+        }
+
         console.error('[VerifyPayment] Subscription creation failed:', createError.message);
 
         return apiSuccess({
@@ -233,13 +315,19 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         user_id: user.id,
         razorpay_payment_id: body.razorpay_payment_id as string,
         razorpay_order_id: body.razorpay_order_id as string,
+        razorpay_signature: body.razorpay_signature as string,
         amount: planPrice,
         currency: 'INR',
         status: 'completed',
         transaction_type: isUpgrade ? 'upgrade' : 'subscription',
+        payment_method: payment.method,
       });
-    } catch (txError) {
-      console.error('[VerifyPayment] Transaction recording failed (non-critical):', txError);
+    } catch (txError: any) {
+      if (txError.message?.includes('duplicate key') || txError.message?.includes('23505') || txError.status === 409) {
+        console.log('[VerifyPayment] Transaction already recorded (duplicate caught). Skipping further duplicate handling.');
+      } else {
+        console.error('[VerifyPayment] Transaction recording failed (non-critical):', txError);
+      }
     }
 
     // Step 3.5: Sync shadow table in app DB
@@ -260,11 +348,6 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     let receiptKey: string | null = null;
     try {
       const pagesEnv = env as unknown as PagesEnv;
-      const appUrl = pagesEnv.APP_URL;
-
-      if (!appUrl) {
-        console.warn('[VerifyPayment] APP_URL not configured — receipt will render without images');
-      }
 
       const { data: learner } = await supabase
         .from('learners')
@@ -273,10 +356,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         .maybeSingle();
 
       let logoBytes: Uint8Array | undefined;
-      if (appUrl) {
-        const logoUrl = `${appUrl}/RareMinds ISO Logo-01.png`;
-        logoBytes = await fetchImageBytes(logoUrl);
-      }
+      const logoUrl = `${APP_URL}/RareMinds ISO Logo-01.png`;
+      logoBytes = await fetchImageBytes(logoUrl);
       const watermarkBytes = logoBytes;
 
       const receiptData: ReceiptData = {
@@ -285,7 +366,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           order_id: body.razorpay_order_id as string,
           amount: planPrice,
           currency: 'INR',
-          payment_method: 'Card',
+          payment_method: payment.method || 'Card',
           payment_timestamp: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
           status: 'Success',
         },
