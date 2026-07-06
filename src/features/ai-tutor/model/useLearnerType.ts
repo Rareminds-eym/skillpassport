@@ -77,12 +77,14 @@ export function useLearnerType(userId: string | undefined): LearnerTypeData {
           throw new Error(errorData.error || `HTTP ${response.status}`);
         }
 
-        const data = await response.json() as { learnerType?: string | null; isTeacher?: boolean };
+        const data = await response.json() as { success?: boolean; data?: { learnerType?: string | null; isTeacher?: boolean }; learnerType?: string | null; isTeacher?: boolean };
 
         if (cancelled) return;
 
-        const type = data.learnerType || null;
-        const isTeacherValue = data.isTeacher ?? false; // Use backend value
+        // ponytail: API returns {success, data: {...}} structure, extract from data if present
+        const responseData = data.success && data.data ? data.data : data;
+        const type = responseData.learnerType || null;
+        const isTeacherValue = responseData.isTeacher ?? false;
         
         logger.info('Fetched learner_type via API', { userId, learnerType: type, isTeacher: isTeacherValue });
         setLearnerType(type);

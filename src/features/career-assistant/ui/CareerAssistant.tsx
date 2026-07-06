@@ -38,8 +38,15 @@ import { useSmartScroll } from '@/features/career-assistant/hooks/useSmartScroll
 import { useConversationSwitcher } from '@/features/career-assistant/hooks/useConversationSwitcher';
 import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
 
+import { useUser, useUserRole } from '@/shared/model/authStore';
+import { useLearnerType } from '@/features/ai-tutor/model/useLearnerType';
 
-import { useUser } from '@/shared/model/authStore';
+// ponytail: reuse existing worksheet/lesson-plan components from ai-tutor
+import TeachingModeTabs, { type AssistantMode } from './TeachingModeTabs';
+import WorksheetConfigPanel from '@/features/ai-tutor/ui/WorksheetConfigPanel';
+import LessonPlanConfigPanel from '@/features/ai-tutor/ui/LessonPlanConfigPanel';
+import { DEFAULT_WORKSHEET_CONFIG, type WorksheetConfig } from '@/features/ai-tutor/types/worksheet';
+import { DEFAULT_LESSON_PLAN_CONFIG, type LessonPlanConfig } from '@/features/ai-tutor/types/lesson-plan';
 
 // Import constants
 import {
@@ -58,6 +65,22 @@ import {
 const CareerAssistantContainer: React.FC = () => {
   const user = useUser();
   const location = useLocation();
+  const { isEducator: roleIsEducator } = useUserRole();
+  
+  // ponytail: API endpoint works perfectly (see network log), use it directly
+  const { isTeacher, loading: learnerTypeLoading } = useLearnerType(user?.id);
+  const isEducator = isTeacher || roleIsEducator;
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[CareerAI] User role check:', {
+      userId: user?.id,
+      isTeacher,
+      roleIsEducator,
+      isEducator,
+      learnerTypeLoading
+    });
+  }, [user?.id, isTeacher, roleIsEducator, isEducator, learnerTypeLoading]);
   
   // ==================== HOOKS ====================
   
@@ -110,6 +133,11 @@ const CareerAssistantContainer: React.FC = () => {
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [autoSendQuery, setAutoSendQuery] = useState(false);
+  
+  // ponytail: educator-specific state (worksheet/lesson-plan)
+  const [assistantMode, setAssistantMode] = useState<AssistantMode>(null);
+  const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(DEFAULT_WORKSHEET_CONFIG);
+  const [lessonPlanConfig, setLessonPlanConfig] = useState<LessonPlanConfig>(DEFAULT_LESSON_PLAN_CONFIG);
   
   // Sidebar state - collapsed on mobile by default
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -210,9 +238,11 @@ const CareerAssistantContainer: React.FC = () => {
    * Handles streaming response and conversation management
    * FIX: Wrapped in useCallback with proper dependencies
    * FIX: Added rate limiting and input validation
+   * FIX: Support direct prompt parameter to avoid state timing issues
    */
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || loading) return;
+  const handleSend = useCallback(async (directPrompt?: string) => {
+    const messageToSend = directPrompt || input.trim();
+    if (!messageToSend || loading) return;
 
     // Rate limiting check
     const now = Date.now();
@@ -221,7 +251,7 @@ const CareerAssistantContainer: React.FC = () => {
     }
 
     // Input validation
-    const trimmedInput = input.trim();
+    const trimmedInput = messageToSend.trim();
     if (trimmedInput.length > MAX_INPUT_LENGTH) {
       logger.warn('Message exceeds maximum length', {
         messageLength: trimmedInput.length,
@@ -241,7 +271,9 @@ const CareerAssistantContainer: React.FC = () => {
 
     setMessages(prev => [...prev, userMessage]);
     const userInput = trimmedInput;
-    setInput('');
+    if (!directPrompt) {
+      setInput(''); // Only clear input if not using direct prompt
+    }
     setLoading(true);
     setShowWelcome(false);
     setUserScrolledUp(false);
@@ -456,6 +488,15 @@ const CareerAssistantContainer: React.FC = () => {
 
   // ==================== RENDER ====================
   
+  // ponytail: show loading while checking educator status
+  if (learnerTypeLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="w-8 h-8 border-2 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+  
   return (
     <CareerAssistantUI
       showWelcome={showWelcome}
@@ -480,6 +521,7 @@ const CareerAssistantContainer: React.FC = () => {
       isFeedbackLoading={isFeedbackLoading}
       submitFeedback={submitFeedback}
       onSendQuery={(query: string) => {
+        // ponytail: set input and trigger auto-send
         setInput(query);
         setAutoSendQuery(true);
       }}
@@ -491,6 +533,13 @@ const CareerAssistantContainer: React.FC = () => {
       conversationsLoading={conversationsLoading}
       hasMore={hasMore}
       loadMore={loadMore}
+      isEducator={isEducator}
+      assistantMode={assistantMode}
+      setAssistantMode={setAssistantMode}
+      worksheetConfig={worksheetConfig}
+      setWorksheetConfig={setWorksheetConfig}
+      lessonPlanConfig={lessonPlanConfig}
+      setLessonPlanConfig={setLessonPlanConfig}
     />
   );
 };
@@ -506,7 +555,7 @@ interface CareerAssistantUIProps {
   isTyping: boolean;
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
-  onSendMessage: () => void;
+  onSendMessage: (directPrompt?: string) => void;
   onStopTyping: () => void;
   messagesContainerRef: React.RefObject<HTMLDivElement | null>;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
@@ -526,6 +575,13 @@ interface CareerAssistantUIProps {
   conversationsLoading: boolean;
   hasMore: boolean;
   loadMore: () => void;
+  isEducator: boolean;
+  assistantMode: AssistantMode;
+  setAssistantMode: React.Dispatch<React.SetStateAction<AssistantMode>>;
+  worksheetConfig: WorksheetConfig;
+  setWorksheetConfig: React.Dispatch<React.SetStateAction<WorksheetConfig>>;
+  lessonPlanConfig: LessonPlanConfig;
+  setLessonPlanConfig: React.Dispatch<React.SetStateAction<LessonPlanConfig>>;
 }
 
 /**
@@ -563,6 +619,13 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
   conversationsLoading,
   hasMore,
   loadMore,
+  isEducator,
+  assistantMode,
+  setAssistantMode,
+  worksheetConfig,
+  setWorksheetConfig,
+  lessonPlanConfig,
+  setLessonPlanConfig,
 }) => {
   
   const inputRef = useRef<HTMLInputElement>(null);
@@ -574,6 +637,19 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  /**
+   * ponytail: Handle Escape key to close sidebar
+   */
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && assistantMode) {
+        setAssistantMode(null);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [assistantMode, setAssistantMode]);
 
   return (
     <div className="flex h-full min-h-0 bg-white">
@@ -592,7 +668,9 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
       />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col max-w-5xl mx-auto relative">
+      <div className={`flex-1 flex flex-col mx-auto relative transition-all duration-300 ${
+        isEducator && assistantMode ? 'mr-96' : 'max-w-5xl'
+      }`}>
         {/* Mobile sidebar toggle */}
         <div className="md:hidden absolute top-4 left-4 z-10">
           <button
@@ -614,22 +692,58 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto">
               <div className="text-center mb-12">
                 <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl font-bold text-gray-900 mb-4">
-                  Welcome to Career AI
+                  {isEducator 
+                    ? (assistantMode === 'worksheet' 
+                        ? 'Worksheet Generator' 
+                        : assistantMode === 'lesson-plan' 
+                          ? 'Lesson Plan Creator'
+                          : 'AI Teaching Assistant')
+                    : 'Welcome to Career AI'
+                  }
                 </motion.h1>
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-lg text-gray-600 max-w-2xl mx-auto">
-                  Get personalized career guidance, job matching, skill analysis, and interview prep. Not sure where to start?
+                  {isEducator 
+                    ? (assistantMode === 'worksheet'
+                        ? 'Create custom worksheets with various question types and difficulty levels'
+                        : assistantMode === 'lesson-plan'
+                          ? 'Design structured lesson plans with objectives, activities, and assessments'
+                          : 'Create worksheets and lesson plans, or get career guidance for your students')
+                    : 'Get personalized career guidance, job matching, skill analysis, and interview prep. Not sure where to start?'
+                  }
                 </motion.p>
+                
+                {/* ponytail: tab-based mode selector for educators */}
+                {isEducator && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-8">
+                    <TeachingModeTabs
+                      currentMode={assistantMode}
+                      onModeChange={setAssistantMode}
+                    />
+                  </motion.div>
+                )}
               </div>
 
-              <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="full" animated={true} />
- 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
-                💡 Click a card above or type your question below to get started
-              </motion.div>
+              {/* ponytail: show action cards - educators get teacher-specific actions, learners get grade-appropriate actions */}
+              {/* For educators: only show cards if no mode is selected, for learners: always show */}
+              {!isEducator && (
+                <>
+                  <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="full" animated={true} />
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
+                    💡 Click a card above or type your question below to get started
+                  </motion.div>
+                </>
+              )}
+              
+              {isEducator && !assistantMode && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
+                  👆 Select a mode above to get started
+                </motion.div>
+              )}
             </motion.div>
           ) : (
             <div className="max-w-4xl mx-auto space-y-6">
-              {selectedChips.length === 0 && messages.length > 0 && (
+              {/* ponytail: show quick actions only for learners, not for educators */}
+              {!isEducator && selectedChips.length === 0 && messages.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
                   <p className="text-sm text-gray-500 mb-3 text-center">Quick Actions:</p>
                   <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="compact" animated={true} />
@@ -765,6 +879,76 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
           )}
         </AnimatePresence>
 
+        {/* ponytail: educator config panels - show as right sidebar drawer with mode switcher in header */}
+        {isEducator && assistantMode && (
+          <div className="fixed right-0 top-0 h-full w-96 bg-white border-l border-gray-200 shadow-xl z-50 flex flex-col">
+            {/* Header - fixed at top with mode switcher */}
+            <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 z-10 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Teaching Assistant</h3>
+                <button
+                  onClick={() => setAssistantMode(null)}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors group flex-shrink-0"
+                  title="Close settings panel"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5 text-gray-500 group-hover:text-gray-700" />
+                </button>
+              </div>
+              {/* Mode tabs inside sidebar */}
+              <TeachingModeTabs
+                currentMode={assistantMode}
+                onModeChange={setAssistantMode}
+              />
+            </div>
+            {/* Content - scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {assistantMode === 'worksheet' ? (
+                <WorksheetConfigPanel
+                  config={worksheetConfig}
+                  onChange={setWorksheetConfig}
+                  onGenerate={() => {
+                    const parts = [
+                      `Generate a ${worksheetConfig.templateType} worksheet`,
+                      worksheetConfig.gradeLevel ? `for ${worksheetConfig.gradeLevel}` : '',
+                      worksheetConfig.topic ? `on the topic "${worksheetConfig.topic}"` : '',
+                      `with ${worksheetConfig.questionCount} questions`,
+                      `at ${worksheetConfig.difficulty} difficulty level`,
+                      worksheetConfig.includeAnswerKey ? 'with an answer key' : '',
+                      worksheetConfig.includeRubric ? 'and a grading rubric' : '',
+                      worksheetConfig.includeExtension ? 'and an extension activity' : ''
+                    ].filter(Boolean).join(' ');
+                    const prompt = parts + '.';
+                    // ponytail: call handleSend directly with prompt to avoid state timing issues
+                    onSendMessage(prompt);
+                  }}
+                  isGenerating={loading || isTyping}
+                />
+              ) : (
+                <LessonPlanConfigPanel
+                  config={lessonPlanConfig}
+                  onChange={setLessonPlanConfig}
+                  onGenerate={() => {
+                    const parts = [
+                      `Generate a ${lessonPlanConfig.templateType} lesson plan`,
+                      lessonPlanConfig.gradeLevel ? `for ${lessonPlanConfig.gradeLevel}` : '',
+                      lessonPlanConfig.subject ? `on ${lessonPlanConfig.subject}` : '',
+                      `for ${lessonPlanConfig.duration} minutes`,
+                      lessonPlanConfig.includeLearningObjectives ? 'with learning objectives' : '',
+                      lessonPlanConfig.includeMaterials ? 'materials list' : '',
+                      lessonPlanConfig.includeAssessment ? 'and assessment activities' : ''
+                    ].filter(Boolean).join(' ');
+                    const prompt = parts + '.';
+                    // ponytail: call handleSend directly with prompt to avoid state timing issues
+                    onSendMessage(prompt);
+                  }}
+                  isGenerating={loading || isTyping}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Input Area */}
         <div className="flex-shrink-0 border-t border-gray-200 bg-white px-4 py-4">
           <div className="max-w-4xl mx-auto">
@@ -787,41 +971,50 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
               </motion.div>
             )}
 
-            <div className="relative">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && onSendMessage()}
-                placeholder={showWelcome ? "Ask me anything about your career..." : "Type your message..."}
-                disabled={loading || isTyping}
-                className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
-              />
-              
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Attach file">
-                  <Paperclip className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Voice message">
-                  <Mic className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={onSendMessage}
-                  disabled={loading || isTyping || !input.trim()}
-                  className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
-                  title="Send message"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
+            {/* ponytail: only show input for learners, hide completely for educators */}
+            {!isEducator && (
+              <div className="relative">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && onSendMessage()}
+                  placeholder={
+                    showWelcome 
+                      ? "Ask me anything about your career..." 
+                      : "Type your message..."
+                  }
+                  disabled={loading || isTyping}
+                  className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
+                />
+                
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Attach file">
+                    <Paperclip className="w-5 h-5" />
+                  </button>
+                  <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Voice message">
+                    <Mic className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={onSendMessage}
+                    disabled={loading || isTyping || !input.trim()}
+                    className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
+                    title="Send message"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="mt-2 px-2">
-              <p className="text-xs text-gray-500">
-                Career AI may generate inaccurate information. Please verify important details.
-              </p>
-            </div>
+            {!isEducator && (
+              <div className="mt-2 px-2">
+                <p className="text-xs text-gray-500">
+                  Career AI may generate inaccurate information. Please verify important details.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
