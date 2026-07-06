@@ -21,7 +21,6 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({
   onMenuToggle,
   showMobileMenu,
-  notificationCount,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -55,7 +54,7 @@ const Header: React.FC<HeaderProps> = ({
   }, [showProfileMenu, showNotifications]);
 
   // Get real-time notifications for admin
-  const { unreadCount, loading: notificationsLoading } = useAdminNotifications(user?.id);
+  const { unreadCount } = useAdminNotifications(user?.id);
 
   const handleNotificationClick = () => {
     setShowNotifications((prev) => !prev);
@@ -64,8 +63,12 @@ const Header: React.FC<HeaderProps> = ({
 
   const handleLogout = async () => {
     setShowProfileMenu(false);
-    await logout?.();
-    navigate("/login");
+    try {
+      await logout();
+    } finally {
+      // Always redirect to login, even if server-side revocation fails
+      navigate("/login");
+    }
   };
 
   // Get settings path based on role (same logic as sidebar)

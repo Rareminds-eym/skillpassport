@@ -355,8 +355,11 @@ const VerifyEmail = () => {
             )}
             <button
               onClick={async () => {
-                await useAuthStore.getState().logout();
-                navigate('/login');
+                try {
+                  await useAuthStore.getState().logout();
+                } finally {
+                  navigate('/login');
+                }
               }}
               className="w-full py-3 px-4 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
             >
