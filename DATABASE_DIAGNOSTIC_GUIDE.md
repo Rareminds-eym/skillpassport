@@ -3,7 +3,7 @@
 This guide helps you diagnose and fix the "User not found in authentication system" error.
 
 ## Quick Start
-
+ 
 Run these scripts **in your SkillPassport Supabase SQL Editor** in this order:
 
 ### 1. Check Current Setup (ALWAYS RUN THIS FIRST)
