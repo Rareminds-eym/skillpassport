@@ -68,19 +68,8 @@ const CareerAssistantContainer: React.FC = () => {
   const { isEducator: roleIsEducator } = useUserRole();
   
   // ponytail: API endpoint works perfectly (see network log), use it directly
-  const { isTeacher, loading: learnerTypeLoading } = useLearnerType(user?.id);
+  const { isTeacher, loading: learnerTypeLoading, error: learnerTypeError } = useLearnerType(user?.id);
   const isEducator = isTeacher || roleIsEducator;
-  
-  // Debug logging
-  useEffect(() => {
-    console.log('[CareerAI] User role check:', {
-      userId: user?.id,
-      isTeacher,
-      roleIsEducator,
-      isEducator,
-      learnerTypeLoading
-    });
-  }, [user?.id, isTeacher, roleIsEducator, isEducator, learnerTypeLoading]);
   
   // ==================== HOOKS ====================
   
@@ -495,6 +484,14 @@ const CareerAssistantContainer: React.FC = () => {
         <div className="w-8 h-8 border-2 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
       </div>
     );
+  }
+
+  // ponytail: handle learner type error - fallback to non-educator mode
+  if (learnerTypeError) {
+    logger.warn('Failed to load learner type, defaulting to non-educator mode', { 
+      error: learnerTypeError.message,
+      userId: user?.id 
+    });
   }
   
   return (
