@@ -384,6 +384,22 @@ async function updateOrganizationHandler(context: AuthenticatedContext, body: an
   const supabase = getSupabase(context);
   // Exclude 'action' and 'id' from updates - these are routing/identifier fields, not data columns
   const { id, action, ...updates } = body;
+
+  if (updates.metadata && typeof updates.metadata === 'object' && !Array.isArray(updates.metadata)) {
+    const { data: existingOrg, error: existingError } = await supabase
+      .from('organizations')
+      .select('metadata')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+
+    updates.metadata = {
+      ...((existingOrg?.metadata as Record<string, unknown>) || {}),
+      ...updates.metadata,
+    };
+  }
+
   const { data, error } = await supabase.from('organizations').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id).select().single();
   if (error) throw error;
   return apiSuccess(data, context.request);

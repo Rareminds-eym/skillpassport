@@ -39,7 +39,6 @@ import { OnboardingWizard } from "@/pages/recruitment/onboarding/OnboardingWizar
 const OnboardingStep1 = lazy(() => import("@/pages/recruitment/onboarding/step-1"));
 const OnboardingStep2 = lazy(() => import("@/pages/recruitment/onboarding/step-2"));
 const OnboardingStep3 = lazy(() => import("@/pages/recruitment/onboarding/step-3"));
-const OnboardingStep4 = lazy(() => import("@/pages/recruitment/onboarding/step-4"));
 
 // Onboarding route - separate from main recruitment routes (no org protection needed during setup)
 export const recruiterOnboardingRoute = (
@@ -50,7 +49,7 @@ export const recruiterOnboardingRoute = (
     <Route path="step-1" element={<OnboardingWizard currentStep={1}><OnboardingStep1 /></OnboardingWizard>} />
     <Route path="step-2" element={<OnboardingWizard currentStep={2}><OnboardingStep2 /></OnboardingWizard>} />
     <Route path="step-3" element={<OnboardingWizard currentStep={3}><OnboardingStep3 /></OnboardingWizard>} />
-    <Route path="step-4" element={<OnboardingWizard currentStep={4}><OnboardingStep4 /></OnboardingWizard>} />
+    <Route path="step-4" element={<Navigate to="/recruitment/onboarding/step-3" replace />} />
     <Route path="*" element={<Navigate to="/recruitment/onboarding/step-1" replace />} />
   </Route>
 );
