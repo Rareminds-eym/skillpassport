@@ -99,31 +99,43 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const pricingMatrix = validPlan.pricing_matrix as Record<string, any>;
     const clientPrice = plan.price as number;
     let planPrice: number | undefined;
+    let detectedBillingCycle: 'yearly' | 'monthly' | undefined;
 
-    // SECURITY FIX: Check both yearly and monthly pricing based on plan duration
-    const planDuration = plan.duration as string;
-    const isYearly = planDuration.toLowerCase().includes('year') || planDuration.toLowerCase().includes('annual');
-    const cycleKey = isYearly ? 'yearly' : 'monthly';
-
+    // CRITICAL: Search for ANY matching price in the pricing matrix
+    // Plans may have duration label that doesn't match actual billing cycle
+    // (e.g., "monthly" label for a yearly-billed plan)
     if (pricingMatrix) {
-      for (const key in pricingMatrix) {
-        const price = pricingMatrix[key]?.[cycleKey];
-        if (typeof price === 'number' && price === clientPrice) {
-          planPrice = price;
+      for (const entityKey in pricingMatrix) {
+        const entityPricing = pricingMatrix[entityKey];
+
+        // Try yearly first
+        if (entityPricing?.yearly === clientPrice && entityPricing.yearly > 0) {
+          planPrice = entityPricing.yearly;
+          detectedBillingCycle = 'yearly';
+          console.log('[VerifyPayment] Price matched to yearly cycle:', { clientPrice, planPrice, entityKey });
+          break;
+        }
+
+        // Then try monthly
+        if (entityPricing?.monthly === clientPrice && entityPricing.monthly > 0) {
+          planPrice = entityPricing.monthly;
+          detectedBillingCycle = 'monthly';
+          console.log('[VerifyPayment] Price matched to monthly cycle:', { clientPrice, planPrice, entityKey });
           break;
         }
       }
     }
 
     if (typeof planPrice !== 'number') {
-      console.error('[VerifyPayment] Plan price mismatch or no pricing found for cycle:', {
+      console.error('[VerifyPayment] Plan price mismatch or no pricing found:', {
         planId: plan.id,
+        planCode: validPlan.plan_code,
         clientPrice,
-        cycle: cycleKey,
-        duration: planDuration,
-        pricingMatrix
+        duration: plan.duration,
+        pricingMatrix,
+        errorMessage: `Client sent price ${clientPrice} but no matching pricing found in matrix`
       });
-      return apiError(400, 'VALIDATION_ERROR', `Selected plan has no valid ${cycleKey} pricing matching the request`, context.request);
+      return apiError(400, 'VALIDATION_ERROR', `Selected plan has no pricing matching the payment (₹${clientPrice}). Please try again.`, context.request);
     }
 
     // Step 2.6: Cross-verify authoritative Razorpay captured amount
@@ -133,10 +145,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       return apiError(400, 'VALIDATION_ERROR', `Amount mismatch: captured ${payment.amount} paise, expected ${expectedPaise}`, context.request);
     }
 
-    // Calculate subscription dates
+    // Calculate subscription dates using DETECTED billing cycle, not duration field
+    // (duration field may be incorrect/misleading)
     const now = new Date();
     const endDate = new Date(now);
-    const durationMonths = parseDurationMonths(plan.duration as string);
+    const durationMonths = detectedBillingCycle === 'yearly' ? 12 : 1;
     endDate.setMonth(endDate.getMonth() + durationMonths);
 
     // Check for existing active subscription via shadow table
@@ -253,7 +266,13 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       }
     } else {
       // New subscription — create in auth DB
-      console.log('[VerifyPayment] Creating new subscription for user:', user.id);
+      const planCode = validPlan.plan_code;
+      const isRecruiterPlan = planCode?.includes('recruiter') || planCode?.includes('recruitment');
+
+      console.log('[VerifyPayment] Creating new subscription for user:', user.id, {
+        plan_code: planCode,
+        is_recruiter: isRecruiterPlan,
+      });
 
       try {
         subscription = await ssoCreateSubscription(env, {
@@ -269,6 +288,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
           phone: (user as any).phone || undefined,
           razorpay_order_id: body.razorpay_order_id as string,
           razorpay_payment_id: body.razorpay_payment_id as string,
+          is_recruiter_subscription: isRecruiterPlan,
+          is_b2b: isRecruiterPlan,
         });
       } catch (createError: any) {
         // Handle race condition: Webhook or other synchronous flow already created the subscription
@@ -446,14 +467,6 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     console.error('[VerifyPayment] Error:', error);
     return rpcErrorResponse(error, context.request);
   }
-}
-
-function parseDurationMonths(duration: string): number {
-  const lower = duration.toLowerCase();
-  if (lower.includes('annual') || lower.includes('year')) return 12;
-  if (lower.includes('quarter')) return 3;
-  if (lower.includes('month')) return 1;
-  return 1;
 }
 
 async function sendPaymentSuccessEmail(

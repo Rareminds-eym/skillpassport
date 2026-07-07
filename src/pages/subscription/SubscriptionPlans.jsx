@@ -828,46 +828,9 @@ function SubscriptionPlans() {
   }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
 
   const handlePlanSelection = useCallback(async (plan) => {
-    // RECRUITER PAYMENT BLOCK: For now, recruiters see plans but skip payment
-    // They can select a plan (UI acknowledgment) and proceed to onboarding or dashboard
-    if (pageRole === 'recruiter') {
-      // Check if auth is still loading
-      if (authLoading) {
-        if (DEBUG) console.log('[SubscriptionPlans] Auth still loading, please wait...');
-        return;
-      }
-
-      // If not authenticated, redirect to signup
-      if (!isAuthenticated) {
-        if (DEBUG) console.log('[SubscriptionPlans] Recruiter not authenticated, redirecting to signup');
-        navigate('/signup', {
-          state: {
-            plan,
-            learnerType,
-            returnTo: '/subscription/plans'
-          }
-        });
-        return;
-      }
-
-      // For authenticated recruiters: Skip payment, check onboarding status
-      // This is UI-only - no actual subscription is created yet
-      toast.success(`${plan.name} plan selected! Setting up your account...`, {
-        duration: 2000,
-        icon: '✅'
-      });
-
-      // Redirect to dashboard after plan selection
-      // Onboarding is now completed BEFORE reaching this page
-      if (DEBUG) console.log('[SubscriptionPlans] Plan selected, redirecting to dashboard');
-      const targetPath = getDashboardPath(userRole) || '/recruitment/overview';
-
-      setTimeout(() => {
-        navigate(targetPath, { replace: true });
-      }, 1500);
-
-      return;
-    }
+    // All user types (recruiters, learners, educators, admins) use the same unified flow.
+    // Backend validates the plan against plans_cache, creates the order through
+    // PAYMENT_WORKER, and writes subscriptions through SSO_SERVICE.
 
     // If user is currently on their ACTIVE plan (not cancelled), go to manage page
     // Cancelled subscriptions should allow re-purchase of the same plan
