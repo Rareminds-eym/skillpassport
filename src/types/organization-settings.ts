@@ -1,41 +1,33 @@
-export type VerificationStatus = 'pending' | 'approved' | 'rejected';
+export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'under_review';
 export type PlanTier = 'starter' | 'pro' | 'premium' | 'enterprise';
 
-export interface CompanyProfile {
+// Stored in organizations table (legal_name), 'name' field is used for display/brand name
+export interface CompanyNames {
   legal_name?: string;
-  display_name?: string;
-  description?: string;
-  logo_url?: string;
+  name?: string; // display/brand name (existing field)
 }
 
-export interface CompanyVerification {
+// Stored in organization_recruitment_settings table
+export interface CompanyContactInfo {
+  official_company_email?: string;
+  company_phone_number?: string;
+  hr_contact_phone_number?: string;
+  hr_support_email?: string;
+}
+
+// Stored in organization_recruitment_verification table
+export interface OrganizationRecruitmentVerification {
+  id?: string;
+  organization_id?: string;
   cin_business_reg_no?: string;
   gst_number?: string;
   tax_identification_number?: string;
+  incorporation_date?: string;
   verification_status?: VerificationStatus;
   verified_at?: string;
-}
-
-export interface CompanyContacts {
-  official_company_email?: string;
-  official_company_phone?: string;
-  hr_contact_name?: string;
-  hr_contact_email?: string;
-  hr_contact_phone?: string;
-  hr_department_phone?: string;
-}
-
-export interface CompanyAdditional {
-  website?: string;
-  established_year?: number;
-  employee_count?: number;
-}
-
-export interface OrganizationMetadata {
-  company_profile?: CompanyProfile;
-  verification?: CompanyVerification;
-  contacts?: CompanyContacts;
-  additional?: CompanyAdditional;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface RecruitmentFeatures {
@@ -58,15 +50,18 @@ export interface OrganizationRecruitmentSettings {
   current_recruiters: number;
   plan_tier: PlanTier;
   features: RecruitmentFeatures;
-  metadata: OrganizationMetadata;
+  official_company_email?: string;
+  company_phone_number?: string;
+  hr_contact_phone_number?: string;
+  hr_support_email?: string;
+  metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
 
-// Helper type for form submissions
+// Form submission type combining all details
 export interface OrganizationDetailsFormData {
-  company_profile: CompanyProfile;
-  verification: CompanyVerification;
-  contacts: CompanyContacts;
-  additional?: CompanyAdditional;
+  company_names: CompanyNames;
+  contact_info: CompanyContactInfo;
+  verification: OrganizationRecruitmentVerification;
 }
