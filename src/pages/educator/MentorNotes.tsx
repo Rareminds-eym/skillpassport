@@ -1,4 +1,4 @@
-import { useAuthStore } from '@/shared/model/authStore';
+import { useAuthStore, useUser } from '@/shared/model/authStore';
 import {
     Calendar,
     ChevronLeft,
@@ -152,10 +152,10 @@ const MentorNotesContent = () => {
       
       setLoading(true);
       try {
-        // Get learner user_ids from current filtered learners
-        const learnerUserIds = learners.map(s => s.user_id).filter(Boolean);
+        // Get learner ids from current filtered learners
+        const learnerIds = learners.map((s) => s.id).filter(Boolean);
         
-        if (learnerUserIds.length === 0) {
+        if (learnerIds.length === 0) {
           setNotes([]);
           return;
         }
@@ -165,7 +165,7 @@ const MentorNotesContent = () => {
           action: 'list-mentor-notes',
           select: 'id, learner_id, feedback, action_points, quick_notes, note_date, learners(name)',
           filters: {
-            learner_id: { in: learnerUserIds },
+            learner_id: { in: learnerIds },
             note_date: { order: 'desc' }
           }
         });
@@ -191,10 +191,10 @@ const MentorNotesContent = () => {
     }
 
     try {
-      // Get learner user_ids from current filtered learners
-      const learnerUserIds = learners.map(s => s.user_id).filter(Boolean);
+      // Get learner ids from current filtered learners
+      const learnerIds = learners.map((s) => s.id).filter(Boolean);
       
-      if (learnerUserIds.length === 0) {
+      if (learnerIds.length === 0) {
         setNotes([]);
         return;
       }
@@ -204,7 +204,7 @@ const MentorNotesContent = () => {
         action: 'list-mentor-notes',
         select: 'id, learner_id, feedback, action_points, quick_notes, note_date, learners(name)',
         filters: {
-          learner_id: { in: learnerUserIds },
+          learner_id: { in: learnerIds },
           note_date: { order: 'desc' }
         }
       });
@@ -554,7 +554,7 @@ const MentorNotesContent = () => {
               onKeyDown={(e) => learners.length > 0 && e.key === "Enter" && setDropdownOpen((v) => !v)}
             >
               <span className={learners.length > 0 ? "text-gray-700" : "text-gray-400"}>
-                {selectedLearner ? learners.find((s) => s.user_id === selectedLearner || s.id === selectedLearner)?.name : 
+                {selectedLearner ? learners.find((s) => s.id === selectedLearner)?.name : 
                  learners.length === 0 ? "No learners available" : "Select Learner"}
               </span>
               <svg className={`w-5 h-5 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -578,7 +578,7 @@ const MentorNotesContent = () => {
                         key={s.id}
                         onClick={() => {
                           if (s.user_id) {
-                            setSelectedLearner(s.user_id);
+                            setSelectedLearner(s.id);
                             setDropdownOpen(false);
                           }
                         }}
@@ -1015,18 +1015,6 @@ const MentorNotesContent = () => {
   );
 };
 
-/**
- * Wrapped MentorNotes with FeatureGate for mentor_notes add-on
- */
-const MentorNotes = () => (
-  <FeatureGate 
-    featureKey="mentor_notes" 
-    showUpgradePrompt={true}
-    fallback={<div>Loading...</div>}
-    onUpgradeClick={() => {}}
-  >
-    <MentorNotesContent />
-  </FeatureGate>
-);
+const MentorNotes = () => <MentorNotesContent />;
 
 export default MentorNotes;
