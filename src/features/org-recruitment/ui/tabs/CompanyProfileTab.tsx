@@ -188,11 +188,16 @@ export const CompanyProfileTab = () => {
                     <div className="flex items-start gap-4">
                         <div className="flex-shrink-0">
                             {form.logo_url ? (
-                                <img
-                                    src={form.logo_url}
-                                    alt="Company logo"
-                                    className="w-24 h-24 rounded-lg object-cover border-2 border-gray-200"
-                                />
+                                <div className="w-24 h-24 rounded-lg border-2 border-gray-200 bg-white flex items-center justify-center overflow-hidden">
+                                    <img
+                                        src={form.logo_url}
+                                        alt="Company logo"
+                                        className="h-full w-full object-contain"
+                                        onError={(event) => {
+                                            event.currentTarget.style.display = 'none';
+                                        }}
+                                    />
+                                </div>
                             ) : (
                                 <div className="w-24 h-24 rounded-lg bg-gray-100 flex items-center justify-center border-2 border-gray-200">
                                     <PhotoIcon className="w-12 h-12 text-gray-400" />
