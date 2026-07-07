@@ -48,7 +48,7 @@ const MentorNotesContent = () => {
     collegeId: educatorCollege?.id,
     classIds: (educatorType === 'school' && educatorRole !== 'admin') || (educatorType === 'college' && educatorRole !== 'admin') ? assignedClassIds : undefined,
     educatorType: educatorType,
-    userId: educatorType === 'college' ? (user as any)?.id : undefined
+    userId: educatorType === 'college' ? user?.id : undefined
   });
 
   // main data
@@ -135,9 +135,9 @@ const MentorNotesContent = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // filtered learners for dropdown search (only show learners with user_id)
+  // filtered learners for dropdown search
   const filteredlearners = learners.filter((s) =>
-    s.user_id && s.name.toLowerCase().includes(searchTerm.toLowerCase())
+    s.id && s.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
   const displaylearners =
     searchTerm.trim() === "" ? filteredlearners.slice(0, 8) : filteredlearners;
@@ -573,7 +573,7 @@ const MentorNotesContent = () => {
                 />
                 <div className="max-h-56 overflow-y-auto p-2">
                   {displaylearners.length > 0 ? (
-                    displaylearners.filter(s => s.user_id).map((s) => (
+                    displaylearners.filter(s => s.id).map((s) => (
                       <div
                         key={s.id}
                         onClick={() => {
