@@ -82,6 +82,38 @@ const callVisitorMethod = (
 const MAX_OPEN_ATTEMPTS = 10;
 const RETRY_DELAY_MS = 300;
 
+/**
+ * Safely converts an unknown error to an Error object
+ * Handles cases where thrown values are not Error instances
+ */
+function toError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+  
+  // Handle string errors
+  if (typeof error === 'string') {
+    return new Error(error);
+  }
+  
+  // Handle null/undefined
+  if (error === null || error === undefined) {
+    return new Error('Unknown error occurred');
+  }
+  
+  // Handle objects with message property
+  if (typeof error === 'object' && 'message' in error) {
+    return new Error(String(error.message));
+  }
+  
+  // Fallback: stringify the error
+  try {
+    return new Error(JSON.stringify(error));
+  } catch {
+    return new Error(String(error));
+  }
+}
+
 function getSalesIq(): ZohoSalesIq | undefined {
   return window.$zoho?.salesiq;
 }
@@ -234,7 +266,7 @@ export function openZohoChat(
       setupAutoCloseOnScroll(salesiq, options.scrollThreshold || 100);
     }
   } catch (error) {
-    logger.error('Error opening Zoho chat', error as Error);
+    logger.error('Error opening Zoho chat', toError(error));
   }
 }
 
