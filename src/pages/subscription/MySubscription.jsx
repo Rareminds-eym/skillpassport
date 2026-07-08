@@ -33,6 +33,8 @@ import { getUserSubscriptions } from '@/features/subscription/api';
 
 
 import { useAuthLoading, useUser, useUserRole } from '@/shared/model/authStore';
+import { useLearnerDataByEmail } from '@/entities/learner';
+import { openZohoChat } from '@/shared/utils/zohoChat';
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
@@ -82,6 +84,10 @@ function MySubscription() {
   const user = useUser();
   const { role } = useUserRole();
   const authLoading = useAuthLoading();
+  
+  // Get learner data with phone number
+  const { learnerData } = useLearnerDataByEmail(user?.email);
+  
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
 
   // Get settings, dashboard paths, and user type from current URL (more reliable than role)
@@ -305,8 +311,56 @@ function MySubscription() {
   };
 
   const handleContactSupport = () => {
-    // Navigate to support page or open support modal
-    navigate('/support?topic=billing');
+    // Extract phone from learner data - try direct fields first, then profile object
+    const phoneNumber = learnerData?.phone || 
+                       learnerData?.alternatePhone || 
+                       learnerData?.profile?.phone || 
+                       learnerData?.profile?.mob || 
+                       learnerData?.profile?.contact_number || 
+                       '';
+    
+    // Get user name - try multiple sources
+    const userName = user?.user_metadata?.full_name || 
+                     user?.user_metadata?.name ||
+                     learnerData?.name ||
+                     user?.email?.split('@')[0] || 
+                     'User';
+    
+    // Check if user is a learner (from URL path)
+    const isLearner = location.pathname.startsWith('/learner');
+    
+    // Open Zoho SalesIQ chat with user context including phone
+    openZohoChat({
+      userId: user?.id,
+      userName: userName,
+      userEmail: user?.email,
+      userPhone: phoneNumber,
+      userRole: role,
+      userRoles: user?.roles,
+      subscriptionId: subscriptionData?.id,
+      subscriptionPlan: subscriptionData?.planName || subscriptionData?.plan_type || currentPlan?.name || 'Unknown',
+      subscriptionStatus: subscriptionData?.status || 'Unknown',
+      subscriptionStartDate: subscriptionData?.startDate,
+      subscriptionEndDate: subscriptionData?.endDate,
+      billingCycle: subscriptionData?.billingCycle,
+      organizationId: subscriptionData?.organizationId || user?.orgId,
+      organizationType: subscriptionData?.organizationType || subscriptionData?.entityType,
+      pageSource: 'My Subscription Page',
+      pagePath: location.pathname,
+      additionalInfo: {
+        'Days Remaining': daysRemaining || 0,
+        'Plan Price': subscriptionData?.planPrice || currentPlan?.price || 'N/A',
+        'Auto Renew': autoRenewEnabled ? 'Enabled' : 'Disabled',
+        'Payment Status': subscriptionData?.paymentStatus || 'N/A',
+        'Is Organization License': subscriptionData?.isOrganizationLicense ? 'Yes' : 'No',
+        'License Assignment ID': subscriptionData?.licenseAssignmentId || 'N/A',
+        'User Type': userType
+      }
+    }, {
+      // Enable auto-close on scroll for learners only
+      autoCloseOnScroll: isLearner,
+      scrollThreshold: 100 // Close after scrolling 100px
+    });
   };
 
   // Use URL-based paths (already computed from location.pathname)
