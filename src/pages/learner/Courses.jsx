@@ -58,16 +58,6 @@ const Courses = () => {
   const [initialLoad, setInitialLoad] = useState(true);
   const [learnerGrade, setLearnerGrade] = useState(null);
   const [learnerBranch, setLearnerBranch] = useState(null);
-  const [learnerType, setLearnerType] = useState(null);
-  // Role-specific Resource Studio naming per PRD: learners.learner_type = 'teacher'
-  // sees "Educator Resource Studio"; everyone else sees "Learner Resource Studio".
-  // Neutral "Resource Studio" until learner info loads, to avoid flashing the wrong role.
-  const normalizedLearnerType = learnerType?.toLowerCase().trim() ?? null;
-  const resourceStudioTitle = normalizedLearnerType === null
-    ? 'Resource Studio'
-    : normalizedLearnerType === 'teacher'
-      ? 'Educator Resource Studio'
-      : 'Learner Resource Studio';
   const [filterByBranch, setFilterByBranch] = useState(true); // Toggle for branch filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -245,7 +235,6 @@ const Courses = () => {
         if (res?.data) {
           setLearnerGrade(res.data.grade);
           setLearnerBranch(res.data.branch_field);
-          setLearnerType(res.data.learner_type ?? null);
           
           // Note: No need to manually call fetchCourses() here
           // The filter-watching useEffect will automatically trigger when learnerGrade/learnerBranch change
@@ -711,7 +700,7 @@ const Courses = () => {
                         <h1 className={`font-bold text-2xl ${
                           activeTab === 'courses' ? 'text-indigo-600' : 'text-gray-900'
                         }`}>
-                          {resourceStudioTitle}
+                          Resource Studio
                         </h1>
                         <p className="text-sm text-gray-600 mt-1">
                           Explore learning resources and activities to grow your skills

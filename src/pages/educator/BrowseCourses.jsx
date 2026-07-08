@@ -254,7 +254,7 @@ const BrowseCourses = () => {
                   transition={{ delay: 0.3 }}
                   className="mt-6"
                 >
-                  <p className="text-xl font-semibold text-gray-800 mb-2">Loading Courses...</p>
+                  <p className="text-xl font-semibold text-gray-800 mb-2">Loading Resource Studio...</p>
                   <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
                     Powered by <span className="font-semibold text-indigo-600">RareMinds</span>
                   </p>
@@ -273,10 +273,10 @@ const BrowseCourses = () => {
                   </div>
                   <div className="flex-1">
                     <h1 className="font-bold text-2xl text-indigo-600">
-                      Browse Courses
+                      Educator Resource Studio
                     </h1>
                     <p className="text-sm text-gray-600 mt-1">
-                      Explore our course library and access courses for professional development
+                      Explore our resource library and access learning resources for professional development
                     </p>
                   </div>
                 </div>
