@@ -577,7 +577,7 @@ const MentorNotesContent = () => {
                       <div
                         key={s.id}
                         onClick={() => {
-                          if (s.user_id) {
+                          if (s.id) {
                             setSelectedLearner(s.id);
                             setDropdownOpen(false);
                           }
