@@ -425,7 +425,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!email) return apiError(400, 'VALIDATION_ERROR', 'email required', context.request, { startTime });
         const { data, error } = await supabase
           .from('learners')
-          .select('grade, branch_field')
+          .select('grade, branch_field, learner_type')
           .eq('email', email)
           .maybeSingle();
         if (error && error.code !== 'PGRST116') return apiDbError(error, context.request, { startTime });
