@@ -88,6 +88,13 @@ function MySubscription() {
   // Get learner data with phone number
   const { learnerData, error: learnerError, loading: learnerLoading } = useLearnerDataByEmail(user?.email);
   
+  // Log learner data errors without causing re-render console spam
+  useEffect(() => {
+    if (learnerError) {
+      console.warn('Failed to fetch learner data:', learnerError);
+    }
+  }, [learnerError]);
+  
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
 
   // Get settings, dashboard paths, and user type from current URL (more reliable than role)

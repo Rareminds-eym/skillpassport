@@ -33,7 +33,51 @@ interface ZohoVisitorExtended {
   firstname?: (value: string) => void;
   lastname?: (value: string) => void;
   phone?: (value: string) => void;
+  contactnumber?: (value: string) => void;
 }
+
+/**
+ * Type guard to check if a value is a string setter function
+ */
+const isStringSetter = (fn: unknown): fn is (value: string) => void => {
+  return typeof fn === 'function';
+};
+
+/**
+ * Type guard to check if the visitor object has extended methods
+ */
+const isZohoVisitorExtended = (
+  visitor: unknown
+): visitor is ZohoVisitorExtended => {
+  return typeof visitor === 'object' && visitor !== null;
+};
+
+/**
+ * Safely call a Zoho visitor method if it exists
+ */
+const callVisitorMethod = (
+  visitor: unknown,
+  methodName: keyof ZohoVisitorExtended,
+  value: string,
+  errorContext: string
+): boolean => {
+  if (!isZohoVisitorExtended(visitor)) {
+    return false;
+  }
+
+  const method = visitor[methodName];
+  if (isStringSetter(method)) {
+    try {
+      method(value);
+      return true;
+    } catch (e) {
+      logger.warn(`Failed to ${errorContext}`, { error: e });
+      return false;
+    }
+  }
+  
+  return false;
+};
 
 const MAX_OPEN_ATTEMPTS = 10;
 const RETRY_DELAY_MS = 300;
@@ -90,25 +134,11 @@ function applyZohoContext(salesiq: ZohoSalesIq, context?: ZohoChatContext): void
 
   // Set first name and last name using dedicated APIs
   if (firstName && salesiq.visitor) {
-    const visitorExtended = salesiq.visitor as ZohoVisitorExtended;
-    if (visitorExtended.firstname) {
-      try {
-        visitorExtended.firstname(firstName);
-      } catch (e) {
-        logger.warn('Failed to set firstname', { error: e });
-      }
-    }
+    callVisitorMethod(salesiq.visitor, 'firstname', firstName, 'set firstname');
   }
 
   if (lastName && salesiq.visitor) {
-    const visitorExtended = salesiq.visitor as ZohoVisitorExtended;
-    if (visitorExtended.lastname) {
-      try {
-        visitorExtended.lastname(lastName);
-      } catch (e) {
-        logger.warn('Failed to set lastname', { error: e });
-      }
-    }
+    callVisitorMethod(salesiq.visitor, 'lastname', lastName, 'set lastname');
   }
   
   // Set visitor email
@@ -124,27 +154,14 @@ function applyZohoContext(salesiq: ZohoSalesIq, context?: ZohoChatContext): void
   if (context.userPhone) {
     let phoneSet = false;
     
-    // Try contactnumber method
-    if (salesiq.visitor?.contactnumber) {
-      try {
-        salesiq.visitor.contactnumber(context.userPhone);
-        phoneSet = true;
-      } catch (e) {
-        logger.warn('Failed to set contactnumber', { error: e });
-      }
+    // Try contactnumber method first (primary Zoho API)
+    if (salesiq.visitor) {
+      phoneSet = callVisitorMethod(salesiq.visitor, 'contactnumber', context.userPhone, 'set contactnumber');
     }
     
     // Try phone method as fallback
     if (!phoneSet && salesiq.visitor) {
-      const visitorExtended = salesiq.visitor as ZohoVisitorExtended;
-      if (visitorExtended.phone) {
-        try {
-          visitorExtended.phone(context.userPhone);
-          phoneSet = true;
-        } catch (e) {
-          logger.warn('Failed to set phone', { error: e });
-        }
-      }
+      callVisitorMethod(salesiq.visitor, 'phone', context.userPhone, 'set phone');
     }
   }
 
@@ -230,6 +247,36 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
   let scrollTimer: number | null = null;
   let lastScrollY = window.scrollY;
   let isCleanedUp = false;
+  let autoCleanupTimer: number | undefined = undefined;
+
+  // Define beforeUnloadHandler first so it can be referenced by cleanup
+  const beforeUnloadHandler = () => {
+    cleanup();
+    if (autoCleanupTimer !== undefined) {
+      window.clearTimeout(autoCleanupTimer);
+      autoCleanupTimer = undefined;
+    }
+  };
+
+  const cleanup = () => {
+    if (isCleanedUp) return; // Idempotent - safe to call multiple times
+    isCleanedUp = true;
+    
+    window.removeEventListener('scroll', handleScroll);
+    window.removeEventListener('click', handleClickOutside, true);
+    window.removeEventListener('touchstart', handleTouchStart, true);
+    window.removeEventListener('beforeunload', beforeUnloadHandler);
+    
+    if (scrollTimer !== null) {
+      window.clearTimeout(scrollTimer);
+      scrollTimer = null;
+    }
+    
+    if (autoCleanupTimer !== undefined) {
+      window.clearTimeout(autoCleanupTimer);
+      autoCleanupTimer = undefined;
+    }
+  };
 
   const handleScroll = () => {
     if (isCleanedUp) return;
@@ -251,7 +298,7 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
     lastScrollY = currentScrollY;
 
     // Reset timer
-    if (scrollTimer) {
+    if (scrollTimer !== null) {
       window.clearTimeout(scrollTimer);
     }
     scrollTimer = window.setTimeout(() => {
@@ -331,27 +378,6 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
     }
   };
 
-  const cleanup = () => {
-    if (isCleanedUp) return;
-    isCleanedUp = true;
-    
-    window.removeEventListener('scroll', handleScroll);
-    window.removeEventListener('click', handleClickOutside, true);
-    window.removeEventListener('touchstart', handleTouchStart, true);
-    window.removeEventListener('beforeunload', beforeUnloadHandler);
-    
-    if (scrollTimer) {
-      window.clearTimeout(scrollTimer);
-      scrollTimer = null;
-    }
-  };
-
-  // Define beforeUnloadHandler outside so it can be removed later
-  const beforeUnloadHandler = () => {
-    cleanup();
-    window.clearTimeout(autoCleanupTimer);
-  };
-
   // Add scroll listener
   window.addEventListener('scroll', handleScroll, { passive: true });
   
@@ -363,7 +389,7 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
   }, 500);
 
   // Auto cleanup after 5 minutes or when chat is manually closed
-  const autoCleanupTimer = window.setTimeout(cleanup, 5 * 60 * 1000);
+  autoCleanupTimer = window.setTimeout(cleanup, 5 * 60 * 1000);
 
   // Cleanup on unmount
   window.addEventListener('beforeunload', beforeUnloadHandler);
