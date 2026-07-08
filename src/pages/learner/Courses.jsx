@@ -60,10 +60,13 @@ const Courses = () => {
   const [learnerBranch, setlearnerBranch] = useState(null);
   const [learnerType, setLearnerType] = useState(null);
   // Role-specific Resource Studio naming per PRD: learners.learner_type = 'teacher'
-  // sees "Educator Resource Studio"; everyone else sees "Learner Resource Studio"
-  const resourceStudioTitle = learnerType?.toLowerCase().trim() === 'teacher'
-    ? 'Educator Resource Studio'
-    : 'Learner Resource Studio';
+  // sees "Educator Resource Studio"; everyone else sees "Learner Resource Studio".
+  // Neutral "Resource Studio" until learner info loads, to avoid flashing the wrong role.
+  const resourceStudioTitle = learnerType === null
+    ? 'Resource Studio'
+    : learnerType.toLowerCase().trim() === 'teacher'
+      ? 'Educator Resource Studio'
+      : 'Learner Resource Studio';
   const [filterByBranch, setFilterByBranch] = useState(true); // Toggle for branch filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -241,7 +244,7 @@ const Courses = () => {
         if (res?.data) {
           setlearnerGrade(res.data.grade);
           setlearnerBranch(res.data.branch_field);
-          setLearnerType(res.data.learner_type);
+          setLearnerType(res.data.learner_type ?? null);
           
           // Note: No need to manually call fetchCourses() here
           // The filter-watching useEffect will automatically trigger when learnerGrade/learnerBranch change
