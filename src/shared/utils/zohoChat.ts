@@ -81,6 +81,11 @@ const callVisitorMethod = (
 
 const MAX_OPEN_ATTEMPTS = 10;
 const RETRY_DELAY_MS = 300;
+const SCROLL_RESET_DELAY_MS = 150;
+const CLICK_LISTENER_DELAY_MS = 500;
+const AUTO_CLEANUP_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const CHAT_OPEN_DELAY_MS = 300;
+const DEFAULT_SCROLL_THRESHOLD_PX = 100;
 
 /**
  * Safely converts an unknown error to an Error object
@@ -232,7 +237,7 @@ function showZohoChat(salesiq: ZohoSalesIq): void {
     if (salesiq?.chatwindow?.openchat) {
       salesiq.chatwindow.openchat();
     }
-  }, 300);
+  }, CHAT_OPEN_DELAY_MS);
 }
 
 /**
@@ -263,7 +268,7 @@ export function openZohoChat(
 
     // Setup auto-close on scroll for learners
     if (options?.autoCloseOnScroll) {
-      setupAutoCloseOnScroll(salesiq, options.scrollThreshold || 100);
+      setupAutoCloseOnScroll(salesiq, options.scrollThreshold || DEFAULT_SCROLL_THRESHOLD_PX);
     }
   } catch (error) {
     logger.error('Error opening Zoho chat', toError(error));
@@ -335,7 +340,7 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
     }
     scrollTimer = window.setTimeout(() => {
       // Reset after scroll stops
-    }, 150);
+    }, SCROLL_RESET_DELAY_MS);
   };
 
   const isInsideZohoWidget = (target: HTMLElement): boolean => {
@@ -418,10 +423,10 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
   setTimeout(() => {
     window.addEventListener('click', handleClickOutside, true);
     window.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
-  }, 500);
+  }, CLICK_LISTENER_DELAY_MS);
 
   // Auto cleanup after 5 minutes or when chat is manually closed
-  autoCleanupTimer = window.setTimeout(cleanup, 5 * 60 * 1000);
+  autoCleanupTimer = window.setTimeout(cleanup, AUTO_CLEANUP_TIMEOUT_MS);
 
   // Cleanup on unmount
   window.addEventListener('beforeunload', beforeUnloadHandler);
