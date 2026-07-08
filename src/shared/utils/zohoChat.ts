@@ -29,6 +29,12 @@ export interface ZohoChatContext {
 
 type ZohoSalesIq = NonNullable<Window['$zoho']>['salesiq'];
 
+interface ZohoVisitorExtended {
+  firstname?: (value: string) => void;
+  lastname?: (value: string) => void;
+  phone?: (value: string) => void;
+}
+
 const MAX_OPEN_ATTEMPTS = 10;
 const RETRY_DELAY_MS = 300;
 
@@ -83,19 +89,25 @@ function applyZohoContext(salesiq: ZohoSalesIq, context?: ZohoChatContext): void
   }
 
   // Set first name and last name using dedicated APIs
-  if (firstName && (salesiq.visitor as any)?.firstname) {
-    try {
-      (salesiq.visitor as any).firstname(firstName);
-    } catch (e) {
-      logger.warn('Failed to set firstname', { error: e });
+  if (firstName && salesiq.visitor) {
+    const visitorExtended = salesiq.visitor as ZohoVisitorExtended;
+    if (visitorExtended.firstname) {
+      try {
+        visitorExtended.firstname(firstName);
+      } catch (e) {
+        logger.warn('Failed to set firstname', { error: e });
+      }
     }
   }
 
-  if (lastName && (salesiq.visitor as any)?.lastname) {
-    try {
-      (salesiq.visitor as any).lastname(lastName);
-    } catch (e) {
-      logger.warn('Failed to set lastname', { error: e });
+  if (lastName && salesiq.visitor) {
+    const visitorExtended = salesiq.visitor as ZohoVisitorExtended;
+    if (visitorExtended.lastname) {
+      try {
+        visitorExtended.lastname(lastName);
+      } catch (e) {
+        logger.warn('Failed to set lastname', { error: e });
+      }
     }
   }
   
@@ -123,12 +135,15 @@ function applyZohoContext(salesiq: ZohoSalesIq, context?: ZohoChatContext): void
     }
     
     // Try phone method as fallback
-    if (!phoneSet && (salesiq.visitor as any)?.phone) {
-      try {
-        (salesiq.visitor as any).phone(context.userPhone);
-        phoneSet = true;
-      } catch (e) {
-        logger.warn('Failed to set phone', { error: e });
+    if (!phoneSet && salesiq.visitor) {
+      const visitorExtended = salesiq.visitor as ZohoVisitorExtended;
+      if (visitorExtended.phone) {
+        try {
+          visitorExtended.phone(context.userPhone);
+          phoneSet = true;
+        } catch (e) {
+          logger.warn('Failed to set phone', { error: e });
+        }
       }
     }
   }
@@ -323,11 +338,18 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
     window.removeEventListener('scroll', handleScroll);
     window.removeEventListener('click', handleClickOutside, true);
     window.removeEventListener('touchstart', handleTouchStart, true);
+    window.removeEventListener('beforeunload', beforeUnloadHandler);
     
     if (scrollTimer) {
       window.clearTimeout(scrollTimer);
       scrollTimer = null;
     }
+  };
+
+  // Define beforeUnloadHandler outside so it can be removed later
+  const beforeUnloadHandler = () => {
+    cleanup();
+    window.clearTimeout(autoCleanupTimer);
   };
 
   // Add scroll listener
@@ -344,10 +366,7 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
   const autoCleanupTimer = window.setTimeout(cleanup, 5 * 60 * 1000);
 
   // Cleanup on unmount
-  window.addEventListener('beforeunload', () => {
-    cleanup();
-    window.clearTimeout(autoCleanupTimer);
-  });
+  window.addEventListener('beforeunload', beforeUnloadHandler);
 }
 
 /**

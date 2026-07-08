@@ -86,7 +86,7 @@ function MySubscription() {
   const authLoading = useAuthLoading();
   
   // Get learner data with phone number
-  const { learnerData } = useLearnerDataByEmail(user?.email);
+  const { learnerData, error: learnerError, loading: learnerLoading } = useLearnerDataByEmail(user?.email);
   
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
 
@@ -310,16 +310,27 @@ function MySubscription() {
     }
   };
 
-  const handleContactSupport = () => {
-    // Extract phone from learner data - try direct fields first, then profile object
-    const phoneNumber = learnerData?.phone || 
-                       learnerData?.alternatePhone || 
-                       learnerData?.profile?.phone || 
-                       learnerData?.profile?.mob || 
-                       learnerData?.profile?.contact_number || 
-                       '';
+  /**
+   * Helper to safely extract phone number from learner data
+   */
+  const getLearnerPhoneNumber = (learnerData) => {
+    if (!learnerData) return '';
     
-    // Get user name - try multiple sources
+    return (
+      learnerData.phone ||
+      learnerData.alternatePhone ||
+      learnerData.profile?.phone ||
+      learnerData.profile?.mob ||
+      learnerData.profile?.contact_number ||
+      ''
+    );
+  };
+
+  const handleContactSupport = () => {
+    // Get phone number - safe even if learnerData is loading or errored
+    const phoneNumber = learnerLoading || learnerError ? '' : getLearnerPhoneNumber(learnerData);
+    
+    // Get user name - try multiple sources with safe fallbacks
     const userName = user?.user_metadata?.full_name || 
                      user?.user_metadata?.name ||
                      learnerData?.name ||
@@ -329,7 +340,8 @@ function MySubscription() {
     // Check if user is a learner (from URL path)
     const isLearner = location.pathname.startsWith('/learner');
     
-    // Open Zoho SalesIQ chat with user context including phone
+    // Open Zoho SalesIQ chat with best available context
+    // Don't block user from opening support chat even if learner data failed
     openZohoChat({
       userId: user?.id,
       userName: userName,
