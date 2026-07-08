@@ -89,8 +89,11 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         throw new Error('Could not determine school ID. Please ensure you are logged in as a school admin.');
       }
 
+      // conversations.learner_id references learners.user_id, not learners.id
+      const conversationLearnerId = (learner as any).user_id || learner.id;
+
       const conversation = await MessageService.getOrCreatelearnerAdminConversation(
-        learner.id,
+        conversationLearnerId,
         schoolId,
         'Admission Note'
       );
@@ -99,7 +102,7 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         conversationId: conversation.id,
         senderId: user.id,
         senderType: 'school_admin',
-        receiverId: learner.id,
+        receiverId: conversationLearnerId,
         receiverType: 'learner',
         messageText: `📝 Admission Note:\n\n${note}`,
         subject: 'Admission Note',

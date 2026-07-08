@@ -552,6 +552,7 @@ const LearnerProfileDrawer: React.FC<LearnerProfileDrawerProps> = ({
           isOpen={showAdmissionNoteModal}
           onClose={() => setShowAdmissionNoteModal(false)}
           learner={learner}
+          userRole={userRole as 'school_admin' | 'college_admin' | 'university_admin' | 'educator'}
         />
       )}
 

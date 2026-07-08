@@ -14,13 +14,15 @@ interface AdmissionNoteModalProps {
   onClose: () => void;
   learner: Learner;
   onSuccess?: () => void;
+  userRole?: 'school_admin' | 'college_admin' | 'university_admin' | 'educator';
 }
 
-const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  learner, 
-  onSuccess 
+const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
+  isOpen,
+  onClose,
+  learner,
+  onSuccess,
+  userRole,
 }) => {
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,44 +66,47 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
       }
 
       // Detect user type and get appropriate IDs
-      let userType: 'college_admin' | 'college_educator' | 'school_educator' | null = null;
+      let userType: 'school_admin' | 'college_admin' | 'college_educator' | 'school_educator' | null = null;
       let organizationId: string | null = null;
       let educatorId: string | null = null;
 
-      // Check if user is a school educator
-      const schoolEducatorRes = await apiPost('/learner-profile/actions', { action: 'fetch-school-educator-by-user', userId: user.id });
-      const schoolEducatorData = schoolEducatorRes?.data;
-
-      if (schoolEducatorData) {
-        userType = 'school_educator';
-        educatorId = schoolEducatorData.id;
-        organizationId = schoolEducatorData.school_id;
+      if (userRole === 'school_admin') {
+        const orgRes = await apiPost('/learner-profile/actions', { action: 'fetch-organization', adminId: user.id, type: 'school' });
+        const orgData = orgRes?.data;
+        if (orgData?.id) {
+          userType = 'school_admin';
+          organizationId = orgData.id;
+        }
+      } else if (userRole === 'college_admin') {
+        const orgRes = await apiPost('/learner-profile/actions', { action: 'fetch-organization', adminId: user.id, type: 'college' });
+        const orgData = orgRes?.data;
+        if (orgData?.id) {
+          userType = 'college_admin';
+          organizationId = orgData.id;
+        }
       } else {
-        // Check if user is a college lecturer
-        const lecturerRes = await apiPost('/learner-profile/actions', { action: 'fetch-user-college-lecturer', userId: user.id });
-        const lecturerData = lecturerRes?.data;
-        
-        if (lecturerData) {
-          educatorId = lecturerData.id;
-          organizationId = lecturerData.collegeId;
-          
-          const adminDesignations = ['principal', 'dean', 'hod', 'admin', 'director'];
-          const isAdmin = lecturerData.designation && 
-                         adminDesignations.some((d: string) => lecturerData.designation.toLowerCase().includes(d));
-          
-          if (isAdmin) {
-            userType = 'college_admin';
-          } else {
-            userType = 'college_educator';
-          }
+        // Check if user is a school educator
+        const schoolEducatorRes = await apiPost('/learner-profile/actions', { action: 'fetch-school-educator-by-user', userId: user.id });
+        const schoolEducatorData = schoolEducatorRes?.data;
+
+        if (schoolEducatorData) {
+          userType = 'school_educator';
+          educatorId = schoolEducatorData.id;
+          organizationId = schoolEducatorData.school_id;
         } else {
-          // Fallback: check if user is college owner in organizations table
-          const orgRes = await apiPost('/learner-profile/actions', { action: 'fetch-org-by-admin', adminId: user.id });
-          const orgData = orgRes?.data;
-          
-          if (orgData?.id) {
-            userType = 'college_admin';
-            organizationId = orgData.id;
+          // Check if user is a college lecturer
+          const lecturerRes = await apiPost('/learner-profile/actions', { action: 'fetch-user-college-lecturer', userId: user.id });
+          const lecturerData = lecturerRes?.data;
+
+          if (lecturerData) {
+            educatorId = lecturerData.id;
+            organizationId = lecturerData.collegeId;
+
+            const adminDesignations = ['principal', 'dean', 'hod', 'admin', 'director'];
+            const isAdmin = lecturerData.designation &&
+                           adminDesignations.some((d: string) => lecturerData.designation.toLowerCase().includes(d));
+
+            userType = isAdmin ? 'college_admin' : 'college_educator';
           }
         }
       }
@@ -110,19 +115,28 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
         throw new Error('Could not determine user type or organization');
       }
 
+      // conversations.learner_id references learners.user_id, not learners.id
+      const conversationLearnerId = learner.user_id || learner.id;
+
       let conversation;
 
       // Create or get conversation based on user type
-      if (userType === 'school_educator') {
+      if (userType === 'school_admin') {
+        conversation = await MessageService.getOrCreatelearnerAdminConversation(
+          conversationLearnerId,
+          organizationId,
+          'Mentor Note'
+        );
+      } else if (userType === 'school_educator') {
         conversation = await MessageService.getOrCreatelearnerEducatorConversation(
-          learner.id,
+          conversationLearnerId,
           educatorId!,
           undefined, // classId
           'Mentor Note'
         );
       } else if (userType === 'college_educator') {
         conversation = await MessageService.getOrCreatelearnerCollegeLecturerConversation(
-          learner.id,
+          conversationLearnerId,
           educatorId!,
           organizationId,
           undefined, // programSectionId
@@ -131,26 +145,27 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
       } else {
         // college_admin
         conversation = await MessageService.getOrCreatelearnerCollegeAdminConversation(
-          learner.id,
+          conversationLearnerId,
           organizationId,
           'Admission Note'
         );
       }
 
       // Send the note as a message
-      const senderType = userType === 'school_educator' ? 'educator' : 
-                        userType === 'college_educator' ? 'college_educator' : 
+      const senderType = userType === 'school_admin' ? 'school_admin' :
+                        userType === 'school_educator' ? 'educator' :
+                        userType === 'college_educator' ? 'college_educator' :
                         'college_admin';
-      
-      const notePrefix = userType === 'college_admin' ? 'Admission' : 'Mentor';
+
+      const notePrefix = userType === 'school_admin' || userType === 'college_admin' ? 'Admission' : 'Mentor';
 
       const messageData = {
-        conversation_id: conversation.id,
-        sender_id: user.id,
-        sender_type: senderType,
-        receiver_id: learner.id,
-        receiver_type: 'learner',
-        message_text: `📝 ${notePrefix} Note:\n\n${note}`,
+        conversationId: conversation.id,
+        senderId: user.id,
+        senderType,
+        receiverId: conversationLearnerId,
+        receiverType: 'learner',
+        messageText: `📝 ${notePrefix} Note:\n\n${note}`,
         subject: `${notePrefix} Note`
       };
 
