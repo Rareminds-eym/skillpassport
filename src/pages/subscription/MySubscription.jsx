@@ -35,6 +35,10 @@ import { getUserSubscriptions } from '@/features/subscription/api';
 import { useAuthLoading, useUser, useUserRole } from '@/shared/model/authStore';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { openZohoChat } from '@/shared/utils/zohoChat';
+import { getLogger } from '@/shared/config/logging';
+
+const logger = getLogger('my-subscription');
+
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
@@ -327,52 +331,58 @@ function MySubscription() {
   };
 
   const handleContactSupport = () => {
-    // Get phone number - safe even if learnerData is loading or errored
-    const phoneNumber = learnerLoading || learnerError ? '' : getLearnerPhoneNumber(learnerData);
-    
-    // Get user name - try multiple sources with safe fallbacks
-    const userName = user?.user_metadata?.full_name || 
-                     user?.user_metadata?.name ||
-                     learnerData?.name ||
-                     user?.email?.split('@')[0] || 
-                     'User';
-    
-    // Check if user is a learner (from URL path)
-    const isLearner = location.pathname.startsWith('/learner');
-    
-    // Open Zoho SalesIQ chat with best available context
-    // Don't block user from opening support chat even if learner data failed
-    openZohoChat({
-      userId: user?.id,
-      userName: userName,
-      userEmail: user?.email,
-      userPhone: phoneNumber,
-      userRole: role,
-      userRoles: user?.roles,
-      subscriptionId: subscriptionData?.id,
-      subscriptionPlan: subscriptionData?.planName || subscriptionData?.plan_type || currentPlan?.name || 'Unknown',
-      subscriptionStatus: subscriptionData?.status || 'Unknown',
-      subscriptionStartDate: subscriptionData?.startDate,
-      subscriptionEndDate: subscriptionData?.endDate,
-      billingCycle: subscriptionData?.billingCycle,
-      organizationId: subscriptionData?.organizationId || user?.orgId,
-      organizationType: subscriptionData?.organizationType || subscriptionData?.entityType,
-      pageSource: 'My Subscription Page',
-      pagePath: location.pathname,
-      additionalInfo: {
-        'Days Remaining': daysRemaining || 0,
-        'Plan Price': subscriptionData?.planPrice || currentPlan?.price || 'N/A',
-        'Auto Renew': autoRenewEnabled ? 'Enabled' : 'Disabled',
-        'Payment Status': subscriptionData?.paymentStatus || 'N/A',
-        'Is Organization License': subscriptionData?.isOrganizationLicense ? 'Yes' : 'No',
-        'License Assignment ID': subscriptionData?.licenseAssignmentId || 'N/A',
-        'User Type': userType
-      }
-    }, {
-      // Enable auto-close on scroll for learners only
-      autoCloseOnScroll: isLearner,
-      scrollThreshold: 100 // Close after scrolling 100px
-    });
+    try {
+      // Get phone number - safe even if learnerData is loading or errored
+      const phoneNumber = learnerLoading || learnerError ? '' : getLearnerPhoneNumber(learnerData);
+      
+      // Get user name - try multiple sources with safe fallbacks
+      const userName = user?.user_metadata?.full_name || 
+                       user?.user_metadata?.name ||
+                       learnerData?.name ||
+                       user?.email?.split('@')[0] || 
+                       'User';
+      
+      // Check if user is a learner (from URL path)
+      const isLearner = location.pathname.startsWith('/learner');
+      
+      // Open Zoho SalesIQ chat with best available context
+      // Don't block user from opening support chat even if learner data failed
+      openZohoChat({
+        userId: user?.id,
+        userName: userName,
+        userEmail: user?.email,
+        userPhone: phoneNumber,
+        userRole: role,
+        userRoles: user?.roles,
+        subscriptionId: subscriptionData?.id,
+        subscriptionPlan: subscriptionData?.planName || subscriptionData?.plan_type || currentPlan?.name || 'Unknown',
+        subscriptionStatus: subscriptionData?.status || 'Unknown',
+        subscriptionStartDate: subscriptionData?.startDate,
+        subscriptionEndDate: subscriptionData?.endDate,
+        billingCycle: subscriptionData?.billingCycle,
+        organizationId: subscriptionData?.organizationId || user?.orgId,
+        organizationType: subscriptionData?.organizationType || subscriptionData?.entityType,
+        pageSource: 'My Subscription Page',
+        pagePath: location.pathname,
+        additionalInfo: {
+          'Days Remaining': daysRemaining || 0,
+          'Plan Price': subscriptionData?.planPrice || currentPlan?.price || 'N/A',
+          'Auto Renew': autoRenewEnabled ? 'Enabled' : 'Disabled',
+          'Payment Status': subscriptionData?.paymentStatus || 'N/A',
+          'Is Organization License': subscriptionData?.isOrganizationLicense ? 'Yes' : 'No',
+          'License Assignment ID': subscriptionData?.licenseAssignmentId || 'N/A',
+          'User Type': userType
+        }
+      }, {
+        // Enable auto-close on scroll for learners only
+        autoCloseOnScroll: isLearner,
+        scrollThreshold: 100 // Close after scrolling 100px
+      });
+    } catch (error) {
+      // Defensive error handling - openZohoChat already has internal try-catch
+      // This catches any errors in the data preparation or call site
+      logger.error('Failed to open support chat', error instanceof Error ? error : new Error(String(error)));
+    }
   };
 
   // Use URL-based paths (already computed from location.pathname)

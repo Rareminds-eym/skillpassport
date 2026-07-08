@@ -171,11 +171,17 @@ function applyZohoContext(salesiq: ZohoSalesIq, context?: ZohoChatContext): void
 
   // Set first name and last name using dedicated APIs
   if (firstName && salesiq.visitor) {
-    callVisitorMethod(salesiq.visitor, 'firstname', firstName, 'set firstname');
+    const firstNameSet = callVisitorMethod(salesiq.visitor, 'firstname', firstName, 'set firstname');
+    if (!firstNameSet) {
+      logger.debug('Zoho visitor firstname method not available', { firstName });
+    }
   }
 
   if (lastName && salesiq.visitor) {
-    callVisitorMethod(salesiq.visitor, 'lastname', lastName, 'set lastname');
+    const lastNameSet = callVisitorMethod(salesiq.visitor, 'lastname', lastName, 'set lastname');
+    if (!lastNameSet) {
+      logger.debug('Zoho visitor lastname method not available', { lastName });
+    }
   }
   
   // Set visitor email
@@ -194,11 +200,17 @@ function applyZohoContext(salesiq: ZohoSalesIq, context?: ZohoChatContext): void
     // Try contactnumber method first (primary Zoho API)
     if (salesiq.visitor) {
       phoneSet = callVisitorMethod(salesiq.visitor, 'contactnumber', context.userPhone, 'set contactnumber');
+      if (!phoneSet) {
+        logger.debug('Zoho visitor contactnumber method not available');
+      }
     }
     
     // Try phone method as fallback
     if (!phoneSet && salesiq.visitor) {
-      callVisitorMethod(salesiq.visitor, 'phone', context.userPhone, 'set phone');
+      const phoneMethodSet = callVisitorMethod(salesiq.visitor, 'phone', context.userPhone, 'set phone');
+      if (!phoneMethodSet) {
+        logger.debug('Zoho visitor phone method not available (fallback also failed)');
+      }
     }
   }
 
@@ -421,8 +433,12 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
   // Add click outside listener (with small delay to avoid immediate close)
   // Use capture phase to ensure we catch the event before any stopPropagation
   setTimeout(() => {
-    window.addEventListener('click', handleClickOutside, true);
-    window.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
+    try {
+      window.addEventListener('click', handleClickOutside, true);
+      window.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
+    } catch (error) {
+      logger.warn('Failed to add click/touch listeners', { error: toError(error) });
+    }
   }, CLICK_LISTENER_DELAY_MS);
 
   // Auto cleanup after 5 minutes or when chat is manually closed
