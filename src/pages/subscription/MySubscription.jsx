@@ -339,7 +339,6 @@ function MySubscription() {
       const userName = user?.user_metadata?.full_name || 
                        user?.user_metadata?.name ||
                        learnerData?.name ||
-                       user?.email?.split('@')[0] || 
                        'User';
       
       // Check if user is a learner (from URL path)
