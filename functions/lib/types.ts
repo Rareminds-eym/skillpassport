@@ -5,8 +5,6 @@ import type {
   EmbeddingWorkerRpc,
   PaymentWorkerRpc,
   RealtimeEventsQueue,
-  RealtimeWorkerRpc,
-  SsoReverseSyncQueue,
   SsoWorkerRpc
 } from './rpc-types';
 
@@ -33,8 +31,10 @@ export interface PagesEnv {
   PAYMENT_WORKER?: PaymentWorkerRpc;
 
   // Realtime Worker configuration
-  /** Cloudflare Service Binding to the Realtime worker */
-  REALTIME_WORKER?: RealtimeWorkerRpc;
+  /** Cloudflare Durable Object binding to RealtimeHub (hosted in realtime-worker) */
+  REALTIME_HUB?: DurableObjectNamespace;
+  /** Cloudflare Queue producer for realtime events */
+  REALTIME_EVENTS_QUEUE?: RealtimeEventsQueue;
 
   // Embedding Worker configuration
   /** Cloudflare Service Binding to the Embedding worker */
@@ -45,10 +45,11 @@ export interface PagesEnv {
   EMAIL_SERVICE?: EmailWorkerRpc;
   ADMIN_EMAIL?: string;
 
+
   // AI API keys
 
   OPENROUTER_API_KEY?: string;
- 
+
 
   // R2 Storage configuration
   CLOUDFLARE_ACCOUNT_ID?: string;

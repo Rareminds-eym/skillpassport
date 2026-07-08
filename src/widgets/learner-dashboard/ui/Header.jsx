@@ -141,9 +141,13 @@ const Header = ({ activeTab }) => {
     setMobileMenuOpen(false);
   }, [navigate]);
 
-  const handleLogout = useCallback(() => {
-    logout();
-    navigate("/login");
+  const handleLogout = useCallback(async () => {
+    try {
+      await logout();
+    } finally {
+      // Always redirect to login, even if server-side revocation fails
+      navigate("/login");
+    }
   }, [logout, navigate]);
 
   useEffect(() => {

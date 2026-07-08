@@ -1,7 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useMaintenanceStore } from '@/shared/model/maintenanceStore';
 
 export const MaintenancePage: React.FC = () => {
+  const [input, setInput] = useState('');
+  const [error, setError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const submitBypassToken = useMaintenanceStore(s => s.submitBypassToken);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || submitting) return;
+    setSubmitting(true);
+    setError(false);
+    const ok = await submitBypassToken(input.trim());
+    setSubmitting(false);
+    if (!ok) {
+      setError(true);
+    }
+  };
+
   return (
     <>
       <Helmet>
@@ -62,6 +80,32 @@ export const MaintenancePage: React.FC = () => {
             Unfortunately the website is down for a bit of maintenance right now. We will
             be online as soon as possible. Please check again in a little while. Thank you!
           </p>
+
+          {/* Bypass code entry */}
+          <form onSubmit={handleSubmit} className="w-full max-w-md mb-10">
+            <p className="text-sm text-gray-500 mb-3">
+              Have a bypass code? Enter it below.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={e => { setInput(e.target.value); setError(false); }}
+                placeholder="Enter bypass code"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              />
+              <button
+                type="submit"
+                disabled={submitting || !input.trim()}
+                className="px-6 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting ? 'Verifying...' : 'Submit'}
+              </button>
+            </div>
+            {error && (
+              <p className="text-red-500 text-sm mt-2">Invalid bypass code. Please check and try again.</p>
+            )}
+          </form>
 
           {/* Divider */}
           <div className="w-full border-t border-gray-200 mb-6" />

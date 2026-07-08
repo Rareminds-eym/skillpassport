@@ -145,7 +145,6 @@ function transformProfileData(profile: ProfileInput | null, email: string, learn
       university: data.university || profileData.university || '',
       photo: generateAvatar((data.name || profileData.name) as string),
       verified: true,
-      employabilityScore: 75,
       cgpa: 'N/A',
       yearOfPassing: '',
       phone: phone,
@@ -156,6 +155,8 @@ function transformProfileData(profile: ProfileInput | null, email: string, learn
       college: data.college_school_name || profileData.college_school_name || profileData.college || '',
       registrationNumber: registrationNumber || '',
       classYear: data.class_year || profileData.classYear || '',
+      bio: data.bio || profileData.bio || '',
+      summary: data.bio || profileData.bio || '',
       github_link: data.github_link || profileData.github_link || '',
       portfolio_link: data.portfolio_link || profileData.portfolio_link || '',
       linkedin_link: data.linkedin_link || profileData.linkedin_link || '',
@@ -201,13 +202,18 @@ function transformProfileData(profile: ProfileInput | null, email: string, learn
 /**
  * Fetch learner data by email from Supabase
  */
-export const getlearnerByEmail = async (email: string): Promise<ServiceResponse> => {
+export const getlearnerByEmail = async (email: string, publicProfileLearnerId?: string): Promise<ServiceResponse> => {
   try {
     // Route through the secure backend endpoint to bypass RLS
     const user = useAuthStore.getState().user;
 
     const origin = window.location.origin;
-    const response = await ssoClient.fetch(`${origin}/api/learners/by-email?email=${encodeURIComponent(email)}`, {
+    const params = new URLSearchParams({ email });
+    if (publicProfileLearnerId) {
+      params.set('learnerId', publicProfileLearnerId);
+    }
+
+    const response = await ssoClient.fetch(`${origin}/api/learners/by-email?${params.toString()}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -292,7 +298,6 @@ export const getlearnerByEmail = async (email: string): Promise<ServiceResponse>
       // Generate passport ID from registration number
       passportId: data.registration_number ? `SP-${data.registration_number}` : 'SP-0000',
       verified: true,
-      employabilityScore: 75,
       cgpa: data.currentCgpa || 'N/A',
       photo: generateAvatar(data.name)
     };
@@ -550,6 +555,8 @@ export const getlearnerByEmail = async (email: string): Promise<ServiceResponse>
       branch_field: data.branch_field || transformedProfile.branch_field,
       college_school_name: data.college_school_name || transformedProfile.college,
       college_id: data.college_id,
+      bio: data.bio, // Bio field from public.learners table
+      summary: data.bio, // Also map to summary for compatibility
       github_link: data.github_link || transformedProfile.github_link,
       linkedin_link: data.linkedin_link || transformedProfile.linkedin_link,
       twitter_link: data.twitter_link || transformedProfile.twitter_link,
@@ -603,11 +610,23 @@ export const getlearnerByEmail = async (email: string): Promise<ServiceResponse>
       experience: formattedExperience,
       education: formattedEducation.length > 0 ? formattedEducation : transformedProfile.education,
 
+      // Location fields (added explicitly for easy access)
+      city: data.city,
+      state: data.state,
+      state_name: data.state_name,
+      country: data.country,
+      district_name: data.district_name,
+      address: data.address,
+      pincode: data.pincode,
+
       passportId: passport.id,
       passportStatus: passport.status,
       aiVerification: passport.aiVerification,
       nsqfLevel: passport.nsqfLevel,
       passportSkills: passport.skills || [],
+
+      // Privacy settings from API
+      privacySettings: data.privacySettings || { profileVisibility: 'public' },
 
       rawData: data
     };
@@ -632,7 +651,7 @@ export const getlearnerById = async (learnerId: string): Promise<ServiceResponse
       return { success: false, data: null, error: 'No data found for this learner ID.' };
     }
 
-    return await getlearnerByEmail(data.email);
+    return await getlearnerByEmail(data.email, learnerId);
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     logger.error('Exception in getlearnerById', err instanceof Error ? err : new Error(String(err)));

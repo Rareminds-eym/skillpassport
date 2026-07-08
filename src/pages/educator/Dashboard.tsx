@@ -45,7 +45,6 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [newAnnouncement, setNewAnnouncement] = useState('');
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [loadingMoreActivities, setLoadingMoreActivities] = useState(false);
   const loadingRef = useRef(false);
@@ -65,12 +64,10 @@ const Dashboard = () => {
 
       if (event === 'LOGIN') {
         logger.info('Auth state change - user authenticated');
-        setIsAuthenticated(true);
         setError(null);
         loadDashboardData();
       } else if (event === 'LOGOUT') {
         logger.warn('Auth state change - no user');
-        setIsAuthenticated(false);
         setLoading(false);
         setError('Please log in to view the dashboard');
       }
@@ -85,19 +82,16 @@ const Dashboard = () => {
 
         if (user) {
           logger.info('Session check - user found, loading data');
-          setIsAuthenticated(true);
           setError(null);
           loadDashboardData();
         } else {
           logger.warn('Session check - no user');
-          setIsAuthenticated(false);
           setLoading(false);
           setError('Please log in to view the dashboard');
         }
       } catch (err) {
         logger.error('Authentication error:', err);
         if (mounted) {
-          setIsAuthenticated(false);
           setLoading(false);
           setError('Authentication error. Please refresh the page.');
         }
@@ -222,7 +216,7 @@ const Dashboard = () => {
         navigate('/educator/assignments');
         break;
       case 'mentor note':
-        navigate('/educator/mentornotes');
+        navigate('/educator/mentor-notes');
         break;
       case 'schedule':
         navigate('/educator/my-timetable');
@@ -575,7 +569,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {/* Mentor Notes Module */}
           <div
-            onClick={() => navigate('/educator/mentornotes')}
+            onClick={() => navigate('/educator/mentor-notes')}
             className="group bg-white rounded-lg border border-gray-200 p-6 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-4">

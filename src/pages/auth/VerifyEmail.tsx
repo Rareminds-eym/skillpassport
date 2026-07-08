@@ -21,6 +21,7 @@ const VerifyEmail = () => {
 
   useEffect(() => {
     if (!token) return;
+    let redirectTimer: ReturnType<typeof setTimeout> | undefined;
 
     (async () => {
       try {
@@ -56,7 +57,7 @@ const VerifyEmail = () => {
         setState('success');
 
         // Auto-redirect after a short delay to show success message
-        setTimeout(() => {
+        redirectTimer = setTimeout(() => {
           const currentUser = useAuthStore.getState().user;
           const userRole = currentUser?.role || useAuthStore.getState().role;
           const userRoles = currentUser?.roles || [];
@@ -183,6 +184,10 @@ const VerifyEmail = () => {
         setState('error');
       }
     })();
+
+    return () => {
+      if (redirectTimer) clearTimeout(redirectTimer);
+    };
   }, [token, navigate]);
 
   // Auto-redirect to login with verified param if session was lost
@@ -204,6 +209,8 @@ const VerifyEmail = () => {
     } catch (err) {
       if (err instanceof AuthFetchError && err.status === 429) {
         setError('Too many requests. Please try again later.');
+      } else {
+        setError('Failed to resend verification email. Please try again.');
       }
     } finally {
       setResending(false);
@@ -347,7 +354,13 @@ const VerifyEmail = () => {
               </div>
             )}
             <button
-              onClick={() => navigate('/login')}
+              onClick={async () => {
+                try {
+                  await useAuthStore.getState().logout();
+                } finally {
+                  navigate('/login');
+                }
+              }}
               className="w-full py-3 px-4 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Logout

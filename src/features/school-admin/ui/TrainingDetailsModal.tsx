@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { X, User, Calendar, Building, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { SchoolAdminNotificationService } from '@/features/school-admin';
-import { CollegeAdminNotificationService } from '@/features/college-admin';
+import { approveTraining, rejectTraining } from '@/shared/api/verificationService';
 import { toast } from 'react-hot-toast';
+import type { TrainingDetailsModalProps } from '../model/types';
 
-const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, currentUserId }) => {
-  const [actionLoading, setActionLoading] = useState(null);
+const TrainingDetailsModal: React.FC<TrainingDetailsModalProps> = ({ 
+  training, 
+  isOpen, 
+  onClose, 
+  onAction, 
+  currentUserId 
+}) => {
+  const [actionLoading, setActionLoading] = useState<'approving' | 'rejecting' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
 
-  if (!isOpen || !experience) return null;
+  if (!isOpen || !training) return null;
 
-  // Handle approve experience
+  // Handle approve training
   const handleApprove = async () => {
     setActionLoading('approving');
     
@@ -21,78 +27,89 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
         return;
       }
 
-      let result;
-      const approvalAuthority = experience.approval_authority;
+      const approvalAuthority = (training.approval_authority || 'school_admin') as 'college_admin' | 'school_admin';
+      const notes = approvalAuthority === 'college_admin' 
+        ? 'Approved by College Admin' 
+        : 'Approved by School Admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.approveExperience(
-          experience.id,
-          currentUserId,
-          'Approved by College Admin'
-        );
-      } else {
-        result = await SchoolAdminNotificationService.approveExperience(
-          experience.id,
-          currentUserId,
-          'Approved by School Admin'
-        );
+      const result = await approveTraining(
+        training.id,
+        currentUserId,
+        notes,
+        approvalAuthority
+      );
+      
+      toast.success(result.message || `Training "${training.title}" approved successfully!`);
+      
+      // Call onAction and wait for parent to refresh data before closing modal
+      if (onAction) {
+        try {
+          const result = onAction('approved', training);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
       }
       
-      toast.success(result.message || `Experience "${experience.role}" approved successfully!`);
-      onAction && onAction('approved', experience);
       onClose();
     } catch (error) {
-      console.error('Error approving experience:', error);
-      toast.error(error.message || 'Failed to approve experience');
+      console.error('Error approving training:', error);
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to approve training');
     } finally {
       setActionLoading(null);
     }
   };
 
-  // Handle reject experience
+  // Handle reject training
   const handleReject = async () => {
     if (!rejectionReason.trim()) {
       toast.error('Please provide a reason for rejection');
       return;
     }
 
-    if (!currentUserId) {
-      toast.error('User not authenticated');
-      return;
-    }
-
     setActionLoading('rejecting');
     
     try {
-      let result;
-      const approvalAuthority = experience.approval_authority;
+      if (!currentUserId) {
+        toast.error('User not authenticated');
+        return;
+      }
+
+      const approvalAuthority = (training.approval_authority || 'school_admin') as 'college_admin' | 'school_admin';
       
-      if (approvalAuthority === 'college_admin') {
-        result = await CollegeAdminNotificationService.rejectExperience(
-          experience.id,
-          currentUserId,
-          rejectionReason
-        );
-      } else {
-        result = await SchoolAdminNotificationService.rejectExperience(
-          experience.id,
-          currentUserId,
-          rejectionReason
-        );
+      const result = await rejectTraining(
+        training.id,
+        currentUserId,
+        rejectionReason,
+        approvalAuthority
+      );
+      
+      toast.success(result.message || `Training "${training.title}" rejected.`);
+      
+      // Call onAction and wait for parent to refresh data before closing modal
+      if (onAction) {
+        try {
+          const result = onAction('rejected', training);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } catch (callbackError) {
+          console.warn('onAction callback failed:', callbackError);
+        }
       }
       
-      toast.success(result.message || `Experience "${experience.role}" rejected.`);
-      onAction && onAction('rejected', experience);
       onClose();
     } catch (error) {
-      console.error('Error rejecting experience:', error);
-      toast.error(error.message || 'Failed to reject experience');
+      console.error('Error rejecting training:', error);
+      toast.error((error instanceof Error ? error.message : String(error)) || 'Failed to reject training');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string): string => {
     if (!dateString) return 'Not specified';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -101,12 +118,12 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
     });
   };
 
-  const formatDuration = (startDate, endDate) => {
+  const formatDuration = (startDate: string, endDate: string): string => {
     if (!startDate || !endDate) return 'Duration not specified';
     
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const diffTime = Math.abs(end - start);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 30) return `${diffDays} days`;
@@ -120,8 +137,8 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Experience Details</h2>
-            <p className="text-sm text-gray-600">Review and approve experience submission</p>
+            <h2 className="text-xl font-bold text-gray-900">Training Details</h2>
+            <p className="text-sm text-gray-600">Review and approve training submission</p>
           </div>
           <button
             onClick={onClose}
@@ -144,28 +161,28 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Name</p>
-                <p className="font-medium text-gray-900">{experience.learner_name}</p>
+                <p className="font-medium text-gray-900">{training.learner_name}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium text-gray-900">{experience.learner_email}</p>
+                <p className="font-medium text-gray-900">{training.learner_email}</p>
               </div>
             </div>
           </div>
 
-          {/* Experience Information */}
+          {/* Training Information */}
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-gray-200 rounded-lg">
                 <FileText className="h-5 w-5 text-gray-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Experience Information</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Training Information</h3>
             </div>
             
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600">Role/Position</p>
-                <p className="font-semibold text-gray-900 text-lg">{experience.role}</p>
+                <p className="text-sm text-gray-600">Training Title</p>
+                <p className="font-semibold text-gray-900 text-lg">{training.title}</p>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
@@ -173,7 +190,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
                   <p className="text-sm text-gray-600">Organization</p>
                   <div className="flex items-center gap-2">
                     <Building className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{experience.organization}</p>
+                    <p className="font-medium text-gray-900">{training.organization}</p>
                   </div>
                 </div>
                 <div>
@@ -181,7 +198,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-gray-500" />
                     <p className="font-medium text-gray-900">
-                      {experience.duration || formatDuration(experience.start_date, experience.end_date)}
+                      {formatDuration(training.start_date, training.end_date)}
                     </p>
                   </div>
                 </div>
@@ -192,17 +209,24 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
                   <p className="text-sm text-gray-600">Start Date</p>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{formatDate(experience.start_date)}</p>
+                    <p className="font-medium text-gray-900">{formatDate(training.start_date)}</p>
                   </div>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">End Date</p>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-gray-500" />
-                    <p className="font-medium text-gray-900">{formatDate(experience.end_date)}</p>
+                    <p className="font-medium text-gray-900">{formatDate(training.end_date)}</p>
                   </div>
                 </div>
               </div>
+              
+              {training.description && (
+                <div>
+                  <p className="text-sm text-gray-600">Description</p>
+                  <p className="text-gray-900 mt-1 leading-relaxed">{training.description}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -218,29 +242,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
               </div>
               <div>
                 <p className="text-sm text-gray-600">Submitted On</p>
-                <p className="font-medium text-gray-900">{formatDate(experience.created_at)}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Approval Authority Info */}
-          <div className="bg-purple-50 rounded-xl p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Approval Information</h3>
-            <div className="space-y-2">
-              <div>
-                <p className="text-sm text-gray-600">Approval Authority</p>
-                <p className="font-medium text-gray-900">
-                  {experience.approval_authority === 'school_admin' ? 'School Admin' : 
-                   experience.approval_authority === 'college_admin' ? 'College Admin' : 'Rareminds Admin'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Reason</p>
-                <p className="text-sm text-gray-700">
-                  {experience.approval_authority === 'school_admin' || experience.approval_authority === 'college_admin'
-                    ? 'Experience is from the same institution as the learner'
-                    : 'Experience is from an external organization'}
-                </p>
+                <p className="font-medium text-gray-900">{formatDate(training.created_at)}</p>
               </div>
             </div>
           </div>
@@ -252,7 +254,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Please provide a reason for rejecting this experience..."
+                placeholder="Please provide a reason for rejecting this training..."
                 className="w-full p-3 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
                 rows={3}
               />
@@ -273,7 +275,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
             <>
               <button
                 onClick={() => setShowRejectForm(true)}
-                disabled={actionLoading}
+                disabled={!!actionLoading}
                 className="flex items-center gap-2 px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
               >
                 <XCircle className="h-4 w-4" />
@@ -282,7 +284,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
               
               <button
                 onClick={handleApprove}
-                disabled={actionLoading}
+                disabled={!!actionLoading}
                 className="flex items-center gap-2 px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 {actionLoading === 'approving' ? (
@@ -290,7 +292,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
                 ) : (
                   <CheckCircle className="h-4 w-4" />
                 )}
-                Approve Experience
+                Approve Training
               </button>
             </>
           ) : (
@@ -307,7 +309,7 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
               
               <button
                 onClick={handleReject}
-                disabled={actionLoading || !rejectionReason.trim()}
+                disabled={!!actionLoading || !rejectionReason.trim()}
                 className="flex items-center gap-2 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 {actionLoading === 'rejecting' ? (
@@ -325,4 +327,4 @@ const ExperienceDetailsModal = ({ experience, isOpen, onClose, onAction, current
   );
 };
 
-export default ExperienceDetailsModal;
+export default TrainingDetailsModal;
