@@ -283,7 +283,7 @@ const ModernLearningCard = ({
       }
 
       if (!freshLearnerData.id) {
-        logger.error('Learner profile response missing id', { learnerResponse });
+        logger.error('Learner profile response missing id', { hasResponse: !!learnerResponse, responseType: typeof learnerResponse });
         toast.error('Learner profile is incomplete. Please refresh and try again.');
         return;
       }
