@@ -409,7 +409,8 @@ const Courses = () => {
         return;
       }
       
-      const learnerData = await apiGet(`/learners/by-email?email=${encodeURIComponent(user.email)}`);
+      const learnerResponse = await apiGet(`/learners/by-email?email=${encodeURIComponent(user.email)}`);
+      const learnerData = learnerResponse?.data || learnerResponse;
       const learnerError = !learnerData ? new Error('Not found') : null;
       
       if (learnerError) {
@@ -420,6 +421,12 @@ const Courses = () => {
       
       if (!learnerData) {
         toast.error('Learner profile not found. Please complete your profile first.');
+        return;
+      }
+
+      if (!learnerData.id) {
+        logger.error('Learner profile response missing id', { learnerResponse });
+        toast.error('Learner profile is incomplete. Please refresh and try again.');
         return;
       }
       

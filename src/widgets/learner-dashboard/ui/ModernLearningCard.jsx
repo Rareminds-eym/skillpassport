@@ -267,7 +267,8 @@ const ModernLearningCard = ({
     
     try {
       // Fetch fresh learner data from database using email (not SSO ID)
-      const freshLearnerData = await apiGet(`/learners/by-email?email=${encodeURIComponent(user.email)}`);
+      const learnerResponse = await apiGet(`/learners/by-email?email=${encodeURIComponent(user.email)}`);
+      const freshLearnerData = learnerResponse?.data || learnerResponse;
       const learnerError = !freshLearnerData ? new Error('Not found') : null;
       
       if (learnerError) {
@@ -278,6 +279,12 @@ const ModernLearningCard = ({
       
       if (!freshLearnerData) {
         toast.error('Learner profile not found. Please complete your profile first.');
+        return;
+      }
+
+      if (!freshLearnerData.id) {
+        logger.error('Learner profile response missing id', { learnerResponse });
+        toast.error('Learner profile is incomplete. Please refresh and try again.');
         return;
       }
     
