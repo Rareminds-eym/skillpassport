@@ -157,10 +157,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle, showMobileMenu }) => {
                     )}
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setShowProfileMenu(false)
                         try {
-                          logout()
+                          await logout()
                         } finally {
                           // Redirect to unified login after logout
                           navigate("/login");

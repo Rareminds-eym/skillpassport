@@ -8,12 +8,16 @@ const BYPASS_STORAGE_KEY = 'sp_maintenance_bypass';
 export const MaintenanceBanner: React.FC = () => {
   const { logout, isAuthenticated } = useAuthStore();
 
-  const handleExit = () => {
+  const handleExit = async () => {
     // Clear both localStorage and the store so the guard re-evaluates
     localStorage.removeItem(BYPASS_STORAGE_KEY);
     useMaintenanceStore.getState().setLocalBypassToken(null);
     if (isAuthenticated) {
-      logout();
+      try {
+        await logout();
+      } catch (err) {
+        console.error('Logout error during maintenance bypass exit:', err);
+      }
     } else {
       window.location.reload();
     }

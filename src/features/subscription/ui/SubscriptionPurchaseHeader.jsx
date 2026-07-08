@@ -22,10 +22,11 @@ const SubscriptionPurchaseHeader = ({ userEmail, hasBanner = false }) => {
     try {
       await logout();
       toast.success('Logged out successfully');
-      navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Failed to logout. Please try again.');
+    } finally {
+      navigate('/login');
     }
   };
 
