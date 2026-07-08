@@ -26,6 +26,9 @@ export interface OrganizationRecruitmentVerification {
   verification_status?: VerificationStatus;
   verified_at?: string;
   notes?: string;
+  registration_certificate_url?: string;
+  gst_certificate_url?: string;
+  business_license_url?: string;
   created_at?: string;
   updated_at?: string;
 }

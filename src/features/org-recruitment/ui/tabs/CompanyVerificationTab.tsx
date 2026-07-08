@@ -219,8 +219,8 @@ export const CompanyVerificationTab = () => {
                     </label>
                     <input
                         type="text"
-                        value={form.registration_number || ''}
-                        onChange={(e) => handleChange('registration_number', e.target.value)}
+                        value={form.cin_business_reg_no || ''}
+                        onChange={(e) => handleChange('cin_business_reg_no', e.target.value)}
                         disabled={!canEdit}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                         placeholder="e.g., U12345KA2015PTC123456"
