@@ -56,15 +56,16 @@ const Courses = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
-  const [learnerGrade, setlearnerGrade] = useState(null);
-  const [learnerBranch, setlearnerBranch] = useState(null);
+  const [learnerGrade, setLearnerGrade] = useState(null);
+  const [learnerBranch, setLearnerBranch] = useState(null);
   const [learnerType, setLearnerType] = useState(null);
   // Role-specific Resource Studio naming per PRD: learners.learner_type = 'teacher'
   // sees "Educator Resource Studio"; everyone else sees "Learner Resource Studio".
   // Neutral "Resource Studio" until learner info loads, to avoid flashing the wrong role.
-  const resourceStudioTitle = learnerType === null
+  const normalizedLearnerType = learnerType?.toLowerCase().trim() ?? null;
+  const resourceStudioTitle = normalizedLearnerType === null
     ? 'Resource Studio'
-    : learnerType.toLowerCase().trim() === 'teacher'
+    : normalizedLearnerType === 'teacher'
       ? 'Educator Resource Studio'
       : 'Learner Resource Studio';
   const [filterByBranch, setFilterByBranch] = useState(true); // Toggle for branch filtering
@@ -242,8 +243,8 @@ const Courses = () => {
         });
         
         if (res?.data) {
-          setlearnerGrade(res.data.grade);
-          setlearnerBranch(res.data.branch_field);
+          setLearnerGrade(res.data.grade);
+          setLearnerBranch(res.data.branch_field);
           setLearnerType(res.data.learner_type ?? null);
           
           // Note: No need to manually call fetchCourses() here
