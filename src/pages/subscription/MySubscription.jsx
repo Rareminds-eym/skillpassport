@@ -378,9 +378,10 @@ function MySubscription() {
         scrollThreshold: 100 // Close after scrolling 100px
       });
     } catch (error) {
-      // Defensive error handling - openZohoChat already has internal try-catch
-      // This catches any errors in the data preparation or call site
-      logger.error('Failed to open support chat', error instanceof Error ? error : new Error(String(error)));
+      // Defensive catch for data preparation errors before calling openZohoChat
+      // (openZohoChat has its own internal error handling and never throws)
+      // This protects against errors in: getLearnerPhoneNumber, string operations, object access, etc.
+      logger.error('Failed to prepare support chat context', error instanceof Error ? error : new Error(String(error)));
     }
   };
 

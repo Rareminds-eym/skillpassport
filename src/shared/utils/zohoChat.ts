@@ -355,7 +355,7 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
     }, SCROLL_RESET_DELAY_MS);
   };
 
-  const isInsideZohoWidget = (target: HTMLElement): boolean => {
+  const isInsideZohoWidget = (target: Element): boolean => {
     // Try multiple selectors to find Zoho widget elements
     const zohoSelectors = [
       '#zsiq_float',          // Float button
@@ -375,7 +375,7 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
     }
     
     // Also check if target itself or any parent has zoho-related class/id
-    let checkElement: HTMLElement | null = target;
+    let checkElement: Element | null = target;
     while (checkElement && checkElement !== document.body) {
       const id = checkElement.id || '';
       const classes = checkElement.getAttribute?.('class') || '';
@@ -396,7 +396,9 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
   const handleClickOutside = (event: MouseEvent) => {
     if (isCleanedUp) return;
     
-    const target = event.target as HTMLElement;
+    // Safely check if target is an Element (handles HTMLElement, SVGElement, etc.)
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
     
     if (!isInsideZohoWidget(target)) {
       // Click outside - minimize chat
@@ -413,7 +415,9 @@ function setupAutoCloseOnScroll(salesiq: ZohoSalesIq, scrollThreshold: number): 
   const handleTouchStart = (event: TouchEvent) => {
     if (isCleanedUp) return;
     
-    const target = event.target as HTMLElement;
+    // Safely check if target is an Element (handles HTMLElement, SVGElement, etc.)
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
     
     if (!isInsideZohoWidget(target)) {
       // Touch outside - minimize chat
