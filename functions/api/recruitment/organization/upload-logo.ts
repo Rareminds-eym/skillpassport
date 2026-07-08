@@ -20,7 +20,7 @@ const ALLOWED_LOGO_TYPES = [
     'image/webp',
 ];
 
-const MAX_LOGO_SIZE = 5 * 1024 * 1024; // 5MB for logos
+const MAX_LOGO_SIZE = 5 * 1024 * 1024;
 
 /**
  * POST /api/recruitment/organization/upload-logo
@@ -81,15 +81,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         try {
             // Upload to Cloudflare R2 using R2Client
             const r2Client = new R2Client(env);
-            const fileUrl = await r2Client.upload(
+            await r2Client.upload(
                 logoPath,
                 fileBuffer,
                 file.type,
                 {
                     'Content-Disposition': `inline; filename="${file.name}"`,
-                    'Cache-Control': 'public, max-age=31536000', // 1 year cache
+                    'Cache-Control': 'public, max-age=31536000',
                 }
             );
+
+            const logoUrl = r2Client.getPublicUrl(logoPath);
 
             console.log('[upload-logo API] Logo uploaded successfully to R2:', logoPath);
 
@@ -97,7 +99,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
                 success: true,
                 message: 'Logo uploaded successfully',
                 file_path: logoPath,
-                file_url: fileUrl,
+                file_url: logoUrl,
                 storage_type: 'r2',
             });
 
