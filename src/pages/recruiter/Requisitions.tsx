@@ -1,23 +1,23 @@
 import {
-    ArrowsUpDownIcon,
-    ArrowUpTrayIcon,
-    BriefcaseIcon,
-    CalendarIcon,
-    CheckCircleIcon,
-    ChevronDownIcon,
-    ChevronUpIcon,
-    ClockIcon,
-    CurrencyDollarIcon,
-    DocumentTextIcon,
-    EllipsisVerticalIcon,
-    EyeIcon,
-    MagnifyingGlassIcon,
-    MapPinIcon,
-    PencilIcon,
-    PlusIcon,
-    TrashIcon,
-    UsersIcon,
-    XCircleIcon
+  ArrowsUpDownIcon,
+  ArrowUpTrayIcon,
+  BriefcaseIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ClockIcon,
+  CurrencyDollarIcon,
+  DocumentTextIcon,
+  EllipsisVerticalIcon,
+  EyeIcon,
+  MagnifyingGlassIcon,
+  MapPinIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  UsersIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
 import React, { useEffect, useState } from 'react';
@@ -35,7 +35,7 @@ interface Opportunity {
   id: string;
   job_title: string;
   title: string;
-  company_name: string; 
+  company_name: string;
   company_logo?: string;
   department: string;
   location: string;
@@ -43,9 +43,9 @@ interface Opportunity {
   employment_type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
   experience_level: 'Entry' | 'Mid' | 'Senior' | 'Lead';
   salary_range_min?: number;
-  experience_required?: string;  
-  skills_required?: string[];  
-  deadline?: string;  
+  experience_required?: string;
+  skills_required?: string[];
+  deadline?: string;
   benefits?: string[];
   salary_range_max?: number;
   status: 'draft' | 'open' | 'closed' | 'on_hold';
@@ -79,11 +79,11 @@ const Requisitions = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [recruiters, setRecruiters] = useState<any[]>([]);
   const [currentRecruiterId, setCurrentRecruiterId] = useState<string | null>(null);
-  
+
   // Sorting State
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  
+
   // Advanced Filters State
   const [advancedFilters, setAdvancedFilters] = useState<RequisitionFilters>({
     dateRange: {},
@@ -114,27 +114,29 @@ const Requisitions = () => {
   //   loadRequisitions();
   // }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
   // Load requisitions when pagination changes
-useEffect(() => {
-  loadRequisitions();
-}, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection, currentPage, itemsPerPage]);
+  useEffect(() => {
+    loadRequisitions();
+  }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection, currentPage, itemsPerPage]);
 
-// Reset to page 1 when filters change
-useEffect(() => {
-  setCurrentPage(1);
-}, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, advancedFilters, sortField, sortDirection]);
 
   const loadRecruiters = async () => {
     try {
       const result = await apiPost<any>('/recruiter/actions', { action: 'list-recruiters' });
+      console.log('[Requisitions] Recruiters loaded:', result.data);
       setRecruiters(result.data || []);
     } catch (error) {
       logger.error('Error loading recruiters', error);
+      console.error('[Requisitions] Failed to load recruiters:', error);
     }
   };
 
   const loadCurrentRecruiter = async () => {
     if (!user?.email) return;
-    
+
     try {
       const result = await apiPost<any>('/recruiter/actions', { action: 'get-current-recruiter', email: user.email });
       if (result.data) {
@@ -291,7 +293,7 @@ useEffect(() => {
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       const updated = await updateRequisition(id, { status: newStatus });
-      setRequisitions(prev => prev.map(r => 
+      setRequisitions(prev => prev.map(r =>
         r.id === id ? { ...r, ...updated } : r
       ));
     } catch (error) {
@@ -315,19 +317,19 @@ useEffect(() => {
     if (sortField !== field) {
       return <ArrowsUpDownIcon className="h-4 w-4 text-gray-400" />;
     }
-    return sortDirection === 'asc' 
+    return sortDirection === 'asc'
       ? <ChevronUpIcon className="h-4 w-4 text-primary-600" />
       : <ChevronDownIcon className="h-4 w-4 text-primary-600" />;
   };
-   
-  // 🆕🆕🆕 ADD THESE LINES HERE 🆕🆕🆕
-const totalPages = Math.ceil(totalCount / itemsPerPage);
-const startItem = (currentPage - 1) * itemsPerPage + 1;
-const endItem = Math.min(currentPage * itemsPerPage, totalCount);
 
-const goToPage = (page: number) => {
-  setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-};
+  // 🆕🆕🆕 ADD THESE LINES HERE 🆕🆕🆕
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalCount);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -369,7 +371,7 @@ const goToPage = (page: number) => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
-          
+
           {/* Results Count & Sort Info */}
           {/* {requisitions.length > 0 && ( */}
           {totalCount > 0 && (
@@ -377,27 +379,27 @@ const goToPage = (page: number) => {
               {/* <span className="font-medium">{requisitions.length}</span>
               <span className="mx-1">results</span> */}
               <span className="font-medium">{totalCount}</span>
-  <span className="mx-1">total results</span>
+              <span className="mx-1">total results</span>
               {sortField && (
                 <>
                   <span className="mx-1">•</span>
                   <span>sorted by</span>
                   <span className="ml-1 font-medium">
                     {sortField === 'job_title' ? 'Job Title' :
-                     sortField === 'created_at' ? 'Created Date' :
-                     sortField === 'posted_date' ? 'Posted Date' :
-                     sortField === 'applications_count' ? 'Applications' :
-                     sortField === 'department' ? 'Department' :
-                     sortField === 'location' ? 'Location' :
-                     sortField === 'salary_range_min' ? 'Salary' :
-                     sortField}
+                      sortField === 'created_at' ? 'Created Date' :
+                        sortField === 'posted_date' ? 'Posted Date' :
+                          sortField === 'applications_count' ? 'Applications' :
+                            sortField === 'department' ? 'Department' :
+                              sortField === 'location' ? 'Location' :
+                                sortField === 'salary_range_min' ? 'Salary' :
+                                  sortField}
                   </span>
                   {sortDirection === 'asc' ? <ChevronUpIcon className="h-3 w-3 ml-1" /> : <ChevronDownIcon className="h-3 w-3 ml-1" />}
                 </>
               )}
             </div>
           )}
-          
+
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -457,21 +459,19 @@ const goToPage = (page: number) => {
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-2 border rounded-md ${
-                viewMode === 'grid'
+              className={`px-3 py-2 border rounded-md ${viewMode === 'grid'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               Grid
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-2 border rounded-md ${
-                viewMode === 'list'
+              className={`px-3 py-2 border rounded-md ${viewMode === 'list'
                   ? 'bg-primary-50 border-primary-300 text-primary-700'
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               List
             </button>
@@ -490,8 +490,8 @@ const goToPage = (page: number) => {
             <BriefcaseSolidIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No requisitions found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchQuery || statusFilter !== 'all' 
-                ? 'Try adjusting your search or filters' 
+              {searchQuery || statusFilter !== 'all'
+                ? 'Try adjusting your search or filters'
                 : 'Get started by creating a new requisition'}
             </p>
             {searchQuery === '' && statusFilter === 'all' && (
@@ -540,7 +540,7 @@ const goToPage = (page: number) => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('job_title')}
                   >
@@ -549,7 +549,7 @@ const goToPage = (page: number) => {
                       {getSortIcon('job_title')}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('department')}
                   >
@@ -558,7 +558,7 @@ const goToPage = (page: number) => {
                       {getSortIcon('department')}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('location')}
                   >
@@ -567,7 +567,7 @@ const goToPage = (page: number) => {
                       {getSortIcon('location')}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('status')}
                   >
@@ -576,7 +576,7 @@ const goToPage = (page: number) => {
                       {getSortIcon('status')}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('applications_count')}
                   >
@@ -585,7 +585,7 @@ const goToPage = (page: number) => {
                       {getSortIcon('applications_count')}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('posted_date')}
                   >
@@ -689,91 +689,90 @@ const goToPage = (page: number) => {
           </div>
         )}
         {/* 🆕🆕🆕 PAGINATION UI STARTS HERE 🆕🆕🆕 */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg shadow-sm">
-          {/* Mobile pagination */}
-          <div className="flex flex-1 justify-between sm:hidden">
-            <button
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg shadow-sm">
+            {/* Mobile pagination */}
+            <div className="flex flex-1 justify-between sm:hidden">
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
 
-          {/* Desktop pagination */}
-          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-             <div>
-    <p className="text-sm text-gray-700">
-      Showing <span className="font-medium">{startItem}</span> to{' '}
-      <span className="font-medium">{endItem}</span> of{' '}
-      <span className="font-medium">{totalCount}</span> results
-    </p>
-  </div>
-             <div>
-    <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+            {/* Desktop pagination */}
+            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{startItem}</span> to{' '}
+                  <span className="font-medium">{endItem}</span> of{' '}
+                  <span className="font-medium">{totalCount}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
 
-      {/* Previous Button */}
-      <button
-        onClick={() => goToPage(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="relative inline-flex items-center rounded-l-md px-3 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <ChevronUpIcon className="h-5 w-5 rotate-[-90deg] mr-1" aria-hidden="true" />
-        <span>Previous</span>
-      </button>
-                
-                {/* Page Numbers */}
-      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-        let pageNum;
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center rounded-l-md px-3 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronUpIcon className="h-5 w-5 rotate-[-90deg] mr-1" aria-hidden="true" />
+                    <span>Previous</span>
+                  </button>
 
-        if (totalPages <= 5) {
-          pageNum = i + 1;
-        } else if (currentPage <= 3) {
-          pageNum = i + 1;
-        } else if (currentPage >= totalPages - 2) {
-          pageNum = totalPages - 4 + i;
-        } else {
-          pageNum = currentPage - 2 + i;
-        }
-                  
-                  return (
-                     <button
-            key={pageNum}
-            onClick={() => goToPage(pageNum)}
-            className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-              currentPage === pageNum
-                ? 'z-10 bg-primary-600 text-white'
-                : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            {pageNum}
-          </button>
-                  );
-                })}
-                
-                 {/* Next Button */}
-      <button
-        onClick={() => goToPage(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="relative inline-flex items-center rounded-r-md px-3 py-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <span>Next</span>
-        <ChevronUpIcon className="h-5 w-5 rotate-90 ml-1" aria-hidden="true" />
-      </button>
-              </nav>
+                  {/* Page Numbers */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => goToPage(pageNum)}
+                        className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${currentPage === pageNum
+                            ? 'z-10 bg-primary-600 text-white'
+                            : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
+                          }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center rounded-r-md px-3 py-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span>Next</span>
+                    <ChevronUpIcon className="h-5 w-5 rotate-90 ml-1" aria-hidden="true" />
+                  </button>
+                </nav>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
 
       {/* Modals */}
@@ -869,49 +868,49 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
       <div className="p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
-  <div className="flex items-start space-x-3 flex-1">
-    {/* ADD COMPANY LOGO */}
-    {requisition.company_logo && (
-      <img 
-        src={requisition.company_logo} 
-        alt={requisition.company_name}
-        className="h-12 w-12 rounded-lg object-contain border border-gray-200"
-        onError={(e) => {
-          e.currentTarget.style.display = 'none';
-        }}
-      />
-    )}
-    
-    <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {requisition.job_title}
-            </h3>
-            <p className="text-sm text-gray-600 font-medium mb-2 truncate">
-              {requisition.company_name}
-            </p>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-              <span className="inline-flex items-center">
-                <BriefcaseIcon className="h-4 w-4 mr-1" />
-                {requisition.department}
-              </span>
-              <span>•</span>
-              <span className="inline-flex items-center">
-                <MapPinIcon className="h-4 w-4 mr-1" />
-                {requisition.location}
-              </span>
-              {/* ADD MODE BADGE */}
-              {requisition.mode && (
-                <>
-                  <span>•</span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {requisition.mode.charAt(0).toUpperCase() + requisition.mode.slice(1)}
-                  </span>
-                </>
-              )}
+          <div className="flex items-start space-x-3 flex-1">
+            {/* ADD COMPANY LOGO */}
+            {requisition.company_logo && (
+              <img
+                src={requisition.company_logo}
+                alt={requisition.company_name}
+                className="h-12 w-12 rounded-lg object-contain border border-gray-200"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
+
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                {requisition.job_title}
+              </h3>
+              <p className="text-sm text-gray-600 font-medium mb-2 truncate">
+                {requisition.company_name}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                <span className="inline-flex items-center">
+                  <BriefcaseIcon className="h-4 w-4 mr-1" />
+                  {requisition.department}
+                </span>
+                <span>•</span>
+                <span className="inline-flex items-center">
+                  <MapPinIcon className="h-4 w-4 mr-1" />
+                  {requisition.location}
+                </span>
+                {/* ADD MODE BADGE */}
+                {requisition.mode && (
+                  <>
+                    <span>•</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {requisition.mode.charAt(0).toUpperCase() + requisition.mode.slice(1)}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
-          
+
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
@@ -919,7 +918,7 @@ const RequisitionCard = ({ requisition, onView, onEdit, onDelete, onStatusChange
             >
               <EllipsisVerticalIcon className="h-5 w-5 text-gray-400" />
             </button>
-            
+
             {showMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                 <div className="py-1">
@@ -1013,9 +1012,9 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
     mode: 'On-site',
     employment_type: 'Full-time',
     experience_level: 'Mid',
-    experience_required: '',  
+    experience_required: '',
     skills_required: '',
-    deadline: '',  
+    deadline: '',
     benefits: '',
     salary_range_min: '',
     salary_range_max: '',
@@ -1066,7 +1065,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                   type="text"
                   required
                   value={formData.job_title}
-                  onChange={(e) => setFormData({...formData, job_title: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Senior Full Stack Developer"
                 />
@@ -1080,7 +1079,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                   type="text"
                   required
                   value={formData.department}
-                  onChange={(e) => setFormData({...formData, department: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Engineering"
                 />
@@ -1094,7 +1093,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                   type="text"
                   required
                   value={formData.company_name}
-                  onChange={(e) => setFormData({...formData, company_name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Tech Corp Inc."
                 />
@@ -1107,7 +1106,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 <input
                   type="url"
                   value={formData.company_logo}
-                  onChange={(e) => setFormData({...formData, company_logo: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, company_logo: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="https://example.com/logo.png"
                 />
@@ -1120,7 +1119,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 <select
                   required
                   value={formData.mode}
-                  onChange={(e) => setFormData({...formData, mode: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="on-site">On-site</option>
@@ -1135,7 +1134,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="draft">Draft</option>
@@ -1152,7 +1151,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 <input
                   type="date"
                   value={formData.deadline}
-                  onChange={(e) => setFormData({...formData, deadline: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -1165,7 +1164,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                   type="text"
                   required
                   value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Bangalore, Remote"
                 />
@@ -1178,7 +1177,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 <select
                   required
                   value={formData.employment_type}
-                  onChange={(e) => setFormData({...formData, employment_type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, employment_type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="Full-time">Full-time</option>
@@ -1195,7 +1194,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 <select
                   required
                   value={formData.experience_level}
-                  onChange={(e) => setFormData({...formData, experience_level: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, experience_level: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="Entry">Entry Level</option>
@@ -1205,7 +1204,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 </select>
               </div>
 
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Experience Required
@@ -1213,29 +1212,29 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 <input
                   type="text"
                   value={formData.experience_required}
-                  onChange={(e) => setFormData({...formData, experience_required: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, experience_required: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., 3-5 years"
                 />
               </div>
               <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Recruiter <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={formData.recruiter_id}
-                onChange={(e) => setFormData({...formData, recruiter_id: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Select a recruiter</option>
-                {recruiters.map((recruiter: any) => (
-                  <option key={recruiter.id} value={recruiter.id}>
-                    {recruiter.name} ({recruiter.email})
-                  </option>
-                ))}
-              </select>
-            </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Recruiter <span className="text-red-500">*</span>
+                </label>
+                <select
+                  required
+                  value={formData.recruiter_id}
+                  onChange={(e) => setFormData({ ...formData, recruiter_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select a recruiter</option>
+                  {recruiters.map((recruiter: any) => (
+                    <option key={recruiter.id} value={recruiter.id}>
+                      {recruiter.name} ({recruiter.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-6">
@@ -1246,7 +1245,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 <input
                   type="number"
                   value={formData.salary_range_min}
-                  onChange={(e) => setFormData({...formData, salary_range_min: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, salary_range_min: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., 1500000"
                 />
@@ -1259,7 +1258,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 <input
                   type="number"
                   value={formData.salary_range_max}
-                  onChange={(e) => setFormData({...formData, salary_range_max: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, salary_range_max: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., 2500000"
                 />
@@ -1272,7 +1271,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 <input
                   type="number"
                   value={formData.applications_count}
-                  onChange={(e) => setFormData({...formData, applications_count: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, applications_count: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., 0"
                   min="0"
@@ -1287,13 +1286,13 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
               <input
                 type="text"
                 value={formData.skills_required}
-                onChange={(e) => setFormData({...formData, skills_required: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, skills_required: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="e.g., React, Node.js, TypeScript, SQL"
               />
             </div>
 
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Benefits <span className="text-xs text-gray-500">(one per line)</span>
@@ -1301,7 +1300,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
               <textarea
                 rows={4}
                 value={formData.benefits}
-                onChange={(e) => setFormData({...formData, benefits: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Health insurance&#10;Remote work&#10;Learning budget"
               />
@@ -1315,7 +1314,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
                 required
                 rows={4}
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Describe the role and responsibilities..."
               />
@@ -1328,7 +1327,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
               <textarea
                 rows={4}
                 value={formData.requirements}
-                onChange={(e) => setFormData({...formData, requirements: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="5+ years experience&#10;React, Node.js expertise&#10;Team leadership"
               />
@@ -1341,7 +1340,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
               <textarea
                 rows={4}
                 value={formData.responsibilities}
-                onChange={(e) => setFormData({...formData, responsibilities: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Design and implement features&#10;Code reviews&#10;Mentor team members"
               />
@@ -1398,15 +1397,15 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
     try {
       await onSuccess({
         ...formData,
-        company_name: formData.company_name,  
-        company_logo: formData.company_logo || null,  
-        mode: formData.mode || 'on-site',  
-        experience_required: formData.experience_required || null,  
-        skills_required: formData.skills_required 
+        company_name: formData.company_name,
+        company_logo: formData.company_logo || null,
+        mode: formData.mode || 'on-site',
+        experience_required: formData.experience_required || null,
+        skills_required: formData.skills_required
           ? formData.skills_required.split(',').map(s => s.trim()).filter(s => s)
-          : [],  
-        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,  
-        benefits: formData.benefits.split('\n').filter(b => b.trim()),  
+          : [],
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+        benefits: formData.benefits.split('\n').filter(b => b.trim()),
         salary_range_min: formData.salary_range_min ? parseInt(formData.salary_range_min) : undefined,
         salary_range_max: formData.salary_range_max ? parseInt(formData.salary_range_max) : undefined,
         applications_count: formData.applications_count ? parseInt(formData.applications_count) : 0,
@@ -1441,7 +1440,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                   type="text"
                   required
                   value={formData.job_title}
-                  onChange={(e) => setFormData({...formData, job_title: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Senior Full Stack Developer"
                 />
@@ -1455,7 +1454,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                   type="text"
                   required
                   value={formData.department}
-                  onChange={(e) => setFormData({...formData, department: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Engineering"
                 />
@@ -1469,7 +1468,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                   type="text"
                   required
                   value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., Bangalore, Remote"
                 />
@@ -1482,7 +1481,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                 <select
                   required
                   value={formData.employment_type}
-                  onChange={(e) => setFormData({...formData, employment_type: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, employment_type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="Full-time">Full-time</option>
@@ -1499,7 +1498,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                 <select
                   required
                   value={formData.experience_level}
-                  onChange={(e) => setFormData({...formData, experience_level: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, experience_level: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="Entry">Entry Level</option>
@@ -1515,7 +1514,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="draft">Draft</option>
@@ -1533,7 +1532,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
               <select
                 required
                 value={formData.recruiter_id}
-                onChange={(e) => setFormData({...formData, recruiter_id: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, recruiter_id: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">Select a recruiter</option>
@@ -1553,7 +1552,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                 <input
                   type="number"
                   value={formData.salary_range_min}
-                  onChange={(e) => setFormData({...formData, salary_range_min: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, salary_range_min: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., 1500000"
                 />
@@ -1566,7 +1565,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                 <input
                   type="number"
                   value={formData.salary_range_max}
-                  onChange={(e) => setFormData({...formData, salary_range_max: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, salary_range_max: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., 2500000"
                 />
@@ -1579,7 +1578,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                 <input
                   type="number"
                   value={formData.applications_count}
-                  onChange={(e) => setFormData({...formData, applications_count: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, applications_count: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="e.g., 0"
                   min="0"
@@ -1595,7 +1594,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
                 required
                 rows={4}
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Describe the role and responsibilities..."
               />
@@ -1608,7 +1607,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
               <textarea
                 rows={4}
                 value={formData.requirements}
-                onChange={(e) => setFormData({...formData, requirements: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="5+ years experience&#10;React, Node.js expertise&#10;Team leadership"
               />
@@ -1621,7 +1620,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
               <textarea
                 rows={4}
                 value={formData.responsibilities}
-                onChange={(e) => setFormData({...formData, responsibilities: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Design and implement features&#10;Code reviews&#10;Mentor team members"
               />
@@ -1763,7 +1762,7 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
           </button>
           <h2 className="text-2xl font-bold mb-2">Applications for {requisition.job_title}</h2>
           <p className="text-gray-600 mb-6">{applications.length} applications received</p>
-          
+
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
@@ -1806,7 +1805,7 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
                   {applications.map((app) => {
                     const profile = app.learners?.profile || {};
                     const relativeTime = formatRelativeTime(app.applied_at);
-                    
+
                     return (
                       <tr key={app.id} className="hover:bg-gray-50 transition-colors">
                         {/* Candidate */}
@@ -1829,14 +1828,14 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
                             </div>
                           </div>
                         </td>
-                        
+
                         {/* Position */}
                         <td className="px-4 py-4">
                           <div className="text-sm text-gray-900 font-medium">
                             {profile.branch_field || profile.course || 'N/A'}
                           </div>
                         </td>
-                        
+
                         {/* Status */}
                         <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(app.application_status)}`}>
@@ -1844,26 +1843,25 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
                             {app.application_status.replace('_', ' ')}
                           </span>
                         </td>
-                        
+
                         {/* Applied */}
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                           {relativeTime}
                         </td>
-                        
+
                         {/* Experience */}
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                           {profile.course || 'N/A'}
                         </td>
-                        
+
                         {/* Rating */}
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-1">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <svg
                                 key={star}
-                                className={`h-5 w-5 ${
-                                  star <= 4 ? 'text-yellow-400' : 'text-gray-300'
-                                }`}
+                                className={`h-5 w-5 ${star <= 4 ? 'text-yellow-400' : 'text-gray-300'
+                                  }`}
                                 fill="currentColor"
                                 viewBox="0 0 20 20"
                               >
@@ -1872,7 +1870,7 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
                             ))}
                           </div>
                         </td>
-                        
+
                         {/* Actions */}
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
                           <div className="flex items-center space-x-2">
@@ -1912,7 +1910,7 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
                     <XCircleIcon className="h-6 w-6" />
                   </button>
                   <h3 className="text-2xl font-bold mb-6">{selectedLearner.profile.name || 'Candidate Details'}</h3>
-                  
+
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -1932,34 +1930,34 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
                         <p className="mt-1 text-gray-900">{selectedLearner.profile.age || 'N/A'}</p>
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Course</label>
                       <p className="mt-1 text-gray-900">{selectedLearner.profile.course || 'N/A'}</p>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Branch/Field</label>
                       <p className="mt-1 text-gray-900">{selectedLearner.profile.branch_field || 'N/A'}</p>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Skills</label>
                       <p className="mt-1 text-gray-900">{selectedLearner.profile.skill || 'N/A'}</p>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Alternate Contact</label>
                       <p className="mt-1 text-gray-900">{selectedLearner.profile.alternate_number || 'N/A'}</p>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-500">Application Status</label>
                       <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedLearner.application_status)}`}>
                         {selectedLearner.application_status.replace('_', ' ').toUpperCase()}
                       </span>
                     </div>
-                    
+
                     <div className="pt-4 border-t flex space-x-3">
                       <button
                         onClick={() => window.open(`mailto:${selectedLearner.profile.email}`, '_blank')}

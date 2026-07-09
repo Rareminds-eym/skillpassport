@@ -22,11 +22,59 @@ export const onRequestPostUnverified = withAuthAllowUnverified(async (context: A
 
       case 'createUserProfile': {
         const { id, email, firstName, lastName, phone, role } = params;
+        console.log('[createUserProfile] Called with:', { id, email, firstName, lastName, role });
+
         if (!id || !email) return apiError(400, 'VALIDATION_ERROR', 'Missing id or email', context.request, { startTime });
+
         const { data, error } = await supabase.from('users').upsert({
           id, email, firstName, lastName, phone: phone || null, role: role || 'recruiter',
         }).select().single();
-        if (error) return apiDbError(error, context.request, { startTime });
+
+        if (error) {
+          console.error('[createUserProfile] Failed to create user:', error);
+          return apiDbError(error, context.request, { startTime });
+        }
+
+        console.log('[createUserProfile] User created:', { id, email, role });
+
+        // 🔧 FIX: Create recruiter record if role is recruiter
+        if (role === 'recruiter') {
+          console.log('[createUserProfile] Creating recruiter record for:', { id, email, firstName, lastName });
+          const fullName = `${firstName || ''} ${lastName || ''}`.trim() || email;
+
+          // Note: recruiters table has UNIQUE constraint on email, NOT on user_id
+          // So we upsert by email to avoid duplicates
+          const { data: recruiterData, error: recruiterError } = await supabase.from('recruiters').upsert({
+            user_id: id,
+            name: fullName,
+            email: email,
+            phone: phone || null,
+            verificationstatus: 'approved',
+            isactive: true,
+            createdat: new Date().toISOString(),
+            updatedat: new Date().toISOString(),
+          }, { onConflict: 'email' }).select().single();
+
+          if (recruiterError) {
+            console.error('[createUserProfile] ❌ Failed to create recruiter record:', {
+              error: recruiterError,
+              code: recruiterError.code,
+              message: recruiterError.message,
+              details: recruiterError.details
+            });
+            // Don't fail the whole request, just log the error
+          } else {
+            console.log('[createUserProfile] ✓ Recruiter record created successfully:', {
+              recruiterId: recruiterData?.id,
+              userId: id,
+              email: email,
+              name: fullName
+            });
+          }
+        } else {
+          console.log('[createUserProfile] Not creating recruiter record - role is:', role);
+        }
+
         return apiSuccess(data, context.request, { startTime });
       }
 

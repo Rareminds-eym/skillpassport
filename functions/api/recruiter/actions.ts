@@ -153,12 +153,118 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
     // ── Requisitions (opportunities) ──
     if (action === 'list-recruiters') {
+      // 🔒 SECURITY: Use organization_id from middleware context
+      const organizationId = (context.data as any).organizationId;
+
+      console.log('[recruiter/actions] list-recruiters called:', {
+        userId: user.id,
+        organizationId,
+        hasOrgId: !!organizationId
+      });
+
+      if (!organizationId) {
+        console.error('[recruiter/actions] list-recruiters: organizationId not found in context', {
+          userId: user.id,
+          contextData: context.data
+        });
+        return apiError(500, 'INTERNAL_ERROR', 'Organization context not found. Please contact support.', context.request);
+      }
+
+      // 🔒 SECURITY: Fetch recruiters from the same organization
+      // WORKAROUND: Use email matching instead of user_id because:
+      // - recruiters.user_id references legacy app users
+      // - organization_members.user_id references SSO synced users
+      // - These are different UUIDs, so we match by email instead
+
       const { data, error } = await supabase
         .from('recruiters')
-        .select('id, name, email')
+        .select(`
+          id, 
+          name, 
+          email,
+          user_id
+        `)
+        .eq('isactive', true)
         .order('name');
-      if (error) return apiDbError(error, context.request);
-      return apiSuccess(data, context.request);
+
+      if (error) {
+        console.error('[recruiter/actions] ❌ Error fetching recruiters:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details
+        });
+        return apiDbError(error, context.request);
+      }
+
+      console.log('[recruiter/actions] ✓ Fetched recruiters from DB:', {
+        count: data?.length || 0,
+        recruiters: data?.map(r => ({ id: r.id, name: r.name, email: r.email, user_id: r.user_id }))
+      });
+
+      // Get recruiter emails
+      const recruiterEmails = (data || []).map(r => r.email).filter(Boolean);
+
+      if (recruiterEmails.length === 0) {
+        console.log('[recruiter/actions] No recruiters with email found');
+        return apiSuccess([], context.request);
+      }
+
+      console.log('[recruiter/actions] Checking organization membership for emails:', {
+        organizationId,
+        recruiterEmails,
+        emailCount: recruiterEmails.length
+      });
+
+      // Find organization members by email (via users table join)
+      const { data: members, error: membersError } = await supabase
+        .from('organization_members')
+        .select(`
+          user_id,
+          role,
+          status,
+          users!inner(id, email)
+        `)
+        .eq('organization_id', organizationId)
+        .eq('status', 'active')
+        .in('users.email', recruiterEmails);
+
+      if (membersError) {
+        console.error('[recruiter/actions] ❌ Error fetching organization members:', {
+          error: membersError,
+          code: membersError.code,
+          message: membersError.message,
+          details: membersError.details,
+          organizationId,
+          recruiterEmails
+        });
+        return apiDbError(membersError, context.request);
+      }
+
+      console.log('[recruiter/actions] ✓ Organization members found:', {
+        count: members?.length || 0,
+        members: members?.map((m: any) => ({
+          userId: m.user_id,
+          email: m.users?.email,
+          role: m.role,
+          status: m.status
+        }))
+      });
+
+      // Get emails that belong to the organization
+      const orgEmails = new Set((members || []).map((m: any) => m.users?.email).filter(Boolean));
+
+      // Filter recruiters to only include those in the organization
+      const filteredRecruiters = (data || []).filter(r => r.email && orgEmails.has(r.email));
+
+      console.log('[recruiter/actions] Filtered recruiters:', {
+        totalRecruiters: data?.length || 0,
+        orgMembers: orgEmails.size,
+        filteredCount: filteredRecruiters.length,
+        filteredRecruiters: filteredRecruiters.map(r => ({ id: r.id, name: r.name, email: r.email }))
+      });
+
+      return apiSuccess(filteredRecruiters, context.request);
     }
 
     if (action === 'get-current-recruiter') {
@@ -347,6 +453,17 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     if (action === 'import-requisitions') {
       const { rows } = body;
 
+      // 🔒 SECURITY: Use organization_id from middleware context
+      const organizationId = (context.data as any).organizationId;
+
+      if (!organizationId) {
+        console.error('[recruiter/actions] import-requisitions: organizationId not found in context', {
+          userId: user.id,
+          contextData: context.data
+        });
+        return apiError(500, 'INTERNAL_ERROR', 'Organization context not found. Please contact support.', context.request);
+      }
+
       const recruiterEmails = [...new Set((rows || []).map((r: any) => r.recruiter_email).filter(Boolean))];
       let recruiterMap: Record<string, string> = {};
       if (recruiterEmails.length) {
@@ -374,7 +491,6 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             department: row.department,
             location: row.location,
             mode: row.mode || null,
-            work_mode: row.mode || null,
             employment_type: row.employment_type,
             experience_level: row.experience_level,
             experience_required: row.experience_required,
@@ -391,7 +507,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             views_count: 0,
             posted_date: row.posted_date || new Date().toISOString(),
             status: row.status,
-            type: row.type || 'job',
+            organization_id: organizationId, // 🔒 Set organization_id from context
             created_by: user.id,
             is_active: row.status === 'open',
             recruiter_id: row.recruiter_email ? recruiterMap[row.recruiter_email] : null,

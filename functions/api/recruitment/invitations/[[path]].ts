@@ -491,6 +491,31 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
                     } else {
                         console.log('[accept-invitation] ✓ Membership synced to SkillPassport DB');
                     }
+
+                    // 🔧 FIX: Create recruiter record if invitee_role is recruiter or company_admin
+                    if (invitation.invitee_role === 'recruiter' || invitation.invitee_role === 'company_admin') {
+                        const fullName = `${first_name} ${last_name}`.trim();
+                        // Note: recruiters table has UNIQUE constraint on email, NOT on user_id
+                        // So we upsert by email to avoid duplicates
+                        const { error: recruiterSyncError } = await supabase
+                            .from('recruiters')
+                            .upsert({
+                                user_id: userId,
+                                name: fullName || invitation.invitee_email,
+                                email: invitation.invitee_email.toLowerCase(),
+                                phone: null,
+                                verificationstatus: 'approved',
+                                isactive: true,
+                                createdat: new Date().toISOString(),
+                                updatedat: new Date().toISOString(),
+                            }, { onConflict: 'email' });
+
+                        if (recruiterSyncError) {
+                            console.error('[accept-invitation] Recruiter record sync error:', recruiterSyncError);
+                        } else {
+                            console.log('[accept-invitation] ✓ Recruiter record created in recruiters table');
+                        }
+                    }
                 } else {
                     console.error('[accept-invitation] Could not fetch user from SSO after creation');
                 }
