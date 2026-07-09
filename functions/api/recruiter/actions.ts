@@ -156,7 +156,6 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const { data, error } = await supabase
         .from('recruiters')
         .select('id, name, email')
-        .eq('isactive', true)
         .order('name');
       if (error) return apiDbError(error, context.request);
       return apiSuccess(data, context.request);
