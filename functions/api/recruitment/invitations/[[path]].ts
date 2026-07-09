@@ -548,6 +548,61 @@ async function handleAcceptInvitation(context: any): Promise<Response> {
             console.log('[accept-invitation] ✓ Invitation marked as accepted');
         }
 
+        // STEP 5: Sync recruiter to recruiters table (from organization_invitations data)
+        console.log('[accept-invitation] Step 5: Syncing recruiter to recruiters table from invitation');
+        try {
+            const { error: recruiterSyncError } = await supabase
+                .from('recruiters')
+                .upsert({
+                    // Primary & Foreign Keys
+                    id: userId,                                        // From accepted_by_user_id
+                    user_id: userId,                                   // REQUIRED - From accepted_by_user_id
+
+                    // Core Information (from invitation)
+                    name: invitation.invitee_name || `${first_name} ${last_name}`.trim(),
+                    email: invitation.invitee_email.toLowerCase(),
+
+                    // Optional Fields
+                    phone: null,
+                    state: null,
+                    website: null,
+
+                    // Status Fields
+                    verificationstatus: 'approved',
+                    approval_status: 'approved',
+                    isactive: true,
+                    account_status: 'active',
+
+                    // Approval Tracking (from invitation)
+                    approved_by: invitation.invited_by,                // Who sent the invitation
+                    approved_at: new Date().toISOString(),             // When accepted
+                    company_id: null,                                   // Optional - not all recruiters belong to a company
+
+                    // Timestamps (from invitation)
+                    createdat: invitation.created_at,                  // When invitation was created
+                    updatedat: new Date().toISOString(),              // When synced
+                }, { onConflict: 'email' });
+
+            if (recruiterSyncError) {
+                console.error('[accept-invitation] Recruiter sync error:', recruiterSyncError);
+                console.error('[accept-invitation] Sync failed for:', {
+                    userId,
+                    email: invitation.invitee_email,
+                    name: invitation.invitee_name,
+                });
+            } else {
+                console.log('[accept-invitation] ✓ Recruiter synced to recruiters table:', {
+                    id: userId,
+                    email: invitation.invitee_email,
+                    name: invitation.invitee_name,
+                    approved_by: invitation.invited_by,
+                    company_id: invitation.organization_id,
+                });
+            }
+        } catch (syncException: any) {
+            console.error('[accept-invitation] Recruiter sync exception:', syncException);
+        }
+
         // STEP 7: Send admin notification email
         console.log('[accept-invitation] Step 7: Sending admin notification email');
         try {

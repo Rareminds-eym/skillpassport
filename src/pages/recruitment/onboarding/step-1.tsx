@@ -103,12 +103,20 @@ export default function OnboardingStep1() {
                 console.log('[OnboardingStep1] Note:', error.message);
             }
 
-            // Step 2: Update organization website and other basic fields
+            // Step 2: Store all company details in public.organizations
             await apiPost('/organization/handler', {
                 action: 'updateOrganization',
                 id: orgId,
                 name: formData.companyName,
+                email: formData.email,
+                phone: formData.phone,
+                address: formData.address,
                 website: formData.website || null,
+                organization_type: 'recruitment',
+                metadata: {
+                    industry: formData.industry,
+                    company_size: formData.companySize,
+                },
             });
 
             console.log('[OnboardingStep1] Organization updated successfully');
