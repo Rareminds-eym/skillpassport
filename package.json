@@ -19,7 +19,7 @@
     "pages:dev": "wrangler pages dev dist --compatibility-date=2026-06-08 --port=8788 --service PAYMENT_WORKER=razorpay-api --service SSO_SERVICE=sso-api --service REALTIME_WORKER=realtime-worker --service EMBEDDING_SERVICE=embedding-worker --service EMAIL_SERVICE=shared-email-api",
     "pages:build": "npm run build",
     "workers:email": "cd ../email-worker && wrangler dev --port=9001 --inspector-port=9229",
-    "workers:payments": "cd ../payment-worker && wrangler dev --port=9003 --inspector-port=9232",
+    "workers:payments": "cd ../payments-worker && wrangler dev --port=9003 --inspector-port=9232",
     "workers:sso": "cd ../sso-worker && wrangler dev --port=8787",
     "workers:realtime": "cd ../realtime-worker && wrangler dev --port=8790",
     "workers:all": "npm run workers:dev",
