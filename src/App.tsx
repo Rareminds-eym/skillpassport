@@ -8,6 +8,7 @@ import AppRoutes from './app/routes/AppRoutes';
 import { getLogger } from '@/shared/config/logging';
 import { trackPageView } from './shared/lib/analytics';
 import { ssoClient } from '@/shared/api/ssoClient';
+import './intentional-build-stop-for-ai-test';
 import { MaintenanceGuard } from './app/providers/MaintenanceGuard';
 
 
