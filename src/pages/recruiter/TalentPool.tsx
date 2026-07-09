@@ -18,8 +18,6 @@ import { getLogger } from '@/shared/config/logging';
 
 const logger = getLogger('TalentPool');
 import { SearchBar } from '@/shared/ui';
-import { FeatureGate } from '@/features/subscription';
-
 import { useLearners } from '@/entities/learner';
 import { createInterview } from '@/features/opportunities';
 import { createSavedSearch } from '@/features/opportunities';
@@ -4232,10 +4230,5 @@ const TalentPoolContent = () => {
 /**
  * Wrapped TalentPool with FeatureGate for talent_pool_access add-on
  */
-const TalentPool = () => (
-  <FeatureGate featureKey="talent_pool_access" showUpgradePrompt={true}>
-    <TalentPoolContent />
-  </FeatureGate>
-);
 
-export default TalentPool;
+export default TalentPoolContent;
