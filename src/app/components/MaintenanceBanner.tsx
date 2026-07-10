@@ -1,19 +1,24 @@
 import React from 'react';
 import { AlertTriangle, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/shared/model/authStore';
+import { useMaintenanceStore } from '@/shared/model/maintenanceStore';
 
 const BYPASS_STORAGE_KEY = 'sp_maintenance_bypass';
 
 export const MaintenanceBanner: React.FC = () => {
   const { logout, isAuthenticated } = useAuthStore();
 
-  const handleExit = () => {
-    // Clear the bypass token so the user gets sent back to the maintenance screen
+  const handleExit = async () => {
+    // Clear both localStorage and the store so the guard re-evaluates
     localStorage.removeItem(BYPASS_STORAGE_KEY);
+    useMaintenanceStore.getState().setLocalBypassToken(null);
     if (isAuthenticated) {
-      logout();
+      try {
+        await logout();
+      } catch (err) {
+        console.error('Logout error during maintenance bypass exit:', err);
+      }
     } else {
-      // Force reload to re-evaluate the guard
       window.location.reload();
     }
   };

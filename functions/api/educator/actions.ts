@@ -104,6 +104,7 @@ const actionMap: Record<string, ActionHandler> = {
   'save-educator-profile': (params, context, startTime) => educatorInfoHandlers.handleSaveEducatorProfile(params, context!, startTime!),
   'update-educator-media': (params, context, startTime) => educatorInfoHandlers.handleUpdateEducatorMedia(params, context!, startTime!),
   'remove-educator-media': (params, context, startTime) => educatorInfoHandlers.handleRemoveEducatorMedia(params, context!, startTime!),
+  'update-educator-metadata': (params, context, startTime) => educatorInfoHandlers.handleUpdateEducatorMetadata(params, context!, startTime!),
   'remove-experience-letter': (params, context, startTime) => educatorInfoHandlers.handleRemoveExperienceLetter(params, context!, startTime!),
   'fetch-organization-by-admin-id': (params, context, startTime) => educatorInfoHandlers.handleFetchOrganizationByAdminId(params, context!, startTime!),
   'fetch-organization-by-email': (params, context, startTime) => educatorInfoHandlers.handleFetchOrganizationByEmail(params, context!, startTime!),

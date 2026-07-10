@@ -905,24 +905,9 @@ const UnifiedSignup = () => {
             sessionStorage.removeItem('invitation_email');
             sessionStorage.removeItem('invitation_return_url');
 
-            // Logout to clear the current JWT
-            try {
-              await ssoClient.logout();
-              console.log('[UnifiedSignup] ✓ Logged out successfully');
-            } catch (logoutError) {
-              console.warn('[UnifiedSignup] Logout failed (non-critical):', logoutError);
-            }
-
-            // Clear auth store
-            useAuthStore.setState({
-              user: null,
-              isAuthenticated: false,
-              role: null,
-              isLearner: false,
-              isEducator: false,
-              isAdmin: false,
-              isRecruiter: false,
-            });
+            // Logout to clear the current JWT and reset auth state
+            await useAuthStore.getState().logout();
+            console.log('[UnifiedSignup] ✓ Logged out successfully');
 
             // Redirect to verify-email page
             // User will verify email, then get redirected based on stored context
@@ -999,18 +984,12 @@ const UnifiedSignup = () => {
       if (ssoClient.isAuthenticated()) {
         try {
           // Delete the SSO user (cascades to sessions, memberships, etc.)
-          await ssoClient.fetch(`${import.meta.env.VITE_SSO_URL}/auth/delete-account`, {
-            method: 'POST',
-          });
+          const { apiPost } = await import('@/shared/api/apiClient');
+          await apiPost('/auth/delete-account', {});
         } catch {
-          // If delete fails, at least logout to revoke the session
-          try { await ssoClient.logout(); } catch { /* best-effort */ }
+          // If delete fails, still clear auth state
         }
-        useAuthStore.setState({
-          user: null,
-          isAuthenticated: false,
-          role: null,
-        });
+        await useAuthStore.getState().logout();
       }
 
       // Track signup_failed — error message and role captured for GTM
@@ -1472,7 +1451,9 @@ const UnifiedSignup = () => {
                     {state.roleDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
                         {allRoles.map(role => {
-                          const isAvailable = true; // All roles are now available
+                          // Recruiter signup is invitation-only, so keep it visible
+                          // in the dropdown but non-selectable.
+                          const isAvailable = role !== 'recruiter';
                           return (
                             <button
                               key={role}
@@ -1494,11 +1475,6 @@ const UnifiedSignup = () => {
                                 } ${state.selectedRole === role ? 'bg-blue-50 text-blue-700' : ''}`}
                             >
                               <span className="font-medium">{getRoleDisplayName(role)}</span>
-                              {!isAvailable && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-200 text-gray-600">
-                                  Coming Soon
-                                </span>
-                              )}
                             </button>
                           );
                         })}

@@ -175,3 +175,62 @@ export const handleGetUrl: PagesFunction = async (context) => {
  * Alias for handleGetUrl
  */
 export const handleGetFileUrl = handleGetUrl;
+
+/** Signed URL lifetime for profile media — short window to limit sharing. */
+const PROFILE_MEDIA_TTL_SECONDS = 300; // 5 minutes
+
+
+export const handleProfileMediaUrl: PagesFunction = async (context) => {
+  const { request, env, user } = context;
+
+  if (!user) {
+    return createAuthenticationError('/profile-media-url', 'missing_token');
+  }
+
+  if (request.method !== 'POST') {
+    return apiError(405, 'ERROR', 'Method not allowed', request);
+  }
+
+  try {
+    let body: { fileKey?: string; url?: string };
+    try {
+      body = await request.json() as { fileKey?: string; url?: string };
+    } catch {
+      return apiError(400, 'VALIDATION_ERROR', 'Invalid JSON request body', request);
+    }
+    const { fileKey: providedKey, url } = body;
+
+    // Accept either a raw file key or a stored URL (extract the key from it).
+    let fileKey = providedKey ?? undefined;
+    if (!fileKey && url) {
+      const extracted = R2Client.extractKeyFromUrl(url);
+      if (extracted) fileKey = extracted;
+    }
+
+    if (!fileKey) {
+      return apiError(400, 'VALIDATION_ERROR', 'File key or URL is required', request);
+    }
+
+    // Ownership check: keys are `uploads/{userId}/...`, so the user-id segment
+    // must EXACTLY equal the authenticated user's id and sit in its expected
+    // position. Exact segment comparison (not substring/`includes`) prevents a
+    // value like `user123` from matching `123`.
+    const segments = fileKey.split('/');
+    const isOwner = segments[0] === 'uploads' && segments[1] === user.id;
+    if (!isOwner) {
+      return apiError(403, 'FORBIDDEN', 'You do not have access to this file', request);
+    }
+
+    const r2Client = new R2Client(env);
+    const signedUrl = await r2Client.generatePresignedGetUrl(fileKey, PROFILE_MEDIA_TTL_SECONDS);
+
+    return apiSuccess({
+      url: signedUrl,
+      expiresIn: PROFILE_MEDIA_TTL_SECONDS,
+      expiresAt: new Date(Date.now() + PROFILE_MEDIA_TTL_SECONDS * 1000).toISOString(),
+    }, request);
+  } catch (error) {
+    logErrorSafely('ProfileMediaUrl', error);
+    return apiError(500, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', request);
+  }
+};
