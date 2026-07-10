@@ -62,8 +62,14 @@ import { initializeStores } from '@/shared/model/authStore';
 import { initializeMaintenanceStore } from '@/shared/model/maintenanceStore';
 
 // Initialize stores before rendering
-initializeStores();
-initializeMaintenanceStore();
+(async () => {
+  try {
+    await initializeStores();
+  } catch (e) {
+    logger.error('Failed to initialize auth store', e instanceof Error ? e : new Error(String(e)));
+  }
+  initializeMaintenanceStore();
+})();
 
 // Unregister any existing service workers to prevent Workbox warnings
 if ('serviceWorker' in navigator) {

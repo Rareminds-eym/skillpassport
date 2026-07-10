@@ -5,6 +5,18 @@ import { apiSuccess, apiDbError, apiError } from '../../../lib/response';
 
 const getSub = (context: AuthenticatedContext) => getServiceClient(context.env as any);
 
+/**
+ * Returns true if the value is an array or a plain object (prototype is
+ * Object.prototype or null). Used to keep only JSON-serializable structures
+ * out of the metadata JSONB column — rejects non-plain objects such as Date,
+ * Map, Set, Error, and class instances.
+ */
+const isPlainObjectOrArray = (v: unknown): boolean => {
+  if (Array.isArray(v)) return true;
+  const proto = Object.getPrototypeOf(v);
+  return proto === Object.prototype || proto === null;
+};
+
 
 export async function handleGetOrganizationById(params: any, context: AuthenticatedContext, startTime: number) {
   const supabase = getSub(context);
@@ -247,6 +259,53 @@ export async function handleRemoveEducatorMedia(params: any, context: Authentica
   if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
   const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
   const { data, error } = await supabase.from(table).update({ [field]: null, [tsField]: new Date().toISOString() }).eq('user_id', userId).select().maybeSingle();
+  if (error) return apiDbError(error, context.request, { startTime });
+  return apiSuccess(data || null, context.request, { startTime });
+}
+
+
+interface UpdateEducatorMetadataParams {
+  userId: string;
+  table: string;
+  key: string;
+  value?: unknown;
+}
+
+export async function handleUpdateEducatorMetadata(
+  params: UpdateEducatorMetadataParams,
+  context: AuthenticatedContext,
+  startTime: number,
+) {
+  const supabase = getSub(context);
+  let { userId } = params;
+  const { table, key, value } = params;
+  if (!userId || !table || !key) return apiError(400, 'VALIDATION_ERROR', 'Missing userId, table, or key', context.request, { startTime });
+  if (!['school_educators', 'college_lecturers'].includes(table)) return apiError(400, 'VALIDATION_ERROR', 'Invalid table', context.request, { startTime });
+
+  // Only JSON-serializable values may be stored in the metadata JSONB column.
+  // Allows string/number/boolean/null/undefined and, for objects, ONLY arrays
+  // or plain objects. Rejects non-serializable primitives (function/symbol/
+  // bigint) and non-plain objects (Date, Map, Set, Error, class instances).
+  const t = typeof value;
+  const isSerializable =
+    value === null ||
+    t === 'undefined' ||
+    t === 'string' ||
+    t === 'number' ||
+    t === 'boolean' ||
+    (t === 'object' && isPlainObjectOrArray(value));
+  if (!isSerializable) return apiError(400, 'VALIDATION_ERROR', 'Invalid metadata value type', context.request, { startTime });
+
+  userId = String(userId);
+  const tsField = table === 'college_lecturers' ? 'updatedAt' : 'updated_at';
+
+  // Read current metadata so we merge rather than overwrite sibling keys.
+  const { data: existing, error: readError } = await supabase.from(table).select('metadata').eq('user_id', userId).maybeSingle();
+  if (readError) return apiDbError(readError, context.request, { startTime });
+  if (!existing) return apiError(404, 'NOT_FOUND', 'Educator not found', context.request, { startTime });
+
+  const mergedMetadata = { ...(existing.metadata || {}), [key]: value };
+  const { data, error } = await supabase.from(table).update({ metadata: mergedMetadata, [tsField]: new Date().toISOString() }).eq('user_id', userId).select().maybeSingle();
   if (error) return apiDbError(error, context.request, { startTime });
   return apiSuccess(data || null, context.request, { startTime });
 }

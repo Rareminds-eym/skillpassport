@@ -7,6 +7,42 @@ import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
 
+// ── Local type definitions for certificate and skill DB rows with joined learner ──
+interface LearnerJoin {
+  id: string;
+  name: string;
+  email: string;
+  school_id: string | null;
+  university_college_id: string | null;
+  college_id: string | null;
+}
+
+interface CertificateRow {
+  id: string;
+  learner_id: string;
+  title: string;
+  issuer: string | null;
+  issued_on: string | null;
+  approval_status: string;
+  created_at: string;
+  updated_at: string | null;
+  learner: LearnerJoin | LearnerJoin[];
+}
+
+interface SkillRow {
+  id: string;
+  learner_id: string;
+  name: string | null;
+  skill_name: string | null;
+  type: string | null;
+  level: number | null;
+  category: string | null;
+  approval_status: string;
+  created_at: string;
+  updated_at: string | null;
+  learner: LearnerJoin | LearnerJoin[];
+}
+
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as Record<string, string>;
@@ -392,6 +428,154 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .single();
         if (error) return apiDbError(error, context.request, { startTime });
         return apiSuccess({ success: true, message: 'Project rejected', project_id }, context.request, { startTime });
+      }
+
+      // ── Certificate Approvals ──
+      case 'get-pending-certificates': {
+        const { college_id } = params;
+        if (!college_id) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
+
+        const { data, error } = await supabase
+          .from('certificates')
+          .select('*, learner:learners!certificates_learner_id_fkey(*)')
+          .eq('approval_status', 'pending')
+          .order('created_at', { ascending: false });
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        const filtered = (data || []).filter((c: CertificateRow) => {
+          const l = Array.isArray(c.learner) ? c.learner[0] : c.learner;
+          return l?.university_college_id === college_id || l?.college_id === college_id;
+        });
+
+        const results = filtered.map((c: CertificateRow) => {
+          const l = Array.isArray(c.learner) ? c.learner[0] : c.learner;
+          return {
+            ...c,
+            learner_name: l?.name || '',
+            learner_email: l?.email || '',
+            learner_school_id: l?.school_id || null,
+            learner_college_id: l?.university_college_id || l?.college_id || null,
+          };
+        });
+
+        return apiSuccess(results, context.request, { startTime });
+      }
+
+      case 'approve-certificate': {
+        const { certificate_id, approver_id, notes } = params;
+        if (!certificate_id) return apiError(400, 'VALIDATION_ERROR', 'Missing certificate_id', context.request, { startTime });
+
+        const { error } = await supabase
+          .from('certificates')
+          .update({
+            approval_status: 'approved',
+            approved_by: approver_id || user.id,
+            approved_at: new Date().toISOString(),
+            approval_notes: notes || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', certificate_id)
+          .eq('approval_status', 'pending')
+          .select()
+          .single();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ success: true, message: 'Certificate approved', certificate_id }, context.request, { startTime });
+      }
+
+      case 'reject-certificate': {
+        const { certificate_id, rejector_id, notes } = params;
+        if (!certificate_id) return apiError(400, 'VALIDATION_ERROR', 'Missing certificate_id', context.request, { startTime });
+        if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason (notes) is required', context.request, { startTime });
+
+        const { error } = await supabase
+          .from('certificates')
+          .update({
+            approval_status: 'rejected',
+            rejected_by: rejector_id || user.id,
+            rejected_at: new Date().toISOString(),
+            approval_notes: notes,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', certificate_id)
+          .eq('approval_status', 'pending')
+          .select()
+          .single();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ success: true, message: 'Certificate rejected', certificate_id }, context.request, { startTime });
+      }
+
+      // ── Skill Approvals ──
+      case 'get-pending-skills': {
+        const { college_id } = params;
+        if (!college_id) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request, { startTime });
+
+        const { data, error } = await supabase
+          .from('skills')
+          .select('*, learner:learners!skills_learner_id_fkey(*)')
+          .eq('approval_status', 'pending')
+          .order('created_at', { ascending: false });
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        const filtered = (data || []).filter((s: SkillRow) => {
+          const l = Array.isArray(s.learner) ? s.learner[0] : s.learner;
+          return l?.university_college_id === college_id || l?.college_id === college_id;
+        });
+
+        const results = filtered.map((s: SkillRow) => {
+          const l = Array.isArray(s.learner) ? s.learner[0] : s.learner;
+          return {
+            ...s,
+            learner_name: l?.name || '',
+            learner_email: l?.email || '',
+            learner_school_id: l?.school_id || null,
+            learner_college_id: l?.university_college_id || l?.college_id || null,
+          };
+        });
+
+        return apiSuccess(results, context.request, { startTime });
+      }
+
+      case 'approve-skill': {
+        const { skill_id, approver_id, notes } = params;
+        if (!skill_id) return apiError(400, 'VALIDATION_ERROR', 'Missing skill_id', context.request, { startTime });
+
+        const { error } = await supabase
+          .from('skills')
+          .update({
+            approval_status: 'approved',
+            approved_by: approver_id || user.id,
+            approved_at: new Date().toISOString(),
+            approval_notes: notes || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', skill_id)
+          .eq('approval_status', 'pending')
+          .select()
+          .single();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ success: true, message: 'Skill approved', skill_id }, context.request, { startTime });
+      }
+
+      case 'reject-skill': {
+        const { skill_id, rejector_id, notes } = params;
+        if (!skill_id) return apiError(400, 'VALIDATION_ERROR', 'Missing skill_id', context.request, { startTime });
+        if (!notes?.trim()) return apiError(400, 'VALIDATION_ERROR', 'Rejection reason (notes) is required', context.request, { startTime });
+
+        const { error } = await supabase
+          .from('skills')
+          .update({
+            approval_status: 'rejected',
+            rejected_by: rejector_id || user.id,
+            rejected_at: new Date().toISOString(),
+            approval_notes: notes,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', skill_id)
+          .eq('approval_status', 'pending')
+          .select()
+          .single();
+        if (error) return apiDbError(error, context.request, { startTime });
+        return apiSuccess({ success: true, message: 'Skill rejected', skill_id }, context.request, { startTime });
       }
 
       default:

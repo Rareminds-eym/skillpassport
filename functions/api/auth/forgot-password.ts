@@ -2,14 +2,15 @@
 /**
  * Password Reset Request API (SkillPassport Proxy)
  * POST /api/auth/forgot-password
- * 
- * Calls SSO Worker via service binding, then sends beautiful email template
+ *
+ * Calls SSO Worker via RPC for token generation and email sending
  */
 
 import { z } from 'zod';
-import { apiLogger } from '../../lib/logger';
-import { jsonResponse } from '../../lib/response';
-import type { Env } from '../../lib/types';
+import { createLogger } from '../../lib/logger';
+import { apiError, apiSuccess } from '../../lib/response';
+
+const logger = createLogger('auth-forgot-password');
 
 const forgotPasswordSchema = z.object({
   email: z.string({ message: 'email is required' })
@@ -21,7 +22,7 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordRequest = z.infer<typeof forgotPasswordSchema>;
 
-export async function onRequestPost(context: { request: Request; env: Env }): Promise<Response> {
+export async function onRequestPost(context: { request: Request; env: any }): Promise<Response> {
   const { request, env } = context;
 
   try {
@@ -31,64 +32,49 @@ export async function onRequestPost(context: { request: Request; env: Env }): Pr
       const parsed = await request.json();
       const result = forgotPasswordSchema.safeParse(parsed);
       if (!result.success) {
-        return jsonResponse({
-          success: false,
-          error: result.error.issues[0].message
-        }, 400);
+        return apiError(400, 'VALIDATION_ERROR', result.error.issues[0].message, request);
       }
       body = result.data;
     } catch (error) {
-      apiLogger.error('Invalid JSON in forgot password request', error as Error);
-      return jsonResponse({
-        success: false,
-        error: 'Invalid JSON payload'
-      }, 400);
+      logger.error('Invalid JSON in forgot password request', error as Error);
+      return apiError(400, 'INVALID_JSON', 'Invalid JSON payload', request);
     }
 
-    apiLogger.info('Processing forgot password request via service binding', {
+    logger.info('Processing forgot password request via service binding', {
       email: body.email
     });
 
     // Check if SSO service binding is available
     if (!env.SSO_SERVICE) {
-      apiLogger.error('SSO service binding not configured');
-      return jsonResponse({
-        success: false,
-        error: 'SSO service not available'
-      }, 500);
+      logger.error('SSO service binding not configured');
+      return apiError(500, 'SERVICE_UNAVAILABLE', 'SSO service not available', request);
     }
 
-    // Call SSO Worker via service binding using True RPC
-    // SSO Worker will handle token generation and call back to SkillPassport for email template
+    // Call SSO Worker via RPC (email sent internally by sso-worker)
     try {
-      const result = await env.SSO_SERVICE.forgotPassword({
+      const ssoResult = await env.SSO_SERVICE.forgotPassword({
         email: body.email,
         redirect_url: body.redirect_url
       }, request.headers.get("CF-Connecting-IP") ?? undefined, request.headers.get("User-Agent") ?? undefined);
 
-      apiLogger.info('Password reset request processed successfully', {
+      if (!ssoResult.success) {
+        return apiError(400, 'FORGOT_PASSWORD_FAILED', ssoResult.error || 'Failed to process password reset request', request);
+      }
+
+      logger.info('Password reset request processed successfully', {
         email: body.email
       });
 
-      return jsonResponse({
-        success: true,
-        message: result.message || 'If an account exists, a reset email has been sent.'
-      });
+      return apiSuccess({
+        message: ssoResult.message || 'If an account exists, a reset email has been sent.'
+      }, request);
     } catch (ssoError: any) {
-      apiLogger.error('SSO Worker forgot password failed', ssoError);
-
-      return jsonResponse({
-        success: false,
-        error: ssoError.message || 'Failed to process password reset request'
-      }, 400);
+      logger.error('SSO Worker forgot password failed', ssoError);
+      return apiError(400, 'SSO_ERROR', ssoError.message || 'Failed to process password reset request', request);
     }
 
   } catch (error) {
-    apiLogger.error('Error processing forgot password request', error as Error);
-
-    return jsonResponse({
-      success: false,
-      error: 'Internal server error'
-    }, 500);
+    logger.error('Error processing forgot password request', error as Error);
+    return apiError(500, 'INTERNAL_ERROR', 'Internal server error', request);
   }
 }

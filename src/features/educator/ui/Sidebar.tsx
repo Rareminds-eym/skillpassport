@@ -101,10 +101,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         ),
         {
           name: "Mentor Notes",
-          path: "/educator/mentornotes",
+          path: "/educator/mentor-notes",
           icon: PencilSquareIcon,
-          disabled: true,
         },
+
         {
           name: "My Mentees",
           path: "/educator/my-mentees",

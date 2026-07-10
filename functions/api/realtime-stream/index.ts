@@ -9,6 +9,7 @@ import { PagesEnv } from '../../lib/types';
 interface RealtimeStreamEnv extends PagesEnv {
   SSO_SERVICE: NonNullable<PagesEnv['SSO_SERVICE']>;
   REALTIME_HUB: DurableObjectNamespace;
+  REALTIME_PARTITIONS?: string;
 }
 
 function jsonError(status: number, error: string, requestId: string): Response {
@@ -33,14 +34,25 @@ export const onRequestGet: PagesFunction<RealtimeStreamEnv> = async (context) =>
 
   try {
     // Extract JWT from Sec-WebSocket-Protocol header.
-    // The client sends: `access_token, <jwt>` as the protocol value.
-    // Per RFC 6455, the server MUST only echo a subprotocol the client offered.
+    // The client sends subprotocols as a comma-separated list, e.g.:
+    //   "access_token, eyJhbG..."
+    // Per RFC 6455, the server echo must pick one offered subprotocol.
+    // We scan the list for 'access_token' and take the next non-'access_token'
+    // value, regardless of ordering.
     const protocols = context.request.headers.get('Sec-WebSocket-Protocol') || '';
     const parts = protocols.split(',').map(p => p.trim());
     const tokenIndex = parts.indexOf('access_token');
-    const token = tokenIndex !== -1 && tokenIndex < parts.length - 1 ? parts[tokenIndex + 1] : '';
+    let token = '';
+    if (tokenIndex !== -1) {
+      for (let i = tokenIndex + 1; i < parts.length; i++) {
+        if (parts[i] !== 'access_token') {
+          token = parts[i];
+          break;
+        }
+      }
+    }
 
-    if (!token || !parts.includes('access_token')) {
+    if (!token) {
       return jsonError(401, 'Missing auth token in Sec-WebSocket-Protocol', requestId);
     }
 
@@ -59,7 +71,7 @@ export const onRequestGet: PagesFunction<RealtimeStreamEnv> = async (context) =>
     }
 
     // Get DO stub directly via REALTIME_HUB binding
-    const partitionId = getPartitionId(userId);
+    const partitionId = getPartitionId(userId, Number(context.env.REALTIME_PARTITIONS) || undefined);
     const id = context.env.REALTIME_HUB.idFromName(`partition-${partitionId}`);
     const stub = context.env.REALTIME_HUB.get(id);
 

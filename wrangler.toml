@@ -2,6 +2,7 @@
 # Production vars are configured in Cloudflare dashboard.
 # For local dev: wrangler pages dev ./dist
 
+pages_build_output_dir = "dist"
 name = "skill-passport-portal"
 compatibility_date = "2026-06-08"
 compatibility_flags = ["nodejs_compat"]
@@ -51,12 +52,10 @@ entrypoint = "EmailService"
 # VARIABLES
 # ============================================================================
 
-[observability]
-enabled = true
-head_sampling_rate = 1
-
 [vars]
 ENVIRONMENT = "production"
+REALTIME_PARTITIONS = "10"
+SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
 
 # ============================================================================
 # SECRETS (DO NOT COMMIT VALUES)
