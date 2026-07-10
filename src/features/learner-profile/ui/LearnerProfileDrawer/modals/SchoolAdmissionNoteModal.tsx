@@ -81,16 +81,16 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
         }
       }
 
-      if (!schoolId && (learner as any).school_id) {
-        schoolId = (learner as any).school_id;
+      if (!schoolId && learner.school_id) {
+        schoolId = learner.school_id;
       }
 
       if (!schoolId) {
         throw new Error('Could not determine school ID. Please ensure you are logged in as a school admin.');
       }
 
-      // conversations.learner_id references learners.user_id, not learners.id
-      const conversationLearnerId = (learner as any).user_id || learner.id;
+      // conversations.learner_id references learners.user_id
+      const conversationLearnerId = learner.user_id;
 
       const conversation = await MessageService.getOrCreatelearnerAdminConversation(
         conversationLearnerId,
@@ -138,6 +138,7 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
               Add Admission Note
             </h3>
             <button
+              type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
             >
@@ -147,9 +148,9 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <p className="block text-sm font-medium text-gray-700 mb-2">
                 Learner: {learner.name}
-              </label>
+              </p>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
@@ -181,6 +182,7 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
 
           <div className="mt-6 flex items-center justify-end space-x-3">
             <button
+              type="button"
               onClick={onClose}
               disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
@@ -188,6 +190,7 @@ const SchoolAdmissionNoteModal: React.FC<SchoolAdmissionNoteModalProps> = ({
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || !note.trim()}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:opacity-50 flex items-center space-x-2"
