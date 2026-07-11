@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { CandidateQuickView, PipelineSortMenu, PipelineAdvancedFilters } from '@/features/recruiter';
 import { PipelineStats, QuickStats } from '@/features/recruiter';
+import { FeatureGate } from '@/features/subscription';
 import { useNotifications } from '@/features/notifications';
 import { useOpportunities } from '@/features/opportunities';
 import { usePipelineData } from '@/features/opportunities';
@@ -577,4 +578,13 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   );
 };
 
-export default PipelinesContent;
+/**
+ * Wrapped Pipelines with FeatureGate for pipeline_management add-on
+ */
+const Pipelines: React.FC<PipelinesProps> = (props) => (
+  <FeatureGate featureKey="pipeline_management" showUpgradePrompt={true}>
+    <PipelinesContent {...props} />
+  </FeatureGate>
+);
+
+export default Pipelines;
