@@ -49,7 +49,12 @@ async function getFilteredLearnerIds(supabase: any, params: any, userId: string)
   }
 }
 
-async function getFilteredLearnerRecordIds(supabase: any, params: any, userId: string): Promise<string[]> {
+/**
+ * Exported so functions/api/educator/course-analytics.ts can reuse the exact
+ * same educator→learner scoping logic (school class assignment / college
+ * program_sections.faculty_id) instead of duplicating it.
+ */
+export async function getFilteredLearnerRecordIds(supabase: any, params: any, userId: string): Promise<string[]> {
   const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = params;
   if (!schoolId && !collegeId) return [];
 

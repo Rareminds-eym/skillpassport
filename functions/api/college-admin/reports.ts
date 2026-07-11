@@ -7,6 +7,7 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { buildCourseAnalyticsKpis } from '../../lib/courseAnalyticsKpis';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -143,7 +144,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
         const { data: departments } = await deptQuery;
 
-        return apiSuccess({ enrollments, courses, departments }, context.request, { startTime });
+        // Course Analytics Dashboard KPI cards — derived entirely from the
+        // enrollments/collegeLearners/courses already fetched above (no extra
+        // queries). LMS Courses is intentionally the GLOBAL `courses` count
+        // (courses.length, unfiltered by org) per the confirmed business rule.
+        // Response shape matches the frontend's KpiMetric[] contract exactly
+        // (entities/course-analytics/model/types.ts) so no frontend changes
+        // are required when this is wired in.
+        const kpis = buildCourseAnalyticsKpis(collegeLearners || [], enrollments || [], (courses || []).length);
+
+        return apiSuccess({ enrollments, courses, departments, kpis }, context.request, { startTime });
       }
 
       case 'budget': {
@@ -186,3 +196,4 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     return apiDbError(error, context.request, { startTime });
   }
 });
+
