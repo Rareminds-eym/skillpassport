@@ -2,8 +2,19 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError } from '../../lib/response';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PagesEnv } from '../../lib/types';
 
-async function getFilteredLearnerIds(supabase: any, params: any, userId: string): Promise<string[]> {
+/** Educator scope params, as sent by the frontend's EducatorCourseAnalyticsScope (entities/course-analytics/api/queries.ts) and consumed by every action in this file. */
+interface EducatorScopeParams {
+  schoolId?: string;
+  collegeId?: string;
+  educatorType?: 'school' | 'college' | null;
+  educatorRole?: string | null;
+  assignedClassIds?: string[];
+}
+
+async function getFilteredLearnerIds(supabase: SupabaseClient, params: EducatorScopeParams, userId: string): Promise<string[]> {
   const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = params;
   if (!schoolId && !collegeId) return [];
 
@@ -44,12 +55,18 @@ async function getFilteredLearnerIds(supabase: any, params: any, userId: string)
       return learners?.filter((s: any) => s.user_id != null).map((s: any) => s.user_id) || [];
     }
     return [];
-  } catch {
+  } catch (error: any) {
+    console.error('[getFilteredLearnerIds] Error:', error?.message || error);
     return [];
   }
 }
 
-async function getFilteredLearnerRecordIds(supabase: any, params: any, userId: string): Promise<string[]> {
+/**
+ * Exported so functions/api/educator/course-analytics.ts can reuse the exact
+ * same educator→learner scoping logic (school class assignment / college
+ * program_sections.faculty_id) instead of duplicating it.
+ */
+export async function getFilteredLearnerRecordIds(supabase: SupabaseClient, params: EducatorScopeParams, userId: string): Promise<string[]> {
   const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = params;
   if (!schoolId && !collegeId) return [];
 
@@ -90,15 +107,15 @@ async function getFilteredLearnerRecordIds(supabase: any, params: any, userId: s
       return learners?.map((s: any) => s.id).filter(Boolean) || [];
     }
     return [];
-  } catch {
+  } catch (error: any) {
+    console.error('[getFilteredLearnerRecordIds] Error:', error?.message || error);
     return [];
   }
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
-  const supabase = getServiceClient(env as any);
+  const supabase = getServiceClient(context.env as unknown as PagesEnv);
 
   let body: Record<string, any>;
   try {
