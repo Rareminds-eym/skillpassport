@@ -111,7 +111,8 @@ export default function CourseAnalyticsDashboardPage() {
     if (!selectedNode) return {};
     if (selectedNode.level === 'section') return { sectionId: selectedNode.id };
     if (selectedNode.level === 'academic-year') {
-      const grade = selectedNode.id.split('grade::')[1];
+      const parts = selectedNode.id.split('grade::');
+      const grade = parts.length > 1 ? parts[1] : '';
       return { grade };
     }
     return {};

@@ -145,7 +145,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   // For rareminds educators: only show Courses, Dashboard, Teaching Intelligence, Digital Portfolio, Communication, Settings
   // For school/college educators: show all items
   const coursesItem = { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon };
-  
+
   const bottomItems = isRaremindsEducator
     ? [
         // Rareminds educators only see these items
