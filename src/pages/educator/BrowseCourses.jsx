@@ -367,9 +367,9 @@ const BrowseCourses = () => {
           <Card className="text-center py-12 shadow-sm border border-gray-200">
             <CardContent>
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No courses found</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No resources found</h3>
               <p className="text-gray-600">
-                {searchTerm ? 'Try adjusting your search terms' : 'No courses available at the moment'}
+                {searchTerm ? 'Try adjusting your search terms' : 'No resources available at the moment'}
               </p>
             </CardContent>
           </Card>
